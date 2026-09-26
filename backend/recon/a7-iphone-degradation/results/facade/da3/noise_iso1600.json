@@ -1,0 +1,75 @@
+{
+ "scene": "facade",
+ "condition": "noise_iso1600",
+ "model": "da3",
+ "net": [
+  504,
+  378
+ ],
+ "infer_s": 24.1,
+ "conf_median": 8.13794231414795,
+ "pose_centre_rms_sim3_m": 3.6974358778415204e-07,
+ "pose_rot_err_median_deg": 0.0,
+ "alignment": {
+  "camera_rms_m": 1.0835709901976646e-06
+ },
+ "score": {
+  "kd": {
+   "n": 13,
+   "median_in": 4.02,
+   "p90_in": 12.54,
+   "max_in": 13.92,
+   "share_le_2in": 0.231,
+   "share_le_4in": 0.462,
+   "share_le_6in": 0.615,
+   "calibration": 1.0
+  },
+  "kd_observed": {
+   "n": 11,
+   "median_in": 5.11,
+   "p90_in": 13.07,
+   "max_in": 13.92,
+   "share_le_2in": 0.182,
+   "share_le_4in": 0.364,
+   "share_le_6in": 0.545,
+   "calibration": 1.0
+  },
+  "status": {
+   "scored": 13,
+   "missing": 43,
+   "extent_limited": 1,
+   "phantom": 15,
+   "scale_reference": 0
+  },
+  "false_observed_claims": 0,
+  "scale_error_pct": null,
+  "anchor_m": 1.7652,
+  "wall_face_10cm_icp": 0.8239,
+  "meter_wall_10cm_icp": 0.9536,
+  "rows": {
+   "meter.height": 1.949,
+   "opening.edge_s[win4:left]": 4.024,
+   "opening.edge_s[win4:right]": 0.055,
+   "opening.bottom[win4]": 6.051,
+   "opening.top[win4]": -7.252,
+   "opening.width[win4]": -3.969,
+   "opening.edge_s[win5:left]": -2.661,
+   "opening.edge_s[win5:right]": -13.075,
+   "opening.bottom[win5]": 5.114,
+   "opening.top[win5]": -13.921,
+   "opening.width[win5]": -10.413,
+   "opening.gap[win4~win5]": -2.717,
+   "facing.depth[w1@2.79]": 0.197
+  },
+  "score_s": 57.5
+ },
+ "surface": {
+  "points": 28970,
+  "acc_med_in": 3.9670258923335044,
+  "acc_p90_in": 8.624895845191828,
+  "within_2in": 0.23037625129444253,
+  "off_surface_share": 0.15522954780807732,
+  "compl_5cm": 0.3819301407483694,
+  "icp": true
+ }
+}
