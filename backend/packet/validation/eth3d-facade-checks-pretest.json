@@ -1,0 +1,180 @@
+{
+ "house": "eth3d-facade",
+ "reprojection_px_clean": {
+  "median": 0.25563443998643887,
+  "p90": 0.7806869800166334,
+  "n": 417353
+ },
+ "variants": {
+  "arkit-lidar": {
+   "scales": [
+    1.0028208699644965
+   ],
+   "reset_index": null,
+   "drift_in_epoch1": {
+    "3": [
+     2.5,
+     4.6,
+     75
+    ],
+    "10": [
+     5.1,
+     8.6,
+     75
+    ],
+    "20": [
+     6.3,
+     11.4,
+     75
+    ],
+    "30": [
+     7.8,
+     12.8,
+     75
+    ]
+   },
+   "realized_step_scale_median": 1.012190651020302,
+   "tracking_states": {
+    "limited.excessiveMotion": 3,
+    "limited.initializing": 1,
+    "normal": 72
+   },
+   "imu_gravity_vs_pose_deg": {
+    "median": 0.12123471916721441,
+    "max": 0.29724899948211014
+   },
+   "compass_error_deg_at_keyframes": {
+    "mean": 6.632992650361005,
+    "sd": 4.969150131757307,
+    "n": 60
+   },
+   "gps_horizontal_error_m": {
+    "median": 6.443498028551987,
+    "p90": 13.627669247668337,
+    "n": 86
+   },
+   "features_inside_frame_fraction": 0.9394096495449095,
+   "depth": {
+    "frames": 76,
+    "confidence_low_med_high": [
+     0.921,
+     0.054,
+     0.025
+    ],
+    "median_depth_m": 14.273555755615234
+   },
+   "planes": {
+    "horizontal": 3,
+    "vertical": 0
+   }
+  },
+  "arkit-nonlidar": {
+   "scales": [
+    0.9883216801725858
+   ],
+   "reset_index": null,
+   "drift_in_epoch1": {
+    "3": [
+     3.8,
+     7.3,
+     75
+    ],
+    "10": [
+     8.2,
+     16.4,
+     75
+    ],
+    "20": [
+     13.3,
+     25.1,
+     75
+    ],
+    "30": [
+     18.2,
+     32.5,
+     75
+    ]
+   },
+   "realized_step_scale_median": 1.0064587065240747,
+   "tracking_states": {
+    "limited.excessiveMotion": 1,
+    "limited.initializing": 1,
+    "normal": 74
+   },
+   "imu_gravity_vs_pose_deg": {
+    "median": 0.1451175659362756,
+    "max": 0.3005999881233451
+   },
+   "compass_error_deg_at_keyframes": {
+    "mean": -2.108150645398964,
+    "sd": 4.241120966760293,
+    "n": 57
+   },
+   "gps_horizontal_error_m": {
+    "median": 6.177615540582114,
+    "p90": 11.13483485913202,
+    "n": 86
+   },
+   "features_inside_frame_fraction": 0.9411036605853151,
+   "depth": null,
+   "planes": {
+    "horizontal": 3,
+    "vertical": 0
+   }
+  },
+  "arkit-nonlidar-2018": {
+   "scales": [
+    0.8181958702160048
+   ],
+   "reset_index": null,
+   "drift_in_epoch1": {
+    "3": [
+     7.7,
+     9.8,
+     75
+    ],
+    "10": [
+     23.0,
+     27.9,
+     75
+    ],
+    "20": [
+     41.5,
+     50.6,
+     75
+    ],
+    "30": [
+     60.9,
+     77.0,
+     75
+    ]
+   },
+   "realized_step_scale_median": 0.8077508308370134,
+   "tracking_states": {
+    "limited.excessiveMotion": 2,
+    "limited.initializing": 1,
+    "normal": 73
+   },
+   "imu_gravity_vs_pose_deg": {
+    "median": 0.13731439116575223,
+    "max": 0.3272218371106043
+   },
+   "compass_error_deg_at_keyframes": {
+    "mean": -4.986350490308815,
+    "sd": 4.888431529951498,
+    "n": 51
+   },
+   "gps_horizontal_error_m": {
+    "median": 4.530168149140682,
+    "p90": 8.462721274648587,
+    "n": 86
+   },
+   "features_inside_frame_fraction": 0.9397842188609065,
+   "depth": null,
+   "planes": {
+    "horizontal": 4,
+    "vertical": 0
+   }
+  }
+ }
+}

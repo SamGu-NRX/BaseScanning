@@ -1,0 +1,1765 @@
+{
+ "schema_version": "0.1",
+ "generated_at": "2026-09-26T16:16:45+00:00",
+ "root": "internal/data/houses/<id>/",
+ "visible_tags": [
+  "meter",
+  "meter_can",
+  "panel",
+  "gas_meter",
+  "ac_unit",
+  "openings_near_meter",
+  "corners",
+  "ground_14ft",
+  "pool",
+  "driveway",
+  "fence",
+  "overhangs"
+ ],
+ "visible_states": [
+  "yes",
+  "partial",
+  "no",
+  "unknown"
+ ],
+ "summary": {
+  "houses": 7,
+  "by_source_type": {
+   "gt_dataset": 3,
+   "walkaround_video": 3,
+   "static_video": 1
+  },
+  "meter_visible": [
+   "yt-12Ks1idWj40",
+   "yt-5-M-7f35Tyg"
+  ],
+  "reconstruction_high": [
+   "eth3d-electro",
+   "eth3d-facade",
+   "tt-barn",
+   "yt-0gotY_syWWU"
+  ],
+  "with_ground_truth": [
+   "eth3d-electro",
+   "eth3d-facade",
+   "tt-barn",
+   "yt-12Ks1idWj40"
+  ],
+  "total_frames": 645,
+  "total_bytes": 179473911
+ },
+ "houses": [
+  {
+   "id": "eth3d-electro",
+   "status": "ready",
+   "source_type": "gt_dataset",
+   "source": {
+    "name": "ETH3D high-res multi-view benchmark, training scene 'electro'",
+    "url": "https://www.eth3d.net/datasets",
+    "download": "https://www.eth3d.net/data/electro_dslr_undistorted.7z",
+    "capture": "Nikon D3X DSLR, undistorted images; laser scan ground truth"
+   },
+   "licence": "CC BY-NC-SA 4.0 (ETH3D)",
+   "terms_note": "Non-commercial research use; attribute Sch\u00f6ps et al., CVPR 2017.",
+   "real_or_synthetic": "real",
+   "location": "Zurich area, Switzerland (institutional/utility building)",
+   "us_style_house": false,
+   "frames": {
+    "dir": "frames/",
+    "resolution": "2048x1365 (downsampled)",
+    "fps_extracted": null,
+    "ordering": "DSLR shot order around a building corner and a detached utility enclosure",
+    "contact_sheet": "contact.jpg",
+    "count": 45,
+    "files": [
+     "DSC_9257.jpg",
+     "DSC_9258.jpg",
+     "DSC_9259.jpg",
+     "DSC_9260.jpg",
+     "DSC_9261.jpg",
+     "DSC_9262.jpg",
+     "DSC_9263.jpg",
+     "DSC_9264.jpg",
+     "DSC_9265.jpg",
+     "DSC_9266.jpg",
+     "DSC_9267.jpg",
+     "DSC_9268.jpg",
+     "DSC_9269.jpg",
+     "DSC_9270.jpg",
+     "DSC_9271.jpg",
+     "DSC_9272.jpg",
+     "DSC_9273.jpg",
+     "DSC_9274.jpg",
+     "DSC_9275.jpg",
+     "DSC_9276.jpg",
+     "DSC_9277.jpg",
+     "DSC_9278.jpg",
+     "DSC_9279.jpg",
+     "DSC_9280.jpg",
+     "DSC_9281.jpg",
+     "DSC_9282.jpg",
+     "DSC_9283.jpg",
+     "DSC_9284.jpg",
+     "DSC_9285.jpg",
+     "DSC_9287.jpg",
+     "DSC_9289.jpg",
+     "DSC_9290.jpg",
+     "DSC_9291.jpg",
+     "DSC_9292.jpg",
+     "DSC_9293.jpg",
+     "DSC_9294.jpg",
+     "DSC_9295.jpg",
+     "DSC_9296.jpg",
+     "DSC_9297.jpg",
+     "DSC_9298.jpg",
+     "DSC_9299.jpg",
+     "DSC_9300.jpg",
+     "DSC_9301.jpg",
+     "DSC_9302.jpg",
+     "DSC_9303.jpg"
+    ]
+   },
+   "calibration": {
+    "type": "colmap_text",
+    "dir": "calibration/",
+    "notes": "cameras.txt rescaled to 2048 px frames; images.txt keeps laser-registered metric poses."
+   },
+   "ground_truth": {
+    "type": "laser_scan",
+    "fetch": "bash ../../scripts/fetch_gt.sh eth3d electro",
+    "notes": "251 MB 7z; kept out of the store."
+   },
+   "visible": {
+    "meter": {
+     "state": "no"
+    },
+    "meter_can": {
+     "state": "no"
+    },
+    "panel": {
+     "state": "partial",
+     "frames": [
+      "DSC_9257.jpg",
+      "DSC_9295.jpg"
+     ],
+     "note": "Wall-mounted electrical boxes, conduit and orange cable runs beside steel doors (not a residential panel)."
+    },
+    "gas_meter": {
+     "state": "no"
+    },
+    "ac_unit": {
+     "state": "partial",
+     "frames": [
+      "DSC_9266.jpg",
+      "DSC_9276.jpg"
+     ],
+     "note": "Free-standing louvred utility/transformer enclosure on the lot (acts like a fixed equipment obstacle)."
+    },
+    "openings_near_meter": {
+     "state": "yes",
+     "frames": [
+      "DSC_9269.jpg",
+      "DSC_9272.jpg",
+      "DSC_9278.jpg"
+     ],
+     "note": "Row of steel double doors and a glass entrance: dense openings along the wall."
+    },
+    "corners": {
+     "state": "yes",
+     "frames": [
+      "DSC_9284.jpg",
+      "DSC_9301.jpg"
+     ]
+    },
+    "ground_14ft": {
+     "state": "yes",
+     "frames": [
+      "DSC_9275.jpg"
+     ],
+     "note": "Flat asphalt lot."
+    },
+    "pool": {
+     "state": "no"
+    },
+    "driveway": {
+     "state": "yes",
+     "note": "The whole foreground is vehicle-accessible asphalt."
+    },
+    "fence": {
+     "state": "no"
+    },
+    "overhangs": {
+     "state": "yes",
+     "frames": [
+      "DSC_9258.jpg",
+      "DSC_9296.jpg"
+     ],
+     "note": "Canopies over each door; scaffold/cable mast."
+    }
+   },
+   "scale_refs": [
+    {
+     "object": "laser scan",
+     "size": "metric ground truth",
+     "confidence": "known"
+    },
+    {
+     "object": "steel double doors",
+     "size": "measure from scan (~2.5 m tall)",
+     "frames": [
+      "DSC_9269.jpg"
+     ],
+     "confidence": "measure"
+    }
+   ],
+   "criteria_notes": {
+    "placement": "Useful as an opening-clearance and equipment-obstacle stress test: every wall bay is a door. Hand estimate: no 8.6 ft gap between doors on the long wall, so a strict 3 ft-each-side rule fails there; check against the scan.",
+    "meter_identity": "n/a",
+    "meter_enclosure": "n/a",
+    "cl320": "n/a",
+    "panel_count": "n/a",
+    "meter_panel_relationship": "n/a",
+    "equipment_access": "n/a (non-residential equipment)",
+    "panel_condition": "n/a"
+   },
+   "reconstruction": {
+    "suitability": "high",
+    "notes": "45 sharp DSLR views; large plain grey walls (a good low-texture stress case) plus textured doors. PR #12 used this scene for coverage and depth tests."
+   },
+   "tags": [
+    "laser-gt",
+    "accuracy-scoring",
+    "not-a-house",
+    "doors",
+    "plain-walls",
+    "equipment"
+   ],
+   "bytes_on_disk": 22612906
+  },
+  {
+   "id": "eth3d-facade",
+   "status": "ready",
+   "source_type": "gt_dataset",
+   "source": {
+    "name": "ETH3D high-res multi-view benchmark, training scene 'facade'",
+    "url": "https://www.eth3d.net/datasets",
+    "download": "https://www.eth3d.net/data/facade_dslr_undistorted.7z",
+    "capture": "Nikon D3X DSLR, undistorted images; laser scan (Faro) ground truth"
+   },
+   "licence": "CC BY-NC-SA 4.0 (ETH3D)",
+   "terms_note": "Non-commercial research use; attribute Sch\u00f6ps et al., CVPR 2017. Fine for internal hackathon evaluation.",
+   "real_or_synthetic": "real",
+   "location": "ETH Zurich campus, Switzerland",
+   "us_style_house": false,
+   "frames": {
+    "dir": "frames/",
+    "count": 76,
+    "resolution": "2048x1365 (downsampled from ~6200x4130)",
+    "fps_extracted": null,
+    "ordering": "DSLR shot order, not a continuous walk",
+    "contact_sheet": "contact.jpg",
+    "files": [
+     "DSC_0324.jpg",
+     "DSC_0325.jpg",
+     "DSC_0326.jpg",
+     "DSC_0327.jpg",
+     "DSC_0328.jpg",
+     "DSC_0329.jpg",
+     "DSC_0330.jpg",
+     "DSC_0331.jpg",
+     "DSC_0332.jpg",
+     "DSC_0333.jpg",
+     "DSC_0334.jpg",
+     "DSC_0335.jpg",
+     "DSC_0336.jpg",
+     "DSC_0337.jpg",
+     "DSC_0338.jpg",
+     "DSC_0339.jpg",
+     "DSC_0340.jpg",
+     "DSC_0341.jpg",
+     "DSC_0342.jpg",
+     "DSC_0343.jpg",
+     "DSC_0344.jpg",
+     "DSC_0345.jpg",
+     "DSC_0346.jpg",
+     "DSC_0347.jpg",
+     "DSC_0348.jpg",
+     "DSC_0349.jpg",
+     "DSC_0350.jpg",
+     "DSC_0351.jpg",
+     "DSC_0352.jpg",
+     "DSC_0353.jpg",
+     "DSC_0354.jpg",
+     "DSC_0355.jpg",
+     "DSC_0356.jpg",
+     "DSC_0357.jpg",
+     "DSC_0358.jpg",
+     "DSC_0359.jpg",
+     "DSC_0360.jpg",
+     "DSC_0361.jpg",
+     "DSC_0362.jpg",
+     "DSC_0363.jpg",
+     "DSC_0364.jpg",
+     "DSC_0365.jpg",
+     "DSC_0366.jpg",
+     "DSC_0386.jpg",
+     "DSC_0387.jpg",
+     "DSC_0388.jpg",
+     "DSC_0389.jpg",
+     "DSC_0390.jpg",
+     "DSC_0391.jpg",
+     "DSC_0392.jpg",
+     "DSC_0393.jpg",
+     "DSC_0394.jpg",
+     "DSC_0395.jpg",
+     "DSC_0396.jpg",
+     "DSC_0397.jpg",
+     "DSC_0398.jpg",
+     "DSC_0399.jpg",
+     "DSC_0400.jpg",
+     "DSC_0401.jpg",
+     "DSC_0402.jpg",
+     "DSC_0404.jpg",
+     "DSC_0405.jpg",
+     "DSC_0406.jpg",
+     "DSC_0407.jpg",
+     "DSC_0408.jpg",
+     "DSC_0409.jpg",
+     "DSC_0410.jpg",
+     "DSC_0411.jpg",
+     "DSC_0412.jpg",
+     "DSC_0413.jpg",
+     "DSC_0414.jpg",
+     "DSC_0415.jpg",
+     "DSC_0419.jpg",
+     "DSC_0420.jpg",
+     "DSC_0421.jpg",
+     "DSC_0422.jpg"
+    ]
+   },
+   "calibration": {
+    "type": "colmap_text",
+    "dir": "calibration/",
+    "notes": "cameras.txt rescaled to the 2048 px frames (PINHOLE, per-camera factor); images.txt keeps ETH3D's metric poses (scan frame, metres) with 2D point lists dropped. Poses are laser-registered, i.e. far better than ARKit."
+   },
+   "ground_truth": {
+    "type": "laser_scan",
+    "fetch": "bash ../../scripts/fetch_gt.sh eth3d facade",
+    "notes": "dslr_scan_eval/scan{1,2,3}.ply + scan_alignment.mlp (176 MB 7z). Kept out of the store to save space; the script downloads and extracts it."
+   },
+   "visible": {
+    "meter": {
+     "state": "no",
+     "note": "No utility meter. PR #13 invented one for the solver test."
+    },
+    "meter_can": {
+     "state": "no"
+    },
+    "panel": {
+     "state": "no"
+    },
+    "gas_meter": {
+     "state": "no"
+    },
+    "ac_unit": {
+     "state": "no"
+    },
+    "openings_near_meter": {
+     "state": "yes",
+     "frames": [
+      "DSC_0344.jpg",
+      "DSC_0362.jpg",
+      "DSC_0401.jpg"
+     ],
+     "note": "Ground-floor windows and arched doors along every wall; use them as the opening-clearance test."
+    },
+    "corners": {
+     "state": "yes",
+     "frames": [
+      "DSC_0331.jpg",
+      "DSC_0359.jpg",
+      "DSC_0368.jpg"
+     ],
+     "note": "Inside corners of the courtyard wings."
+    },
+    "ground_14ft": {
+     "state": "yes",
+     "frames": [
+      "DSC_0391.jpg",
+      "DSC_0393.jpg"
+     ],
+     "note": "Paved courtyard, flat, fully visible well beyond 14 ft."
+    },
+    "pool": {
+     "state": "no"
+    },
+    "driveway": {
+     "state": "no"
+    },
+    "fence": {
+     "state": "no"
+    },
+    "overhangs": {
+     "state": "partial",
+     "note": "Entrance canopy and stairs at the main door; roof eaves are high (several storeys)."
+    }
+   },
+   "scale_refs": [
+    {
+     "object": "laser scan",
+     "size": "metric ground truth",
+     "confidence": "known"
+    },
+    {
+     "object": "entrance stair risers",
+     "size": "~15-17 cm each (assumed)",
+     "frames": [
+      "DSC_0398.jpg",
+      "DSC_0404.jpg"
+     ],
+     "confidence": "assumed"
+    },
+    {
+     "object": "banded brick courses",
+     "size": "unknown European brick module; measure from scan",
+     "frames": [
+      "DSC_0334.jpg"
+     ],
+     "confidence": "measure"
+    }
+   ],
+   "criteria_notes": {
+    "placement": "Only laser-truth placement scene the team has. PR #13's scene.json (three-wall chain, invented meter) solves to manual_review: no window gap fits the 8.58 ft that a battery plus two 3 ft clearances needs; the tower side wall was never observed; the door wall is beyond 20 ft of route. Use it to test placement geometry, not house realism.",
+    "meter_identity": "n/a (no meter)",
+    "meter_enclosure": "n/a",
+    "cl320": "n/a",
+    "panel_count": "n/a",
+    "meter_panel_relationship": "n/a",
+    "equipment_access": "n/a",
+    "panel_condition": "n/a"
+   },
+   "reconstruction": {
+    "suitability": "high",
+    "notes": "76 sharp, well-overlapping DSLR views with metric poses; strong texture (brick bands, windows). Best scene for geometric accuracy scoring. Not a house: several storeys, institutional."
+   },
+   "tags": [
+    "laser-gt",
+    "accuracy-scoring",
+    "not-a-house",
+    "brick",
+    "windows",
+    "doors",
+    "stairs"
+   ],
+   "bytes_on_disk": 71961094
+  },
+  {
+   "id": "tt-barn",
+   "status": "partial",
+   "source_type": "gt_dataset",
+   "source": {
+    "name": "Tanks and Temples benchmark, training scene 'Barn'",
+    "url": "https://www.tanksandtemples.org/download/",
+    "download": "Google Drive id 0B-ePgl6HF260NzQySklGdXZyQzA (image set, 410 frames at 1 fps from 4K video)",
+    "capture": "high-end video camera walked around the building, frames at 1 fps, 1920x1080; FARO laser scan ground truth"
+   },
+   "licence": "CC BY 4.0 per tanksandtemples.org/license (verify before any external use)",
+   "terms_note": "Research benchmark; attribute Knapitsch et al., SIGGRAPH 2017.",
+   "real_or_synthetic": "real",
+   "location": "California, US (park building)",
+   "us_style_house": true,
+   "frames": {
+    "dir": "frames/",
+    "resolution": "1920x1080",
+    "fps_extracted": 0.333,
+    "ordering": "every 3rd frame of the official 1 fps image set (137 of 410); original names kept so indices match the SfM log",
+    "contact_sheet": "contact.jpg",
+    "count": 48,
+    "files": [
+     "000001.jpg",
+     "000004.jpg",
+     "000007.jpg",
+     "000010.jpg",
+     "000013.jpg",
+     "000016.jpg",
+     "000019.jpg",
+     "000022.jpg",
+     "000025.jpg",
+     "000028.jpg",
+     "000031.jpg",
+     "000034.jpg",
+     "000037.jpg",
+     "000040.jpg",
+     "000043.jpg",
+     "000046.jpg",
+     "000049.jpg",
+     "000052.jpg",
+     "000055.jpg",
+     "000058.jpg",
+     "000061.jpg",
+     "000064.jpg",
+     "000067.jpg",
+     "000070.jpg",
+     "000073.jpg",
+     "000076.jpg",
+     "000079.jpg",
+     "000082.jpg",
+     "000085.jpg",
+     "000088.jpg",
+     "000091.jpg",
+     "000094.jpg",
+     "000097.jpg",
+     "000100.jpg",
+     "000103.jpg",
+     "000106.jpg",
+     "000109.jpg",
+     "000112.jpg",
+     "000115.jpg",
+     "000118.jpg",
+     "000121.jpg",
+     "000124.jpg",
+     "000127.jpg",
+     "000130.jpg",
+     "000133.jpg",
+     "000136.jpg",
+     "000139.jpg",
+     "000142.jpg"
+    ]
+   },
+   "calibration": {
+    "type": "tanks_and_temples_log",
+    "dir": "calibration/",
+    "notes": "Barn_COLMAP_SfM.log = COLMAP camera poses for all 410 frames (frame i -> image %06d.jpg, i+1); Barn_trans.txt aligns that reconstruction to the laser GT; Barn.json is the evaluation crop. Intrinsics not given; T&T suggests fx=fy=0.7*W, cx=W/2, cy=H/2 as a start."
+   },
+   "ground_truth": {
+    "type": "laser_scan",
+    "fetch": "bash ../../scripts/fetch_gt.sh tt barn",
+    "notes": "Barn.ply (344 MB), kept out of the store."
+   },
+   "visible": {
+    "meter": {
+     "state": "no",
+     "note": "No utility meter identified in the sampled frames."
+    },
+    "meter_can": {
+     "state": "no"
+    },
+    "panel": {
+     "state": "partial",
+     "frames": [
+      "000343.jpg",
+      "000355.jpg"
+     ],
+     "note": "Small wall-mounted boxes/fixtures beside the doors on the gable end; not confirmed as electrical."
+    },
+    "gas_meter": {
+     "state": "no"
+    },
+    "ac_unit": {
+     "state": "no"
+    },
+    "openings_near_meter": {
+     "state": "yes",
+     "frames": [
+      "000028.jpg",
+      "000124.jpg",
+      "000343.jpg"
+     ],
+     "note": "Man doors, two roll-up/garage-style doors, lattice vents, small windows."
+    },
+    "corners": {
+     "state": "yes",
+     "frames": [
+      "000094.jpg",
+      "000205.jpg",
+      "000328.jpg"
+     ],
+     "note": "All outside corners; full loop."
+    },
+    "ground_14ft": {
+     "state": "yes",
+     "frames": [
+      "000136.jpg",
+      "000151.jpg"
+     ],
+     "note": "Lawn and concrete apron, flat, seen far beyond 14 ft."
+    },
+    "pool": {
+     "state": "no"
+    },
+    "driveway": {
+     "state": "partial",
+     "frames": [
+      "000013.jpg",
+      "000040.jpg"
+     ],
+     "note": "Concrete apron in front of the roll-up doors (acts like a driveway)."
+    },
+    "fence": {
+     "state": "no"
+    },
+    "overhangs": {
+     "state": "yes",
+     "frames": [
+      "000343.jpg",
+      "000370.jpg"
+     ],
+     "note": "Gable-end porch roof with exposed beams over the doors; normal eaves."
+    }
+   },
+   "scale_refs": [
+    {
+     "object": "laser scan",
+     "size": "metric ground truth",
+     "confidence": "known"
+    },
+    {
+     "object": "man doors",
+     "size": "36 x 80 in (assumed standard)",
+     "frames": [
+      "000124.jpg",
+      "000232.jpg"
+     ],
+     "confidence": "assumed-standard"
+    },
+    {
+     "object": "lap siding",
+     "size": "measure from scan",
+     "frames": [
+      "000220.jpg"
+     ],
+     "confidence": "measure"
+    }
+   ],
+   "criteria_notes": {
+    "placement": "No meter, so treat as a geometry scene. Good test of wall/opening/ground extraction on a single-storey sided building: long walls with doors, garage doors (no crossing), a porch overhang (headroom), lawn vs concrete ground. Put a virtual meter on a long wall to run the solver against laser truth.",
+    "meter_identity": "n/a",
+    "meter_enclosure": "n/a",
+    "cl320": "n/a",
+    "panel_count": "n/a",
+    "meter_panel_relationship": "n/a",
+    "equipment_access": "n/a",
+    "panel_condition": "n/a"
+   },
+   "reconstruction": {
+    "suitability": "high",
+    "notes": "Closest thing to a house with laser truth: single storey, siding, full 360 loop with steady video frames. Plain siding is a realistic low-texture case."
+   },
+   "tags": [
+    "laser-gt",
+    "accuracy-scoring",
+    "house-like",
+    "siding",
+    "garage-doors",
+    "full-loop",
+    "us"
+   ],
+   "bytes_on_disk": 24888402
+  },
+  {
+   "id": "yt-0gotY_syWWU",
+   "status": "ready",
+   "source_type": "walkaround_video",
+   "source": {
+    "name": "YouTube: 'My house in the spring of 2014 - outside walk around.'",
+    "url": "https://www.youtube.com/watch?v=0gotY_syWWU",
+    "channel": "Chris F (Captured Eye)",
+    "upload_date": "2014-04-15",
+    "capture": "handheld camera, landscape, 640x480"
+   },
+   "licence": "YouTube standard licence (all rights reserved by uploader)",
+   "terms_note": "Internal hackathon evaluation only; do not redistribute frames or put them in the public repo.",
+   "real_or_synthetic": "real",
+   "location": "US, likely Southeast (wooded rural lot)",
+   "us_style_house": true,
+   "frames": {
+    "dir": "frames/",
+    "resolution": "640x480",
+    "fps_extracted": 1.2,
+    "segments": [
+     "0:14-2:20"
+    ],
+    "naming": "t<seconds in source video>.jpg",
+    "ordering": "one full loop around a single-storey wood-sided house, with pans out to the yard",
+    "contact_sheet": "contact.jpg",
+    "count": 151,
+    "files": [
+     "t0014.00.jpg",
+     "t0014.83.jpg",
+     "t0015.67.jpg",
+     "t0016.50.jpg",
+     "t0017.33.jpg",
+     "t0018.17.jpg",
+     "t0019.00.jpg",
+     "t0019.83.jpg",
+     "t0020.67.jpg",
+     "t0021.50.jpg",
+     "t0022.33.jpg",
+     "t0023.17.jpg",
+     "t0024.00.jpg",
+     "t0024.83.jpg",
+     "t0025.67.jpg",
+     "t0026.50.jpg",
+     "t0027.33.jpg",
+     "t0028.17.jpg",
+     "t0029.00.jpg",
+     "t0029.83.jpg",
+     "t0030.67.jpg",
+     "t0031.50.jpg",
+     "t0032.33.jpg",
+     "t0033.17.jpg",
+     "t0034.00.jpg",
+     "t0034.83.jpg",
+     "t0035.67.jpg",
+     "t0036.50.jpg",
+     "t0037.33.jpg",
+     "t0038.17.jpg",
+     "t0039.00.jpg",
+     "t0039.83.jpg",
+     "t0040.67.jpg",
+     "t0041.50.jpg",
+     "t0042.33.jpg",
+     "t0043.17.jpg",
+     "t0044.00.jpg",
+     "t0044.83.jpg",
+     "t0045.67.jpg",
+     "t0046.50.jpg",
+     "t0047.33.jpg",
+     "t0048.17.jpg",
+     "t0049.00.jpg",
+     "t0049.83.jpg",
+     "t0050.67.jpg",
+     "t0051.50.jpg",
+     "t0052.33.jpg",
+     "t0053.17.jpg",
+     "t0054.00.jpg",
+     "t0054.83.jpg",
+     "t0055.67.jpg",
+     "t0056.50.jpg",
+     "t0057.33.jpg",
+     "t0058.17.jpg",
+     "t0059.00.jpg",
+     "t0059.83.jpg",
+     "t0060.67.jpg",
+     "t0061.50.jpg",
+     "t0062.33.jpg",
+     "t0063.17.jpg",
+     "t0064.00.jpg",
+     "t0064.83.jpg",
+     "t0065.67.jpg",
+     "t0066.50.jpg",
+     "t0067.33.jpg",
+     "t0068.17.jpg",
+     "t0069.00.jpg",
+     "t0069.83.jpg",
+     "t0070.67.jpg",
+     "t0071.50.jpg",
+     "t0072.33.jpg",
+     "t0073.17.jpg",
+     "t0074.00.jpg",
+     "t0074.83.jpg",
+     "t0075.67.jpg",
+     "t0076.50.jpg",
+     "t0077.33.jpg",
+     "t0078.17.jpg",
+     "t0079.00.jpg",
+     "t0079.83.jpg",
+     "t0080.67.jpg",
+     "t0081.50.jpg",
+     "t0082.33.jpg",
+     "t0083.17.jpg",
+     "t0084.00.jpg",
+     "t0084.83.jpg",
+     "t0085.67.jpg",
+     "t0086.50.jpg",
+     "t0087.33.jpg",
+     "t0088.17.jpg",
+     "t0089.00.jpg",
+     "t0089.83.jpg",
+     "t0090.67.jpg",
+     "t0091.50.jpg",
+     "t0092.33.jpg",
+     "t0093.17.jpg",
+     "t0094.00.jpg",
+     "t0094.83.jpg",
+     "t0095.67.jpg",
+     "t0096.50.jpg",
+     "t0097.33.jpg",
+     "t0098.17.jpg",
+     "t0099.00.jpg",
+     "t0099.83.jpg",
+     "t0100.67.jpg",
+     "t0101.50.jpg",
+     "t0102.33.jpg",
+     "t0103.17.jpg",
+     "t0104.00.jpg",
+     "t0104.83.jpg",
+     "t0105.67.jpg",
+     "t0106.50.jpg",
+     "t0107.33.jpg",
+     "t0108.17.jpg",
+     "t0109.00.jpg",
+     "t0109.83.jpg",
+     "t0110.67.jpg",
+     "t0111.50.jpg",
+     "t0112.33.jpg",
+     "t0113.17.jpg",
+     "t0114.00.jpg",
+     "t0114.83.jpg",
+     "t0115.67.jpg",
+     "t0116.50.jpg",
+     "t0117.33.jpg",
+     "t0118.17.jpg",
+     "t0119.00.jpg",
+     "t0119.83.jpg",
+     "t0120.67.jpg",
+     "t0121.50.jpg",
+     "t0122.33.jpg",
+     "t0123.17.jpg",
+     "t0124.00.jpg",
+     "t0124.83.jpg",
+     "t0125.67.jpg",
+     "t0126.50.jpg",
+     "t0127.33.jpg",
+     "t0128.17.jpg",
+     "t0129.00.jpg",
+     "t0129.83.jpg",
+     "t0130.67.jpg",
+     "t0131.50.jpg",
+     "t0132.33.jpg",
+     "t0133.17.jpg",
+     "t0134.00.jpg",
+     "t0134.83.jpg",
+     "t0135.67.jpg",
+     "t0136.50.jpg",
+     "t0137.33.jpg",
+     "t0138.17.jpg",
+     "t0139.00.jpg"
+    ]
+   },
+   "calibration": null,
+   "ground_truth": null,
+   "visible": {
+    "meter": {
+     "state": "unknown",
+     "frames": [
+      "t0051.50.jpg"
+     ],
+     "note": "Small grey box low on the side wall at t0051 may be a meter or disconnect; not confirmed. Rural service may be pole-mounted."
+    },
+    "meter_can": {
+     "state": "unknown"
+    },
+    "panel": {
+     "state": "no"
+    },
+    "gas_meter": {
+     "state": "no",
+     "note": "None seen (possibly propane; a white tank-like object near t0076)."
+    },
+    "ac_unit": {
+     "state": "partial",
+     "frames": [
+      "t0101.50.jpg",
+      "t0105.67.jpg"
+     ],
+     "note": "Window AC units on the back wall; no ground condenser confirmed."
+    },
+    "openings_near_meter": {
+     "state": "yes",
+     "frames": [
+      "t0034.83.jpg",
+      "t0047.33.jpg",
+      "t0076.50.jpg"
+     ],
+     "note": "Windows and doors on every wall."
+    },
+    "corners": {
+     "state": "yes",
+     "frames": [
+      "t0022.33.jpg",
+      "t0055.67.jpg",
+      "t0097.33.jpg"
+     ],
+     "note": "All four outside corners."
+    },
+    "ground_14ft": {
+     "state": "yes",
+     "frames": [
+      "t0039.00.jpg",
+      "t0084.83.jpg"
+     ],
+     "note": "Grass/dirt yard seen well beyond 14 ft; gently sloping."
+    },
+    "pool": {
+     "state": "no"
+    },
+    "driveway": {
+     "state": "yes",
+     "frames": [
+      "t0014.00.jpg"
+     ],
+     "note": "Gravel drive to a detached garage."
+    },
+    "fence": {
+     "state": "partial",
+     "frames": [
+      "t0039.00.jpg"
+     ],
+     "note": "White fence rail at the lot edge."
+    },
+    "overhangs": {
+     "state": "yes",
+     "frames": [
+      "t0093.17.jpg",
+      "t0097.33.jpg"
+     ],
+     "note": "Screened porch and back deck with roof; normal eaves."
+    }
+   },
+   "scale_refs": [
+    {
+     "object": "exterior doors",
+     "size": "36 x 80 in (standard, assumed)",
+     "frames": [
+      "t0034.83.jpg",
+      "t0076.50.jpg"
+     ],
+     "confidence": "assumed-standard"
+    },
+    {
+     "object": "lap siding",
+     "size": "~4-5 in exposure (assumed)",
+     "frames": [
+      "t0030.67.jpg"
+     ],
+     "confidence": "assumed"
+    }
+   ],
+   "criteria_notes": {
+    "placement": "Meter location not established, so placement is undeterminable (needs more photos). Lots of open, mildly sloped ground on every side; no gas, pool or fence constraints near the walls.",
+    "meter_identity": "n/a (meter not seen)",
+    "meter_enclosure": "unknown",
+    "cl320": "unknown",
+    "panel_count": "unknown",
+    "meter_panel_relationship": "unknown",
+    "equipment_access": "unknown",
+    "panel_condition": "unknown"
+   },
+   "reconstruction": {
+    "suitability": "high",
+    "notes": "Full closed loop with strong texture (red siding, white trim). 640x480 and frequent pans to trees; vegetation occlusion on two sides. Good whole-house loop-closure test."
+   },
+   "tags": [
+    "full-loop",
+    "wood-siding",
+    "rural",
+    "detached-garage",
+    "meter-unknown",
+    "low-res"
+   ],
+   "bytes_on_disk": 11413206
+  },
+  {
+   "id": "yt-12Ks1idWj40",
+   "status": "ready",
+   "source_type": "static_video",
+   "source": {
+    "name": "YouTube: 'BASE Power Battery Installation - Time Lapse Video - Houston, TX - 7/15/2026'",
+    "url": "https://www.youtube.com/watch?v=12Ks1idWj40",
+    "channel": "RealConfirmologist",
+    "upload_date": "2026-07-16",
+    "capture": "Wyze security camera timelapse, fixed viewpoint, 1920x1080"
+   },
+   "licence": "YouTube standard licence (all rights reserved by uploader)",
+   "terms_note": "Internal hackathon evaluation only; do not redistribute frames or put them in the public repo.",
+   "real_or_synthetic": "real",
+   "location": "Houston, TX (CenterPoint territory)",
+   "us_style_house": true,
+   "frames": {
+    "dir": "frames/",
+    "resolution": "1920x1080",
+    "fps_extracted": 0.333,
+    "segments": [
+     "0:00-1:22"
+    ],
+    "naming": "t<seconds in source video>.jpg",
+    "ordering": "fixed camera; t0000 = bare wall before install, t0078 = finished install",
+    "contact_sheet": "contact.jpg",
+    "count": 27,
+    "files": [
+     "t0000.00.jpg",
+     "t0003.00.jpg",
+     "t0006.00.jpg",
+     "t0009.00.jpg",
+     "t0012.00.jpg",
+     "t0015.00.jpg",
+     "t0018.00.jpg",
+     "t0021.00.jpg",
+     "t0024.00.jpg",
+     "t0027.00.jpg",
+     "t0030.00.jpg",
+     "t0033.00.jpg",
+     "t0036.00.jpg",
+     "t0039.00.jpg",
+     "t0042.00.jpg",
+     "t0045.00.jpg",
+     "t0048.00.jpg",
+     "t0051.01.jpg",
+     "t0054.01.jpg",
+     "t0057.01.jpg",
+     "t0060.01.jpg",
+     "t0063.01.jpg",
+     "t0066.01.jpg",
+     "t0069.01.jpg",
+     "t0072.01.jpg",
+     "t0075.01.jpg",
+     "t0078.01.jpg"
+    ]
+   },
+   "calibration": null,
+   "ground_truth": {
+    "type": "real_install_outcome",
+    "notes": "Base Power actually installed here: two battery units plus a Base disconnect. Treat as a known real-world PASS for placement (with the caveat that we do not know which Base profile or any exceptions applied)."
+   },
+   "visible": {
+    "meter": {
+     "state": "yes",
+     "frames": [
+      "t0000.00.jpg",
+      "t0078.01.jpg"
+     ],
+     "note": "Ringed meter socket, dial face visible but too far to read the number."
+    },
+    "meter_can": {
+     "state": "yes",
+     "frames": [
+      "t0000.00.jpg"
+     ],
+     "note": "Single socket, looks standard size; underground service conduit drops from its bottom into the ground."
+    },
+    "panel": {
+     "state": "partial",
+     "frames": [
+      "t0000.00.jpg"
+     ],
+     "note": "Grey enclosure right of the meter (red dot): likely an exterior main disconnect or panel; closed, no labels readable."
+    },
+    "gas_meter": {
+     "state": "no",
+     "note": "None on this wall in view."
+    },
+    "ac_unit": {
+     "state": "yes",
+     "frames": [
+      "t0000.00.jpg"
+     ],
+     "note": "Condenser at the far left, around the wall corner inside the fence line."
+    },
+    "openings_near_meter": {
+     "state": "yes",
+     "frames": [
+      "t0000.00.jpg"
+     ],
+     "note": "Double window roughly 6-7 ft right of the meter (sill ~4 ft up); patio door further right."
+    },
+    "corners": {
+     "state": "yes",
+     "note": "Left wall corner (toward AC/fence) visible; right end continues to a patio."
+    },
+    "ground_14ft": {
+     "state": "yes",
+     "note": "Flat lawn/dirt fully visible to the camera, well over 14 ft."
+    },
+    "pool": {
+     "state": "no"
+    },
+    "driveway": {
+     "state": "no"
+    },
+    "fence": {
+     "state": "yes",
+     "note": "Wood privacy fence meets the house at the left corner, ~8-10 ft from the meter."
+    },
+    "overhangs": {
+     "state": "yes",
+     "note": "Roof eave about 1.5 ft deep, well above 7 ft."
+    }
+   },
+   "scale_refs": [
+    {
+     "object": "US modular brick courses (painted)",
+     "size": "3 courses = 8 in (2 2/3 in per course incl. mortar)",
+     "frames": [
+      "t0000.00.jpg"
+     ],
+     "confidence": "assumed-standard"
+    },
+    {
+     "object": "ringed meter socket",
+     "size": "~11 in W x 13-14 in H (typical 100/200 A single socket)",
+     "frames": [
+      "t0000.00.jpg"
+     ],
+     "confidence": "assumed-typical"
+    },
+    {
+     "object": "Base battery unit (after install)",
+     "size": "~31 in W x 22 in D x 36 in H (Base published footprint; verify)",
+     "frames": [
+      "t0078.01.jpg"
+     ],
+     "confidence": "assumed"
+    }
+   ],
+   "criteria_notes": {
+    "placement": "Real Base outcome: one unit between the meter and the left corner, one unit to the right, directly next to / partly below the left edge of the window. Useful check: profiles A/B ('clear of windows', 3 ft each side) would flag the right-hand unit; profile C ('don't block or sit under operable ground-level windows') would pass it only if the window counts as not ground-level-operable. Same wall as meter, route < 10 ft, flat grass, fence ~8-10 ft away, no gas on this wall.",
+    "meter_identity": "Not readable at this range (needs a close-up).",
+    "meter_enclosure": "Standard single ringed socket, wall mount, underground feed.",
+    "cl320": "Unknown (label not legible).",
+    "panel_count": "Unknown; one exterior enclosure seen.",
+    "meter_panel_relationship": "Exterior enclosure co-located beside the meter; interior panel not shown.",
+    "equipment_access": "Open lawn in front of meter: >3 ft deep, >2.5 ft wide, eave well above 6 ft; no gas nearby. Likely pass.",
+    "panel_condition": "Not visible."
+   },
+   "reconstruction": {
+    "suitability": "none",
+    "notes": "Single fixed viewpoint; use for criteria logic and detection, not multi-view reconstruction. Moving people in later frames."
+   },
+   "tags": [
+    "base-install",
+    "known-outcome",
+    "meter-wall",
+    "brick",
+    "window-near-meter",
+    "fence",
+    "ac",
+    "houston"
+   ],
+   "bytes_on_disk": 18587120
+  },
+  {
+   "id": "yt-4h8kyjnPo9s",
+   "status": "ready",
+   "source_type": "walkaround_video",
+   "source": {
+    "name": "YouTube: 'House walk-around outside'",
+    "url": "https://www.youtube.com/watch?v=4h8kyjnPo9s",
+    "channel": "Brent Parker",
+    "upload_date": "2018-04-01",
+    "capture": "handheld phone, landscape, 1280x720"
+   },
+   "licence": "YouTube standard licence (all rights reserved by uploader)",
+   "terms_note": "Internal hackathon evaluation only; do not redistribute frames or put them in the public repo.",
+   "real_or_synthetic": "real",
+   "location": "US (brick bungalow, suburban street)",
+   "us_style_house": true,
+   "frames": {
+    "dir": "frames/",
+    "resolution": "1280x720",
+    "fps_extracted": 1.7,
+    "segments": [
+     "0:21-1:48"
+    ],
+    "naming": "t<seconds in source video>.jpg",
+    "ordering": "walk from side yard along fence, front yard, driveway, chimney side, back to fence gate",
+    "contact_sheet": "contact.jpg",
+    "count": 148,
+    "files": [
+     "t0021.00.jpg",
+     "t0021.59.jpg",
+     "t0022.18.jpg",
+     "t0022.76.jpg",
+     "t0023.35.jpg",
+     "t0023.94.jpg",
+     "t0024.53.jpg",
+     "t0025.12.jpg",
+     "t0025.71.jpg",
+     "t0026.29.jpg",
+     "t0026.88.jpg",
+     "t0027.47.jpg",
+     "t0028.06.jpg",
+     "t0028.65.jpg",
+     "t0029.24.jpg",
+     "t0029.82.jpg",
+     "t0030.41.jpg",
+     "t0031.00.jpg",
+     "t0031.59.jpg",
+     "t0032.18.jpg",
+     "t0032.76.jpg",
+     "t0033.35.jpg",
+     "t0033.94.jpg",
+     "t0034.53.jpg",
+     "t0035.12.jpg",
+     "t0035.71.jpg",
+     "t0036.29.jpg",
+     "t0036.88.jpg",
+     "t0037.47.jpg",
+     "t0038.06.jpg",
+     "t0038.65.jpg",
+     "t0039.24.jpg",
+     "t0039.82.jpg",
+     "t0040.41.jpg",
+     "t0041.00.jpg",
+     "t0041.59.jpg",
+     "t0042.18.jpg",
+     "t0042.76.jpg",
+     "t0043.35.jpg",
+     "t0043.94.jpg",
+     "t0044.53.jpg",
+     "t0045.12.jpg",
+     "t0045.71.jpg",
+     "t0046.29.jpg",
+     "t0046.88.jpg",
+     "t0047.47.jpg",
+     "t0048.06.jpg",
+     "t0048.65.jpg",
+     "t0049.24.jpg",
+     "t0049.82.jpg",
+     "t0050.41.jpg",
+     "t0051.00.jpg",
+     "t0051.59.jpg",
+     "t0052.18.jpg",
+     "t0052.76.jpg",
+     "t0053.35.jpg",
+     "t0053.94.jpg",
+     "t0054.53.jpg",
+     "t0055.12.jpg",
+     "t0055.71.jpg",
+     "t0056.29.jpg",
+     "t0056.88.jpg",
+     "t0057.47.jpg",
+     "t0058.06.jpg",
+     "t0058.65.jpg",
+     "t0059.24.jpg",
+     "t0059.82.jpg",
+     "t0060.41.jpg",
+     "t0061.00.jpg",
+     "t0061.59.jpg",
+     "t0062.18.jpg",
+     "t0062.76.jpg",
+     "t0063.35.jpg",
+     "t0063.94.jpg",
+     "t0064.53.jpg",
+     "t0065.12.jpg",
+     "t0065.71.jpg",
+     "t0066.29.jpg",
+     "t0066.88.jpg",
+     "t0067.47.jpg",
+     "t0068.06.jpg",
+     "t0068.65.jpg",
+     "t0069.24.jpg",
+     "t0069.82.jpg",
+     "t0070.41.jpg",
+     "t0071.00.jpg",
+     "t0071.59.jpg",
+     "t0072.18.jpg",
+     "t0072.76.jpg",
+     "t0073.35.jpg",
+     "t0073.94.jpg",
+     "t0074.53.jpg",
+     "t0075.12.jpg",
+     "t0075.71.jpg",
+     "t0076.29.jpg",
+     "t0076.88.jpg",
+     "t0077.47.jpg",
+     "t0078.06.jpg",
+     "t0078.65.jpg",
+     "t0079.24.jpg",
+     "t0079.82.jpg",
+     "t0080.41.jpg",
+     "t0081.00.jpg",
+     "t0081.59.jpg",
+     "t0082.18.jpg",
+     "t0082.76.jpg",
+     "t0083.35.jpg",
+     "t0083.94.jpg",
+     "t0084.53.jpg",
+     "t0085.12.jpg",
+     "t0085.71.jpg",
+     "t0086.29.jpg",
+     "t0086.88.jpg",
+     "t0087.47.jpg",
+     "t0088.06.jpg",
+     "t0088.65.jpg",
+     "t0089.24.jpg",
+     "t0089.82.jpg",
+     "t0090.41.jpg",
+     "t0091.00.jpg",
+     "t0091.59.jpg",
+     "t0092.18.jpg",
+     "t0092.76.jpg",
+     "t0093.35.jpg",
+     "t0093.94.jpg",
+     "t0094.53.jpg",
+     "t0095.12.jpg",
+     "t0095.71.jpg",
+     "t0096.29.jpg",
+     "t0096.88.jpg",
+     "t0097.47.jpg",
+     "t0098.06.jpg",
+     "t0098.65.jpg",
+     "t0099.24.jpg",
+     "t0099.82.jpg",
+     "t0100.41.jpg",
+     "t0101.00.jpg",
+     "t0101.59.jpg",
+     "t0102.18.jpg",
+     "t0102.76.jpg",
+     "t0103.35.jpg",
+     "t0103.94.jpg",
+     "t0104.53.jpg",
+     "t0105.12.jpg",
+     "t0105.71.jpg",
+     "t0106.29.jpg",
+     "t0106.88.jpg",
+     "t0107.47.jpg"
+    ]
+   },
+   "calibration": null,
+   "ground_truth": null,
+   "visible": {
+    "meter": {
+     "state": "unknown",
+     "frames": [
+      "t0102.18.jpg"
+     ],
+     "note": "Small white box on brick beside the fence gate may be meter-related; not confirmed."
+    },
+    "meter_can": {
+     "state": "unknown"
+    },
+    "panel": {
+     "state": "no"
+    },
+    "gas_meter": {
+     "state": "yes",
+     "frames": [
+      "t0096.29.jpg"
+     ],
+     "note": "Gas meter + riser at the base of the brick wall next to the parked car (driveway side)."
+    },
+    "ac_unit": {
+     "state": "partial",
+     "frames": [
+      "t0035.12.jpg"
+     ],
+     "note": "Window AC unit; no ground condenser seen."
+    },
+    "openings_near_meter": {
+     "state": "yes",
+     "frames": [
+      "t0035.12.jpg",
+      "t0099.24.jpg"
+     ],
+     "note": "Windows along the side walls."
+    },
+    "corners": {
+     "state": "yes",
+     "frames": [
+      "t0029.24.jpg",
+      "t0090.41.jpg"
+     ]
+    },
+    "ground_14ft": {
+     "state": "yes",
+     "frames": [
+      "t0049.82.jpg",
+      "t0058.65.jpg"
+     ],
+     "note": "Lawn and walkway; camera spends time pointing at grass."
+    },
+    "pool": {
+     "state": "no"
+    },
+    "driveway": {
+     "state": "yes",
+     "frames": [
+      "t0061.59.jpg",
+      "t0064.53.jpg"
+     ],
+     "note": "Gravel/concrete strip drive along the side wall with a parked car; gas meter sits on this wall."
+    },
+    "fence": {
+     "state": "yes",
+     "frames": [
+      "t0026.29.jpg",
+      "t0032.18.jpg",
+      "t0102.18.jpg"
+     ],
+     "note": "Wood privacy fence and gate close to the side wall."
+    },
+    "overhangs": {
+     "state": "yes",
+     "frames": [
+      "t0075.71.jpg",
+      "t0081.59.jpg"
+     ],
+     "note": "Gable eaves, chimney."
+    }
+   },
+   "scale_refs": [
+    {
+     "object": "US modular brick courses",
+     "size": "3 courses = 8 in",
+     "frames": [
+      "t0093.35.jpg",
+      "t0099.24.jpg"
+     ],
+     "confidence": "assumed-standard"
+    },
+    {
+     "object": "passenger car (Toyota Camry-class)",
+     "size": "~72 in wide, ~190 in long",
+     "frames": [
+      "t0064.53.jpg",
+      "t0066.88.jpg"
+     ],
+     "confidence": "assumed-typical"
+    },
+    {
+     "object": "gas meter",
+     "size": "~12 in W x 13 in H",
+     "frames": [
+      "t0096.29.jpg"
+     ],
+     "confidence": "assumed-typical"
+    }
+   ],
+   "criteria_notes": {
+    "placement": "Driveway runs along the gas-meter wall (drive 3-5 ft and gas 3-5 ft rules both bite there); the fence side is narrow. Electric meter not confirmed, so outcome undeterminable; likely needs more photos.",
+    "meter_identity": "n/a (meter not confirmed)",
+    "meter_enclosure": "unknown",
+    "cl320": "unknown",
+    "panel_count": "unknown",
+    "meter_panel_relationship": "unknown",
+    "equipment_access": "unknown",
+    "panel_condition": "unknown"
+   },
+   "reconstruction": {
+    "suitability": "medium",
+    "notes": "720p, good brick texture, but fast motion, sky/grass-only frames and a partial loop. Brick courses give a free scale check."
+   },
+   "tags": [
+    "brick",
+    "driveway",
+    "fence",
+    "gas-meter",
+    "chimney",
+    "meter-unknown"
+   ],
+   "bytes_on_disk": 23546728
+  },
+  {
+   "id": "yt-5-M-7f35Tyg",
+   "status": "ready",
+   "source_type": "walkaround_video",
+   "source": {
+    "name": "YouTube: 'Quick walk around exterior inspection'",
+    "url": "https://www.youtube.com/watch?v=5-M-7f35Tyg",
+    "channel": "Jeff The Home Inspector",
+    "upload_date": "2019-01-12",
+    "capture": "handheld phone, portrait, 360x480 (low resolution source), winter"
+   },
+   "licence": "YouTube standard licence (all rights reserved by uploader)",
+   "terms_note": "Internal hackathon evaluation only; do not redistribute frames or put them in the public repo.",
+   "real_or_synthetic": "real",
+   "location": "US, likely Midwest (snow, vinyl ranch)",
+   "us_style_house": true,
+   "frames": {
+    "dir": "frames/",
+    "resolution": "360x480",
+    "fps_extracted": 1.5,
+    "segments": [
+     "0:22-2:02"
+    ],
+    "naming": "t<seconds in source video>.jpg",
+    "ordering": "continuous walk along the side/back wall: gas meter -> AC -> siding -> electric meter at inside corner -> windows -> deck",
+    "contact_sheet": "contact.jpg",
+    "count": 150,
+    "files": [
+     "t0022.00.jpg",
+     "t0022.67.jpg",
+     "t0023.33.jpg",
+     "t0024.00.jpg",
+     "t0024.67.jpg",
+     "t0025.33.jpg",
+     "t0026.00.jpg",
+     "t0026.67.jpg",
+     "t0027.33.jpg",
+     "t0028.00.jpg",
+     "t0028.67.jpg",
+     "t0029.33.jpg",
+     "t0030.00.jpg",
+     "t0030.67.jpg",
+     "t0031.33.jpg",
+     "t0032.00.jpg",
+     "t0032.67.jpg",
+     "t0033.33.jpg",
+     "t0034.00.jpg",
+     "t0034.67.jpg",
+     "t0035.33.jpg",
+     "t0036.00.jpg",
+     "t0036.67.jpg",
+     "t0037.33.jpg",
+     "t0038.00.jpg",
+     "t0038.67.jpg",
+     "t0039.33.jpg",
+     "t0040.00.jpg",
+     "t0040.67.jpg",
+     "t0041.33.jpg",
+     "t0042.00.jpg",
+     "t0042.67.jpg",
+     "t0043.33.jpg",
+     "t0044.00.jpg",
+     "t0044.67.jpg",
+     "t0045.33.jpg",
+     "t0046.00.jpg",
+     "t0046.67.jpg",
+     "t0047.33.jpg",
+     "t0048.00.jpg",
+     "t0048.67.jpg",
+     "t0049.33.jpg",
+     "t0050.00.jpg",
+     "t0050.67.jpg",
+     "t0051.33.jpg",
+     "t0052.00.jpg",
+     "t0052.67.jpg",
+     "t0053.33.jpg",
+     "t0054.00.jpg",
+     "t0054.67.jpg",
+     "t0055.33.jpg",
+     "t0056.00.jpg",
+     "t0056.67.jpg",
+     "t0057.33.jpg",
+     "t0058.00.jpg",
+     "t0058.67.jpg",
+     "t0059.33.jpg",
+     "t0060.00.jpg",
+     "t0060.67.jpg",
+     "t0061.33.jpg",
+     "t0062.00.jpg",
+     "t0062.67.jpg",
+     "t0063.33.jpg",
+     "t0064.00.jpg",
+     "t0064.67.jpg",
+     "t0065.33.jpg",
+     "t0066.00.jpg",
+     "t0066.67.jpg",
+     "t0067.33.jpg",
+     "t0068.00.jpg",
+     "t0068.67.jpg",
+     "t0069.33.jpg",
+     "t0070.00.jpg",
+     "t0070.67.jpg",
+     "t0071.33.jpg",
+     "t0072.00.jpg",
+     "t0072.67.jpg",
+     "t0073.33.jpg",
+     "t0074.00.jpg",
+     "t0074.67.jpg",
+     "t0075.33.jpg",
+     "t0076.00.jpg",
+     "t0076.67.jpg",
+     "t0077.33.jpg",
+     "t0078.00.jpg",
+     "t0078.67.jpg",
+     "t0079.33.jpg",
+     "t0080.00.jpg",
+     "t0080.67.jpg",
+     "t0081.33.jpg",
+     "t0082.00.jpg",
+     "t0082.67.jpg",
+     "t0083.33.jpg",
+     "t0084.00.jpg",
+     "t0084.67.jpg",
+     "t0085.33.jpg",
+     "t0086.00.jpg",
+     "t0086.67.jpg",
+     "t0087.33.jpg",
+     "t0088.00.jpg",
+     "t0088.67.jpg",
+     "t0089.33.jpg",
+     "t0090.00.jpg",
+     "t0090.67.jpg",
+     "t0091.33.jpg",
+     "t0092.00.jpg",
+     "t0092.67.jpg",
+     "t0093.33.jpg",
+     "t0094.00.jpg",
+     "t0094.67.jpg",
+     "t0095.33.jpg",
+     "t0096.00.jpg",
+     "t0096.67.jpg",
+     "t0097.33.jpg",
+     "t0098.00.jpg",
+     "t0098.67.jpg",
+     "t0099.33.jpg",
+     "t0100.00.jpg",
+     "t0100.67.jpg",
+     "t0101.33.jpg",
+     "t0102.00.jpg",
+     "t0102.67.jpg",
+     "t0103.33.jpg",
+     "t0104.00.jpg",
+     "t0104.67.jpg",
+     "t0105.33.jpg",
+     "t0106.00.jpg",
+     "t0106.67.jpg",
+     "t0107.33.jpg",
+     "t0108.00.jpg",
+     "t0108.67.jpg",
+     "t0109.33.jpg",
+     "t0110.00.jpg",
+     "t0110.67.jpg",
+     "t0111.33.jpg",
+     "t0112.00.jpg",
+     "t0112.67.jpg",
+     "t0113.33.jpg",
+     "t0114.00.jpg",
+     "t0114.67.jpg",
+     "t0115.33.jpg",
+     "t0116.00.jpg",
+     "t0116.67.jpg",
+     "t0117.33.jpg",
+     "t0118.00.jpg",
+     "t0118.67.jpg",
+     "t0119.33.jpg",
+     "t0120.00.jpg",
+     "t0120.67.jpg",
+     "t0121.33.jpg"
+    ]
+   },
+   "calibration": null,
+   "ground_truth": null,
+   "visible": {
+    "meter": {
+     "state": "yes",
+     "frames": [
+      "t0088.67.jpg"
+     ],
+     "note": "Meter socket on siding next to an inside corner, deck railing behind. Brief, low-res."
+    },
+    "meter_can": {
+     "state": "partial",
+     "frames": [
+      "t0088.67.jpg"
+     ],
+     "note": "Can outline visible, size not resolvable at 360 px."
+    },
+    "panel": {
+     "state": "no"
+    },
+    "gas_meter": {
+     "state": "yes",
+     "frames": [
+      "t0035.33.jpg",
+      "t0038.67.jpg",
+      "t0042.00.jpg"
+     ],
+     "note": "Gas meter + riser on the same wall run, before the AC."
+    },
+    "ac_unit": {
+     "state": "yes",
+     "frames": [
+      "t0048.67.jpg",
+      "t0055.33.jpg",
+      "t0062.00.jpg"
+     ],
+     "note": "Condenser with wall-mounted AC disconnect just after the gas meter."
+    },
+    "openings_near_meter": {
+     "state": "yes",
+     "frames": [
+      "t0092.00.jpg",
+      "t0095.33.jpg"
+     ],
+     "note": "Windows with red shutters around the corner from the meter; deck door beyond."
+    },
+    "corners": {
+     "state": "yes",
+     "frames": [
+      "t0088.67.jpg",
+      "t0098.67.jpg"
+     ]
+    },
+    "ground_14ft": {
+     "state": "partial",
+     "note": "Camera points at the wall; ground in front (ivy, gravel, leaves, snow) seen only 3-6 ft out."
+    },
+    "pool": {
+     "state": "no"
+    },
+    "driveway": {
+     "state": "no",
+     "note": "Carport/driveway exist on the other side of the house (not in this segment)."
+    },
+    "fence": {
+     "state": "partial",
+     "frames": [
+      "t0032.00.jpg"
+     ],
+     "note": "Back-lot fence in the distance."
+    },
+    "overhangs": {
+     "state": "yes",
+     "frames": [
+      "t0108.67.jpg",
+      "t0115.33.jpg"
+     ],
+     "note": "Deck and stairs next to the meter corner; normal eave."
+    }
+   },
+   "scale_refs": [
+    {
+     "object": "vinyl lap siding",
+     "size": "~4 in exposure per course (double-4 profile typical; verify)",
+     "frames": [
+      "t0045.33.jpg"
+     ],
+     "confidence": "assumed"
+    },
+    {
+     "object": "gas meter (residential diaphragm)",
+     "size": "~12 in W x 13 in H",
+     "frames": [
+      "t0042.00.jpg"
+     ],
+     "confidence": "assumed-typical"
+    },
+    {
+     "object": "AC condenser",
+     "size": "~29-32 in square (typical 2-3 ton)",
+     "frames": [
+      "t0055.33.jpg"
+     ],
+     "confidence": "assumed-typical"
+    }
+   ],
+   "criteria_notes": {
+    "placement": "Gas meter, AC and electric meter share one long wall run; the battery would have to sit between AC and meter or past the meter toward the deck corner. Gas-to-candidate distance decides profile A/B (5 ft) vs C (3 ft). The deck and stairs at the meter corner block that side (decks fail). Likely manual_review: distances unknown from low-res handheld frames.",
+    "meter_identity": "Not readable (360 px).",
+    "meter_enclosure": "Wall mount; size unresolvable.",
+    "cl320": "Unknown.",
+    "panel_count": "Unknown.",
+    "meter_panel_relationship": "Unknown (no interior).",
+    "equipment_access": "Planting bed and ivy in front; probably >3 ft clear, needs measurement. Gas meter proximity to meter unknown.",
+    "panel_condition": "Not visible."
+   },
+   "reconstruction": {
+    "suitability": "medium",
+    "notes": "Continuous overlapping walk along one wall, but 360x480, motion blur and many close-ups of siding. Good stress test for low-texture siding."
+   },
+   "tags": [
+    "meter-wall",
+    "gas-meter",
+    "ac",
+    "vinyl-siding",
+    "deck",
+    "low-res",
+    "winter"
+   ],
+   "bytes_on_disk": 6464455
+  }
+ ]
+}

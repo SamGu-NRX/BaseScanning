@@ -1,0 +1,415 @@
+{
+  "about": "Hand annotations for the ETH3D facade test scene. Read README.md first. Pixel coordinates are in the saved keyframes (the dataset images downscaled by `keyframes.scale`), origin at the image's top-left corner.",
+  "roi_scan_xy_m": [
+    [
+      -6.0,
+      -34.0
+    ],
+    [
+      26.0,
+      -5.0
+    ]
+  ],
+  "ground_fit_scan_xy_m": [
+    [
+      -2.0,
+      -27.0
+    ],
+    [
+      20.0,
+      -12.0
+    ]
+  ],
+  "walls": [
+    {
+      "id": "w1",
+      "rough_scan_xy_m": [
+        [
+          20.3,
+          -24.84
+        ],
+        [
+          4.9,
+          -28.0
+        ]
+      ]
+    },
+    {
+      "id": "w2",
+      "rough_scan_xy_m": [
+        [
+          4.9,
+          -28.0
+        ],
+        [
+          4.16,
+          -24.43
+        ]
+      ]
+    },
+    {
+      "id": "w3",
+      "rough_scan_xy_m": [
+        [
+          4.16,
+          -24.43
+        ],
+        [
+          -0.05,
+          -25.3
+        ]
+      ]
+    }
+  ],
+  "chain_ends": {
+    "left": {
+      "kind": "unexplored",
+      "note": "w1 meets the main building in an inside corner and the wall continues along that building; not modelled"
+    },
+    "right": {
+      "kind": "unexplored",
+      "note": "past the tower's west pilaster the wall steps back; the laser scan and the SfM points stop here, so it is not modelled"
+    }
+  },
+  "keyframes": {
+    "scale": 0.25,
+    "images": [
+      "DSC_0359",
+      "DSC_0360",
+      "DSC_0361",
+      "DSC_0362",
+      "DSC_0363",
+      "DSC_0419",
+      "DSC_0420"
+    ]
+  },
+  "meter": {
+    "wall_id": "w1",
+    "from_wall_left_end_ft": 42.1,
+    "height_ft": 5.0,
+    "plus_minus_ft": 0.3,
+    "note": "INVENTED: this building has no electric meter here. Placed midway in the gap between w1 windows 4 and 5."
+  },
+  "min_plus_minus_ft": 0.1,
+  "single_view_plus_minus_ft": 0.5,
+  "features": [
+    {
+      "label": "w1 window 1",
+      "type": "window",
+      "wall_id": "w1",
+      "left_is_bottom_left_corner_in": [
+        "DSC_0359",
+        "DSC_0360"
+      ],
+      "points_px": {
+        "DSC_0359": {
+          "left": [
+            1104,
+            911
+          ],
+          "right": [
+            1180,
+            914
+          ],
+          "bottom": [
+            1142,
+            912
+          ],
+          "top": [
+            1135,
+            776
+          ]
+        },
+        "DSC_0360": {
+          "left": [
+            660,
+            905
+          ],
+          "right": [
+            718,
+            905
+          ],
+          "bottom": [
+            690,
+            905
+          ],
+          "top": [
+            690,
+            765
+          ]
+        }
+      }
+    },
+    {
+      "label": "w1 window 2",
+      "type": "window",
+      "wall_id": "w1",
+      "left_is_bottom_left_corner_in": [
+        "DSC_0360",
+        "DSC_0361"
+      ],
+      "points_px": {
+        "DSC_0360": {
+          "left": [
+            789,
+            907
+          ],
+          "right": [
+            869,
+            909
+          ],
+          "bottom": [
+            830,
+            908
+          ],
+          "top": [
+            835,
+            755
+          ]
+        },
+        "DSC_0361": {
+          "left": [
+            190,
+            818
+          ],
+          "right": [
+            292,
+            818
+          ],
+          "bottom": [
+            240,
+            818
+          ],
+          "top": [
+            264,
+            645
+          ]
+        }
+      }
+    },
+    {
+      "label": "w1 window 3",
+      "type": "window",
+      "wall_id": "w1",
+      "left_is_bottom_left_corner_in": [
+        "DSC_0361",
+        "DSC_0419"
+      ],
+      "points_px": {
+        "DSC_0361": {
+          "left": [
+            402,
+            822
+          ],
+          "right": [
+            508,
+            822
+          ],
+          "bottom": [
+            455,
+            822
+          ],
+          "top": [
+            465,
+            645
+          ]
+        },
+        "DSC_0419": {
+          "left": [
+            234,
+            848
+          ],
+          "right": [
+            365,
+            848
+          ],
+          "bottom": [
+            300,
+            848
+          ],
+          "top": [
+            315,
+            654
+          ]
+        }
+      }
+    },
+    {
+      "label": "w1 window 4",
+      "type": "window",
+      "wall_id": "w1",
+      "left_is_bottom_left_corner_in": [
+        "DSC_0419",
+        "DSC_0420"
+      ],
+      "points_px": {
+        "DSC_0419": {
+          "left": [
+            487,
+            848
+          ],
+          "right": [
+            616,
+            848
+          ],
+          "bottom": [
+            550,
+            848
+          ],
+          "top": [
+            556,
+            653
+          ]
+        },
+        "DSC_0420": {
+          "left": [
+            43,
+            825
+          ],
+          "right": [
+            218,
+            824
+          ],
+          "bottom": [
+            130,
+            824
+          ],
+          "top": [
+            140,
+            605
+          ]
+        },
+        "DSC_0361": {
+          "left": [
+            614,
+            823
+          ],
+          "right": [
+            730,
+            823
+          ],
+          "bottom": [
+            672,
+            823
+          ],
+          "top": [
+            680,
+            647
+          ]
+        }
+      }
+    },
+    {
+      "label": "w1 window 5",
+      "type": "window",
+      "wall_id": "w1",
+      "left_is_bottom_left_corner_in": [
+        "DSC_0419",
+        "DSC_0420"
+      ],
+      "points_px": {
+        "DSC_0419": {
+          "left": [
+            733,
+            842
+          ],
+          "right": [
+            848,
+            842
+          ],
+          "bottom": [
+            790,
+            842
+          ],
+          "top": [
+            791,
+            653
+          ]
+        },
+        "DSC_0420": {
+          "left": [
+            368,
+            822
+          ],
+          "right": [
+            505,
+            818
+          ],
+          "bottom": [
+            436,
+            820
+          ],
+          "top": [
+            440,
+            622
+          ]
+        },
+        "DSC_0361": {
+          "left": [
+            833,
+            826
+          ],
+          "right": [
+            952,
+            827
+          ],
+          "bottom": [
+            892,
+            826
+          ],
+          "top": [
+            895,
+            645
+          ]
+        }
+      }
+    },
+    {
+      "label": "w3 entrance door",
+      "type": "door",
+      "wall_id": "w3",
+      "points_px": {
+        "DSC_0419": {
+          "left": [
+            1020,
+            700
+          ],
+          "right": [
+            1226,
+            700
+          ],
+          "bottom": [
+            1150,
+            958
+          ],
+          "top": [
+            1122,
+            567
+          ]
+        },
+        "DSC_0420": {
+          "left": [
+            666,
+            720
+          ],
+          "right": [
+            855,
+            720
+          ],
+          "bottom": [
+            760,
+            919
+          ],
+          "top": [
+            760,
+            547
+          ]
+        }
+      },
+      "plus_minus_floor_ft": {
+        "value": 0.7,
+        "why": "The door sits 1.2 ft behind the tower face, with its brick jambs 0.5 ft back, and both photos view it from the east. They agree to 0.19 ft, but the laser scan puts the door's right edge 0.64 ft further right (s = 31.65 vs 31.01), so their agreement does not bound the error."
+      }
+    }
+  ]
+}

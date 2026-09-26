@@ -1,0 +1,143 @@
+# Machine-readable companion to docs/criteria-spec.md (v0.1, 2026-09-26).
+# Source: Notion digest of SSR_Prompts.md (internal/criteria/ssr-quick-reference-notion.md).
+# The original prompt file was not available; values marked approx are "about/roughly" in the source.
+# Units: feet unless the key says _in. null = the profile does not state a rule.
+# subagentId: bc-93048192-3bbf-5d44-a35a-4f4828072eba
+
+outcomes:
+  decision: [pass, manual_review, reject]
+  decision_no_reject: [pass, manual_review]          # placement A and B
+  problem_flag: [no, manual_review, yes]             # P12; yes = problem present
+  label_extra: [undeterminable, not_applicable]      # ground-truth labels only
+
+placement_profiles:
+  A:
+    source_prompt: "Battery Disconnect Placement"
+    configuration: meter_disconnect_battery
+    battery_in: {w: 24, d: 24, h: 36}
+    walls: same_wall
+    reach: {max_ft: 15, metric: unstated}            # straight-line vs routed not stated
+    gas_ft: 5
+    drive_ft: 5
+    drive_wrap_caution_ft: [1, 2]
+    pool_ft: 5
+    facing_ft: null
+    headroom_ft: null
+    opening_rule: {type: keep_wall_clear_of_windows, clearance_ft: null}
+    route: {windows: block, columns: block, electrical_equipment: block, door: block, garage: block}
+    disconnect: {open_wall_beside_meter_ft: 2, same_wall: true, below_meter_clear: true}
+    can_reject: false
+  B:
+    source_prompt: "Battery Disconnect Placement — 3 ft Window Rule"
+    utility_note: ComEd-specific
+    configuration: meter_disconnect_battery
+    battery_in: {w: 24, d: 24, h: 36}
+    walls: same_or_adjacent
+    reach: {max_ft: 25, metric: wall_run}
+    gas_ft: 5
+    drive_ft: 5
+    pool_ft: 5
+    kiddie_pool_exempt: true
+    facing_ft: null
+    headroom_ft: {min_approx: 6, max_approx: 7}
+    ground_ok: [dirt, lawn, gravel, mulch, concrete]
+    ground_fail: [raised_deck, extreme_slope]
+    opening_rule:
+      type: horizontal_clearance_each_side
+      clearance_ft: 3
+      applies_to: [door, window_well, operable_ground_level_window]
+      exempt: [upper_floor_window, fixed_window]
+      min_gap_between_openings_ft: 8                 # "about 7 ft or less does not work"
+      uncertain_well_or_window_type: manual_review
+    route: {windows: above_or_below_ok, thin_pipes: over_ok, door: prohibited_including_above, garage: prohibited}
+    disconnect: {usable_wall_ft: [2, 2.5], above_meter_ok: true, conduit_bend_room_in: 6, below_meter_exit_clear: true, boxed_in_meter: manual_review}
+    pedestal_meter: allowed_if_conduit_reaches_wall
+    can_reject: false
+  C:
+    source_prompt: "Battery Space"
+    configuration: meter_battery_harness
+    battery_in: {w: 31, d: 22, h: 36}
+    usable_wall_ft: 3
+    walls: same_or_adjacent
+    wall_backing: {ok: [exterior_building_wall, shed_wall], fail: [yard_island, fence_only, past_corner_into_path, indoors], flush: true}
+    reach: {pass_max_ft: 16, hard_max_ft: 26, metric: routed_cable}
+    gas_ft: 3                                        # from every part of the battery; ~6 ft contiguous wall
+    drive_ft: 3                                      # beyond the footprint edge
+    drive_wrap_caution_ft: [1, 2]
+    pool_ft: 10
+    pool_uncertain: manual_review
+    kiddie_pool_exempt: true
+    facing_ft: 5                                     # wall to facing obstruction, includes battery depth
+    headroom_ft: {min_approx: 6, max_approx: 7, fail_causes: [low_deck, stairs, landing, eave, overhang]}
+    ground_ok: [dirt, grass, gravel, mulch, planter_bed, concrete]
+    ground_fail: [raised_deck, porch, extreme_slope, steep_concrete]
+    opening_rule:
+      type: do_not_sit_under_or_block
+      clearance_ft: null                             # "leave a few inches", preserve swing
+      applies_to: [door, window_well, operable_ground_level_window, entrance, gate_swing]
+      exempt: [upper_floor_window, fixed_window]
+      unresolved_well_swing_entrance: manual_review
+    walkways: {main: must_stay_clear, only_spot_on_secondary: manual_review}
+    service_access: {beside_equipment: ok_if_one_side_accessible, cover_equipment_front: fail, under_wall_box_or_vent: fail}
+    street_facing_front_only: manual_review
+    route:
+      cable_in: 1
+      support_every_ft: 3
+      windows: above_or_below_ok
+      ac_unit: behind_ok
+      small_pipes_downspouts: over_ok
+      door: {above: manual_review, below_or_across: prohibited}
+      garage: prohibited
+      driveway_crossing: prohibited
+      loose_ground_run: prohibited
+      unsupported_gap: prohibited
+      fence_post: {behind_gap_in: 2, drill_post_in: 4.5}
+    meter_access: {sealed_off: reject_possible, uncertain: manual_review}
+    photo_calibration: {clearly_too_close_ft: 1, uncertain_band_ft: [2, 6]}   # gas and drive, photo estimates
+    can_reject: true
+    reject_requires: [both_wall_ends_seen, every_reachable_candidate_clearly_fails]
+    recorded_fields: [reference_object, distance_ft, front_clearance_ft, drive_path_ft, requires_member_action, decision, needs_more_photos, missing_views, justification]
+
+movable: [plant, bush, planter, bin, box, furniture, grill, hose, play_equipment, kiddie_pool, downspout, pipe, hose_bib, small_utility_box, single_gate, short_fence_section]
+fixed: [hvac, permanent_electrical_equipment, gas_equipment, operable_window, window_well, permanent_pool, parallel_fence_run]
+
+# Proposal, not Base policy: pass under S implies pass under A, B and C.
+strict_composite_S:
+  battery_in: {w: 31, d: 24, h: 39.5}
+  walls: same_wall
+  reach: {max_ft: 15, metric: routed_cable}
+  gas_ft: 5
+  drive_ft: 5
+  pool_ft: 10
+  facing_ft: 5
+  headroom_ft: 7
+  opening_rule: {type: horizontal_clearance_each_side, clearance_ft: 3}
+  route: {windows: block, door: block, garage: block, driveway_crossing: block}
+  disconnect: {open_wall_beside_meter_ft: 2.5, conduit_bend_room_in: 6}
+  reject: same_as_C
+
+meter_prompts:
+  meter_number: {modality: R, clean_false_if: [multiple_meters, duplex, cropped, glare, scratches, obstructed, tiny_digits, no_meter], empty_string_if: no_meter_number_photographed}
+  cl320: {modality: R, true_if: readable_text_says_CL320, not_evidence: [CL200, can_size, breaker_rating], unreadable: cl320_unclear}
+  oversized_can: {modality: P, judge: enclosure_holding_round_meter, unknown: meter_can_unclear}
+  meter_type:
+    modality: P
+    ratio: can_height_over_glass_head_height     # single photo, 0-1000 normalised y
+    min_head_units: 10
+    classes: {standard: 2, oversized: [3, 4], undersized: [1, 1.5], combined: meter_and_main_in_one_unit}
+    borderline_3: unclean
+  meter_mount: {modality: P, classes: [standard, pole, bank], bank_signal_min_meters: 3}
+
+panel_prompts:
+  multiple_mains: {modality: P+R, not_mains: [closed_adjacent_box, transfer_switch, emergency_disconnect, meter_main, solar_equipment, downstream_panel, lone_two_pole_breaker]}
+  main_panel_type: {confirmed_multiple: reject, confirmed_single: pass, doubt: manual_review}
+  meter_panel_relationship: {modality: G+P, subtypes: [back_to_back, not_back_to_back, co_located_exterior, insufficient_evidence]}
+  location_access:
+    envelope_ft: {depth: 3, width: 2.5, overhead_review_below: 6, gas_review_within: 3}
+    fields: [meter_not_accessible, panel_not_accessible, panel_in_house, not_same_wall]
+    not_same_wall_never_yes: true
+  panel_recall:
+    reject_brands: [Federal Pacific, Federal Pacific Electric, FPE, Stab-Lok, Challenger, Zinsco, GTE-Sylvania, Zinsco-Sylvania, Magnetrip, Sylvania]
+    review_brands: [Westinghouse]
+    reject_if: [heavy_corrosion, vertical_breaker_up_off]
+    review_if: [light_rust, old_appearance, exposed_wiring, missing_deadfront, old_separate_disconnect, missing_or_unreadable_brand]

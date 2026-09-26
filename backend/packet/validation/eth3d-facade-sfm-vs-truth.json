@@ -1,0 +1,23 @@
+{
+ "registered": 76,
+ "frames": 76,
+ "points": 63261,
+ "sim3_scale_to_metric": 2.8239663004564086,
+ "position_error_m": {
+  "median": 0.052329285285611774,
+  "p90": 0.10701088707170851,
+  "max": 0.1945457521677997
+ },
+ "rotation_error_deg": {
+  "median": 0.14525340579692508,
+  "p90": 0.2095065711523172
+ },
+ "focal_rel_error": {
+  "median": -0.0014840805893023834,
+  "range": [
+   -0.0015338079653299808,
+   -0.00043351638306121654
+  ]
+ },
+ "model": "/home/ubuntu/work/packetgen-work/eth3d-facade-sfm/sparse/0"
+}
