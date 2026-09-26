@@ -22,8 +22,6 @@ data/**/*.npz
 data/**/*.ply
 data/**/*.bin
 
-# Reconstruction outputs.
-runs/
-outputs/
+# Reconstruction outputs. Small JSON results under breadth outputs/ folders are committed.
 *.ply
 *.splat
