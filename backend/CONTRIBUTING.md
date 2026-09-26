@@ -3,7 +3,7 @@
 ## Branches and pull requests
 
 - `main` is protected by convention: nobody pushes to it directly after the initial import, and agents never merge.
-- **Breadth work lands on branches named `breadth/<path-id>`, opened as draft pull requests.** Path ids match the folders: `a1-classical`, `a2-feedforward`, `a3-depth-fusion`, `a4-gaussian-splatting`, `a5-world-models`, `a6-iphone-quality`, `a7-iphone-degradation`, `a8-scale-without-lidar`, `a9-no-tape-scale`, `b1-detection`, `b2-equipment-reading`, `c1-rules-3d`, `c2-volumetric`, `c3-vlm`.
+- **Breadth work lands on branches named `breadth/<path-id>`, opened as draft pull requests.** Path ids match the folders: `a1-classical`, `a2-feedforward`, `a3-depth-fusion`, `a4-gaussian-splatting`, `a5-world-models`, `a6-iphone-quality`, `a7-iphone-degradation`, `a8-scale-without-lidar`, `a9-no-tape-scale`, `a10-sparse-photo-flow`, `b1-detection`, `b2-equipment-reading`, `b3-cheap-gate`, `c1-rules-3d`, `c2-volumetric`, `c3-vlm`, `e2e-criteria-on-recon`.
 - Keep one writer per branch. Each breadth pull request ends with the standard one-page result: metrics, runtime, cost, failure modes, licence, and a go / no-go.
 - Other work uses a short descriptive branch name and a draft pull request.
 - Breadth agents that work in the Project store don't push themselves: `scripts/sync_breadth.sh <path-id>...` (or `--all`) copies `internal/breadth/<folder>/` and the path's result file (as `RESULTS.md`) onto `breadth/<path-id>` and pushes it. It skips photos, model outputs, weights, files over 5 MB, real meter numbers (`raw/meter/`, `labels/meter_numbers_hand.csv`), and Base SSR prompt text or a digest of it.

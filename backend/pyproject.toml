@@ -42,9 +42,11 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 "{packet,eval,criteria/spec,data}/**" = ["B", "UP", "I001", "F401", "F841"]
 "{recon,scene,criteria}/[abc][1-9]-*/**" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
+"{recon,scene,criteria}/a1[0-9]-*/**" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
+"{recon,scene,criteria}/e2e-*/**" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
 
 [tool.ruff.format]
-exclude = ["packet/**", "eval/**", "criteria/spec/**", "data/**", "recon/**", "scene/**", "criteria/c[1-3]-*/**"]
+exclude = ["packet/**", "eval/**", "criteria/spec/**", "data/**", "recon/**", "scene/**", "criteria/c[1-3]-*/**", "criteria/e2e-*/**"]
 
 [dependency-groups]
 dev = [
