@@ -1,0 +1,230 @@
+# WS-04 builder brief: pose backbone (COLMAP with ARKit priors)
+
+Store root for every `internal/...` and `docs/...` path: `/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2`. Plan section: `docs/server-pipeline-build-plan.md` §6 "WS-04". Items marked `[default chosen]` are decisions the plan or code left open; they are listed in `internal/build/layout-decisions-geometry.md` for reconciliation. Reconciled 2026-09-26 22:45 UTC against `internal/build/seam-decisions.md` (SD-01, SD-03, SD-10, SD-11, SD-17, SD-24, SD-28, SD-29, SD-34, SD-35, SD-40), the E2E report and the Modal GPU benchmark (`internal/build/reconciliation-queue.md`); every change is logged in `internal/build/decision-log-group-b.md`.
+
+## 0. Card
+
+- **WS-04, pose backbone.** Goal: turn a validated packet into refined camera poses, a sparse point cloud with tracks, and a registration report, using COLMAP incremental SfM with tight ARKit position priors (guided flow) or image-only SfM (photo flow), so that WS-05 can scale it and WS-06 can build the scene. The recipe is A1/A6's (σ 0.03 m, no robust loss, 40 / 20 m / overlap 10 matching, pycolmap 4.2.0 API); `housepipe/colmap_prior.py` is reference scaffolding only (SD-35: on the facade photo packets it scored key-distance medians of 24–26 in and p90 39–47 in with camera RMS 0.19–0.83 m against 0.9–1.9 in for the tight-prior recipe).
+- Builder model: Grok 4.7. Validator: a separate agent (any model), never the builder.
+- Inputs: `NormalizedPacket` + extracted packet directory (WS-02, `packet/normalized.json`); optional `objects/meter_candidates.json` (WS-07, photo flow only).
+- Outputs (SD-03 names, consumed by WS-05, WS-06, WS-10, WS-11): `poses/cameras.json`, `poses/sparse/0/` (COLMAP model of the primary fragment, text `cameras.txt`, `images.txt`, `points3D.txt`), `poses/sparse.ply`, `poses/tracks.npz`, `poses/registration_report.json`, `poses/fragments/<k>/` (other fragments), optional `poses/database.db`. Never `poses/model/`, `poses/poses.json` or `poses/registration.json`.
+- Repo `huntertcarver/house-scanning-server`, branch `ws-04/pose-backbone`, one PR.
+
+## 1. Start gate
+
+Stop and report (do not invent the missing piece) unless all of these exist on `main`:
+
+1. WS-00 merged (`docs/build/ws-00-skeleton-and-contracts.md`): `server/poses/` stub with README, `server/common/geometry.py` (housepipe `geometry.py` moved there, decision D-17), `server/common/` config/logging/storage, `server/eval/` = vendored `internal/eval-harness/evalharness/`, Python 3.12 repo-wide with `pycolmap==4.2.0` (SD-34, provisional on item 4; supersedes D-16's 3.11.1), `make test`, `make validate`, `make hygiene` green.
+2. WS-02 merged or its typed interface present: `server/packet/normalize.py` exporting `NormalizedPacket` (a v0.4 `Packet` plus `derived` at `ext.hss`: `flow`, `branch`, `primaryEpoch`; `root: Path` set by `load_normalized`). Fields this WS reads are restated in §3.
+3. Fixtures per WS-00 D-15 / SD-28: manifests committed at `data/fixtures/packets/<house>/packet.<variant>.json`; tars fetched by `make fixtures ONLY=all` into `.fixtures/packets/<house>.tar` (extract to `.fixtures/packets/<house>/`) for `eth3d-facade`, `eth3d-electro`, `tt-barn`, `yt-Qm4b1cw8pV4`, `yt-LCPBf86oloE`; the committed synthetic `data/fixtures/packets/mini-arkit/` (SD-29: 4 keyframes, stills `s1` `meter_close`, `s2` `meter_oblique`, a `meter` tap); GT scenes at `data/fixtures/scenes/{eth3d-facade,eth3d-electro}/gt-laser/scene.json` with laser PLYs rebuilt by `make gt` into `.fixtures/gt/<site>/gt-laser/` (never committed).
+4. **Toolchain (SD-34).** The GPU image (WS-12 `Dockerfile`, from WS-00 `server/modal_app.py`: COLMAP CUDA build matching the `pycolmap==4.2.0` wheel, Python 3.12, torch 2.5.1 cu124) builds and its smoke function returns `pycolmap: ok`. Then run inside it: `python -c "import pycolmap; print(pycolmap.__version__, hasattr(pycolmap.PosePrior(), 'corr_data_id'))"` and paste the output into the PR. Expected `4.2.0 True`: the A1/A6 recipe (`prior.corr_data_id = img.data_id`, `db.write_pose_prior(prior)`, `IncrementalPipelineOptions.use_prior_position`) ports unchanged. If the image still carries 3.11.1 (`False`), stop and report to WS-12, unless you take the proof path of §4 step 16 (reproduce A6 `06-17 s0 prior_s03` on 3.11.1 within tolerance, in which case WS-00's pin reverts to 3.11.1 by a one-line PR). Never mix a 4.x pycolmap with a 3.11 COLMAP binary (the database schema changed at 3.12), and never port housepipe's raw-pointer prior switch (`_prior_lib`, `/tmp/prior_setter.cpp`, which writes `use_prior_position` into unbound C++ memory because the 3.11.1 wheel omits the field).
+5. **Discrepancy note before porting (Modal benchmark, SD-35).** The first commit of the PR is `docs/components/ws-04-poses.md` § "Why not housepipe": explain the benchmark's facade numbers (housepipe key-distance median 24–26 in, p90 39–47 in, camera RMS 0.19–0.83 m; A1/A6 tight-prior recipe 0.9–1.9 in on openings; electro LiDAR packet 1.38 in median) against the four suspects: matching 20 neighbours / 12 m / sequential 2 (housepipe) vs 40 / 20 m / overlap 10 (A6), largest-epoch-only mapping, the 3.11.1 prior-flag hack, and housepipe's frame subsampling. Cite the run ids in `internal/modal-pipeline/benchmark.md`. No SfM code is written before this note exists.
+
+## 2. Files you own / must not touch
+
+Create or modify:
+- `server/poses/__init__.py` (`STAGE = "poses"`, `run(ctx: StageContext) -> StageResult` wrapping `run_poses`, SD-24), `server/poses/sfm.py` (the A1/A6 recipe: features, pairs, priors, mapper options, fixed-ARKit triangulation), `server/poses/thin.py` (frame budget, SD-10), `server/poses/pairs.py`, `server/poses/epochs.py`, `server/poses/fragments.py`, `server/poses/fallback.py`, `server/poses/bridge.py`, `server/poses/report.py`, `server/poses/run.py`, `server/poses/params.py`, `server/poses/schemas/registration-report.v0.schema.json`, `server/poses/tests/*`, `server/poses/README.md`, `docs/components/ws-04-poses.md`, `scripts/score_poses.py`, `scripts/modal_poses.py`. Pose maths comes from `server/common/geometry.py` (WS-00, D-17: `from_column_major`, `column_major`, `pixel_ray_arkit`, `arkit_to_colmap_pose`, `colmap_to_arkit_pose`, `umeyama`, `apply_sim3`, `qvec_to_rotmat`); if something is missing there, add it in a separate small PR to WS-00's module with a test, do not fork it.
+
+Reference only, never modified or imported by pipeline code (SD-35): `server/poses/colmap_prior.py` (WS-00's vendored copy of `housepipe/colmap_prior.py`).
+
+Forbidden: `docs/*spec*.md`, `server/eval/**` (WS-00/WS-11, including `server/eval/lamar/**`), `server/packet/**` (WS-02), `server/orchestrator/**` (WS-03; its coordinator dispatches `server.poses.run(ctx)`), `server/scale/**` (WS-05), `server/dense/**`, `server/coverage/**`, `server/scene/**` (WS-06), `scripts/lamar/**` (WS-13), CI workflow files, anything under `data/fixtures/` (WS-00), `internal/**` in the store.
+
+## 3. Interfaces
+
+Units: metres, seconds, pixels. Poses are ARKit camera-to-world `mat4`, 16 numbers column-major (`docs/capture-packet-spec.md` §2); COLMAP world-to-camera converts with `server.common.geometry.colmap_to_arkit_pose(R_cw, t_cw)` / `arkit_to_colmap_pose(T_ar)` (`FLIP_YZ = diag(1,-1,-1)`). Pixels: continuous, (0,0) top-left corner (no half-pixel shift for COLMAP).
+
+Read from `NormalizedPacket` (WS-02; names as in `packet.json`, fail with `PosesError("packet_field_missing:<name>")` if absent): `packetId`, `session.tier` (`arkit_lidar|arkit|photo_only`), `epochs[].id`, `keyframes[]` (`id, img, w, h, intrinsics, pose, timestamp, tracking, epoch, purpose?, depth?`), `stills[]` (`id, purpose, img, w, h, keyframe?, intrinsics?, intrinsicsSource?`), `taps[]` (`id, label, keyframe, pixel`), `scaleReference.meterCloseUp.still`, `scaleReference.ext.obliqueCloseUp.still`, `root: Path` (extracted packet directory), and WS-02's derived block `ext.hss.derived` (`flow: guided|photo`, `branch: lidar|image`, `primaryEpoch`) when present (recompute per §4 when absent). WS-02 guarantees files exist and intrinsics for `photo_only` stills (`intrinsicsSource: exif_focal35`, `intrinsicsAssumed: true` when the 26 mm default was used).
+
+```python
+# server/poses/params.py
+@dataclass(frozen=True)
+class PoseParams:
+    prior_sigma_m: float = 0.03          # A6 prior_s03; env HSS_POSES_PRIOR_SIGMA_M
+    robust_prior: bool = False           # env HSS_POSES_ROBUST_PRIOR
+    sfm_max_frames: int = 48             # mapper frame budget; env HSS_POSES_SFM_MAX_FRAMES (SD-10)
+    max_image_size: int = 2048           # SIFT downscale (A6 used 1920); features are scaled back to full res
+    max_features: int = 8192
+    spatial_neighbors: int = 40          # A6 SpatialPairingOptions.max_num_neighbors [default chosen]
+    spatial_radius_m: float = 20.0       # A6 max_distance, ignore_z False [default chosen]
+    sequential_overlap: int = 10         # A6 SequentialPairingOptions.overlap [default chosen]
+    exhaustive_max_images: int = 200     # image-only: exhaustive pairs up to this count [default chosen]
+    min_epoch_frames: int = 3
+    fallback_min_registered: float = 0.90  # below this share -> fixed-ARKit fallback (guided) [default chosen]
+    closeup_min_points3d: int = 30       # bridge check [default chosen]
+    seed: int = 0                        # IncrementalPipelineOptions.random_seed (A6); WS-11's LaMAR runner must pass the same value
+    gpu: bool = True                     # False on CPU test runs
+
+# server/poses/run.py  (native entry point; server.poses.run(ctx) unpacks StageContext: packet from
+#   inputs["packet_dir"], work_dir, heartbeat, deadline_at, then uploads work_dir/poses/ per SD-01)
+def run_poses(packet: NormalizedPacket, out_dir: Path, *, params: PoseParams,
+              meter_candidates: list[str] | None = None, base_model: Path | None = None,
+              heartbeat: Callable[[str], None] | None = None,
+              deadline: datetime | None = None) -> RegistrationReport: ...
+```
+
+`python -m server.poses.run --packet DIR/packet.arkit-nonlidar.json --out OUT [--max-frames N] [--cpu] [--meter-frames k00012,k00013]` wraps `run_poses` for fixtures (WS-02's normalizer is called on the manifest). `--meter-frames` is a test-only override (`meter.source: "override"`) because no golden packet carries a meter tap or close-up (the SD-29 `mini-arkit` packet does; production callers never pass it). `--max-frames` truncates the input; it is not the SD-10 budget, which always applies.
+
+Outputs written under `OUT/poses/` (SD-03 names):
+
+- `cameras.json`: JSON list (the shape `server.eval.geomscore.load_cameras` accepts), one entry per registered frame: `{"image": <file stem>, "keyframe_id", "epoch", "pose": [16], "intrinsics": [fx,fy,cx,cy], "w", "h", "pose_source": "sfm"|"sfm_epoch_aligned"|"arkit", "reproj_px": float, "points3D": int}`. Frame = `source_frame` of the report (`arkit_world:<anchor epoch id>` for prior/fallback modes, scale = ARKit's; `colmap_model` for image-only, arbitrary similarity). Frames registered after the mapper by `image_registrator` are `pose_source: sfm`; frames carried unregistered from ARKit are `arkit`.
+- `sparse/0/`: COLMAP text model of the primary fragment (`cameras.txt`, `images.txt`, `points3D.txt`), same frame.
+- `sparse.ply`: binary little-endian PLY, `float x y z`, `uchar red green blue`, `int32 n_views`; same frame.
+- `tracks.npz`: CSR arrays `indptr (P+1,) int64`, `indices (K,) int32` = indices into `cameras.json` order; `point_ids (P,) int64` = COLMAP point ids matching `sparse.ply` row order.
+- `fragments/<k>/{cameras.json, sparse/0/, sparse.ply}` for every non-primary fragment with ≥ 3 registered frames.
+- `database.db` only when `HSS_POSES_KEEP_DB=1` (features can exceed 100 MB).
+- `registration_report.json` (`format: "hss-registration-report/v0"`; `params` also records `pycolmap` from `pycolmap.__version__` and `colmap` from the first line of `colmap -h`, SD-34):
+
+```json
+{"mode": "arkit_prior|image_only|arkit_fixed", "status": "ok|fallback_arkit_fixed|no_meter_model|failed",
+ "source_frame": "arkit_world:e1", "flow": "guided|photo", "lidar_frames": 0,
+ "frames_given": 76, "frames_in_sfm": 78, "frames_registered": 76, "registered_fraction": 0.974,
+ "frame_budget": {"sfm_max_frames": 48, "mapper_frames": 48, "registered_post": 28, "arkit_carried": 0},
+ "anchor_epoch": "e1", "epochs": [{"id": "e1", "frames": 76, "registered": 76, "priors": 76,
+                                   "joined": true, "join_method": "anchor|image_registrator|sim3", "join_rms_m": 0.0}],
+ "fragments": [{"id": "f0", "frames": ["k00001"], "registered": 76, "points3D": 41230, "has_meter": true, "primary": true}],
+ "meter": {"frames": ["k00002"], "source": "tap|closeup_link|detection|override|none", "in_primary": true},
+ "closeups": {"meter_close": {"frame": "k00003", "registered": true, "points3D": 212, "reproj_px": 0.9},
+              "meter_oblique": {"frame": "k00004", "registered": false, "points3D": 0, "reproj_px": null}},
+ "actions": ["retake_meter_closeups"],
+ "prior": {"sigma_m": 0.03, "robust": false, "count": 74, "skipped_limited_tracking": 2},
+ "arkit_fit": {"rms_m": 0.09, "scale_pct": -0.4},
+ "matching": {"pairs": 3120, "spatial_neighbors": 40, "spatial_radius_m": 20.0, "sequential_overlap": 10, "exhaustive": false},
+ "quality": {"mean_reproj_px": 0.71, "points3D": 41230, "mean_track_length": 4.1},
+ "timings_s": {"extract_s": 9.1, "match_s": 14.2, "mapper_s": 61.0, "total_s": 88.7}, "gpu": "L4|cpu",
+ "params": {}, "warnings": []}
+```
+
+Errors: `PosesError(code)` with codes `packet_field_missing:<name>`, `colmap_binary_missing`, `too_few_frames` (< 3 usable images), `no_model` (COLMAP produced no reconstruction and fallback impossible), `image_unreadable:<path>`. The stage never raises on fragmentation or a missing meter; those are `status` values.
+
+## 4. Behaviour spec
+
+1. **Image set.** Take every keyframe. Add every still with purpose `meter_close` or `meter_oblique` that is not already a keyframe (photo flow, or a plain camera close-up) so the bridge check can run; give it no prior; intrinsics from the still (`intrinsicsSource` any) [default chosen]. `photo_only`: all stills. Reject the packet with `too_few_frames` if < 3 images.
+2. **Mode.** `flow = "guided"` when every keyframe has a pose (ARKit tiers); `"photo"` for `photo_only`. Mode `arkit_prior` in the guided flow, `image_only` in the photo flow. LiDAR does not change this stage; record `lidar_frames` (frames with both `depth.file` and `depth.confidenceFile` present) for WS-05/WS-06.
+3. **Epoch grouping and frame budget (guided).** One SfM problem per `epoch` with ≥ `min_epoch_frames` frames; smaller epochs join the image set of the anchor epoch without priors. Anchor epoch = the epoch containing the meter frame (step 8), else the largest. **Mapper budget (SD-10; Modal benchmark 22:28 UTC: L4 mapper 96 s at 40 photos, 186 s at 60, 237 s at 70; method 148 / 259 / 324 s; the 3 min p50 holds only near 40 frames, the 8 min p95 everywhere, max client time 397 s).** When an epoch has more than `sfm_max_frames` (48) frames, the mapper set is: the meter frame(s) and both close-ups, then greedy farthest-point selection on ARKit camera centres, counting a frame as distinct when its heading differs by more than 20° from every selected frame within 0.5 m, until 48 `[default chosen]`. Every other frame of the epoch is registered into the mapped model afterwards with `colmap image_registrator` (reproj ≤ 2.0 px, ≥ 30 3D points, as step 10); frames that fail are carried with their ARKit pose as `pose_source: arkit` and contribute no points. `frame_budget` in the report counts `mapper_frames`, `registered_post`, `arkit_carried`; `frames_registered` counts mapper-registered plus post-registered frames. Priors are positions only, `PosePrior.position = T_ar[:3,3]`, `position_covariance = I·σ²`, `CARTESIAN`, written for frames with `tracking == "normal"`; frames with `limited.*` or `notAvailable` tracking get no prior but stay in the problem [default chosen]. Exactly the A6 `prior_s03` mapper options: `use_prior_position=True`, `use_robust_loss_on_prior_position=False`, `ba_refine_focal_length=False`, `ba_refine_principal_point=False`, `ba_refine_extra_params=False`, `random_seed=0`, camera model `PINHOLE` **per image** (`--ImageReader.single_camera 0`; fx varies frame to frame with autofocus, A6 measured 1570–1610 px, so never share one camera) with the packet intrinsics locked (`has_prior_focal_length=True`). Intrinsics go to COLMAP unchanged: the packet's continuous pixel convention with (0, 0) at the top-left corner is COLMAP's own, so no half-pixel shift (`packetgen/conventions.py`). Feature extraction: SIFT, `max_num_features 8192`, `max_image_size 2048` (covers 1920-wide keyframes at full resolution and downsizes 4032-wide stills; features are scaled back to full-resolution pixels), GPU when available (`--SiftExtraction.use_gpu 1` or the `FeatureExtraction.use_gpu` spelling, detected from `colmap feature_extractor -h` as in housepipe). A keypoint count above 8192 in the database (A1 saw 9,955) is not a bug: SIFT stores extra orientations per keypoint; the limit is applied to keypoints. σ values that failed on real walks and must not be used as defaults: 0.30 m with robust loss (bent, 1.48 m camera RMS, −5.3 % scale, p90 76 in on LaMAR `06-17 s0`) and 0.10 m (bent, 0.77 m RMS, p90 101 in); 0.03 m held on 5 of 5 segments (6–20 cm RMS). Not tried anywhere: σ 0.01 m, rotation or gravity priors (`PosePrior.gravity`).
+4. **Pairs (guided).** Sequential pairs with overlap 10 plus spatial pairs from ARKit centres: for each frame its 40 nearest centres within 20 m (housepipe `spatial_pairs(names, centers, max_neighbors, radius_m, sequential)` with these values), written to `pairs.txt` and matched with `colmap matches_importer --match_type pairs`, `guided_matching 0`. Pairs never cross epochs at this step.
+5. **Pairs (photo).** Exhaustive when the image count ≤ 200, else sequential overlap 10 in capture order (`timestamp`, then `id`) plus spatial pairs if any stills carry ARKit poses [default chosen]. The SD-10 budget applies here too: above 48 images the mapper set is every k-th image in capture order with k = ceil(n / 48), always including the meter close-ups; the rest are registered with `image_registrator` and, failing that, left unregistered (there is no ARKit pose to carry) `[default chosen]`. Mapper: incremental only (never GLOMAP). Camera model `SIMPLE_RADIAL` per image with the EXIF focal as prior and `ba_refine_focal_length=True`, `ba_refine_extra_params=True`; stills with `intrinsicsSource == "arkit"` use locked `PINHOLE` and priors as in the guided flow. Image-only SfM has no health check against a trajectory: on real phone walks it folded with −45.7 % and −18.8 % long-pair scale on 2 of 5 LaMAR segments (A6) and split every YouTube walkaround into 3–6 models (A1, A3), so the photo flow reports `warnings: ["image_only_unchecked"]` and relies on WS-05's scale checks and WS-06's window-consistency and gravity checks to catch folds.
+6. **Mapping.** `pycolmap.incremental_mapping(db, images, tmp, options)` on the mapper set; every returned reconstruction is a fragment. `registered_fraction` = (mapper-registered + post-registered frames) / frames given; the fallback test of step 7 uses the mapper set only. Never use `pycolmap.global_mapping` (GLOMAP): 0.34 px reprojection yet folded positions on 2 of 3 ETH3D scenes (A1); a low reprojection error is not a health check.
+7. **Health check and fallback (guided only).** After mapping, fit a Sim(3) from the primary fragment's camera centres to the ARKit centres of the same frames (`server.common.geometry.umeyama`) and record `arkit_fit: {rms_m, scale_pct}`. Trigger the fallback when either (a) the largest fragment registers < 90 % of the anchor epoch's mapper frames (`sfm_split`) or (b) `rms_m > 0.25` (`sfm_bent`, A6 handoff §7; a healthy σ 3 cm run sits at 0.06–0.20 m); warn `scale_vs_arkit_off` when `|scale_pct| > 3`. Fallback = fixed-ARKit triangulation (`pycolmap.triangulate_points` on a `Reconstruction` built from the ARKit poses with intrinsics locked, `clear_points=True`, `refine_intrinsics=False`, exactly `internal/breadth/a6-iphone-quality/a1_lamar.py` mode `fixed`; the log line "Global bundle adjustment" is misleading, poses stay fixed to 1e-12 m per A1). Use it as the primary model when it registers more frames than the largest prior fragment: `mode = "arkit_fixed"`, `status = "fallback_arkit_fixed"`, every `pose_source = "arkit"`, and put the trigger code in `warnings`. Evidence for this rule: on real LaMAR segment `2022-02-10_14.47.24_s0` every SfM mode (σ 3 cm, σ 0.3 m robust, image-only) registered 67 of 99 frames in two models while fixed-ARKit triangulation kept all 99; fixed poses are worse in accuracy (A6 real: openings 2.2 / 7.3 in vs 1.3 / 4.6 in; A1 synthetic drift: 4.8–12 in median), so WS-06 widens bounds for `pose_source: arkit` and nothing downstream may treat them as refined. Keep the prior-mode fragments under `fragments/`. Never merge fragments by any transform that is not backed by feature matches.
+8. **Meter frame.** In order: the keyframe of a tap with `label == "meter"`; else the keyframe linked from `scaleReference.meterCloseUp.still` (or the still itself); else frames in `meter_candidates` (WS-07 detection ids, photo flow); else the test-only `--meter-frames` override; else `source: "none"`. `has_meter` per fragment = any meter frame registered in it.
+9. **Fragment policy.** Primary = the largest fragment with `has_meter`; if no fragment has the meter, primary = the largest fragment and `status = "no_meter_model"` (WS-06 cannot anchor; the orchestrator routes the capture to manual review). All other fragments are written but flagged `primary: false`; their frames are reported so WS-06 leaves their regions unknown.
+10. **Joining other epochs (guided).** For each non-anchor epoch with its own prior-mode model: add sequential pairs across the epoch boundary (10 frames each side) plus exhaustive pairs between the two epochs when their product ≤ 20 000, match, then `colmap image_registrator` of that epoch's frames into the primary model. If ≥ 3 frames register with `mean_reproj_px ≤ 2.0`, align the epoch's own model to the primary with a Sim(3) over the shared camera centres (`server.common.geometry.umeyama`); accept when RMS ≤ 0.10 m and carry the remaining frames over as `pose_source: "sfm_epoch_aligned"`, `join_method: "sim3"`. Otherwise the epoch stays a separate fragment (`joined: false`). [default chosen]
+11. **Bridge check.** For `meter_close` and `meter_oblique`: registered in the primary fragment with ≥ 30 3D points and `reproj_px ≤ 2.0` → `registered: true`. If either required close-up (present in the packet) fails, add `"retake_meter_closeups"` to `actions` (WS-05 decides scale status, WS-10 surfaces the member action).
+12. **Outputs.** Convert every registered COLMAP pose with `colmap_to_arkit_pose`; write §3 artifacts under `work_dir/poses/` (`server.poses.run(ctx)` uploads that folder to `captures/{captureId}/runs/{runId}/poses/` on success and returns `StageResult.artifacts` keyed `poses/<file>`; attempt folders stay local, SD-01); `n_views` = track length. Primary-fragment points only in `sparse.ply`/`tracks.npz`. Return `actions` (e.g. `["retake_meter_closeups"]`) in the report and as `StageResult.warnings` entries so WS-03 can copy them.
+13. **Runtime and heartbeat.** Call `heartbeat(stage_substep)` at least every 60 s (`extract`, `match`, `map:<epoch>`, `register`, `join`, `write`). Abort with `PosesError("timeout")` at `min(deadline, start + HSS_POSES_TIMEOUT_S)`, default 400 s [default chosen, under WS-03's authoritative 420 s stage timeout, unchanged by SD-10]; the orchestrator (WS-03) retries and escalates the GPU on the third attempt.
+14. **Determinism.** `random_seed 0`, single COLMAP run per call. Tolerance across two runs on the same fixture: registered count identical, `mean_reproj_px` within 0.05 px, scored KD p90 within 0.3 in.
+15. **Amendments.** `run_poses(..., base_model=Path)` registers amendment frames into an existing primary model with `image_registrator` (same thresholds as step 10) instead of remapping; new frames get `pose_source: "sfm"`. Nothing else changes.
+16. **Toolchain proof (only when the image carries pycolmap 3.11.1, SD-34).** Run the ported recipe on LaMAR segment `2022-06-17_10.43.29 s0` through WS-11's runner (§8 item 6) and compare with A6 `prior_s03`: registered 99 of 99, whole-segment scale −0.40 %, rigid RMS 0.088 m. Parity = identical registered count, scale within ±0.1 pp, RMS within ±0.01 m. Parity proven → record "3.11.1 reproduces A6" in `docs/components/ws-04-poses.md` and open the one-line pin PR; not proven → the 4.2.0 image stands and WS-12 is told. Record whichever wins in the component page and the PR.
+
+Edge cases: an image COLMAP cannot read → `image_unreadable`; a tap whose keyframe is unregistered → meter source falls through to the next rule; `photo_only` with EXIF focal missing → WS-02 supplied a 26 mm-equivalent default (`intrinsicsSource: exif_focal35`), warn `focal_assumed:<still id>`; duplicate image file names across keyframes and stills → stills are copied as `<id>__<basename>` in the work image dir.
+
+## 5. Reuse
+
+- **Port source (SD-35): the A1/A6 recipe.** `internal/breadth/a6-iphone-quality/a1_lamar.py` modes `prior_s03` and `fixed`: `FeatureExtractionOptions` (`sift.max_num_features 8192`, `max_image_size` 1920 there, 2048 here), `SpatialPairingOptions(max_num_neighbors 40, max_distance 20.0, ignore_z False)`, `SequentialPairingOptions(overlap 10)`, `PosePrior` with `corr_data_id` + `position_covariance = I·σ²` written through `db.write_pose_prior`, `IncrementalPipelineOptions` (`random_seed 0`, `ba_refine_focal_length/principal_point/extra_params False`, `use_prior_position True`, `use_robust_loss_on_prior_position False`), `pycolmap.incremental_mapping`, and the fixed-ARKit triangulation of mode `fixed`; `internal/breadth/a1-classical/sfm.py` (`PINHOLE` per image with locked intrinsics via `_fixed_intrinsics_incremental`, the image-only `SIMPLE_RADIAL` recipe, `match_exhaustive`). These go into `server/poses/sfm.py`. `housepipe/geometry.py` is already WS-00's `server/common/geometry.py` (D-17), import it.
+- **Housepipe is scaffolding only.** From `server/poses/colmap_prior.py` (vendored, reference) copy patterns, not code paths: the CLI-binary invocation for CUDA SIFT and `matches_importer` (`extract_and_match`, the `use_gpu` flag detection), `spatial_pairs`, `_read_text_reconstruction`. Do not carry: the 3.11.1 `_write_priors` call shape, `_prior_lib` / `prior_setter.cpp` (raw-pointer prior switch), the 20 / 12 m / sequential 2 defaults, `_source_names` (reads `_truth/truth.json`; scoring only, never pipeline code), the "largest epoch only" logic of `housepipe/pipeline.py::run_packet` (discards every other epoch), its photo-only pairing (3 sequential neighbours; unordered photos would fragment) and its frame subsampling. Explain in the §1 item 5 note which of these produced the benchmark's 24–47 in facade numbers.
+- Builder handoff notes, read fully before coding: `internal/context-dumps/full/a1-classical.md` (§2 environment: pycolmap 4.2.0 CPU wheel on Ubuntu 24.04 / Python 3.12, OpenMVS not needed; §3 reproduction: `sfm.py facade features|gt|arkit …`, expected 76 registered, about 62,434 points, 0.32 px; §4 parameters; §5 dead ends: fixed poses, GLOMAP, OpenMVS, the SIFT orientation count quirk; §7 integration: error codes registered < 80 %, > 1 model, camera-vs-ARKit RMS > 0.3 m, Sim(3) scale off > 3 %, < 60 points on the meter wall) and `internal/context-dumps/full/a6-iphone-quality.md` (§3 reproduction on LaMAR: `arkit_scale.py`, `segments.py`, `build_laser.py`, `run_a1_all.sh`, `rescore.py`; expected `06-17 s0 prior_s03`: registered 99, scale −0.40 %, rigid RMS 0.088 m; §4: σ sweep, spatial 40 / 20 m / `ignore_z False`, sequential 10, `max_image_size 1920`, per-frame fx; §5 dead ends: global Sim(3) outlier filter hides bending, `pgrep -f` self-kill, JSON overwrite; §6: the 67/99 split segment and the −45.7 % / −18.8 % folds; §7: fallback rule 90 % / 0.25 m, uncertainty ±(0.5 in + 2.5 % of length) for ARKit-scaled lengths, regression gate values). `internal/context-dumps/full/a2-feedforward.md` and `a3-depth-fusion.md` matter for WS-06, not here.
+- Recipe evidence: `internal/breadth/A6-iphone-quality.md` §1, §5 (real ARKit, five LaMAR segments) and `internal/breadth/A1-classical.md` §2 (incremental, `SIMPLE_RADIAL`, refine focal; GLOMAP is a no-go); `internal/breadth/E2E-criteria-on-recon.md` §2 re-ran the tight recipe on facade / electro / delivery: 76/76, 41/45, 44/44 registered at 0.31–0.34 px, ARKit-mode scale error −2.95 % facade / +2.48 % electro on the simulated drift (`code/a1_sfm_tight_patch.py`). Modal benchmark: `internal/modal-pipeline/benchmark.md` (timings and the housepipe accuracy red flag).
+- Scoring wrapper reference: `internal/breadth/a1-classical/hscore.py` (voxelize dense clouds to 2 cm and crop to 20 m from the cameras before `score-cloud`; use `--metric` for every mode except image-only); harness usage `internal/eval-harness/README.md` §"Geometry scorer".
+- Licences: COLMAP/pycolmap BSD-3. Do not add OpenMVS (AGPL), GLOMAP global mapper (fails 2 of 3 scenes), VGGT/MASt3R (non-commercial).
+
+## 6. Fixtures and data
+
+| Fixture (after WS-00 `make fixtures ONLY=all`; run on the extracted `.fixtures/packets/<house>/packet.<variant>.json`) | Variant → branch | Size | Exercises |
+|---|---|---|---|
+| `eth3d-facade` `arkit-lidar`, `arkit-nonlidar` | guided, LiDAR / image | 93 MB tar (two parts), 76 kf | prior recipe, accuracy vs GT `data/fixtures/scenes/eth3d-facade/gt-laser/scene.json` |
+| `eth3d-electro` `arkit-lidar`, `arkit-nonlidar` | guided | 36 MB, 45 kf | walls within 8 m, LiDAR-standin depth, GT `data/fixtures/scenes/eth3d-electro/gt-laser/scene.json` |
+| `eth3d-facade` `pose-free` | photo flow | same pixels | image-only, EXIF intrinsics, `SIMPLE_RADIAL` |
+| `tt-barn` `arkit-nonlidar`, `pose-free` | guided / photo | 68 MB, 137 kf | full loop, pseudo-metric (scale not scored) |
+| `yt-Qm4b1cw8pV4`, `yt-LCPBf86oloE` `arkit-nonlidar` | guided | 40 / 38 MB, 135 / 153 kf | phone-quality frames, registration gate, frame budget (both exceed 48 frames). LCPB is a fold-risk fixture: image-only it registered 44/183 in 6 fragments (E2E §5, pycolmap 4.2) while the manifest's COLMAP 3.9.1 model had 151/183 and packetgen kept 153 keyframes, so its synthetic priors may embed a fold; `sfm_split` must trigger rather than a merged fold |
+| `data/fixtures/packets/mini-arkit/` (SD-29, committed, ≈ 60 KB) | guided | 4 kf + stills `s1` `meter_close`, `s2` `meter_oblique`, `meter` tap | the real meter-frame and bridge-check code paths on packet fields (`taps[]`, `scaleReference`), no accuracy claim |
+| `eth3d-facade/_truth/truth.json`, `eth3d-electro/_truth/truth.json` | scoring only, never read by pipeline code | | keyframe id → `DSC_xxxx` stem mapping (`images[].source`) so `cameras_scored.json` matches GT keyframe ids |
+
+Synthetic ARKit noise in these packets uses the `nonlidar_modern` profile (assumed, larger than the real ARKit local error A6 measured; WS-13 §4-D7 recalibrates it from the first real non-Pro session and keeps the old one as `nonlidar_modern_assumed`), so tight-prior numbers on `arkit-nonlidar` are conservative and never the accuracy gate (E2E: the tight prior locks onto the simulated drift, −2.95 % / +2.48 % scale). No golden packet carries meter close-ups (index note); the bridge check's accuracy is unit-tested on a synthetic packet you build in `server/poses/tests/conftest.py` (10 rendered frames of a textured box wall plus two close-up frames, ARKit poses exact), its field handling on `mini-arkit`. Real-phone data for §8 item 6: LaMAR sessions `2022-06-17_10.43.29`, `2022-02-10_14.47.24`, `2021-06-02_11.12.32` (≈ 6.1 GB, CC BY-SA 4.0, never in git), fetched by WS-13's `scripts/lamar/fetch_lamar.sh ~/lamar` or WS-11's `make lamar`; segments in `internal/breadth/a6-iphone-quality/results/segments.json`.
+
+Store sources if `make fixtures` is missing pieces: `internal/data/packets/archives/*.tar` (facade: `cat eth3d-facade.tar.part-* | tar -xf -`), GT scenes `internal/eval-harness/results/{eth3d-facade,eth3d-electro}/gt-laser/scene.json` (no PLY; laser rebuilt via `internal/eval-harness/eth3d/build_gt.py`).
+
+## 7. Commands
+
+```bash
+# environment (CPU laptop or VM, Python 3.12 per WS-00; GPU path needs the WS-12 image)
+uv sync --frozen && uv run python -c "import pycolmap; print(pycolmap.__version__)"   # 4.2.0 (SD-34; 3.11.1 only after §4 step 16 parity)
+which colmap || echo "install the COLMAP release matching the pycolmap wheel, or set HSS_POSES_COLMAP_BIN"
+export FIXTURE_SOURCE=/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal
+make fixtures ONLY=all && make gt                                              # WS-00 targets; tars + PLYs into .fixtures/
+uv run python -m server.poses.run --packet "$(ls data/fixtures/packets/mini-arkit/packet*.json)" --out /tmp/ws04/mini --cpu   # < 1 min; meter.source tap (SD-29 names the folder, not the manifest)
+
+# one fixture, CPU, subset (about 3 min)
+uv run python -m server.poses.run --packet .fixtures/packets/eth3d-facade/packet.arkit-nonlidar.json \
+    --out /tmp/ws04/facade-nonlidar --max-frames 24 --cpu
+
+# full run on Modal L4 (about 1.5 min warm; image = WS-00 server/modal_app.py)
+uv run modal run scripts/modal_poses.py --packet eth3d-facade --variant arkit-nonlidar --out /vol/results/ws04/facade-nonlidar
+
+# score against GT (shape-only, then metric)
+uv run python scripts/score_poses.py --run /tmp/ws04/facade-nonlidar --gt data/fixtures/scenes/eth3d-facade/gt-laser/scene.json \
+    --truth .fixtures/packets/eth3d-facade/_truth/truth.json --out /tmp/ws04/facade-nonlidar/score
+# (wraps: python -m server.eval.cli score-cloud --gt GT --cloud poses/sparse.ply --cameras poses/cameras_scored.json [--metric] --align auto --producer ws04)
+
+uv run pytest server/poses/tests -q            # about 2 min CPU
+make lint && make hygiene                      # ruff, import rules, 5 MB and secret checks
+```
+
+## 8. Done when
+
+All on Modal L4 unless stated; paste the table into the PR.
+
+1. `pytest server/poses/tests -q` green: pair generation (counts, no cross-epoch pairs), prior writing (count = frames with `tracking == normal`), pose conversion round-trip (`arkit_to_colmap_pose` ∘ `colmap_to_arkit_pose` = identity to 1e-9), fragment policy (meter fragment beats a larger meterless one), bridge check thresholds, epoch join accept/reject, fallback triggers (`sfm_split` at 0.90 with a two-model fake mapper result; `sfm_bent` at 0.25 m RMS with a bent fake camera set), synthetic-packet end-to-end (registered 12/12, meter close-ups registered, centre error vs the exact poses ≤ 0.02 m, `arkit_fit.rms_m ≤ 0.05`).
+2. Registration (`frames_registered`, mapper plus post-registered): `eth3d-facade` `arkit-lidar` and `arkit-nonlidar` 76/76; `eth3d-electro` ≥ 41/45; `tt-barn` `arkit-nonlidar` ≥ 130/137; `yt-Qm4b1cw8pV4` and `yt-LCPBf86oloE` ≥ 60 % of packet keyframes with `mapper_frames ≤ 48` (if LCPB trips `sfm_split`, report the per-fragment counts and the fallback status; a merged fold fails); `eth3d-facade` `pose-free` ≥ 70/76 (image-only, A1: 76/76); `mini-arkit`: 4/4, `meter.source == "tap"`, both close-ups in `closeups`.
+3. Accuracy (`scripts/score_poses.py`, facade, observed KDs, meter wall = KDs on `w1`): shape-only p90 ≤ 3.0 in for `arkit-lidar` and `arkit-nonlidar`, ≤ 4.0 in for `pose-free` [default chosen; A1 image-only observed KDs 0.67 / 7.0 in including the edge-on door, A10 interim 40–60 photos 2.5–3.1 in]; metric (`--metric`) p90 ≤ 3.0 in for `arkit-lidar` (A1 reference 0.84 / 2.06 in). The `arkit-nonlidar` metric row is **informational** (E2E: tight priors inherit the simulated drift, ARKit scale error −2.95 % facade / +2.48 % electro; A1 loose-prior reference 0.84 / 2.90 in; interim A10 tables with the 3 cm prior on this drift show 2.4–9.7 in depending on the draw): report it, never re-tune on it; the accuracy gate for the prior recipe is item 6. `false_observed_by_rule` = 0 on every scored run.
+4. Runtime and budget: `timings_s.total_s` ≤ 240 s on L4 for `yt-LCPBf86oloE` (153 frames) and for `tt-barn`; `frame_budget.mapper_frames ≤ 48` on every run; `timings_s.mapper_s ≤ 150` on L4 [default chosen: between the benchmark's 96 s at 40 and 186 s at 60 frames]; the electro LiDAR packet's whole method time is the benchmark's 77 s reference.
+5. `python -m server.eval.cli validate` is not applicable to these artifacts; instead `python -m server.poses.report --check OUT/poses/registration_report.json` validates the report against `server/poses/schemas/registration-report.v0.schema.json` (you write the schema) for every fixture run.
+6. **Real-phone gate (E2E consequence; acceptance for the prior recipe).** Run WS-11's runner on all five A6 segments (`python -m server.eval.lamar run --segment <s> --data ~/lamar --out runs/lamar/<stamp>/` for `2022-06-17_s0, 2022-06-17_s1, 2022-02-10_s0, 2022-02-10_s1, 2021-06-02_s0`; it builds a v0.4 `arkit` packet per segment and calls `server.poses.run` with `seed 0`): every segment registers ≥ 60 % of its frames (`2022-02-10_14.47.24_s0` may pass through `fallback_arkit_fixed`: SfM 67/99 vs fixed 99/99, A6 §6); `06-17 s0`: registered 99, scale −0.40 % ± 0.1 pp, rigid RMS 0.088 m ± 0.01 m; `max over segments of openings_p90_in ≤ 4.6` (SD-40, A6 handoff §7; per-segment measured 2.8 / 4.1 / 3.9 / 4.2 / 3.9 in are reported as is); `far_p90_in` (15–26 ft; A6 7.4–12.4 in, worst 12.4) and `scale_error_pct` (A6 +2.6 % on `2022-02-10`) reported without gating. If the runner is not merged, drive the same five segments through the ported `server.poses.sfm` functions with A6's `lamar_io.py` and `pairscore.py` and file the same table; the gate is not waived. CI wiring of the gate stays WS-11's.
+7. Two consecutive L4 runs of `eth3d-electro` `arkit-nonlidar` meet the §4.14 tolerance.
+8. `docs/components/ws-04-poses.md` carries the §1 item 5 discrepancy note and the toolchain record (`pycolmap`, `colmap` versions; SD-34 outcome).
+
+## 9. Validator checklist
+
+File the report at `internal/build/validation/ws-04.md` (frontmatter as in the brief template's instructions; sections: commands run, table of registered counts, score table, runtime, hand checks, verdict pass/fail per §8 item).
+
+1. Fresh clone, `make fixtures ONLY=all && make gt`, run §7 commands yourself on `eth3d-facade` (`arkit-nonlidar`, `pose-free`) and `eth3d-electro` (`arkit-lidar`); do not reuse the builder's outputs.
+2. Open `registration_report.json` for each run and check it against the packet: facade and electro carry no meter close-ups and only an auto `reference_point` tap, so `closeups` must be `{}`, `actions` must be `[]`, `meter.source` must be `none` and `status` must be `no_meter_model` (with the primary fragment still the largest). Rerun facade with `--meter-frames` set to the two frames `scripts/score_poses.py --print-meter-frames` derives from the GT scene and confirm `meter.source == "override"` and `status == "ok"`.
+3. Load `sparse.ply` + `cameras.json` in any viewer (or `python -m server.poses.report --render OUT/poses --out top.png`) for the three runs; walls must be straight lines in plan, cameras along one path; a folded model fails.
+4. Re-run `scripts/score_poses.py`; numbers must match the PR table within 0.3 in p90 and identical registered counts.
+5. Kill the process during `map:e1` on one run (by explicit PID, never `pkill -f`) and rerun: no leftover `*_tmp` directories, identical result.
+6. Grep the diff for `_truth`, `truth.json`: must appear only in `scripts/score_poses.py` and tests. Grep for `prior_setter`, `_prior_lib`, `colmap_prior` in `server/poses/` outside the vendored reference file: none.
+7. Open `registration_report.json` for LCPB and barn: `frame_budget.mapper_frames ≤ 48`, `registered_post + mapper_frames + arkit_carried == frames_given` for the anchor epoch; `params.pycolmap` matches the image. Re-run one LaMAR segment (`2022-06-17_s0`) yourself and compare with the PR's §8 item 6 row (registered identical, openings p90 ± 0.3 in).
+8. Fail if any §8 threshold is missed, any artifact is missing, the discrepancy note is absent, or the PR pastes numbers that do not reproduce.
+
+## 10. Constraints
+
+- Vision models are GPT-5.5 and Grok 4.7 only; this WS makes no vision-model calls (meter detection for the photo flow comes from WS-07). No Anthropic.
+- Never commit real meter numbers, Base SSR prompt text, API keys or secrets, or any file over 5 MB (fixtures and models stay under `data/fixtures/` fetched at build time, or on the Modal volume `/vol/results`).
+- No customer tools in any capture assumption: no tape, no markers, no known-size props; taps and photos only.
+- Licences: COLMAP/pycolmap BSD-3 only; no OpenMVS, VGGT, MASt3R, UniDepth, DA3-Nested.
+- Cost: this WS may spend at most $40 of the shared $200 Modal cap; stop and report at $30. Use `--max-frames` and CPU for iteration; full L4 runs only for §8.
+- Privacy: fixture imagery only (ETH3D CC BY-NC-SA, evaluation only; YouTube frames internal only). Never add customer photos to tests or the repo. `HSS_POSES_KEEP_DB` stays off in production configs.
+
+## 11. Out of scope and handoffs
+
+- Scale (LiDAR align, meter model, ARKit gate, `scale.json`): WS-05. This WS does not rescale anything.
+- Dense geometry, coverage grid, scene v0, `frame.from_source`: WS-06 (reads `cameras.json`, `sparse.ply`, `tracks.npz`, `registration_report.json`).
+- Meter detection without a tap and object boxes: WS-07 (supplies `meter_candidates`).
+- Stage orchestration, retries, heartbeats, GPU escalation: WS-03 (calls `run_poses`).
+- `retake_meter_closeups` member action to the device: WS-10.
+- LaMAR packet builder and runner (`server/eval/lamar/`, `make lamar`), `gates.yaml` and the CI gate table: WS-11 (WS-04 runs the five segments as its own acceptance, §8 item 6, and owns none of that code). LaMAR fetchers `scripts/lamar/`: WS-13.
+- Modal deployment, `Dockerfile` (COLMAP build matching the pycolmap pin, SD-34), secrets: WS-12.
+
+## 12. Open questions and defaults
+
+1. Tight prior on synthetic `nonlidar_modern` drift misses ≤ 3 in metric p90 (A10 interim shows 2.4–9.7 in; E2E −2.95 % / +2.48 % ARKit scale error). Default: keep σ = 0.03 m, no robust loss (real-phone evidence, A6); the synthetic `arkit-nonlidar` metric row is informational, the acceptance is the A6 LaMAR gate (§8 item 6); WS-13's recalibrated `nonlidar_modern` profile replaces the assumed noise in the synthetic rows when it lands; never re-tune on synthetic drift.
+2. pycolmap 4.2.0 vs 3.11.1 (SD-34, provisional). Default: the 4.2.0 line with the matching COLMAP build (WS-12 image); the 3.11.1 pin returns only if §4 step 16 proves A6 parity; the winner is recorded in `docs/components/ws-04-poses.md` and told to WS-12 and WS-00.
+3. Photo-flow meter frame without a tap or detection. Default: `status: no_meter_model`; capture goes to manual review (WS-03/WS-10).
+4. Frames with `limited.*` tracking. Default: in the problem, no prior.
+5. Cross-epoch join thresholds (≥ 3 frames, reproj ≤ 2.0 px, RMS ≤ 0.10 m). Default as stated; log every rejected join.
+6. A7 (iPhone degradation) report pending. Default: no extra image preprocessing; interim A7 tables show `blur_16` and `combo_dusk` break registration, so rely on capture-time blur rejection (spec §5.1 rule 4) and report low keypoint counts (< 3000 median) as a warning `low_texture_or_blur`.
+7. A10 (photo count) report pending. Default: photo flow assumes ≥ 40 photos with ~50 % overlap; below 20 registered images set warning `sparse_photo_set`.
+8. Spatial matching implementation (pair list via `matches_importer` vs COLMAP `spatial_matcher`). Default: pair list, as housepipe.
+9. Timeouts. Default `HSS_POSES_TIMEOUT_S` 400 under WS-03's 420 s `poses` stage timeout and `deadline_at` (unchanged by the frame budget, SD-10); WS-03 owns retries, GPU escalation and the 20 min hard stop.
+10. Prior σ sweep (0.01 m), gravity priors, and `max_image_size` 1920 (A6) vs 2048 are untested. Default: no sweeps on synthetic drift; sweep only on the WS-13 real capture, one variable at a time, scored through `scripts/score_poses.py`.
+11. Uncertainty for `pose_source: arkit` (fallback) and for ARKit-only scale. Default: WS-06 applies a 0.15 m shape floor to fallback poses; WS-05 owns the scale bound (A6's real p90 is 2.5 % on no-depth sessions, housepipe used 6 %).
+12. Mapper-set selection under the 48-frame budget. Default: meter frame(s) and close-ups first, then farthest-point on ARKit centres with the 20° heading rule (guided) or every k-th image (photo); alternatives (uniform time subsampling, keyframe `reason` weighting) only if LCPB or barn miss §8 item 2, tried one at a time.
+13. Frames left over by the budget. Default: `image_registrator` into the mapped model, then fixed-ARKit carry (`pose_source: arkit`, no points); never a second mapper run on the remainder (it would create a fragment that only a feature-backed merge could join).

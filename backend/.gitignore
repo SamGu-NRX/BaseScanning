@@ -25,3 +25,5 @@ data/**/*.bin
 # Reconstruction outputs. Small JSON results under breadth outputs/ folders are committed.
 *.ply
 *.splat
+# The build-plan reference set is the exception: ETH3D facade clouds for reviewers.
+!media/colmap-facade/point-clouds/*.ply
