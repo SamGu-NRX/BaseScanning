@@ -1,0 +1,6 @@
+scan__gt__tri__v4: FUSED cov 78% raw1-3 0.7/1.6 tape1-3 0.4/1.9 tape3-10 0.7/3.0 | SINGLE cov 99% raw1-3 0.6/1.3 tape1-3 0.3/1.4 | acc10 0.99 comp10 0.90 | 648s
+moge2-vits__gt__tri__v4: FUSED cov 60% raw1-3 27.5/71.1 tape1-3 10.1/41.3 tape3-10 17.2/69.7 | SINGLE cov 98% raw1-3 15.4/29.9 tape1-3 1.3/7.7 | acc10 0.21 comp10 0.22 | 341s
+    subprocess.run([str(VENV_PY), "-m", "evalharness.cli", "score-cloud", "--gt", str(GT),
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/home/ubuntu/a3/venv/bin/python', '-m', 'evalharness.cli', 'score-cloud', '--gt', '/home/ubuntu/a3/work/facade-gt/scene.json', '--cloud', '/home/ubuntu/a3/work/harness/scan__gt__tri__v4/cloud.ply', '--cameras', '/home/ubuntu/a3/work/harness/scan__gt__tri__v4/cameras.json', '--metric', '--producer', 'A3-scan__gt__tri__v4', '--out', '/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal/eval-harness/results/eth3d-facade/A3-scan__gt__tri__v4']' returned non-zero exit status 1.

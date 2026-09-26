@@ -1,0 +1,38 @@
+diff --git a/mono/model/decode_heads/RAFTDepthNormalDPTDecoder5.py b/mono/model/decode_heads/RAFTDepthNormalDPTDecoder5.py
+index 9af89f9..5ba4b54 100644
+--- a/mono/model/decode_heads/RAFTDepthNormalDPTDecoder5.py
++++ b/mono/model/decode_heads/RAFTDepthNormalDPTDecoder5.py
+@@ -792,7 +792,7 @@ class RAFTDepthNormalDPT5(nn.Module):
+         self.relu = nn.ReLU(inplace=True)
+     
+     def get_bins(self, bins_num):
+-        depth_bins_vec = torch.linspace(math.log(self.min_val), math.log(self.max_val), bins_num, device="cuda")
++        depth_bins_vec = torch.linspace(math.log(self.min_val), math.log(self.max_val), bins_num, device="cpu")
+         depth_bins_vec = torch.exp(depth_bins_vec)
+         return depth_bins_vec
+     
+@@ -847,7 +847,7 @@ class RAFTDepthNormalDPT5(nn.Module):
+         return norm_normalize(torch.cat([normal_out, confidence], dim=1))
+         #return norm_normalize(torch.cat([normal_out, confidence], dim=1).float())
+     
+-    def create_mesh_grid(self, height, width, batch, device="cuda", set_buffer=True):
++    def create_mesh_grid(self, height, width, batch, device="cpu", set_buffer=True):
+         y, x = torch.meshgrid([torch.arange(0, height, dtype=torch.float32, device=device),
+                                torch.arange(0, width, dtype=torch.float32, device=device)], indexing='ij')
+         meshgrid = torch.stack((x, y))
+diff --git a/mono/utils/comm.py b/mono/utils/comm.py
+index 939e4e1..6db7bcd 100644
+--- a/mono/utils/comm.py
++++ b/mono/utils/comm.py
+@@ -5,7 +5,10 @@ from .avg_meter import AverageMeter
+ from collections import defaultdict, OrderedDict
+ import os
+ import socket
+-from mmcv.utils import collect_env as collect_base_env
++try:
++    from mmcv.utils import collect_env as collect_base_env
++except ImportError:
++    from mmengine.utils.dl_utils import collect_env as collect_base_env
+ try:
+     from mmcv.utils import get_git_hash
+ except:
