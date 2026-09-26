@@ -1,0 +1,40 @@
+{
+ "mode": "meterModel",
+ "applied_scale_error_pct": 0.6,
+ "model_arkit_scale_error_pct": -2.946,
+ "declared_scale_rel_pm": 0.014,
+ "cameras": 76,
+ "points": 17946,
+ "injected": [],
+ "kd": {
+  "n": 31,
+  "median_in": 0.74,
+  "p90_in": 3.16,
+  "max_in": 32.72,
+  "share_le_2in": 0.774,
+  "share_le_4in": 0.968,
+  "share_le_6in": 0.968,
+  "calibration": 0.968
+ },
+ "kd_status": {
+  "scored": 31,
+  "missing": 25,
+  "extent_limited": 1,
+  "phantom": 0,
+  "scale_reference": 0
+ },
+ "walls": [
+  [
+   "w1",
+   "house",
+   [
+    -12.314,
+    2.9667
+   ],
+   0.997
+  ]
+ ],
+ "chain": [
+  "w1"
+ ]
+}
