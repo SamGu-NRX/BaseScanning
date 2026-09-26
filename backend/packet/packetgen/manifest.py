@@ -11,7 +11,9 @@ import traceback
 from pathlib import Path
 
 import cv2
+import numpy as np
 
+from .depth import load_eth3d_scan
 from .images import normalize_images
 from .packet import HouseBuilder
 from .photos import build_photo_only
@@ -20,7 +22,60 @@ from .sources import IMAGE_EXTS, from_colmap_model, list_images, run_sfm
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".MP4", ".MOV", ".webm", ".mkv"}
 SEQUENCE_KINDS = {"sequence", "video", "walkaround", "walkaround_video", "frames", "frame_sequence", "orbit", "multiview", "multi_view"}
 PHOTO_KINDS = {"photos", "photo", "single", "singles", "listing", "listing_photos", "stills", "unordered"}
+STATIC_KINDS = {"static_video", "fixed_camera", "timelapse"}
 MAX_FRAMES = 150
+MAX_STATIC_STILLS = 6
+ETH3D_ROOT = Path.home() / "work" / "data" / "eth3d"
+VISIBLE_PURPOSE = {"meter": "meter_surround", "meter_can": "meter_surround", "panel": "panel_surround"}
+
+
+def visible_frames(entry: dict) -> dict[str, list[str]]:
+    vis = entry.get("visible") if isinstance(entry.get("visible"), dict) else {}
+    return {tag: list(v.get("frames") or []) for tag, v in vis.items() if isinstance(v, dict)}
+
+
+def still_purposes(entry: dict) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for tag, frames in visible_frames(entry).items():
+        for f in frames:
+            if tag in VISIBLE_PURPOSE and f not in out:
+                out[f] = VISIBLE_PURPOSE[tag]
+    return out
+
+
+def pick_static_stills(entry: dict, images: list[Path]) -> list[Path]:
+    """A fixed camera has no baseline for SfM, and a phone would send a few stills of it, not every
+    frame: keep the annotated frames, then fill with evenly spaced ones."""
+    by_name = {p.name: p for p in images}
+    picked = [by_name[f] for fs in visible_frames(entry).values() for f in fs if f in by_name]
+    picked = list(dict.fromkeys(picked))[:MAX_STATIC_STILLS]
+    rest = [p for p in images if p not in picked]
+    need = MAX_STATIC_STILLS - len(picked)
+    if need > 0 and rest:
+        idx = sorted({int(round(i * (len(rest) - 1) / max(1, need - 1))) for i in range(need)})
+        picked += [rest[i] for i in idx]
+    return sorted(picked, key=lambda p: p.name)
+
+
+def load_scan(hid: str, work_root: Path, log) -> np.ndarray | None:
+    """ETH3D laser scan for LiDAR depth, if `scripts/fetch_gt.sh eth3d <scene>` or the README
+    download put it under ~/work/data/eth3d/<scene>/dslr_scan_eval."""
+    if not hid.startswith("eth3d-"):
+        return None
+    scan_dir = ETH3D_ROOT / hid.removeprefix("eth3d-") / "dslr_scan_eval"
+    if not (scan_dir / "scan_alignment.mlp").exists():
+        log(f"{hid}: no laser scan at {scan_dir}; LiDAR variant gets no depth maps")
+        return None
+    return load_eth3d_scan(scan_dir, 6_000_000, np.random.default_rng(0))
+
+
+def source_label(entry: dict, default: str) -> str:
+    src = entry.get("source")
+    if isinstance(src, dict):
+        parts = [src.get("name"), src.get("url")]
+        lic = entry.get("licence") or entry.get("license")
+        return "; ".join(str(p) for p in parts + [lic] if p)
+    return str(first(entry, "source", "source_url", "url", "license", default=default))
 
 
 def entries(manifest: dict | list) -> list[dict]:
@@ -94,8 +149,8 @@ def run_manifest(manifest_path: Path, out_root: Path, work_root: Path, only: lis
         hid = str(first(entry, "id", "house_id", "slug", "name", default="")).strip()
         if not hid or (only and hid not in only):
             continue
-        hid = re.sub(r"[^a-zA-Z0-9_-]+", "-", hid).strip("-").lower()
         folder = house_dir(entry, data_root, hid)
+        hid = re.sub(r"[^a-zA-Z0-9_-]+", "-", hid).strip("-")
         if not folder.exists():
             results.append({"house_id": hid, "status": "missing_folder", "folder": str(folder)})
             continue
@@ -117,10 +172,34 @@ def run_manifest(manifest_path: Path, out_root: Path, work_root: Path, only: lis
         loc = entry.get("location") if isinstance(entry.get("location"), dict) else {}
         lat, lon = first(entry, "lat", "latitude", default=loc.get("lat", loc.get("latitude"))), first(entry, "lon", "lng", "longitude", default=loc.get("lon", loc.get("lng", loc.get("longitude"))))
         anchor = {"latitude": float(lat), "longitude": float(lon)} if lat is not None and lon is not None else None
-        source = str(first(entry, "source", "source_url", "url", "license", default=str(folder)))
+        source = source_label(entry, str(folder))
         notes = str(first(entry, "notes", "description", default=""))
         seq_frames = None
         frames_dir = folder / "frames"
+        calib = entry.get("calibration") if isinstance(entry.get("calibration"), dict) else {}
+        if kind in STATIC_KINDS:
+            photos = pick_static_stills(entry, list_images(frames_dir) if frames_dir.exists() else images)
+            info = build_photo_only(hid, photos, out_root, source_dataset=source, notes=notes,
+                                    purposes=still_purposes(entry))
+            info.update(source_fingerprint=fp, manifest_entry=entry)
+            (out_root / hid / "house.json").write_text(json.dumps(info, indent=1, default=str) + "\n")
+            results.append({"house_id": hid, "status": "built", "variants": list(info["variants"])})
+            continue
+        if kind == "gt_dataset" and calib.get("type") == "colmap_text" and (folder / calib.get("dir", "calibration")).exists():
+            try:
+                recon = from_colmap_model(folder / calib.get("dir", "calibration"), frames_dir, metric=True,
+                                          source="dataset_ground_truth")
+                scan = load_scan(hid, work_root, log)
+                log(f"{hid}: metric ground-truth model, {len(recon.views)} views, scan {'yes' if scan is not None else 'no'}")
+                info = HouseBuilder(hid, recon, out_root, anchor=anchor, scan_points_src=scan,
+                                    source_dataset=source, notes=notes).build()
+                info.update(source_fingerprint=fp, manifest_entry=entry)
+                (out_root / hid / "house.json").write_text(json.dumps(info, indent=1, default=str) + "\n")
+                results.append({"house_id": hid, "status": "built", "variants": list(info["variants"])})
+            except Exception as e:
+                results.append({"house_id": hid, "status": "error", "error": repr(e), "trace": traceback.format_exc()[-2000:]})
+                log(f"{hid}: ERROR {e!r}")
+            continue
         if videos and (kind in SEQUENCE_KINDS or not images):
             seq_frames = []
             for v in videos:

@@ -40,7 +40,7 @@ Three capture tiers share one format:
 
 These are PR #7's conventions, restated with the Core Motion and Core Location parts it did not need. The app writes the same text into `units` and `conventions` in every packet.
 
-**Units.** Lengths in meters, angles in degrees, times in seconds of device uptime. Exceptions, kept in the native Apple units: rotation rate in rad/s, acceleration and gravity in g, magnetic field in µT, plane `rotationOnYAxis` in radians.
+**Units.** Lengths in meters, angles in degrees, times in seconds of device uptime (assumed shared by ARKit and Core Motion; see Clocks). Exceptions, kept in the native Apple units: rotation rate in rad/s, acceleration and gravity in g, magnetic field in µT, plane `rotationOnYAxis` in radians.
 
 **World (ARKit).** `worldAlignment = .gravity`: right-handed, +y up (away from gravity). The origin is the device's position when the session started. Apple: "ARKit chooses a basis vector (0,0,-1) pointing in the direction the device camera faces and perpendicular to the gravity axis" ([`.gravity`](https://developer.apple.com/documentation/arkit/arconfiguration/worldalignment-swift.enum/gravity)). Consequences the server relies on:
 - **y = 0 is the phone's height at session start, not the ground.** The ground is typically about 1.2–1.6 m below.
@@ -65,7 +65,7 @@ world_from_device = pose_rotation · [[0, 1, 0], [-1, 0, 0], [0, 0, 1]]ᵀ
 
 **Pixels and rays.** `[u, v]` continuous coordinates: (0, 0) is the top-left corner of the top-left pixel, v grows down. The ray through a pixel has camera-space direction `((u − cx)/fx, −(v − cy)/fy, −1)`, the same as PR #7 and `pixel_ray` in docs/02.
 
-**Clocks.** `ARFrame.timestamp` and Core Motion's `timestamp` are both device uptime. `CLLocation.timestamp` and `CLHeading.timestamp` are wall-clock `Date`s. The CSV streams carry both: `t = startedAtUptime + (date − startedAt)`, plus the original ISO time.
+**Clocks.** We assume `ARFrame.timestamp` and Core Motion's `timestamp` are both device uptime. Apple documents Core Motion's clock as "time in seconds since the device booted" but documents no clock for `ARFrame.timestamp`, so open question 14 asks for a device check. `CLLocation.timestamp` and `CLHeading.timestamp` are wall-clock `Date`s. The CSV streams carry both: `t = startedAtUptime + (date − startedAt)`, plus the original ISO time.
 
 **Geodetic and compass.** WGS84 degrees. `altitude` is above mean sea level and `ellipsoidalAltitude` above the WGS84 ellipsoid, both in meters. Headings are degrees clockwise from north. Core Motion `xTrueNorthZVertical` is x north, y west, z up. Given the true azimuth θ of ARKit world −z, a world point maps to local east and north as `east = x cos θ − z sin θ`, `north = −x sin θ − z cos θ`, and up = y.
 
@@ -153,7 +153,7 @@ Base's checklist asks for the meter close-up, meter surroundings from 10+ steps 
 | `location` | Rec | [`CLLocation`](https://developer.apple.com/documentation/corelocation/cllocation), `desiredAccuracy` [`kCLLocationAccuracyBest`](https://developer.apple.com/documentation/corelocation/kcllocationaccuracybest) | every update (~1 Hz) | `t`; `timestamp` ISO; `latitude`, `longitude`; [`altitude`](https://developer.apple.com/documentation/corelocation/cllocation/altitude); [`ellipsoidalAltitude`](https://developer.apple.com/documentation/corelocation/cllocation/ellipsoidalaltitude); [`horizontalAccuracy`](https://developer.apple.com/documentation/corelocation/cllocation/horizontalaccuracy); `verticalAccuracy`; `course`, `courseAccuracy`, `speed`, `speedAccuracy` (−1 = invalid) |
 | `altimeter` | O | [`CMAltimeter`](https://developer.apple.com/documentation/coremotion/cmaltimeter) | on update | `t`, `relativeAltitude` m, `pressure` kPa |
 
-Record `headingOrientation` in the packet ([`CLLocationManager.headingOrientation`](https://developer.apple.com/documentation/corelocation/cllocationmanager/headingorientation)). Empty CSV cells mean "not available".
+Record `headingOrientation` in the packet ([`CLLocationManager.headingOrientation`](https://developer.apple.com/documentation/corelocation/cllocationmanager/headingorientation)). The property is deprecated in iOS 27 with no documented replacement; on iOS 27+ record the orientation you assume (`portrait` for this app) until Apple names a successor. Empty CSV cells mean "not available".
 
 ### 3.6 What the server does with each group
 
@@ -172,8 +172,8 @@ Record `headingOrientation` in the packet ([`CLLocationManager.headingOrientatio
 
 | File | Layout |
 | --- | --- |
-| `*.depth.f32` | `ARDepthData.depthMap`: Float32 little-endian meters, row-major, `w × h` (256 × 192 on current phones), no row padding (copy row by row, as PR #7 `KeyframeRecorder.rows` does) |
-| `*.confidence.u8` | `ARDepthData.confidenceMap`: UInt8 [`ARConfidenceLevel`](https://developer.apple.com/documentation/arkit/arconfidencelevel) raw values, 0 low, 1 medium, 2 high; same layout |
+| `*.depth.f32` | `ARDepthData.depthMap`: Float32 little-endian meters, row-major, `w × h` (256 × 192 observed on current phones; Apple documents only "low-resolution", so write the actual `CVPixelBufferGetWidth/Height` and check `CVPixelBufferGetPixelFormatType` is `DepthFloat32`), no row padding (copy row by row, as PR #7 `KeyframeRecorder.rows` does) |
+| `*.confidence.u8` | `ARDepthData.confidenceMap`: UInt8 [`ARConfidenceLevel`](https://developer.apple.com/documentation/arkit/arconfidencelevel) values written explicitly as 0 low, 1 medium, 2 high; same layout. Apple does not document the raw values (0/1/2 comes from PR #7 and header mirrors), so map the enum cases in code rather than casting `rawValue` |
 | `*.features.bin` | `ARFrame.rawFeaturePoints`: `count` packed records `{float32 x, float32 y, float32 z, uint64 identifier}`, 20 bytes each, little-endian; world meters of the keyframe's epoch ([`ARPointCloud`](https://developer.apple.com/documentation/arkit/arpointcloud) `points` and `identifiers`) |
 | `geometry/mesh.ply` | binary little-endian PLY; vertices in world meters; optional per-face `uchar classification` ([`ARMeshClassification`](https://developer.apple.com/documentation/arkit/armeshclassification)) |
 
