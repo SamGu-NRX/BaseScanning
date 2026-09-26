@@ -1,0 +1,51 @@
+[project]
+name = "house-scanning-server"
+version = "0.0.0"
+description = "Server-side processing for Base Power battery site surveys: capture packet in, metric 3D asset, scene, criteria verdicts and needed views out."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "jsonschema==4.26.0",
+    "matplotlib==3.11.2",
+    "numpy==2.5.3",
+    "opencv-python-headless==5.0.0.93",
+    "pillow==12.3.0",
+    "py7zr>=1.1.3",
+    "pycolmap==4.2.0",
+    "pydantic>=2.13.5",
+    "pyyaml>=6.0.3",
+    "requests>=2.34.2",
+    "scipy==1.18.1",
+    "shapely>=2.1.2",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+testpaths = ["packet/tests", "tests"]
+pythonpath = ["packet", "eval", "eval/vendor/hs11_server"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["eval/vendor", "private"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]
+
+# packet/, eval/, criteria/spec/ and data/scripts/ are overwritten by scripts/sync_from_store.sh,
+# so style fixes there belong in the store copy. Tighten these once upstream is clean.
+[tool.ruff.lint.per-file-ignores]
+"{packet,eval,criteria/spec,data}/**" = ["B", "UP", "I001", "F401", "F841"]
+
+[tool.ruff.format]
+exclude = ["packet/**", "eval/**", "criteria/spec/**", "data/**"]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff>=0.16.9",
+]

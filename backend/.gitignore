@@ -1,0 +1,29 @@
+# Base-provided prompt material and anything else that must not reach GitHub.
+private/
+
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+
+# data/ holds scripts and manifests only; frames, packets and videos live in the store or on disk.
+data/houses/
+data/packets/
+data/frames/
+data/**/*.jpg
+data/**/*.jpeg
+data/**/*.png
+data/**/*.heic
+data/**/*.mp4
+data/**/*.mov
+data/**/*.npz
+data/**/*.ply
+data/**/*.bin
+
+# Reconstruction outputs.
+runs/
+outputs/
+*.ply
+*.splat
