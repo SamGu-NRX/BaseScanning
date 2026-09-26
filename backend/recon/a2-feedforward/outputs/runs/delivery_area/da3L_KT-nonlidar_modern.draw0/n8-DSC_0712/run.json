@@ -1,0 +1,58 @@
+{
+ "scene": "delivery_area",
+ "model": "da3L",
+ "checkpoint": "depth-anything/DA3-LARGE-1.1",
+ "license": "Apache-2.0 (DA3-LARGE-1.1)",
+ "mode": "KT:nonlidar_modern.draw0",
+ "members": [
+  "DSC_0712",
+  "DSC_0713",
+  "DSC_0711",
+  "DSC_0714",
+  "DSC_0685",
+  "DSC_0686",
+  "DSC_0687",
+  "DSC_0688"
+ ],
+ "network_wh": [
+  504,
+  336
+ ],
+ "seconds_total": 8.7,
+ "device": "cpu (4 threads, bf16 autocast trunk)",
+ "views": {
+  "DSC_0712": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 6.355
+  },
+  "DSC_0713": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 6.26
+  },
+  "DSC_0711": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 6.519
+  },
+  "DSC_0714": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 6.229
+  },
+  "DSC_0685": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 8.9
+  },
+  "DSC_0686": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 9.294
+  },
+  "DSC_0687": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 8.889
+  },
+  "DSC_0688": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 9.169
+  }
+ },
+ "frame": "input poses"
+}

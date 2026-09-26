@@ -1,0 +1,58 @@
+{
+ "scene": "electro",
+ "model": "pi3_518",
+ "checkpoint": "yyfz233/Pi3@ae722e7039287d0c8fde9f11f197f804f44b510c",
+ "license": "BSD-2-Clause (yyfz233/Pi3 code and weights)",
+ "mode": "images",
+ "members": [
+  "DSC_9263",
+  "DSC_9262",
+  "DSC_9264",
+  "DSC_9285",
+  "DSC_9265",
+  "DSC_9280",
+  "DSC_9292",
+  "DSC_9276"
+ ],
+ "network_wh": [
+  518,
+  336
+ ],
+ "seconds_total": 12.9,
+ "device": "cpu (4 threads, bf16 autocast trunk)",
+ "views": {
+  "DSC_9263": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 0.877
+  },
+  "DSC_9262": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 0.997
+  },
+  "DSC_9264": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 0.999
+  },
+  "DSC_9285": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 0.982
+  },
+  "DSC_9265": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 1.066
+  },
+  "DSC_9280": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 0.667
+  },
+  "DSC_9292": {
+   "valid_fraction": 0.9707,
+   "median_depth_m": 1.302
+  },
+  "DSC_9276": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 1.145
+  }
+ },
+ "frame": "model frame"
+}

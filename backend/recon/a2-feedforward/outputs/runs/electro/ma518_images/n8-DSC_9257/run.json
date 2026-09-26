@@ -1,0 +1,66 @@
+{
+ "scene": "electro",
+ "model": "ma518",
+ "checkpoint": "facebook/map-anything-apache@00f9c245bbcb60522d1ed7f9e9d88462c6e3f38a",
+ "license": "Apache-2.0 (facebook/map-anything-apache)",
+ "mode": "images",
+ "members": [
+  "DSC_9257",
+  "DSC_9273",
+  "DSC_9274",
+  "DSC_9272",
+  "DSC_9258",
+  "DSC_9271",
+  "DSC_9270",
+  "DSC_9259"
+ ],
+ "network_wh": [
+  518,
+  336
+ ],
+ "seconds_total": 35.0,
+ "device": "cpu (4 threads, bf16 autocast trunk)",
+ "views": {
+  "DSC_9257": {
+   "valid_fraction": 0.9707,
+   "median_depth_m": 4.327,
+   "metric_scaling_factor": 3.2376532554626465
+  },
+  "DSC_9273": {
+   "valid_fraction": 0.9707,
+   "median_depth_m": 4.193,
+   "metric_scaling_factor": 3.2376532554626465
+  },
+  "DSC_9274": {
+   "valid_fraction": 0.9707,
+   "median_depth_m": 4.057,
+   "metric_scaling_factor": 3.2376532554626465
+  },
+  "DSC_9272": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 4.724,
+   "metric_scaling_factor": 3.2376532554626465
+  },
+  "DSC_9258": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 4.189,
+   "metric_scaling_factor": 3.2376532554626465
+  },
+  "DSC_9271": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 5.505,
+   "metric_scaling_factor": 3.2376532554626465
+  },
+  "DSC_9270": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 6.218,
+   "metric_scaling_factor": 3.2376532554626465
+  },
+  "DSC_9259": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 4.04,
+   "metric_scaling_factor": 3.2376532554626465
+  }
+ },
+ "frame": "model frame"
+}
