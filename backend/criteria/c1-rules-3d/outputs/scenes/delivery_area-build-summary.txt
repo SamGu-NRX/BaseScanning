@@ -1,0 +1,161 @@
+{
+ "walls": [
+  {
+   "id": "B",
+   "length_ft": 51.239,
+   "top_y": 15.11,
+   "base_offset_ft": 0.0,
+   "plus_minus_ft": 0.16
+  },
+  {
+   "id": "R",
+   "length_ft": 31.277,
+   "top_y": 13.19,
+   "base_offset_ft": 0.0,
+   "plus_minus_ft": 0.16
+  },
+  {
+   "id": "T",
+   "length_ft": 31.974,
+   "top_y": 14.95,
+   "base_offset_ft": 0.01,
+   "plus_minus_ft": 0.1
+  }
+ ],
+ "joints": [
+  {
+   "walls": [
+    "B",
+    "R"
+   ],
+   "ends": [
+    "b",
+    "a"
+   ],
+   "kind": "inside",
+   "angle_deg": 90.4,
+   "gap_ft": 0.0
+  },
+  {
+   "walls": [
+    "R",
+    "T"
+   ],
+   "ends": [
+    "b",
+    "a"
+   ],
+   "kind": "outside",
+   "angle_deg": 90.7,
+   "gap_ft": 0.0
+  }
+ ],
+ "free_ends": [
+  {
+   "wall": "B",
+   "end": "a",
+   "kind": "unexplored"
+  },
+  {
+   "wall": "T",
+   "end": "b",
+   "kind": "unexplored"
+  }
+ ],
+ "n_obstacles": 18,
+ "n_overheads": 157,
+ "ground_holes_filled": 670,
+ "coverage_wall": {
+  "B": [
+   [
+    0.0,
+    34.25
+   ],
+   [
+    35.25,
+    35.5
+   ],
+   [
+    35.75,
+    37.75
+   ],
+   [
+    39.0,
+    39.5
+   ],
+   [
+    40.25,
+    43.25
+   ],
+   [
+    44.25,
+    44.5
+   ],
+   [
+    44.75,
+    51.25
+   ]
+  ],
+  "R": [
+   [
+    0.0,
+    31.25
+   ]
+  ],
+  "T": [
+   [
+    0.0,
+    1.0
+   ],
+   [
+    5.0,
+    5.25
+   ]
+  ]
+ },
+ "ground_observed_ft2": 2314.0,
+ "overhead_observed_ft2": 2705.7,
+ "objects": [
+  [
+   "B_glazing_1",
+   "window",
+   "B",
+   [
+    3.5,
+    19.5
+   ],
+   0.3,
+   7.4,
+   0.3
+  ],
+  [
+   "B_glazing_2",
+   "window",
+   "B",
+   [
+    23.0,
+    36.0
+   ],
+   0.3,
+   7.4,
+   0.3
+  ],
+  [
+   "B_opening",
+   "door",
+   "B",
+   [
+    36.5,
+    50.5
+   ],
+   0.0,
+   7.3,
+   0.5
+  ]
+ ],
+ "written": [
+  "/home/ubuntu/work/c1/outputs/scenes/delivery_area-D1.json",
+  "/home/ubuntu/work/c1/outputs/scenes/delivery_area-D2.json",
+  "/home/ubuntu/work/c1/outputs/scenes/delivery_area-D3.json"
+ ]
+}

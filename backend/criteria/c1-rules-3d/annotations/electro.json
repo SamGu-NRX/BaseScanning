@@ -1,0 +1,151 @@
+{
+  "scene": "electro",
+  "dataset": "electro",
+  "about": "ETH3D electro: utility building service wall with recessed metal doors facing an asphalt yard. Modelled as one straight wall (the recessed-door wall); its left end meets a 0.5 m set-back jog cluttered by a scaffold with an orange cable, its right end runs out of the scan, so both ends are unexplored. The glass office facade is not modelled (no laser returns on glass). Meters INVENTED.",
+  "roi_scan_xy_m": [
+    [
+      -3.0,
+      -4.0
+    ],
+    [
+      12.0,
+      13.0
+    ]
+  ],
+  "ground_fit_scan_xy_m": [
+    [
+      0.0,
+      -2.0
+    ],
+    [
+      8.0,
+      4.0
+    ]
+  ],
+  "cameras": "all",
+  "pr13_keyframes": [],
+  "pr13_features": false,
+  "walls": [
+    {
+      "id": "S",
+      "rough_scan_xy_m": [
+        [
+          0.4,
+          5.5
+        ],
+        [
+          8.9,
+          9.3
+        ]
+      ]
+    }
+  ],
+  "joints": [],
+  "free_end_kinds": {
+    "S.a": "unexplored",
+    "S.b": "unexplored"
+  },
+  "interior_scan_xy_m": [
+    [
+      [
+        -1.0,
+        4.87
+      ],
+      [
+        10.0,
+        9.79
+      ],
+      [
+        12.0,
+        13.0
+      ],
+      [
+        -3.0,
+        13.0
+      ],
+      [
+        -3.0,
+        4.0
+      ]
+    ]
+  ],
+  "ground_types": [
+    {
+      "type": "drive",
+      "note": "asphalt service yard used for vehicle access (garage-like doors); hand label from photos"
+    }
+  ],
+  "meters": [
+    {
+      "id": "E1",
+      "wall_id": "S",
+      "u_ft": 16.5,
+      "height_ft": 5.0,
+      "note": "INVENTED: on the pilaster between doors 2 and 3"
+    }
+  ],
+  "invented": [],
+  "features_scan": [
+    {
+      "id": "S_door_1",
+      "type": "door",
+      "wall_id": "S",
+      "u": [
+        3.3,
+        7.0
+      ],
+      "h": [
+        0.0,
+        8.5
+      ],
+      "plus_minus_ft": 0.3,
+      "note": "single metal door, laser elevation (door leaf plane); top hidden by the canopy"
+    },
+    {
+      "id": "S_door_2",
+      "type": "door",
+      "wall_id": "S",
+      "u": [
+        8.5,
+        15.7
+      ],
+      "h": [
+        0.0,
+        8.5
+      ],
+      "plus_minus_ft": 0.3,
+      "note": "double metal service door"
+    },
+    {
+      "id": "S_door_3",
+      "type": "door",
+      "wall_id": "S",
+      "u": [
+        17.4,
+        24.5
+      ],
+      "h": [
+        0.0,
+        8.5
+      ],
+      "plus_minus_ft": 0.3,
+      "note": "double metal service door"
+    },
+    {
+      "id": "S_door_4",
+      "type": "door",
+      "wall_id": "S",
+      "u": [
+        26.5,
+        33.2
+      ],
+      "h": [
+        0.0,
+        8.5
+      ],
+      "plus_minus_ft": 0.3,
+      "note": "double metal service door"
+    }
+  ],
+  "notes_features": "Pilasters between doors are 1.3-2.0 ft wide (u 7.0-8.5, 15.7-17.4, 24.5-26.5, 33.2-34.5). u 0-3.3 has no laser returns at 0-8 ft (scaffold shadow); u 34.5-37.6 likewise; neither is labelled."
+}

@@ -1,0 +1,161 @@
+{
+  "scene": "facade",
+  "dataset": "facade",
+  "about": "PR #11/#13 consistency variant: PR #13 keyframes and clicked features only, no invented gas meter, no laser-read features.",
+  "roi_scan_xy_m": [
+    [
+      -6.0,
+      -34.0
+    ],
+    [
+      26.0,
+      -5.0
+    ]
+  ],
+  "ground_fit_scan_xy_m": [
+    [
+      -2.0,
+      -27.0
+    ],
+    [
+      20.0,
+      -12.0
+    ]
+  ],
+  "cameras": "pr13",
+  "pr13_keyframes": [
+    "DSC_0359",
+    "DSC_0360",
+    "DSC_0361",
+    "DSC_0362",
+    "DSC_0363",
+    "DSC_0419",
+    "DSC_0420"
+  ],
+  "pr13_features": true,
+  "walls": [
+    {
+      "id": "w1",
+      "rough_scan_xy_m": [
+        [
+          20.3,
+          -24.84
+        ],
+        [
+          4.9,
+          -28.0
+        ]
+      ]
+    },
+    {
+      "id": "w2",
+      "rough_scan_xy_m": [
+        [
+          4.9,
+          -28.0
+        ],
+        [
+          4.16,
+          -24.43
+        ]
+      ]
+    },
+    {
+      "id": "w3",
+      "rough_scan_xy_m": [
+        [
+          4.16,
+          -24.43
+        ],
+        [
+          -0.05,
+          -25.3
+        ]
+      ]
+    }
+  ],
+  "joints": [
+    {
+      "walls": [
+        "w1",
+        "w2"
+      ],
+      "ends": [
+        "b",
+        "a"
+      ]
+    },
+    {
+      "walls": [
+        "w2",
+        "w3"
+      ],
+      "ends": [
+        "b",
+        "a"
+      ]
+    }
+  ],
+  "free_end_kinds": {
+    "w1.a": "unexplored",
+    "w3.b": "unexplored"
+  },
+  "interior_scan_xy_m": [
+    [
+      [
+        20.3,
+        -24.84
+      ],
+      [
+        4.9,
+        -28.0
+      ],
+      [
+        4.16,
+        -24.43
+      ],
+      [
+        -0.05,
+        -25.3
+      ],
+      [
+        -0.4,
+        -29.1
+      ],
+      [
+        -6.0,
+        -30.3
+      ],
+      [
+        -6.0,
+        -40.0
+      ],
+      [
+        26.0,
+        -40.0
+      ],
+      [
+        26.0,
+        -23.67
+      ]
+    ]
+  ],
+  "ground_types": [
+    {
+      "type": "gravel",
+      "note": "whole courtyard is loose gravel in every photo (hand label from DSC_0419 and neighbours)"
+    }
+  ],
+  "meters": [
+    {
+      "id": "M1",
+      "wall_id": "w1",
+      "u_ft": 42.1,
+      "height_ft": 5.0,
+      "note": "INVENTED, PR #13's placement: w1 between windows 4 and 5"
+    }
+  ],
+  "invented": [],
+  "features_scan": [],
+  "w3_extent_note": "w3 ends at 12.7 ft at the tower's far pilaster (laser elevation shows no wall at 0.3-8 ft beyond u 12.7); PR #13's 16.2 ft runs past that outside corner. w3.b stays unexplored: the wall that steps back from it is not modelled."
+}
