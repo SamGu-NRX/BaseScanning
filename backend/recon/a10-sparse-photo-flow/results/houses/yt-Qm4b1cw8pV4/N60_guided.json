@@ -1,0 +1,109 @@
+{
+ "house": "yt-Qm4b1cw8pV4",
+ "set": "N60_guided",
+ "n": 60,
+ "images": [
+  "t0000.00.jpg",
+  "t0000.67.jpg",
+  "t0001.33.jpg",
+  "t0002.33.jpg",
+  "t0003.00.jpg",
+  "t0004.00.jpg",
+  "t0004.67.jpg",
+  "t0005.00.jpg",
+  "t0006.00.jpg",
+  "t0006.67.jpg",
+  "t0007.67.jpg",
+  "t0008.33.jpg",
+  "t0009.33.jpg",
+  "t0010.00.jpg",
+  "t0011.00.jpg",
+  "t0011.67.jpg",
+  "t0012.00.jpg",
+  "t0013.00.jpg",
+  "t0013.67.jpg",
+  "t0014.67.jpg",
+  "t0015.33.jpg",
+  "t0016.00.jpg",
+  "t0017.00.jpg",
+  "t0017.67.jpg",
+  "t0018.67.jpg",
+  "t0019.33.jpg",
+  "t0020.33.jpg",
+  "t0021.00.jpg",
+  "t0021.33.jpg",
+  "t0022.33.jpg",
+  "t0023.00.jpg",
+  "t0024.00.jpg",
+  "t0024.67.jpg",
+  "t0025.67.jpg",
+  "t0026.33.jpg",
+  "t0027.33.jpg",
+  "t0028.00.jpg",
+  "t0029.00.jpg",
+  "t0029.67.jpg",
+  "t0030.67.jpg",
+  "t0031.33.jpg",
+  "t0032.00.jpg",
+  "t0033.00.jpg",
+  "t0033.67.jpg",
+  "t0034.67.jpg",
+  "t0035.33.jpg",
+  "t0036.33.jpg",
+  "t0037.00.jpg",
+  "t0038.00.jpg",
+  "t0038.67.jpg",
+  "t0039.00.jpg",
+  "t0040.00.jpg",
+  "t0040.67.jpg",
+  "t0041.67.jpg",
+  "t0042.33.jpg",
+  "t0043.33.jpg",
+  "t0044.00.jpg",
+  "t0045.00.jpg",
+  "t0045.67.jpg",
+  "t0046.67.jpg"
+ ],
+ "colmap": {
+  "match_s": 46.7,
+  "mapper_s": 35.5,
+  "models": 1,
+  "registered": 52,
+  "model_sizes": [
+   52
+  ],
+  "points3D": 12074,
+  "mean_reproj_px": 0.4171206126309693
+ },
+ "tagged_registered": {
+  "meter": [
+   true,
+   true
+  ],
+  "corners": [
+   true,
+   true
+  ],
+  "ground_14ft": [
+   true
+  ],
+  "overhangs": [
+   true
+  ]
+ },
+ "pi3": {
+  "infer_s": 300.1,
+  "net": [
+   518,
+   294
+  ],
+  "agreement": {
+   "frames": 52,
+   "centre_rms_pct_extent": 2.1381561138476197,
+   "centre_p90_pct_extent": 3.705649681087671,
+   "rot_err_median_deg": 9.874534636816591,
+   "rot_err_p90_deg": 11.967903460637425,
+   "consistent_frames": 0
+  }
+ }
+}

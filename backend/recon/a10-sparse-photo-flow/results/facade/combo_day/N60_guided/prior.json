@@ -1,0 +1,770 @@
+{
+ "db": {
+  "images": 76,
+  "extract_s": 109.70423102378845,
+  "match_s": 160.4542920589447,
+  "prior_drawn_scale": 0.9833565193944482
+ },
+ "prior_draw": {
+  "scale": 1.026,
+  "jitter_m": 0.02,
+  "sigma_m": 0.03,
+  "robust": false,
+  "source": "A6 real LaMAR ARKit, no-depth sessions"
+ },
+ "mapper_s": 105.3,
+ "models": 1,
+ "registered": 58,
+ "model_sizes": [
+  58
+ ],
+ "points3D": 62685,
+ "mean_reproj_px": 0.9195876866080918,
+ "centre_rms_sim3_m": 0.10367960994924658,
+ "centres_within_0p3m": 56,
+ "centre_rms_rigid_m": 0.25917286152929353,
+ "scale_error_pct": 2.462975489533936,
+ "score_args": [
+  "--cameras",
+  "/home/ubuntu/a10/runs/facade/combo_day/N60_guided/prior/model",
+  "--metric"
+ ],
+ "scene": "facade",
+ "quality": "combo_day",
+ "set": "N60_guided",
+ "method": "prior",
+ "n": 60,
+ "score": {
+  "kd": {
+   "n": 18,
+   "median_in": 3.51,
+   "p90_in": 24.77,
+   "max_in": 25.61,
+   "share_le_2in": 0.333,
+   "share_le_4in": 0.5,
+   "share_le_6in": 0.611,
+   "calibration": 0.611
+  },
+  "kd_observed": {
+   "n": 16,
+   "median_in": 4.83,
+   "p90_in": 24.86,
+   "max_in": 25.61,
+   "share_le_2in": 0.312,
+   "share_le_4in": 0.438,
+   "share_le_6in": 0.562,
+   "calibration": 0.562
+  },
+  "status": {
+   "scored": 18,
+   "missing": 38,
+   "extent_limited": 1,
+   "phantom": 0,
+   "scale_reference": 0
+  },
+  "false_observed_claims": 0,
+  "scale_error_pct": 0.877,
+  "cloud_scale_error_pct": 2.463,
+  "anchor_m": 0.3889,
+  "completeness_10cm_icp": {
+   "meter_wall": 0.4329,
+   "wall_face": 0.4051,
+   "ground_strip": 0.0006,
+   "overhead": 0.1005
+  },
+  "coverage_by_rule": {
+   "meter_wall": {
+    "truly_observed_by_rule": 0.9992,
+    "claimed_by_rule": 0.9893,
+    "false_observed_by_rule": 0.0008,
+    "claimed_observed": 0.3529,
+    "truly_seen": 0.9995,
+    "sensitivity": null
+   },
+   "wall_face": {
+    "truly_observed_by_rule": 0.8942,
+    "claimed_by_rule": 0.9357,
+    "false_observed_by_rule": 0.0511,
+    "claimed_observed": 0.3844,
+    "truly_seen": 0.902,
+    "sensitivity": null
+   },
+   "ground_strip": {
+    "truly_observed_by_rule": 0.1099,
+    "claimed_by_rule": 0.0,
+    "false_observed_by_rule": 0.0,
+    "claimed_observed": 0.3125,
+    "truly_seen": 0.0316,
+    "sensitivity": [
+     {
+      "max_incidence_deg": 75.0,
+      "truth_by_rule": "grazing",
+      "truly_observed_by_rule": 0.0,
+      "truly_grazing_only": 0.5079,
+      "rule_id": "angle75",
+      "claimed_by_rule": 0.0,
+      "false_observed_by_rule": 0.0
+     },
+     {
+      "max_incidence_deg": 80.0,
+      "truth_by_rule": "partial",
+      "truly_observed_by_rule": 0.1099,
+      "truly_grazing_only": 0.398,
+      "rule_id": "angle80",
+      "claimed_by_rule": 0.0,
+      "false_observed_by_rule": 0.0
+     },
+     {
+      "max_incidence_deg": 88.0,
+      "truth_by_rule": "partial",
+      "truly_observed_by_rule": 0.3916,
+      "truly_grazing_only": 0.1163,
+      "rule_id": "footprint3in",
+      "max_footprint_m": 0.0762,
+      "claimed_by_rule": 0.184,
+      "false_observed_by_rule": 0.0311
+     }
+    ]
+   },
+   "overhead": {
+    "truly_observed_by_rule": 0.9947,
+    "claimed_by_rule": 0.996,
+    "false_observed_by_rule": 0.004,
+    "claimed_observed": 0.4689,
+    "truly_seen": 1.0,
+    "sensitivity": null
+   }
+  },
+  "rows": {
+   "meter.height": {
+    "err_in": -25.071,
+    "gt": 1.524,
+    "status": "scored"
+   },
+   "corner.s[c1]": {
+    "err_in": null,
+    "gt": 3.0179,
+    "status": "missing"
+   },
+   "corner.turn[c1]": {
+    "err_in": null,
+    "gt": 91.11,
+    "status": "missing"
+   },
+   "corner.s[c2]": {
+    "err_in": null,
+    "gt": 6.5604,
+    "status": "missing"
+   },
+   "corner.turn[c2]": {
+    "err_in": null,
+    "gt": -91.08,
+    "status": "missing"
+   },
+   "wall.length[w1]": {
+    "err_in": -264.413,
+    "gt": 15.85,
+    "status": "extent_limited"
+   },
+   "wall.length[w2]": {
+    "err_in": null,
+    "gt": 3.5426,
+    "status": "missing"
+   },
+   "wall.length[w3]": {
+    "err_in": null,
+    "gt": 4.9485,
+    "status": "missing"
+   },
+   "opening.edge_s[win1:left]": {
+    "err_in": null,
+    "gt": -12.2164,
+    "status": "missing"
+   },
+   "opening.edge_s[win1:right]": {
+    "err_in": null,
+    "gt": -10.6588,
+    "status": "missing"
+   },
+   "opening.bottom[win1]": {
+    "err_in": null,
+    "gt": 0.9144,
+    "status": "missing"
+   },
+   "opening.top[win1]": {
+    "err_in": null,
+    "gt": 3.3882,
+    "status": "missing"
+   },
+   "opening.width[win1]": {
+    "err_in": null,
+    "gt": 1.5576,
+    "status": "missing"
+   },
+   "opening.edge_s[win2:left]": {
+    "err_in": null,
+    "gt": -8.9181,
+    "status": "missing"
+   },
+   "opening.edge_s[win2:right]": {
+    "err_in": null,
+    "gt": -7.3281,
+    "status": "missing"
+   },
+   "opening.bottom[win2]": {
+    "err_in": null,
+    "gt": 0.8755,
+    "status": "missing"
+   },
+   "opening.top[win2]": {
+    "err_in": null,
+    "gt": 3.4292,
+    "status": "missing"
+   },
+   "opening.width[win2]": {
+    "err_in": null,
+    "gt": 1.59,
+    "status": "missing"
+   },
+   "opening.edge_s[win3:left]": {
+    "err_in": -0.677,
+    "gt": -5.6655,
+    "status": "scored"
+   },
+   "opening.edge_s[win3:right]": {
+    "err_in": -2.307,
+    "gt": -4.043,
+    "status": "scored"
+   },
+   "opening.bottom[win3]": {
+    "err_in": -24.087,
+    "gt": 0.958,
+    "status": "scored"
+   },
+   "opening.top[win3]": {
+    "err_in": -24.02,
+    "gt": 3.5282,
+    "status": "scored"
+   },
+   "opening.width[win3]": {
+    "err_in": -1.63,
+    "gt": 1.6225,
+    "status": "scored"
+   },
+   "opening.edge_s[win4:left]": {
+    "err_in": -2.579,
+    "gt": -2.4778,
+    "status": "scored"
+   },
+   "opening.edge_s[win4:right]": {
+    "err_in": -1.39,
+    "gt": -0.7831,
+    "status": "scored"
+   },
+   "opening.bottom[win4]": {
+    "err_in": -24.646,
+    "gt": 1.0116,
+    "status": "scored"
+   },
+   "opening.top[win4]": {
+    "err_in": -22.366,
+    "gt": 3.5756,
+    "status": "scored"
+   },
+   "opening.width[win4]": {
+    "err_in": 1.189,
+    "gt": 1.6947,
+    "status": "scored"
+   },
+   "opening.edge_s[win5:left]": {
+    "err_in": 1.606,
+    "gt": 0.7754,
+    "status": "scored"
+   },
+   "opening.edge_s[win5:right]": {
+    "err_in": 5.634,
+    "gt": 2.4127,
+    "status": "scored"
+   },
+   "opening.bottom[win5]": {
+    "err_in": -25.606,
+    "gt": 1.0732,
+    "status": "scored"
+   },
+   "opening.top[win5]": {
+    "err_in": -20.669,
+    "gt": 3.6508,
+    "status": "scored"
+   },
+   "opening.width[win5]": {
+    "err_in": 4.028,
+    "gt": 1.6373,
+    "status": "scored"
+   },
+   "opening.edge_s[win_w2_arch:left]": {
+    "err_in": null,
+    "gt": 3.3227,
+    "status": "missing"
+   },
+   "opening.edge_s[win_w2_arch:right]": {
+    "err_in": null,
+    "gt": 4.9991,
+    "status": "missing"
+   },
+   "opening.bottom[win_w2_arch]": {
+    "err_in": null,
+    "gt": 1.0668,
+    "status": "missing"
+   },
+   "opening.top[win_w2_arch]": {
+    "err_in": null,
+    "gt": 3.9624,
+    "status": "missing"
+   },
+   "opening.width[win_w2_arch]": {
+    "err_in": null,
+    "gt": 1.6764,
+    "status": "missing"
+   },
+   "opening.edge_s[door:left]": {
+    "err_in": null,
+    "gt": 7.2624,
+    "status": "missing"
+   },
+   "opening.edge_s[door:right]": {
+    "err_in": null,
+    "gt": 9.4522,
+    "status": "missing"
+   },
+   "opening.bottom[door]": {
+    "err_in": null,
+    "gt": 0.2116,
+    "status": "missing"
+   },
+   "opening.top[door]": {
+    "err_in": null,
+    "gt": 4.074,
+    "status": "missing"
+   },
+   "opening.width[door]": {
+    "err_in": null,
+    "gt": 2.1898,
+    "status": "missing"
+   },
+   "opening.gap[win1~win2]": {
+    "err_in": null,
+    "gt": 1.7407,
+    "status": "missing"
+   },
+   "opening.gap[win2~win3]": {
+    "err_in": null,
+    "gt": 1.6626,
+    "status": "missing"
+   },
+   "opening.gap[win3~win4]": {
+    "err_in": -0.272,
+    "gt": 1.5652,
+    "status": "scored"
+   },
+   "opening.gap[win4~win5]": {
+    "err_in": 2.996,
+    "gt": 1.5585,
+    "status": "scored"
+   },
+   "opening.gap[win5~win_w2_arch]": {
+    "err_in": null,
+    "gt": 0.91,
+    "status": "missing"
+   },
+   "opening.gap[win_w2_arch~door]": {
+    "err_in": null,
+    "gt": 2.2633,
+    "status": "missing"
+   },
+   "facing.depth[w1@2.79]": {
+    "err_in": null,
+    "gt": 0.309,
+    "status": "missing"
+   },
+   "facing.depth[w2@3.14]": {
+    "err_in": null,
+    "gt": 0.315,
+    "status": "missing"
+   },
+   "facing.depth[w3@6.68]": {
+    "err_in": null,
+    "gt": 0.749,
+    "status": "missing"
+   },
+   "facing.depth[w3@6.93]": {
+    "err_in": null,
+    "gt": 0.749,
+    "status": "missing"
+   },
+   "facing.depth[w3@9.94]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "facing.depth[w3@10.19]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "facing.depth[w3@10.44]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "overhead.clearance[w1@2.79]": {
+    "err_in": null,
+    "gt": 2.136,
+    "status": "missing"
+   }
+  },
+  "score_s": 39.3
+ },
+ "c1": {
+  "g80": {
+   "decision": "manual_review",
+   "reasons": [
+    "unsure_checks",
+    "unobserved_area",
+    "unexplored_end"
+   ],
+   "n_criteria": 13,
+   "outcomes": {
+    "unsure": 11,
+    "pass": 2
+   },
+   "decidable_share": 0.15384615384615385,
+   "unsure_causes": {
+    "unobserved": 10,
+    "margin": 1
+   },
+   "by_criterion": {
+    "wall_backing": {
+     "unsure": 1
+    },
+    "ground_surface": {
+     "unsure": 1
+    },
+    "meter_working_space": {
+     "pass": 1
+    },
+    "gas_clearance": {
+     "unsure": 1
+    },
+    "ac_clearance": {
+     "unsure": 1
+    },
+    "drive_clearance": {
+     "unsure": 1
+    },
+    "pool_clearance": {
+     "unsure": 1
+    },
+    "opening_clearance": {
+     "unsure": 1
+    },
+    "wall_equipment_above": {
+     "unsure": 1
+    },
+    "facing_gap": {
+     "unsure": 1
+    },
+    "headroom": {
+     "unsure": 1
+    },
+    "route_path": {
+     "unsure": 1
+    },
+    "route_length": {
+     "pass": 1
+    }
+   },
+   "views_needed": [
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -4.923,
+      0.0
+     ],
+     "criteria": [
+      "gas_clearance",
+      "opening_clearance",
+      "route_path",
+      "wall_backing",
+      "wall_equipment_above"
+     ],
+     "why": "Show the wall from 16 ft 2 in left of the meter to the meter.",
+     "band": "wall",
+     "id": "vn1"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -5.934,
+      0.422
+     ],
+     "criteria": [
+      "ac_clearance",
+      "drive_clearance",
+      "gas_clearance",
+      "ground_surface",
+      "opening_clearance",
+      "pool_clearance"
+     ],
+     "why": "Show the ground in front of the wall from 19 ft 6 in left of the meter to 1 ft 5 in right of the meter, at least 12 ft 10 in out from the wall.",
+     "band": "ground",
+     "out_m": 3.906,
+     "target": "downward photo of the ground in front of this wall, from chest height",
+     "id": "vn2"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -3.712,
+      -3.434
+     ],
+     "criteria": [
+      "facing_gap"
+     ],
+     "why": "Show the gap in front of the wall from 12 ft 2 in left of the meter to 11 ft 3 in left of the meter, clear at least 4 ft 10 in out from the wall.",
+     "band": "facing",
+     "out_m": 1.473,
+     "id": "vn3"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -3.184,
+      -2.934
+     ],
+     "criteria": [
+      "facing_gap"
+     ],
+     "why": "Show the gap in front of the wall from 10 ft 5 in left of the meter to 9 ft 8 in left of the meter, clear at least 4 ft 10 in out from the wall.",
+     "band": "facing",
+     "out_m": 1.473,
+     "id": "vn4"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -3.712,
+      -2.925
+     ],
+     "criteria": [
+      "headroom"
+     ],
+     "why": "Show the space overhead from 12 ft 2 in left of the meter to 9 ft 7 in left of the meter, clear at least 6 ft 6 in up.",
+     "band": "overhead",
+     "out_m": 1.981,
+     "id": "vn5"
+    },
+    {
+     "kind": "past_end",
+     "wall_id": "w1",
+     "s_m": [
+      -5.934,
+      -5.934
+     ],
+     "criteria": [],
+     "why": "Keep walking past the left end of the scan (19 ft 6 in left of the meter): a spot within reach may be there.",
+     "side": "left",
+     "id": "vn6"
+    },
+    {
+     "kind": "past_end",
+     "wall_id": "w1",
+     "s_m": [
+      3.2,
+      3.2
+     ],
+     "criteria": [],
+     "why": "Keep walking past the right end of the scan (10 ft 6 in right of the meter): a spot within reach may be there.",
+     "side": "right",
+     "id": "vn7"
+    }
+   ],
+   "candidates": 14
+  },
+  "g75": {
+   "decision": "manual_review",
+   "reasons": [
+    "unsure_checks",
+    "unobserved_area",
+    "unexplored_end"
+   ],
+   "n_criteria": 13,
+   "outcomes": {
+    "unsure": 11,
+    "pass": 2
+   },
+   "decidable_share": 0.15384615384615385,
+   "unsure_causes": {
+    "unobserved": 10,
+    "margin": 1
+   },
+   "by_criterion": {
+    "wall_backing": {
+     "unsure": 1
+    },
+    "ground_surface": {
+     "unsure": 1
+    },
+    "meter_working_space": {
+     "pass": 1
+    },
+    "gas_clearance": {
+     "unsure": 1
+    },
+    "ac_clearance": {
+     "unsure": 1
+    },
+    "drive_clearance": {
+     "unsure": 1
+    },
+    "pool_clearance": {
+     "unsure": 1
+    },
+    "opening_clearance": {
+     "unsure": 1
+    },
+    "wall_equipment_above": {
+     "unsure": 1
+    },
+    "facing_gap": {
+     "unsure": 1
+    },
+    "headroom": {
+     "unsure": 1
+    },
+    "route_path": {
+     "unsure": 1
+    },
+    "route_length": {
+     "pass": 1
+    }
+   },
+   "views_needed": [
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -4.923,
+      0.0
+     ],
+     "criteria": [
+      "gas_clearance",
+      "opening_clearance",
+      "route_path",
+      "wall_backing",
+      "wall_equipment_above"
+     ],
+     "why": "Show the wall from 16 ft 2 in left of the meter to the meter.",
+     "band": "wall",
+     "id": "vn1"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -5.934,
+      0.422
+     ],
+     "criteria": [
+      "ac_clearance",
+      "drive_clearance",
+      "gas_clearance",
+      "ground_surface",
+      "opening_clearance",
+      "pool_clearance"
+     ],
+     "why": "Show the ground in front of the wall from 19 ft 6 in left of the meter to 1 ft 5 in right of the meter, at least 12 ft 10 in out from the wall.",
+     "band": "ground",
+     "out_m": 3.906,
+     "target": "downward photo of the ground in front of this wall, from chest height",
+     "id": "vn2"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -3.712,
+      -3.434
+     ],
+     "criteria": [
+      "facing_gap"
+     ],
+     "why": "Show the gap in front of the wall from 12 ft 2 in left of the meter to 11 ft 3 in left of the meter, clear at least 4 ft 10 in out from the wall.",
+     "band": "facing",
+     "out_m": 1.473,
+     "id": "vn3"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -3.184,
+      -2.934
+     ],
+     "criteria": [
+      "facing_gap"
+     ],
+     "why": "Show the gap in front of the wall from 10 ft 5 in left of the meter to 9 ft 8 in left of the meter, clear at least 4 ft 10 in out from the wall.",
+     "band": "facing",
+     "out_m": 1.473,
+     "id": "vn4"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -3.712,
+      -2.925
+     ],
+     "criteria": [
+      "headroom"
+     ],
+     "why": "Show the space overhead from 12 ft 2 in left of the meter to 9 ft 7 in left of the meter, clear at least 6 ft 6 in up.",
+     "band": "overhead",
+     "out_m": 1.981,
+     "id": "vn5"
+    },
+    {
+     "kind": "past_end",
+     "wall_id": "w1",
+     "s_m": [
+      -5.934,
+      -5.934
+     ],
+     "criteria": [],
+     "why": "Keep walking past the left end of the scan (19 ft 6 in left of the meter): a spot within reach may be there.",
+     "side": "left",
+     "id": "vn6"
+    },
+    {
+     "kind": "past_end",
+     "wall_id": "w1",
+     "s_m": [
+      3.2,
+      3.2
+     ],
+     "criteria": [],
+     "why": "Keep walking past the right end of the scan (10 ft 6 in right of the meter): a spot within reach may be there.",
+     "side": "right",
+     "id": "vn7"
+    }
+   ],
+   "candidates": 14
+  }
+ },
+ "total_s": 148.4
+}

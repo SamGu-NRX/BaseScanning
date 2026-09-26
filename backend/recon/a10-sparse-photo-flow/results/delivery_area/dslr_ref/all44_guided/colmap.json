@@ -1,0 +1,29 @@
+{
+ "db": {
+  "images": 44,
+  "extract_s": 36.62560987472534,
+  "match_s": 33.42316770553589,
+  "prior_drawn_scale": 0.9953959086124723
+ },
+ "mapper_s": 13.0,
+ "models": 1,
+ "registered": 44,
+ "model_sizes": [
+  44
+ ],
+ "points3D": 19760,
+ "mean_reproj_px": 0.30915020195795684,
+ "centre_rms_sim3_m": 0.003916548627077812,
+ "centres_within_0p3m": 44,
+ "score_args": [
+  "--cameras",
+  "/home/ubuntu/a10/runs/delivery_area/dslr_ref/all44_guided/colmap/model"
+ ],
+ "scene": "delivery_area",
+ "quality": "dslr_ref",
+ "set": "all44_guided",
+ "method": "colmap",
+ "n": 44,
+ "score_error": ".exit(main())\n             ^^^^^^\n  File \"/home/ubuntu/a10/harness/evalharness/cli.py\", line 114, in main\n    r = score_cloud(a.gt, a.cloud, a.cameras, a.out, a.metric, producer=a.producer,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/a10/harness/evalharness/geomscore.py\", line 501, in score_cloud\n    scene, st = extract_scene(Xw, tracks, cams, taps, feats, p, prov, f\"{gt['provenance']['site']}/{producer}\", \"producer_cloud\", T)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/a10/harness/evalharness/extract.py\", line 262, in extract_scene\n    raise RuntimeError(\"meter clicks hit no wall\")\nRuntimeError: meter clicks hit no wall\n",
+ "total_s": 32.5
+}

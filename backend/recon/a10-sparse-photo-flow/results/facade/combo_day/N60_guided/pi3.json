@@ -1,0 +1,497 @@
+{
+ "infer_s": 534.2,
+ "net": [
+  518,
+  392
+ ],
+ "registered": 48,
+ "centre_rms_sim3_m": 0.4417345626743595,
+ "rot_err_median_deg": 1.0551181877020703,
+ "centres_within_0p3m": 48,
+ "score_args": [
+  "--cameras",
+  "/home/ubuntu/a10/runs/facade/combo_day/N60_guided/pi3/cameras.json",
+  "--metric",
+  "--transform",
+  "/home/ubuntu/a10/runs/facade/combo_day/N60_guided/pi3/transform.json"
+ ],
+ "scene": "facade",
+ "quality": "combo_day",
+ "set": "N60_guided",
+ "method": "pi3",
+ "n": 60,
+ "score": {
+  "kd": {
+   "n": 12,
+   "median_in": 3.92,
+   "p90_in": 17.55,
+   "max_in": 21.18,
+   "share_le_2in": 0.25,
+   "share_le_4in": 0.5,
+   "share_le_6in": 0.583,
+   "calibration": 1.0
+  },
+  "kd_observed": {
+   "n": 11,
+   "median_in": 3.19,
+   "p90_in": 18.0,
+   "max_in": 21.18,
+   "share_le_2in": 0.273,
+   "share_le_4in": 0.545,
+   "share_le_6in": 0.545,
+   "calibration": 1.0
+  },
+  "status": {
+   "scored": 12,
+   "missing": 44,
+   "extent_limited": 1,
+   "phantom": 15,
+   "scale_reference": 0
+  },
+  "false_observed_claims": 0,
+  "scale_error_pct": null,
+  "cloud_scale_error_pct": null,
+  "anchor_m": 0.6007,
+  "completeness_10cm_icp": {
+   "meter_wall": 0.7682,
+   "wall_face": 0.7092,
+   "ground_strip": 0.0633,
+   "overhead": 0.5069
+  },
+  "coverage_by_rule": {
+   "meter_wall": {
+    "truly_observed_by_rule": 0.9992,
+    "claimed_by_rule": 0.2973,
+    "false_observed_by_rule": 0.0,
+    "claimed_observed": 0.2916,
+    "truly_seen": 0.9995,
+    "sensitivity": null
+   },
+   "wall_face": {
+    "truly_observed_by_rule": 0.8942,
+    "claimed_by_rule": 0.3011,
+    "false_observed_by_rule": 0.0011,
+    "claimed_observed": 0.3358,
+    "truly_seen": 0.902,
+    "sensitivity": null
+   },
+   "ground_strip": {
+    "truly_observed_by_rule": 0.1099,
+    "claimed_by_rule": 0.0,
+    "false_observed_by_rule": 0.0,
+    "claimed_observed": 0.0304,
+    "truly_seen": 0.0316,
+    "sensitivity": [
+     {
+      "max_incidence_deg": 75.0,
+      "truth_by_rule": "grazing",
+      "truly_observed_by_rule": 0.0,
+      "truly_grazing_only": 0.5079,
+      "rule_id": "angle75",
+      "claimed_by_rule": 0.0,
+      "false_observed_by_rule": 0.0
+     },
+     {
+      "max_incidence_deg": 80.0,
+      "truth_by_rule": "partial",
+      "truly_observed_by_rule": 0.1099,
+      "truly_grazing_only": 0.398,
+      "rule_id": "angle80",
+      "claimed_by_rule": 0.0,
+      "false_observed_by_rule": 0.0
+     },
+     {
+      "max_incidence_deg": 88.0,
+      "truth_by_rule": "partial",
+      "truly_observed_by_rule": 0.3916,
+      "truly_grazing_only": 0.1163,
+      "rule_id": "footprint3in",
+      "max_footprint_m": 0.0762,
+      "claimed_by_rule": 0.0001,
+      "false_observed_by_rule": 0.0
+     }
+    ]
+   },
+   "overhead": {
+    "truly_observed_by_rule": 0.9947,
+    "claimed_by_rule": 0.6177,
+    "false_observed_by_rule": 0.004,
+    "claimed_observed": 0.5589,
+    "truly_seen": 1.0,
+    "sensitivity": null
+   }
+  },
+  "rows": {
+   "meter.height": {
+    "err_in": -0.134,
+    "gt": 1.524,
+    "status": "scored"
+   },
+   "corner.s[c1]": {
+    "err_in": null,
+    "gt": 3.0179,
+    "status": "missing"
+   },
+   "corner.turn[c1]": {
+    "err_in": null,
+    "gt": 91.11,
+    "status": "missing"
+   },
+   "corner.s[c2]": {
+    "err_in": null,
+    "gt": 6.5604,
+    "status": "missing"
+   },
+   "corner.turn[c2]": {
+    "err_in": null,
+    "gt": -91.08,
+    "status": "missing"
+   },
+   "wall.length[w1]": {
+    "err_in": -219.673,
+    "gt": 15.85,
+    "status": "extent_limited"
+   },
+   "wall.length[w2]": {
+    "err_in": null,
+    "gt": 3.5426,
+    "status": "missing"
+   },
+   "wall.length[w3]": {
+    "err_in": null,
+    "gt": 4.9485,
+    "status": "missing"
+   },
+   "opening.edge_s[win1:left]": {
+    "err_in": null,
+    "gt": -12.2164,
+    "status": "missing"
+   },
+   "opening.edge_s[win1:right]": {
+    "err_in": null,
+    "gt": -10.6588,
+    "status": "missing"
+   },
+   "opening.bottom[win1]": {
+    "err_in": null,
+    "gt": 0.9144,
+    "status": "missing"
+   },
+   "opening.top[win1]": {
+    "err_in": null,
+    "gt": 3.3882,
+    "status": "missing"
+   },
+   "opening.width[win1]": {
+    "err_in": null,
+    "gt": 1.5576,
+    "status": "missing"
+   },
+   "opening.edge_s[win2:left]": {
+    "err_in": null,
+    "gt": -8.9181,
+    "status": "missing"
+   },
+   "opening.edge_s[win2:right]": {
+    "err_in": null,
+    "gt": -7.3281,
+    "status": "missing"
+   },
+   "opening.bottom[win2]": {
+    "err_in": null,
+    "gt": 0.8755,
+    "status": "missing"
+   },
+   "opening.top[win2]": {
+    "err_in": null,
+    "gt": 3.4292,
+    "status": "missing"
+   },
+   "opening.width[win2]": {
+    "err_in": null,
+    "gt": 1.59,
+    "status": "missing"
+   },
+   "opening.edge_s[win3:left]": {
+    "err_in": null,
+    "gt": -5.6655,
+    "status": "missing"
+   },
+   "opening.edge_s[win3:right]": {
+    "err_in": null,
+    "gt": -4.043,
+    "status": "missing"
+   },
+   "opening.bottom[win3]": {
+    "err_in": null,
+    "gt": 0.958,
+    "status": "missing"
+   },
+   "opening.top[win3]": {
+    "err_in": null,
+    "gt": 3.5282,
+    "status": "missing"
+   },
+   "opening.width[win3]": {
+    "err_in": null,
+    "gt": 1.6225,
+    "status": "missing"
+   },
+   "opening.edge_s[win4:left]": {
+    "err_in": -21.181,
+    "gt": -2.4778,
+    "status": "scored"
+   },
+   "opening.edge_s[win4:right]": {
+    "err_in": -3.185,
+    "gt": -0.7831,
+    "status": "scored"
+   },
+   "opening.bottom[win4]": {
+    "err_in": 2.453,
+    "gt": 1.0116,
+    "status": "scored"
+   },
+   "opening.top[win4]": {
+    "err_in": 3.02,
+    "gt": 3.5756,
+    "status": "scored"
+   },
+   "opening.width[win4]": {
+    "err_in": 17.996,
+    "gt": 1.6947,
+    "status": "scored"
+   },
+   "opening.edge_s[win5:left]": {
+    "err_in": 1.469,
+    "gt": 0.7754,
+    "status": "scored"
+   },
+   "opening.edge_s[win5:right]": {
+    "err_in": 13.547,
+    "gt": 2.4127,
+    "status": "scored"
+   },
+   "opening.bottom[win5]": {
+    "err_in": 0.508,
+    "gt": 1.0732,
+    "status": "scored"
+   },
+   "opening.top[win5]": {
+    "err_in": -10.287,
+    "gt": 3.6508,
+    "status": "scored"
+   },
+   "opening.width[win5]": {
+    "err_in": 12.079,
+    "gt": 1.6373,
+    "status": "scored"
+   },
+   "opening.edge_s[win_w2_arch:left]": {
+    "err_in": null,
+    "gt": 3.3227,
+    "status": "missing"
+   },
+   "opening.edge_s[win_w2_arch:right]": {
+    "err_in": null,
+    "gt": 4.9991,
+    "status": "missing"
+   },
+   "opening.bottom[win_w2_arch]": {
+    "err_in": null,
+    "gt": 1.0668,
+    "status": "missing"
+   },
+   "opening.top[win_w2_arch]": {
+    "err_in": null,
+    "gt": 3.9624,
+    "status": "missing"
+   },
+   "opening.width[win_w2_arch]": {
+    "err_in": null,
+    "gt": 1.6764,
+    "status": "missing"
+   },
+   "opening.edge_s[door:left]": {
+    "err_in": null,
+    "gt": 7.2624,
+    "status": "missing"
+   },
+   "opening.edge_s[door:right]": {
+    "err_in": null,
+    "gt": 9.4522,
+    "status": "missing"
+   },
+   "opening.bottom[door]": {
+    "err_in": null,
+    "gt": 0.2116,
+    "status": "missing"
+   },
+   "opening.top[door]": {
+    "err_in": null,
+    "gt": 4.074,
+    "status": "missing"
+   },
+   "opening.width[door]": {
+    "err_in": null,
+    "gt": 2.1898,
+    "status": "missing"
+   },
+   "opening.gap[win1~win2]": {
+    "err_in": null,
+    "gt": 1.7407,
+    "status": "missing"
+   },
+   "opening.gap[win2~win3]": {
+    "err_in": null,
+    "gt": 1.6626,
+    "status": "missing"
+   },
+   "opening.gap[win3~win4]": {
+    "err_in": null,
+    "gt": 1.5652,
+    "status": "missing"
+   },
+   "opening.gap[win4~win5]": {
+    "err_in": 4.654,
+    "gt": 1.5585,
+    "status": "scored"
+   },
+   "opening.gap[win5~win_w2_arch]": {
+    "err_in": null,
+    "gt": 0.91,
+    "status": "missing"
+   },
+   "opening.gap[win_w2_arch~door]": {
+    "err_in": null,
+    "gt": 2.2633,
+    "status": "missing"
+   },
+   "facing.depth[w1@2.79]": {
+    "err_in": null,
+    "gt": 0.309,
+    "status": "missing"
+   },
+   "facing.depth[w2@3.14]": {
+    "err_in": null,
+    "gt": 0.315,
+    "status": "missing"
+   },
+   "facing.depth[w3@6.68]": {
+    "err_in": null,
+    "gt": 0.749,
+    "status": "missing"
+   },
+   "facing.depth[w3@6.93]": {
+    "err_in": null,
+    "gt": 0.749,
+    "status": "missing"
+   },
+   "facing.depth[w3@9.94]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "facing.depth[w3@10.19]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "facing.depth[w3@10.44]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "overhead.clearance[w1@2.79]": {
+    "err_in": null,
+    "gt": 2.136,
+    "status": "missing"
+   },
+   "corner.s[rc:c1]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "corner.turn[rc:c1]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "corner.s[rc:c2]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "corner.turn[rc:c2]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "corner.s[rc:c3]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "corner.turn[rc:c3]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "wall.length[rc:w2]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "wall.length[rc:w3]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "wall.length[rc:w4]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.edge_s[rc:door:left]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.edge_s[rc:door:right]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.bottom[rc:door]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.top[rc:door]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.width[rc:door]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.gap[win5~rc:door]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   }
+  },
+  "score_s": 86.9
+ },
+ "c1": {
+  "g80": {
+   "error": "arse_scene\n    span = _span(obj[\"span_ft\"], f\"{path}/span_ft\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/a10/harness/vendor/hs11_server/scene.py\", line 485, in _span\n    raise SceneError(path, f\"span_ft must be [start, end] with start <= end, got [{a}, {b}]\")\nscene.SceneError: /objects/2/span_ft: span_ft must be [start, end] with start <= end, got [38.7201, 35.2749]\n"
+  },
+  "g75": {
+   "error": "arse_scene\n    span = _span(obj[\"span_ft\"], f\"{path}/span_ft\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/a10/harness/vendor/hs11_server/scene.py\", line 485, in _span\n    raise SceneError(path, f\"span_ft must be [start, end] with start <= end, got [{a}, {b}]\")\nscene.SceneError: /objects/2/span_ft: span_ft must be [start, end] with start <= end, got [38.7201, 35.2749]\n"
+  }
+ },
+ "total_s": 656.5
+}
