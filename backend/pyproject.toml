@@ -41,7 +41,7 @@ ignore = ["E501"]
 # Tighten these once upstream is clean.
 [tool.ruff.lint.per-file-ignores]
 "{packet,eval,criteria/spec,data}/**" = ["B", "UP", "I001", "F401", "F841"]
-"{recon,scene,criteria}/[abc][1-5]-*/**" = ["B", "UP", "I001", "F401", "F841", "E4", "E7", "W"]
+"{recon,scene,criteria}/[abc][1-8]-*/**" = ["B", "UP", "I001", "F401", "F841", "E4", "E7", "W"]
 
 [tool.ruff.format]
 exclude = ["packet/**", "eval/**", "criteria/spec/**", "data/**", "recon/**", "scene/**", "criteria/c[1-3]-*/**"]
