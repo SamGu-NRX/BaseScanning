@@ -4,6 +4,7 @@
 # Usage: scripts/sync_breadth.sh [--no-push] <path-id>... | --all
 #   Path ids: a1-classical a2-feedforward a3-depth-fusion a5-world-models
 #             a6-iphone-quality a7-iphone-degradation a8-scale-without-lidar
+#             a9-no-tape-scale
 #             b1-detection b2-equipment-reading c1-rules-3d c2-volumetric c3-vlm
 #
 # Each branch starts from origin/breadth/<path-id> if it exists, otherwise origin/main, and is
@@ -36,6 +37,7 @@ path_spec() {  # path-id -> "store-folder repo-folder result-file-prefix"
     a6-iphone-quality) echo "a6-iphone-quality recon/a6-iphone-quality A6-" ;;
     a7-iphone-degradation) echo "a7-iphone-degradation recon/a7-iphone-degradation A7-" ;;
     a8-scale-without-lidar) echo "a8-scale recon/a8-scale-without-lidar A8-" ;;
+    a9-no-tape-scale) echo "a9-no-tape recon/a9-no-tape-scale A9-" ;;
     b1-detection) echo "b1-detection scene/b1-detection B1-" ;;
     b2-equipment-reading) echo "b2 scene/b2-equipment-reading B2-" ;;
     c1-rules-3d) echo "c1-rules-3d criteria/c1-rules-3d C1-" ;;
@@ -49,7 +51,7 @@ ids=()
 for arg in "$@"; do
   case "$arg" in
     --no-push) PUSH=0 ;;
-    --all) ids=(a1-classical a2-feedforward a3-depth-fusion a5-world-models a6-iphone-quality a7-iphone-degradation a8-scale-without-lidar b1-detection b2-equipment-reading c1-rules-3d c2-volumetric c3-vlm) ;;
+    --all) ids=(a1-classical a2-feedforward a3-depth-fusion a5-world-models a6-iphone-quality a7-iphone-degradation a8-scale-without-lidar a9-no-tape-scale b1-detection b2-equipment-reading c1-rules-3d c2-volumetric c3-vlm) ;;
     *) ids+=("$arg") ;;
   esac
 done
