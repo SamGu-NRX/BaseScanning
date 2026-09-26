@@ -1,0 +1,31 @@
+{
+ "metric_scale_factor": 2.383882,
+ "points": 1300023,
+ "runtime_s": 254.8,
+ "images": {
+  "t0007.67": {
+   "ok": false
+  },
+  "t0009.33": {
+   "ok": false
+  },
+  "t0010.67": {
+   "ok": false
+  },
+  "t0012.33": {
+   "ok": false
+  },
+  "t0014.00": {
+   "ok": false
+  },
+  "t0017.00": {
+   "ok": false
+  },
+  "t0018.67": {
+   "ok": false
+  },
+  "t0021.67": {
+   "ok": false
+  }
+ }
+}

@@ -1,0 +1,15 @@
+Loaded LightGlue model
+DSC_9269 {'iter': 0, 'matches': 714, 'with_depth': 714, 'inliers': 269, 'reproj_median_px': 5.2, 'centre_moved_m': 0.003, 'ok': True}
+DSC_9270 {'iter': 0, 'matches': 708, 'with_depth': 708, 'inliers': 222, 'reproj_median_px': 5.35, 'centre_moved_m': 0.004, 'ok': True}
+DSC_9271 {'iter': 0, 'matches': 728, 'with_depth': 728, 'inliers': 217, 'reproj_median_px': 5.25, 'centre_moved_m': 0.005, 'ok': True}
+DSC_9272 {'iter': 5, 'matches': 135, 'with_depth': 135, 'inliers': 34, 'reproj_median_px': 5.56, 'centre_moved_m': 0.092, 'ok': False}
+DSC_9300 {'iter': 0, 'matches': 26, 'inliers': 7, 'ok': False}
+DSC_9301 FAILED
+DSC_9302 {'iter': 2, 'matches': 21, 'inliers': 6, 'ok': False}
+DSC_9303 {'iter': 0, 'matches': 4, 'inliers': 0, 'ok': False}
+DSC_9272 pass2 {'iter': 5, 'matches': 68, 'with_depth': 68, 'inliers': 19, 'reproj_median_px': 4.97, 'centre_moved_m': 0.203, 'ok': False, 'seeded_from': 'DSC_9271'}
+DSC_9300 pass2 {'iter': 0, 'matches': 36, 'inliers': 8, 'ok': False, 'seeded_from': 'DSC_9270'}
+DSC_9301 pass2 {'iter': 1, 'matches': 12, 'inliers': 6, 'ok': False, 'seeded_from': 'DSC_9269'}
+DSC_9302 pass2 {'iter': 1, 'matches': 7, 'inliers': 0, 'ok': False, 'seeded_from': 'DSC_9270'}
+DSC_9303 pass2 {'iter': 1, 'matches': 2, 'inliers': 0, 'ok': False, 'seeded_from': 'DSC_9271'}
+registered 3 / 8 in 266 s

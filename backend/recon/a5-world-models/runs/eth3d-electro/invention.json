@@ -1,0 +1,118 @@
+{
+ "cameras_registered": [
+  "DSC_9269",
+  "DSC_9270",
+  "DSC_9271"
+ ],
+ "input_cameras_for_truth": [
+  "DSC_9269",
+  "DSC_9270",
+  "DSC_9271",
+  "DSC_9272",
+  "DSC_9300",
+  "DSC_9301",
+  "DSC_9302",
+  "DSC_9303"
+ ],
+ "metric_scale_factor_applied": true,
+ "oracle_similarity_scale": 0.893,
+ "oracle_scale_error_pct_of_marble_metric": 11.99,
+ "oracle_scale_scan": "given oracle transform eth3d-electro/T_shape.json",
+ "roi": {
+  "lo": [
+   -14.88,
+   -0.5,
+   -2.11
+  ],
+  "hi": [
+   7.02,
+   6.0,
+   16.09
+  ],
+  "note": "GT coverage-grid box = criteria area around the meter"
+ },
+ "metric_camera_rigid": {
+  "points_in_roi": 903445,
+  "points_sampled": 300000,
+  "producer_flag_generated_share": 0.6042,
+  "flag_vs_truth": {
+   "flag_and_truly_unseen": 0.5632,
+   "flag_but_truly_seen": 0.0411,
+   "not_flagged_but_truly_unseen": 0.0583
+  },
+  "classes": {
+   "outside_all_input_frusta": {
+    "share": 0.6123,
+    "ground_share": 0.9122,
+    "checkable_share": 0.5516,
+    "disagree_share_of_checkable": 0.5095,
+    "disagree_share_of_checkable_above_ground": 0.8452,
+    "median_dist_to_laser_m": 1.266
+   },
+   "in_frustum_but_hidden": {
+    "share": 0.0092,
+    "ground_share": 0.061,
+    "checkable_share": 1.0,
+    "disagree_share_of_checkable": 0.4271,
+    "disagree_share_of_checkable_above_ground": 0.4266,
+    "median_dist_to_laser_m": 0.283
+   },
+   "seen": {
+    "share": 0.3786,
+    "ground_share": 0.6738,
+    "checkable_share": 0.9884,
+    "disagree_share_of_checkable": 0.0877,
+    "disagree_share_of_checkable_above_ground": 0.2309,
+    "median_dist_to_laser_m": 0.067
+   }
+  },
+  "producer_flagged": {
+   "disagree_share_of_checkable": 0.5602
+  },
+  "producer_unflagged": {
+   "disagree_share_of_checkable": 0.0647
+  }
+ },
+ "oracle_similarity_icp": {
+  "points_in_roi": 920313,
+  "points_sampled": 300000,
+  "producer_flag_generated_share": 0.6095,
+  "flag_vs_truth": {
+   "flag_and_truly_unseen": 0.5488,
+   "flag_but_truly_seen": 0.0606,
+   "not_flagged_but_truly_unseen": 0.0001
+  },
+  "classes": {
+   "outside_all_input_frusta": {
+    "share": 0.5474,
+    "ground_share": 0.8899,
+    "checkable_share": 0.6719,
+    "disagree_share_of_checkable": 0.5091,
+    "disagree_share_of_checkable_above_ground": 0.8583,
+    "median_dist_to_laser_m": 0.847
+   },
+   "in_frustum_but_hidden": {
+    "share": 0.0016,
+    "ground_share": 0.0412,
+    "checkable_share": 1.0,
+    "disagree_share_of_checkable": 0.0928,
+    "disagree_share_of_checkable_above_ground": 0.0946,
+    "median_dist_to_laser_m": 0.17
+   },
+   "seen": {
+    "share": 0.451,
+    "ground_share": 0.7033,
+    "checkable_share": 0.9926,
+    "disagree_share_of_checkable": 0.042,
+    "disagree_share_of_checkable_above_ground": 0.1076,
+    "median_dist_to_laser_m": 0.057
+   }
+  },
+  "producer_flagged": {
+   "disagree_share_of_checkable": 0.4603
+  },
+  "producer_unflagged": {
+   "disagree_share_of_checkable": 0.0248
+  }
+ }
+}

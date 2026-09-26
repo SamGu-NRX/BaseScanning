@@ -1,0 +1,864 @@
+{
+ "format": "base-geomscore/v0",
+ "gt": "/home/ubuntu/data/eval-harness/facade-gt/scene.json",
+ "recon": "/home/ubuntu/work/a5/eth3d-facade/scan/s1.45/scene.json",
+ "gt_scene_id": "eth3d-facade/gt-laser",
+ "recon_scene_id": "eth3d-facade/A5-scan-1.45",
+ "producer": "A5-scan-1.45",
+ "match": {
+  "walls": {
+   "w1": "w1"
+  },
+  "corners": {},
+  "objects": {
+   "meter": "meter",
+   "win1": "win2",
+   "win2": "win3",
+   "win4": "win4",
+   "win5": "win5"
+  }
+ },
+ "key_distances": {
+  "overall": {
+   "n": 23,
+   "median_in": 19.08,
+   "p90_in": 29.39,
+   "max_in": 56.96,
+   "share_le_2in": 0.0,
+   "share_le_4in": 0.0,
+   "share_le_6in": 0.087,
+   "calibration": 0.87
+  },
+  "by_category": {
+   "meter.height": {
+    "n": 1,
+    "median_in": 4.03,
+    "p90_in": 4.03,
+    "max_in": 4.03,
+    "share_le_2in": 0.0,
+    "share_le_4in": 0.0,
+    "share_le_6in": 1.0,
+    "calibration": 1.0
+   },
+   "opening.bottom": {
+    "n": 4,
+    "median_in": 15.39,
+    "p90_in": 22.29,
+    "max_in": 24.18,
+    "share_le_2in": 0.0,
+    "share_le_4in": 0.0,
+    "share_le_6in": 0.0,
+    "calibration": 0.75
+   },
+   "opening.edge_s": {
+    "n": 8,
+    "median_in": 21.35,
+    "p90_in": 36.73,
+    "max_in": 56.96,
+    "share_le_2in": 0.0,
+    "share_le_4in": 0.0,
+    "share_le_6in": 0.125,
+    "calibration": 0.75
+   },
+   "opening.gap": {
+    "n": 2,
+    "median_in": 14.27,
+    "p90_in": 15.47,
+    "max_in": 15.76,
+    "share_le_2in": 0.0,
+    "share_le_4in": 0.0,
+    "share_le_6in": 0.0,
+    "calibration": 1.0
+   },
+   "opening.top": {
+    "n": 4,
+    "median_in": 19.4,
+    "p90_in": 20.71,
+    "max_in": 21.14,
+    "share_le_2in": 0.0,
+    "share_le_4in": 0.0,
+    "share_le_6in": 0.0,
+    "calibration": 1.0
+   },
+   "opening.width": {
+    "n": 4,
+    "median_in": 25.92,
+    "p90_in": 31.84,
+    "max_in": 32.75,
+    "share_le_2in": 0.0,
+    "share_le_4in": 0.0,
+    "share_le_6in": 0.0,
+    "calibration": 1.0
+   }
+  },
+  "angles_deg": {
+   "n": 0
+  },
+  "status_counts": {
+   "scored": 23,
+   "missing": 33,
+   "extent_limited": 1,
+   "phantom": 13,
+   "scale_reference": 0
+  },
+  "rows": [
+   {
+    "id": "meter.height",
+    "category": "meter.height",
+    "feeds": "meter_working_space, route_length",
+    "unit": "m",
+    "gt": 1.524,
+    "status": "scored",
+    "recon": 1.6263,
+    "recon_pm": 0.424,
+    "error": 4.028,
+    "within_own_bound": true
+   },
+   {
+    "id": "corner.s[c1]",
+    "category": "corner.s",
+    "feeds": "wall_backing, route_length",
+    "unit": "m",
+    "gt": 3.0179,
+    "status": "missing"
+   },
+   {
+    "id": "corner.turn[c1]",
+    "category": "corner.turn",
+    "feeds": "wall_backing",
+    "unit": "deg",
+    "gt": 91.11,
+    "status": "missing"
+   },
+   {
+    "id": "corner.s[c2]",
+    "category": "corner.s",
+    "feeds": "wall_backing, route_length",
+    "unit": "m",
+    "gt": 6.5604,
+    "status": "missing"
+   },
+   {
+    "id": "corner.turn[c2]",
+    "category": "corner.turn",
+    "feeds": "wall_backing",
+    "unit": "deg",
+    "gt": -91.08,
+    "status": "missing"
+   },
+   {
+    "id": "wall.length[w1]",
+    "category": "wall.length",
+    "feeds": "wall_backing",
+    "unit": "m",
+    "gt": 15.85,
+    "status": "extent_limited",
+    "recon": 18.6002,
+    "recon_pm": 0.692,
+    "error": 108.276,
+    "within_own_bound": false
+   },
+   {
+    "id": "wall.length[w2]",
+    "category": "wall.length",
+    "feeds": "wall_backing",
+    "unit": "m",
+    "gt": 3.5426,
+    "status": "missing"
+   },
+   {
+    "id": "wall.length[w3]",
+    "category": "wall.length",
+    "feeds": "wall_backing",
+    "unit": "m",
+    "gt": 4.9485,
+    "status": "missing"
+   },
+   {
+    "id": "opening.edge_s[win1:left]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": -12.2164,
+    "status": "missing"
+   },
+   {
+    "id": "opening.edge_s[win1:right]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": -10.6588,
+    "status": "missing"
+   },
+   {
+    "id": "opening.bottom[win1]",
+    "category": "opening.bottom",
+    "feeds": "opening_clearance (exemptions), route_path (detours)",
+    "unit": "m",
+    "gt": 0.9144,
+    "status": "missing"
+   },
+   {
+    "id": "opening.top[win1]",
+    "category": "opening.top",
+    "feeds": "route_path (detours)",
+    "unit": "m",
+    "gt": 3.3882,
+    "status": "missing"
+   },
+   {
+    "id": "opening.width[win1]",
+    "category": "opening.width",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 1.5576,
+    "status": "missing"
+   },
+   {
+    "id": "opening.edge_s[win2:left]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": -8.9181,
+    "status": "scored",
+    "recon": -8.3778,
+    "recon_pm": 0.532,
+    "error": 21.272,
+    "within_own_bound": false
+   },
+   {
+    "id": "opening.edge_s[win2:right]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": -7.3281,
+    "status": "scored",
+    "recon": -7.6196,
+    "recon_pm": 0.532,
+    "error": -11.476,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.bottom[win2]",
+    "category": "opening.bottom",
+    "feeds": "opening_clearance (exemptions), route_path (detours)",
+    "unit": "m",
+    "gt": 0.8755,
+    "status": "scored",
+    "recon": 1.4897,
+    "recon_pm": 0.532,
+    "error": 24.181,
+    "within_own_bound": false
+   },
+   {
+    "id": "opening.top[win2]",
+    "category": "opening.top",
+    "feeds": "route_path (detours)",
+    "unit": "m",
+    "gt": 3.4292,
+    "status": "scored",
+    "recon": 2.9445,
+    "recon_pm": 0.532,
+    "error": -19.083,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.width[win2]",
+    "category": "opening.width",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 1.59,
+    "status": "scored",
+    "recon": 0.7582,
+    "recon_pm": 1.064,
+    "error": -32.748,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.edge_s[win3:left]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": -5.6655,
+    "status": "scored",
+    "recon": -6.3574,
+    "recon_pm": 1.489,
+    "error": -27.24,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.edge_s[win3:right]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": -4.043,
+    "status": "scored",
+    "recon": -5.4897,
+    "recon_pm": 1.489,
+    "error": -56.957,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.bottom[win3]",
+    "category": "opening.bottom",
+    "feeds": "opening_clearance (exemptions), route_path (detours)",
+    "unit": "m",
+    "gt": 0.958,
+    "status": "scored",
+    "recon": 1.4117,
+    "recon_pm": 1.489,
+    "error": 17.862,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.top[win3]",
+    "category": "opening.top",
+    "feeds": "route_path (detours)",
+    "unit": "m",
+    "gt": 3.5282,
+    "status": "scored",
+    "recon": 2.9912,
+    "recon_pm": 1.489,
+    "error": -21.142,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.width[win3]",
+    "category": "opening.width",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 1.6225,
+    "status": "scored",
+    "recon": 0.8677,
+    "recon_pm": 2.978,
+    "error": -29.717,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.edge_s[win4:left]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": -2.4778,
+    "status": "scored",
+    "recon": -1.7649,
+    "recon_pm": 0.669,
+    "error": 28.067,
+    "within_own_bound": false
+   },
+   {
+    "id": "opening.edge_s[win4:right]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": -0.7831,
+    "status": "scored",
+    "recon": -0.6323,
+    "recon_pm": 0.669,
+    "error": 5.937,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.bottom[win4]",
+    "category": "opening.bottom",
+    "feeds": "opening_clearance (exemptions), route_path (detours)",
+    "unit": "m",
+    "gt": 1.0116,
+    "status": "scored",
+    "recon": 1.3395,
+    "recon_pm": 0.669,
+    "error": 12.909,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.top[win4]",
+    "category": "opening.top",
+    "feeds": "route_path (detours)",
+    "unit": "m",
+    "gt": 3.5756,
+    "status": "scored",
+    "recon": 3.0749,
+    "recon_pm": 0.669,
+    "error": -19.713,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.width[win4]",
+    "category": "opening.width",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 1.6947,
+    "status": "scored",
+    "recon": 1.1326,
+    "recon_pm": 1.338,
+    "error": -22.13,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.edge_s[win5:left]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": 0.7754,
+    "status": "scored",
+    "recon": 0.6015,
+    "recon_pm": 0.641,
+    "error": -6.846,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.edge_s[win5:right]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": 2.4127,
+    "status": "scored",
+    "recon": 1.8682,
+    "recon_pm": 0.641,
+    "error": -21.437,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.bottom[win5]",
+    "category": "opening.bottom",
+    "feeds": "opening_clearance (exemptions), route_path (detours)",
+    "unit": "m",
+    "gt": 1.0732,
+    "status": "scored",
+    "recon": 1.2864,
+    "recon_pm": 0.641,
+    "error": 8.394,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.top[win5]",
+    "category": "opening.top",
+    "feeds": "route_path (detours)",
+    "unit": "m",
+    "gt": 3.6508,
+    "status": "scored",
+    "recon": 3.1792,
+    "recon_pm": 0.641,
+    "error": -18.567,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.width[win5]",
+    "category": "opening.width",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 1.6373,
+    "status": "scored",
+    "recon": 1.2667,
+    "recon_pm": 1.282,
+    "error": -14.591,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.edge_s[win_w2_arch:left]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": 3.3227,
+    "status": "missing"
+   },
+   {
+    "id": "opening.edge_s[win_w2_arch:right]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": 4.9991,
+    "status": "missing"
+   },
+   {
+    "id": "opening.bottom[win_w2_arch]",
+    "category": "opening.bottom",
+    "feeds": "opening_clearance (exemptions), route_path (detours)",
+    "unit": "m",
+    "gt": 1.0668,
+    "status": "missing"
+   },
+   {
+    "id": "opening.top[win_w2_arch]",
+    "category": "opening.top",
+    "feeds": "route_path (detours)",
+    "unit": "m",
+    "gt": 3.9624,
+    "status": "missing"
+   },
+   {
+    "id": "opening.width[win_w2_arch]",
+    "category": "opening.width",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 1.6764,
+    "status": "missing"
+   },
+   {
+    "id": "opening.edge_s[door:left]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": 7.2624,
+    "status": "missing"
+   },
+   {
+    "id": "opening.edge_s[door:right]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "gt": 9.4522,
+    "status": "missing"
+   },
+   {
+    "id": "opening.bottom[door]",
+    "category": "opening.bottom",
+    "feeds": "opening_clearance (exemptions), route_path (detours)",
+    "unit": "m",
+    "gt": 0.2116,
+    "status": "missing"
+   },
+   {
+    "id": "opening.top[door]",
+    "category": "opening.top",
+    "feeds": "route_path (detours)",
+    "unit": "m",
+    "gt": 4.074,
+    "status": "missing"
+   },
+   {
+    "id": "opening.width[door]",
+    "category": "opening.width",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 2.1898,
+    "status": "missing"
+   },
+   {
+    "id": "opening.gap[win1~win2]",
+    "category": "opening.gap",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 1.7407,
+    "status": "missing"
+   },
+   {
+    "id": "opening.gap[win2~win3]",
+    "category": "opening.gap",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 1.6626,
+    "status": "scored",
+    "recon": 1.2622,
+    "recon_pm": 2.021,
+    "error": -15.764,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.gap[win3~win4]",
+    "category": "opening.gap",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 1.5652,
+    "status": "missing"
+   },
+   {
+    "id": "opening.gap[win4~win5]",
+    "category": "opening.gap",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 1.5585,
+    "status": "scored",
+    "recon": 1.2338,
+    "recon_pm": 1.31,
+    "error": -12.783,
+    "within_own_bound": true
+   },
+   {
+    "id": "opening.gap[win5~win_w2_arch]",
+    "category": "opening.gap",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 0.91,
+    "status": "missing"
+   },
+   {
+    "id": "opening.gap[win_w2_arch~door]",
+    "category": "opening.gap",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "gt": 2.2633,
+    "status": "missing"
+   },
+   {
+    "id": "facing.depth[w1@2.79]",
+    "category": "facing.depth",
+    "feeds": "facing_gap",
+    "unit": "m",
+    "gt": 0.309,
+    "status": "missing"
+   },
+   {
+    "id": "facing.depth[w2@3.14]",
+    "category": "facing.depth",
+    "feeds": "facing_gap",
+    "unit": "m",
+    "gt": 0.315,
+    "status": "missing"
+   },
+   {
+    "id": "facing.depth[w3@6.68]",
+    "category": "facing.depth",
+    "feeds": "facing_gap",
+    "unit": "m",
+    "gt": 0.749,
+    "status": "missing"
+   },
+   {
+    "id": "facing.depth[w3@6.93]",
+    "category": "facing.depth",
+    "feeds": "facing_gap",
+    "unit": "m",
+    "gt": 0.749,
+    "status": "missing"
+   },
+   {
+    "id": "facing.depth[w3@9.94]",
+    "category": "facing.depth",
+    "feeds": "facing_gap",
+    "unit": "m",
+    "gt": 0.708,
+    "status": "missing"
+   },
+   {
+    "id": "facing.depth[w3@10.19]",
+    "category": "facing.depth",
+    "feeds": "facing_gap",
+    "unit": "m",
+    "gt": 0.708,
+    "status": "missing"
+   },
+   {
+    "id": "facing.depth[w3@10.44]",
+    "category": "facing.depth",
+    "feeds": "facing_gap",
+    "unit": "m",
+    "gt": 0.708,
+    "status": "missing"
+   },
+   {
+    "id": "overhead.clearance[w1@2.79]",
+    "category": "overhead.clearance",
+    "feeds": "headroom",
+    "unit": "m",
+    "gt": 2.136,
+    "status": "missing"
+   },
+   {
+    "id": "opening.edge_s[rc:win3:left]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "recon": -4.0611,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.edge_s[rc:win3:right]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "recon": -3.081,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.bottom[rc:win3]",
+    "category": "opening.bottom",
+    "feeds": "opening_clearance (exemptions), route_path (detours)",
+    "unit": "m",
+    "recon": 1.3946,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.top[rc:win3]",
+    "category": "opening.top",
+    "feeds": "route_path (detours)",
+    "unit": "m",
+    "recon": 3.0583,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.width[rc:win3]",
+    "category": "opening.width",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "recon": 0.9801,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.edge_s[rc:door:left]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "recon": 3.5661,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.edge_s[rc:door:right]",
+    "category": "opening.edge_s",
+    "feeds": "opening_clearance, route_path",
+    "unit": "m",
+    "recon": 6.4761,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.bottom[rc:door]",
+    "category": "opening.bottom",
+    "feeds": "opening_clearance (exemptions), route_path (detours)",
+    "unit": "m",
+    "recon": 0.0771,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.top[rc:door]",
+    "category": "opening.top",
+    "feeds": "route_path (detours)",
+    "unit": "m",
+    "recon": 4.4862,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.width[rc:door]",
+    "category": "opening.width",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "recon": 2.91,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.gap[win3~rc:win3]",
+    "category": "opening.gap",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "recon": 1.4286,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.gap[rc:win3~win4]",
+    "category": "opening.gap",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "recon": 1.3161,
+    "status": "phantom"
+   },
+   {
+    "id": "opening.gap[win5~rc:door]",
+    "category": "opening.gap",
+    "feeds": "opening_clearance",
+    "unit": "m",
+    "recon": 1.6979,
+    "status": "phantom"
+   }
+  ]
+ },
+ "scale": {
+  "kd_ratio_median": 1.08095,
+  "kd_ratio_n": 4,
+  "landmark_umeyama_scale": 1.03042,
+  "landmarks": 5,
+  "scale_error_pct": 8.095,
+  "alignment": {
+   "metric_declared": false,
+   "method": "given transform"
+  }
+ },
+ "anchor": {
+  "icp_translation_m": [
+   0.0445,
+   -0.0493,
+   -0.1039
+  ],
+  "icp_translation_norm_m": 0.1233,
+  "icp_yaw_deg": -0.044,
+  "icp_tilt_deg": 0.971,
+  "meter_origin_offset_m": 0.1233,
+  "note": "Rigid ICP of recon points onto the laser (within 12 m of the meter). The translation is how far the recon's meter frame sits from the truth."
+ },
+ "completeness": {
+  "meter_wall": {
+   "gt_samples": 49689,
+   "declared": {
+    "within_5cm": 0.0063,
+    "within_10cm": 0.0346,
+    "within_20cm": 0.1291
+   },
+   "after_icp": {
+    "within_5cm": 0.0096,
+    "within_10cm": 0.0419,
+    "within_20cm": 0.118
+   },
+   "coverage": {
+    "probes": 49689,
+    "claimed_observed": 0.7075
+   }
+  },
+  "wall_face": {
+   "gt_samples": 58856,
+   "declared": {
+    "within_5cm": 0.0082,
+    "within_10cm": 0.0569,
+    "within_20cm": 0.167
+   },
+   "after_icp": {
+    "within_5cm": 0.021,
+    "within_10cm": 0.0769,
+    "within_20cm": 0.1519
+   },
+   "coverage": {
+    "probes": 58856,
+    "claimed_observed": 0.692
+   }
+  },
+  "ground_strip": {
+   "gt_samples": 206971,
+   "declared": {
+    "within_5cm": 0.1678,
+    "within_10cm": 0.4824,
+    "within_20cm": 0.8273
+   },
+   "after_icp": {
+    "within_5cm": 0.2598,
+    "within_10cm": 0.5232,
+    "within_20cm": 0.7833
+   },
+   "coverage": {
+    "probes": 60000,
+    "claimed_observed": 0.0439
+   }
+  },
+  "overhead": {
+   "gt_samples": 1602,
+   "declared": {
+    "within_5cm": 0.0062,
+    "within_10cm": 0.0699,
+    "within_20cm": 0.3121
+   },
+   "after_icp": {
+    "within_5cm": 0.0,
+    "within_10cm": 0.0006,
+    "within_20cm": 0.1348
+   },
+   "coverage": {
+    "probes": 1512,
+    "claimed_observed": 0.8684
+   }
+  }
+ },
+ "unobserved_geometry": {
+  "recon_points_near": 148813,
+  "near_radius_m": 10.0,
+  "share_in_own_unknown_voxels": 0.965,
+  "share_flagged_generated": 0.0,
+  "generated_regions": 0
+ },
+ "runtime_s": 6.8
+}

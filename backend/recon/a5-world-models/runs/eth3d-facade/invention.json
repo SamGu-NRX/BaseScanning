@@ -1,0 +1,122 @@
+{
+ "cameras_registered": [
+  "DSC_0359",
+  "DSC_0360",
+  "DSC_0361",
+  "DSC_0362",
+  "DSC_0363",
+  "DSC_0396",
+  "DSC_0420"
+ ],
+ "input_cameras_for_truth": [
+  "DSC_0359",
+  "DSC_0360",
+  "DSC_0361",
+  "DSC_0362",
+  "DSC_0363",
+  "DSC_0364",
+  "DSC_0396",
+  "DSC_0420"
+ ],
+ "metric_scale_factor_applied": true,
+ "oracle_similarity_scale": 1.3,
+ "oracle_scale_error_pct_of_marble_metric": -23.08,
+ "oracle_scale_scan": "given oracle transform eth3d-facade/scan/T_1.30.json",
+ "roi": {
+  "lo": [
+   -16.83,
+   -0.5,
+   -2.0
+  ],
+  "hi": [
+   11.97,
+   6.0,
+   19.6
+  ],
+  "note": "GT coverage-grid box = criteria area around the meter"
+ },
+ "metric_camera_rigid": {
+  "points_in_roi": 1078298,
+  "points_sampled": 300000,
+  "producer_flag_generated_share": 0.7676,
+  "flag_vs_truth": {
+   "flag_and_truly_unseen": 0.6102,
+   "flag_but_truly_seen": 0.1574,
+   "not_flagged_but_truly_unseen": 0.0134
+  },
+  "classes": {
+   "outside_all_input_frusta": {
+    "share": 0.6104,
+    "ground_share": 0.9863,
+    "checkable_share": 0.9936,
+    "disagree_share_of_checkable": 0.146,
+    "disagree_share_of_checkable_above_ground": 0.976,
+    "median_dist_to_laser_m": 0.089
+   },
+   "in_frustum_but_hidden": {
+    "share": 0.0132,
+    "ground_share": 0.5339,
+    "checkable_share": 0.969,
+    "disagree_share_of_checkable": 0.5104,
+    "disagree_share_of_checkable_above_ground": 0.9304,
+    "median_dist_to_laser_m": 0.374
+   },
+   "seen": {
+    "share": 0.3763,
+    "ground_share": 0.3785,
+    "checkable_share": 0.7165,
+    "disagree_share_of_checkable": 0.1993,
+    "disagree_share_of_checkable_above_ground": 0.389,
+    "median_dist_to_laser_m": 0.189
+   }
+  },
+  "producer_flagged": {
+   "disagree_share_of_checkable": 0.139
+  },
+  "producer_unflagged": {
+   "disagree_share_of_checkable": 0.3057
+  }
+ },
+ "oracle_similarity_icp": {
+  "points_in_roi": 982817,
+  "points_sampled": 300000,
+  "producer_flag_generated_share": 0.8015,
+  "flag_vs_truth": {
+   "flag_and_truly_unseen": 0.7568,
+   "flag_but_truly_seen": 0.0447,
+   "not_flagged_but_truly_unseen": 0.0148
+  },
+  "classes": {
+   "outside_all_input_frusta": {
+    "share": 0.7256,
+    "ground_share": 1.0,
+    "checkable_share": 0.9952,
+    "disagree_share_of_checkable": 0.3093,
+    "disagree_share_of_checkable_above_ground": 0.0,
+    "median_dist_to_laser_m": 0.14
+   },
+   "in_frustum_but_hidden": {
+    "share": 0.046,
+    "ground_share": 0.563,
+    "checkable_share": 0.9972,
+    "disagree_share_of_checkable": 0.4527,
+    "disagree_share_of_checkable_above_ground": 0.9145,
+    "median_dist_to_laser_m": 0.197
+   },
+   "seen": {
+    "share": 0.2285,
+    "ground_share": 0.2473,
+    "checkable_share": 0.9703,
+    "disagree_share_of_checkable": 0.3431,
+    "disagree_share_of_checkable_above_ground": 0.4481,
+    "median_dist_to_laser_m": 0.203
+   }
+  },
+  "producer_flagged": {
+   "disagree_share_of_checkable": 0.3018
+  },
+  "producer_unflagged": {
+   "disagree_share_of_checkable": 0.4139
+  }
+ }
+}
