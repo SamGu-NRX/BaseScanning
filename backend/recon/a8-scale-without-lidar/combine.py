@@ -119,6 +119,18 @@ def robust_combine(ests: list[np.ndarray], sds: list[float]):
     return np.expm1(m), sd_post, use
 
 
+def conflict(ests, sds, precise=0.015):
+    """True where two precise sources (declared SD <= 1.5 %) disagree by more than 3 joint SDs."""
+    L = np.log1p(np.vstack(ests))
+    idx = [i for i, s in enumerate(sds) if s <= precise]
+    flag = np.zeros(L.shape[1], bool)
+    for a in range(len(idx)):
+        for b in range(a + 1, len(idx)):
+            i, j = idx[a], idx[b]
+            flag |= np.abs(L[i] - L[j]) > 3 * np.hypot(sds[i], sds[j])
+    return flag
+
+
 def summarise(name: str, e: np.ndarray, sd_declared=None) -> dict:
     a = np.abs(e)
     shape = RNG.normal(0, SHAPE_IN, N)
@@ -147,6 +159,7 @@ def main() -> None:
         "Tape 10 ft (with 5 % gross reading errors)": (tape(10) + rec, 0.006),
         "Tape 15 ft (with 5 % gross reading errors)": (tape(15) + rec, 0.005),
         "Tape 10 ft, no gross errors": (tape(10, gross=False) + rec, 0.006),
+        "Tape 6 ft (with 5 % gross reading errors)": (tape(6) + rec, 0.008),
         "Meter base 6.95 in, close-up photo at 1 m (4032 px)": (meter(1.0, 2900.0) + rec, 0.01),
         "Meter base 6.95 in, from a house photo at 4.5 m": (meter(4.5, F_HOUSE) + rec, 0.03),
         "Door leaf 80 in": (door() + rec, 0.035),
@@ -169,10 +182,24 @@ def main() -> None:
         "Tape 10 ft + meter close-up + ARKit(modern)": ["Tape 10 ft (with 5 % gross reading errors)", "Meter base 6.95 in, close-up photo at 1 m (4032 px)",
                                                        "ARKit non-LiDAR, modern (sim.)"],
     }
+    retape = tape(10, gross=False) + recon_term()
     for name, keys in combos.items():
-        e, sd, use = robust_combine([src[k][0] for k in keys], [src[k][1] for k in keys])
+        ests = [src[k][0] for k in keys]
+        sds = [src[k][1] for k in keys]
+        flag = conflict(ests, sds)
+        tape_i = next((i for i, k in enumerate(keys) if k.startswith("Tape")), None)
+        if tape_i is not None:
+            # a conflict between precise sources prompts the homeowner to re-measure the tape distance
+            ests = [np.where(flag, retape, x) if i == tape_i else x for i, x in enumerate(ests)]
+        e, sd, use = robust_combine(ests, sds)
+        if tape_i is not None:
+            # still in conflict after the re-measure: the confirmed tape overrides object references
+            still = flag & conflict(ests, sds)
+            e = np.where(still, ests[tape_i], e)
+            sd = np.where(still, sds[tape_i], sd)
         r = summarise(name, e, sd)
         r["share_sources_dropped"] = {k: float(1 - use[i].mean()) for i, k in enumerate(keys)}
+        r["conflict_flag_rate"] = float(flag.mean())
         rows.append(r)
     out = {"n": N, "mdepth_scene_errors": dep_vals, "rows": rows}
     dump(HERE / "results" / "combine.json", out)
@@ -180,6 +207,8 @@ def main() -> None:
     lines = [hdr, "|---|---|---|---|---|---|---|"]
     for r in rows:
         cov = f"{r['declared_sd_pct_median']:.1f} %, {100 * r['coverage_2sd']:.0f} %" if "coverage_2sd" in r else "–"
+        if "conflict_flag_rate" in r:
+            cov += f"; re-measure prompted {100 * r['conflict_flag_rate']:.0f} %"
         lines.append(f"| {r['method']} | {r['median_abs_pct']:.1f} / {r['p90_abs_pct']:.1f} / {r['p95_abs_pct']:.1f} % | "
                      f"{r['err_15ft_in_median']:.1f} / {r['err_15ft_in_p90']:.1f} | {r['err_26ft_in_median']:.1f} / {r['err_26ft_in_p90']:.1f} | "
                      f"{100 * r['share_26ft_within_6in']:.0f} % | {100 * r['share_15ft_within_2in']:.0f} % | {cov} |")

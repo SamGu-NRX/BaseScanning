@@ -115,9 +115,25 @@ Against the criteria:
 
 ### 3.6 Shared scorer, ETH3D facade (real geometry; A1 incremental sparse cloud scaled by each method's error; `score-cloud --metric`)
 
-SCORER_TABLE
+| Run | applied scale err | KDs scored | all KDs median / p90 (in) | KDs < 1 m median | KDs 1–3 m median / max | KDs > 3 m: n, median / max (in) | scorer scale err |
+|---|---|---|---|---|---|---|---|
+| oracle | +0.0 % | 31 | 0.43 / 7.5 | 0.5 | 0.1 / 30.6 | 5, 5.8 / 10.1 | +0.17 % |
+| tape | +0.6 % | 31 | 1.18 / 11.7 | 2.4 | 0.5 / 25.2 | 5, 7.8 / 15.8 | +0.75 % |
+| plus1p5 | +1.5 % | 31 | 1.12 / 5.9 | 2.2 | 1.1 / 33.9 | 5, 1.1 / 2.1 | +1.66 % |
+| minus1p5 | -1.5 % | 31 | 1.85 / 10.9 | 4.0 | 0.9 / 14.4 | 5, 6.3 / 15.5 | -1.25 % |
+| arkit_modern_med | -2.4 % | 35 | 2.32 / 10.4 | 3.6 | 1.6 / 170.1 | 8, 6.1 / 118.8 | -2.24 % |
+| arkit_modern_p90 | -5.6 % | 35 | 4.72 / 24.7 | 5.2 | 3.5 / 167.4 | 8, 9.2 / 107.5 | -5.40 % |
+| arkit_2018_med | -7.0 % | 35 | 6.67 / 31.0 | 6.6 | 4.6 / 165.9 | 8, 13.9 / 101.5 | -6.78 % |
+| arkit_2018_p90 | -17.5 % | 35 | 13.57 / 67.7 | 16.8 | 11.1 / 158.1 | 8, 27.8 / 105.8 | -17.25 % |
+| brick_modular | -10.0 % | 35 | 9.53 / 45.0 | 9.6 | 6.6 / 163.4 | 8, 18.3 / 88.3 | -9.86 % |
+| moge2 | -12.5 % | 35 | 9.32 / 56.5 | 12.0 | 7.9 / 161.2 | 8, 19.6 / 84.4 | -12.37 % |
+| metric3d | +20.3 % | 23 | 20.11 / 48.6 | 20.1 | 14.0 / 29.7 | 4, 38.1 / 49.3 | +4.28 % |
 
-The scorer carries the scale through: its own scale estimate tracks the applied error. On this sparse cloud, though, the long key distances (> 3 m, n = 5) are dominated by extractor offsets (5.8 in median at oracle scale). Errors of ±1.5 % therefore disappear in that noise, while the ARKit-2018, brick-as-modular and learned-depth errors show up directly on the long distances. The error-versus-distance numbers in §3.5 are the cleaner measure; the scorer confirms the direction and size for the large errors.
+"KDs > 3 m" are the long key distances; the 88–170 in maxima in the runs at −2.4 % and beyond are the extractor splitting the rescaled chain differently (phantom corner), not scale. The Metric3D run aligned with only 23 key distances scored and a scorer-estimated scale of +4.3 % (alignment degraded at +20 %), so read its row as a lower bound.
+
+The scorer carries the scale through: its estimate matches the applied error to within 0.25 points in every run but Metric3D's. The long-distance error then grows with it: the median over key distances > 3 m is 5.8 in (oracle), 6.1 (ARKit modern median), 9.2 (modern p90), 13.9 (2018 median), 18.3 (brick as modular), 19.6 (MoGe-2), 27.8 (2018 p90) and 38.1 in (Metric3D).
+
+On this sparse cloud the oracle's long key distances already carry about 6 in of extractor offset. The tape (+0.6 %) and ±1.5 % runs therefore sit inside the extractor's run-to-run noise (long median 1.1–7.8 in), and the harness cannot separate a 1 % scale error from extraction noise here. The error-versus-distance model in §3.5, built on measured components, is the cleaner measure below 2 %. The scorer confirms it above 2 %.
 
 ## 4. Runtime and cost per house (4 vCPU, no GPU)
 

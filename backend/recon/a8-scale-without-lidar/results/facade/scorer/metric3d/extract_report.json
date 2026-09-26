@@ -1,0 +1,44 @@
+{
+ "ground": {
+  "normal_tilt_deg": 2.859808050495463,
+  "rms_m": 0.02481795076812432,
+  "points": 4966
+ },
+ "meter_triangulated_w": [
+  -0.584,
+  1.521,
+  -5.696
+ ],
+ "wall_band_points": {
+  "raw": 1084,
+  "thinned": 984
+ },
+ "segments": [
+  {
+   "len_m": 2.2750984237460266,
+   "points": 32,
+   "rms_m": 0.0341310963909945,
+   "high_share": 0.625
+  },
+  {
+   "len_m": 15.778848802635112,
+   "points": 609,
+   "rms_m": 0.074273491349498,
+   "high_share": 0.512
+  }
+ ],
+ "segments_merged": 2,
+ "meter_hits": 3,
+ "chain": [
+  [
+   "w1",
+   [
+    -12.2359,
+    3.543
+   ]
+  ]
+ ],
+ "face_offset_m": {
+  "w1": -0.04499999999999977
+ }
+}
