@@ -1,0 +1,40 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"meterNotAccessible\": {\"verdict\": \"manual_review\", \"reason\": \"No clear electric meter visible in any photo; cannot confirm accessibility.\"},\n \"panelNotAccessible\": {\"verdict\": \"manual_review\", \"reason\": \"No electrical panel clearly visible in any photo to assess obstructions.\"},\n \"panelInHouse\": {\"verdict\": \"manual_review\", \"reason\": \"Panel location not identifiable in the provided photos.\"},\n \"notSameWall\": {\"verdict\": \"manual_review\", \"reason\": \"Neither meter nor panel can be located, so wall relationship cannot be confirmed.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "manual_review",
+   "reason": "No clear electric meter visible in any photo; cannot confirm accessibility."
+  },
+  "panelNotAccessible": {
+   "verdict": "manual_review",
+   "reason": "No electrical panel clearly visible in any photo to assess obstructions."
+  },
+  "panelInHouse": {
+   "verdict": "manual_review",
+   "reason": "Panel location not identifiable in the provided photos."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reason": "Neither meter nor panel can be located, so wall relationship cannot be confirmed."
+  }
+ },
+ "usage": {
+  "input_tokens": 715,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 6885,
+  "output_tokens": 209
+ },
+ "cost_usd": 0.004897,
+ "latency_s": 2.99,
+ "stop": "end_turn",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only",
+ "verdicts": {
+  "p12.meterNotAccessible": "manual_review",
+  "p12.panelNotAccessible": "manual_review",
+  "p12.panelInHouse": "manual_review",
+  "p12.notSameWall": "manual_review"
+ }
+}

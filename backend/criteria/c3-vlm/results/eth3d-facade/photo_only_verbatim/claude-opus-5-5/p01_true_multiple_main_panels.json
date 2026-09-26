@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"hasTrueMultipleMainPanels\": false, \"multipleMainPanelLabel\": \"unclear_or_insufficient_evidence\", \"insufficientEvidence\": true, \"evidence\": \"All 15 photos are exterior architectural views of a historic brick building (facades, courtyard, entrance portico with staircase, bike-rack sculpture). No electrical panels, load centers, main breakers, disconnects, or meter equipment are visible in any image.\", \"notes\": \"No panel or disconnect imagery was provided, so the number and independence of main panels cannot be determined. Defaulting to false with insufficient evidence.\"}",
+ "json": {
+  "hasTrueMultipleMainPanels": false,
+  "multipleMainPanelLabel": "unclear_or_insufficient_evidence",
+  "insufficientEvidence": true,
+  "evidence": "All 15 photos are exterior architectural views of a historic brick building (facades, courtyard, entrance portico with staircase, bike-rack sculpture). No electrical panels, load centers, main breakers, disconnects, or meter equipment are visible in any image.",
+  "notes": "No panel or disconnect imagery was provided, so the number and independence of main panels cannot be determined. Defaulting to false with insufficient evidence."
+ },
+ "usage": {
+  "input_tokens": 33022,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 207
+ },
+ "cost_usd": 0.136228,
+ "latency_s": 9.96,
+ "stop": "end_turn",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p01": "unclear_or_insufficient_evidence"
+ }
+}

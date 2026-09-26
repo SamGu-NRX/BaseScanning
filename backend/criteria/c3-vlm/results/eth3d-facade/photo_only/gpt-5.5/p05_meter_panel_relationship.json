@@ -1,0 +1,28 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"main_panel_location\":\"not_visible\",\"meter_relative_to_garage\":\"not_visible\",\"relationship\":\"insufficient_evidence\",\"subtype\":\"meter_and_panel_not_visible\",\"confidence\":\"high\",\"rationale\":\"The photos show exterior building facades, entrances, windows, courtyard, and stairs, but no identifiable outside electric meter, main electrical panel, or garage opening is visible. The geometric relationship cannot be established.\",\"insufficientEvidence\":true}",
+ "json": {
+  "main_panel_location": "not_visible",
+  "meter_relative_to_garage": "not_visible",
+  "relationship": "insufficient_evidence",
+  "subtype": "meter_and_panel_not_visible",
+  "confidence": "high",
+  "rationale": "The photos show exterior building facades, entrances, windows, courtyard, and stairs, but no identifiable outside electric meter, main electrical panel, or garage opening is visible. The geometric relationship cannot be established.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 29590,
+  "cached_tokens": 26496,
+  "output_tokens": 273,
+  "reasoning_tokens": 179
+ },
+ "cost_usd": 0.036908,
+ "latency_s": 6.13,
+ "stop": "completed",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p05": "insufficient_evidence"
+ }
+}

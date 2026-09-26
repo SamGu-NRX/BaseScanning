@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"feature\":\"cl320_unclear\",\"label\":\"\",\"evidence\":\"Photos 1-15 show exterior doors, transformer/electrical rooms, cable/scaffold areas, and building surroundings; no readable electric meter face or meter class label is visible.\",\"notes\":\"No text explicitly saying CL320 is photographed/readable.\",\"insufficientEvidence\":true}",
+ "json": {
+  "feature": "cl320_unclear",
+  "label": "",
+  "evidence": "Photos 1-15 show exterior doors, transformer/electrical rooms, cable/scaffold areas, and building surroundings; no readable electric meter face or meter class label is visible.",
+  "notes": "No text explicitly saying CL320 is photographed/readable.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 29447,
+  "cached_tokens": 26496,
+  "output_tokens": 130,
+  "reasoning_tokens": 56
+ },
+ "cost_usd": 0.031903,
+ "latency_s": 4.19,
+ "stop": "completed",
+ "prompt_id": "p03_cl320_meter",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

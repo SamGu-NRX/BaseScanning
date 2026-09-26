@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"decision\": \"pass\", \"justification\": \"The pre-install photo (Photo 1) shows a single meter and one gray breaker panel on the exterior wall, with no other service enclosure visible. The panel is shown open in Photos 2, 3 and 13 as a single breaker panel. The white box and small switches added later (Photos 4\u201314) are the Base battery gateway, disconnects and batteries being installed, not independent service mains.\"}",
+ "json": {
+  "decision": "pass",
+  "justification": "The pre-install photo (Photo 1) shows a single meter and one gray breaker panel on the exterior wall, with no other service enclosure visible. The panel is shown open in Photos 2, 3 and 13 as a single breaker panel. The white box and small switches added later (Photos 4\u201314) are the Base battery gateway, disconnects and batteries being installed, not independent service mains."
+ },
+ "usage": {
+  "input_tokens": 26803,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 328
+ },
+ "cost_usd": 0.113772,
+ "latency_s": 8.96,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "pass"
+ }
+}

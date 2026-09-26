@@ -1,0 +1,29 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meter_head_y_min\":0,\"meter_head_y_max\":0,\"meter_can_y_min\":0,\"meter_can_y_max\":0,\"distance_ratio\":0,\"reasoning\":\"No round electric meter or identifiable meter enclosure is visible in any of the photos; the images show building facades, windows, doors, and surrounding courtyard features only. Without a visible meter head and can, the meter type cannot be determined.\",\"type\":\"unknown\",\"clean-decision\":false}",
+ "json": {
+  "meter_head_y_min": 0,
+  "meter_head_y_max": 0,
+  "meter_can_y_min": 0,
+  "meter_can_y_max": 0,
+  "distance_ratio": 0,
+  "reasoning": "No round electric meter or identifiable meter enclosure is visible in any of the photos; the images show building facades, windows, doors, and surrounding courtyard features only. Without a visible meter head and can, the meter type cannot be determined.",
+  "type": "unknown",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 30955,
+  "cached_tokens": 0,
+  "output_tokens": 201,
+  "reasoning_tokens": 100
+ },
+ "cost_usd": 0.160805,
+ "latency_s": 5.13,
+ "stop": "completed",
+ "prompt_id": "p11_meter_type",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p11": "unknown"
+ }
+}

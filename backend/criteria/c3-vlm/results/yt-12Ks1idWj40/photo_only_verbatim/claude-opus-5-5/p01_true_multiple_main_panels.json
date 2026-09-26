@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"hasTrueMultipleMainPanels\": false, \"multipleMainPanelLabel\": \"single_main_plus_disconnect_or_subpanel\", \"insufficientEvidence\": false, \"evidence\": \"Only one main load center is visible: the gray panel beside the meter socket, shown open with breakers in photos 2-4, 7 and 13. The added equipment is a white BASE-branded gateway/transfer enclosure, two small disconnect switches, battery cabinets and an inverter. None of these is a second load center with its own service main breaker. The gateway is conduit-connected to the existing panel and meter area.\", \"notes\": \"The new installation is battery/backup equipment, a gateway and disconnects. By the rules, these do not count as a second main panel. Any backup-loads subpanel would be downstream. Only one true service main panel is present.\"}",
+ "json": {
+  "hasTrueMultipleMainPanels": false,
+  "multipleMainPanelLabel": "single_main_plus_disconnect_or_subpanel",
+  "insufficientEvidence": false,
+  "evidence": "Only one main load center is visible: the gray panel beside the meter socket, shown open with breakers in photos 2-4, 7 and 13. The added equipment is a white BASE-branded gateway/transfer enclosure, two small disconnect switches, battery cabinets and an inverter. None of these is a second load center with its own service main breaker. The gateway is conduit-connected to the existing panel and meter area.",
+  "notes": "The new installation is battery/backup equipment, a gateway and disconnects. By the rules, these do not count as a second main panel. Any backup-loads subpanel would be downstream. Only one true service main panel is present."
+ },
+ "usage": {
+  "input_tokens": 26180,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 278
+ },
+ "cost_usd": 0.11028,
+ "latency_s": 7.77,
+ "stop": "end_turn",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p01": "single_main_plus_disconnect_or_subpanel"
+ }
+}

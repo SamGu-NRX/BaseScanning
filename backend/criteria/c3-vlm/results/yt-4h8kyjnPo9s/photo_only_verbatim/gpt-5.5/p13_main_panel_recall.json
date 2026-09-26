@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The photos mainly show the exterior of the home and utility/meter area, but there is no clear open view of the main breaker panel or legible panel/breaker branding. Because the panel condition, brand, rust, and breaker orientation cannot be assessed from these images, this needs manual review.\",\"decision\":\"manual_review\"}",
+ "json": {
+  "justification": "The photos mainly show the exterior of the home and utility/meter area, but there is no clear open view of the main breaker panel or legible panel/breaker branding. Because the panel condition, brand, rust, and breaker orientation cannot be assessed from these images, this needs manual review.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 19283,
+  "cached_tokens": 0,
+  "output_tokens": 150,
+  "reasoning_tokens": 75
+ },
+ "cost_usd": 0.100915,
+ "latency_s": 4.84,
+ "stop": "completed",
+ "prompt_id": "p13_main_panel_recall",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p13": "manual_review"
+ }
+}

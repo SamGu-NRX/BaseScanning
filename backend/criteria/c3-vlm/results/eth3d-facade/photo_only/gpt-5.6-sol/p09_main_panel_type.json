@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.6-sol",
+ "text": "{\"decision\":\"manual_review\",\"explanation\":\"The photos show only the building exterior; no electrical main panel, breakers, meters, or disconnects are visible, so the main panel type cannot be determined.\"}",
+ "json": {
+  "decision": "manual_review",
+  "explanation": "The photos show only the building exterior; no electrical main panel, breakers, meters, or disconnects are visible, so the main panel type cannot be determined."
+ },
+ "usage": {
+  "input_tokens": 29450,
+  "cached_tokens": 0,
+  "output_tokens": 46,
+  "reasoning_tokens": 0
+ },
+ "cost_usd": 0.11872,
+ "latency_s": 3.92,
+ "stop": "completed",
+ "prompt_id": "p09_main_panel_type",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

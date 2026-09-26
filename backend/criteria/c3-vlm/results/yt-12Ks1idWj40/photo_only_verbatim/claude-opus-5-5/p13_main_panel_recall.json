@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"justification\": \"The photos are distant, low-resolution security-camera frames taken during installation, not proper survey shots. The panel appears to be a clean, modern gray outdoor enclosure with no visible rust, but no brand label, breaker text, or ON/OFF markings can be read, even with the door open (Photos 2, 3, 13). Without a legible brand or confirmable breaker orientation, a person should verify.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "The photos are distant, low-resolution security-camera frames taken during installation, not proper survey shots. The panel appears to be a clean, modern gray outdoor enclosure with no visible rust, but no brand label, breaker text, or ON/OFF markings can be read, even with the door open (Photos 2, 3, 13). Without a legible brand or confirmable breaker orientation, a person should verify.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 27638,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 556
+ },
+ "cost_usd": 0.121672,
+ "latency_s": 11.4,
+ "stop": "end_turn",
+ "prompt_id": "p13_main_panel_recall",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p13": "manual_review"
+ }
+}

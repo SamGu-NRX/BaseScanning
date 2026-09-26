@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasCl320Meter\":false,\"cl320Label\":\"cl320_unclear\",\"insufficientEvidence\":true,\"evidence\":\"No readable electric meter face or meter/service-equipment label visible in the provided exterior photos.\",\"notes\":\"Cannot determine CL320 because there is no visible readable meter text explicitly saying CL320.\"}",
+ "json": {
+  "hasCl320Meter": false,
+  "cl320Label": "cl320_unclear",
+  "insufficientEvidence": true,
+  "evidence": "No readable electric meter face or meter/service-equipment label visible in the provided exterior photos.",
+  "notes": "Cannot determine CL320 because there is no visible readable meter text explicitly saying CL320."
+ },
+ "usage": {
+  "input_tokens": 29483,
+  "cached_tokens": 0,
+  "output_tokens": 183,
+  "reasoning_tokens": 113
+ },
+ "cost_usd": 0.152905,
+ "latency_s": 6.75,
+ "stop": "completed",
+ "prompt_id": "p03_cl320_meter",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

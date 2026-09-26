@@ -1,0 +1,33 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"disconnect_location\": null, \"battery_location\": null, \"distance_ft\": null, \"reference_object\": \"window height ~3-4 ft used as rough scale, but no meter visible to anchor measurements\", \"needs_more_photos\": true, \"missing_views\": [\"Photo clearly showing the electrical meter and surrounding wall space\", \"Photo showing area directly below/beside the meter for disconnect and conduit routing\", \"Photo showing ground surface conditions (driveway, gas meter, pool) near the proposed battery wall\"], \"justification\": \"No electrical meter is visible in any of the provided photos, so the required proximity, clearance, and routing checks relative to the meter cannot be verified.\"}",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "distance_ft": null,
+  "reference_object": "window height ~3-4 ft used as rough scale, but no meter visible to anchor measurements",
+  "needs_more_photos": true,
+  "missing_views": [
+   "Photo clearly showing the electrical meter and surrounding wall space",
+   "Photo showing area directly below/beside the meter for disconnect and conduit routing",
+   "Photo showing ground surface conditions (driveway, gas meter, pool) near the proposed battery wall"
+  ],
+  "justification": "No electrical meter is visible in any of the provided photos, so the required proximity, clearance, and routing checks relative to the meter cannot be verified."
+ },
+ "usage": {
+  "input_tokens": 549,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 6885,
+  "output_tokens": 286
+ },
+ "cost_usd": 0.005335,
+ "latency_s": 4.27,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

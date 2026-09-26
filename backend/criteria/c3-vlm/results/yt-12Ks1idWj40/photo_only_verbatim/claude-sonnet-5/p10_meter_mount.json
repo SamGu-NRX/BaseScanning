@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"reasoning\": \"The meter is clearly visible in multiple photos (e.g., Photo 1, 5, 14) mounted directly on the home's brick exterior wall, alongside the main breaker panel and new Base equipment. It's a single meter, not on a pole and not part of a row of multiple meters.\", \"type\": \"standardMeter\", \"clean-decision\": true}",
+ "json": {
+  "reasoning": "The meter is clearly visible in multiple photos (e.g., Photo 1, 5, 14) mounted directly on the home's brick exterior wall, alongside the main breaker panel and new Base equipment. It's a single meter, not on a pole and not part of a row of multiple meters.",
+  "type": "standardMeter",
+  "clean-decision": true
+ },
+ "usage": {
+  "input_tokens": 26661,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 122
+ },
+ "cost_usd": 0.054542,
+ "latency_s": 4.71,
+ "stop": "end_turn",
+ "prompt_id": "p10_meter_mount",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p10": "standardMeter"
+ }
+}

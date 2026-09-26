@@ -1,0 +1,35 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"disconnect_location\": null, \"battery_location\": null, \"distance_ft\": null, \"reference_object\": \"None visible - no meter or electrical equipment identifiable in any photo for scale\", \"needs_more_photos\": true, \"missing_views\": [\"A photo showing the electrical meter/service panel location on the building\", \"A clear view of the wall area immediately around and below the meter\", \"A wider shot showing ground surface type (paved/drivable vs. planted) near the proposed battery location\", \"Any nearby gas meter, regulator, or shutoff valve location\", \"A photo showing whether the ground area is gravel, walkway, or drivable surface near the building base\"], \"justification\": \"This is an institutional/historic brick building (appears to be a university or public building) with no visible electrical meter, service panel, or any residential utility equipment in any of the 15 photos. Without an identified meter location, it is impossible to assess wall space for a disconnect, battery placement distance, ground clearance from a gas meter, or routing clearances. These photos do not appear to depict a residential property suitable for a home battery installation survey.\"}",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "distance_ft": null,
+  "reference_object": "None visible - no meter or electrical equipment identifiable in any photo for scale",
+  "needs_more_photos": true,
+  "missing_views": [
+   "A photo showing the electrical meter/service panel location on the building",
+   "A clear view of the wall area immediately around and below the meter",
+   "A wider shot showing ground surface type (paved/drivable vs. planted) near the proposed battery location",
+   "Any nearby gas meter, regulator, or shutoff valve location",
+   "A photo showing whether the ground area is gravel, walkway, or drivable surface near the building base"
+  ],
+  "justification": "This is an institutional/historic brick building (appears to be a university or public building) with no visible electrical meter, service panel, or any residential utility equipment in any of the 15 photos. Without an identified meter location, it is impossible to assess wall space for a disconnect, battery placement distance, ground clearance from a gas meter, or routing clearances. These photos do not appear to depict a residential property suitable for a home battery installation survey."
+ },
+ "usage": {
+  "input_tokens": 549,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 366
+ },
+ "cost_usd": 0.011192200000000001,
+ "latency_s": 6.7,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

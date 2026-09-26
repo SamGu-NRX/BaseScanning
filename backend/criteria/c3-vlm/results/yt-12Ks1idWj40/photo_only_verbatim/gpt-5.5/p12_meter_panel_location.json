@@ -1,0 +1,40 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meterNotAccessible\":{\"verdict\":\"no\",\"reasoning\":\"The electric meter is mounted outdoors on an exterior brick wall with open ground directly in front of it in the clear views. Nearby conduits/electrical equipment are wall-mounted building/electrical structure, and there is no visible gas equipment or low overhead obstruction within the meter workspace.\"},\"panelNotAccessible\":{\"verdict\":\"no\",\"reasoning\":\"The main breaker panel is outdoors on the same brick wall and the clear/final views show open working space in front of it. Temporary tools/tables/crew items appear during the work but are movable, and there is no fixed unmovable obstruction, gas equipment, or low overhead clearance issue visible.\"},\"panelInHouse\":{\"verdict\":\"no\",\"reasoning\":\"The main breaker box is clearly mounted outside on an exterior brick wall of the home, not in an interior living space.\"},\"notSameWall\":{\"verdict\":\"no\",\"reasoning\":\"The photos plainly show both the electric meter and the main breaker panel outdoors on the same exterior brick wall, adjacent to each other.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "no",
+   "reasoning": "The electric meter is mounted outdoors on an exterior brick wall with open ground directly in front of it in the clear views. Nearby conduits/electrical equipment are wall-mounted building/electrical structure, and there is no visible gas equipment or low overhead obstruction within the meter workspace."
+  },
+  "panelNotAccessible": {
+   "verdict": "no",
+   "reasoning": "The main breaker panel is outdoors on the same brick wall and the clear/final views show open working space in front of it. Temporary tools/tables/crew items appear during the work but are movable, and there is no fixed unmovable obstruction, gas equipment, or low overhead clearance issue visible."
+  },
+  "panelInHouse": {
+   "verdict": "no",
+   "reasoning": "The main breaker box is clearly mounted outside on an exterior brick wall of the home, not in an interior living space."
+  },
+  "notSameWall": {
+   "verdict": "no",
+   "reasoning": "The photos plainly show both the electric meter and the main breaker panel outdoors on the same exterior brick wall, adjacent to each other."
+  }
+ },
+ "usage": {
+  "input_tokens": 25119,
+  "cached_tokens": 0,
+  "output_tokens": 1073,
+  "reasoning_tokens": 847
+ },
+ "cost_usd": 0.157785,
+ "latency_s": 14.76,
+ "stop": "completed",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "no",
+  "p12.panelNotAccessible": "no",
+  "p12.panelInHouse": "no",
+  "p12.notSameWall": "no"
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"trueMultipleMainPanels\":false,\"panelLayout\":\"single_main_with_separate_disconnect\",\"evidence\":\"Photos 1-3 show one utility meter and one large gray service panel opened, with no second independent service-main panel evident. Photos 4-14 show added Base/battery equipment, batteries, conduit, and small disconnect/control boxes to the right of the original service equipment. The added white Base box and small boxes appear as battery/transfer/disconnect equipment connected near the existing service panel, not as separate independent service mains. No photo shows two or more panels each with clearly visible independent main breakers/disconnects and evidence that each functions as an independent service main.\",\"notes\":\"Multiple mains are not proven by the photos; visible extra boxes appear related to the battery installation rather than separate utility service mains.\",\"insufficientEvidence\":false}",
+ "json": {
+  "trueMultipleMainPanels": false,
+  "panelLayout": "single_main_with_separate_disconnect",
+  "evidence": "Photos 1-3 show one utility meter and one large gray service panel opened, with no second independent service-main panel evident. Photos 4-14 show added Base/battery equipment, batteries, conduit, and small disconnect/control boxes to the right of the original service equipment. The added white Base box and small boxes appear as battery/transfer/disconnect equipment connected near the existing service panel, not as separate independent service mains. No photo shows two or more panels each with clearly visible independent main breakers/disconnects and evidence that each functions as an independent service main.",
+  "notes": "Multiple mains are not proven by the photos; visible extra boxes appear related to the battery installation rather than separate utility service mains.",
+  "insufficientEvidence": false
+ },
+ "usage": {
+  "input_tokens": 23439,
+  "cached_tokens": 0,
+  "output_tokens": 690,
+  "reasoning_tokens": 516
+ },
+ "cost_usd": 0.137895,
+ "latency_s": 9.43,
+ "stop": "completed",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p01": "single_main_with_separate_disconnect"
+ }
+}

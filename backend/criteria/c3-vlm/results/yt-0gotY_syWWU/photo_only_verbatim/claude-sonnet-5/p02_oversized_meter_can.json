@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{ \"hasLargeOrOversizedMeterCan\": false, \"meterCanLabel\": \"meter_can_unclear\", \"insufficientEvidence\": true, \"evidence\": \"No clear image of a round electric meter or its enclosure is visible in any photo; small gray boxes on the siding (e.g., Photo 1, Photo 9) appear too small or ambiguous to identify as a meter can.\", \"notes\": \"Images show exterior house views, landscaping, and a possible utility box, but no distinguishable meter can/socket is visible to assess size.\" }",
+ "json": {
+  "hasLargeOrOversizedMeterCan": false,
+  "meterCanLabel": "meter_can_unclear",
+  "insufficientEvidence": true,
+  "evidence": "No clear image of a round electric meter or its enclosure is visible in any photo; small gray boxes on the siding (e.g., Photo 1, Photo 9) appear too small or ambiguous to identify as a meter can.",
+  "notes": "Images show exterior house views, landscaping, and a possible utility box, but no distinguishable meter can/socket is visible to assess size."
+ },
+ "usage": {
+  "input_tokens": 7789,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 182
+ },
+ "cost_usd": 0.017398,
+ "latency_s": 3.68,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p02": "meter_can_unclear"
+ }
+}

@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"justification\": \"No residential electric meter is visible in any photo; the site is a commercial/utility building with transformer-room doors, temporary scaffolding carrying high-voltage cables, and a large outdoor electrical cabinet. The entire wall fronts an open asphalt lot and roadway with painted parking lines, so no spot can meet the 5 ft drivable-surface clearance. The wall is also broken by numerous doors and electrical equipment, leaving no clear, continuous wiring run.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "No residential electric meter is visible in any photo; the site is a commercial/utility building with transformer-room doors, temporary scaffolding carrying high-voltage cables, and a large outdoor electrical cabinet. The entire wall fronts an open asphalt lot and roadway with painted parking lines, so no spot can meet the 5 ft drivable-surface clearance. The wall is also broken by numerous doors and electrical equipment, leaving no clear, continuous wiring run.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 33194,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 176
+ },
+ "cost_usd": 0.136296,
+ "latency_s": 13.5,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

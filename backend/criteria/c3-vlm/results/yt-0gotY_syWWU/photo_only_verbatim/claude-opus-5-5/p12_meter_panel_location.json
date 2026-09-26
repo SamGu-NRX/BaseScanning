@@ -1,0 +1,40 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"meterNotAccessible\":{\"verdict\":\"no\",\"reasoning\":\"The round electric meter is on the front exterior wall just right of the entry door (Photos 3 and 6). The only thing near it is the brick step cheek wall, which is permanent building construction. There is no overhead obstruction, no vegetation or equipment in front, and no gas meter or regulator visible nearby.\"},\"panelNotAccessible\":{\"verdict\":\"manual_review\",\"reasoning\":\"None of the photos clearly shows the main breaker box. The small gray box above the AC condenser in Photo 9 cannot be confirmed as the panel, so its working space cannot be judged.\"},\"panelInHouse\":{\"verdict\":\"manual_review\",\"reasoning\":\"No open-panel or panel-location photo is provided. The photos are all exterior walkaround shots, so the panel cannot be placed as outside, garage, or interior.\"},\"notSameWall\":{\"verdict\":\"manual_review\",\"reasoning\":\"The meter is visible on the front exterior wall, but the main panel is not identifiable in any photo. Same-wall placement cannot be confirmed.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "no",
+   "reasoning": "The round electric meter is on the front exterior wall just right of the entry door (Photos 3 and 6). The only thing near it is the brick step cheek wall, which is permanent building construction. There is no overhead obstruction, no vegetation or equipment in front, and no gas meter or regulator visible nearby."
+  },
+  "panelNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "None of the photos clearly shows the main breaker box. The small gray box above the AC condenser in Photo 9 cannot be confirmed as the panel, so its working space cannot be judged."
+  },
+  "panelInHouse": {
+   "verdict": "manual_review",
+   "reasoning": "No open-panel or panel-location photo is provided. The photos are all exterior walkaround shots, so the panel cannot be placed as outside, garage, or interior."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reasoning": "The meter is visible on the front exterior wall, but the main panel is not identifiable in any photo. Same-wall placement cannot be confirmed."
+  }
+ },
+ "usage": {
+  "input_tokens": 9827,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 907
+ },
+ "cost_usd": 0.057448,
+ "latency_s": 12.02,
+ "stop": "end_turn",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "no",
+  "p12.panelNotAccessible": "manual_review",
+  "p12.panelInHouse": "manual_review",
+  "p12.notSameWall": "manual_review"
+ }
+}

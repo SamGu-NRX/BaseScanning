@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasCl320Meter\":false,\"cl320Label\":\"cl320_unclear\",\"insufficientEvidence\":true,\"evidence\":\"No readable electric meter face or meter label showing CL320 is visible in the photos.\",\"notes\":\"Images show building/transformer-room doors and warning labels, but no readable meter face or meter-specific CL320 text.\"}",
+ "json": {
+  "hasCl320Meter": false,
+  "cl320Label": "cl320_unclear",
+  "insufficientEvidence": true,
+  "evidence": "No readable electric meter face or meter label showing CL320 is visible in the photos.",
+  "notes": "Images show building/transformer-room doors and warning labels, but no readable meter face or meter-specific CL320 text."
+ },
+ "usage": {
+  "input_tokens": 29483,
+  "cached_tokens": 0,
+  "output_tokens": 374,
+  "reasoning_tokens": 298
+ },
+ "cost_usd": 0.158635,
+ "latency_s": 13.44,
+ "stop": "completed",
+ "prompt_id": "p03_cl320_meter",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

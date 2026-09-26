@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"justification\": \"The photos show only exterior views of the house and surrounding property with no visible breaker panel, disconnect enclosure, or open panel interior in any image. Without any view of the actual electrical panel(s) or main breaker, there is insufficient information to confirm panel count.\", \"confidence\": \"low\"}",
+ "json": {
+  "decision": "manual_review",
+  "justification": "The photos show only exterior views of the house and surrounding property with no visible breaker panel, disconnect enclosure, or open panel interior in any image. Without any view of the actual electrical panel(s) or main breaker, there is insufficient information to confirm panel count.",
+  "confidence": "low"
+ },
+ "usage": {
+  "input_tokens": 8357,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 112
+ },
+ "cost_usd": 0.017834,
+ "latency_s": 3.16,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

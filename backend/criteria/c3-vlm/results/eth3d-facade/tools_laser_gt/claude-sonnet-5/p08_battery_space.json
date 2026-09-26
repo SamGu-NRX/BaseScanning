@@ -1,0 +1,441 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "This is a pedestrian gravel/paver courtyard with no visible curb cuts, driveway pavement, or vehicles anywhere in the photo set \u2014 the whole yard reads as pedestrian-only, so a \"drive path\" distance can't be established and is treated as none observed.\n\n```json\n{\"reference_object\": \"31 in x 22 in battery footprint rendered flush to brick pier (per render_battery tool) between two ground-floor arched windows in Photo 8\", \"distance_ft\": 1, \"front_clearance_ft\": 145.12, \"drive_path_ft\": null, \"requires_member_action\": false, \"decision\": \"pass\", \"needs_more_photos\": false, \"missing_views\": [], \"justification\": \"The electric meter anchor (Photo 8) sits on a brick pier between two arched ground-floor windows facing an open gravel courtyard. render_battery placed a compliant 31x22x36in unit flush against this pier with no overlap of either window, standing on level stone-curb/gravel ground. facing_clearance returned 145 ft to the nearest obstruction (open courtyard), far exceeding the 5 ft requirement. The harness run from the meter anchor to this footprint measured about 0.5 ft (same pier), well under the 16 ft threshold, with no doors, driveways, or gaps to cross. No gas equipment, HVAC, pool, or fencing is visible near the spot, and the main entrance stairway/door swing (right side of Photo 8) is tens of feet away and unobstructed. No vehicle-accessible pavement, driveway, or parked cars are visible in any supplied photo of this courtyard, so drive-path distance is not applicable/observed. All criteria for a pass are met with a clearly visible, unobstructed spot.\"}\n```",
+ "json": {
+  "reference_object": "31 in x 22 in battery footprint rendered flush to brick pier (per render_battery tool) between two ground-floor arched windows in Photo 8",
+  "distance_ft": 1,
+  "front_clearance_ft": 145.12,
+  "drive_path_ft": null,
+  "requires_member_action": false,
+  "decision": "pass",
+  "needs_more_photos": false,
+  "missing_views": [],
+  "justification": "The electric meter anchor (Photo 8) sits on a brick pier between two arched ground-floor windows facing an open gravel courtyard. render_battery placed a compliant 31x22x36in unit flush against this pier with no overlap of either window, standing on level stone-curb/gravel ground. facing_clearance returned 145 ft to the nearest obstruction (open courtyard), far exceeding the 5 ft requirement. The harness run from the meter anchor to this footprint measured about 0.5 ft (same pier), well under the 16 ft threshold, with no doors, driveways, or gaps to cross. No gas equipment, HVAC, pool, or fencing is visible near the spot, and the main entrance stairway/door swing (right side of Photo 8) is tens of feet away and unobstructed. No vehicle-accessible pavement, driveway, or parked cars are visible in any supplied photo of this courtyard, so drive-path distance is not applicable/observed. All criteria for a pass are met with a clearly visible, unobstructed spot."
+ },
+ "usage": {
+  "input_tokens": 173503,
+  "cache_creation_input_tokens": 33928,
+  "cache_read_input_tokens": 441064,
+  "output_tokens": 6790
+ },
+ "cost_usd": 0.5879388000000001,
+ "latency_s": 118.0,
+ "tool_calls": [
+  {
+   "tool": "scene_info",
+   "input": {},
+   "output": {
+    "geometry_source": "laser_scan_ground_truth",
+    "units": "feet; plan x/y are horizontal axes, heights are above the fitted ground plane",
+    "cameras": {
+     "photo 1": {
+      "plan_xy_ft": [
+       4.8,
+       40.4
+      ],
+      "height_ft": 5.7,
+      "heading_deg": 32
+     },
+     "photo 2": {
+      "plan_xy_ft": [
+       -3.3,
+       33.0
+      ],
+      "height_ft": 5.6,
+      "heading_deg": 21
+     },
+     "photo 3": {
+      "plan_xy_ft": [
+       -17.3,
+       17.4
+      ],
+      "height_ft": 5.1,
+      "heading_deg": 10
+     },
+     "photo 4": {
+      "plan_xy_ft": [
+       -12.3,
+       -5.3
+      ],
+      "height_ft": 4.7,
+      "heading_deg": 12
+     },
+     "photo 5": {
+      "plan_xy_ft": [
+       -11.4,
+       -8.3
+      ],
+      "height_ft": 4.6,
+      "heading_deg": 13
+     },
+     "photo 6": {
+      "plan_xy_ft": [
+       4.1,
+       -27.9
+      ],
+      "height_ft": 4.8,
+      "heading_deg": 26
+     },
+     "photo 7": {
+      "plan_xy_ft": [
+       14.8,
+       -44.4
+      ],
+      "height_ft": 4.9,
+      "heading_deg": -18
+     },
+     "photo 8": {
+      "plan_xy_ft": [
+       11.9,
+       -50.0
+      ],
+      "height_ft": 4.9,
+      "heading_deg": -79
+     },
+     "photo 9": {
+      "plan_xy_ft": [
+       -2.6,
+       37.9
+      ],
+      "height_ft": 5.7,
+      "heading_deg": 72
+     },
+     "photo 10": {
+      "plan_xy_ft": [
+       2.4,
+       36.5
+      ],
+      "height_ft": 5.6,
+      "heading_deg": 74
+     },
+     "photo 11": {
+      "plan_xy_ft": [
+       -5.2,
+       49.9
+      ],
+      "height_ft": 5.8,
+      "heading_deg": 15
+     },
+     "photo 12": {
+      "plan_xy_ft": [
+       -0.0,
+       3.5
+      ],
+      "height_ft": 5.1,
+      "heading_deg": 9
+     },
+     "photo 13": {
+      "plan_xy_ft": [
+       0.4,
+       -6.4
+      ],
+      "height_ft": 4.9,
+      "heading_deg": 11
+     },
+     "photo 14": {
+      "plan_xy_ft": [
+       -3.5,
+       -1.6
+      ],
+      "height_ft": 4.9,
+      "heading_deg": 12
+     },
+     "photo 15": {
+      "plan_xy_ft": [
+       10.9,
+       -44.4
+      ],
+      "height_ft": 4.9,
+      "heading_deg": 75
+     }
+    },
+    "anchors": {
+     "electric_meter": {
+      "height_above_ground_ft": 5.0,
+      "plan_xy_ft": [
+       25.53,
+       -89.96
+      ],
+      "horizontal_dist_to_meter_ft": 0.0
+     }
+    },
+    "notes": "Pixel coordinates are normalised 0-1000 in x (left to right) and y (top to bottom) of the packet photo. A pixel with no geometry means that surface was not reconstructed (unobserved)."
+   }
+  },
+  {
+   "tool": "top_down",
+   "input": {},
+   "output": {
+    "ok": true
+   }
+  },
+  {
+   "tool": "view_photo",
+   "input": {
+    "photo": 8,
+    "x0": 0,
+    "x1": 1000,
+    "y0": 0,
+    "y1": 1000
+   },
+   "output": {
+    "ok": true,
+    "grid": "cyan = x, magenta = y (0-1000 photo coordinates)"
+   }
+  },
+  {
+   "tool": "view_photo",
+   "input": {
+    "photo": 8,
+    "x0": 350,
+    "x1": 650,
+    "y0": 450,
+    "y1": 750
+   },
+   "output": {
+    "ok": true,
+    "grid": "cyan = x, magenta = y (0-1000 photo coordinates)"
+   }
+  },
+  {
+   "tool": "locate",
+   "input": {
+    "photo": 8,
+    "x": 415,
+    "y": 741,
+    "name": "meter_wall_point"
+   },
+   "output": {
+    "ok": true,
+    "height_above_ground_ft": 5.47,
+    "plan_xy_ft": [
+     25.59,
+     -90.01
+    ],
+    "horizontal_dist_to_meter_ft": 0.08,
+    "range_from_camera_ft": 42.31,
+    "saved_as": "meter_wall_point"
+   }
+  },
+  {
+   "tool": "view_photo",
+   "input": {
+    "photo": 8,
+    "x0": 300,
+    "x1": 650,
+    "y0": 600,
+    "y1": 900
+   },
+   "output": {
+    "ok": true,
+    "grid": "cyan = x, magenta = y (0-1000 photo coordinates)"
+   }
+  },
+  {
+   "tool": "view_photo",
+   "input": {
+    "photo": 8,
+    "x0": 0,
+    "x1": 1000,
+    "y0": 400,
+    "y1": 900
+   },
+   "output": {
+    "ok": true,
+    "grid": "cyan = x, magenta = y (0-1000 photo coordinates)"
+   }
+  },
+  {
+   "tool": "view_photo",
+   "input": {
+    "photo": 8,
+    "x0": 330,
+    "x1": 480,
+    "y0": 450,
+    "y1": 820
+   },
+   "output": {
+    "ok": true,
+    "grid": "cyan = x, magenta = y (0-1000 photo coordinates)"
+   }
+  },
+  {
+   "tool": "locate",
+   "input": {
+    "photo": 8,
+    "x": 345,
+    "y": 700,
+    "name": "pier_left_edge"
+   },
+   "output": {
+    "ok": true,
+    "height_above_ground_ft": 7.3,
+    "plan_xy_ft": [
+     31.15,
+     -89.75
+    ],
+    "horizontal_dist_to_meter_ft": 5.63,
+    "range_from_camera_ft": 44.25,
+    "saved_as": "pier_left_edge"
+   }
+  },
+  {
+   "tool": "locate",
+   "input": {
+    "photo": 8,
+    "x": 460,
+    "y": 700,
+    "name": "pier_right_edge"
+   },
+   "output": {
+    "ok": true,
+    "height_above_ground_ft": 7.5,
+    "plan_xy_ft": [
+     22.47,
+     -90.64
+    ],
+    "horizontal_dist_to_meter_ft": 3.13,
+    "range_from_camera_ft": 42.09,
+    "saved_as": "pier_right_edge"
+   }
+  },
+  {
+   "tool": "measure",
+   "input": {
+    "a": {
+     "mark": "pier_left_edge"
+    },
+    "b": {
+     "mark": "pier_right_edge"
+    }
+   },
+   "output": {
+    "ok": true,
+    "distance_ft": 8.73,
+    "horizontal_ft": 8.73,
+    "vertical_ft": 0.2
+   }
+  },
+  {
+   "tool": "locate",
+   "input": {
+    "photo": 8,
+    "x": 30,
+    "y": 700,
+    "name": "win1_left"
+   },
+   "output": {
+    "ok": true,
+    "height_above_ground_ft": 6.61,
+    "plan_xy_ft": [
+     53.42,
+     -84.67
+    ],
+    "horizontal_dist_to_meter_ft": 28.39,
+    "range_from_camera_ft": 54.11,
+    "saved_as": "win1_left"
+   }
+  },
+  {
+   "tool": "locate",
+   "input": {
+    "photo": 8,
+    "x": 330,
+    "y": 700,
+    "name": "win1_right"
+   },
+   "output": {
+    "ok": false,
+    "reason": "no reconstructed geometry at that pixel (unobserved or sky)"
+   }
+  },
+  {
+   "tool": "render_battery",
+   "input": {
+    "photo": 8,
+    "x": 415,
+    "y": 790
+   },
+   "output": {
+    "ok": true,
+    "battery_center": {
+     "height_above_ground_ft": -0.0,
+     "plan_xy_ft": [
+      25.19,
+      -89.1
+     ],
+     "horizontal_dist_to_meter_ft": 0.92
+    },
+    "legend": "red = battery 31 in W x 22 in D x 36 in H flush to the wall; yellow = 3 ft ground offset; cyan = 5 ft ground offset",
+    "facing_clearance": {
+     "ok": true,
+     "facing_clearance_ft": 145.12
+    }
+   }
+  },
+  {
+   "tool": "facing_clearance",
+   "input": {
+    "photo": 8,
+    "x": 415,
+    "y": 790
+   },
+   "output": {
+    "ok": true,
+    "facing_clearance_ft": 145.12
+   }
+  },
+  {
+   "tool": "view_photo",
+   "input": {
+    "photo": 8,
+    "x0": 330,
+    "x1": 500,
+    "y0": 700,
+    "y1": 900
+   },
+   "output": {
+    "ok": true,
+    "grid": "cyan = x, magenta = y (0-1000 photo coordinates)"
+   }
+  },
+  {
+   "tool": "measure",
+   "input": {
+    "a": {
+     "mark": "meter_wall_point"
+    },
+    "b": {
+     "mark": "electric_meter"
+    }
+   },
+   "output": {
+    "ok": true,
+    "distance_ft": 0.47,
+    "horizontal_ft": 0.08,
+    "vertical_ft": -0.47
+   }
+  },
+  {
+   "tool": "view_photo",
+   "input": {
+    "photo": 15,
+    "x0": 0,
+    "x1": 1000,
+    "y0": 600,
+    "y1": 1000
+   },
+   "output": {
+    "ok": true,
+    "grid": "cyan = x, magenta = y (0-1000 photo coordinates)"
+   }
+  }
+ ],
+ "n_tool_calls": 18,
+ "prompt_id": "p08_battery_space",
+ "house": "eth3d-facade",
+ "variant": "tools_laser_gt",
+ "verdicts": {
+  "p08": "pass"
+ }
+}

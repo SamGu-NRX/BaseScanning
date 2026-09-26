@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"reasoning\": \"None of the provided photos show an electric meter at all \u2014 they depict a large institutional brick building, entrance stairs, and a bike rack sculpture. There is no visible meter can, pole, or bank of meters in any image.\", \"type\": \"unknown\", \"clean-decision\": false}",
+ "json": {
+  "reasoning": "None of the provided photos show an electric meter at all \u2014 they depict a large institutional brick building, entrance stairs, and a bike rack sculpture. There is no visible meter can, pole, or bank of meters in any image.",
+  "type": "unknown",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 33503,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 96
+ },
+ "cost_usd": 0.067966,
+ "latency_s": 4.06,
+ "stop": "end_turn",
+ "prompt_id": "p10_meter_mount",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p10": "unknown"
+ }
+}

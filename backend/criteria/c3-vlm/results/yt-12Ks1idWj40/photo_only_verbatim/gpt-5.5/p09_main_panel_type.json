@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"decision\":\"pass\",\"justification\":\"The photos show one utility meter feeding a single tall gray service/load-center enclosure, with its breakers visible when open. The other nearby white BASE-labeled boxes, battery cabinets, and small disconnect-style enclosures appear to be battery/transfer/disconnect equipment tied into that panel, not separate service main panels with their own independent main breakers.\"}",
+ "json": {
+  "decision": "pass",
+  "justification": "The photos show one utility meter feeding a single tall gray service/load-center enclosure, with its breakers visible when open. The other nearby white BASE-labeled boxes, battery cabinets, and small disconnect-style enclosures appear to be battery/transfer/disconnect equipment tied into that panel, not separate service main panels with their own independent main breakers."
+ },
+ "usage": {
+  "input_tokens": 24147,
+  "cached_tokens": 0,
+  "output_tokens": 376,
+  "reasoning_tokens": 294
+ },
+ "cost_usd": 0.132015,
+ "latency_s": 7.41,
+ "stop": "completed",
+ "prompt_id": "p09_main_panel_type",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "pass"
+ }
+}

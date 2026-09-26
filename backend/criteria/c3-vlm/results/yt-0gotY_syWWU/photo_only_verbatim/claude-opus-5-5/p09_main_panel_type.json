@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"decision\": \"manual_review\", \"justification\": \"All photos are exterior walk-around shots of the house and yard. The only visible electrical equipment is a meter beside the front door (Photos 3 and 6) and a small box on the rear wall (Photo 9). No breaker box, open panel view or disconnect enclosure is shown, so the number of independent service mains cannot be determined.\"}",
+ "json": {
+  "decision": "manual_review",
+  "justification": "All photos are exterior walk-around shots of the house and yard. The only visible electrical equipment is a meter beside the front door (Photos 3 and 6) and a small box on the rear wall (Photo 9). No breaker box, open panel view or disconnect enclosure is shown, so the number of independent service mains cannot be determined."
+ },
+ "usage": {
+  "input_tokens": 8359,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 173
+ },
+ "cost_usd": 0.036896,
+ "latency_s": 4.81,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

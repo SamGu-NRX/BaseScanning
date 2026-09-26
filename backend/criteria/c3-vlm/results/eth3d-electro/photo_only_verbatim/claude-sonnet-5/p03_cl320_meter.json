@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "```json\n{ \"hasCl320Meter\": false, \"cl320Label\": \"cl320_unclear\", \"insufficientEvidence\": true, \"evidence\": \"No meter face or meter label is visible in any of the provided images; only building exteriors, doors, transformer/service cabinets, and signage are shown.\", \"notes\": \"Images show electrical enclosures, doors, and warning signs but no readable meter face or meter label text, so CL320 cannot be confirmed or denied.\" }\n```",
+ "json": {
+  "hasCl320Meter": false,
+  "cl320Label": "cl320_unclear",
+  "insufficientEvidence": true,
+  "evidence": "No meter face or meter label is visible in any of the provided images; only building exteriors, doors, transformer/service cabinets, and signage are shown.",
+  "notes": "Images show electrical enclosures, doors, and warning signs but no readable meter face or meter label text, so CL320 cannot be confirmed or denied."
+ },
+ "usage": {
+  "input_tokens": 32553,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 157
+ },
+ "cost_usd": 0.066676,
+ "latency_s": 12.4,
+ "stop": "end_turn",
+ "prompt_id": "p03_cl320_meter",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

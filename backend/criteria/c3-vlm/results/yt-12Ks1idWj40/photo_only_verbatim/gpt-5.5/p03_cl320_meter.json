@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasCl320Meter\":false,\"cl320Label\":\"cl320_unclear\",\"insufficientEvidence\":true,\"evidence\":\"Meter is visible in several photos, but the meter face/label text is too small or unreadable; no readable CL320 text is visible.\",\"notes\":\"Do not infer CL320 from equipment size or layout; no explicit readable CL320 marking found.\"}",
+ "json": {
+  "hasCl320Meter": false,
+  "cl320Label": "cl320_unclear",
+  "insufficientEvidence": true,
+  "evidence": "Meter is visible in several photos, but the meter face/label text is too small or unreadable; no readable CL320 text is visible.",
+  "notes": "Do not infer CL320 from equipment size or layout; no explicit readable CL320 marking found."
+ },
+ "usage": {
+  "input_tokens": 23422,
+  "cached_tokens": 0,
+  "output_tokens": 339,
+  "reasoning_tokens": 256
+ },
+ "cost_usd": 0.12728,
+ "latency_s": 7.06,
+ "stop": "completed",
+ "prompt_id": "p03_cl320_meter",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

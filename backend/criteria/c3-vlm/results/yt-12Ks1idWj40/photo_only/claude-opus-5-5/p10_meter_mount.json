@@ -1,0 +1,24 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"mount\": \"standard\", \"clean_decision\": true, \"reasoning\": \"Photo 1 clearly shows a single residential meter mounted on the brick exterior wall beside the main panel, with conduit running to grade and no standalone pole. Later photos show the same wall-mounted meter. The added gray boxes are disconnects or battery equipment, not additional meters.\"}",
+ "json": {
+  "mount": "standard",
+  "clean_decision": true,
+  "reasoning": "Photo 1 clearly shows a single residential meter mounted on the brick exterior wall beside the main panel, with conduit running to grade and no standalone pole. Later photos show the same wall-mounted meter. The added gray boxes are disconnects or battery equipment, not additional meters."
+ },
+ "usage": {
+  "input_tokens": 297,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 25329,
+  "output_tokens": 207
+ },
+ "cost_usd": 0.0103938,
+ "latency_s": 7.73,
+ "stop": "end_turn",
+ "prompt_id": "p10_meter_mount",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p10": "standard"
+ }
+}

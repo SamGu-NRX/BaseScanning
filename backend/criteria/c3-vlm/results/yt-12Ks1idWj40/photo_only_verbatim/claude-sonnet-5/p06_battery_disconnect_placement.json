@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"justification\": \"The photos show ample clear brick wall beside the meter (used to mount the inverter box), a clear wall below the meter with conduit running down, and the battery was installed directly against the wall within a couple feet of the meter with a clean unobstructed wiring run. The install area is a fenced-in dirt/grass side yard with no pool, no visible driveway/pavement, and the AC condenser sits several feet away from the install footprint, giving adequate clearance.\", \"decision\": \"pass\"}",
+ "json": {
+  "justification": "The photos show ample clear brick wall beside the meter (used to mount the inverter box), a clear wall below the meter with conduit running down, and the battery was installed directly against the wall within a couple feet of the meter with a clean unobstructed wiring run. The install area is a fenced-in dirt/grass side yard with no pool, no visible driveway/pavement, and the AC condenser sits several feet away from the install footprint, giving adequate clearance.",
+  "decision": "pass"
+ },
+ "usage": {
+  "input_tokens": 26350,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 5893
+ },
+ "cost_usd": 0.11163,
+ "latency_s": 72.61,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p06": "pass"
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"hasLargeOrOversizedMeterCan\": false, \"meterCanLabel\": \"normal_meter_can\", \"insufficientEvidence\": false, \"evidence\": \"Photo 11 shows the round electric meter mounted on the siding in a compact, roughly square residential meter socket that is only slightly larger than the meter itself. It is not a tall, wide, or oversized can.\", \"notes\": \"The meter is seen from a distance, but the socket's proportions relative to the meter and siding courses are clear. Photos 2-4 show a gas meter and were ignored. The gray boxes near the AC unit are AC disconnects, not the meter enclosure.\"}",
+ "json": {
+  "hasLargeOrOversizedMeterCan": false,
+  "meterCanLabel": "normal_meter_can",
+  "insufficientEvidence": false,
+  "evidence": "Photo 11 shows the round electric meter mounted on the siding in a compact, roughly square residential meter socket that is only slightly larger than the meter itself. It is not a tall, wide, or oversized can.",
+  "notes": "The meter is seen from a distance, but the socket's proportions relative to the meter and siding courses are clear. Photos 2-4 show a gas meter and were ignored. The gray boxes near the AC unit are AC disconnects, not the meter enclosure."
+ },
+ "usage": {
+  "input_tokens": 4911,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 291
+ },
+ "cost_usd": 0.025464,
+ "latency_s": 4.99,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p02": "normal_meter_can"
+ }
+}

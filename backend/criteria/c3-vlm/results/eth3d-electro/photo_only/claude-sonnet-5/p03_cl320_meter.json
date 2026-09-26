@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"feature\": \"cl320_unclear\", \"label\": \"\", \"evidence\": \"None of the 15 photos show a meter face or meter label\", \"notes\": \"Photos depict building exteriors, transformer/electrical room doors, cable/scaffold installations, and an equipment enclosure with vents, but no meter with readable class text is visible in any image.\", \"insufficientEvidence\": true}",
+ "json": {
+  "feature": "cl320_unclear",
+  "label": "",
+  "evidence": "None of the 15 photos show a meter face or meter label",
+  "notes": "Photos depict building exteriors, transformer/electrical room doors, cable/scaffold installations, and an equipment enclosure with vents, but no meter with readable class text is visible in any image.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 309,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 124
+ },
+ "cost_usd": 0.008292200000000001,
+ "latency_s": 2.98,
+ "stop": "end_turn",
+ "prompt_id": "p03_cl320_meter",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

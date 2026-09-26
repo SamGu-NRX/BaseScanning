@@ -1,0 +1,30 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The meter is on the front wall just right of the door, and a short harness run can go right along that wall, under/near the front window, around the outside corner, to the open side wall shown in the wider side views. Just around the corner on the side wall there is a clear exterior wall with dirt/yard in front and wide-open clearance, not near a driveway, door, gas meter, or equipment; small landscaping at the base appears movable.\",\"reference_object\":\"front door assumed about 3 ft wide\",\"distance_ft\":10,\"front_clearance_ft\":99,\"drive_path_ft\":20,\"requires_member_action\":true,\"decision\":\"pass\",\"needs_more_photos\":false,\"missing_views\":[]}",
+ "json": {
+  "justification": "The meter is on the front wall just right of the door, and a short harness run can go right along that wall, under/near the front window, around the outside corner, to the open side wall shown in the wider side views. Just around the corner on the side wall there is a clear exterior wall with dirt/yard in front and wide-open clearance, not near a driveway, door, gas meter, or equipment; small landscaping at the base appears movable.",
+  "reference_object": "front door assumed about 3 ft wide",
+  "distance_ft": 10,
+  "front_clearance_ft": 99,
+  "drive_path_ft": 20,
+  "requires_member_action": true,
+  "decision": "pass",
+  "needs_more_photos": false,
+  "missing_views": []
+ },
+ "usage": {
+  "input_tokens": 12202,
+  "cached_tokens": 0,
+  "output_tokens": 2226,
+  "reasoning_tokens": 2070
+ },
+ "cost_usd": 0.12779,
+ "latency_s": 26.63,
+ "stop": "completed",
+ "prompt_id": "p08_battery_space",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p08": "pass"
+ }
+}

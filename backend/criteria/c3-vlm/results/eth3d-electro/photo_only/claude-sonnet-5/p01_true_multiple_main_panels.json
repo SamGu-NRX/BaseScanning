@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"trueMultipleMainPanels\": false, \"panelLayout\": \"unclear\", \"evidence\": \"Photos show what appears to be a commercial/institutional building (ETH-labeled) with multiple transformer/electrical rooms (labeled 'Trafoaraum' in Photos 1, 5, 6, 14, 15) and separate equipment enclosures (Photos 3, 8, 11). All doors to these rooms are closed, so no panel interiors, breakers, or disconnects are visible in any photo.\", \"notes\": \"This does not appear to be a typical residential site survey for a home battery installation; it shows what looks like a large institutional/commercial facility with multiple transformer rooms. No panel interiors are visible in any photo, so main breakers/disconnects cannot be assessed. Cannot determine panel configuration for a 'home' from these images.\", \"insufficientEvidence\": true}",
+ "json": {
+  "trueMultipleMainPanels": false,
+  "panelLayout": "unclear",
+  "evidence": "Photos show what appears to be a commercial/institutional building (ETH-labeled) with multiple transformer/electrical rooms (labeled 'Trafoaraum' in Photos 1, 5, 6, 14, 15) and separate equipment enclosures (Photos 3, 8, 11). All doors to these rooms are closed, so no panel interiors, breakers, or disconnects are visible in any photo.",
+  "notes": "This does not appear to be a typical residential site survey for a home battery installation; it shows what looks like a large institutional/commercial facility with multiple transformer rooms. No panel interiors are visible in any photo, so main breakers/disconnects cannot be assessed. Cannot determine panel configuration for a 'home' from these images.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 440,
+  "cache_creation_input_tokens": 32171,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 294
+ },
+ "cost_usd": 0.0842475,
+ "latency_s": 4.98,
+ "stop": "end_turn",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p01": "unclear"
+ }
+}

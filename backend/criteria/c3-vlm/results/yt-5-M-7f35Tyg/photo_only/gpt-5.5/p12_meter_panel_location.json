@@ -1,0 +1,40 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meterNotAccessible\":{\"verdict\":\"manual_review\",\"reason\":\"Electric meter appears outside, but gas meter/regulator is very nearby in the same area.\"},\"panelNotAccessible\":{\"verdict\":\"manual_review\",\"reason\":\"Main electrical panel is not shown or identifiable, so access cannot be assessed.\"},\"panelInHouse\":{\"verdict\":\"manual_review\",\"reason\":\"Main panel location is not visible, so interior vs exterior cannot be determined.\"},\"notSameWall\":{\"verdict\":\"manual_review\",\"reason\":\"Meter is visible outside, but the panel is not shown; same-wall relationship is unproven.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "manual_review",
+   "reason": "Electric meter appears outside, but gas meter/regulator is very nearby in the same area."
+  },
+  "panelNotAccessible": {
+   "verdict": "manual_review",
+   "reason": "Main electrical panel is not shown or identifiable, so access cannot be assessed."
+  },
+  "panelInHouse": {
+   "verdict": "manual_review",
+   "reason": "Main panel location is not visible, so interior vs exterior cannot be determined."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reason": "Meter is visible outside, but the panel is not shown; same-wall relationship is unproven."
+  }
+ },
+ "usage": {
+  "input_tokens": 4060,
+  "cached_tokens": 3328,
+  "output_tokens": 1471,
+  "reasoning_tokens": 1344
+ },
+ "cost_usd": 0.049454,
+ "latency_s": 19.44,
+ "stop": "completed",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p12.meterNotAccessible": "manual_review",
+  "p12.panelNotAccessible": "manual_review",
+  "p12.panelInHouse": "manual_review",
+  "p12.notSameWall": "manual_review"
+ }
+}

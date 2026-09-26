@@ -1,0 +1,24 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"reasoning\": \"All 14 photos are distant Wyze security-camera frames of an installation; the single electric meter on the wall appears only as a tiny object, and no meter number is legible in any frame. No close-up exists and the characters cannot be resolved, so there is no best-effort number to report and the read is not clean.\", \"meter_number\": \"\", \"clean-decision\": false}",
+ "json": {
+  "reasoning": "All 14 photos are distant Wyze security-camera frames of an installation; the single electric meter on the wall appears only as a tiny object, and no meter number is legible in any frame. No close-up exists and the characters cannot be resolved, so there is no best-effort number to report and the read is not clean.",
+  "meter_number": "",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 26459,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 122
+ },
+ "cost_usd": 0.108276,
+ "latency_s": 7.75,
+ "stop": "end_turn",
+ "prompt_id": "p04_meter_number",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p04": "none"
+ }
+}

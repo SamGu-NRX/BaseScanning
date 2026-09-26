@@ -1,0 +1,29 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\n  \"meter_head_y_min\": 168,\n  \"meter_head_y_max\": 233,\n  \"meter_can_y_min\": 145,\n  \"meter_can_y_max\": 315,\n  \"distance_ratio\": 2.6,\n  \"reasoning\": \"Photo 11 shows a round residential meter mounted on a compact gray can affixed to the siding, with both the top and bottom edges of the can visible along with clear wall above/below. The can height is roughly 2.5x the meter head diameter, consistent with a standard single meter can rather than an oversized or undersized enclosure, and there is no combined breaker panel present.\",\n  \"type\": \"standardMeter\",\n  \"clean-decision\": true\n}",
+ "json": {
+  "meter_head_y_min": 168,
+  "meter_head_y_max": 233,
+  "meter_can_y_min": 145,
+  "meter_can_y_max": 315,
+  "distance_ratio": 2.6,
+  "reasoning": "Photo 11 shows a round residential meter mounted on a compact gray can affixed to the siding, with both the top and bottom edges of the can visible along with clear wall above/below. The can height is roughly 2.5x the meter head diameter, consistent with a standard single meter can rather than an oversized or undersized enclosure, and there is no combined breaker panel present.",
+  "type": "standardMeter",
+  "clean-decision": true
+ },
+ "usage": {
+  "input_tokens": 6481,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 1165
+ },
+ "cost_usd": 0.024612,
+ "latency_s": 13.01,
+ "stop": "end_turn",
+ "prompt_id": "p11_meter_type",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p11": "standardMeter"
+ }
+}

@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"justification\": \"The photos show a large multi-story institutional brick building with a gravel courtyard, not a residential meter area. No electric meter is visible in any photo, so the Disco location and conduit route cannot be confirmed. The ground-level walls are densely lined with closely spaced ground-floor windows and multiple doors, leaving no gap that clearly meets the ComEd 3 ft rule, and the gravel courtyard may be a drivable surface.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "The photos show a large multi-story institutional brick building with a gravel courtyard, not a residential meter area. No electric meter is visible in any photo, so the Disco location and conduit route cannot be confirmed. The ground-level walls are densely lined with closely spaced ground-floor windows and multiple doors, leaving no gap that clearly meets the ComEd 3 ft rule, and the gravel courtyard may be a drivable surface.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 36790,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 236
+ },
+ "cost_usd": 0.15188,
+ "latency_s": 9.2,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

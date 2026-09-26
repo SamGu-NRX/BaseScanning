@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"trueMultipleMainPanels\": false, \"panelLayout\": \"unclear\", \"evidence\": \"Photos show a gas meter (1-4), AC condenser units (6-9), electric meter (11), and house exterior/foundation shots (12-15), plus a deck (16). No electrical panel interiors or breaker panels are visible in any photo.\", \"notes\": \"None of the photos show an actual breaker panel, main disconnect, or panel interior - only the utility meter, gas service, and AC units are visible. Cannot assess panel configuration at all.\", \"insufficientEvidence\": true}",
+ "json": {
+  "trueMultipleMainPanels": false,
+  "panelLayout": "unclear",
+  "evidence": "Photos show a gas meter (1-4), AC condenser units (6-9), electric meter (11), and house exterior/foundation shots (12-15), plus a deck (16). No electrical panel interiors or breaker panels are visible in any photo.",
+  "notes": "None of the photos show an actual breaker panel, main disconnect, or panel interior - only the utility meter, gas service, and AC units are visible. Cannot assess panel configuration at all.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 440,
+  "cache_creation_input_tokens": 4005,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 194
+ },
+ "cost_usd": 0.0128325,
+ "latency_s": 3.25,
+ "stop": "end_turn",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p01": "unclear"
+ }
+}

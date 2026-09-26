@@ -1,0 +1,29 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"meter_head_y_min\": 0, \"meter_head_y_max\": 0, \"meter_can_y_min\": 0, \"meter_can_y_max\": 0, \"distance_ratio\": 0, \"reasoning\": \"None of the photos show a residential round meter or meter can at all; instead they depict a commercial/industrial building with transformer rooms, doors, cable scaffolding, and utility cabinets. No meter head or can is visible in any image.\", \"type\": \"unknown\", \"clean-decision\": false}",
+ "json": {
+  "meter_head_y_min": 0,
+  "meter_head_y_max": 0,
+  "meter_can_y_min": 0,
+  "meter_can_y_max": 0,
+  "distance_ratio": 0,
+  "reasoning": "None of the photos show a residential round meter or meter can at all; instead they depict a commercial/industrial building with transformer rooms, doors, cable scaffolding, and utility cabinets. No meter head or can is visible in any image.",
+  "type": "unknown",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 34647,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 164
+ },
+ "cost_usd": 0.070934,
+ "latency_s": 4.08,
+ "stop": "end_turn",
+ "prompt_id": "p11_meter_type",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p11": "unknown"
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasTrueMultipleMainPanels\":false,\"multipleMainPanelLabel\":\"unclear_or_insufficient_evidence\",\"insufficientEvidence\":true,\"evidence\":\"Images show exterior building views and utility/meter areas, but no open electrical panels or clearly visible independent main breakers/disconnects for multiple load centers.\",\"notes\":\"Cannot determine presence of true multiple main panels from these photos; adjacent/closed equipment is not sufficient.\"}",
+ "json": {
+  "hasTrueMultipleMainPanels": false,
+  "multipleMainPanelLabel": "unclear_or_insufficient_evidence",
+  "insufficientEvidence": true,
+  "evidence": "Images show exterior building views and utility/meter areas, but no open electrical panels or clearly visible independent main breakers/disconnects for multiple load centers.",
+  "notes": "Cannot determine presence of true multiple main panels from these photos; adjacent/closed equipment is not sufficient."
+ },
+ "usage": {
+  "input_tokens": 18286,
+  "cached_tokens": 0,
+  "output_tokens": 168,
+  "reasoning_tokens": 78
+ },
+ "cost_usd": 0.09647,
+ "latency_s": 3.5,
+ "stop": "completed",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p01": "unclear_or_insufficient_evidence"
+ }
+}

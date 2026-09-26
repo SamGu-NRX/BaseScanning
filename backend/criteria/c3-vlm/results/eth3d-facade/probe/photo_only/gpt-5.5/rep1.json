@@ -1,0 +1,60 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"gap_w4_w5_ft\":4.5,\"window4_width_ft\":5.2,\"window4_sill_height_ft\":2.8,\"meter_to_tower_corner_ft\":8.6,\"tower_projection_ft\":7.0,\"door_width_ft\":6.3,\"scale_cues\":\"Photo 8 primary; scaled from typical 6 ft double glazed door, brick-course/module size, repeated arched window widths, and stone plinth/sill height.\"}",
+ "json": {
+  "gap_w4_w5_ft": 4.5,
+  "window4_width_ft": 5.2,
+  "window4_sill_height_ft": 2.8,
+  "meter_to_tower_corner_ft": 8.6,
+  "tower_projection_ft": 7.0,
+  "door_width_ft": 6.3,
+  "scale_cues": "Photo 8 primary; scaled from typical 6 ft double glazed door, brick-course/module size, repeated arched window widths, and stone plinth/sill height."
+ },
+ "usage": {
+  "input_tokens": 29579,
+  "cached_tokens": 28928,
+  "output_tokens": 4614,
+  "reasoning_tokens": 4510
+ },
+ "cost_usd": 0.156139,
+ "latency_s": 59.6,
+ "stop": "completed",
+ "errors": {
+  "gap_w4_w5_ft": {
+   "est": 4.5,
+   "truth": 5.11,
+   "err_ft": -0.61,
+   "ratio": 0.88
+  },
+  "window4_width_ft": {
+   "est": 5.2,
+   "truth": 5.56,
+   "err_ft": -0.36,
+   "ratio": 0.94
+  },
+  "window4_sill_height_ft": {
+   "est": 2.8,
+   "truth": 3.32,
+   "err_ft": -0.52,
+   "ratio": 0.84
+  },
+  "meter_to_tower_corner_ft": {
+   "est": 8.6,
+   "truth": 9.9,
+   "err_ft": -1.3,
+   "ratio": 0.87
+  },
+  "tower_projection_ft": {
+   "est": 7.0,
+   "truth": 11.6,
+   "err_ft": -4.6,
+   "ratio": 0.6
+  },
+  "door_width_ft": {
+   "est": 6.3,
+   "truth": 7.18,
+   "err_ft": -0.88,
+   "ratio": 0.88
+  }
+ }
+}

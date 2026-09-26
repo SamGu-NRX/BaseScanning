@@ -1,0 +1,36 @@
+{
+ "model": "gpt-5.6-sol",
+ "text": "{\"decision\":\"manual_review\",\"disconnect_location\":null,\"battery_location\":null,\"route\":\"Not determinable; no electric meter or continuous meter-to-install route is visible.\",\"distance_ft\":null,\"nearest_opening_ft\":null,\"reference_object\":\"Main entrance door, assumed approximately 7 ft tall\",\"needs_more_photos\":true,\"missing_views\":[\"Clear close-up of the electric meter and the wall directly above, below, and on both sides\",\"Wide photos looking both directions along the meter wall and around each reachable adjacent-wall corner\",\"Photos of a proposed battery location showing the full wall, ground, overhead clearance, and nearby doors, ground-level windows, and window wells\",\"Continuous photos documenting the entire proposed conduit and harness route from the meter to the disconnect and battery\"],\"justification\":\"The submitted photos show a large building facade and courtyard, but no identifiable electric meter, disconnect mounting area, proposed battery footprint, or continuous connecting route. Required clearances and routing therefore cannot be verified.\"}",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "route": "Not determinable; no electric meter or continuous meter-to-install route is visible.",
+  "distance_ft": null,
+  "nearest_opening_ft": null,
+  "reference_object": "Main entrance door, assumed approximately 7 ft tall",
+  "needs_more_photos": true,
+  "missing_views": [
+   "Clear close-up of the electric meter and the wall directly above, below, and on both sides",
+   "Wide photos looking both directions along the meter wall and around each reachable adjacent-wall corner",
+   "Photos of a proposed battery location showing the full wall, ground, overhead clearance, and nearby doors, ground-level windows, and window wells",
+   "Continuous photos documenting the entire proposed conduit and harness route from the meter to the disconnect and battery"
+  ],
+  "justification": "The submitted photos show a large building facade and courtyard, but no identifiable electric meter, disconnect mounting area, proposed battery footprint, or continuous connecting route. Required clearances and routing therefore cannot be verified."
+ },
+ "usage": {
+  "input_tokens": 29909,
+  "cached_tokens": 0,
+  "output_tokens": 364,
+  "reasoning_tokens": 159
+ },
+ "cost_usd": 0.126916,
+ "latency_s": 9.29,
+ "stop": "completed",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}
