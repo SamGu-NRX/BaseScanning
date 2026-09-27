@@ -50,17 +50,21 @@ eth3d-facade: differ=none (runtime_s ignored); kept committed scene.json; copied
 eth3d-electro: differ=none (runtime_s ignored); kept committed scene.json; copied PLYs to .fixtures/gt/eth3d-electro/gt-laser
 eth3d-delivery: differ=none (runtime_s ignored); kept committed scene.json; copied PLYs to .fixtures/gt/eth3d-delivery/gt-laser
 
-Rebuilt on this Mac from the ETH3D archives (2026-09-26). Facade and electro `laser.ply` files have the same vertex count as the committed scene assets and the scenes match (`walls`, `chain`, `objects`, `coverage.bands`); only the PLY bytes differ. `manifest.json` records the rebuilt hashes and sizes. The committed `scene.json` assets keep the historical VM sha256s.
+Rebuilt on this VM from the ETH3D archives (2026-09-27) with `make gt` (`build_gt` / `build_gt_c2`). `walls`, `chain`, `objects`, and `coverage.bands` match the committed scenes (`provenance.runtime_s` ignored). Electro and delivery `coverage.sensitivity` now come from that rebuild, the same `ground_sensitivity` path the facade scene already used: `rule_id` `angle75`, `angle80`, and `footprint3in` (`max_incidence_deg` 88, `max_footprint_m` 0.0762). The angle75 and angle80 bands are identical to the previous blocks. `footprint3in` is new (electro 17 ground bands, delivery 28). Facade sensitivity matched the rebuild band for band, including its existing `footprint3in` block.
 
-| Site | Vertices | Rebuilt sha256 | Bytes | Historical scene-asset sha256 |
-|---|---:|---|---:|---|
-| eth3d-facade | 2,136,930 | `e23eb7d1f7a8338a46b499047edb4ef31d4f4cf5df9ea50ee95767cdced9ad3d` | 25,643,281 | `0a45bf5e444ef22f78feb97c1f8c7c5daff01937e32fc059835cb937a917a681` |
-| eth3d-electro | 455,131 | `e49bd68fe5c6f80c78712a9906b249141c3fb3760d64b301290f6aa319d8c125` | 5,461,692 | `c04fd1cab9f5f1c2875858a3b32fe865f65e870bbe502a5364fa9e496c21c2c5` |
-| eth3d-delivery | 802,134 | `54a08221ee1f70d2dc92b5e9a17207f3f6ca6b9ea0196f3163248b537b7ad642` | 9,625,728 | same as the rebuilt file |
+The two colmap scenes (`colmap-nonlidar`, `colmap-oracle`) predated `rule_id`. `ground_sensitivity` on their committed grids and the store `points.ply` returns empty bands for all three rules, which is what those scenes now record, including an empty `footprint3in` entry.
 
-Occluder sha256s match the committed scene assets. Delivery `laser.ply` does too.
+PLY bytes: this VM's `make gt` reproduced the historical laser sha256s (`facade` `0a45bf5e444ef22f78feb97c1f8c7c5daff01937e32fc059835cb937a917a681`, `electro` `c04fd1cab9f5f1c2875858a3b32fe865f65e870bbe502a5364fa9e496c21c2c5`; delivery already matched). The store files from the earlier Mac rebuild differ by at most about 6e-8 m at the same vertex counts. Scene asset hashes were updated to those store files so `scene.json`, `manifest.json`, and the store bytes agree.
 
-The two colmap `points.ply` files were regenerated with `scene_from_recon` (the points step of `server/eval/eth3d/run_validation.sh`) from `colmap-sparse-best.tar.gz` and pycolmap 4.2.0. Both have the committed asset's vertex count (60,991). The bytes differ, so `manifest.json` records the rebuilt sha256 and size (`oracle` `7fab86a5f65302dd701d7658ebdebafcb07e621f922b35a82e5907f647ca7c76`, `nonlidar` `35ebe838ed3ec16582040b2ed5a756025fa901ea10859d288afd5dfd93af333c`, 975,996 bytes each). The committed scene assets keep the historical sha256s.
+| Asset | sha256 now recorded in the scene (also the manifest and the store) |
+|---|---|
+| eth3d-facade `laser.ply` | `e23eb7d1f7a8338a46b499047edb4ef31d4f4cf5df9ea50ee95767cdced9ad3d` |
+| eth3d-electro `laser.ply` | `e49bd68fe5c6f80c78712a9906b249141c3fb3760d64b301290f6aa319d8c125` |
+| eth3d-delivery `laser.ply` | `54a08221ee1f70d2dc92b5e9a17207f3f6ca6b9ea0196f3163248b537b7ad642` (unchanged) |
+| colmap-oracle `points.ply` | `7fab86a5f65302dd701d7658ebdebafcb07e621f922b35a82e5907f647ca7c76` |
+| colmap-nonlidar `points.ply` | `35ebe838ed3ec16582040b2ed5a756025fa901ea10859d288afd5dfd93af333c` |
+
+Occluder sha256s were already equal across the scene, the manifest, and the store. Reference verdicts and reference scores were not regenerated: walls, chain, objects, and primary bands are unchanged.
 
 The brief's facade self-check said `n=55`. That number is `status_counts.scored`. `key_distances.overall.n` is 53 in the committed `reference-scores/eth3d-facade/geomscore-self.json` (two `wall.length` rows are `extent_limited` and stay out of `overall.n`). `make validate-full` compares `key_distances` to that file and requires `median_in`, `p90_in` and `scale_error_pct` of 0.
 
@@ -79,7 +83,7 @@ The labels count is 33 because `internal/criteria/labels-v0/` has 8 sites × A/B
 
 WS-13's LaMAR rows and the three `unmirrored:` YouTube tars stay in `manifest.json`. `make fixtures` does not download those URLs (`scripts/lamar/fetch_lamar.sh` does) and does not fail when the unmirrored tars are absent. `lamar:lin-segments` is fetched from `breadth/a6-iphone-quality/results/segments.json` under the store `internal/` root.
 
-Laser and occluder PLYs, recon `points.ply`, and the nine packet tars are fetch-only. GT PLYs live in the store under `internal/eval-harness/results/<site>/gt-laser/`, and the two colmap `points.ply` files live beside their scenes. Facade and electro `laser.ply` manifest hashes, and both colmap `points.ply` hashes, are the Mac rebuild (§4 step 17); the committed scene assets keep the VM sha256s. Occluder hashes, and delivery `laser.ply`, still match those assets.
+Laser and occluder PLYs, recon `points.ply`, and the nine packet tars are fetch-only. GT PLYs live in the store under `internal/eval-harness/results/<site>/gt-laser/`, and the two colmap `points.ply` files live beside their scenes. Facade and electro `laser.ply`, and both colmap `points.ply` files, use the store rebuild's sha256 in the scene and in `manifest.json` (see the gt-diff note). Occluder hashes, and delivery `laser.ply`, match the same way. A later `make gt` can rewrite laser bytes; point the store copy at a private `FIXTURE_SOURCE` unless you intend to publish that rebuild.
 
 `mini-arkit` is about 25 KB, under the brief's ≈ 60 KB estimate, because the JPEGs are solid 64×48 colour and the streams are two-row gzip CSVs.
 

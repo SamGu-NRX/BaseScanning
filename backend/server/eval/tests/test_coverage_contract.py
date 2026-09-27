@@ -1,7 +1,7 @@
 """The C3 failure (a pass on w2, which the photos only show edge-on) must be caught.
 
-Needs the facade GT with PLYs. Default is data/fixtures/scenes/eth3d-facade/gt-laser/scene.json.
-Skipped when laser.ply is absent.
+Needs the facade GT plus every file CoverageQuery.from_scene reads for it (the scene, its
+point cloud, and the occluder PLY). Skipped when any of those files is absent.
 """
 
 from __future__ import annotations
@@ -23,10 +23,28 @@ W2_FACE = {"wall_id": "w2", "s_m": [3.3, 4.2], "height_m": [0.0, 1.0]}
 W1_GAP = {"wall_id": "w1", "s_m": [-0.7, 0.7], "height_m": [0.0, 1.0]}
 
 
+def _files_coverage_query_reads(scene_path: Path) -> list[Path]:
+    """Paths CoverageQuery.from_scene opens: the scene, its point cloud (or mesh), and occluders."""
+    scene = load_json(scene_path)
+    base = scene_path.parent
+    files = [scene_path]
+    assets = scene.get("assets", [])
+    cloud = next((asset for asset in assets if asset.get("kind") == "point_cloud"), None)
+    if cloud is None:
+        cloud = next((asset for asset in assets if asset.get("kind") == "mesh"), None)
+    if cloud is not None:
+        files.append(base / cloud["path"])
+    files.extend(base / asset["path"] for asset in assets if asset.get("id") == "occluders")
+    return files
+
+
 @pytest.fixture(scope="module")
 def gt():
-    if not (GT.parent / "laser.ply").is_file():
-        pytest.skip("laser.ply absent")
+    if not GT.is_file():
+        pytest.skip(f"{GT.name} absent")
+    missing = [path.name for path in _files_coverage_query_reads(GT) if not path.is_file()]
+    if missing:
+        pytest.skip("missing " + ", ".join(missing))
     s = load_json(GT)
     return s, CoverageQuery.from_scene(s, GT.parent)
 

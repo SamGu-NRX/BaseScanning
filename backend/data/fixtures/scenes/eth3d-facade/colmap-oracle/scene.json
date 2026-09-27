@@ -723,12 +723,21 @@
   "sensitivity": [
    {
     "surface": "ground",
+    "rule_id": "angle75",
     "max_incidence_deg": 75.0,
     "bands": []
    },
    {
     "surface": "ground",
+    "rule_id": "angle80",
     "max_incidence_deg": 80.0,
+    "bands": []
+   },
+   {
+    "surface": "ground",
+    "rule_id": "footprint3in",
+    "max_incidence_deg": 88.0,
+    "max_footprint_m": 0.0762,
     "bands": []
    }
   ]
@@ -3042,7 +3051,7 @@
     "z",
     "n_views"
    ],
-   "sha256": "b19e105ac09a0bb993837130aad52fc95789d177c381084442e2e0c3cf1c4cab",
+   "sha256": "7fab86a5f65302dd701d7658ebdebafcb07e621f922b35a82e5907f647ca7c76",
    "note": "COLMAP sparse points (pycolmap 4.2, 1600 px)"
   },
   {

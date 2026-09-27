@@ -106,14 +106,18 @@ for site in ("eth3d-facade", "eth3d-electro", "eth3d-delivery"):
             print(f"copied PLYs into {store_dir}")
 page = root / "docs" / "components" / "ws-00-skeleton-and-contracts.md"
 marker = "<!-- gt-diff -->"
-block = marker + "\n" + "\n".join(notes) + "\n"
 if page.is_file() and marker in page.read_text():
     text = page.read_text()
-    start = text.index(marker)
-    end = text.find("\n## ", start + len(marker))
-    if end < 0:
-        end = len(text)
-    page.write_text(text[:start] + block + text[end:])
+    start = text.index(marker) + len(marker)
+    if text[start:start + 1] == "\n":
+        start += 1
+    rest = text[start:]
+    lines = rest.splitlines(keepends=True)
+    consumed = 0
+    while consumed < len(lines) and lines[consumed].startswith("eth3d-") and ": differ=" in lines[consumed]:
+        consumed += 1
+    status = "".join(note + "\n" for note in notes)
+    page.write_text(text[:start] + status + "".join(lines[consumed:]))
 else:
     print("component page has no gt-diff marker; diff is under .fixtures/gt/<site>/gt-laser/scene-diff.txt", file=sys.stderr)
 PY

@@ -939,6 +939,7 @@
   "sensitivity": [
    {
     "surface": "ground",
+    "rule_id": "angle75",
     "max_incidence_deg": 75.0,
     "bands": [
      {
@@ -1099,6 +1100,7 @@
    },
    {
     "surface": "ground",
+    "rule_id": "angle80",
     "max_incidence_deg": 80.0,
     "bands": [
      {
@@ -1286,6 +1288,201 @@
       ],
       "out_m": 6.3,
       "views": 2,
+      "best_incidence_deg": 76.6
+     }
+    ]
+   },
+   {
+    "surface": "ground",
+    "rule_id": "footprint3in",
+    "max_incidence_deg": 88.0,
+    "max_footprint_m": 0.0762,
+    "bands": [
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -10.883,
+       -10.633
+      ],
+      "out_m": 2.3,
+      "views": 6,
+      "best_incidence_deg": 72.2
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -10.633,
+       -9.633
+      ],
+      "out_m": 2.5,
+      "views": 6,
+      "best_incidence_deg": 71.3
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -9.633,
+       -8.633
+      ],
+      "out_m": 3.0,
+      "views": 2,
+      "best_incidence_deg": 71.1
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -8.633,
+       -7.883
+      ],
+      "out_m": 3.5,
+      "views": 2,
+      "best_incidence_deg": 72.6
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       -6.378,
+       -5.628
+      ],
+      "out_m": 3.0,
+      "views": 2,
+      "best_incidence_deg": 70.7
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       -5.628,
+       -4.378
+      ],
+      "out_m": 2.8,
+      "views": 2,
+      "best_incidence_deg": 70.8
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       -4.378,
+       -3.878
+      ],
+      "out_m": 3.0,
+      "views": 2,
+      "best_incidence_deg": 71.2
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       -3.878,
+       -3.628
+      ],
+      "out_m": 3.6,
+      "views": 2,
+      "best_incidence_deg": 70.6
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       -3.628,
+       -3.378
+      ],
+      "out_m": 4.1,
+      "views": 2,
+      "best_incidence_deg": 70.5
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       -3.378,
+       -2.878
+      ],
+      "out_m": 6.7,
+      "views": 2,
+      "best_incidence_deg": 70.9
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       -2.878,
+       -1.878
+      ],
+      "out_m": 7.0,
+      "views": 4,
+      "best_incidence_deg": 70.6
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       -1.878,
+       -0.878
+      ],
+      "out_m": 7.5,
+      "views": 6,
+      "best_incidence_deg": 72.9
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       -0.878,
+       1.872
+      ],
+      "out_m": 8.0,
+      "views": 3,
+      "best_incidence_deg": 76.3
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       1.872,
+       2.122
+      ],
+      "out_m": 7.7,
+      "views": 4,
+      "best_incidence_deg": 76.2
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       2.122,
+       2.372
+      ],
+      "out_m": 7.1,
+      "views": 4,
+      "best_incidence_deg": 76.1
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       2.372,
+       2.622
+      ],
+      "out_m": 6.7,
+      "views": 4,
+      "best_incidence_deg": 76.3
+     },
+     {
+      "wall_id": "w2",
+      "band": "ground",
+      "s_m": [
+       2.622,
+       2.872
+      ],
+      "out_m": 6.3,
+      "views": 6,
       "best_incidence_deg": 76.6
      }
     ]
@@ -2826,7 +3023,7 @@
     "y",
     "z"
    ],
-   "sha256": "c04fd1cab9f5f1c2875858a3b32fe865f65e870bbe502a5364fa9e496c21c2c5",
+   "sha256": "e49bd68fe5c6f80c78712a9906b249141c3fb3760d64b301290f6aa319d8c125",
    "note": "ETH3D dslr_scan_eval laser points, 2 cm voxels"
   },
   {

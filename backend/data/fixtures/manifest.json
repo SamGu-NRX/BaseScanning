@@ -30,8 +30,8 @@
       "repo_path": "data/fixtures/scenes/eth3d-delivery/gt-laser/scene.json",
       "cache_path": null,
       "source": "eval-harness/results/eth3d-delivery/gt-laser/scene.json",
-      "bytes": 46405,
-      "sha256": "581186f81e7ad3bdcd195ef86d39935b0dafac0c0c5d51610ac0fa6ecafc7bd7",
+      "bytes": 51710,
+      "sha256": "fa05a75dd5447108d0bab2941e293ee0b1d7c57a50fbbda31a08a0448d59b260",
       "committed": true,
       "licence": "CC-BY-NC-SA-4.0"
     },
@@ -151,8 +151,8 @@
       "repo_path": "data/fixtures/scenes/eth3d-electro/gt-laser/scene.json",
       "cache_path": null,
       "source": "eval-harness/results/eth3d-electro/gt-laser/scene.json",
-      "bytes": 42524,
-      "sha256": "58ba8625f8e90c6ec8e9ec421885735ff0c48a0c459b27be780b0f83575c6557",
+      "bytes": 45881,
+      "sha256": "de44941c0cc1a251a330e2efe88cd576f4418eb4c1caa40ec49377e3ed193d46",
       "committed": true,
       "licence": "CC-BY-NC-SA-4.0"
     },
@@ -316,8 +316,8 @@
       "repo_path": "data/fixtures/scenes/eth3d-facade/colmap-nonlidar/scene.json",
       "cache_path": null,
       "source": "eval-harness/results/eth3d-facade/colmap-nonlidar/scene.json",
-      "bytes": 46168,
-      "sha256": "3efea0b8326d7919c86e5a8db0f4438e5d023580ab5940cb24fd56027cb01e10",
+      "bytes": 46365,
+      "sha256": "6b0813be8c1221821b010d3534d3f032d68a46f45e585a15d268d76d1a80303e",
       "committed": true,
       "licence": "CC-BY-NC-SA-4.0"
     },
@@ -349,8 +349,8 @@
       "repo_path": "data/fixtures/scenes/eth3d-facade/colmap-oracle/scene.json",
       "cache_path": null,
       "source": "eval-harness/results/eth3d-facade/colmap-oracle/scene.json",
-      "bytes": 46214,
-      "sha256": "4ad93cd75386e7081b1894a14768db149d7b035bcf6eeec83dde25c7dd66098f",
+      "bytes": 46411,
+      "sha256": "68511e1d7b0cec1f77f8c4547e05d944b278e7f79bd54a6dbe98ad632000fcb7",
       "committed": true,
       "licence": "CC-BY-NC-SA-4.0"
     },
@@ -383,7 +383,7 @@
       "cache_path": null,
       "source": "eval-harness/results/eth3d-facade/gt-laser/scene.json",
       "bytes": 58847,
-      "sha256": "00e3eabe293223d7bd87f86dde97041e75577205f4fa9e93c494cf4111bc309f",
+      "sha256": "762a0bf1331877f63b7e9dafd55bc92c10f0c5c5bb52e06329d8176fed8f1ac5",
       "committed": true,
       "licence": "CC-BY-NC-SA-4.0"
     },
