@@ -459,13 +459,21 @@ class _Capture:
 
 
 def _principal(request: Request, expected: str | None) -> str | None:
+    """Demo default is no token: a missing header is the principal ``demo``.
+
+    ``--token`` is optional. When it is set, the header must be ``Authorization: Bearer <token>``.
+    """
     header = request.headers.get("authorization", "")
+    if expected is None:
+        if header.startswith("Bearer "):
+            got = header.removeprefix("Bearer ").strip()
+            if got:
+                return got
+        return "demo"
     if not header.startswith("Bearer "):
         return None
     got = header.removeprefix("Bearer ").strip()
-    if not got:
-        return None
-    if expected and got != expected:
+    if not got or got != expected:
         return None
     return got
 

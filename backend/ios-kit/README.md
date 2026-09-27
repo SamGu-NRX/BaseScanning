@@ -4,6 +4,8 @@ Build the capture app against this folder. The placement decision stays on the s
 
 Ask for consent before capture. Delete local files only after finalize returns `processing` and every listed file is committed.
 
+The demo API does not authenticate. Send no `Authorization` header.
+
 ## What you render
 
 - `viewsNeeded[]` and `outcome.viewsNeeded[]` are the same objects. Show `prompt.title` and `prompt.body` verbatim.
@@ -84,7 +86,7 @@ uv run --project .. python -m ios_kit check-prompts
 uv run --project .. python -m ios_kit.fake_api --port 8765 --root /tmp/fake-captures --result-kind needs_more_photos
 ```
 
-Set `CAPTURE_API_TOKEN` in the environment. Commands never print it. The fake accepts any non-empty bearer unless `--token` is set.
+The fake accepts calls with no `Authorization` header. Pass `--token` only when you want it to require `Authorization: Bearer <token>`. Commands never print a token.
 
 Standalone packet check, without the server:
 
@@ -96,7 +98,7 @@ python3.12 -m venv .venv-standalone
 
 ## When the contract changes
 
-1. A spec PR edits the store spec, then `server/contracts`, then `make ios-kit` refreshes this folder.
+1. A spec PR labelled `spec` edits the store spec, then `server/contracts`, then `make ios-kit` refreshes this folder. The WS-00 owner reviews the contract change. One iOS reviewer approves anything the app reads.
 2. `formatVersion` stays `0.x`. Wording, examples, and new open-vocabulary values do not bump it.
 3. A new required field, a renamed field, a new closed-enum value, or a changed unit bumps the minor (`0.4` to `0.5`).
 4. A deprecated field keeps one minor, then leaves. The schema description starts `DEPRECATED (0.5):`.

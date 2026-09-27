@@ -84,9 +84,6 @@ def replay_cli(argv: list[str]) -> int:
         print("replay needs --packet", file=sys.stderr)
         return EXIT_PACKET
     token = os.environ.get("CAPTURE_API_TOKEN", "")
-    if not args.dry_run and not token:
-        print("unauthorized", file=sys.stderr)
-        return EXIT_API
     try:
         manifest, variant = _resolve(args.packet, args.variant)
     except ValueError as exc:
@@ -158,8 +155,6 @@ def run(
     """Upload a packet. Calls ``server.eval.replay.replay`` when that function PUTs file bytes."""
     del concurrency  # WS-11 records the flag; the live pool is still one request at a time
     bearer = token if token is not None else os.environ.get("CAPTURE_API_TOKEN", "")
-    if not bearer:
-        raise ApiError(401, "unauthorized")
     delegated = _delegate(packet, api, bearer, variant, rate, finalize_at, until, timeout_s)
     if delegated is not None:
         _write(out_dir, delegated)
@@ -354,7 +349,7 @@ def _upload(
         },
         "expected": {"keyframes": len(packet.get("keyframes") or []), "stills": len(packet.get("stills") or [])},
     }
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
     created = _request(
         "POST", f"{host}/v1/captures", headers={**headers, "Idempotency-Key": packet["packetId"]}, json=body
     )

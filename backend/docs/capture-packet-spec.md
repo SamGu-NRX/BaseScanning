@@ -1402,6 +1402,8 @@ ARKit: [ARFrame](https://developer.apple.com/documentation/arkit/arframe), [ARCa
 
 This realises section 5 rule 5 without tus. Full request and response shapes, retries and the result flow are in [hosted architecture §2](/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/docs/hosted-architecture.md).
 
+The demo capture API runs with authentication off. Send no `Authorization` header.
+
 1. `POST /v1/captures` with `Idempotency-Key: <packetId>` (the `packetId` of `packet.json`) and body `{packetId, formatVersion: "0.4", tier, flow: "guided" | "photo", device, orderRef?, expected?}` returns a `captureId`. `flow` exists only here (the packet has no such field); when omitted the server assumes `guided` for ARKit tiers and `photo` for `photo_only`. A `formatVersion` other than `"0.4"` → `422 format_version_unsupported`.
 2. During capture, in batches every ~2 s: `POST /v1/captures/{id}/files` with `{path, bytes, sha256, md5, role, contentType, meta}` per file (1–50 per call). `path` is the packet path (`keyframes/k00012.jpg`). `role` is exactly the `files[].role` value (`keyframe`, `depth`, `confidence`, `features`, `still`, `stream`, `truedepth`, `mesh`, `other`; `keyframe_image` → `422 role_unknown`). `meta` is the keyframe, still or `trueDepthFrame` record the file belongs to (images and TrueDepth frames only). The call returns a signed PUT URL per file. Files over 16 MiB get multipart part URLs instead.
 3. PUT each file's bytes to its URL with the returned `Content-Type` and `Content-MD5` headers, then `POST /v1/captures/{id}/files:commit` with `{path, sha256}`. A commit is the per-file acknowledgement in section 5 rule 5.

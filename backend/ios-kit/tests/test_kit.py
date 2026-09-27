@@ -383,6 +383,52 @@ def test_ground_and_close_up_prompts_resolve() -> None:
     assert select_prompt(catalogue, kind="close_up", target_class="meter").prompt_id == "vn.close_up.meter"
     assert select_prompt(catalogue, kind="close_up", target_class="panel").prompt_id == "vn.close_up.panel"
     assert select_prompt(catalogue, kind="close_up").prompt_id == "vn.close_up.object"
+    assert select_prompt(catalogue, capture_check_code="keyframe_cadence").prompt_id == "capture_check.keyframe_cadence"
+    assert select_prompt(catalogue, hint_code="keyframe_cadence").prompt_id == "capture_check.keyframe_cadence"
+    ground = select_prompt(catalogue, kind="confirm_attribute", target_class="ground")
+    assert ground.prompt_id == "vn.confirm.ground"
+
+
+def test_fake_api_defaults_to_no_token(tmp_path: Path) -> None:
+    open_client = _client(tmp_path)
+    created = open_client.post(
+        "/v1/captures",
+        headers={"Idempotency-Key": "once"},
+        json={
+            "packetId": "packet-0001",
+            "formatVersion": "0.4",
+            "tier": "arkit",
+            "flow": "guided",
+            "device": {"model": "iPhone", "systemVersion": "16.0", "appVersion": "ios-kit"},
+        },
+    )
+    assert created.status_code == 201
+    locked = TestClient(create_app(tmp_path / "locked", token="handed-out"))
+    missing = locked.post(
+        "/v1/captures",
+        headers={"Idempotency-Key": "once"},
+        json={
+            "packetId": "packet-0001",
+            "formatVersion": "0.4",
+            "tier": "arkit",
+            "flow": "guided",
+            "device": {"model": "iPhone", "systemVersion": "16.0", "appVersion": "ios-kit"},
+        },
+    )
+    assert missing.status_code == 401
+    assert missing.json()["errors"][0]["code"] == "unauthorized"
+    accepted = locked.post(
+        "/v1/captures",
+        headers={"Authorization": "Bearer" + " " + "handed-out", "Idempotency-Key": "once"},
+        json={
+            "packetId": "packet-0001",
+            "formatVersion": "0.4",
+            "tier": "arkit",
+            "flow": "guided",
+            "device": {"model": "iPhone", "systemVersion": "16.0", "appVersion": "ios-kit"},
+        },
+    )
+    assert accepted.status_code == 201
 
 
 def test_fake_api_rejects_nonconforming_ids_and_paths(tmp_path: Path) -> None:

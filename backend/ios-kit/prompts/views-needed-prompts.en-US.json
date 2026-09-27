@@ -181,7 +181,7 @@
      "confirm_attribute"
     ],
     "target_class": [
-     "other"
+     "ground"
     ]
    },
    "title": "What's on the ground here?",
@@ -417,8 +417,7 @@
    "prompt_id": "capture_check.keyframe_count",
    "match": {
     "capture_check_code": [
-     "keyframe_count",
-     "keyframe_cadence"
+     "keyframe_count"
     ]
    },
    "title": "Keep going",
@@ -428,7 +427,26 @@
    "prompt_id": "capture_check.keyframe_count",
    "match": {
     "hint_code": [
-     "keyframe_count",
+     "keyframe_count"
+    ]
+   },
+   "title": "Keep going",
+   "body": "Keep filming while you walk slowly along the wall so we get enough views."
+  },
+  {
+   "prompt_id": "capture_check.keyframe_cadence",
+   "match": {
+    "capture_check_code": [
+     "keyframe_cadence"
+    ]
+   },
+   "title": "Keep going",
+   "body": "Keep filming while you walk slowly along the wall so we get enough views."
+  },
+  {
+   "prompt_id": "capture_check.keyframe_cadence",
+   "match": {
+    "hint_code": [
      "keyframe_cadence"
     ]
    },
