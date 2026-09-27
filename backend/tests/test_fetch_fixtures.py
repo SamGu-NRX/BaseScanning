@@ -1,9 +1,11 @@
 """fetch_fixtures exit codes, split parts, and --item overriding --only."""
 
 import hashlib
+import io
 import json
 import subprocess
 import sys
+import tarfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -168,3 +170,175 @@ def test_external_and_unmirrored_rows_do_not_fail_all(tmp_path: Path) -> None:
     assert result.returncode == 0
     assert "external lamar:lin-colmap" in result.stdout
     assert "unmirrored yt-local" in result.stdout
+
+
+def _members(payloads: dict[str, bytes]) -> bytes:
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as tar:
+        for name, payload in payloads.items():
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            tar.addfile(info, io.BytesIO(payload))
+    return buffer.getvalue()
+
+
+def _house_manifest(
+    tmp_path: Path,
+    tar_bytes: bytes,
+    packet_bytes: bytes,
+    *,
+    extra: list[dict] | None = None,
+    packet_committed: bool = True,
+) -> Path:
+    source = tmp_path / "src"
+    archive = source / "data" / "packets" / "archives"
+    archive.mkdir(parents=True, exist_ok=True)
+    (archive / "house.tar").write_bytes(tar_bytes)
+    manifest = tmp_path / "manifest.json"
+    items = [
+        {
+            "id": "house",
+            "kind": "packet_tar",
+            "repo_path": None,
+            "cache_path": ".fixtures/packets/house.tar",
+            "source": "data/packets/archives/house.tar",
+            "bytes": len(tar_bytes),
+            "sha256": hashlib.sha256(tar_bytes).hexdigest(),
+            "committed": False,
+            "licence": "test",
+        },
+        {
+            "id": "house-packet",
+            "kind": "packet",
+            "repo_path": "data/fixtures/packets/house/packet.arkit-lidar.json",
+            "cache_path": None,
+            "source": None,
+            "bytes": len(packet_bytes),
+            "sha256": hashlib.sha256(packet_bytes).hexdigest(),
+            "committed": packet_committed,
+            "licence": "test",
+        },
+    ]
+    if extra:
+        items.extend(extra)
+    manifest.write_text(json.dumps({"format": "hss-fixtures/v0", "items": items}))
+    return manifest
+
+
+def _packet_bytes(note: bytes) -> bytes:
+    document = {
+        "files": [
+            {
+                "path": "note.txt",
+                "bytes": len(note),
+                "sha256": hashlib.sha256(note).hexdigest(),
+            }
+        ]
+    }
+    return json.dumps(document).encode()
+
+
+def test_stale_extracted_packet_is_reextracted(tmp_path: Path) -> None:
+    note = b"real"
+    packet_bytes = _packet_bytes(note)
+    tar_bytes = _members(
+        {
+            "house/packet.arkit-lidar.json": packet_bytes,
+            "house/note.txt": note,
+        }
+    )
+    manifest = _house_manifest(tmp_path, tar_bytes, packet_bytes)
+    cache = tmp_path / "cache"
+    (cache / "packets").mkdir(parents=True)
+    (cache / "packets" / "house.tar").write_bytes(tar_bytes)
+    stale = b'{"stale": true}\n'
+    house = cache / "packets" / "house"
+    house.mkdir()
+    (house / "packet.arkit-lidar.json").write_bytes(stale)
+    (house / "note.txt").write_bytes(b"old")
+    result = _run(manifest, tmp_path / "src", cache, "--only", "large")
+    assert result.returncode == 0, result.stderr
+    assert f"{hashlib.sha256(stale).hexdigest()[:8]}" in result.stderr
+    assert f"{hashlib.sha256(packet_bytes).hexdigest()[:8]}" in result.stderr
+    assert "re-extracting house" in result.stderr
+    assert "re-extracted house" in result.stdout
+    assert (house / "packet.arkit-lidar.json").read_bytes() == packet_bytes
+    assert (house / "note.txt").read_bytes() == note
+    again = _run(manifest, tmp_path / "src", cache, "--only", "large")
+    assert again.returncode == 0, again.stderr
+    assert "re-extract" not in again.stderr
+    assert "cached house" in again.stdout
+
+
+def test_stale_listed_file_is_reextracted(tmp_path: Path) -> None:
+    note = b"real"
+    packet_bytes = _packet_bytes(note)
+    tar_bytes = _members(
+        {
+            "house/packet.arkit-lidar.json": packet_bytes,
+            "house/note.txt": note,
+        }
+    )
+    manifest = _house_manifest(tmp_path, tar_bytes, packet_bytes)
+    cache = tmp_path / "cache"
+    (cache / "packets").mkdir(parents=True)
+    (cache / "packets" / "house.tar").write_bytes(tar_bytes)
+    house = cache / "packets" / "house"
+    house.mkdir()
+    (house / "packet.arkit-lidar.json").write_bytes(packet_bytes)
+    (house / "note.txt").write_bytes(b"old")
+    result = _run(manifest, tmp_path / "src", cache, "--only", "large")
+    assert result.returncode == 0, result.stderr
+    assert "house/note.txt" in result.stderr
+    assert "re-extracting house" in result.stderr
+    assert (house / "note.txt").read_bytes() == note
+
+
+def test_stale_extract_refetches_when_the_cached_tar_disagrees(tmp_path: Path) -> None:
+    note = b"real"
+    packet_bytes = _packet_bytes(note)
+    tar_bytes = _members({"house/packet.arkit-lidar.json": packet_bytes, "house/note.txt": note})
+    manifest = _house_manifest(tmp_path, tar_bytes, packet_bytes)
+    cache = tmp_path / "cache"
+    (cache / "packets").mkdir(parents=True)
+    (cache / "packets" / "house.tar").write_bytes(b"not-the-tar")
+    house = cache / "packets" / "house"
+    house.mkdir()
+    (house / "packet.arkit-lidar.json").write_bytes(b'{"stale": true}\n')
+    result = _run(manifest, tmp_path / "src", cache, "--only", "large")
+    assert result.returncode == 0, result.stderr
+    assert "re-fetching" in result.stderr
+    assert (house / "packet.arkit-lidar.json").read_bytes() == packet_bytes
+    assert (house / "note.txt").read_bytes() == note
+
+
+def test_small_run_still_reextracts_a_present_packet(tmp_path: Path) -> None:
+    note = b"real"
+    packet_bytes = _packet_bytes(note)
+    tar_bytes = _members({"house/packet.arkit-lidar.json": packet_bytes, "house/note.txt": note})
+    anchor = REPO / "pyproject.toml"
+    extra = [
+        {
+            "id": "anchor",
+            "kind": "file",
+            "repo_path": "pyproject.toml",
+            "cache_path": None,
+            "source": None,
+            "bytes": anchor.stat().st_size,
+            "sha256": _sha(anchor),
+            "committed": True,
+            "licence": "test",
+        }
+    ]
+    manifest = _house_manifest(tmp_path, tar_bytes, packet_bytes, extra=extra, packet_committed=False)
+    cache = tmp_path / "cache"
+    (cache / "packets").mkdir(parents=True)
+    (cache / "packets" / "house.tar").write_bytes(tar_bytes)
+    house = cache / "packets" / "house"
+    house.mkdir()
+    (house / "packet.arkit-lidar.json").write_bytes(b'{"stale": true}\n')
+    result = _run(manifest, tmp_path / "src", cache, "--only", "small")
+    assert result.returncode == 0, result.stderr
+    assert "re-extracting house" in result.stderr
+    assert (house / "packet.arkit-lidar.json").read_bytes() == packet_bytes
+    assert "cached house" not in result.stdout

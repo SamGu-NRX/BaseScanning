@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -157,11 +159,27 @@ def _score_verdicts() -> int:
     return 0
 
 
+def _refresh_extracted_packets() -> None:
+    """Re-extract cached packets whose files disagree with the fixture manifest."""
+
+    path = REPO / "scripts" / "fetch_fixtures.py"
+    spec = importlib.util.spec_from_file_location("fetch_fixtures", path)
+    if spec is None or spec.loader is None:
+        print("missing: scripts/fetch_fixtures.py", file=sys.stderr)
+        raise SystemExit(3)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    document = json.loads((REPO / "data" / "fixtures" / "manifest.json").read_text())
+    source = os.environ.get("FIXTURE_SOURCE") or module.default_fixture_source()
+    module.refresh_present_extractions(REPO / ".fixtures", source, document["items"], done=set())
+
+
 def _check_extracted() -> int:
     cache = REPO / ".fixtures" / "packets"
     if not cache.is_dir():
         print("missing: extracted packets (make fixtures ONLY=all)", file=sys.stderr)
         return 2
+    _refresh_extracted_packets()
     manifests = sorted(cache.glob("*/packet.json")) + sorted(cache.glob("*/packet.*.json"))
     if not manifests:
         print("missing: extracted packets", file=sys.stderr)

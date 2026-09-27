@@ -5,6 +5,10 @@
 or a `gs://` URL. The documented mirror is `gs://hss-fixtures` with the same
 relative paths; that bucket is not published yet. Payloads are written only
 under the cache (default `.fixtures/`). Committed items are verified in place.
+
+Extracted packet files are checked against the manifest too. A stale extract is
+re-extracted from the cached tar, or the tar is re-fetched when that still
+disagrees.
 """
 
 from __future__ import annotations
@@ -139,18 +143,185 @@ def _reject(path: Path, message: str) -> None:
 
 
 def _check_hash(path: Path, item: dict, *, delete_on_mismatch: bool) -> None:
+    failure = _cache_failure(path, item)
+    if failure is None:
+        return
+    if delete_on_mismatch and path.is_file():
+        path.unlink()
+    print(f"{failure}: {item['id']}", file=sys.stderr)
+    raise SystemExit(3)
+
+
+def _cache_failure(path: Path, item: dict) -> str | None:
     expected = item.get("sha256")
     if expected and _sha256(path) != expected:
-        if delete_on_mismatch and path.is_file():
-            path.unlink()
-        print(f"sha256 mismatch: {item['id']}", file=sys.stderr)
-        raise SystemExit(3)
+        return "sha256 mismatch"
     expected_bytes = item.get("bytes")
     if expected_bytes is not None and path.stat().st_size != int(expected_bytes):
-        if delete_on_mismatch and path.is_file():
-            path.unlink()
-        print(f"size mismatch: {item['id']}", file=sys.stderr)
+        return "size mismatch"
+    return None
+
+
+def _packet_house(item: dict) -> str | None:
+    """House id for a committed packet row, or None when the row is not one."""
+
+    if item.get("kind") != "packet":
+        return None
+    repo_path = item.get("repo_path")
+    if not repo_path:
+        return None
+    parts = Path(str(repo_path)).parts
+    if parts[:3] != ("data", "fixtures", "packets") or len(parts) < 5:
+        return None
+    return parts[3]
+
+
+def _short_hash(value: str | None) -> str:
+    if not value:
+        return "absent"
+    return value[:8] + "…"
+
+
+def _rows_for_house(items: list[dict], house: str) -> list[dict]:
+    return [item for item in items if _packet_house(item) == house]
+
+
+def _listed_mismatches(house: str, packet_path: Path) -> list[str]:
+    """Files named by an extracted packet manifest whose bytes disagree."""
+
+    try:
+        document = json.loads(packet_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return [f"{house}/{packet_path.name} is not a packet manifest"]
+    files = document.get("files")
+    if not isinstance(files, list):
+        return []
+    root = packet_path.parent
+    messages: list[str] = []
+    for entry in files:
+        if not isinstance(entry, dict):
+            continue
+        rel = entry.get("path")
+        expected = entry.get("sha256")
+        if not isinstance(rel, str) or not isinstance(expected, str) or not expected:
+            continue
+        relative = Path(rel)
+        if relative.is_absolute() or ".." in relative.parts:
+            messages.append(f"{house}/{rel} is outside the packet")
+            continue
+        path = root / relative
+        actual = _sha256(path) if path.is_file() else None
+        if actual != expected:
+            messages.append(f"{house}/{rel} is {_short_hash(actual)}, manifest {_short_hash(expected)}")
+    return messages
+
+
+def _extracted_mismatches(cache: Path, house: str, rows: list[dict]) -> list[str]:
+    """Extracted packet manifests versus the fixture manifest, then their files."""
+
+    messages: list[str] = []
+    packet_paths: list[Path] = []
+    for item in rows:
+        name = Path(str(item["repo_path"])).name
+        path = cache / "packets" / house / name
+        packet_paths.append(path)
+        expected = item.get("sha256")
+        if not isinstance(expected, str) or not expected:
+            continue
+        actual = _sha256(path) if path.is_file() else None
+        expected_bytes = item.get("bytes")
+        size_bad = path.is_file() and expected_bytes is not None and path.stat().st_size != int(expected_bytes)
+        label = f"{house}/{name}"
+        if actual != expected:
+            messages.append(f"{label} is {_short_hash(actual)}, manifest {_short_hash(expected)}")
+        elif size_bad:
+            messages.append(f"{label} is {path.stat().st_size} bytes, manifest {int(expected_bytes)}")
+    if messages:
+        return messages
+    for path in packet_paths:
+        if path.is_file():
+            messages.extend(_listed_mismatches(house, path))
+    return messages
+
+
+def _orphan_listed(cache: Path, house: str) -> list[str]:
+    house_dir = cache / "packets" / house
+    messages: list[str] = []
+    for path in sorted(house_dir.glob("packet*.json")):
+        messages.extend(_listed_mismatches(house, path))
+    return messages
+
+
+def _format_mismatch(messages: list[str]) -> str:
+    shown = messages[:5]
+    text = "; ".join(shown)
+    extra = len(messages) - len(shown)
+    if extra:
+        text += f"; and {extra} more"
+    return text
+
+
+def _replace_extracted(tar_path: Path, cache: Path, house: str) -> None:
+    house_dir = cache / "packets" / house
+    if house_dir.exists():
+        shutil.rmtree(house_dir)
+    _extract_packet(tar_path, cache)
+
+
+def _align_extracted(cache: Path, source: str, tar_item: dict, items: list[dict]) -> None:
+    """Re-extract, or re-fetch then re-extract, when extracted files disagree."""
+
+    house = str(tar_item["id"])
+    dest = _cache_file(tar_item, cache)
+    if dest is None:
+        return
+    rows = _rows_for_house(items, house)
+    house_dir = cache / "packets" / house
+    present = house_dir.is_dir() and any(house_dir.glob("packet*.json"))
+    if not present:
+        if not dest.is_file():
+            return
+        _replace_extracted(dest, cache, house)
+    bad = _extracted_mismatches(cache, house, rows) if rows else _orphan_listed(cache, house)
+    if not bad:
+        return
+    if dest.is_file() and _cache_failure(dest, tar_item) is None:
+        print(f"extracted sha256 mismatch: {_format_mismatch(bad)}; re-extracting {house}", file=sys.stderr)
+        _replace_extracted(dest, cache, house)
+        bad = _extracted_mismatches(cache, house, rows) if rows else _orphan_listed(cache, house)
+        if not bad:
+            print(f"re-extracted {house}")
+            return
+    print(f"extracted sha256 mismatch: {_format_mismatch(bad)}; re-fetching {house}", file=sys.stderr)
+    if dest.is_file():
+        dest.unlink()
+    relative = tar_item.get("source")
+    if not relative or not _materialise(source, str(relative), dest):
+        print(f"missing: {house}", file=sys.stderr)
+        raise SystemExit(2)
+    _check_hash(dest, tar_item, delete_on_mismatch=True)
+    _replace_extracted(dest, cache, house)
+    bad = _extracted_mismatches(cache, house, rows) if rows else _orphan_listed(cache, house)
+    if bad:
+        print(f"extracted sha256 mismatch: {_format_mismatch(bad)}", file=sys.stderr)
         raise SystemExit(3)
+    print(f"re-fetched {house}")
+
+
+def refresh_present_extractions(cache: Path, source: str, items: list[dict], *, done: set[str]) -> None:
+    """Check extracts already on disk, including when this run did not select their tars."""
+
+    for item in items:
+        if item.get("kind") != "packet_tar" or _mirror_skip(item):
+            continue
+        house = str(item["id"])
+        if house in done:
+            continue
+        house_dir = cache / "packets" / house
+        if not (house_dir.is_dir() and any(house_dir.glob("packet*.json"))):
+            continue
+        _align_extracted(cache, source, item, items)
+        done.add(house)
 
 
 def _safe_members(tar: tarfile.TarFile) -> list[tarfile.TarInfo]:
@@ -257,19 +428,18 @@ def _fetch_one(repo: Path, source: str, cache: Path, item: dict) -> None:
     if not relative or dest is None:
         print(f"missing: {item['id']}", file=sys.stderr)
         raise SystemExit(2)
-    if dest.is_file():
-        _check_hash(dest, item, delete_on_mismatch=True)
+    failure = _cache_failure(dest, item) if dest.is_file() else None
+    if failure is None and dest.is_file():
         print(f"cached {item['id']}")
     else:
+        if failure is not None:
+            print(f"{failure}: {item['id']}; re-fetching", file=sys.stderr)
+            dest.unlink()
         if not _materialise(source, relative, dest):
             print(f"missing: {item['id']}", file=sys.stderr)
             raise SystemExit(2)
         _check_hash(dest, item, delete_on_mismatch=True)
-        print(f"fetched {item['id']}")
-    if item.get("kind") == "packet_tar":
-        house = cache / "packets" / item["id"]
-        if not any(house.glob("packet*.json")):
-            _extract_packet(dest, cache)
+        print(f"re-fetched {item['id']}" if failure else f"fetched {item['id']}")
     if dest.suffix == ".ply":
         _link_ply(repo, dest)
 
@@ -290,8 +460,10 @@ def main(argv: list[str] | None = None) -> int:
     if document.get("format") != "hss-fixtures/v0":
         print(f"unexpected manifest format {document.get('format')!r}", file=sys.stderr)
         return 3
-    items = _select(document["items"], None if args.item else args.only, args.item)
+    all_items = document["items"]
+    items = _select(all_items, None if args.item else args.only, args.item)
     missing: list[str] = []
+    aligned: set[str] = set()
     for item in items:
         try:
             _fetch_one(REPO, source, cache, item)
@@ -300,6 +472,10 @@ def main(argv: list[str] | None = None) -> int:
                 missing.append(item["id"])
                 continue
             raise
+        if item.get("kind") == "packet_tar" and _mirror_skip(item) is None:
+            _align_extracted(cache, source, item, all_items)
+            aligned.add(str(item["id"]))
+    refresh_present_extractions(cache, source, all_items, done=aligned)
     if missing:
         print("missing: " + " ".join(missing), file=sys.stderr)
         return 2
