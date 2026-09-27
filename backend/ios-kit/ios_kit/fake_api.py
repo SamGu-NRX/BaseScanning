@@ -608,7 +608,17 @@ def _stages(state: _State, capture: _Capture) -> None:
         time.sleep(state.stage_interval_s)
     result = _result_for(state, capture)
     kind = (result.get("outcome") or {}).get("kind", state.result_kind)
-    _emit(capture, "verdict_ready", {"runId": capture.run_id, "kind": kind})
+    views = result.get("viewsNeeded") or []
+    actions = list(result.get("memberActions") or [])
+    view_ids = [row["id"] if isinstance(row, dict) and "id" in row else row for row in views]
+    if kind == "needs_more_photos" or actions:
+        _emit(
+            capture,
+            "retake_request",
+            {"runId": capture.run_id, "viewsNeeded": view_ids, "memberActions": actions},
+        )
+    else:
+        _emit(capture, "verdict_ready", {"runId": capture.run_id, "kind": kind})
     capture.result = result
     capture.status = result.get("status", "complete")
 

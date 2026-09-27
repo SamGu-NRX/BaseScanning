@@ -334,7 +334,8 @@ def test_replay_round_trip_records_the_contract_events(tmp_path: Path, monkeypat
     assert "files_committed" in kinds
     assert "capture_check" in kinds
     assert "hint" in kinds
-    assert "verdict_ready" in kinds
+    finals = [kind for kind in kinds if kind in {"verdict_ready", "retake_request", "failed"}]
+    assert finals == ["retake_request"]
     assert "confirmation" in kinds
     hint = next(row for row in finished.events if row.get("type") == "hint")
     assert hint["data"]["code"] == "meter_number_confirm"

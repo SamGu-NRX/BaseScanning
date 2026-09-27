@@ -230,17 +230,20 @@ def compose_result(
         three_url=config.threejs_url,
     )
 
-    events: list[tuple[str, dict]] = [("verdict_ready", notify.verdict_ready(run.run_id, kind))]
+    # Exactly one final event. A retake replaces verdict_ready; the two are not both sent.
     if kind == "needs_more_photos" or actions:
-        events.append(("retake_request", notify.retake_request(run.run_id, [v.id for v in views], list(actions))))
+        events = [("retake_request", notify.retake_request(run.run_id, [v.id for v in views], list(actions)))]
+    else:
+        events = [("verdict_ready", notify.verdict_ready(run.run_id, kind))]
     return ComposeResult(response, internal, events, capture.capture_id, run.run_id, warnings)
 
 
 def emit_events(result: ComposeResult, state) -> list[int]:
     prior = state.events_after(result.capture_id, 0)
-    already = [ev for ev in prior if ev.run_id == result.run_id and ev.type == "verdict_ready"]
+    finals = {"verdict_ready", "retake_request"}
+    already = [ev for ev in prior if ev.run_id == result.run_id and ev.type in finals]
     if already:
-        return [ev.seq for ev in prior if ev.run_id == result.run_id and ev.type in {"verdict_ready", "retake_request"}]
+        return [ev.seq for ev in already]
     seqs = []
     for event_type, data in result.events:
         rec = state.append_event(result.capture_id, event_type, data, run_id=result.run_id, stage="result")

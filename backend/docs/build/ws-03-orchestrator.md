@@ -108,10 +108,10 @@ Config: WS-00 `Settings` (`STATE_BACKEND=memory|modal_dict|postgres`, `STATE_DIC
 | `validate` failed, usable images exist (hosted-architecture §3) | `manual_review` / `packet_invalid` | `manual_review`; `failed {next: manual_review}` |
 | required stage exhausted (`gpu_oom`, `crash`, `timeout`, `no_model`, `scene_invalid`, …) | `manual_review` / `stage_exhausted:<stage>:<code>` | `manual_review`; `failed` |
 | stale stage beyond 2 re-spawns · coordinator dead beyond 2 · deadline | `manual_review` / `stage_stale:<stage>` · `coordinator_dead` · `hard_stop` | `manual_review`; `failed` |
-| `poses/registration_report.json` `status == no_meter_model` (WS-04 §4.9) | pipeline continues; end state `manual_review` / `no_meter_anchor` | `manual_review` |
+| `poses/registration_report.json` `status == no_meter_model` (WS-04 §4.9) | pipeline continues; `failure_code` `no_meter_anchor`; capture status matches the composed outcome (`needs_views` when views are needed, otherwise `manual_review`) | composed kind; exactly one of `retake_request` or `verdict_ready` |
 | SfM fragments in the photo flow (`registered_fraction < 1`) | not an error (hosted-architecture §3): WS-06 marks other fragments unobserved | whatever the verdict says |
 | `poses` `actions` or `scale/scale.json` `status ∈ {unverified, conflict}` → `memberActions` `retake_meter_closeups` / `truedepth_meter_scan` (A9; never a tape) | `needs_views` / – | `needs_more_photos`; `retake_request {memberActions}` (WS-10) |
-| optional stage failed (`objects`, `reads`, `objects_3d`; e.g. both VLM providers down for 10 min) | continue without it; end state `manual_review` / `degraded:<stages>` | `manual_review` |
+| optional stage failed (`objects`, `reads`, `objects_3d`; e.g. both VLM providers down for 10 min) | continue without it; `failure_code` `degraded:<stages>`; capture status matches the composed outcome (`needs_views` when views are needed, otherwise `manual_review`) | composed kind; the same single final event |
 | VLM hard cap or Modal cap hit | `manual_review` / `vlm_budget_exhausted` · `spend_cap` | `manual_review`; `failed` |
 | a produced `scene/scene.json` (also after `merge_objects`) or `verdicts/verdict.*.json` fails `python -m server.eval.cli validate` | `manual_review` / `artifact_invalid:<stage>` | `manual_review`; `failed` (never ship an invalid verdict) |
 | `verdicts/verdict.<RULES_PROFILE_DEFAULT>.json` `site.decision == pass` | `complete` | `eligible`; `verdict_ready` |
@@ -119,7 +119,7 @@ Config: WS-00 `Settings` (`STATE_BACKEND=memory|modal_dict|postgres`, `STATE_DIC
 | `manual_review` with `views_needed != []` | `needs_views` | `needs_more_photos`; `retake_request {viewsNeeded}` |
 | `manual_review` with `views_needed == []` | `manual_review` | `manual_review`; `verdict_ready` |
 
-A retry is never an outcome; it is §4.4b–d. The coordinator writes `CaptureRecord.status` through `state.set_status` and `RunRecord.failure_code` for rows 1–10 and emits `failed` once (`final_event_seq`); for rows 11–14 WS-10's `result` stage writes the status and the coordinator verifies that exactly one `verdict_ready` or `retake_request` exists, else emits `failed {code: result_no_event}`. WS-10 reads `RunRecord.degraded` and `failure_code` through `inputs["run_control"]` (a JSON dump of the run record plus the control blob).
+A retry is never an outcome; it is §4.4b–d. The coordinator writes `CaptureRecord.status` through `state.set_status` and `RunRecord.failure_code` for rows 1–10 and emits `failed` once (`final_event_seq`); for a finished result, including the no-meter and degraded rows, it keeps the capture status that matches the composed outcome and verifies that exactly one `verdict_ready` or `retake_request` exists, else emits `failed {code: result_no_event}`. WS-10 reads `RunRecord.degraded` and `failure_code` through `inputs["run_control"]` (a JSON dump of the run record plus the control blob).
 9. **Determinism.** Order inside a parallel group is not fixed; tests assert the partial order of §8.2. Stubs use seed 0. VLM-calling stages record model, tokens and `cost_usd` per call in their own artifacts; the orchestrator sums `metrics["vlm_cost_usd"]`.
 
 ## 5. Reuse

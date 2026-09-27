@@ -12,7 +12,7 @@ WS-10. Branch `ws-10/result-and-ar`.
 
 Inputs: `CaptureRecord`, `RunRecord`, `scene/scene.json`, `verdict.<profile>.json`, optional `reads.json`, `scale.json`, `placement.<profile>.json`, and the prompt catalogue.
 
-Outputs: `result.json` (`ResultResponse`), `result.internal.json`, `preview.ply`, `review.html`, plus `verdict_ready` and, when needed, `retake_request`.
+Outputs: `result.json` (`ResultResponse`), `result.internal.json`, `preview.ply`, `review.html`, plus exactly one final event: `retake_request` when views are needed or a member action is set, otherwise `verdict_ready`.
 
 ## How to run
 
@@ -38,7 +38,7 @@ No model weights. `uv lock` after a dependency change, then `uv sync --frozen --
 | 4 | Wall and ground camera bands on the synthetic wall | PASS | facade forged-frame row waits on fixtures |
 | 5 | Copy selections, limits, banned words, headlines | PASS | unit tests |
 | 6 | Five meter samples; agreement never auto-fills; log omits the value | PASS | unit tests |
-| 7 | One `verdict_ready`; retake when required; APNs literal; HMAC; 24 h schedule | PASS | unit tests |
+| 7 | Exactly one final event (`retake_request` when views or a member action are needed, otherwise `verdict_ready`); APNs literal; HMAC; 24 h schedule | PASS | unit tests |
 | 8 | Reviewer page: four profiles, criteria rows, offline notice | PASS | unit tests |
 | 9 | `preview.ply` binary little-endian with `generated` | PASS | unit tests |
 | 10 | At least 25 tests, including the error and leakage cases | PASS | `server/result/tests` |
@@ -46,6 +46,7 @@ No model weights. `uv lock` after a dependency change, then `uv sync --frozen --
 
 ## Known limits
 
+- A run emits one final event. `retake_request` is that event when the outcome is `needs_more_photos` or a member action is set; every other outcome emits `verdict_ready`. Capture status matches the outcome, so views needed is `needs_views` even when the run's failure code is `no_meter_anchor` or `degraded:<stage>`.
 - ETH3D golden rows need `make fixtures` and `make criteria-golden`, which are not on this branch.
 - WS-09 PR 39 writes the chosen spot's criteria with `candidate_id: "best"` and `site.chosen_candidate` as `runN` (run ids are assigned after the rows). The composer treats `best` as that spot when no row uses the run id. `placement.<profile>.json` `start_s_m` is a single number and `checks_at_spot[].margin_over_uncertainty` is null, so confidence comes from the verdict rows.
 - A hidden reject (`SHOW_REJECT_TO_HOMEOWNER=false`, SD-69) empties `site.reasons`, sets `verdictUrl` null, and shows each `fail` row as `unsure` with id `review` and no measurements. The true decision stays in `result.internal.json`, the reviewer page, and the webhook.

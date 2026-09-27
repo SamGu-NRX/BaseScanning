@@ -29,13 +29,17 @@ from server.orchestrator.services import bind, packet_sha256
 from server.orchestrator.stateio import get_json
 from server.orchestrator.stubs import coverage as coverage_stub
 from server.orchestrator.stubs import criteria as criteria_stub
+from server.orchestrator.stubs import objects as objects_stub
 from server.orchestrator.stubs import poses as poses_stub
+from server.orchestrator.stubs import result as result_stub
 from server.orchestrator.stubs import scene as scene_stub
 from server.orchestrator.stubs._common import json_bytes, ply, tracks, write_files
 from server.orchestrator.tests.conftest import build_services
 from server.reads.cache import put_json as put_storage_json
 from server.reads.cache import still_key
 from server.reads.types import StillResult
+
+_FINALS = {"verdict_ready", "retake_request", "failed"}
 
 
 def _events(services, capture_id="cap_test"):
@@ -292,6 +296,89 @@ def test_no_meter_model_finishes_as_no_meter_anchor(tmp_path, monkeypatch) -> No
     assert finished.failure_code == "no_meter_anchor"
     assert finished.outcome_kind == "manual_review"
     assert services.state.get_capture("cap_test").status == "manual_review"
+    finals = [event for event in services.state.events_after("cap_test", 0, limit=500) if event.type in _FINALS]
+    assert [event.type for event in finals] == ["verdict_ready"]
+
+
+def _views_result(ctx: StageContext, *, both: bool) -> StageResult:
+    ctx.state.set_status(ctx.capture_id, "needs_views")
+    ctx.state.append_event(
+        ctx.capture_id,
+        "verdict_ready" if both else "retake_request",
+        {"runId": ctx.run_id, "viewsNeeded": ["ground"], "memberActions": []}
+        if not both
+        else {"runId": ctx.run_id, "kind": "needs_more_photos"},
+        run_id=ctx.run_id,
+        stage="result",
+    )
+    if both:
+        ctx.state.append_event(
+            ctx.capture_id,
+            "retake_request",
+            {"runId": ctx.run_id, "viewsNeeded": ["ground"], "memberActions": []},
+            run_id=ctx.run_id,
+            stage="result",
+        )
+    body = {"status": "needs_views", "outcome": {"kind": "needs_more_photos"}}
+    return write_files(ctx, {"result/result.json": json_bytes(body)})
+
+
+def _no_meter_poses(ctx: StageContext) -> StageResult:
+    return write_files(
+        ctx,
+        {
+            "poses/cameras.json": poses_stub.cameras_bytes(),
+            "poses/sparse.ply": ply(),
+            "poses/tracks.npz": tracks(),
+            "poses/registration_report.json": json_bytes(
+                {"status": "no_meter_model", "registered_fraction": 1.0, "actions": []}
+            ),
+            "poses/sparse/0/": b"stub",
+        },
+    )
+
+
+def test_no_meter_with_views_stays_needs_views(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(poses_stub, "run", _no_meter_poses)
+    monkeypatch.setattr(result_stub, "run", lambda ctx: _views_result(ctx, both=False))
+    services, uri, digest = build_services(tmp_path, "memory")
+    with bind(services):
+        finished = start_run("cap_test", digest, uri)
+    assert finished.failure_code == "no_meter_anchor"
+    assert finished.outcome_kind == "needs_more_photos"
+    assert services.state.get_capture("cap_test").status == "needs_views"
+    finals = [event.type for event in services.state.events_after("cap_test", 0, limit=500) if event.type in _FINALS]
+    assert finals == ["retake_request"]
+
+
+def test_no_meter_branch_rejects_two_final_events(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(poses_stub, "run", _no_meter_poses)
+    monkeypatch.setattr(result_stub, "run", lambda ctx: _views_result(ctx, both=True))
+    services, uri, digest = build_services(tmp_path, "memory")
+    with bind(services):
+        start_run("cap_test", digest, uri)
+    events = services.state.events_after("cap_test", 0, limit=500)
+    finals = [event.type for event in events if event.type in _FINALS]
+    assert finals == ["verdict_ready", "retake_request", "failed"]
+    failed = next(event for event in events if event.type == "failed")
+    assert failed.data["code"] == "result_no_event"
+    assert services.state.get_capture("cap_test").status == "manual_review"
+
+
+def test_degraded_views_keep_needs_views_and_one_final(tmp_path, monkeypatch) -> None:
+    def objects(_ctx: StageContext) -> StageResult:
+        raise ValueError("objects unavailable")
+
+    monkeypatch.setattr(objects_stub, "run", objects)
+    monkeypatch.setattr(result_stub, "run", lambda ctx: _views_result(ctx, both=False))
+    services, uri, digest = build_services(tmp_path, "memory")
+    with bind(services):
+        finished = start_run("cap_test", digest, uri)
+    assert finished.failure_code == "degraded:objects"
+    assert finished.outcome_kind == "needs_more_photos"
+    assert services.state.get_capture("cap_test").status == "needs_views"
+    finals = [event.type for event in services.state.events_after("cap_test", 0, limit=500) if event.type in _FINALS]
+    assert finals == ["retake_request"]
 
 
 def test_invalid_scene_is_not_skipped(tmp_path, monkeypatch) -> None:

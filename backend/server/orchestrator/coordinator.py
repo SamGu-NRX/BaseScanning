@@ -42,6 +42,13 @@ from server.orchestrator.spend import attempt_usd, gpu_spawn_blocked, vlm_budget
 from server.orchestrator.stateio import get_json, put_json
 
 _FINAL = {"verdict_ready", "retake_request", "failed"}
+# Capture status that matches a composed outcome. Views needed is needs_views.
+_KIND_STATUS = {
+    "eligible": "complete",
+    "needs_more_photos": "needs_views",
+    "not_eligible": "complete",
+    "manual_review": "manual_review",
+}
 _VLM_BUCKET = {
     "reads": "vlm_reads",
     "objects": "vlm_objects",
@@ -539,18 +546,16 @@ class RunCoordinator:
         self._apply_success(run)
 
     def _apply_success(self, run: RunRecord) -> None:
+        composed = self._composed_outcome(run)
         if self._control(run.run_id).no_meter_model:
             decision = decide(Facts(no_meter_model=True))
-            run.outcome_kind = decision.outcome_kind
-            run.failure_code = decision.failure_code
-            run.status = "done"
-            run.finished_at = run.finished_at or self.s.clock.iso()
-            self.s.state.set_status(run.capture_id, decision.capture_status)
-            self.s.state.put_run(run)
+            self._finish_with_result(run, decision, composed)
+            self._verify_final_event(run)
             return
         if run.degraded:
             decision = decide(Facts(degraded=tuple(stage for stage in run.degraded)))
-            self._apply_decision(run, decision, "degraded optional stage", emit=False)
+            self._finish_with_result(run, decision, composed)
+            self._verify_final_event(run)
             return
         verdict = _read_json(self.s, self._overlay_artifacts(run), "verdicts/verdict.C.json")
         site = (verdict or {}).get("site") or {}
@@ -565,6 +570,39 @@ class RunCoordinator:
         )
         self._apply_decision(run, decision, decision.outcome_kind or "", emit=False)
         self._verify_final_event(run)
+
+    def _finish_with_result(self, run: RunRecord, decision: Decision, composed: tuple[str, str] | None) -> None:
+        """Keep the failure code, and the capture status that matches the composed outcome."""
+        kind = decision.outcome_kind
+        status = decision.capture_status
+        if composed is not None:
+            kind, status = composed
+        run.outcome_kind = kind
+        run.failure_code = decision.failure_code
+        run.status = "done"
+        run.finished_at = run.finished_at or self.s.clock.iso()
+        self.s.state.set_status(run.capture_id, status)
+        self.s.state.put_run(run)
+
+    def _composed_outcome(self, run: RunRecord) -> tuple[str, str] | None:
+        fresh = self._overlay_artifacts(run)
+        key = fresh.artifacts.get("result/result.json")
+        if not isinstance(key, str) or not key:
+            return None
+        try:
+            payload = json.loads(self.s.storage.get_bytes(key))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError, TypeError):
+            return None
+        if not isinstance(payload, dict):
+            return None
+        outcome = payload.get("outcome") or {}
+        if not isinstance(outcome, dict):
+            return None
+        kind = outcome.get("kind")
+        status = _KIND_STATUS.get(kind)
+        if status is None or not isinstance(kind, str):
+            return None
+        return kind, status
 
     def _close(self, run: RunRecord, decision: Decision, message: str) -> None:
         self._cancel_running(run.run_id)

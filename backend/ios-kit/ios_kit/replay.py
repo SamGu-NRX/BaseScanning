@@ -467,7 +467,7 @@ def _wait_verdict(run: ReplayRun, host: str, headers: dict, timeout_s: float, tr
             fetched = _request("GET", f"{host}/v1/captures/{run.captureId}/result", headers=headers)
             if fetched.status_code == 200:
                 run.result = fetched.json()
-        ready = any(row.get("type") == "verdict_ready" for row in run.events)
+        ready = any(row.get("type") in {"verdict_ready", "retake_request"} for row in run.events)
         confirmed_seen = any(row.get("type") == "confirmation" for row in run.events)
         if not (ready and run.result is not None):
             continue

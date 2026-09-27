@@ -288,7 +288,9 @@ def _poll(http, api, headers, capture_id, until, timeout_s):
         events.raise_for_status()
         payload = events.json()
         after = payload["next"]
-        if until == "verdict" and any(item["type"] in {"verdict_ready", "failed"} for item in payload["events"]):
+        if until == "verdict" and any(
+            item["type"] in {"verdict_ready", "retake_request", "failed"} for item in payload["events"]
+        ):
             return body
         if body["status"] == "failed":
             return body

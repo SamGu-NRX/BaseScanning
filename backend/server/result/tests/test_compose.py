@@ -267,12 +267,20 @@ def test_events_once_and_retake_when_required(tmp_path):
     ready = [ev for ev in state.events_after(capture.capture_id, 0) if ev.type == "verdict_ready"]
     assert len(ready) == 1
     photos = _go(tmp_path / "photos", DATA / "photo" / "verdicts", scene=DATA / "photo", reads=None)
-    assert any(name == "retake_request" for name, _data in photos.events)
+    assert [name for name, _data in photos.events] == ["retake_request"]
+    retake_state = MemoryState()
+    retake_state.put_capture(capture)
+    retake_state.put_run(run_rec)
+    emit_events(photos, retake_state)
+    emit_events(photos, retake_state)
+    retakes = [ev for ev in retake_state.events_after(capture.capture_id, 0) if ev.type == "retake_request"]
+    assert len(retakes) == 1
+    assert not any(ev.type == "verdict_ready" for ev in retake_state.events_after(capture.capture_id, 0))
     scale = tmp_path / "scale.json"
     scale.write_text(json.dumps({"status": "unverified", "source": "none", "rel_bound_95": 0.5}))
     unverified = _go(tmp_path / "scale", DATA / "synthetic" / "verdicts", scale=scale)
     assert unverified.response.memberActions == ["retake_meter_closeups"]
-    assert any(name == "retake_request" for name, _data in unverified.events)
+    assert [name for name, _data in unverified.events] == ["retake_request"]
     known = {
         "status": "unverified",
         "conflict": True,
