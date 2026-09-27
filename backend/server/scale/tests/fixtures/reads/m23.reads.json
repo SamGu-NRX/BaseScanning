@@ -1,0 +1,20 @@
+{
+  "status": "ok",
+  "meter_identity": {
+    "manufacturer": "Aclara",
+    "model_family": "Aclara kV2c",
+    "model_evidence": "printed",
+    "model_confidence": 0.99,
+    "cover_material": "polycarbonate",
+    "ansi_socket_meter": true,
+    "base_flange_visible": true,
+    "socket_type": "ring",
+    "agree": true,
+    "images": [
+      "s1"
+    ]
+  },
+  "meter": {
+    "form": "2S"
+  }
+}

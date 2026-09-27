@@ -12,18 +12,25 @@ import pytest
 
 from server.common.config import Settings
 
-# `result` is implemented in this package. `reads` is implemented by WS-08.
-# Neither name is in this stub list. The other names are still stubs.
+# `result` is implemented in this package. `reads` (WS-08) and `scale` (WS-05)
+# are implemented, so none of those names is in this stub list.
 STAGES = [
     "packet",
     "poses",
     "objects",
-    "scale",
     "dense",
     "coverage",
     "scene",
     "criteria",
 ]
+
+
+def test_scale_run_is_the_stage() -> None:
+    """WS-05 replaced the scale stub. The other stages still raise."""
+
+    scale = importlib.import_module("server.scale")
+    assert scale.STAGE == "scale"
+    assert callable(scale.run)
 
 
 @pytest.mark.parametrize("name", STAGES)

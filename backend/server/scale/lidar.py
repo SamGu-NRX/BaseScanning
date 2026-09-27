@@ -1,4 +1,6 @@
-# vendored from internal/modal-pipeline/housepipe/lidar.py (store, 2026-09-26)
+# Vendored from internal/modal-pipeline/housepipe/lidar.py (store, 2026-09-26).
+# align_lidar is the pure scale fit added for the scale stage; fuse, far_points,
+# coverage_depths and place_taps stay as vendored.
 """LiDAR sceneDepth branch.
 
 When a keyframe has both a depth map and a confidence map, that frame is
@@ -8,6 +10,7 @@ taps) still runs for everything the sensor does not cover.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -74,6 +77,46 @@ def _sample(depth: np.ndarray, conf: np.ndarray, u: np.ndarray, v: np.ndarray, w
     su = np.clip(su, 0, dw - 1)
     sv = np.clip(sv, 0, dh - 1)
     return depth[sv, su], conf[sv, su], inside
+
+
+# A 3x3 whose positive depths span more than this fraction of the center is an edge.
+# Packet depth splats read short there; flat pixels stay within about 0.5% of truth.
+_FLAT_REL_SPAN = 0.02
+_FLAT_MIN_SAMPLES = 5
+
+
+def _locally_flat(depth: np.ndarray, u: np.ndarray, v: np.ndarray, w: int, h: int) -> np.ndarray:
+    """True where the depth pixel is interior and its 3x3 neighborhood is nearly constant.
+
+    Non-positive and non-finite neighbors are ignored, so a sparse synthetic depth
+    map still accepts a flat interior. A short center beside a longer neighbor does not.
+    """
+
+    dh, dw = depth.shape
+    u = np.asarray(u, float)
+    v = np.asarray(v, float)
+    finite = np.isfinite(u) & np.isfinite(v)
+    su = np.rint(np.where(finite, u, 0.0) * dw / max(int(w), 1)).astype(int)
+    sv = np.rint(np.where(finite, v, 0.0) * dh / max(int(h), 1)).astype(int)
+    interior = finite & (su >= 1) & (su < dw - 1) & (sv >= 1) & (sv < dh - 1)
+    flat = np.zeros(su.shape, dtype=bool)
+    if not np.any(interior):
+        return flat
+    su_i = su[interior]
+    sv_i = sv[interior]
+    window = np.stack([depth[sv_i + dy, su_i + dx] for dy in (-1, 0, 1) for dx in (-1, 0, 1)], axis=0)
+    valid = np.isfinite(window) & (window > 0)
+    count = valid.sum(axis=0)
+    keep = count >= _FLAT_MIN_SAMPLES
+    accepted = np.zeros(count.shape, dtype=bool)
+    if np.any(keep):
+        kept = np.where(valid[:, keep], window[:, keep], np.nan)
+        with np.errstate(invalid="ignore"):
+            span = np.nanmax(kept, axis=0) - np.nanmin(kept, axis=0)
+        center = depth[sv_i[keep], su_i[keep]]
+        accepted[keep] = np.isfinite(center) & (center > 0) & np.isfinite(span) & (span < _FLAT_REL_SPAN * center)
+    flat[interior] = accepted
+    return flat
 
 
 def align_scale(
@@ -163,7 +206,9 @@ def scale_pose(T: np.ndarray, scale: float, origin: np.ndarray) -> np.ndarray:
     return out
 
 
-def _unproject(uu: np.ndarray, vv: np.ndarray, z: np.ndarray, K, dw: int, dh: int, img_w: int, img_h: int, T: np.ndarray) -> np.ndarray:
+def _unproject(
+    uu: np.ndarray, vv: np.ndarray, z: np.ndarray, K, dw: int, dh: int, img_w: int, img_h: int, T: np.ndarray
+) -> np.ndarray:
     sx = dw / float(img_w)
     sy = dh / float(img_h)
     fx, fy, cx, cy = K[0] * sx, K[1] * sy, K[2] * sx, K[3] * sy
@@ -199,7 +244,17 @@ def fuse(
         ok = (c >= MIN_CONFIDENCE) & np.isfinite(z) & (z > LIDAR_MIN_M) & (z <= LIDAR_MAX_M)
         if not np.any(ok):
             continue
-        world = _unproject(uu[ok].astype(float), vv[ok].astype(float), z[ok].astype(float), cam["K_full"], dw, dh, cam["w"], cam["h"], cam["c2w"])
+        world = _unproject(
+            uu[ok].astype(float),
+            vv[ok].astype(float),
+            z[ok].astype(float),
+            cam["K_full"],
+            dw,
+            dh,
+            cam["w"],
+            cam["h"],
+            cam["c2w"],
+        )
         clouds.append(world.astype(np.float32))
         used += 1
     if not clouds:
@@ -274,13 +329,15 @@ def place_taps(
             pos = np.asarray(hit["position"], float)
             if origin is not None:
                 pos = np.asarray(origin, float) + scale * (pos - np.asarray(origin, float))
-            record.update({
-                "placed": True,
-                "method": "lidar_device_hit",
-                "location": "lidar",
-                "position": [round(float(v), 4) for v in pos],
-                "pose_source": "device",
-            })
+            record.update(
+                {
+                    "placed": True,
+                    "method": "lidar_device_hit",
+                    "location": "lidar",
+                    "position": [round(float(v), 4) for v in pos],
+                    "pose_source": "device",
+                }
+            )
         placed.append(record)
     return placed
 
@@ -297,7 +354,9 @@ def _tap_depth(frame: dict, T: np.ndarray, pixel, depths: dict) -> dict | None:
     dh, dw = depth.shape
     su = float(np.rint(u[0] * dw / frame["w"]))
     sv = float(np.rint(v[0] * dh / frame["h"]))
-    world = _unproject(np.array([su]), np.array([sv]), np.array([float(z[0])]), frame["K"], dw, dh, frame["w"], frame["h"], T)
+    world = _unproject(
+        np.array([su]), np.array([sv]), np.array([float(z[0])]), frame["K"], dw, dh, frame["w"], frame["h"], T
+    )
     return {
         "placed": True,
         "method": "lidar_depth",
@@ -319,3 +378,102 @@ def _voxel(xyz: np.ndarray, voxel: float, cap: int) -> np.ndarray:
     if len(xyz) > cap:
         xyz = xyz[np.random.default_rng(0).choice(len(xyz), cap, replace=False)]
     return xyz.astype(np.float32)
+
+
+@dataclass
+class LidarAlignment:
+    applied: bool
+    scale: float
+    rel_sd: float
+    rel_bound_95: float
+    pairs: int
+    frames: int
+    min_conf_used: int
+    pair_spread_p95: float
+    origin: np.ndarray | None
+    reason: str | None
+
+
+def align_lidar(
+    points: np.ndarray,
+    cameras: list,
+    depths: dict[str, tuple[np.ndarray, np.ndarray]],
+    *,
+    min_conf: int,
+    min_pairs: int,
+    max_m: float,
+    seed: int = 0,
+    verified_pairs: int = 200,
+    min_m: float = 0.2,
+) -> LidarAlignment:
+    """Pure LiDAR/SfM scale. Does not mutate ``points`` or ``cameras``.
+
+    First pass uses ``min_conf``. When the pair count is below ``verified_pairs``
+    and ``min_conf`` is above 1, a second pass uses confidence 1.
+    """
+
+    def once(conf_floor: int) -> tuple[list[np.ndarray], list[int]]:
+        xyz = np.asarray(points, float)
+        if len(xyz) > 4000:
+            xyz = xyz[np.random.default_rng(seed).choice(len(xyz), 4000, replace=False)]
+        grouped: list[np.ndarray] = []
+        counts: list[int] = []
+        for cam in cameras:
+            packed = depths.get(cam.image)
+            if packed is None:
+                continue
+            depth, conf = packed
+            pose = np.asarray(cam.pose, float)
+            fx, fy, cx, cy = (float(v) for v in cam.intrinsics)
+            rotation, center = pose[:3, :3], pose[:3, 3]
+            local = (xyz - center) @ rotation
+            z = -local[:, 2]
+            with np.errstate(divide="ignore", invalid="ignore"):
+                u = fx * local[:, 0] / z + cx
+                v = -fy * local[:, 1] / z + cy
+            z_lidar, conf_lidar, inside = _sample(depth, conf, u, v, int(cam.w), int(cam.h))
+            flat = _locally_flat(depth, u, v, int(cam.w), int(cam.h))
+            ok = (
+                inside
+                & flat
+                & np.isfinite(z)
+                & (z > min_m)
+                & (z < 40)
+                & (conf_lidar >= conf_floor)
+                & np.isfinite(z_lidar)
+                & (z_lidar > min_m)
+                & (z_lidar <= max_m)
+            )
+            if not np.any(ok):
+                continue
+            ratio = z_lidar[ok] / z[ok]
+            ratio = ratio[np.isfinite(ratio) & (ratio > 0.5) & (ratio < 2.0)]
+            if len(ratio) == 0:
+                continue
+            grouped.append(ratio)
+            counts.append(int(len(ratio)))
+        return grouped, counts
+
+    blank = LidarAlignment(False, 1.0, 0.0, 0.0, 0, 0, int(min_conf), 0.0, None, "lidar_too_few_pairs")
+    if len(np.asarray(points)) == 0 or not cameras or not depths:
+        return blank
+    grouped, counts = once(int(min_conf))
+    used_conf = int(min_conf)
+    if sum(counts) < verified_pairs and int(min_conf) > 1:
+        grouped, counts = once(1)
+        used_conf = 1
+    n_pairs = int(sum(counts))
+    if n_pairs < min_pairs or not grouped:
+        return LidarAlignment(False, 1.0, 0.0, 0.0, n_pairs, len(counts), used_conf, 0.0, None, "lidar_too_few_pairs")
+    ratio = np.concatenate(grouped)
+    scale = float(np.median(ratio))
+    log_r = np.log(ratio)
+    mad = float(np.median(np.abs(log_r - np.median(log_r))))
+    n_eff = max(1, sum(1 for n in counts if n >= 20))
+    rel_sd = max(0.005, 1.4826 * mad / np.sqrt(n_eff))
+    rel_bound = float(1.1 * 1.96 * rel_sd)
+    spread = float(np.quantile(np.abs(ratio / scale - 1.0), 0.95))
+    origin = np.mean([np.asarray(cam.pose, float)[:3, 3] for cam in cameras], axis=0)
+    return LidarAlignment(
+        True, scale, float(rel_sd), rel_bound, int(len(ratio)), len(counts), used_conf, spread, origin, None
+    )

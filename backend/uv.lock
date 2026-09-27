@@ -806,6 +806,10 @@ result = [
     { name = "numpy" },
     { name = "pillow" },
 ]
+scale = [
+    { name = "opencv-python-headless" },
+    { name = "scipy" },
+]
 
 [package.dev-dependencies]
 data = [
@@ -842,6 +846,7 @@ requires-dist = [
     { name = "numpy", marker = "extra == 'result'", specifier = "==2.5.3" },
     { name = "openai", marker = "extra == 'reads'", specifier = ">=1.40" },
     { name = "opencv-python-headless", specifier = "==5.0.0.93" },
+    { name = "opencv-python-headless", marker = "extra == 'scale'", specifier = "==5.0.0.93" },
     { name = "pillow", specifier = "==12.3.0" },
     { name = "pillow", marker = "extra == 'reads'", specifier = "==12.3.0" },
     { name = "pillow", marker = "extra == 'result'", specifier = "==12.3.0" },
@@ -856,12 +861,13 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "requests", specifier = ">=2.34.2" },
     { name = "scipy", specifier = "==1.18.1" },
+    { name = "scipy", marker = "extra == 'scale'", specifier = "==1.18.1" },
     { name = "shapely", specifier = ">=2.1.2" },
     { name = "uvicorn", marker = "extra == 'ios-kit'", specifier = ">=0.35.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'api'" },
     { name = "zxing-cpp", marker = "extra == 'reads'", specifier = "==3.1.1" },
 ]
-provides-extras = ["result", "reads", "api", "ios-kit"]
+provides-extras = ["result", "reads", "scale", "api", "ios-kit"]
 
 [package.metadata.requires-dev]
 data = [{ name = "remotezip", specifier = "==0.12.6" }]
