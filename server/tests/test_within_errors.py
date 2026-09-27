@@ -11,16 +11,18 @@ battery:
 - A position moves in its own coordinates: wall ends and corners, the meter, and object and
   ground outlines anywhere within their error in plan; an object's span along s by its error;
   a measured height or depth by its error. The contract defines an error as a distance ("the true
-  value lies within this distance"), so the extremes lie on a circle of that radius (eight
+  value lies within this distance"), so the extremes lie on a circle of that radius (sixteen
   directions), not at the corners of a box, which are sqrt(2) times further. A corner shared by two
   walls moves as one point, within both walls' errors.
 - Coverage spans have no declared error and keep their s.
 - Moves that contradict each other (the meter past the end of its own wall) describe no real
   house and are discarded.
 
-Then, for every check that PASSed: in the perturbed scene with its declared errors it is not
-FAIL, and in the perturbed scene read as exact (every error zero, so the check reports whether the
-rule truly holds there) it is not FAIL either.
+Then, for every check that PASSed: in the perturbed scene read as exact (every error zero, so the
+check reports whether the rule truly holds there) it still PASSes, its measurement on the pass
+side of every threshold, the confident reach as well as the maximum. Only a measurement exactly
+on a threshold (within float noise) may read as a tie there. In the perturbed scene with its
+declared errors it is not FAIL.
 """
 
 import copy
@@ -34,10 +36,12 @@ from test_final_review import cornered
 from test_s4_round import PUBLIC
 
 from scene import SceneError
-from solver import FAIL, PASS, evaluate_start, solve
+from solver import FAIL, PASS, UNSURE, evaluate_start, solve
 
 W = PUBLIC.rules.battery.width_ft.value
-DIRECTIONS = [(math.cos(k * math.pi / 4), math.sin(k * math.pi / 4)) for k in range(8)]
+DIRECTIONS = [(math.cos(k * math.pi / 8), math.sin(k * math.pi / 8)) for k in range(16)]
+# A measurement this close to a threshold is on it: float noise, not a side.
+TIE_FT = 1e-9
 OBJECT_TYPES = ["gas_meter", "ac", "pool", "window", "door", "elec_box", "vent", "battery"]
 ERROR = st.sampled_from([0.0, 0.05, 0.1, 0.2, 0.3])
 
@@ -180,7 +184,7 @@ def perturbed(raw: dict, data) -> tuple[dict, tuple[float, float]]:
     """The scene with every input moved within its declared error (the docstring's model), and
     the meter's plan displacement."""
     out = copy.deepcopy(raw)
-    direction = st.none() | st.integers(0, 7)
+    direction = st.none() | st.integers(0, len(DIRECTIONS) - 1)
     sign = st.sampled_from([-1, 0, 1])
     walls, given = out["walls"], raw["walls"]
 
@@ -263,6 +267,17 @@ def test_a_pass_holds_wherever_the_declared_errors_put_things(raw: dict, data) -
     piece = data.draw(st.sampled_from(scene.walls), label="wall")
     assume(piece.s1 - piece.s0 >= W)
     s0 = data.draw(st.floats(piece.s0, piece.s1 - W), label="s0")
+    if data.draw(st.integers(0, 2), label="near the confident reach") == 0:
+        # The route just short of the confident reach, by a fraction of the errors, where a route
+        # error left out shows (the caretaker's witness): shift the battery by what its nominal
+        # route lacks.
+        reach = PUBLIC.rules.route.confident_reach_ft.value
+        errors = [error_of(raw["meter"]), *(error_of(w) for w in raw["walls"])]
+        gap = data.draw(st.floats(0.0, 1.0), label="short of the reach") * 3 * max(errors)
+        length = evaluate_start(scene, PUBLIC, s0, piece.wall_id).route.length
+        start = s0 + (1 if piece.s0 >= 0 else -1) * (reach - gap - length)
+        if piece.s0 <= start <= piece.s1 - W:
+            s0 = start
     raw = near_misses(raw, piece, s0, data)
     scene = parsed(raw, PUBLIC)
     before = {c.id: c for c in evaluate_start(scene, PUBLIC, s0, piece.wall_id).checks}
@@ -282,16 +297,23 @@ def test_a_pass_holds_wherever_the_declared_errors_put_things(raw: dict, data) -
     if slack:
         target(-min(slack), label="closest to breaking")
     for cid in passing:
-        for name, after in (("declared errors", declared), ("exact", truth)):
-            c = after[cid]
-            assert c.outcome != FAIL, (cid, name, c.measured, c.plus_minus, c.reason)
+        c = declared[cid]
+        assert c.outcome != FAIL, (cid, "declared errors", c.measured, c.plus_minus, c.reason)
+        c = truth[cid]
+        slack = slack_of(c)
+        tie = c.outcome == UNSURE and slack is not None and abs(slack) <= TIE_FT
+        assert c.outcome == PASS or tie, (cid, "exact", c.measured, c.reason)
 
 
 def slack_of(c) -> float | None:
-    """How far a check's measurement is from its rule, on the passing side."""
+    """How far a check's measurement is from the nearest threshold it must clear (the maximum,
+    and the confident reach for the route), positive on the pass side."""
     if c.measured is None or c.threshold is None:
         return None
-    return c.measured - c.threshold if c.comparison == "at_least" else c.threshold - c.measured
+    if c.comparison == "at_least":
+        return c.measured - c.threshold
+    lines = [c.threshold] + ([c.review_threshold] if c.review_threshold is not None else [])
+    return min(lines) - c.measured
 
 
 def test_a_scene_whose_overlays_meet_at_a_far_corner_is_answered() -> None:
@@ -448,3 +470,62 @@ def test_ground_requests_ignore_lines_left_where_edges_touch() -> None:
         },
     }
     assert solve(parsed(raw, PUBLIC), PUBLIC)["decision"] == "manual_review"
+
+
+def route_corner(meter: tuple[float, float] = (0.0, 0.0), meter_error: float = 0.3) -> dict:
+    """The caretaker's route witness: exact right-angle walls, the meter (+/- 0.3 ft) on w1's
+    line, lawn only where the battery stands on w2, everything seen."""
+    raw = shared_fixture()
+    raw["meter"] = {"pos": [meter[0], 5.0, meter[1]], "wall_id": "w1", "plus_minus_ft": meter_error}
+    raw["walls"] = [
+        {"id": "w1", "baseline": [[-4, 0], [4, 0]], "height_ft": 9, "plus_minus_ft": 0.0},
+        {"id": "w2", "baseline": [[4, 0], [4, 20]], "height_ft": 9, "plus_minus_ft": 0.0},
+    ]
+    raw["ground"] = [{"type": "lawn", "polygon": rect(1.5, 4.5, 9.5, 13.5), "plus_minus_ft": 0.0}]
+    raw["objects"], raw["overheads"], raw["facing"] = [], [], []
+    raw["coverage"] = {
+        "ends": {"left": {"kind": "limit"}, "right": {"kind": "limit"}},
+        "observed": [
+            {"band": b, "span_ft": [-40, 40], **({"out_ft": 30} if b == "ground" else {})}
+            for b in ("wall", "ground", "overhead", "facing")
+        ],
+    }
+    return raw
+
+
+def test_a_meter_move_across_and_along_its_wall_lengthens_the_route_by_sqrt_5_e() -> None:
+    # Before: the route to [13.924, 16.508] passed within the 15 ft confident reach, bounded
+    # above by 14.944 ft with the meter's error counted as e * sqrt(1 + k^2) = sqrt(3) * e. Moving
+    # the meter (-0.212, +0.212), within its 0.3 ft, slides the battery up w2 by dz - dx and puts
+    # the meter dz off its wall: 15.061 ft read as exact, past the reach. The worst move gives
+    # sqrt(5) * e.
+    c = next(
+        c
+        for c in evaluate_start(parsed(route_corner(), PUBLIC), PUBLIC, 13.924, "w2").checks
+        if c.id == "route_length"
+    )
+    assert c.outcome == "unsure"
+    moved = exact(route_corner(meter=(-0.212, 0.212)))
+    truth = same_battery(route_corner(), 13.924, "w2", moved, (-0.212, 0.212))["route_length"]
+    assert truth.measured > 15.0
+    assert c.measured + c.plus_minus >= truth.measured
+
+
+def test_the_wall_above_the_battery_is_seen_wherever_the_battery_may_stand() -> None:
+    # Found by the strict property: the wall seen from s = 15 on, the battery on w2 from 15, the
+    # meter +/- 0.2 on w1. Moving the meter 0.2 ft along w1 slides the battery 0.011 ft onto
+    # unseen wall, where a box could hang; the check only looked over [s0, s1].
+    raw = shared_fixture()
+    raw["meter"]["plus_minus_ft"] = 0.2
+    end = [22.910371511986337, 6.511363089143134]
+    raw["walls"] = [
+        {"id": "w1", "baseline": [[-30, 0], [4.0, 0]], "height_ft": 9, "plus_minus_ft": 0.0},
+        {"id": "w2", "baseline": [[4.0, 0], end], "height_ft": 9, "plus_minus_ft": 0.0},
+    ]
+    raw["coverage"]["observed"] = [
+        o for o in raw["coverage"]["observed"] if o["band"] != "wall"
+    ] + [{"band": "wall", "span_ft": [15.0, 24.0]}]
+    checks = evaluate_start(parsed(raw, PUBLIC), PUBLIC, 15.0, "w2").checks
+    above = next(c for c in checks if c.id == "wall_equipment_above")
+    assert above.outcome == "unsure"
+    assert above.unsure_cause == "unobserved"

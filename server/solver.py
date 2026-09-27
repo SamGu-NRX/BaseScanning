@@ -641,7 +641,9 @@ class Solver:
             c.reason = f"{c.subject} is on the wall directly above the battery."
             return c
         up_to = self.wall_height["above"]
-        missing = self.scene.missing("wall", s0 - t, s1 + t, up_to)
+        # Wherever the battery may stand along the wall (the strict property's case: a meter
+        # move slid it 0.011 ft onto unseen wall).
+        missing = self.scene.missing("wall", s0 - t - along_err, s1 + t + along_err, up_to)
         if c.outcome == UNSURE:
             c.unsure_cause = "margin"
             c.reason = f"{c.subject} ends within measurement error of the battery's edge."
@@ -1199,21 +1201,35 @@ class Solver:
         return total
 
     def _meter_on_route(self, piece: Piece) -> tuple[float, float]:
-        """How much the meter's error can lengthen and shorten a route to a battery on `piece`.
-        The battery is placed by its offset from the meter, so moving the meter by d (at most its
-        error e) moves both: the route's start slides d's component along the meter's wall, the
-        battery d's along its own, and the meter's standoff from its wall changes by d's
-        component across it. On the meter's own wall the slides cancel; from a wall turned by
-        the angle between their directions (a unit-vector difference k) they add up to k|d|.
-        Longer: at most e * sqrt(1 + k^2). Shorter: the standoff can't go below zero, so by at
-        most min(standoff, e) + k * e, and never more than the longer bound. With the meter on
-        its wall's line, a run on that wall is never shorter than measured (golden test 09);
-        test_within_errors covers a battery round a corner."""
+        """How much the meter's error e can lengthen and shorten a route to a battery on `piece`.
+        The battery is placed by its offset from the meter, so moving the meter by d (|d| <= e)
+        moves both. The route's start slides d's component along the meter's wall and the
+        battery d's along its own, so the run along the walls changes by sigma * d . v, with v the
+        difference of the two walls' directions and sigma the battery's side of the meter. The
+        meter's standoff o from its wall becomes |o + d . u| (u: from the wall to the meter). The
+        change sigma * d . v + |o + d . u| - o is the larger of d . (sigma v + u) and
+        d . (sigma v - u) - 2o, two linear functions, so over the disc it is at most
+        max(e |sigma v + u|, e |sigma v - u| - 2o): derived, and reached. On the meter's own wall
+        (v = 0) that is e; round a right-angle corner with the meter on its wall's line, sqrt(5)
+        e, the caretaker's witness in test_within_errors, where e * sqrt(1 + k^2) had treated the
+        two components as independent. Shorter: the standoff can't go below zero, so by at most
+        min(o, e) + |v| e, a bound, not the minimum."""
         e = self.scene.meter_plus_minus
         m = self.scene.meter_piece
-        k = math.hypot(piece.along[0] - m.along[0], piece.along[1] - m.along[1])
-        longer = e * math.sqrt(1 + k * k)
-        return longer, min(longer, min(self.meter_offset, e) + k * e)
+        sigma = -1.0 if piece.s1 <= EPS else 1.0
+        v = (sigma * (piece.along[0] - m.along[0]), sigma * (piece.along[1] - m.along[1]))
+        o = self.meter_offset
+        if o > EPS:
+            mx, mz = self.scene.meter_xz
+            wx, wz = self.scene.point_at(0.0)
+            u = ((mx - wx) / o, (mz - wz) / o)
+        else:
+            u = m.outward
+        longer = max(
+            e * math.hypot(v[0] + u[0], v[1] + u[1]),
+            e * math.hypot(v[0] - u[0], v[1] - u[1]) - 2 * o,
+        )
+        return longer, min(longer, min(o, e) + math.hypot(*v) * e)
 
     def reach_limit(self, piece: Piece) -> float:
         """Past this |s| of its near edge a battery's route fails the maximum length whatever
