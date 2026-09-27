@@ -1713,6 +1713,26 @@ def test_inferred_meter_within_reach_blocks_a_nearer_observed_one(tmp_path):
 
 
 @pytest.mark.skipif(not _coverage_ready(), reason="CoverageQuery arrives with the vendored harness")
+def test_distant_inferred_meter_does_not_depend_on_object_order(tmp_path):
+    """A temporary inferred subject outside the search reach cannot taint an observed winner."""
+    scene_dir = write(tmp_path / "wall")
+    _add_gas(scene_dir, evidence="observed", plus_minus_m=0.05, gas_id="observed_gas", s_m=2.0)
+    _add_gas(scene_dir, evidence="inferred", plus_minus_m=0.05, gas_id="inferred_gas", s_m=5.0)
+    observed_first = evaluate_scene(scene_dir, tmp_path / "observed-first", config=_profile_c_geometry())["C"]
+
+    path = scene_dir / "scene.json"
+    scene = json.loads(path.read_text())
+    scene["objects"].reverse()
+    path.write_text(json.dumps(scene) + "\n")
+    inferred_first = evaluate_scene(scene_dir, tmp_path / "inferred-first", config=_profile_c_geometry())["C"]
+
+    assert observed_first["site"]["decision"] == "pass"
+    assert inferred_first["site"] == observed_first["site"]
+    assert inferred_first["candidates"] == observed_first["candidates"]
+    assert inferred_first["criteria"] == observed_first["criteria"]
+
+
+@pytest.mark.skipif(not _coverage_ready(), reason="CoverageQuery arrives with the vendored harness")
 def test_location_unsure_gas_meter_is_not_lifted(tmp_path):
     scene_dir = write(tmp_path / "wall")
     _add_gas(scene_dir, evidence="observed", plus_minus_m=9.99)

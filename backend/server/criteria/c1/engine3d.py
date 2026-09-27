@@ -610,6 +610,7 @@ class Solver3D:
                         bands: list[str], mode: str, counts=None, hide_ft: float = 1.0) -> Check:
         c = Check(cid, PASS, threshold=thr)
         wk = None
+        subject_inferred = False
         # radius the check already searches for unobserved space
         check_reach = thr + w.pm
         for o in items:
@@ -631,8 +632,9 @@ class Solver3D:
                 wk = key
                 c.outcome, c.measured, c.pm, c.subject = out, d, e, o.id
                 c.cause = cause if out == UNSURE else None
-                if o.evidence == "inferred":
-                    c.inferred = True
+                subject_inferred = o.evidence == "inferred"
+        # Only the final winning subject contributes evidence outside the search reach.
+        c.inferred = c.inferred or subject_inferred
         if c.outcome == FAIL or c.outcome == UNSURE:
             return c
         radius = thr + w.pm
