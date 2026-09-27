@@ -375,73 +375,136 @@ def set_wall_observed_fraction(scene: dict, query: CoverageQuery) -> None:
         by_id[cw.id]["observed_fraction"] = ev["observed_share"]
 
 
+def _in_grid_sample_span(origin, dirs, lengths, lo, hi_ex, step, voxel):
+    """Half-voxel sample indices whose points can fall inside ``[lo, hi_ex)``.
+
+    The span is one sample wider than the ray/box slab. ``build_grid`` still
+    drops anything outside, so the kept voxels match marching ``t = 0, step, ...``
+    all the way to ``length - 0.75 * voxel``.
+    """
+    t_max = np.maximum(lengths - 0.75 * voxel, 0.0)
+    t_enter = np.zeros(len(lengths))
+    t_exit = t_max.copy()
+    miss = np.zeros(len(lengths), dtype=bool)
+    for axis in range(3):
+        component = dirs[:, axis]
+        parallel = np.abs(component) < 1e-15
+        miss |= parallel & ((origin[axis] < lo[axis]) | (origin[axis] >= hi_ex[axis]))
+        denom = np.where(parallel, 1.0, component)
+        t_lo = (lo[axis] - origin[axis]) / denom
+        t_hi = (hi_ex[axis] - origin[axis]) / denom
+        near = np.minimum(t_lo, t_hi)
+        far = np.maximum(t_lo, t_hi)
+        t_enter = np.maximum(t_enter, np.where(parallel, -np.inf, near))
+        t_exit = np.minimum(t_exit, np.where(parallel, np.inf, far))
+    t0 = np.maximum(0.0, t_enter - step)
+    t1 = np.minimum(t_max, np.maximum(t_exit, t_enter) + step)
+    live = (~miss) & (t_enter < t_exit)
+    k0 = np.zeros(len(lengths), np.int64)
+    k1 = np.zeros(len(lengths), np.int64)
+    if np.any(live):
+        k0[live] = np.ceil(t0[live] / step - 1e-9).astype(np.int64)
+        k_full = np.floor((t_max[live] - 1e-15) / step).astype(np.int64) + 1
+        k_margin = np.floor(t1[live] / step + 1e-9).astype(np.int64) + 1
+        k1[live] = np.minimum(k_full, k_margin)
+    k0 = np.maximum(k0, 0)
+    k1 = np.maximum(k1, k0)
+    return k0, k1
+
+
 def build_grid(
     ray_sets, lo: np.ndarray, hi: np.ndarray, voxel: float, occupied_ok=None, max_samples: int = 12_000_000
 ) -> CoverageGrid:
     """ray_sets: iterable of (origin (3,), ends (M, 3), end_is_surface (M,) bool or None), one per
     camera. Free space is marked up to 0.75 voxel before each end; the end voxel is marked occupied
-    when end_is_surface is true for that ray."""
+    when end_is_surface is true for that ray.
+
+    Samples are the same half-voxel steps as a full march. Rays are clipped to the
+    grid first: a far point still marks the voxels its ray crosses inside the box,
+    and does not allocate samples for the rest of the segment.
+    """
     lo = np.asarray(lo, float)
     shape = tuple(int(v) for v in np.ceil((np.asarray(hi, float) - lo) / voxel))
     n = int(np.prod(shape))
     free = np.zeros(n, bool)
     occ = np.zeros(n, bool)
     views = np.zeros(n, np.uint8)
+    seen = np.zeros(n, bool)
     step = voxel * 0.5
-    dims = np.array(shape)
+    dims = np.array(shape, float)
+    hi_ex = lo + dims * voxel
 
-    def lin(P):
-        ijk = np.floor((P - lo) / voxel).astype(np.int64)
+    def lin(points):
+        ijk = np.floor((points - lo) / voxel).astype(np.int64)
         ok = np.all((ijk >= 0) & (ijk < dims), axis=1)
         ijk = ijk[ok]
+        if len(ijk) == 0:
+            return np.zeros(0, np.int64)
         return (ijk[:, 0] * shape[1] + ijk[:, 1]) * shape[2] + ijk[:, 2]
+
+    def mark_free(origin, dirs, lengths, k0, k1):
+        """Samples ``k0 + j`` for each ray. ``j`` starts at 0, so a far entry does not pad the rest."""
+        counts = k1 - k0
+        if len(counts) == 0 or int(counts.max()) <= 0:
+            return
+        offset = 0
+        remaining = counts.copy()
+        while int(remaining.max()) > 0:
+            width = min(max_samples, int(remaining.max()))
+            kk = k0[:, None] + offset + np.arange(width)
+            active = kk < k1[:, None]
+            t = kk * step
+            active &= t < (lengths[:, None] - 0.75 * voxel)
+            if np.any(active):
+                points = origin + dirs[:, None, :] * t[..., None]
+                idx = lin(points[active])
+                if len(idx):
+                    free[idx] = True
+                    seen[idx] = True
+            offset += width
+            remaining = np.maximum(remaining - width, 0)
 
     for origin, ends, surf in ray_sets:
         o = np.asarray(origin, float)
         ends = np.asarray(ends, float)
         if len(ends) == 0:
             continue
-        seen_here = []
-        L = np.linalg.norm(ends - o, axis=1)
-        order = np.argsort(L)
-        ends, L = ends[order], L[order]
+        lengths = np.linalg.norm(ends - o, axis=1)
+        dirs = (ends - o) / np.maximum(lengths, 1e-9)[:, None]
+        k0, k1 = _in_grid_sample_span(o, dirs, lengths, lo, hi_ex, step, voxel)
+        counts = k1 - k0
+        order = np.argsort(counts, kind="mergesort")
+        ends, dirs, lengths = ends[order], dirs[order], lengths[order]
+        k0, k1, counts = k0[order], k1[order], counts[order]
         surf = None if surf is None else np.asarray(surf, bool)[order]
-        dirs = (ends - o) / np.maximum(L, 1e-9)[:, None]
         a = 0
         n_rays = len(ends)
-
-        def nmax_at(index: int) -> int:
-            return int(np.ceil(L[index] / step)) + 1
-
         while a < n_rays:
-            # Batch from the longest ray in the batch. Sizing from the shortest ray
-            # allocated a rectangle as wide as a much longer neighbour and spent the
-            # L4 coverage budget marching samples past the short rays' ends.
-            if nmax_at(a) > max_samples:
+            if counts[a] <= 0:
+                a += 1
+                continue
+            if int(counts[a]) > max_samples:
                 b = a + 1
             else:
                 lo_b = a + 1
                 hi_b = n_rays
                 while lo_b < hi_b:
                     mid = (lo_b + hi_b + 1) // 2
-                    if (mid - a) * nmax_at(mid - 1) <= max_samples:
+                    if (mid - a) * int(counts[mid - 1]) <= max_samples:
                         lo_b = mid
                     else:
                         hi_b = mid - 1
                 b = lo_b
-            nmax = nmax_at(b - 1)
-            t = (np.arange(nmax) * step)[None, :]
-            keep = t < (L[a:b, None] - 0.75 * voxel)
-            P = o + dirs[a:b, None, :] * t[..., None]
-            idx = lin(P[keep])
-            free[idx] = True
-            seen_here.append(idx)
+            mark_free(o, dirs[a:b], lengths[a:b], k0[a:b], k1[a:b])
             a = b
         end_idx = lin(ends if surf is None else ends[surf])
-        occ[end_idx] = True
-        seen_here.append(end_idx)
-        u = np.unique(np.concatenate(seen_here))
-        views[u] = np.minimum(views[u].astype(np.int32) + 1, 255).astype(np.uint8)
+        if len(end_idx):
+            occ[end_idx] = True
+            seen[end_idx] = True
+        hit = np.flatnonzero(seen)
+        if len(hit):
+            views[hit] = np.minimum(views[hit].astype(np.int32) + 1, 255).astype(np.uint8)
+            seen[hit] = False
     state = np.zeros(n, np.uint8)
     state[free] = CoverageGrid.FREE
     state[occ] = CoverageGrid.OCCUPIED
