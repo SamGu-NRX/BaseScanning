@@ -10,12 +10,13 @@ from datetime import timedelta
 from pathlib import Path
 
 import server.orchestrator.executor as executor
+from server.contracts.api import HintData
 from server.contracts.jobs import CommittedFile, StageContext
 from server.eval.geomscore import load_cameras
 from server.orchestrator.api import dispatch_early, prewarm, start_run
 from server.orchestrator.cli import main
 from server.orchestrator.clock import Clock
-from server.orchestrator.early.capture_check import _axes, _in_frame
+from server.orchestrator.early.capture_check import _axes, _in_frame, _publish
 from server.orchestrator.heartbeat import Heartbeat
 from server.orchestrator.services import bind, packet_sha256
 from server.orchestrator.stateio import get_json
@@ -350,6 +351,89 @@ def test_a_failed_read_does_not_abort_the_early_fanout(tmp_path, monkeypatch) ->
     assert get_json(services.state, "early:cap_test:qa:zxing.png")["frame_id"] == "zxing.png"
     checks = [event for event in _events(services) if event.type == "capture_check"]
     assert checks
+
+
+def test_run_record_is_running_while_a_stage_runs(tmp_path, monkeypatch) -> None:
+    seen: dict[str, object] = {}
+    real = poses_stub.run
+
+    def wrapped(ctx: StageContext):
+        run = ctx.state.get_run(ctx.run_id)
+        seen["status"] = run.status
+        seen["started_at"] = run.started_at
+        return real(ctx)
+
+    monkeypatch.setattr(poses_stub, "run", wrapped)
+    services, uri, digest = build_services(tmp_path, "memory")
+    with bind(services):
+        start_run("cap_test", digest, uri)
+    assert seen["status"] == "running"
+    assert seen["started_at"]
+
+
+def test_timings_include_merge_objects_s(tmp_path) -> None:
+    services, uri, digest = build_services(tmp_path, "memory")
+    with bind(services):
+        run = start_run("cap_test", digest, uri)
+    timings = json.loads(services.storage.get_bytes(run.artifacts["run/timings.json"]))
+    assert isinstance(timings["merge_objects_s"], float)
+
+
+def test_start_run_flushes_a_debounced_capture_check(tmp_path) -> None:
+    services, uri, digest = build_services(tmp_path, "memory")
+    services.clock.advance(0)
+    with bind(services):
+        dispatch_early("cap_test", [_posed("a")])
+        dispatch_early("cap_test", [_posed("b")])
+        before = [event for event in _events(services) if event.type == "capture_check"]
+        start_run("cap_test", digest, uri)
+        after = [event for event in _events(services) if event.type == "capture_check"]
+    assert len(before) == 1
+    assert len(after) >= len(before) + 2
+
+
+def test_wall_gap_hint_is_published_once(tmp_path) -> None:
+    services, _uri, _digest = build_services(tmp_path, "memory")
+    services.clock.advance(0)
+    with bind(services):
+        _publish(services, "cap_test", ["wall_gap_left"], meter_read="absent", frames=1)
+        services.clock.advance(3)
+        _publish(services, "cap_test", ["wall_gap_left"], meter_read="absent", frames=2)
+    hints = [
+        event
+        for event in _events(services)
+        if event.type == "hint" and (event.data or {}).get("code") == "wall_gap_left"
+    ]
+    assert len(hints) == 1
+
+
+def test_read_hints_and_early_blobs_are_stored(tmp_path, monkeypatch) -> None:
+    hint = HintData(code="meter_plate_unreadable", message="Take another close-up of the nameplate.")
+
+    def fake(still, storage, cfg):
+        del storage, cfg
+        return StillResult(still=still, cost_usd=0.1), [hint]
+
+    monkeypatch.setattr("server.orchestrator.early.reads.read_still", fake)
+    services, _uri, _digest = build_services(tmp_path, "memory")
+    services.settings.VISION_EXTERNAL_CALLS = "on"
+    item = CommittedFile(
+        path="meter.png",
+        role="still",
+        sha256="cd" * 32,
+        bytes=8,
+        generation="1",
+        key="uploads/meter.png",
+        meta={"purpose": "meter_close"},
+    )
+    with bind(services):
+        dispatch_early("cap_test", [item])
+    hints = [event for event in _events(services) if event.type == "hint"]
+    assert hints[0].data["code"] == "meter_plate_unreadable"
+    stored = json.loads(services.storage.get_bytes("captures/cap_test/early/reads/meter.png.json"))
+    assert stored["hints"][0]["code"] == "meter_plate_unreadable"
+    assert services.storage.exists("captures/cap_test/early/qa/meter.png.json")
+    assert services.storage.exists("captures/cap_test/early/capture_check.json")
 
 
 def test_poses_stub_cameras_json_is_the_ws04_list(tmp_path) -> None:

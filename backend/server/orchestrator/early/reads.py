@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import json
+
+from server.contracts.api import HintData
 from server.contracts.jobs import CommittedFile
+from server.orchestrator.events import emit_hint
 from server.orchestrator.privacy import photo_egress_allowed
 from server.orchestrator.services import Services
 from server.orchestrator.stateio import put_json
@@ -35,22 +39,29 @@ def on_commit(services: Services, capture_id: str, files: list[CommittedFile]) -
             "started_at": started_at,
         }
         put_json(services.state, key, body)
+        _write_early(services, capture_id, f"reads/{item.path}.json", body)
         try:
-            body.update(_read(services, capture_id, item, purpose))
+            read, hints = _read(services, capture_id, item, purpose)
         except Exception as exc:
             body["error"] = f"{type(exc).__name__}: {exc}"
             put_json(services.state, key, body)
+            _write_early(services, capture_id, f"reads/{item.path}.json", body)
             used += 1
             continue
+        for hint in hints:
+            emit_hint(services.state, capture_id, hint, clock=services.clock)
+        body.update(read)
         body["started_at"] = started_at
         body["purpose"] = purpose
+        body["hints"] = [hint.model_dump(mode="json") for hint in hints]
         put_json(services.state, key, body)
+        _write_early(services, capture_id, f"reads/{item.path}.json", body)
         if purpose == "meter_close":
             put_json(services.state, f"early:{capture_id}:meter_identity", {"meter_number": body.get("meter_number")})
         used += 1
 
 
-def _read(services: Services, capture_id: str, item: CommittedFile, purpose: str) -> dict:
+def _read(services: Services, capture_id: str, item: CommittedFile, purpose: str) -> tuple[dict, list[HintData]]:
     still = StillRef(
         capture_id=capture_id,
         still_id=item.path,
@@ -58,10 +69,18 @@ def _read(services: Services, capture_id: str, item: CommittedFile, purpose: str
         sha256=item.sha256,
         purpose=purpose,
     )
-    result, _hints = read_still(still, services.storage, ReadsConfig.from_env(services.settings))
+    result, hints = read_still(still, services.storage, ReadsConfig.from_env(services.settings))
     meter = result.meter
     return {
         "meter_number": None if meter is None else meter.value,
         "cost_usd": result.cost_usd,
         "still_id": still.still_id,
-    }
+    }, hints
+
+
+def _write_early(services: Services, capture_id: str, rel: str, body: dict) -> None:
+    services.storage.put_bytes(  # type: ignore[attr-defined]
+        f"captures/{capture_id}/early/{rel}",
+        json.dumps(body).encode(),
+        "application/json",
+    )

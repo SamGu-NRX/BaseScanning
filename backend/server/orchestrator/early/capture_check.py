@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from typing import Any, get_args
 
@@ -130,18 +131,38 @@ def _publish(
     body = CaptureCheckData(complete=not codes, missing=codes, meterRead=meter_read)  # type: ignore[arg-type]
     emit_capture_check(services.state, capture_id, body, clock=services.clock)
     for code in missing:
-        if code in {"wall_gap_left", "wall_gap_right", "ground_not_seen_left", "ground_not_seen_right"}:
-            emit_hint(
-                services.state,
-                capture_id,
-                HintData(code=code, message="Keep walking so this side of the meter is in frame."),  # type: ignore[arg-type]
-                clock=services.clock,
-            )
-    put_json(
-        services.state,  # type: ignore[attr-defined]
-        f"early:{capture_id}:capture_check",
-        {"missing": missing, "at": services.clock.iso(), "complete": not codes, "frames": frames},
+        if code not in {"wall_gap_left", "wall_gap_right", "ground_not_seen_left", "ground_not_seen_right"}:
+            continue
+        if code.startswith("wall_gap_") and _hint_seen(services, capture_id, code):
+            continue
+        emit_hint(
+            services.state,
+            capture_id,
+            HintData(code=code, message="Keep walking so this side of the meter is in frame."),  # type: ignore[arg-type]
+            clock=services.clock,
+        )
+        if code.startswith("wall_gap_"):
+            _remember_hint(services, capture_id, code)
+    stored = {"missing": missing, "at": services.clock.iso(), "complete": not codes, "frames": frames}
+    put_json(services.state, f"early:{capture_id}:capture_check", stored)  # type: ignore[attr-defined]
+    services.storage.put_bytes(  # type: ignore[attr-defined]
+        f"captures/{capture_id}/early/capture_check.json",
+        json.dumps(stored).encode(),
+        "application/json",
     )
+
+
+def _hint_seen(services: Services, capture_id: str, code: str) -> bool:
+    seen = get_json(services.state, f"capture_check_hints:{capture_id}")  # type: ignore[attr-defined]
+    return isinstance(seen, list) and code in seen
+
+
+def _remember_hint(services: Services, capture_id: str, code: str) -> None:
+    seen = get_json(services.state, f"capture_check_hints:{capture_id}")  # type: ignore[attr-defined]
+    codes = [item for item in seen if isinstance(item, str)] if isinstance(seen, list) else []
+    if code not in codes:
+        codes.append(code)
+    put_json(services.state, f"capture_check_hints:{capture_id}", codes)  # type: ignore[attr-defined]
 
 
 def _packet_missing(packet: dict[str, Any]) -> list[str]:

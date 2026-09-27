@@ -15,7 +15,7 @@ from server.contracts.jobs import (
 from server.contracts.packet import Tier
 from server.orchestrator.clock import parse_iso
 from server.orchestrator.coordinator import RunCoordinator
-from server.orchestrator.early.capture_check import final_check
+from server.orchestrator.early.capture_check import final_check, flush_pending
 from server.orchestrator.early.dispatch import dispatch
 from server.orchestrator.events import emit_stage
 from server.orchestrator.executor import CoordinatorDied
@@ -87,6 +87,7 @@ def start_run(
         StageData(stage="validate", status="pending", attempt=0, runId=run_id),
         clock=services.clock,
     )
+    flush_pending(services, capture_id)
     _final_capture_check(capture_id, packet)
     try:
         RunCoordinator(services).drive(run_id)

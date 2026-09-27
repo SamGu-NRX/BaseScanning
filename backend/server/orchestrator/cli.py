@@ -117,24 +117,56 @@ def dump_run(out: Path) -> int:
         return 2
     run = json.loads(run_path.read_text())
     print(f"# run {run['run_id']} status={run['status']} failure={run.get('failure_code')}")
+    stages = _load_named(out, "stages.json")
     print("\n## stages\n")
     print("| stage | status | attempt | gpu | error |")
     print("|---|---|---|---|---|")
-    for name, _key in run.get("artifacts", {}).items():
-        print(f"| {name} | artifact |  |  |  |")
+    if isinstance(stages, list) and stages:
+        for rec in stages:
+            if not isinstance(rec, dict):
+                continue
+            print(
+                f"| {rec.get('stage')} | {rec.get('status')} | {rec.get('attempt')} | "
+                f"{rec.get('gpu') or ''} | {rec.get('error') or ''} |"
+            )
+    elif events_path.is_file():
+        latest: dict[str, dict] = {}
+        for line in events_path.read_text().splitlines():
+            event = json.loads(line)
+            if event.get("type") != "stage":
+                continue
+            data = event.get("data") or {}
+            if data.get("stage"):
+                latest[str(data["stage"])] = data
+        for name, data in latest.items():
+            print(f"| {name} | {data.get('status')} | {data.get('attempt')} | {data.get('gpu') or ''} | |")
     if events_path.is_file():
         print("\n## events\n")
         for line in events_path.read_text().splitlines():
             event = json.loads(line)
             print(f"- {event['seq']} {event['type']} {json.dumps(event['data'])}")
-    for label in ("timings.json", "cost.json", "stages.json"):
-        matches = list(out.rglob(label))
+    timings = _load_named(out, "timings.json")
+    print("\n## timings.json\n")
+    if not isinstance(timings, dict):
+        print("(not written)")
+    else:
+        print(json.dumps(timings, indent=2))
+        print(f"merge_objects_s: {timings.get('merge_objects_s')}")
+    for label in ("cost.json", "stages.json"):
+        body = _load_named(out, label)
         print(f"\n## {label}\n")
-        if not matches:
+        if body is None:
             print("(not written)")
             continue
-        print(matches[0].read_text())
+        print(json.dumps(body, indent=2) if not isinstance(body, str) else body)
     return 0
+
+
+def _load_named(out: Path, name: str) -> object | None:
+    matches = sorted(out.rglob(name))
+    if not matches:
+        return None
+    return json.loads(matches[0].read_text())
 
 
 def print_spend() -> int:

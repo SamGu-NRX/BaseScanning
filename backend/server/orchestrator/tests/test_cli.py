@@ -40,7 +40,7 @@ def test_run_local_missing_tar(tmp_path) -> None:
     assert main(["run-local", "--tar", str(tmp_path / "nope.tar"), "--out", str(tmp_path / "out")]) == 2
 
 
-def test_run_local_synthetic_tar_and_dump(tmp_path) -> None:
+def test_run_local_synthetic_tar_and_dump(tmp_path, capsys) -> None:
     packet = {
         "captureId": "cap_cli",
         "flow": "guided",
@@ -77,7 +77,12 @@ def test_run_local_synthetic_tar_and_dump(tmp_path) -> None:
     finals = [event for event in events if event["type"] in {"verdict_ready", "retake_request", "failed"}]
     assert len(finals) == 1
     assert finals[0]["type"] == "verdict_ready"
+    capsys.readouterr()
     assert main(["dump-run", "--out", str(out)]) == 0
+    dumped = capsys.readouterr().out
+    assert "| validate | done |" in dumped
+    assert "merge_objects_s:" in dumped
+    assert "| artifact |" not in dumped
 
 
 def test_run_local_uploads_keyframe_and_still_bytes(tmp_path) -> None:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import cv2
 import numpy as np
 
@@ -72,10 +74,12 @@ def on_commit(services: Services, capture_id: str, files: list[CommittedFile]) -
                 blurry_run = 0
         else:
             blurry_run = 0
-        put_json(
-            services.state,
-            f"early:{capture_id}:qa:{item.path}",
-            {"frame_id": item.path, "stats": stats, "codes": codes, "at": services.clock.iso()},
+        body = {"frame_id": item.path, "stats": stats, "codes": codes, "at": services.clock.iso()}
+        put_json(services.state, f"early:{capture_id}:qa:{item.path}", body)
+        services.storage.put_bytes(  # type: ignore[attr-defined]
+            f"captures/{capture_id}/early/qa/{item.path}.json",
+            json.dumps(body).encode(),
+            "application/json",
         )
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 import uuid
 from typing import Any
 
@@ -48,6 +49,7 @@ class RunControl(BaseModel):
     prewarmed: bool = False
     final_event_seq: int | None = None
     merge_done: bool = False
+    merge_objects_s: float | None = None
     vlm_stopped: bool = False
     no_meter_model: bool = False
 
@@ -94,6 +96,7 @@ class RunCoordinator:
         if run.status == "pending":
             run.status = "running"
             run.started_at = run.started_at or self.s.clock.iso()
+            self.s.state.put_run(run)
 
         if control.cancel_requested:
             self._cancel_running(run_id)
@@ -347,13 +350,16 @@ class RunCoordinator:
         }:
             return
         if objects_3d.status == "done":
+            started = time.perf_counter()
             try:
                 _merge_objects(self.s, run)
             except Exception as exc:
+                control.merge_objects_s = time.perf_counter() - started
                 control.merge_done = True
                 self._save_control(run.run_id, control)
                 self._close(run, decide(Facts(artifact_invalid="scene")), str(exc))
                 return
+            control.merge_objects_s = time.perf_counter() - started
         control.merge_done = True
         self._save_control(run.run_id, control)
 
@@ -488,6 +494,7 @@ class RunCoordinator:
                 "failures": rec.failures,
                 "respawns": rec.respawns,
             }
+        timings["merge_objects_s"] = self._control(run.run_id).merge_objects_s
         prefix = f"captures/{run.capture_id}/runs/{run.run_id}/run"
         self._put_json(f"{prefix}/timings.json", timings)
         self._put_json(f"{prefix}/cost.json", {"spend_usd": run.spend_usd})
