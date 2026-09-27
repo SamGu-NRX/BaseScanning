@@ -1,9 +1,18 @@
-"""dense stage stub. WS-06 fills this package."""
+"""Dense geometry stage.
 
-from server.contracts.jobs import StageContext, StageResult
+``run`` is loaded lazily so a pure-function import does not initialise the scene
+package while this package is still loading.
+"""
 
 STAGE = "dense"
 
+__all__ = ["STAGE", "run"]
 
-def run(ctx: StageContext) -> StageResult:
-    raise NotImplementedError("WS-06 implements server.dense.run")
+
+def __getattr__(name: str):
+    if name == "run":
+        from server.dense.run import run as fn
+
+        globals()["run"] = fn
+        return fn
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

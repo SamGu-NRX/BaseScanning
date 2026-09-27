@@ -12,33 +12,46 @@ import pytest
 
 from server.common.config import Settings
 
-# `reads` (WS-08), `objects` (WS-07), `scale` (WS-05), `result` (WS-10),
-# and `criteria` (WS-09) are implemented, so none is in this stub list.
-STAGES = [
-    "poses",
+# packet (WS-01), reads (WS-08), objects (WS-07), scale (WS-05), result (WS-10),
+# criteria (WS-09), and dense/coverage/scene (WS-06) are implemented.
+# poses still raises.
+UNIMPLEMENTED = ["poses"]
+IMPLEMENTED = [
+    "packet",
+    "reads",
+    "objects",
+    "scale",
+    "criteria",
     "dense",
     "coverage",
     "scene",
+    "result",
 ]
 
 
 def test_scale_run_is_the_stage() -> None:
-    """WS-05 replaced the scale stub. The other stages still raise."""
+    """WS-05 replaced the scale stub."""
 
     scale = importlib.import_module("server.scale")
     assert scale.STAGE == "scale"
     assert callable(scale.run)
 
 
-@pytest.mark.parametrize("name", STAGES)
+@pytest.mark.parametrize("name", UNIMPLEMENTED)
 def test_stage_run_is_unimplemented(name: str) -> None:
     module = importlib.import_module(f"server.{name}")
     with pytest.raises(NotImplementedError):
         module.run(None)  # type: ignore[attr-defined]
 
 
+@pytest.mark.parametrize("name", IMPLEMENTED)
+def test_stage_run_is_implemented(name: str) -> None:
+    module = importlib.import_module(f"server.{name}")
+    assert callable(module.run)
+
+
 def test_objects_stage_is_implemented() -> None:
-    """WS-07 replaced the skeleton stub. The other stages still raise NotImplementedError."""
+    """WS-07 replaced the skeleton stub."""
     objects = importlib.import_module("server.objects")
     assert objects.run.__module__ == "server.objects.run"
     assert objects.run_3d.__module__ == "server.objects.run"

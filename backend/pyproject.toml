@@ -261,8 +261,17 @@ modules = [
     "server.criteria",
     "server.result",
 ]
-# housepipe's model loader calls MoGe, which the move places in coverage.
-ignore_imports = ["server.dense.models -> server.coverage.occlusion"]
+# Coverage writes the scene draft through the builder. The brief's CLI is
+# `python -m server.scene.pipeline`, which calls dense and coverage.
+# Main's old ignore `server.dense.models -> server.coverage.occlusion` has no
+# match in this tree, so import-linter rejects it. The four edges below are the
+# ones this branch still imports.
+ignore_imports = [
+    "server.coverage.run -> server.scene.build",
+    "server.scene.pipeline -> server.coverage.run",
+    "server.scene.pipeline -> server.dense.params",
+    "server.scene.pipeline -> server.dense.run",
+]
 
 [[tool.importlinter.contracts]]
 name = "API does not import stages or eval directly"
