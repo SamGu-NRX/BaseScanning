@@ -42,6 +42,12 @@ reads = [
     "pydantic>=2.13.5",
     "jsonschema==4.26.0",
 ]
+objects = [
+    "torch>=2.6",
+    "transformers>=4.48",
+    "open_clip_torch>=2.32",
+    "openai>=1.60",
+]
 scale = [
     "opencv-python-headless==5.0.0.93",
     "scipy==1.18.1",
@@ -72,7 +78,10 @@ default-groups = ["dev", "data"]
 addopts = "-p no:cacheprovider --import-mode=importlib"
 testpaths = ["packet/tests", "tests", "server"]
 pythonpath = [".", "packet", "eval", "eval/vendor/hs11_server", "ios-kit"]
-markers = ["live: needs real GCS or R2 credentials"]
+markers = [
+    "live: OpenAI and xAI calls; skipped unless OPENAI_API_KEY and XAI_API_KEY are set",
+    "live: needs real GCS or R2 credentials",
+]
 
 [tool.ruff]
 line-length = 120

@@ -12,12 +12,10 @@ import pytest
 
 from server.common.config import Settings
 
-# `result` is implemented in this package. `reads` (WS-08) and `scale` (WS-05)
-# are implemented, so none of those names is in this stub list.
+# `reads` (WS-08), `objects` (WS-07), `scale` (WS-05), and `result` (WS-10) are implemented, so none is in this stub list.
 STAGES = [
     "packet",
     "poses",
-    "objects",
     "dense",
     "coverage",
     "scene",
@@ -40,10 +38,11 @@ def test_stage_run_is_unimplemented(name: str) -> None:
         module.run(None)  # type: ignore[attr-defined]
 
 
-def test_objects_3d_is_unimplemented() -> None:
+def test_objects_stage_is_implemented() -> None:
+    """WS-07 replaced the skeleton stub. The other stages still raise NotImplementedError."""
     objects = importlib.import_module("server.objects")
-    with pytest.raises(NotImplementedError):
-        objects.run_3d(None)
+    assert objects.run.__module__ == "server.objects.run"
+    assert objects.run_3d.__module__ == "server.objects.run"
 
 
 def test_api_app_and_orchestrator_stub() -> None:

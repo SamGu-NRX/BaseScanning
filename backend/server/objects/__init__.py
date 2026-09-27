@@ -1,13 +1,6 @@
-"""objects stage stub. WS-07 fills this package."""
+"""Object understanding: 2D stage `run` and 3D stage `run_3d`."""
 
-from server.contracts.jobs import StageContext, StageResult
+from server.objects.early import meter_candidates
+from server.objects.run import run, run_3d
 
-STAGE = "objects"
-
-
-def run(ctx: StageContext) -> StageResult:
-    raise NotImplementedError("WS-07 implements server.objects.run")
-
-
-def run_3d(ctx: StageContext) -> StageResult:
-    raise NotImplementedError("WS-07 implements server.objects.run_3d")
+__all__ = ["meter_candidates", "run", "run_3d"]

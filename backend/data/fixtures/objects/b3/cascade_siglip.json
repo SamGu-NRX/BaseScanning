@@ -1,0 +1,244 @@
+{
+ "gate": "siglip",
+ "margin": "margin_0.5",
+ "esc": "unsure+gate",
+ "frame": {
+  "baseline": {
+   "electric_meter": {
+    "tp": 4,
+    "fp": 2,
+    "fn": 1,
+    "recall": "4/5",
+    "precision": "4/6"
+   },
+   "main_panel": {
+    "tp": 2,
+    "fp": 1,
+    "fn": 0,
+    "recall": "2/2",
+    "precision": "2/3"
+   },
+   "gas_meter": {
+    "tp": 13,
+    "fp": 0,
+    "fn": 0,
+    "recall": "13/13",
+    "precision": "13/13"
+   },
+   "ac_condenser": {
+    "tp": 9,
+    "fp": 3,
+    "fn": 0,
+    "recall": "9/9",
+    "precision": "9/12"
+   },
+   "pool": {
+    "tp": 3,
+    "fp": 0,
+    "fn": 1,
+    "recall": "3/4",
+    "precision": "3/3"
+   },
+   "door": {
+    "tp": 20,
+    "fp": 18,
+    "fn": 0,
+    "recall": "20/20",
+    "precision": "20/38"
+   },
+   "window": {
+    "tp": 44,
+    "fp": 9,
+    "fn": 0,
+    "recall": "44/44",
+    "precision": "44/53"
+   },
+   "downspout": {
+    "tp": 10,
+    "fp": 13,
+    "fn": 1,
+    "recall": "10/11",
+    "precision": "10/23"
+   },
+   "hose_bib": {
+    "tp": 2,
+    "fp": 0,
+    "fn": 1,
+    "recall": "2/3",
+    "precision": "2/2"
+   }
+  },
+  "mini": {
+   "electric_meter": {
+    "tp": 3,
+    "fp": 8,
+    "fn": 2,
+    "recall": "3/5",
+    "precision": "3/11"
+   },
+   "main_panel": {
+    "tp": 2,
+    "fp": 1,
+    "fn": 0,
+    "recall": "2/2",
+    "precision": "2/3"
+   },
+   "gas_meter": {
+    "tp": 5,
+    "fp": 0,
+    "fn": 8,
+    "recall": "5/13",
+    "precision": "5/5"
+   },
+   "ac_condenser": {
+    "tp": 9,
+    "fp": 0,
+    "fn": 0,
+    "recall": "9/9",
+    "precision": "9/9"
+   },
+   "pool": {
+    "tp": 3,
+    "fp": 0,
+    "fn": 1,
+    "recall": "3/4",
+    "precision": "3/3"
+   },
+   "door": {
+    "tp": 19,
+    "fp": 19,
+    "fn": 1,
+    "recall": "19/20",
+    "precision": "19/38"
+   },
+   "window": {
+    "tp": 43,
+    "fp": 11,
+    "fn": 1,
+    "recall": "43/44",
+    "precision": "43/54"
+   },
+   "downspout": {
+    "tp": 5,
+    "fp": 5,
+    "fn": 6,
+    "recall": "5/11",
+    "precision": "5/10"
+   },
+   "hose_bib": {
+    "tp": 2,
+    "fp": 3,
+    "fn": 1,
+    "recall": "2/3",
+    "precision": "2/5"
+   }
+  },
+  "cascade": {
+   "electric_meter": {
+    "tp": 3,
+    "fp": 2,
+    "fn": 2,
+    "recall": "3/5",
+    "precision": "3/5"
+   },
+   "main_panel": {
+    "tp": 2,
+    "fp": 1,
+    "fn": 0,
+    "recall": "2/2",
+    "precision": "2/3"
+   },
+   "gas_meter": {
+    "tp": 13,
+    "fp": 0,
+    "fn": 0,
+    "recall": "13/13",
+    "precision": "13/13"
+   },
+   "ac_condenser": {
+    "tp": 9,
+    "fp": 1,
+    "fn": 0,
+    "recall": "9/9",
+    "precision": "9/10"
+   },
+   "pool": {
+    "tp": 3,
+    "fp": 0,
+    "fn": 1,
+    "recall": "3/4",
+    "precision": "3/3"
+   },
+   "door": {
+    "tp": 8,
+    "fp": 10,
+    "fn": 12,
+    "recall": "8/20",
+    "precision": "8/18"
+   },
+   "window": {
+    "tp": 23,
+    "fp": 7,
+    "fn": 21,
+    "recall": "23/44",
+    "precision": "23/30"
+   },
+   "downspout": {
+    "tp": 7,
+    "fp": 9,
+    "fn": 4,
+    "recall": "7/11",
+    "precision": "7/16"
+   },
+   "hose_bib": {
+    "tp": 2,
+    "fp": 0,
+    "fn": 1,
+    "recall": "2/3",
+    "precision": "2/2"
+   }
+  }
+ },
+ "house": {
+  "mini": {
+   "recall": "14/18",
+   "false_present": "2/31",
+   "misses": [
+    "eth3d-electro:main_panel",
+    "eth3d-electro:ac_condenser",
+    "yt-0gotY_syWWU:ac_condenser",
+    "yt-4h8kyjnPo9s:ac_condenser"
+   ],
+   "false": [
+    "yt-olz1uwI4vM8:main_panel",
+    "yt-olz1uwI4vM8:ac_condenser"
+   ]
+  },
+  "cascade": {
+   "recall": "14/18",
+   "false_present": "4/31",
+   "misses": [
+    "eth3d-electro:main_panel",
+    "eth3d-electro:ac_condenser",
+    "yt-0gotY_syWWU:ac_condenser",
+    "yt-4h8kyjnPo9s:ac_condenser"
+   ],
+   "false": [
+    "yt-4h8kyjnPo9s:main_panel",
+    "yt-LCPBf86oloE:pool",
+    "yt-Qm4b1cw8pV4:ac_condenser",
+    "yt-olz1uwI4vM8:ac_condenser"
+   ]
+  }
+ },
+ "cost": {
+  "walk_frames": 1321,
+  "kept": 886,
+  "escalated": 852,
+  "escalated_with_gpt55_answer": 852,
+  "mini_usd_per_frame": 0.0010588855088495576,
+  "gpt55_usd_per_frame": 0.01667116150442478,
+  "mini_secs": 0.97,
+  "gpt55_secs": 4.39
+ }
+}
