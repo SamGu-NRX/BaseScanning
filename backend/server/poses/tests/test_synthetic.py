@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image
 
 from server.common.geometry import column_major, from_column_major
+from server.poses.host_pin import reported_blas_coretype, reported_blas_threads
 from server.poses.packet_io import load_packet
 from server.poses.params import PoseParams
 from server.poses.run import run_poses
@@ -128,8 +129,10 @@ def test_synthetic_wall_registers(tmp_path: Path):
     assert report["params"]["random_seed"] == 0
     assert report["params"]["num_threads"] == 1
     assert report["params"]["mapper_threads"] == 1
-    assert report["params"]["blas_threads"] == 1
-    assert report["params"]["blas_coretype"] == "HASWELL"
+    # A full pytest process imports pycolmap from test_decisions first, so the
+    # pin does not apply there. The report must match that instead of claiming HASWELL.
+    assert report["params"]["blas_threads"] == reported_blas_threads()
+    assert report["params"]["blas_coretype"] == reported_blas_coretype()
     assert report["params"]["sift_matcher"] == "faiss"
     assert report["frame_budget"]["frames_dropped_quality"] == 0
     assert report["meter"]["source"] == "tap"

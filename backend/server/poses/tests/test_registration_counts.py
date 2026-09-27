@@ -46,8 +46,28 @@ def test_sift_matching_keeps_faiss_and_restores_openblas() -> None:
         "assert os.environ.get('OPENBLAS_CORETYPE') is None\n"
         "assert os.environ.get('OPENBLAS_NUM_THREADS') is None\n"
         "assert 'pycolmap' in sys.modules\n"
+        "assert server.poses.host_pin.PIN_APPLIED is True\n"
+        "assert server.poses.host_pin.reported_blas_coretype() == 'HASWELL'\n"
+        "assert server.poses.host_pin.reported_blas_threads() == 1\n"
     )
     subprocess.check_call([sys.executable, "-c", script])
+
+
+def test_preimported_pycolmap_does_not_report_haswell() -> None:
+    script = (
+        "import logging, sys\n"
+        "logging.basicConfig(level=logging.WARNING)\n"
+        "import pycolmap\n"
+        "import server.poses.host_pin as host_pin\n"
+        "assert 'pycolmap' in sys.modules\n"
+        "assert host_pin.PIN_APPLIED is False\n"
+        "assert host_pin.reported_blas_coretype() == 'unpinned'\n"
+        "assert host_pin.reported_blas_coretype() != 'HASWELL'\n"
+        "assert host_pin.reported_blas_threads() is None\n"
+    )
+    result = subprocess.run([sys.executable, "-c", script], check=False, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert "the OpenBLAS pin did not apply" in result.stderr
 
 
 def test_split_counts_carried_frames_separately() -> None:

@@ -28,7 +28,7 @@ from server.poses.epochs import anchor_epoch, epoch_jobs
 from server.poses.errors import PosesError
 from server.poses.fallback import choice_warnings, choose_model, scale_warning, trigger_details
 from server.poses.fragments import FragmentInfo, choose_primary
-from server.poses.host_pin import OPENBLAS_CORETYPE, OPENBLAS_THREADS
+from server.poses.host_pin import reported_blas_coretype, reported_blas_threads
 from server.poses.packet_io import Frame, PacketView, load_packet
 from server.poses.pairs import cross_epoch_pairs, guided_pairs, photo_pairs
 from server.poses.params import PoseParams
@@ -1179,8 +1179,8 @@ def run_poses(
             "random_seed": params.seed,
             "num_threads": params.num_threads,
             "mapper_threads": MAPPING_THREADS,
-            "blas_threads": int(OPENBLAS_THREADS),
-            "blas_coretype": OPENBLAS_CORETYPE,
+            "blas_threads": reported_blas_threads(),
+            "blas_coretype": reported_blas_coretype(),
             "sift_matcher": "faiss",
             "prior_sigma_m": params.prior_sigma_m,
             "robust_prior": params.robust_prior,
