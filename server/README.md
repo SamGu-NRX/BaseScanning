@@ -87,7 +87,7 @@ Notation, all in feet: the battery stands at s from `s0` to `s1` (width W = 2.58
 
 | Check | Reads | Coverage that settles it |
 | --- | --- | --- |
-| `wall_backing` | `walls`, and `height_ft` when given | wall band over [s0, s1], seen higher than the battery (3.29); each wall behind the battery that declares `height_ft` must be taller than the battery |
+| `wall_backing` | `walls`, and `height_ft` when given | the footprint clear of its straight segment's ends by e (within e: UNSURE), and wall band over [s0 − e, s1 + e], seen higher than the battery (3.29); each wall behind the battery that declares `height_ft` must be taller than the battery |
 | `ground_surface` | `ground` patches | ground over [s0 − e, s1 + e] out to D + e, and a patch of an allowed type under the whole footprint |
 | `meter_working_space` | `meter` | nothing to observe |
 | `gas_clearance` (r = 3) | `objects` of type `gas_meter`, with `footprint` when it stands off the wall | ground over [s0 − r − e, s1 + r + e] out to D + r + e, and wall band over the same span, seen higher than headroom height (6.5) |
@@ -98,7 +98,7 @@ Notation, all in feet: the battery stands at s from `s0` to `s1` (width W = 2.58
 | `wall_equipment_above` (r = 0) | `objects` of type `elec_box`, `vent` | wall band over [s0 − r, s1 + r], seen higher than headroom height (6.5) |
 | `facing_gap` (r = 3, from the battery's front) | `facing` measurements | facing band over [s0 − e, s1 + e], every place the battery may sit. Where no `facing` entry covers it, the band's `out_ft` must exceed D + r (4.83): a walked path proves the space clear out to where the homeowner walked. No `out_ft` means the view reached whatever faces the wall, and it is in `facing` |
 | `headroom` (r = 6.5) | `overheads` measurements | overhead band over [s0 − e, s1 + e]. Where no `overheads` entry covers it, the band's `out_ft` (height seen clear) must exceed r. No `out_ft` means seen clear all the way up, as from a tilt-up view of open sky |
-| `route_path` | `walls`, openings on the route | wall band from the meter to the battery's near edge, seen higher than the cable's run (`route.height_ft`, 1.0) |
+| `route_path` | `walls`, openings on the route (the run starts at the meter, so its distance from the wall's line counts toward `route_length`) | wall band from the meter to the battery's near edge, seen higher than the cable's run (`route.height_ft`, 1.0) |
 | `route_length` | `walls`, `meter` | nothing to observe |
 
 Errors: a measured value passes only when it clears the rule by more than its error. Objects take the default error for their `source` (tape 0.05, tap 0.3, vlm 1.5, plus 0.16 per foot along the walls for tap and vlm) unless they carry `plus_minus_ft`, and walls likewise (tap 0.3, mesh 0.5, plane 0.75, each plus the same drift). Send a wall's `source` when its line comes from the mesh or detected planes rather than taps, so the error bars match how it was measured; `facing` and `overheads` entries default to the mesh error, 0.5. Every `out_ft` is taken as exact, so report the distance you are sure of (for a walked path, the distance from the wall less your position error).

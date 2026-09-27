@@ -239,6 +239,11 @@ class Solver:
         self.W = r.battery.width_ft.value
         self.D = r.battery.depth_ft.value
         self.H = r.battery.height_ft.value
+        # The meter may stand off its wall's line (up to sweep.meter_to_wall_max_ft); the cable
+        # starts at the meter, so that distance is part of every route.
+        mx, mz = scene.meter_xz
+        wx, wz = scene.point_at(0.0)
+        self.meter_offset = math.hypot(mx - wx, mz - wz)
         objs = scene.objects
         self.gas = [o for o in objs if o.type == "gas_meter"]
         self.ac = [o for o in objs if o.type == "ac"]
@@ -334,6 +339,16 @@ class Solver:
                 "of the wall or a stretch with no wall), so the battery can't sit flush."
             )
             return c
+        # The battery sits within the wall's error of [s0, s1]; if that could put an edge past
+        # the segment's end, it may not be flush.
+        e = piece.plus_minus
+        if s0 - e < piece.s0 - EPS or s1 + e > piece.s1 + EPS:
+            c.outcome, c.unsure_cause = UNSURE, "margin"
+            c.reason = (
+                "The footprint ends within the wall's measurement error of its straight segment's "
+                "end, so the battery may not sit flush."
+            )
+            return c
         up_to = self.wall_height["backing"]
         # A declared wall height, taken as given (as out_ft heights are), against the battery's.
         # The battery sits within the wall's error of [s0, s1], so a lower wall surely behind it
@@ -355,7 +370,8 @@ class Solver:
                 f"{ft(height)} tall, not taller than the battery's {ft(self.H)}."
             )
             return c
-        missing = self.scene.missing("wall", s0, s1, up_to)
+        # ...and the wall behind every such position must have been seen.
+        missing = self.scene.missing("wall", s0 - e, s1 + e, up_to)
         if missing:
             c.outcome, c.unsure_cause = UNSURE, "unobserved"
             c.missing = [View("wall", a, b, _above(up_to)) for a, b in missing]
@@ -821,7 +837,10 @@ class Solver:
             if a.kind == "wall" and b.kind == "wall" and lo + EPS < a.s1 < hi - EPS
         )
         length = (
-            (hi - lo) + corners * r.corner_allowance_ft.value + sum(d["extra_ft"] for d in detours)
+            self.meter_offset
+            + (hi - lo)
+            + corners * r.corner_allowance_ft.value
+            + sum(d["extra_ft"] for d in detours)
         )
         route_height = self.wall_height["route"]
         missing = self.scene.missing("wall", lo, hi, route_height)
@@ -922,7 +941,9 @@ class Solver:
             outcome=worst([path.outcome, reach.outcome]),
             length=length,
             plus_minus=e,
-            polyline=self.scene.polyline(0.0, near),
+            # From the meter itself, which may stand off its wall's line.
+            polyline=([self.scene.meter_xz] if self.meter_offset > EPS else [])
+            + self.scene.polyline(0.0, near),
             detours=detours,
             crossings=crossings,
         )
@@ -1070,7 +1091,7 @@ class Solver:
         e_fixed += piece.drift * self.W
         # The 1e-6 ft margin keeps the cutoff clear of the 6-decimal rounding of reported
         # starts, so a start reported past reach really fails when evaluated.
-        return (self.r.route.max_ft.value + e_fixed) / (1 - piece.drift) + 1e-6
+        return (self.r.route.max_ft.value - self.meter_offset + e_fixed) / (1 - piece.drift) + 1e-6
 
     def starts(self, piece: Piece) -> list[float]:
         """Start positions (left edge, in s) to evaluate on one straight segment."""
@@ -1086,6 +1107,9 @@ class Solver:
         # treatment.
         k_lo, k_hi = math.floor(lo / step) - 1, math.ceil((hi + W) / step) + 1
         points = [lo, hi] + [k * step - W / 2 for k in range(k_lo, k_hi + 1)]
+        # Where a start is first clear of the segment's ends by the wall's error.
+        for e in {piece.plus_minus, piece.error_at(max(abs(lo), abs(hi)))}:
+            points += [piece.s0 + e, piece.s1 - W - e]
         # Along the wall: every place an interval can start or stop mattering, each with only
         # its own error offsets (combining every boundary with every error would grow as their
         # product).
