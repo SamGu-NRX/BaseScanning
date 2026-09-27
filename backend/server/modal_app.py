@@ -11,6 +11,8 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import shutil
+import subprocess
 
 import modal
 
@@ -141,6 +143,15 @@ def secrets_for(service: str) -> list[modal.Secret]:
     ]
 
 
+def colmap_probe() -> tuple[str | None, str]:
+    """Locate colmap. The CPU image has no binary, so this does not spawn one."""
+    binary = shutil.which("colmap")
+    if not binary:
+        return None, ""
+    version = subprocess.run([binary, "-h"], check=False, text=True, capture_output=True)
+    return binary, (version.stdout or version.stderr)[:400]
+
+
 @app.function(
     image=image,
     cpu=2,
@@ -154,11 +165,7 @@ def smoke_cpu() -> dict:
     On the prebuilt COLMAP image when `HSS_GPU_IMAGE_ID` is set, and on the
     CPU image otherwise, so a publish never compiles the Dockerfile.
     """
-    import shutil
-    import subprocess
-
-    colmap = shutil.which("colmap")
-    version = subprocess.run(["colmap", "-h"], check=False, text=True, capture_output=True)
+    colmap, colmap_help = colmap_probe()
     mods: dict[str, str] = {}
     for name in ("pycolmap", "torch", "pi3", "moge", "depth_anything_3"):
         try:
@@ -187,7 +194,7 @@ def smoke_cpu() -> dict:
             "app": APP_NAME,
             "env": ENV,
             "colmap": colmap,
-            "colmap_help_head": (version.stdout or version.stderr)[:400],
+            "colmap_help_head": colmap_help,
             "imports": mods,
             "torch": torch_version,
             "cuda_build": cuda_build,

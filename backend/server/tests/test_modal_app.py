@@ -121,6 +121,18 @@ def test_image_pin_uses_the_gpu_image(monkeypatch: pytest.MonkeyPatch) -> None:
     assert 'secrets=secrets_for("pipeline")' in smoke
 
 
+def test_colmap_probe_does_not_spawn_a_missing_binary(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("server.modal_app.shutil.which", lambda _name: None)
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("colmap was executed")
+
+    monkeypatch.setattr("server.modal_app.subprocess.run", boom)
+    from server.modal_app import colmap_probe
+
+    assert colmap_probe() == (None, "")
+
+
 def test_dockerfile_pins_colmap_matching_pycolmap() -> None:
     text = Path("Dockerfile").read_text()
     assert "--branch 4.2.0" in text
