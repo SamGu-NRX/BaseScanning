@@ -62,7 +62,13 @@ Dev deploy env (I-5, SD-73), on every `secrets_for` service and on Modal secret 
 
 Shared bootstrap, the SMP diff, the own-pool fallback and the later migration are in `infra/terraform/README.md`.
 
-`deploy.yml` push deploys Modal `dev` from `main` only. A dispatch may pass a 40-character SHA that is already on `main`. Rollback is `modal app rollback house-scanning -e dev` from a laptop, then a pinned-SHA dispatch. Terraform has no auto-rollback.
+`deploy.yml` push deploys Modal `dev` from `main` only when `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET` are set on the GitHub `dev` environment. If `MODAL_TOKEN_ID` is absent, the workflow prints that it is skipping deploy and exits green. It does not call Modal. Until Hunter adds those secrets, the demo deploy path is manual, from a checkout of `main`:
+
+```bash
+modal deploy -m server.modal_app
+```
+
+Set `SMP_ENVIRONMENT=dev` and `GIT_SHA=$(git rev-parse HEAD)` in that shell so `/v1/healthz` reports the main SHA. Pass `HSS_GPU_IMAGE_ID` when the prebuilt CUDA image should stay on the GPU functions. A dispatch may pass a 40-character SHA that is already on `main`. Rollback is `modal app rollback house-scanning -e dev` from a laptop, then a pinned-SHA dispatch. Terraform has no auto-rollback.
 
 `gpu-bench.yml` and `infra.yml` are dispatch-only. `infra.yml` plans and applies prefix `house-scanning/dev` only. `rollover.yml` rolls the `dev` app and does not change GPU class, timeouts or container counts.
 
