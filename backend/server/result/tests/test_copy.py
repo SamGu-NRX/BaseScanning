@@ -4,12 +4,9 @@ import itertools
 import json
 from typing import get_args
 
-from server.contracts.capture_check import CaptureCheckCode, HintCode
+from ios_kit.prompts import render as kit_render
 
-try:
-    from ios_kit.prompts import render as kit_render
-except ImportError:
-    kit_render = None
+from server.contracts.capture_check import CaptureCheckCode, HintCode
 from server.result.copy import (
     CAUSE_RANK,
     CRITERION_IDS,
@@ -134,34 +131,12 @@ def test_centred_meter_drops_zero_offset():
     offset = render(ground, side="to the right of your meter", s_ft=4.3, out_ft=3.7)
     assert "14 ft along" in offset.body
     assert "12 ft" in offset.body
+    # 0.9 m is 2.95 ft: round gives 3, truncation gives 2.
+    rounded = render(ground, side="to the right of your meter", s_ft=0.9, out_ft=0.9)
+    assert "3 ft along" in rounded.body
+    assert "3 ft out" in rounded.body
     kept = render(generic, side="to the right of your meter", s_ft="7")
     assert "7 ft along" in kept.body
-
-
-def _kit_render(entry, **vars) -> tuple[str, str, str]:
-    """`ios_kit.prompts.render` when the kit is installed, otherwise that function at aee89fc."""
-    if kit_render is None:
-        return _canonical_kit_render(entry, **vars)
-    rendered = kit_render(entry, **vars)
-    return rendered.promptId, rendered.title, rendered.body
-
-
-def _canonical_kit_render(entry, **vars) -> tuple[str, str, str]:
-    """Copy of ios_kit.prompts.render at aee89fc. Numbers for s_ft/out_ft are metres."""
-    values: dict[str, str] = {}
-    for key, value in vars.items():
-        if key in {"s_ft", "out_ft"} and isinstance(value, float | int) and not isinstance(value, bool):
-            values[key] = str(int(round(abs(float(value)) * 3.2808)))
-        else:
-            values[key] = str(value)
-    title = entry.title.format(**values)
-    body = entry.body.format(**values)
-    if values.get("s_ft") == "0":
-        title = title.replace(", 0 ft along the wall", "").replace(", 0 ft along", "")
-        body = body.replace(", 0 ft along the wall", "").replace(", 0 ft along", "")
-    if "{" in title or "{" in body:
-        raise KeyError("unresolved prompt placeholder")
-    return entry.prompt_id, title, body
 
 
 def test_render_parity_with_the_ios_kit():
@@ -170,16 +145,17 @@ def test_render_parity_with_the_ios_kit():
         {"s_ft": "7", "out_ft": "12"},
         {"s_ft": 0.0, "out_ft": 3.7},
         {"s_ft": 4.3, "out_ft": 3.7},
+        {"s_ft": 0.9, "out_ft": 0.9},
     )
     base = {"side": "at your meter", "what": "window", "threshold_ft": "20"}
     for entry in FALLBACK.prompts:
         for extra in samples:
             kwargs = {**base, **extra}
             got = render(entry, **kwargs)
-            prompt_id, title, body = _kit_render(entry, **kwargs)
-            assert got.promptId == prompt_id
-            assert got.title == title
-            assert got.body == body
+            kit = kit_render(entry, **kwargs)
+            assert got.promptId == kit.promptId
+            assert got.title == kit.title
+            assert got.body == kit.body
 
 
 def test_catalogue_round_trip(tmp_path):

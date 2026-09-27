@@ -71,7 +71,7 @@ default-groups = ["dev", "data"]
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider --import-mode=importlib"
 testpaths = ["packet/tests", "tests", "server"]
-pythonpath = [".", "packet", "eval", "eval/vendor/hs11_server"]
+pythonpath = [".", "packet", "eval", "eval/vendor/hs11_server", "ios-kit"]
 markers = ["live: needs real GCS or R2 credentials"]
 
 [tool.ruff]
