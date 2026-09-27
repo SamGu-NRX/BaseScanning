@@ -1,6 +1,6 @@
 # Integrating with the capture API
 
-For teammates' agents calling the deployed backend. Shapes below are the v1 contract in `server/contracts/api.py` and `server/contracts/result.py`. Where a route is not on `main` yet, the row says **coming with PR 34**.
+For teammates' agents calling the deployed backend. Shapes below are the v1 contract in `server/contracts/api.py` and `server/contracts/result.py`. Those routes are on `main` (PR 34, `93638bf`).
 
 ## Current status
 
@@ -8,16 +8,17 @@ Diff this block when the deployment changes. Keep the seven field names and thei
 
 | Field | Value |
 | --- | --- |
-| Updated UTC | 2026-09-27T03:06:17Z |
+| Updated UTC | 2026-09-27T03:14:29Z |
 | Live URL | `https://huntertcarver-dev--capture-api.modal.run` (routes under `/v1`) |
-| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","wifTokenExpiresAt":"2026-09-29T02:54:21.000Z","version":"e8b7bcb87cc0"}`. No `Authorization` header. Checked 2026-09-27T03:06:17Z. |
-| Milestone | M1. The capture API is answering on the live URL. WS-03 is on `main` (`6f5ff86`, PR 29) and runs stage stubs in-process. M2 (real stage packages end to end) is not live. |
-| What works | Health check above. A missing capture without `Authorization` returns `404 {"errors":[{"code":"capture_not_found"}]}` (auth off, SD-86). The live image `e8b7bcb` (branch `ws-12/infra-terraform`, not `main`) serves the same 18 routes as open PR 34. |
-| What's placeholder | Stage handlers may be stubs until M2 (`server/orchestrator/stubs` on `main`; SD-73, SD-81). Multipart completion returns `501 multipart_not_implemented` (follow-up branch `ws-01/multipart`). No APNs push and no outbound webhook; poll `GET /events`. Live state backend is `memory`, storage is `gcs`. The route modules are not on `main` (tip `27561f6`); they are coming with PR 34. |
-| Breaking changes since last update | none (first status block) |
+| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","wifTokenExpiresAt":"2026-09-29T02:54:21.000Z","version":"e8b7bcb87cc0"}`. No `Authorization` header. Checked 2026-09-27T03:13:03Z. |
+| Milestone | M1. Capture routes are on `main` (PR 34, `93638bf`). WS-03 is on `main` (`6f5ff86`, PR 29) and runs stage stubs in-process. The live image is still `e8b7bcb` and has not been rebuilt from this `main`. M2 (real stage packages end to end) is not live. |
+| What works | Health check above. A missing capture without `Authorization` returns `404 {"errors":[{"code":"capture_not_found"}]}` (auth off, SD-86). The same routes are on `main` (PR 34) and on the live image `e8b7bcb`. |
+| What's placeholder | Stage handlers may be stubs until M2 (`server/orchestrator/stubs` on `main`; SD-73, SD-81). Multipart completion returns `501 multipart_not_implemented` (follow-up branch `ws-01/multipart`). No APNs push and no outbound webhook; poll `GET /events`. Live state backend is `memory`, storage is `gcs`. The live image has not been rebuilt from `main`. |
+| Breaking changes since last update | none. The live image and response are unchanged. |
 
 ## Changelog
 
+- 2026-09-27T03:14:29Z — PR 34 is on `main` (`93638bf`), so the capture routes are no longer waiting on that PR. PR 29 stays on `main` (`6f5ff86`). Live health rechecked at 03:13:03Z: still version `e8b7bcb87cc0`. PR 55 is on `main` (`e941928`): kit replay sends no `Authorization` header when `CAPTURE_API_TOKEN` is unset. PR 54 is on `main` (`321e482`).
 - 2026-09-27T03:06:17Z — First note. Demo auth is off. Live health: `storage=gcs`, `state=memory`, version `e8b7bcb87cc0`. Capture routes are deployed on that image and coming with PR 34 onto `main`. iOS kit is on `main` via merged PR 43. Kit replay still requires `CAPTURE_API_TOKEN` on `main`; dropping that header is open PR 55.
 
 ## Base URL and auth
@@ -50,7 +51,7 @@ Regenerate the check with `uv run python -m server.contracts.export_schemas --ch
 
 ## Capture flow
 
-Checked against `main` at `27561f6` (no `server/api/routes`) and PR 34 head `639b987` (`ws-01/ingest-api`). Every route in this section is **coming with PR 34**. The live image already serves them.
+Checked against `main` at `6fb87b9`, which includes the capture routes from PR 34 (`93638bf`). The live image `e8b7bcb` already serves them and has not been rebuilt from this `main`.
 
 Upload order that the replay client uses: meter and panel stills first; each keyframe JPEG immediately followed by its depth, confidence, and features; other stills; streams and mesh; TrueDepth with the meter stills; finalize (finalize may run before the last commits).
 
@@ -99,7 +100,7 @@ Same key and same body → `200` with the same body. Same key and a different bo
 
 A committed path registered again with the same `sha256` comes back `state: "committed"` (refresh is unnecessary). A different `sha256` → `409 sha256_conflict`. Other `422` codes include `batch_too_large`, `path_invalid`, `path_duplicate`, `bad_md5`, `content_type_invalid`, `meta_mismatch`, `file_too_large`, `capture_too_large`, `too_many_files`. `409` also includes `not_in_manifest` and `invalid_state`.
 
-Files larger than `maxSinglePutBytes` (16 MiB) are meant to be multipart. On PR 34 that path returns `501 multipart_not_implemented`. Do not depend on `method: "MULTIPART"` until `ws-01/multipart` lands.
+Files larger than `maxSinglePutBytes` (16 MiB) are meant to be multipart. On `main` that path returns `501 multipart_not_implemented`. Do not depend on `method: "MULTIPART"` until `ws-01/multipart` lands.
 
 ### 3. PUT the bytes
 
@@ -108,7 +109,7 @@ Files larger than `maxSinglePutBytes` (16 MiB) are meant to be multipart. On PR 
 - `200` — stored.
 - `400 BadDigest` — re-read the file and retry once.
 - `403` with an expired signature — register the path again, then PUT the new URL.
-- Volume backend only: the URL is `PUT /v1/uploads/{token}` on this API. The token is the credential. `GET /v1/uploads/{token}` is also **coming with PR 34**; a PUT token answered as GET returns `403 token_invalid`.
+- Volume backend only: the URL is `PUT /v1/uploads/{token}` on this API. The token is the credential. `GET /v1/uploads/{token}` is on `main`; a PUT token answered as GET returns `403 token_invalid`.
 
 Signed PUTs write `uploads/{captureId}/{path}`. After the packet is accepted, the server copies each file to `captures/{captureId}/{path}`, which is what the pipeline reads.
 
@@ -265,7 +266,7 @@ cd ios-kit
 uv run --project .. python -m ios_kit.fake_api --port 8765 --root /tmp/fake-captures --result-kind needs_more_photos
 ```
 
-On `main`, the fake still requires a non-empty `Authorization: Bearer` value unless you are on open PR 55, which defaults the fake to no token. With `--token` omitted, any non-empty bearer is accepted. Do not pass a real credential. `--token T` requires that exact bearer. Optional knobs: `--verdict-delay-s` (default 5), `--stage-interval-s`, `--hint-delay-s`, `--capture-check-delay-s`. `--result-kind` selects `ios-kit/examples/results/<kind>.json`.
+On `main` (PR 55, `e941928`), the fake defaults to no token. Do not pass a real credential. `--token T` requires that exact bearer. Optional knobs: `--verdict-delay-s` (default 5), `--stage-interval-s`, `--hint-delay-s`, `--capture-check-delay-s`. `--result-kind` selects `ios-kit/examples/results/<kind>.json`.
 
 The fake signs URLs at itself (`PUT /v1/uploads/{token}`), runs the vendored packet check on finalize, and then emits `files_committed`, one `capture_check`, the eleven stage events, and `verdict_ready`.
 
@@ -279,11 +280,11 @@ uv run --project .. python -m ios_kit replay \
   --until processing
 ```
 
-Against the demo, `--api` is `https://huntertcarver-dev--capture-api.modal.run/v1`. On `main`, replay exits `unauthorized` unless `CAPTURE_API_TOKEN` is set, and then it sends `Authorization: Bearer`. The demo server does not read that header. Open PR 55 changes replay so an unset variable sends no header. Until that merges, set `CAPTURE_API_TOKEN` only in the local environment to any non-secret placeholder so the CLI will start, and do not commit it. Prefer `--dry-run` to print the upload plan without calling the network.
+Against the demo, `--api` is `https://huntertcarver-dev--capture-api.modal.run/v1`. On `main` (PR 55), an unset `CAPTURE_API_TOKEN` sends no `Authorization` header, which matches this demo (SD-86). Do not commit a token. Prefer `--dry-run` to print the upload plan without calling the network.
 
 Useful flags: `--rate` (default 2), `--concurrency` (default 4), `--finalize-at last|early`, `--until processing|verdict`, `--timeout` (default 900), `--out DIR`, `--jsonl`, `--skip-validate`. `--amend` exits `7` on `main` (the engine hook is not in the kit yet). Exit `0` means a valid result; `2` invalid result; `3` bad local packet; `4` API 4xx; `5` timeout; `6` network failure.
 
-There is also a server-side replay entry point on PR 34 (`python -m server.api.replay`). It is **coming with PR 34** and is not on `main`.
+There is also a server-side replay entry point on `main` (PR 34): `python -m server.api.replay`.
 
 ## Limits and client retries
 
