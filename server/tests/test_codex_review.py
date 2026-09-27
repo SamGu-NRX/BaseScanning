@@ -236,3 +236,15 @@ def test_a_partial_ground_override_keeps_ground_surface_in_the_notice(tmp_path: 
     private = tmp_path / "rules.yaml"
     private.write_text("ground:\n  drivable: [drive]\n  source: 'test'\n")
     assert "ground_surface" in (load_rules(private).rules.policy.notice or "")
+
+
+def test_at_exactly_the_needed_height_omitted_settles_and_explicit_does_not() -> None:
+    # wall_equipment_above needs the wall seen to headroom height (6.5). An omitted out_ft counts
+    # inclusively at that height; an explicit out_ft must be strictly higher.
+    needed = PUBLIC.rules.headroom.min_ft.value
+    raw = shared_fixture()
+    observed_band(raw, "wall", [(-40, 40)])  # no out_ft
+    assert at_start(raw, 6.0, "wall_equipment_above", PUBLIC).outcome == PASS
+    raw["coverage"]["observed"][-1]["out_ft"] = needed
+    explicit = at_start(raw, 6.0, "wall_equipment_above", PUBLIC)
+    assert (explicit.outcome, explicit.unsure_cause) == (UNSURE, "unobserved")
