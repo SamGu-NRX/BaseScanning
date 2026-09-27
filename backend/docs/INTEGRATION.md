@@ -8,16 +8,17 @@ Diff this block when the deployment changes. Keep the seven field names and thei
 
 | Field | Value |
 | --- | --- |
-| Updated UTC | 2026-09-27T03:14:29Z |
+| Updated UTC | 2026-09-27T03:19:47Z |
 | Live URL | `https://huntertcarver-dev--capture-api.modal.run` (routes under `/v1`) |
-| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","wifTokenExpiresAt":"2026-09-29T02:54:21.000Z","version":"e8b7bcb87cc0"}`. No `Authorization` header. Checked 2026-09-27T03:13:03Z. |
-| Milestone | M1. Capture routes are on `main` (PR 34, `93638bf`). WS-03 is on `main` (`6f5ff86`, PR 29) and runs stage stubs in-process. The live image is still `e8b7bcb` and has not been rebuilt from this `main`. M2 (real stage packages end to end) is not live. |
-| What works | Health check above. A missing capture without `Authorization` returns `404 {"errors":[{"code":"capture_not_found"}]}` (auth off, SD-86). The same routes are on `main` (PR 34) and on the live image `e8b7bcb`. |
-| What's placeholder | Stage handlers may be stubs until M2 (`server/orchestrator/stubs` on `main`; SD-73, SD-81). Multipart completion returns `501 multipart_not_implemented` (follow-up branch `ws-01/multipart`). No APNs push and no outbound webhook; poll `GET /events`. Live state backend is `memory`, storage is `gcs`. The live image has not been rebuilt from `main`. |
-| Breaking changes since last update | none. The live image and response are unchanged. |
+| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","wifTokenExpiresAt":"2026-09-29T03:14:16.000Z","version":"41a0880bc928"}`. No `Authorization` header. Checked 2026-09-27T03:19:47Z. |
+| Milestone | M1. The live image is `41a0880` (`main` at PR 56), which includes the capture routes (PR 34) and WS-03 (PR 29, stage stubs in-process). PR 57 (`bcc1baf`) and PR 59 (`8421c8b`) are on `main` and are not in this image. M2 is not live. |
+| What works | Health check above. A missing capture without `Authorization` returns `404 {"errors":[{"code":"capture_not_found"}]}` (auth off, SD-86), rechecked 2026-09-27T03:19:47Z. Those routes are on this live image. |
+| What's placeholder | Stage handlers may be stubs until M2 (`server/orchestrator/stubs` on `main`; SD-73, SD-81). Multipart completion returns `501 multipart_not_implemented` (follow-up branch `ws-01/multipart`). No APNs push and no outbound webhook; poll `GET /events`. Live state backend is `memory`, storage is `gcs`. This image does not include PR 57 or PR 59. On `main`, dev with `HSS_AUTH_MODE` unset is auth mode `none` (PR 59). |
+| Breaking changes since last update | Live version moved from `e8b7bcb87cc0` to `41a0880bc928`. The missing-capture response is unchanged. |
 
 ## Changelog
 
+- 2026-09-27T03:19:47Z — Live health is version `41a0880bc928` (`main` at PR 56). A missing capture with no `Authorization` header is still `404 capture_not_found`. PR 57 (`bcc1baf`) and PR 59 (`8421c8b`) are on `main` and are not in this image.
 - 2026-09-27T03:14:29Z — PR 34 is on `main` (`93638bf`), so the capture routes are no longer waiting on that PR. PR 29 stays on `main` (`6f5ff86`). Live health rechecked at 03:13:03Z: still version `e8b7bcb87cc0`. PR 55 is on `main` (`e941928`): kit replay sends no `Authorization` header when `CAPTURE_API_TOKEN` is unset. PR 54 is on `main` (`321e482`).
 - 2026-09-27T03:06:17Z — First note. Demo auth is off. Live health: `storage=gcs`, `state=memory`, version `e8b7bcb87cc0`. Capture routes are deployed on that image and coming with PR 34 onto `main`. iOS kit is on `main` via merged PR 43. Kit replay still requires `CAPTURE_API_TOKEN` on `main`; dropping that header is open PR 55.
 
@@ -51,7 +52,7 @@ Regenerate the check with `uv run python -m server.contracts.export_schemas --ch
 
 ## Capture flow
 
-Checked against `main` at `6fb87b9`, which includes the capture routes from PR 34 (`93638bf`). The live image `e8b7bcb` already serves them and has not been rebuilt from this `main`.
+Checked against `main` at `a917d39`. The live image `41a0880` serves these routes. It does not include later `main` commits PR 57 and PR 59.
 
 Upload order that the replay client uses: meter and panel stills first; each keyframe JPEG immediately followed by its depth, confidence, and features; other stills; streams and mesh; TrueDepth with the meter stills; finalize (finalize may run before the last commits).
 

@@ -1,6 +1,6 @@
 # Build status
 
-Snapshot for agents taking over. Updated UTC: 2026-09-27T03:14:29Z. `main` is `6fb87b9` (PR 60). This file has no store links. Open-PR notes below were checked with `gh pr list` at the same time; older checklist wording is corrected where `main` has already moved.
+Snapshot for agents taking over. Updated UTC: 2026-09-27T03:19:47Z. `main` is `a917d39` (PR 61). The live capture API image is `41a0880` (PR 56), behind this `main`. This file has no store links. Open-PR notes below were checked with `gh pr list` at the same time; older checklist wording is corrected where `main` has already moved.
 
 ## Program
 
@@ -17,9 +17,9 @@ Snapshot for agents taking over. Updated UTC: 2026-09-27T03:14:29Z. `main` is `6
 
 ## Builders
 
-- WS-01 ingest API — PR 34 merged (`93638bf`). Routes are on `main`. The live image is still `e8b7bcb` and has not been rebuilt from this `main`. See `docs/INTEGRATION.md`. Follow-up PR 59 (`ws-01/auth-mode-from-config`) is open and with a validator.
+- WS-01 ingest API — PR 34 merged (`93638bf`). PR 59 merged (`8421c8b`): dev with `HSS_AUTH_MODE` unset is auth mode `none`. That commit is not in the live image `41a0880`. See `docs/INTEGRATION.md`.
 - WS-02 packet validation — PR 37, branch `ws-02/packet-validation`, open. Last recorded round failed (crash on malformed inputs, purpose list, CI not running those tests). Builder was fixing.
-- WS-03 orchestrator — PR 29 merged (`6f5ff86`). Stage stubs run in-process. Remote Modal stage execution is a follow-up before M2 (SD-81). Follow-up PR 57 (`cursor/ws03-minor-followups-3c69`) is open. No PASS yet.
+- WS-03 orchestrator — PR 29 merged (`6f5ff86`). Stage stubs run in-process. Remote Modal stage execution is a follow-up before M2 (SD-81). Follow-up PR 57 merged (`bcc1baf`) and is not in the live image.
 - WS-04 pose backbone — PR 32, branch `ws-04/pose-backbone`, open. Diagnosis: poses themselves were fine; the scorer artifact and fallback rule were wrong. Builder was applying that fix list.
 - WS-05 scale layer — PR 35, branch `ws-05/scale-layer`, open at `e44f1ce`. CI was still running at this snapshot.
 - WS-06 dense scene — PR 31, branch `ws-06/dense-scene`, open (draft). Fixture scores matched the facade reference. Runtime proof on Modal was the remaining step.
@@ -28,8 +28,8 @@ Snapshot for agents taking over. Updated UTC: 2026-09-27T03:14:29Z. `main` is `6
 - WS-09 criteria engine — PR 39, branch `ws-09/criteria-engine`, open. Round 2 still had a safety regression (inferred objects clearing checks), a delivery crash, lint, and a gravel-pass miss.
 - WS-10 result and AR — PR 42 merged. Follow-up PR 48 merged. Copy-parity follow-up PR 53 (`ws-10/copy-parity`) is open.
 - WS-11 eval and regression — PR 33, branch `ws-11/replay-and-gates`, open. Round 2 failed (replay client incomplete, a missing laser PLY passed silently, stubs left in other packages).
-- WS-12 deploy and infra — PR 36, branch `ws-12/infra-terraform`, open (draft). One environment, deploy only from `main`. The live capture API image `e8b7bcb` is on this branch, not on `main`.
-- WS-13 real house and data — PR 25 merged. Wording fix PR 46 merged. Twelve houses are packaged. Draft labels for five new houses wait on Hunter. Further work waits on capture day.
+- WS-12 deploy and infra — PR 36, branch `ws-12/infra-terraform`, open (draft). One environment, deploy only from `main`. The live image is `41a0880`, which is `main` at PR 56.
+- WS-13 real house and data — PR 25 merged. Wording fix PR 46 merged. Twelve houses are packaged. Draft labels for five new houses wait on Hunter. Further work waits on capture day. PR 63 (`cursor/ws-13-arkit-walk-tracks-8b67`) is open at `e705607` with green CI and no PASS yet.
 - WS-14 iOS kit — PR 43 merged (`55e0a41`). PR 54 merged (`321e482`, id patterns). PR 55 merged (`e941928`, prompt gaps and auth-off replay). PR 60 merged (`6fb87b9`): the kit doc says `CAPTURE_API_TOKEN` is optional.
 
 ## Integration and quality
@@ -41,4 +41,4 @@ Snapshot for agents taking over. Updated UTC: 2026-09-27T03:14:29Z. `main` is `6
 
 ## Open pull requests at snapshot time
 
-28, 31 (draft), 32, 33, 35, 36 (draft), 37, 39, 44 (draft), 53, 57, 59, 61 (draft). No `assist/` PR is open, and none targets a workstream branch. Confirm with `gh pr list` before acting. PR descriptions override this list when they disagree.
+28, 31 (draft), 32, 33, 35, 36 (draft), 37, 39, 44 (draft), 53, 63. No `assist/` PR is open, and none targets a workstream branch. Confirm with `gh pr list` before acting. PR descriptions override this list when they disagree.
