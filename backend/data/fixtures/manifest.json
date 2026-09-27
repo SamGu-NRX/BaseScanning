@@ -1,0 +1,126 @@
+{
+  "format": "hss-fixtures/v0",
+  "items": [
+    {
+      "id": "lamar:lin-colmap",
+      "kind": "lamar",
+      "repo_path": null,
+      "cache_path": ".fixtures/lamar/colmap",
+      "source": "https://cvg-data.inf.ethz.ch/lamar/colmap/LIN.zip",
+      "bytes": null,
+      "sha256": null,
+      "committed": false,
+      "licence": "LaMAR LIN, CC BY-SA 4.0, internal evaluation, derived data share-alike"
+    },
+    {
+      "id": "lamar:lin-frames-ios_2021-06-02_11.12.32",
+      "kind": "lamar",
+      "repo_path": null,
+      "cache_path": ".fixtures/lamar/raw/ios_2021-06-02_11.12.32",
+      "source": "https://cvg-data.inf.ethz.ch/lamar/raw/LIN/sessions/ios_2021-06-02_11.12.32.zip",
+      "bytes": null,
+      "sha256": null,
+      "committed": false,
+      "licence": "LaMAR LIN, CC BY-SA 4.0, internal evaluation, derived data share-alike"
+    },
+    {
+      "id": "lamar:lin-frames-ios_2022-02-10_14.47.24",
+      "kind": "lamar",
+      "repo_path": null,
+      "cache_path": ".fixtures/lamar/raw/ios_2022-02-10_14.47.24",
+      "source": "https://cvg-data.inf.ethz.ch/lamar/raw/LIN/sessions/ios_2022-02-10_14.47.24.zip",
+      "bytes": null,
+      "sha256": null,
+      "committed": false,
+      "licence": "LaMAR LIN, CC BY-SA 4.0, internal evaluation, derived data share-alike"
+    },
+    {
+      "id": "lamar:lin-frames-ios_2022-06-17_10.43.29",
+      "kind": "lamar",
+      "repo_path": null,
+      "cache_path": ".fixtures/lamar/raw/ios_2022-06-17_10.43.29",
+      "source": "https://cvg-data.inf.ethz.ch/lamar/raw/LIN/sessions/ios_2022-06-17_10.43.29.zip",
+      "bytes": null,
+      "sha256": null,
+      "committed": false,
+      "licence": "LaMAR LIN, CC BY-SA 4.0, internal evaluation, derived data share-alike"
+    },
+    {
+      "id": "lamar:lin-gt-ios",
+      "kind": "lamar",
+      "repo_path": null,
+      "cache_path": ".fixtures/lamar/gt_ios.json",
+      "source": "https://cvg-data.inf.ethz.ch/lamar/colmap/LIN.zip",
+      "bytes": null,
+      "sha256": null,
+      "committed": false,
+      "licence": "LaMAR LIN, CC BY-SA 4.0, internal evaluation, derived data share-alike"
+    },
+    {
+      "id": "lamar:lin-gt-navvis",
+      "kind": "lamar",
+      "repo_path": null,
+      "cache_path": ".fixtures/lamar/gt_navvis.json",
+      "source": "https://cvg-data.inf.ethz.ch/lamar/colmap/LIN.zip",
+      "bytes": null,
+      "sha256": null,
+      "committed": false,
+      "licence": "LaMAR LIN, CC BY-SA 4.0, internal evaluation, derived data share-alike"
+    },
+    {
+      "id": "lamar:lin-metadata-phone",
+      "kind": "lamar",
+      "repo_path": null,
+      "cache_path": ".fixtures/lamar/metadata_phone.json",
+      "source": "https://cvg-data.inf.ethz.ch/lamar/raw/LIN/metadata_phone.json",
+      "bytes": null,
+      "sha256": null,
+      "committed": false,
+      "licence": "LaMAR LIN, CC BY-SA 4.0, internal evaluation, derived data share-alike"
+    },
+    {
+      "id": "lamar:lin-segments",
+      "kind": "lamar",
+      "repo_path": null,
+      "cache_path": ".fixtures/lamar/segments.json",
+      "source": "internal/breadth/a6-iphone-quality/results/segments.json",
+      "bytes": null,
+      "sha256": null,
+      "committed": false,
+      "licence": "LaMAR LIN, CC BY-SA 4.0, internal evaluation, derived data share-alike"
+    },
+    {
+      "id": "yt-Y0DSQekoV_g",
+      "kind": "packet_tar",
+      "repo_path": null,
+      "cache_path": ".fixtures/packets/yt-Y0DSQekoV_g.tar",
+      "source": "unmirrored: local tar only; frames were not copied into internal/data/packets/archives",
+      "bytes": 26368000,
+      "sha256": "95fcae5849c40bf008dceb7a680a3bd57c85c8bb79cd90b9b4b5160afd4dc85a",
+      "committed": false,
+      "licence": "YouTube frames stay out of the public repo and the store. sha256 is a local tar of scrubbed packet JSON plus keyframes, streams and features. The tar and the packet JSON are not committed: exposure and pose numbers contain long digit runs."
+    },
+    {
+      "id": "yt-KSXy6LFwQU4",
+      "kind": "packet_tar",
+      "repo_path": null,
+      "cache_path": ".fixtures/packets/yt-KSXy6LFwQU4.tar",
+      "source": "unmirrored: local tar only; frames were not copied into internal/data/packets/archives",
+      "bytes": 57221120,
+      "sha256": "8fabeb1639f937be058786d357f6e6b13cc6e90f5c293cc5116eac678a12d7d4",
+      "committed": false,
+      "licence": "YouTube frames stay out of the public repo and the store. sha256 is a local tar of scrubbed packet JSON plus keyframes, streams and features. The tar and the packet JSON are not committed: exposure and pose numbers contain long digit runs."
+    },
+    {
+      "id": "yt-olz1uwI4vM8",
+      "kind": "packet_tar",
+      "repo_path": null,
+      "cache_path": ".fixtures/packets/yt-olz1uwI4vM8.tar",
+      "source": "unmirrored: local tar only; frames were not copied into internal/data/packets/archives",
+      "bytes": 54662144,
+      "sha256": "378b68fed0f5cc4d5cf1a4b59041575e8a526b01cac824bd4f7f78811cffd8ef",
+      "committed": false,
+      "licence": "YouTube frames stay out of the public repo and the store. sha256 is a local tar of scrubbed packet JSON plus keyframes, streams and features. The tar and the packet JSON are not committed: exposure and pose numbers contain long digit runs. This tar also omits the GPS stream and the truth folder."
+    }
+  ]
+}

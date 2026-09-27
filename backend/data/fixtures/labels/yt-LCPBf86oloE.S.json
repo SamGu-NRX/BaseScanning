@@ -1,0 +1,109 @@
+{
+  "format": "base-labels/v0",
+  "site": "yt-LCPBf86oloE",
+  "data": "real",
+  "labeller": "Track C criteria worker (draft, for Hunter's approval)",
+  "method": "Draft prepared for Hunter's approval. Not exported from the store label file. YouTube rows use frame names already in the house record. Real-house rows are empty templates.",
+  "rules_profile": "S",
+  "site_decision": "manual_review",
+  "labels": [
+    {
+      "id": "yt-LCPBf86oloE.S.meter_number",
+      "criterion": "meter_number",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.cl320",
+      "criterion": "cl320",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.oversized_can",
+      "criterion": "oversized_can",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.meter_type",
+      "criterion": "meter_type",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.meter_mount",
+      "criterion": "meter_mount",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.meter_not_accessible",
+      "criterion": "meter_not_accessible",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.multiple_mains",
+      "criterion": "multiple_mains",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.main_panel_type",
+      "criterion": "main_panel_type",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.meter_panel_relationship",
+      "criterion": "meter_panel_relationship",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.panel_not_accessible",
+      "criterion": "panel_not_accessible",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.panel_in_house",
+      "criterion": "panel_in_house",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.not_same_wall",
+      "criterion": "not_same_wall",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.panel_recall",
+      "criterion": "panel_recall",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. Frames named in the house record: meter and can t0182.40.jpg; AC t0167.60.jpg, t0170.00.jpg, t0180.00.jpg; openings t0146.60.jpg, t0148.40.jpg."
+    },
+    {
+      "id": "yt-LCPBf86oloE.S.placement",
+      "criterion": "placement",
+      "scope": "site",
+      "truth": "unknown",
+      "why": "Draft for Hunter's approval. The ground was not measured, and the frames were not re-opened for this draft. Truth is unknown. A note in the house record that guesses a pass or a fail is not a label. No start band is recorded."
+    }
+  ]
+}
