@@ -1,5 +1,5 @@
 # `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
-.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci orchestrator-e2e ios-kit result-golden reads-gate reads-extra
+.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra
 
 ONLY ?= small
 
@@ -33,6 +33,13 @@ validate-full:
 	uv run --frozen python scripts/validate_fixtures.py --full
 
 ci: lint test schemas hygiene validate
+
+# SD-77: the live stack only (Modal dev capture-api, house-scanning bucket).
+# CAPTURE_API_URL must be https://huntertcarver-dev--capture-api.modal.run
+# SD-86: no CAPTURE_API_TOKEN. PACKET=path/to/packet.json (or its directory).
+e2e-dev:
+	PYTHONPATH=. uv run --frozen python scripts/e2e_dev.py --self-check
+	PYTHONPATH=. uv run --frozen python scripts/e2e_dev.py $(if $(PACKET),--packet $(PACKET),)
 
 orchestrator-e2e:
 	STATE_BACKEND=memory STORAGE_BACKEND=local HSS_ORCH_STAGE_STUBS=1 VISION_EXTERNAL_CALLS=off SMP_ENVIRONMENT=dev \
