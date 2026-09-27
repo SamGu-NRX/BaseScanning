@@ -8,6 +8,21 @@ at ``https://huntertcarver-dev--capture-api.modal.run``, with captures in the
 SD-86: the demo stack does not use a bearer token. This client sends no
 ``Authorization`` header unless ``CAPTURE_API_TOKEN`` is set. A set token is
 sent on API calls only and is never printed. Signed-URL uploads omit it.
+
+Commit and finalize use a 900s read timeout and retry the same body. A 95-file
+``files:commit`` can run for several minutes after the server has already
+committed the paths; the old 150s timeout raised ``TimeoutError`` on that
+commit. The commit route treats an already-committed path as success. Finalize
+of the same packet returns the existing accept once the capture has a run, so
+a lost 202 is not posted again.
+
+Fixture meter pixels (dev server only, SD-97 is unchanged in prod):
+
+``--meter-frames k00023:989.573,712.173 --anchor-label reference_point``
+
+or ``HSS_E2E_METER_FRAMES`` and ``HSS_E2E_ANCHOR_LABEL``. Those become
+``fixtureMeter`` on ``POST /v1/captures``. The server copies them onto the
+coverage stage only when ``SMP_ENVIRONMENT=dev``.
 """
 
 from __future__ import annotations
@@ -31,6 +46,13 @@ from server.contracts.result import Outcome, ResultResponse
 # SD-77. One deployed stack. The origin is the Modal dev capture-api label.
 LIVE_ORIGIN = "https://huntertcarver-dev--capture-api.modal.run"
 TERMINAL = {"needs_views", "complete", "manual_review", "failed"}
+# Reads other than commit and finalize. Create and a 50-file register fit.
+READ_TIMEOUT_S = 150
+# Capture-api allows 1200s. One 95-file commit has taken about 400s of Modal
+# Dict writes, and the 150s read raised after the server had finished it.
+PACKET_WRITE_TIMEOUT_S = 900
+WRITE_ATTEMPTS = 3
+_ACCEPTED = {"processing", "needs_views", "complete", "manual_review", "failed"}
 STUB_RESULT = {
     "outcome": {"kind": "manual_review", "profile": "C"},
     "verdictSha256": "abc",
@@ -99,6 +121,14 @@ def _request_headers(token: str, headers: dict | None = None) -> dict[str, str]:
     return req_headers
 
 
+def _pause(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+def _retryable_transport(exc: BaseException) -> bool:
+    return isinstance(exc, TimeoutError | urllib.error.URLError)
+
+
 def _request(
     url: str,
     token: str,
@@ -107,6 +137,7 @@ def _request(
     headers: dict | None = None,
     *,
     authorize: bool = True,
+    timeout: float = READ_TIMEOUT_S,
 ) -> tuple[int, bytes]:
     # Signed object-storage URLs authenticate themselves. A bearer token on
     # that PUT is not an API call and storage rejects the extra header.
@@ -117,20 +148,26 @@ def _request(
         method=method,
     )
     try:
-        # Finalize runs the in-process orchestrator before it returns 202.
-        # The capture-api function allows 120s, so the read has to outlast that.
-        with urllib.request.urlopen(request, timeout=150) as response:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             return response.status, response.read()
     except urllib.error.HTTPError as exc:
         return exc.code, exc.read()
 
 
-def _json(url: str, token: str, method: str, payload: dict | None = None, headers: dict | None = None) -> dict:
+def _json(
+    url: str,
+    token: str,
+    method: str,
+    payload: dict | None = None,
+    headers: dict | None = None,
+    *,
+    timeout: float = READ_TIMEOUT_S,
+) -> dict:
     raw = None if payload is None else json.dumps(payload).encode()
     extra = {"Content-Type": "application/json"} if payload is not None else {}
     if headers:
         extra.update(headers)
-    status, data = _request(url, token, method, raw, extra or None)
+    status, data = _request(url, token, method, raw, extra or None, timeout=timeout)
     if status >= 400:
         raise ApiError(status, data.decode(errors="replace"))
     if not data:
@@ -172,21 +209,126 @@ def resolve_packet(path: Path) -> tuple[Path, dict]:
     return path.parent, packet
 
 
-def upload(api: str, token: str, root: Path, packet: dict) -> str:
+def create_payload(packet: dict, meter_frames: str = "", anchor_label: str = "") -> dict:
+    """Create body. ``fixtureMeter`` is the dev-only replay path; prod ignores it."""
     packet_id = str(packet["packetId"])
     tier = (packet.get("session") or {}).get("tier") or "photo_only"
     flow = packet.get("flow") or ("photo" if tier == "photo_only" else "guided")
+    body: dict = {
+        "packetId": packet_id,
+        "formatVersion": packet.get("formatVersion", "0.4"),
+        "tier": tier,
+        "flow": flow,
+        "device": {"model": "e2e-dev", "systemVersion": "0", "appVersion": "0"},
+    }
+    frames = meter_frames.strip()
+    anchor = anchor_label.strip()
+    if anchor and not frames:
+        raise SystemExit("anchor label needs --meter-frames (id:u,v pairs, commas between frames)")
+    if frames:
+        fixture: dict[str, str] = {"meterFrames": frames}
+        if anchor:
+            fixture["anchorLabel"] = anchor
+        body["fixtureMeter"] = fixture
+    return body
+
+
+def commit_batch(api: str, token: str, capture_id: str, files: list[dict]) -> dict:
+    """POST ``files:commit``. A timeout or 503 retries the same body.
+
+    The server returns an already-committed path in ``committed`` and does not
+    error, so a retry after a lost response is the same commit.
+    """
+    url = f"{api}/v1/captures/{capture_id}/files:commit"
+    payload = {"files": [{"path": item["path"], "sha256": item["sha256"]} for item in files]}
+    last: BaseException | None = None
+    for attempt in range(WRITE_ATTEMPTS):
+        try:
+            return _json(url, token, "POST", payload, timeout=PACKET_WRITE_TIMEOUT_S)
+        except ApiError as exc:
+            last = exc
+            if exc.status not in {503, 429} or attempt + 1 == WRITE_ATTEMPTS:
+                raise
+        except (TimeoutError, urllib.error.URLError) as exc:
+            last = exc
+            if not _retryable_transport(exc) or attempt + 1 == WRITE_ATTEMPTS:
+                raise
+        _pause(1)
+    raise last or RuntimeError("commit failed")
+
+
+def _capture_snapshot(api: str, token: str, capture_id: str) -> dict | None:
+    try:
+        return _json(f"{api}/v1/captures/{capture_id}", token, "GET", timeout=READ_TIMEOUT_S)
+    except (ApiError, TimeoutError, urllib.error.URLError, json.JSONDecodeError):
+        return None
+
+
+def _finalize_already_accepted(snapshot: dict | None) -> bool:
+    """True once finalize has a run, so a lost 202 must not be posted again."""
+    if not snapshot:
+        return False
+    status = snapshot.get("status")
+    if status in _ACCEPTED:
+        return True
+    return bool(snapshot.get("runId")) and status not in {"uploading", None}
+
+
+def finalize_capture(api: str, token: str, capture_id: str, raw: bytes, packet_id: str) -> dict:
+    """POST finalize. Timeout and 503 retry the same packet unless a run exists."""
+    url = f"{api}/v1/captures/{capture_id}/finalize"
+    headers = {
+        "Idempotency-Key": packet_id,
+        "Content-Type": "application/json",
+        "X-Packet-Sha256": _sha256(raw),
+    }
+    last: BaseException | None = None
+    for attempt in range(WRITE_ATTEMPTS):
+        try:
+            status, data = _request(url, token, "POST", raw, headers, timeout=PACKET_WRITE_TIMEOUT_S)
+        except (TimeoutError, urllib.error.URLError) as exc:
+            last = exc
+            snapshot = _capture_snapshot(api, token, capture_id)
+            if snapshot is not None and _finalize_already_accepted(snapshot):
+                print(f"finalize already accepted status {snapshot.get('status')} runId {snapshot.get('runId')}")
+                return snapshot
+            if not _retryable_transport(exc) or attempt + 1 == WRITE_ATTEMPTS:
+                raise
+            _pause(1)
+            continue
+        if status < 400:
+            if not data:
+                return {}
+            parsed = json.loads(data)
+            if not isinstance(parsed, dict):
+                raise ApiError(status, "response was not an object")
+            return parsed
+        snapshot = _capture_snapshot(api, token, capture_id)
+        if snapshot is not None and _finalize_already_accepted(snapshot):
+            print(f"finalize already accepted status {snapshot.get('status')} runId {snapshot.get('runId')}")
+            return snapshot
+        if status in {503, 429} and attempt + 1 < WRITE_ATTEMPTS:
+            _pause(1)
+            continue
+        raise ApiError(status, data.decode(errors="replace"))
+    raise last or RuntimeError("finalize failed")
+
+
+def upload(
+    api: str,
+    token: str,
+    root: Path,
+    packet: dict,
+    *,
+    meter_frames: str = "",
+    anchor_label: str = "",
+) -> str:
+    packet_id = str(packet["packetId"])
     created = _json(
         f"{api}/v1/captures",
         token,
         "POST",
-        {
-            "packetId": packet_id,
-            "formatVersion": packet.get("formatVersion", "0.4"),
-            "tier": tier,
-            "flow": flow,
-            "device": {"model": "e2e-dev", "systemVersion": "0", "appVersion": "0"},
-        },
+        create_payload(packet, meter_frames, anchor_label),
         {"Idempotency-Key": packet_id},
     )
     capture_id = str(created["captureId"])
@@ -227,28 +369,11 @@ def upload(api: str, token: str, root: Path, packet: dict) -> str:
             )
             if status >= 400:
                 raise ApiError(status, data.decode(errors="replace"))
-        _json(
-            f"{api}/v1/captures/{capture_id}/files:commit",
-            token,
-            "POST",
-            {"files": [{"path": item["path"], "sha256": item["sha256"]} for item in batch]},
-        )
+        commit_batch(api, token, capture_id, batch)
     raw = json.dumps(packet).encode()
     print(f"capture {capture_id} finalizing")
-    status, data = _request(
-        f"{api}/v1/captures/{capture_id}/finalize",
-        token,
-        "POST",
-        raw,
-        {
-            "Idempotency-Key": packet_id,
-            "Content-Type": "application/json",
-            "X-Packet-Sha256": _sha256(raw),
-        },
-    )
-    if status >= 400:
-        raise ApiError(status, data.decode(errors="replace"))
-    print(json.loads(data))
+    accepted = finalize_capture(api, token, capture_id, raw, packet_id)
+    print(accepted)
     return capture_id
 
 
@@ -263,10 +388,25 @@ def poll_result(api: str, token: str, capture_id: str, timeout_s: float) -> dict
     return last
 
 
-def live(api: str, token: str, packet_path: Path, timeout_s: float) -> int:
+def live(
+    api: str,
+    token: str,
+    packet_path: Path,
+    timeout_s: float,
+    *,
+    meter_frames: str = "",
+    anchor_label: str = "",
+) -> int:
     root, packet = resolve_packet(packet_path)
     started = time.monotonic()
-    capture_id = upload(api.rstrip("/"), token, root, packet)
+    capture_id = upload(
+        api.rstrip("/"),
+        token,
+        root,
+        packet,
+        meter_frames=meter_frames,
+        anchor_label=anchor_label,
+    )
     payload = poll_result(api.rstrip("/"), token, capture_id, timeout_s)
     elapsed = time.monotonic() - started
     errors = schema_errors(payload)
@@ -296,6 +436,16 @@ def parser() -> argparse.ArgumentParser:
     built.add_argument("--self-check", action="store_true")
     built.add_argument("--packet", type=Path)
     built.add_argument("--timeout", type=float, default=float(REAL_RUN_CLIENT_WAIT_S))
+    built.add_argument(
+        "--meter-frames",
+        default="",
+        help="Dev-only fixture pixels, id:u,v pairs (or HSS_E2E_METER_FRAMES). Prod ignores them.",
+    )
+    built.add_argument(
+        "--anchor-label",
+        default="",
+        help="Dev-only tap label, such as reference_point (or HSS_E2E_ANCHOR_LABEL).",
+    )
     return built
 
 
@@ -315,7 +465,16 @@ def main(argv: list[str] | None = None) -> int:
         print("SD-86: the demo stack takes no Authorization header and no CAPTURE_API_TOKEN.")
         print("schema self-check: python scripts/e2e_dev.py --self-check")
         return 2
-    return live(api, token, args.packet, args.timeout)
+    meter_frames = args.meter_frames or os.environ.get("HSS_E2E_METER_FRAMES", "")
+    anchor_label = args.anchor_label or os.environ.get("HSS_E2E_ANCHOR_LABEL", "")
+    return live(
+        api,
+        token,
+        args.packet,
+        args.timeout,
+        meter_frames=meter_frames,
+        anchor_label=anchor_label,
+    )
 
 
 if __name__ == "__main__":

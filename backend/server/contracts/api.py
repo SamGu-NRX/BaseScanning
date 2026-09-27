@@ -38,6 +38,21 @@ class ExpectedCounts(Strict):
     stills: JsonInt | None = Field(default=None, ge=0)
 
 
+class FixtureMeter(Strict):
+    """Replay pixels. Stored and applied only when ``SMP_ENVIRONMENT`` is ``dev``."""
+
+    meterFrames: str = Field(
+        min_length=1,
+        max_length=8000,
+        description="id:u,v pairs, the same text as models['meter_frames']. Ignored unless SMP_ENVIRONMENT is dev.",
+    )
+    anchorLabel: str | None = Field(
+        default=None,
+        max_length=64,
+        description="Tap label when the packet has no meter tap, such as reference_point. Ignored in prod.",
+    )
+
+
 class CreateCaptureRequest(Strict):
     packetId: StorageId
     formatVersion: str
@@ -46,6 +61,7 @@ class CreateCaptureRequest(Strict):
     device: DeviceInfo
     orderRef: str | None = None
     expected: ExpectedCounts | None = None
+    fixtureMeter: FixtureMeter | None = None
 
 
 class UploadLimits(Strict):

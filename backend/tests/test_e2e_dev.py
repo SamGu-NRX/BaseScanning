@@ -137,3 +137,94 @@ def test_signed_url_upload_omits_bearer_token() -> None:
     assert "Authorization" not in signed
     assert signed.get("Content-md5") == "abc" or signed.get("Content-MD5") == "abc"
     assert api["Authorization"] == "Bearer secret-token"
+
+
+def test_packet_write_timeout_covers_a_95_file_commit() -> None:
+    import scripts.e2e_dev as mod
+
+    assert mod.READ_TIMEOUT_S == 150
+    assert mod.PACKET_WRITE_TIMEOUT_S >= 600
+    assert mod.PACKET_WRITE_TIMEOUT_S > mod.READ_TIMEOUT_S
+    assert mod.WRITE_ATTEMPTS >= 2
+
+
+def test_create_payload_sends_fixture_meter() -> None:
+    import scripts.e2e_dev as mod
+
+    packet = {"packetId": "packet-0001", "session": {"tier": "photo_only"}}
+    plain = mod.create_payload(packet)
+    assert "fixtureMeter" not in plain
+    sent = mod.create_payload(packet, "k00023:989.573,712.173", "reference_point")
+    assert sent["fixtureMeter"] == {"meterFrames": "k00023:989.573,712.173", "anchorLabel": "reference_point"}
+    try:
+        mod.create_payload(packet, "", "reference_point")
+    except SystemExit as exc:
+        assert "meter-frames" in str(exc)
+    else:
+        raise AssertionError("anchor without frames should exit")
+
+
+def test_commit_retries_the_same_body_after_a_timeout(monkeypatch) -> None:
+    import scripts.e2e_dev as mod
+
+    calls: list[tuple] = []
+
+    def fake_json(url, token, method, payload=None, headers=None, timeout=mod.READ_TIMEOUT_S):
+        calls.append((url, timeout, payload))
+        commits = [item for item in calls if str(item[0]).endswith("files:commit")]
+        if len(commits) == 1:
+            raise TimeoutError("timed out")
+        return {"committed": ["a.jpg"], "notFound": [], "mismatch": []}
+
+    monkeypatch.setattr(mod, "_json", fake_json)
+    monkeypatch.setattr(mod, "_pause", lambda _seconds: None)
+    result = mod.commit_batch("https://api", "", "cap", [{"path": "a.jpg", "sha256": "ab"}])
+    assert result["committed"] == ["a.jpg"]
+    commits = [item for item in calls if str(item[0]).endswith("files:commit")]
+    assert len(commits) == 2
+    assert commits[0][1] == mod.PACKET_WRITE_TIMEOUT_S
+    assert commits[0][2] == commits[1][2]
+
+
+def test_finalize_does_not_repost_after_a_timeout_once_a_run_exists(monkeypatch) -> None:
+    import scripts.e2e_dev as mod
+
+    posts: list[bytes] = []
+
+    def fake_request(url, token, method, body=None, headers=None, authorize=True, timeout=mod.READ_TIMEOUT_S):
+        posts.append(body or b"")
+        raise TimeoutError("timed out")
+
+    def fake_json(url, token, method, payload=None, headers=None, timeout=mod.READ_TIMEOUT_S):
+        assert method == "GET"
+        return {"status": "processing", "runId": "run_existing"}
+
+    monkeypatch.setattr(mod, "_request", fake_request)
+    monkeypatch.setattr(mod, "_json", fake_json)
+    monkeypatch.setattr(mod, "_pause", lambda _seconds: None)
+    accepted = mod.finalize_capture("https://api", "", "cap", b"{}", "packet-0001")
+    assert accepted["runId"] == "run_existing"
+    assert len(posts) == 1
+
+
+def test_finalize_retries_the_same_packet_while_uploading(monkeypatch) -> None:
+    import scripts.e2e_dev as mod
+
+    bodies: list[bytes] = []
+
+    def fake_request(url, token, method, body=None, headers=None, authorize=True, timeout=mod.READ_TIMEOUT_S):
+        bodies.append(body or b"")
+        if len(bodies) == 1:
+            raise TimeoutError("timed out")
+        assert timeout == mod.PACKET_WRITE_TIMEOUT_S
+        return 202, b'{"status":"processing","runId":"run_new","missing":[]}'
+
+    def fake_json(url, token, method, payload=None, headers=None, timeout=mod.READ_TIMEOUT_S):
+        return {"status": "uploading", "runId": None}
+
+    monkeypatch.setattr(mod, "_request", fake_request)
+    monkeypatch.setattr(mod, "_json", fake_json)
+    monkeypatch.setattr(mod, "_pause", lambda _seconds: None)
+    accepted = mod.finalize_capture("https://api", "", "cap", b'{"packetId":"packet-0001"}', "packet-0001")
+    assert accepted["runId"] == "run_new"
+    assert bodies[0] == bodies[1]

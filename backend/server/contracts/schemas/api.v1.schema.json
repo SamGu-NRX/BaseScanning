@@ -704,6 +704,17 @@
           ],
           "default": null
         },
+        "fixtureMeter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FixtureMeter"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "flow": {
           "enum": [
             "guided",
@@ -1549,6 +1560,38 @@
         "etaS"
       ],
       "title": "FinalizeResponse",
+      "type": "object"
+    },
+    "FixtureMeter": {
+      "additionalProperties": false,
+      "description": "Replay pixels. Stored and applied only when ``SMP_ENVIRONMENT`` is ``dev``.",
+      "properties": {
+        "anchorLabel": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Tap label when the packet has no meter tap, such as reference_point. Ignored in prod.",
+          "title": "Anchorlabel"
+        },
+        "meterFrames": {
+          "description": "id:u,v pairs, the same text as models['meter_frames']. Ignored unless SMP_ENVIRONMENT is dev.",
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Meterframes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "meterFrames"
+      ],
+      "title": "FixtureMeter",
       "type": "object"
     },
     "HealthResponse": {

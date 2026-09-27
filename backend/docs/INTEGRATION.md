@@ -44,8 +44,27 @@ uv run modal deploy -m server.modal_app -e dev
 
 Client wait. With the remote flag on, finalize's processing `etaS` is 1500 s. `awaiting_files` stays 200 s. With the flag unset, processing `etaS` stays 180 s. `scripts/e2e_dev.py --timeout` defaults to 1500 s so a real run fits; pass `--timeout` to override. The kit replay `--timeout` default stays 900 s; pass `--timeout 1500` there for a real run.
 
+`scripts/e2e_dev.py` gives `files:commit` and `finalize` a 900 s read timeout (capture-api allows 1200 s) and retries the same body on a timeout or 503. A 95-file commit can finish on the server after the old 150 s client read has already raised. The commit route returns an already-committed path in `committed`. Finalize of the same packet is not posted again once `GET /v1/captures/{id}` shows a run.
+
+## Fixture meter pixels
+
+Golden-house replays score like an M2 driver run when coverage sees `models['meter_frames']` and `models['anchor_label']`. The live client passes those pixels on create. The server applies them only when `SMP_ENVIRONMENT=dev`. Production accepts the field and does not store it, so a missing meter tap still closes on the first attempt and is not retried (SD-97).
+
+`POST /v1/captures` takes optional `fixtureMeter`:
+
+```json
+{"fixtureMeter": {"meterFrames": "k00023:989.573,712.173", "anchorLabel": "reference_point"}}
+```
+
+`meterFrames` is the same `id:u,v` text as `HSS_COVERAGE_METER_FRAMES` (commas separate the pixel and the next frame). `anchorLabel` is the packet tap label when it is not `meter`. Electro's tap is `reference_point`.
+
+`scripts/e2e_dev.py` sends that object from `--meter-frames` and `--anchor-label`, or from `HSS_E2E_METER_FRAMES` and `HSS_E2E_ANCHOR_LABEL`.
+
+The process env vars `HSS_COVERAGE_METER_FRAMES` and `HSS_COVERAGE_ANCHOR_FROM_TAP` are the same override for every capture in that process, and only when `SMP_ENVIRONMENT=dev`. Prefer `fixtureMeter` for one replay.
+
 ## Changelog
 
+- 2026-09-27T12:10:00Z — `scripts/e2e_dev.py` retries commit and finalize with a 900 s read timeout. Dev replays can pass meter pixels on `fixtureMeter` (or `HSS_E2E_METER_FRAMES`). Prod ignores that override (SD-97). No deploy.
 - 2026-09-27T09:40:00Z — The real-run switch still is not deployed. With `HSS_ORCH_MODAL_REMOTE=1`, capture-api, pipeline, and sweeper share Modal Dict state and GCS. Capture-api can scale past one container, and prewarm uses `.spawn.aio` from an async request. Objects placement is not part of this switch.
 - 2026-09-27T09:25:18Z — `house-scanning` dev redeployed from main `04be308` (PR 126 and PR 124). Stubs stay on and remote stage spawning stays off. No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and version `04be3089a3d0`. One no-token `mini-arkit` replay returned a schema-valid `manual_review` in 168.0 s (`cap_01M3H24K8PK10GSK00AVATFKCQ`, `run_06cd631bae08c30f`). That run id differs from `run_4dee057d229c1c21`. The client elapsed is longer than the 114.9 s replay on `1468206`. This is not an M2 pass.
 - 2026-09-27T08:57:24Z — Prepared the real-run switch in code and left it off. No deploy. Live capture-api still has remote stage spawning unset and a 600 s timeout. The M2 result decides when to set `HSS_ORCH_MODAL_REMOTE=1` with `HSS_GPU_IMAGE_ID` and redeploy, which raises the capture-api timeout to 1560 s.

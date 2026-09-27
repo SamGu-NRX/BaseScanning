@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
-import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,6 +10,7 @@ from pathlib import Path
 import numpy as np
 
 from server.common.errors import SceneError
+from server.common.fixture_meter import env_anchor_label, env_meter_frames, parse_meter_frames
 from server.common.params import SceneParams, scene_params_from_env
 from server.common.scaleio import as_pose, load_scale
 from server.common.stage import export_run
@@ -180,21 +179,15 @@ def _cams(cameras: list[dict]) -> list:
     return out
 
 
-def parse_meter_frames(text: str) -> list[tuple[str, float, float]] | None:
-    """``id:u,v`` pairs. Commas separate both the pixel and the next frame."""
-    if not text:
-        return None
-    rows = [(fid, float(u), float(v)) for fid, u, v in re.findall(r"([^:,\s]+):([^,]+),([^,\s]+)", text)]
-    if not rows:
-        raise ValueError(f"meter frames must look like k00012:1010,655, not {text!r}")
-    return rows
-
-
 def _meter_override_from_stage(models: dict) -> list[tuple[str, float, float]] | None:
-    """Fixture override from ``models['meter_frames']`` or ``HSS_COVERAGE_METER_FRAMES``."""
+    """Fixture override from ``models['meter_frames']`` or, in dev, ``HSS_COVERAGE_METER_FRAMES``.
+
+    The env var is ignored unless ``SMP_ENVIRONMENT`` is ``dev``, so a production
+    process cannot turn a missing tap into a scored meter (SD-97).
+    """
     raw = models.get("meter_frames")
     if raw is None:
-        raw = os.environ.get("HSS_COVERAGE_METER_FRAMES", "")
+        raw = env_meter_frames()
     if isinstance(raw, (list, tuple)):
         if not raw:
             return None
@@ -203,16 +196,16 @@ def _meter_override_from_stage(models: dict) -> list[tuple[str, float, float]] |
 
 
 def _anchor_from_stage(models: dict) -> str:
-    """Tap label from ``models['anchor_label']`` or ``HSS_COVERAGE_ANCHOR_FROM_TAP``.
+    """Tap label from ``models['anchor_label']`` or, in dev, ``HSS_COVERAGE_ANCHOR_FROM_TAP``.
 
     Fixtures that have no ``meter`` tap pass ``reference_point`` here. The brief's
     anchor order still ends in ``no_meter_anchor`` when no tap, detection,
-    close-up, or override resolves.
+    close-up, or override resolves. The env var does not apply in prod.
     """
     label = models.get("anchor_label")
     if label:
         return str(label)
-    return os.environ.get("HSS_COVERAGE_ANCHOR_FROM_TAP", "")
+    return env_anchor_label()
 
 
 def _clicks(packet: dict, cameras: list, override, anchor_label: str = "") -> list[tuple[int, float, float]]:

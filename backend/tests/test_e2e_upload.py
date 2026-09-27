@@ -34,7 +34,7 @@ def local_upload(tmp_path, monkeypatch):
     requests = []
     with TestClient(app) as client:
 
-        def request(url, token, method, body=None, headers=None, *, authorize=True):
+        def request(url, token, method, body=None, headers=None, *, authorize=True, timeout=e2e_dev.READ_TIMEOUT_S):
             parsed = urlsplit(url)
             if parsed.scheme == "file":
                 assert method == "PUT" and not authorize

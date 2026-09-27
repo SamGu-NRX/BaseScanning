@@ -15,6 +15,7 @@ from server.api.errors import fail
 from server.api.hooks import safe_hook
 from server.api.idempotency import fingerprint
 from server.api.ids import require_contract_id
+from server.common.fixture_meter import FixtureMeterError, checked_fixture
 from server.common.logging import log_event
 from server.contracts.api import CreateCaptureRequest, CreateCaptureResponse, UploadLimits
 from server.contracts.jobs import CaptureRecord
@@ -64,6 +65,16 @@ def _existing_create(deps, existing: dict, principal, digest: str) -> JSONRespon
     return JSONResponse(existing["body"], status_code=200)
 
 
+def _fixture_meter(environment: str, body: CreateCaptureRequest) -> dict | None:
+    """Validate ``fixtureMeter``. Prod drops a valid value so coverage never sees it."""
+    if body.fixtureMeter is None:
+        return None
+    try:
+        return checked_fixture(environment, body.fixtureMeter.meterFrames, body.fixtureMeter.anchorLabel)
+    except FixtureMeterError as exc:
+        raise fail(422, "schema", exc.pointer, str(exc)) from exc
+
+
 def register(app: FastAPI) -> None:
     @app.post("/v1/captures")
     async def create_capture(request: Request):
@@ -90,6 +101,7 @@ def register(app: FastAPI) -> None:
         if body.formatVersion != "0.4":
             raise fail(422, "format_version_unsupported", "/formatVersion", "only formatVersion 0.4 is accepted")
         flow = body.flow or ("photo" if body.tier == "photo_only" else "guided")
+        fixture = _fixture_meter(deps.settings.SMP_ENVIRONMENT, body)
         dumped = body.model_dump(mode="json")
         dumped["flow"] = flow
         digest = fingerprint(dumped)
@@ -117,14 +129,13 @@ def register(app: FastAPI) -> None:
             )
             rendered = _render(record, deps, None)
             deps.state.put_capture(record)
-            save_extras(
-                deps,
-                capture_id,
-                {
-                    "device": body.device.model_dump(mode="json"),
-                    "expected": body.expected.model_dump(mode="json") if body.expected else None,
-                },
-            )
+            extra = {
+                "device": body.device.model_dump(mode="json"),
+                "expected": body.expected.model_dump(mode="json") if body.expected else None,
+            }
+            if fixture is not None:
+                extra["fixture_meter"] = fixture
+            save_extras(deps, capture_id, extra)
             deps.state.put_kv(f"open:{capture_id}", {"finalize_by": record.finalize_by})
             if not deps.state.put_if_absent(
                 idem_key, {"fingerprint": digest, "ref": capture_id, "body": rendered, "owner": principal.label}

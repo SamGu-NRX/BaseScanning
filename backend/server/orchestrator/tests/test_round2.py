@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 import server.orchestrator.executor as executor
+from server.common.errors import SceneError
 from server.contracts.api import HintData
 from server.contracts.jobs import CommittedFile, RunRecord, StageContext, StageRecord, StageResult
 from server.coverage.run import run as coverage_stage
@@ -215,6 +216,57 @@ def test_missing_meter_tap_closes_manual_review_on_the_first_attempt(tmp_path, m
     ]
     assert [event.data.get("status") for event in coverage_events] == ["running", "failed"]
     assert coverage_events[0].data.get("attempt") == 1
+
+
+def test_dev_fixture_meter_reaches_coverage(tmp_path, monkeypatch) -> None:
+    """A capture-level override is on the coverage context only in dev."""
+    monkeypatch.delenv("HSS_COVERAGE_METER_FRAMES", raising=False)
+    monkeypatch.delenv("HSS_COVERAGE_ANCHOR_FROM_TAP", raising=False)
+    seen: dict = {}
+
+    def run(ctx: StageContext):
+        seen["models"] = ctx.models
+        raise SceneError("no_meter_anchor", "stop after observing models")
+
+    monkeypatch.setattr(coverage_stub, "run", run)
+    services, uri, digest = build_services(tmp_path, "memory")
+    services.state.put_kv(
+        "capturex:cap_test",
+        {"fixture_meter": {"meter_frames": "k0:10,20", "anchor_label": "reference_point"}},
+    )
+    with bind(services):
+        finished = start_run("cap_test", digest, uri)
+    assert seen["models"] == {"meter_frames": "k0:10,20", "anchor_label": "reference_point"}
+    assert finished.failure_code == "meter_tap_missing"
+    record = services.state.get_stage(finished.run_id, "coverage")
+    assert record is not None
+    assert record.attempt == 1
+
+
+def test_prod_ignores_fixture_meter_on_the_coverage_context(tmp_path, monkeypatch) -> None:
+    """SD-97: the same stored override is not applied when the server is prod."""
+    monkeypatch.delenv("HSS_COVERAGE_METER_FRAMES", raising=False)
+    monkeypatch.delenv("HSS_COVERAGE_ANCHOR_FROM_TAP", raising=False)
+    seen: dict = {}
+
+    def run(ctx: StageContext):
+        seen["models"] = ctx.models
+        raise SceneError("no_meter_anchor", "stop after observing models")
+
+    monkeypatch.setattr(coverage_stub, "run", run)
+    services, uri, digest = build_services(tmp_path, "memory")
+    services.settings = services.settings.model_copy(update={"SMP_ENVIRONMENT": "prod"})
+    services.state.put_kv(
+        "capturex:cap_test",
+        {"fixture_meter": {"meter_frames": "k0:10,20", "anchor_label": "reference_point"}},
+    )
+    with bind(services):
+        finished = start_run("cap_test", digest, uri)
+    assert seen["models"] is None
+    assert finished.failure_code == "meter_tap_missing"
+    record = services.state.get_stage(finished.run_id, "coverage")
+    assert record is not None
+    assert record.attempt == 1
 
 
 def test_no_meter_model_finishes_as_no_meter_anchor(tmp_path, monkeypatch) -> None:

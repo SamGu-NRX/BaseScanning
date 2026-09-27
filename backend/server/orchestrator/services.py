@@ -14,6 +14,7 @@ from pathlib import Path
 
 from server.common.backends.storage_local import LocalFsStorage
 from server.common.config import Settings, load, resolve_state, resolve_storage
+from server.common.fixture_meter import fixture_models_from_extras
 from server.contracts.jobs import RunRecord, StageContext, StageRecord, run_id_for_capture
 from server.orchestrator.artifacts import ReadThrough, hydrate_artifacts, hydrate_packet
 from server.orchestrator.clock import Clock
@@ -70,7 +71,7 @@ class Services:
             gpu=rec.gpu,
             vlm_budget_usd=vlm_budget_usd(spent, self.orch),
             parent_run_id=run.parent_run_id,
-            models=None,
+            models=_coverage_models(self, run.capture_id, rec.stage),
             storage=self.storage,
             state=self.state,
             settings=self.settings,
@@ -89,6 +90,17 @@ class Services:
             slot = (capture_id, ReadThrough(self.storage))
             self._reads_slot = slot
         return slot[1]
+
+
+def _coverage_models(services: Services, capture_id: str, stage: str) -> dict | None:
+    """Copy a dev-only capture override onto coverage. Other stages stay ``models=None``."""
+    if stage != "coverage":
+        return None
+    getter = getattr(services.state, "get_kv", None)
+    extra = getter(f"capturex:{capture_id}") if callable(getter) else None
+    if not isinstance(extra, dict):
+        extra = None
+    return fixture_models_from_extras(extra, environment=services.settings.SMP_ENVIRONMENT)
 
 
 def current() -> Services:

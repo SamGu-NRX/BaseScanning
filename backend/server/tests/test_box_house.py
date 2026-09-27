@@ -235,6 +235,7 @@ def test_dense_coverage_scene_chain_publishes_named_artifacts(tmp_path: Path, mo
         assert (work / key).is_file()
     assert camera_forward(cam_dicts[0]["pose"]) == pytest.approx(-cameras[0].pose[:3, 2])
     monkeypatch.delenv("HSS_COVERAGE_METER_FRAMES", raising=False)
+    monkeypatch.setenv("SMP_ENVIRONMENT", "dev")
     monkeypatch.setenv("HSS_COVERAGE_ANCHOR_FROM_TAP", "reference_point")
     coverage_result = run_coverage_stage(_ctx("coverage", None))
     coverage_keys = (
@@ -278,6 +279,7 @@ def test_coverage_stage_entry_reads_meter_frames(tmp_path: Path, monkeypatch: py
         return CoverageReport(warnings=[], views_needed=[], timings={})
 
     monkeypatch.setattr(coverage_run, "run_coverage", fake)
+    monkeypatch.setenv("SMP_ENVIRONMENT", "dev")
     monkeypatch.setenv("HSS_COVERAGE_METER_FRAMES", "k9:1,2")
     monkeypatch.setenv("HSS_COVERAGE_ANCHOR_FROM_TAP", "other")
     packet_dir = tmp_path / "packet"
@@ -310,6 +312,10 @@ def test_coverage_stage_entry_reads_meter_frames(tmp_path: Path, monkeypatch: py
     run_coverage_stage(ctx)
     assert captured["override"] == [("k9", 1.0, 2.0)]
     assert captured["anchor"] == "other"
+    monkeypatch.setenv("SMP_ENVIRONMENT", "prod")
+    run_coverage_stage(ctx)
+    assert captured["override"] is None
+    assert captured["anchor"] == ""
 
 
 def test_coverage_stage_without_anchor_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
