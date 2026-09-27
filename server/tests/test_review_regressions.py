@@ -479,8 +479,9 @@ def test_sweep_runs_only_claim_evaluated_starts_on_one_piece() -> None:
     scene = parsed(raw)
     result = run(raw)
     for r in result["sweep"]:
-        piece = next(p for p in scene.walls if p.index == r["segment"])
+        # The run's segment is the uploaded one; the piece it was evaluated on holds its start.
         a, b = r["start_ft"]
+        piece = next(p for p in scene.walls if p.s0 - 1e-6 <= a < p.s1 - 1e-6)
         assert piece.s0 - 1e-6 <= a <= b <= max(piece.s1 - W, piece.s0) + 1e-6, r
         if r["outcome"] == "pass":
             for s0 in (a, (a + b) / 2, b):

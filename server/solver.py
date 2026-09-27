@@ -334,20 +334,26 @@ class Solver:
             )
             return c
         up_to = self.wall_height["backing"]
-        if piece.height is not None:
-            # A declared wall height, taken as given (as out_ft heights are), against the battery's.
-            tall = at_least(piece.height, 0.0, self.H)
-            if tall != PASS:
-                c.outcome = tall
-                c.measured, c.plus_minus, c.threshold = piece.height, 0.0, self.H
-                c.comparison = "at_least"
-                if tall == UNSURE:
-                    c.unsure_cause = "margin"
-                c.reason = (
-                    f"The wall is {ft(piece.height)} tall, not taller than the battery's "
-                    f"{ft(self.H)}."
-                )
-                return c
+        # A declared wall height, taken as given (as out_ft heights are), against the battery's.
+        # The battery sits within the wall's error of [s0, s1], so a lower wall surely behind it
+        # fails, and one that only might be (within the error) leaves it UNSURE.
+        e = piece.plus_minus
+        sure = self.scene.lowest_wall(s0 + e, s1 - e) if s1 - s0 > 2 * e else None
+        maybe = self.scene.lowest_wall(s0 - e, s1 + e)
+        for height, surely in ((sure, True), (maybe, False)):
+            if height is None or at_least(height, 0.0, self.H) == PASS:
+                continue
+            fails = surely and at_least(height, 0.0, self.H) == FAIL
+            c.outcome = FAIL if fails else UNSURE
+            c.measured, c.plus_minus, c.threshold = height, 0.0, self.H
+            c.comparison = "at_least"
+            if not fails:
+                c.unsure_cause = "margin"
+            c.reason = (
+                f"The wall {'behind' if surely else 'within error of'} the battery is "
+                f"{ft(height)} tall, not taller than the battery's {ft(self.H)}."
+            )
+            return c
         missing = self.scene.missing("wall", s0, s1, up_to)
         if missing:
             c.outcome, c.unsure_cause = UNSURE, "unobserved"

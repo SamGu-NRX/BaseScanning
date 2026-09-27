@@ -139,3 +139,57 @@ def test_a_partial_private_policy_names_the_checks_still_on_placeholders(tmp_pat
 
 def test_the_public_demo_notice_is_unchanged() -> None:
     assert "not Base's" in (PUBLIC.rules.policy.notice or "")
+
+
+# --- follow-ups from the caretaker's review of 903d86f ----------------------------------------
+
+
+def two_heights() -> dict:
+    """Collinear walls: w1 up to the meter, 2 ft tall; w2 from it, 9 ft. Joined into one piece."""
+    raw = shared_fixture()
+    raw["meter"]["pos"][1] = 1
+    raw["walls"] = [
+        {"id": "w1", "baseline": [[-40, 0], [0, 0]], "height_ft": 2, "plus_minus_ft": 0},
+        {"id": "w2", "baseline": [[0, 0], [40, 0]], "height_ft": 9, "plus_minus_ft": 0},
+    ]
+    return raw
+
+
+def test_a_battery_on_the_taller_wall_uses_that_walls_height() -> None:
+    # Before: the joined piece kept the lower height everywhere, so a spot wholly on the 9 ft
+    # wall failed on 2 ft and the scene was rejected.
+    assert at_start(two_heights(), 6.0, "wall_backing", PUBLIC).outcome == PASS
+    assert answer(two_heights())["decision"] != "reject"
+
+
+def test_a_battery_across_the_join_uses_the_lower_height() -> None:
+    assert at_start(two_heights(), -1.0, "wall_backing", PUBLIC).outcome == FAIL
+
+
+def test_segments_are_numbered_as_uploaded() -> None:
+    # Before: collinear points were merged first, so the second uploaded segment reported 0.
+    raw = shared_fixture()
+    raw["walls"][0]["baseline"] = [[-40, 0], [0, 0], [40, 0]]
+    scene = parsed(raw, PUBLIC)
+    assert scene.segment_at(7.3) == ("w1", 1)
+    assert scene.segment_at(-7.3) == ("w1", 0)
+    assert scene.segment_at(0.0) in {("w1", 0), ("w1", 1)}  # on the boundary: either
+    spot = answer(raw)["spot"]
+    assert (spot["wall_id"], spot["segment"]) == ("w1", 1)
+
+
+@pytest.mark.parametrize("gap", [0.005, 0.010001])
+def test_a_known_gap_between_exact_walls_stays_a_gap(gap: float) -> None:
+    # Before: exact walls 0.005 ft apart were joined by the 0.01 ft coverage floor.
+    raw = two_walls(0.0)
+    raw["walls"][0]["baseline"] = [[-40, 0], [3, 0]]
+    raw["walls"][1]["baseline"] = [[3 + gap, 0], [40, 0]]
+    scene = parsed(raw, PUBLIC)
+    assert len(scene.gaps) == 1
+    assert at_start(raw, 6.0, "route_path", PUBLIC).outcome == FAIL
+
+
+def test_walls_sharing_an_endpoint_still_meet() -> None:
+    raw = two_walls(0.0)
+    raw["walls"][1]["baseline"] = [[3, 0], [40, 0]]
+    assert parsed(raw, PUBLIC).gaps == []

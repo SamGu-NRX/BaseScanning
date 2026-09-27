@@ -75,7 +75,7 @@ A refusal is `{"error": {"code", "message", "path"}}`, where `path` is the JSON 
 - `s` is feet along the walls from the meter, negative to the left. `span_ft` and coverage use it.
 - `coverage` lists what the capture actually saw, and whether each end of the walk is a real `limit` or `unexplored`. Anything unseen makes the checks that depend on it UNSURE, so a scene without `coverage` can't pass.
 - A limit end (a fence, a corner) doesn't clear the ground beyond it: a pool there still counts. Ground seen past a limit end, a `span_ft` beyond the chain's end, covers both sides of the wall's continued line, so pointing the camera past the end settles it. Past an unexplored end only walking on does.
-- Consecutive walls meet when the space between one's end and the next one's start is within both walls' position errors (capped at `sweep.wall_join_ft`, 0.6); `s` then continues from the first wall's end without that space. A wider space is a gap: a stretch with no wall that no battery backs onto and no cable crosses, and `s` counts its length.
+- Consecutive walls meet when the space between one's end and the next one's start is within both walls' position errors (capped at `sweep.wall_join_ft`, 0.6; walls with zero declared error meet only where their ends coincide); `s` then continues from the first wall's end without that space. A wider space is a gap: a stretch with no wall that no battery backs onto and no cable crosses, and `s` counts its length.
 - Give an object a plan `footprint` when it stands off the wall (a regulator, an AC unit), or clearances are measured to its stretch of wall line.
 - Omit `plus_minus_ft` and AR-placed positions get `rules.yaml`'s default error for their source plus 0.16 ft per foot along the walls from the meter, from measured ARKit drift. Send your own when you know better.
 
@@ -87,7 +87,7 @@ Notation, all in feet: the battery stands at s from `s0` to `s1` (width W = 2.58
 
 | Check | Reads | Coverage that settles it |
 | --- | --- | --- |
-| `wall_backing` | `walls`, and `height_ft` when given | wall band over [s0, s1], seen higher than the battery (3.29); a wall that declares `height_ft` must be taller than the battery |
+| `wall_backing` | `walls`, and `height_ft` when given | wall band over [s0, s1], seen higher than the battery (3.29); each wall behind the battery that declares `height_ft` must be taller than the battery |
 | `ground_surface` | `ground` patches | ground over [s0 − e, s1 + e] out to D + e, and a patch of an allowed type under the whole footprint |
 | `meter_working_space` | `meter` | nothing to observe |
 | `gas_clearance` (r = 3) | `objects` of type `gas_meter`, with `footprint` when it stands off the wall | ground over [s0 − r − e, s1 + r + e] out to D + r + e, and wall band over the same span, seen higher than headroom height (6.5) |
