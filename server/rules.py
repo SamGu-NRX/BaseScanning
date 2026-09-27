@@ -172,6 +172,18 @@ class Rules(_Strict):
     ground: Ground
     route: Route
 
+    @model_validator(mode="after")
+    def _exemption_within_the_opening_checks_height(self) -> "Rules":
+        # The opening check needs the wall seen only up to headroom height; a window above that
+        # would still count under a higher exemption but could be missed, unseen, above the view.
+        exempt = self.openings.exempt_bottom_above_ft
+        if exempt is not None and exempt > self.headroom.min_ft.value:
+            raise ValueError(
+                f"openings.exempt_bottom_above_ft ({exempt}) must not exceed headroom.min_ft "
+                f"({self.headroom.min_ft.value}), the wall height the opening check requires seen"
+            )
+        return self
+
 
 @dataclass(frozen=True)
 class LoadedRules:

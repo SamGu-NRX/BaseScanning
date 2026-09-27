@@ -823,7 +823,10 @@ class Solver:
                     small_gaps.append(f"a {ft(gap.s1 - gap.s0)} gap between walls")
         h = r.height_ft.value
         path_line = self.scene.wall_line(lo, hi) if hi - lo > EPS else None
-        e = self.scene.meter_plus_minus + piece.plus_minus
+        # The run's length is known only to the meter's error, the battery's wall's, and that of
+        # every other wall segment the cable runs along: each one's ends (its corners) may lie
+        # anywhere within its error. Summed, which may overstate but never understates.
+        e = self.scene.meter_plus_minus + piece.plus_minus + self._walls_between(piece, lo, hi)
         maybe_blockers: list[str] = []
         for o in self.route_objects:
             if path_line is None:
@@ -881,7 +884,17 @@ class Solver:
             + sum(d["extra_ft"] for d in detours)
         )
         route_height = self.wall_height["route"]
-        missing = self.scene.missing("wall", lo, hi, route_height)
+        # Each end of the route may lie within its own error: the meter's at the meter, the
+        # wall's at the battery. Unseen wall there could hold a blocker, so it must be seen.
+        meter_end = self.scene.meter_plus_minus
+        near_end = piece.plus_minus
+        lo_err, hi_err = (meter_end, near_end) if lo >= -EPS else (near_end, meter_end)
+        missing = self.scene.missing(
+            "wall",
+            max(lo - lo_err, self.scene.s_min),
+            min(hi + hi_err, self.scene.s_max),
+            route_height,
+        )
 
         path = Check(
             "route_path",
@@ -1116,12 +1129,25 @@ class Solver:
         checks += [path, reach]
         return Candidate(wall_piece, s0, s1, fp, checks, route, worst([x.outcome for x in checks]))
 
+    def _walls_between(self, piece: Piece, lo: float, hi: float) -> float:
+        """The summed errors of the wall segments other than `piece` over [lo, hi], each at its
+        end furthest from the meter within the stretch."""
+        total = 0.0
+        for p in self.scene.walls:
+            a, b = max(p.s0, lo), min(p.s1, hi)
+            if b - a <= EPS or (abs(p.s0 - piece.s0) <= EPS and abs(p.s1 - piece.s1) <= EPS):
+                continue
+            total += p.error_at(max(abs(a), abs(b)))
+        return total
+
     def reach_limit(self, piece: Piece) -> float:
         """Past this |s| of its near edge a battery's route fails the maximum length whatever
         else is true: the route is never shorter than |s|, and its error is at most the meter's,
         the wall's and every possible detour's."""
         detour_err = sum(2 * o.plus_minus for o in self.route_objects)
-        e_fixed = self.scene.meter_plus_minus + piece.plus_minus + detour_err
+        # Every other wall's error may add to a route (at most, its error at its far end).
+        others = self._walls_between(piece, -math.inf, math.inf)
+        e_fixed = self.scene.meter_plus_minus + piece.plus_minus + detour_err + others
         if piece.drift >= 1:
             return math.inf
         # The route's error grows by the wall's drift at the battery's far edge, |s| + W from the
