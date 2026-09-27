@@ -11,6 +11,7 @@ Local volume backend (no GCP project required):
 ```bash
 SMP_ENVIRONMENT=dev STORAGE_BACKEND=volume VOLUME_ROOT=/tmp/hss-vol \
   CAPTURE_API_PUBLIC_URL=http://127.0.0.1:8000 STATE_BACKEND=memory HSS_INGEST_HOOKS=null \
+  HSS_AUTH_MODE=static \
   CAPTURE_API_TOKENS="replay:$(python3 -c 'import secrets;print(secrets.token_urlsafe(32))')" \
   UPLOAD_URL_HMAC_SECRET=$(python3 -c 'import secrets;print(secrets.token_hex(32))') \
   uv run uvicorn server.api.app:create_app --factory --port 8000

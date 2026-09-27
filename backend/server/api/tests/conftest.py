@@ -26,6 +26,7 @@ def client(tmp_path):
         CAPTURE_API_TOKENS=f"device:{TOKEN},other:{OTHER},reviewer:{REVIEWER}",
         UPLOAD_URL_HMAC_SECRET="h" * 32,
         HSS_INGEST_HOOKS="null",
+        HSS_AUTH_MODE="static",
         GIT_SHA="0123456789abcdef",
         VISION_EXTERNAL_CALLS="on",
         SMP_SERVICE_NAME="capture-api",

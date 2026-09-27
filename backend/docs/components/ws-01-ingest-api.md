@@ -22,6 +22,7 @@ Storage backends: `volume` (this gate), `gcs` (keyless V4 via WIF), `r2`. State:
 export SMP_PRODUCT_ID=house-scanning SMP_ENVIRONMENT=dev SMP_SERVICE_NAME=capture-api \
   STORAGE_BACKEND=volume VOLUME_ROOT=/tmp/hss-vol \
   CAPTURE_API_PUBLIC_URL=http://127.0.0.1:8000 STATE_BACKEND=memory HSS_INGEST_HOOKS=null \
+  HSS_AUTH_MODE=static \
   CAPTURE_API_TOKENS="replay:$(python3 -c 'import secrets;print(secrets.token_urlsafe(32))')" \
   UPLOAD_URL_HMAC_SECRET=$(python3 -c 'import secrets;print(secrets.token_hex(32))')
 export CAPTURE_API_TOKEN=${CAPTURE_API_TOKENS#replay:}
