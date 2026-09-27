@@ -93,6 +93,8 @@ final class ScreenStatesUITests: XCTestCase {
         // The card's reply under the aim step's words and under coaching.
         "wallWalk-aim", "wallWalk-slowDown",
         "spotConfirm", "spotConfirm-answered",
+        // The longest walk card: the task, its second line and the dark coaching's advice (#80).
+        "wallWalk-tooDark",
     ]
 
     /// Words a state must show: in the named element's label or value, or with no identifier,

@@ -17,6 +17,10 @@ import Foundation
 /// - Moving fast, turning fast and blur each show after their own spell of frames that have
 ///   them, and clear a moment after the last such frame. A spell that ends before it shows says
 ///   nothing.
+/// - Blur is also judged from the frames' own sharpness against the sharpness from just before
+///   the blur began. The gate compares each frame with the median of its last 15, so it stops
+///   calling steady blur blurry within a second; held against the earlier frames, steady blur
+///   stays a spell until the photos are sharp again.
 /// - Walking too fast is not raised, or counted toward a spell, while the homeowner is asked to
 ///   stand and aim (`aiming`): the motion there is turning the phone, and "walk slower" is the
 ///   wrong advice.
@@ -62,13 +66,20 @@ public struct CoachingDebouncer: Sendable {
         /// Blur shows only after 2 s of it. The gate's blur test compares a frame with the recent
         /// median, and a tilt changes the view enough to trip it with no real blur.
         ///
-        /// In practice this turns blur coaching off. The median is over the last 15 measured
+        /// The gate alone can't make a spell that long: its median is over the last 15 measured
         /// frames (`AutoCaptureConfig.sharpnessWindow`), so after about 8 blurry frames in a row
-        /// the median is itself blurry and the next frame passes, ending the spell: at about ten
-        /// measured frames a second an unbroken spell lasts under a second. Steady blur (shaky
-        /// hands at night, a long exposure) never says "Hold steady". Whether blur should be judged
-        /// by its share of a window instead, as darkness is, is for the device run.
+        /// the median is itself blurry and the next frame passes. So a frame also counts as
+        /// blurry when it is under `blurRatio` of `blurReference`, the sharpness from before the
+        /// spell began, and steady blur (shaky hands at night, a long exposure) keeps its spell.
         public var blurShowAfter: Double = 2
+        /// A frame under this share of the sharpness from before the blur counts as blurry: the
+        /// gate's own `AutoCaptureConfig.sharpnessRatio`.
+        public var blurRatio: Double = AutoCaptureConfig().sharpnessRatio
+        /// The sharpness from before the blur is the median of the measured frames of the 1.5 s
+        /// before its spell began, about the gate's 15 frames, and needs `minDarkSamples` of them.
+        /// It stays fixed while the spell lasts, so it doesn't catch up with the blur as the
+        /// gate's median does.
+        public var blurReferenceWindow: Double = 1.5
         /// A motion or blur problem that shows clears 0.5 s after the last frame that had it.
         public var clearAfter: Double = 0.5
 
@@ -93,6 +104,11 @@ public struct CoachingDebouncer: Sendable {
     private var spells: [GateProblem: Spell] = [:]
     /// Measured frames of the last `persistentDarkAfter` seconds: time and whether it was dark.
     private var luma: [(time: Double, dark: Bool)] = []
+    /// Measured frames of the last `blurReferenceWindow` seconds: time and sharpness.
+    private var sharpness: [(time: Double, value: Double)] = []
+    /// The median sharpness from before the current blur spell (`Config.blurReferenceWindow`),
+    /// nil while there is no spell.
+    private var blurReference: Double?
     /// When the dark coaching went up, nil while it is down.
     private var darkSince: Double?
     /// Since when the light has been back, while the dark coaching is up.
@@ -112,13 +128,15 @@ public struct CoachingDebouncer: Sendable {
     ///   restarted) starts over.
     /// - `skip`: the gate's reason for skipping the frame, nil when the gate passed it.
     /// - `meanLuma`: the frame's own mean luma, nil when it wasn't measured.
+    /// - `sharpness`: the frame's own sharpness (`FrameQuality.sharpness`), nil when it wasn't
+    ///   measured.
     /// - `aiming`: the homeowner is asked to stand and aim (an aim, tilt, step-back, see-behind
     ///   or marking step), so walking too fast is not raised.
-    public mutating func update(time: Double, skip: CaptureDecision.SkipReason?, meanLuma: Double?, aiming: Bool) -> GateProblem? {
+    public mutating func update(time: Double, skip: CaptureDecision.SkipReason?, meanLuma: Double?, sharpness: Double? = nil, aiming: Bool) -> GateProblem? {
         if let lastTime, time < lastTime { self = CoachingDebouncer(config: config) }
         lastTime = time
         updateDarkness(time: time, meanLuma: meanLuma)
-        updateMotion(time: time, skip: skip)
+        updateMotion(time: time, skip: skip, sharpness: sharpness)
         // Walking speed isn't coached while aiming, so a spell there mustn't build up either: it
         // would say "Slow down" on the first frames of the next walking step, however calm.
         if aiming { spells[.movingFast] = nil }
@@ -133,6 +151,8 @@ public struct CoachingDebouncer: Sendable {
     /// the light hasn't changed because the phone lost its place.
     public mutating func forgetMotion() {
         spells = [:]
+        sharpness = []
+        blurReference = nil
     }
 
     // MARK: Darkness
@@ -172,8 +192,14 @@ public struct CoachingDebouncer: Sendable {
 
     // MARK: Motion and blur
 
-    private mutating func updateMotion(time: Double, skip: CaptureDecision.SkipReason?) {
-        for (problem, seen) in Self.evidence(skip) {
+    private mutating func updateMotion(time: Double, skip: CaptureDecision.SkipReason?, sharpness value: Double?) {
+        var evidence = Self.evidence(skip)
+        // The sharpness from before any blur: fixed while a spell lasts, else the recent median.
+        let reference = blurReference ?? Self.median(sharpness.map(\.value), atLeast: config.minDarkSamples)
+        if skip != .trackingNotReady, let value, let reference, value < reference * config.blurRatio {
+            evidence[.blurry] = true
+        }
+        for (problem, seen) in evidence {
             if seen {
                 spells[problem] = Spell(since: spells[problem]?.since ?? time, lastSeen: time)
             } else if let spell = spells[problem], !reachedShow(problem, spell) {
@@ -182,6 +208,18 @@ public struct CoachingDebouncer: Sendable {
             }
         }
         spells = spells.filter { time - $0.value.lastSeen < config.clearAfter }
+        blurReference = spells[.blurry] == nil ? nil : reference
+        if let value {
+            sharpness.append((time: time, value: value))
+            if let firstKept = sharpness.firstIndex(where: { $0.time > time - config.blurReferenceWindow }), firstKept > 0 {
+                sharpness.removeFirst(firstKept)
+            }
+        }
+    }
+
+    private static func median(_ values: [Double], atLeast count: Int) -> Double? {
+        guard values.count >= count else { return nil }
+        return values.sorted()[values.count / 2]
     }
 
     private func isShown(_ problem: GateProblem, at time: Double) -> Bool {

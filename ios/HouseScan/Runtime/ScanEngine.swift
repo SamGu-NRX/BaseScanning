@@ -993,7 +993,7 @@ final class ScanEngine {
             keptSourceIDs.insert(frame.id)
             keep(frame)
         }
-        state.coaching = walkCoaching(tracking: frame.tracking, skip: skip, meanLuma: frame.quality?.meanLuma, pastEnd: pastEnd != nil, time: frame.timestamp)
+        state.coaching = walkCoaching(tracking: frame.tracking, skip: skip, meanLuma: frame.quality?.meanLuma, sharpness: frame.quality?.sharpness, pastEnd: pastEnd != nil, time: frame.timestamp)
         afterCoverageChange(camera: frame.camera, time: frame.timestamp)
         askOverheadIfTiltedUp(frame)
     }
@@ -1006,11 +1006,11 @@ final class ScanEngine {
     /// (`pastEnd`) shows once it has lasted `showAfter` seconds, clears after `clearAfter`
     /// seconds without it, and comes before the gate's problems: no photo is kept there whatever
     /// the gate says. Both durations are guesses to try on a phone, not measured.
-    private func walkCoaching(tracking: TrackingQuality, skip: CaptureDecision.SkipReason?, meanLuma: Double?, pastEnd: Bool, time: Double) -> Coaching? {
+    private func walkCoaching(tracking: TrackingQuality, skip: CaptureDecision.SkipReason?, meanLuma: Double?, sharpness: Double?, pastEnd: Bool, time: Double) -> Coaching? {
         let showAfter = 0.7
         let clearAfter = 0.5
         let aiming = isAiming
-        let gate = gateCoaching.update(time: time, skip: skip, meanLuma: meanLuma, aiming: aiming)
+        let gate = gateCoaching.update(time: time, skip: skip, meanLuma: meanLuma, sharpness: sharpness, aiming: aiming)
         guard tracking == .normal else {
             gateProblem = nil
             gateClearSince = nil
