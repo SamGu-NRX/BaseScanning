@@ -121,6 +121,31 @@ def test_image_pin_uses_the_gpu_image(monkeypatch: pytest.MonkeyPatch) -> None:
     assert 'secrets=secrets_for("pipeline")' in smoke
 
 
+def test_stage_images_include_non_python_package_data() -> None:
+    from server.modal_images import stage_package_ignore
+
+    root = Path("server")
+    kept = {
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*")
+        if path.is_file() and not stage_package_ignore(path.relative_to(root))
+    }
+    assert "result/review/template.html" in kept
+    assert "result/review/style.css" in kept
+    assert "criteria/profiles.yaml" in kept
+    assert "contracts/schemas/result.v0.schema.json" in kept
+    assert "packet/schemas/normalized-packet.v0.schema.json" in kept
+    assert "poses/schemas/registration-report.v0.schema.json" in kept
+    assert "scale/schemas/scale-ext.v0.schema.json" in kept
+    assert "result/review/render.py" in kept
+    assert "result/tests/data/prompts.en-US.json" not in kept
+    assert "criteria/tests/data/reads.sample.json" not in kept
+    assert "reads/README.md" not in kept
+    assert Path("data/meter-models/meter_models.v1.json").is_file()
+    images = Path("server/modal_images.py").read_text()
+    assert images.count("with_stage_package_data(") >= 3
+
+
 def test_colmap_probe_does_not_spawn_a_missing_binary(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("server.modal_app.shutil.which", lambda _name: None)
 

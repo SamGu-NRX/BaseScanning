@@ -29,15 +29,43 @@ def dockerfile_image() -> modal.Image:
     )
 
 
+def stage_package_ignore(path: Path) -> bool:
+    """Return True to leave a file out of the stage image.
+
+    ``add_local_python_source`` keeps ``.py`` only. The result stage renders
+    ``server/result/review/template.html``, criteria reads ``profiles.yaml``,
+    and several stages load JSON or YAML schemas beside the package.
+    """
+    if path.name.startswith(".") or "__pycache__" in path.parts:
+        return True
+    suffix = path.suffix.lower()
+    if suffix == ".py":
+        return False
+    if "tests" in path.parts:
+        return True
+    if suffix in {".html", ".css"} and "review" in path.parts:
+        return False
+    if suffix in {".json", ".yaml", ".yml"} and "schemas" in path.parts:
+        return False
+    if suffix in {".yaml", ".yml"} and "criteria" in path.parts:
+        return False
+    return True
+
+
+def with_stage_package_data(image: modal.Image) -> modal.Image:
+    """Python package plus the non-Python files every stage image reads."""
+    image = image.add_local_python_source("server", ignore=stage_package_ignore)
+    meter_models = Path("data/meter-models")
+    if meter_models.is_dir():
+        image = image.add_local_dir(meter_models, remote_path="/root/data/meter-models")
+    return image
+
+
 def gpu_image() -> modal.Image:
     """GPU function image. `HSS_GPU_IMAGE_ID` selects a finished prebuild."""
     image_id = os.environ.get("HSS_GPU_IMAGE_ID")
     base = modal.Image.from_id(image_id) if image_id else dockerfile_image()
-    image = base.add_local_python_source("server")
-    meter_models = Path("data/meter-models")
-    if meter_models.is_dir():
-        image = image.add_local_dir("data/meter-models", remote_path="/root/data/meter-models")
-    return image
+    return with_stage_package_data(base)
 
 
 def cpu_base_image() -> modal.Image:
@@ -45,4 +73,4 @@ def cpu_base_image() -> modal.Image:
     return modal.Image.debian_slim(python_version="3.12").apt_install("libgl1", "libglib2.0-0").uv_sync(extras=["api"])
 
 
-CPU_IMAGE = cpu_base_image().add_local_python_source("server")
+CPU_IMAGE = with_stage_package_data(cpu_base_image())
