@@ -8,16 +8,17 @@ Diff this block when the deployment changes. Keep the seven field names and thei
 
 | Field | Value |
 | --- | --- |
-| Updated UTC | 2026-09-27T03:30:22Z |
+| Updated UTC | 2026-09-27T04:04:37Z |
 | Live URL | `https://huntertcarver-dev--capture-api.modal.run` (routes under `/v1`) |
-| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","wifTokenExpiresAt":"2026-09-29T03:14:16.000Z","version":"41a0880bc928"}`. No `Authorization` header. Checked 2026-09-27T03:19:47Z. |
-| Milestone | M1 live. A no-token `make e2e-dev` against the live URL (image `41a0880`, GCS, auth off) returned a schema-valid `ResultResponse`: capture `cap_01M3GEDBNXKEZ5AWD6BR3GYRHW`, run `run_9b0b07f08045853f`, `manual_review`, 59 s end to end, stub stages. M2 is not live. |
-| What works | Health check above. The M1 run above completed with no `Authorization` header. A missing capture without that header returns `404 {"errors":[{"code":"capture_not_found"}]}`. |
-| What's placeholder | All processing stages are stubs. Known limitation: finalize currently takes about 60 s to respond, and a fix is coming. Multipart completion returns `501 multipart_not_implemented` (follow-up branch `ws-01/multipart`). No APNs push and no outbound webhook; poll `GET /events`. Live state backend is `memory`, storage is `gcs`. This image does not include later `main` commits (PR 35, PR 53, PR 57, PR 59). |
-| Breaking changes since last update | none. The live image is unchanged. |
+| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","version":"b25cd7e365a8"}` (selected fields). No `Authorization` header. Checked 2026-09-27T04:04:37Z. |
+| Milestone | M1 was proven on image `41a0880`: a no-token run returned a schema-valid `ResultResponse` (`manual_review`, stub stages, 59 s), capture `cap_01M3GEDBNXKEZ5AWD6BR3GYRHW`, run `run_9b0b07f08045853f`. The current image has only been checked with read-only API probes in this update; a new M1 run is not asserted. M2 is not verified live. |
+| What works | Current image: health 200 and a missing capture returns `404 capture_not_found`, both without `Authorization`. Image `b25cd7e` identifies main at PR 44, after the background-finalize change in PR 72. |
+| What's placeholder | Real-stage M2 and remote Modal result collection remain unverified (SD-81). Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. Known amendment and deletion failures during background finalize are recorded on [PR 72](https://github.com/huntertcarver/house-scanning-server/pull/72#issuecomment-5852443813); the amendment fix is [PR 78](https://github.com/huntertcarver/house-scanning-server/pull/78). No finalize latency was measured on this image. |
+| Breaking changes since last update | Image changed from `41a0880bc928` to `b25cd7e365a8`. In the source identified by that image, manifest validation/promotion/run startup occur after the 202 response; manifest failures arrive as `failed` events. The later `retry_finalize` event value from PR 76 is not in this image. |
 
 ## Changelog
 
+- 2026-09-27T04:04:37Z — Read-only, no-auth probes observed image `b25cd7e365a8`, health 200, and missing-capture 404. Main at PR 44 includes PR 72 background finalize; distinguish its asynchronous manifest errors from synchronous request checks. The prior M1 measurement remains evidence for `41a0880`; no new end-to-end milestone is claimed.
 - 2026-09-27T03:30:22Z — M1 passed on the live URL. No-token `make e2e-dev` against image `41a0880` returned a schema-valid `ResultResponse` (`manual_review`, stub stages, 59 s). Finalize currently takes about 60 s to respond; a fix is coming. PR 53 is on `main` (`87b7c60`) and is not in this image.
 - 2026-09-27T03:28:30Z — PR 35 is on `main` (`0a7878b`, scale layer). The live image is still `41a0880bc928` and was not rebuilt.
 - 2026-09-27T03:19:47Z — Live health is version `41a0880bc928` (`main` at PR 56). A missing capture with no `Authorization` header is still `404 capture_not_found`. PR 57 (`bcc1baf`) and PR 59 (`8421c8b`) are on `main` and are not in this image.
@@ -54,7 +55,7 @@ Regenerate the check with `uv run python -m server.contracts.export_schemas --ch
 
 ## Capture flow
 
-Checked against `main` at `a917d39`. The live image `41a0880` serves these routes. It does not include later `main` commits PR 57 and PR 59.
+The live health response identifies `b25cd7e365a8` (main at PR 44); current live probes are listed in **Current status**. Later main changes, including PR 76, require a new image before clients can rely on them.
 
 Upload order that the replay client uses: meter and panel stills first; each keyframe JPEG immediately followed by its depth, confidence, and features; other stills; streams and mesh; TrueDepth with the meter stills; finalize (finalize may run before the last commits).
 
@@ -139,7 +140,7 @@ Signed PUTs write `uploads/{captureId}/{path}`. After the packet is accepted, th
 202 {"status": "processing", "missing": [], "runId": "run_7Q2", "etaS": 180}
 ```
 
-`status` is `awaiting_files` until every listed file is committed, then `processing`. Manifest failures are synchronous `422` (`schema`, `tier_rule`, `format_version_unsupported`, `sha256_mismatch`, `file_size_mismatch`, `tap_replay`, `depth_size`, `confidence_size`, `features_size`, and the WS-02 manifest codes). A different packet under the same idempotency key → `409 packet_sha_conflict`. Body over the limit → `413 payload_too_large`. Checks that need the bytes (hashes, image headers, stream contents) fail later as a `failed` event, not a late 422.
+`status` is `awaiting_files` until every listed file is committed, then `processing`. A 202 accepts the packet; it does not prove validation or reconstruction succeeded. JSON/schema/tier checks and comparisons against registered file digests/sizes can still return synchronous `422`. Manifest validation, promotion, and run startup execute in the background (PR 72); manifest errors such as `tap_replay`, `depth_size`, `confidence_size`, `features_size`, and WS-02 manifest codes arrive as `failed` events after acceptance. Continue polling status/events. A different packet under the same idempotency key → `409 packet_sha_conflict`; body over the limit → `413 payload_too_large`. Checks that need uploaded bytes (hashes, image headers, stream contents) also fail through events.
 
 ### 6. Events long-poll
 
