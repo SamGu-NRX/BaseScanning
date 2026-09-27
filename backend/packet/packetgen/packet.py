@@ -30,7 +30,7 @@ from .depth import lidar_observe, render_depth
 from .devices import DEVICES, VARIANTS
 from .exif import K_from_focal35, exif_datetime, focal35_from_K, synth_exposure
 from .images import PreparedFrame, luminance, open_upright, prepare, save_jpeg, sharpness
-from .noise import apply_drift, load_profiles
+from .noise import apply_drift, draw_modern_walk, load_profiles
 from .sensors import (
     DEFAULT_ANCHOR,
     HEADING_COLUMNS,
@@ -271,7 +271,14 @@ class HouseBuilder:
         n_feat = np.array([f.n_features for f in self.frames])
 
         prelim = n_feat < prof.insufficient_features_min
-        R_obs, c_obs, epoch_idx, draw = apply_drift(self.R_true, self.c_true, prof, rng, limited=prelim)
+        walk_seed_offset = None
+        if prof.name in ("lidar_modern", "nonlidar_modern"):
+            # Filename order is not a walk. Integrate drift along the nearest-neighbour tour
+            # and keep a draw inside the real-phone rigid-RMS band (diagnosis §2.2).
+            R_obs, c_obs, epoch_idx, draw, rng, walk_seed_offset = draw_modern_walk(
+                self.R_true, self.c_true, prof, self.seed, vidx, limited=prelim)
+        else:
+            R_obs, c_obs, epoch_idx, draw = apply_drift(self.R_true, self.c_true, prof, rng, limited=prelim)
         T_obs = [compose(R_obs[i], c_obs[i]) for i in range(n)]
         states = tracking_states(self.times, self.R_true, epoch_idx, draw.reset_index, n_feat, prof, rng)
         eid = [f"e{e + 1}" for e in epoch_idx]
@@ -383,6 +390,7 @@ class HouseBuilder:
         return {
             "profile": prof.name, "device": dev["deviceModel"], "scales": draw.scales,
             "session_multiplier": draw.session_multiplier, "reset_index": draw.reset_index,
+            "walk_seed_offset": walk_seed_offset,
             "reset_heading_deg": draw.reset_heading_deg, "focal_multiplier": float(f_mult),
             "principal_point_offset_px_at_1920": [float(x) for x in pp], "depth": depth_on,
             "heading_error_deg": {"mean": float(np.mean(mh_truth["heading_error_deg_at"])), "sd": float(np.std(mh_truth["heading_error_deg_at"]))},

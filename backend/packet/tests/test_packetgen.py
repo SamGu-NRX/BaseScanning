@@ -19,7 +19,7 @@ from packetgen.conventions import (
     project_arkit,
     rodrigues,
 )
-from packetgen.noise import apply_drift, load_profiles
+from packetgen.noise import apply_drift, continuous_walk_order, draw_modern_walk, load_profiles, rigid_residuals
 from packetgen.sensors import enu_from_arkit, nwu_from_arkit_matrix, plane_anchors
 from packetgen.sources import Recon, View
 
@@ -180,6 +180,27 @@ def test_vertical_planes_detected_with_lidar():
 @pytest.mark.parametrize("name", ["example-packet.json", "example-packet-photo-only.json"])
 def test_examples_validate(name):
     jsonschema.validate(json.loads((ROOT / "schema" / name).read_text()), SCHEMA, cls=jsonschema.Draft202012Validator)
+
+
+def test_walk_order_does_not_integrate_a_filename_jump():
+    """A 30 m filename jump in the middle of a 1 m walk must not set the drift."""
+    prof = load_profiles()["nonlidar_modern"]
+    n = 40
+    z = np.arange(n, dtype=float)
+    z[20] = 50.0  # filename order teleports here, then comes back
+    c = np.column_stack([np.zeros(n), np.zeros(n), z])
+    R = np.repeat(np.eye(3)[None], n, axis=0)
+    seed = 7
+    _, capture, _, _ = apply_drift(R, c, prof, np.random.default_rng([seed, 2]))
+    _, walked, _, draw, _, offset = draw_modern_walk(R, c, prof, seed, 1)
+    capture_rms = float(np.sqrt(np.mean(rigid_residuals(capture, c) ** 2)))
+    walk_rms = float(np.sqrt(np.mean(rigid_residuals(walked, c) ** 2)))
+    assert continuous_walk_order(c)[0] == 0
+    assert walk_rms < capture_rms
+    assert 0.065 <= walk_rms <= 0.22
+    assert rigid_residuals(walked, c).max() <= 1.0
+    assert draw.reset_index is None
+    assert offset >= 0
 
 
 def test_schema_rejects_missing_pose_and_bad_tier():

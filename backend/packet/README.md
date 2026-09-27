@@ -100,5 +100,5 @@ ETH3D data: `curl -O https://www.eth3d.net/data/facade_dslr_undistorted.7z` and 
 - The LiDAR depth needs a dense reference (the ETH3D laser scan). Houses without one get the LiDAR tracking profile but `sceneDepthEnabled: false`.
 - Houses built by SfM are only pseudo-metric (see `house.json` `scale_source`, `scale_rel_sd`). Score their distances only as relative, or against a tape measure.
 - Plane anchors only come from surfaces within 8 m of the walk. On ETH3D facade the walls are about 14 m away, so only ground planes appear, which is realistic for ARKit.
-- ETH3D facade is an institutional building photographed with a DSLR, not a house or a phone. Its photos are about 1 m apart with three jumps (10, 25 and 30 m).
+- ETH3D facade is an institutional building photographed with a DSLR, not a house or a phone. Its photos are about 1 m apart with three jumps (10, 25 and 30 m). `lidar_modern` and `nonlidar_modern` drift is integrated along a nearest-neighbour walk, not that filename order, and the draw is the first one whose rigid RMS vs the clean poses sits in the real-phone band 0.065–0.22 m.
 - No scene mesh is generated yet (`mesh` is optional in the spec).

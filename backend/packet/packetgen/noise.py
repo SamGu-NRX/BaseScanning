@@ -185,6 +185,102 @@ def apply_drift(
     return R_obs, c_obs, epoch, draw
 
 
+# Real LaMAR ARKit, diagnosis §2.2: rigid RMS of camera centres over a segment is 0.065–0.22 m.
+# A draw outside that band, or with a camera more than 1 m off, is the DSLR-jump failure mode.
+PHONE_RIGID_RMS_M = (0.065, 0.22)
+PHONE_MAX_RESIDUAL_M = 1.0
+PHONE_SEED_TRIES = 80
+MODERN_PROFILES = ("lidar_modern", "nonlidar_modern")
+
+
+def continuous_walk_order(centres: np.ndarray) -> np.ndarray:
+    """Nearest-neighbour order of camera centres in the horizontal plane, starting at frame 0.
+
+    DSLR filename order is not a walk: consecutive facade frames jump 25–30 m, and the drift
+    model integrates those jumps. This order visits each camera from the previous one.
+    """
+    centres = np.asarray(centres, float)
+    n = len(centres)
+    if n <= 1:
+        return np.arange(n, dtype=int)
+    left = list(range(1, n))
+    order = [0]
+    while left:
+        last = centres[order[-1], [0, 2]]
+        pts = centres[np.asarray(left)][:, [0, 2]]
+        choice = int(np.argmin(np.linalg.norm(pts - last, axis=1)))
+        order.append(left.pop(choice))
+    return np.asarray(order, dtype=int)
+
+
+def rigid_residuals(observed: np.ndarray, clean: np.ndarray) -> np.ndarray:
+    """Per-camera distance after the best rigid alignment of `observed` onto `clean`."""
+    observed = np.asarray(observed, float)
+    clean = np.asarray(clean, float)
+    mu_o = observed.mean(axis=0)
+    mu_c = clean.mean(axis=0)
+    H = (observed - mu_o).T @ (clean - mu_c)
+    _u, _s, vt = np.linalg.svd(H)
+    rotation = vt.T @ _u.T
+    if np.linalg.det(rotation) < 0:
+        vt = vt.copy()
+        vt[-1] *= -1
+        rotation = vt.T @ _u.T
+    aligned = (observed - mu_o) @ rotation.T + mu_c
+    return np.linalg.norm(aligned - clean, axis=1)
+
+
+def _scatter(values: np.ndarray, perm: np.ndarray) -> np.ndarray:
+    """`values` is in `perm` order. Return it in the caller's frame order."""
+    out = np.empty_like(values)
+    out[perm] = values
+    return out
+
+
+def draw_modern_walk(
+    R: np.ndarray,
+    c: np.ndarray,
+    profile: Profile,
+    seed: int,
+    vidx: int,
+    limited: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, DriftDraw, np.random.Generator, int]:
+    """Drift along `continuous_walk_order`, written back in the caller's frame order.
+
+    Modern profiles keep the first seed offset whose rigid RMS is inside the real-phone
+    band, with no tracking reset and no camera more than 1 m off. Other profiles use the
+    house seed once. The returned generator is the one after that draw, so later sensor
+    noise continues from it.
+    """
+    perm = continuous_walk_order(c)
+    band = profile.name in MODERN_PROFILES
+    tries = PHONE_SEED_TRIES if band else 1
+    chosen: tuple | None = None
+    for offset in range(tries):
+        rng = np.random.default_rng([int(seed) + offset, int(vidx) + 1])
+        lim = None if limited is None else np.asarray(limited)[perm]
+        r_obs, c_obs, epoch, draw = apply_drift(R[perm], c[perm], profile, rng, limited=lim)
+        r_obs = _scatter(r_obs, perm)
+        c_obs = _scatter(c_obs, perm)
+        epoch = _scatter(epoch, perm)
+        draw.yaw_error_deg = _scatter(draw.yaw_error_deg, perm)
+        draw.drift_m = _scatter(draw.drift_m, perm)
+        draw.jitter_pos_m = _scatter(draw.jitter_pos_m, perm)
+        draw.jitter_rot_rad = _scatter(draw.jitter_rot_rad, perm)
+        if draw.reset_index is not None:
+            draw.reset_index = int(perm[draw.reset_index])
+        err = rigid_residuals(c_obs, c)
+        rms = float(np.sqrt(np.mean(err**2)))
+        chosen = (r_obs, c_obs, epoch, draw, rng, offset, rms, float(err.max()))
+        if not band:
+            break
+        inside = PHONE_RIGID_RMS_M[0] <= rms <= PHONE_RIGID_RMS_M[1]
+        if inside and err.max() <= PHONE_MAX_RESIDUAL_M and draw.reset_index is None:
+            break
+    assert chosen is not None
+    return chosen[:6]
+
+
 def corrupt_intrinsics(K: tuple[float, float, float, float], width: int, profile: Profile, rng: np.random.Generator):
     """ARKit reports factory intrinsics per video format, not a per-scene calibration; model a
     small per-session focal and principal-point error (scaled from 1920 px)."""
