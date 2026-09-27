@@ -1,44 +1,56 @@
 # Build status
 
-Snapshot for agents taking over. Updated UTC: 2026-09-27T03:31:17Z. `main` is `dc5cc3a` (PR 63). M1 is live on image `41a0880` (PR 56): a no-token end-to-end run returned a schema-valid result. That image is behind this `main`. This file has no store links. Open-PR notes below were checked with `gh pr list` at the same time; older checklist wording is corrected where `main` has already moved.
+Snapshot for agents taking over. Updated UTC: 2026-09-27T04:36:07Z. `main` is `cc6aa9c` (PR 83). GitHub PR states below were checked at that time; refresh them before claiming work. Cursor agents are active. This is an assisting status refresh, not a coordinator takeover.
+
+Live health was rechecked without authentication at 04:34 UTC: HTTP 200, version `b25cd7e365a8`, storage `gcs`, state `memory`. That image identifies main at PR 44 and is behind this snapshot. M1's recorded end-to-end proof belongs to the earlier image `41a0880`; no M2 live proof is asserted. See the seven-field status block in [INTEGRATION.md](INTEGRATION.md).
 
 ## Program
 
-- Build plan: `docs/build/server-pipeline-build-plan.md`. Brief index: `docs/build/README.md`. Seam decisions: `docs/build/decisions.md`.
-- PR babysitting: the coordinator checks open PRs, sends validators, and routes review comments to builders.
-- SSR prompt text was removed from the repo (PR 40, merged). Do not copy it back. Briefs name the forbidden filenames and do not quote that wording.
-- Collaborators: SamGu-NRX has accepted. ShreySuri and AidenJohnston were invited with write and were still pending when this snapshot was taken.
-- Cloud agents reach this private repo with the SMP GitHub App (repo-scoped, one-hour tokens). They do not use any other credential.
-- GCP dev is the only environment (SD-77): one live stack, billing, capture and fixtures buckets with deletion lifecycle, Secret Manager, keyless logins, CI limited to `main`. WS-12 is dropping unapplied Terraform so the config matches that stack. No `terraform apply` from an assisting agent.
-- Live model gates are approved on a capped run and are waiting on the WS-08 and WS-07 live paths. `VISION_EXTERNAL_CALLS` defaults off (PR 50, merged).
-- Hunter's account items (spend headroom, a later capture day, label approval, Modal limit) stay with Hunter. Do not raise limits or apply infrastructure.
-- Integration and handoff docs are on `main` (PR 58). They are refreshed after a merge that changes the deployed API, and at least hourly overnight, on `hygiene/status-<time>`.
-- Product calls still open: rule set C for Texas, whether the homeowner sees reject, photo-fact auto-pass, 39.5 in battery height, whether photos may go to OpenAI or xAI, calipers for Aclara / L+G / Sensus meters, unconfirmed meter number forces review, photo retention default 30 days. README defaults apply until those are decided.
+- Build plan: `docs/build/server-pipeline-build-plan.md`. Brief index: `docs/build/README.md`. Seam decisions: `docs/build/decisions.md`. Decisions override briefs; measured reports take precedence over prose.
+- The active coordinator routes validators and the integrator. Claim work in a draft PR or an owning-PR comment. Do not push another agent's branch; target it with an assist PR.
+- Every assist PR requires an independent validator PASS at its head, green CI, and resolved review threads. SD-80 permits only its specified conflict-merge carry-over. Author tests and a GitHub merged state are not independent validation evidence.
+- Keep secrets, key values, real meter numbers, Base SSR prompt text, and files over 5 MB out of assist work. No force-push, direct main push, or `terraform apply`.
+- One environment only (SD-77): the existing GCP/Modal dev stack. External vision defaults off (SD-67). Model-provider live gates are still separate from offline correctness tests.
+- Hunter's spend headroom, later capture day, label approval, and Modal-limit decisions stay with Hunter. Do not raise limits or apply infrastructure.
+- Integration and status documentation should be refreshed after relevant merges and at least hourly overnight. No new milestone is claimed by this snapshot, so no milestone Discord note is due.
+- Product calls remain as documented in README: rule set C for Texas, homeowner reject visibility, photo-fact auto-pass, battery height, model-provider photo egress, meter calipers, unconfirmed identity, and retention. Do not silently change those defaults.
 
-## Builders
+## Workstreams
 
-- WS-01 ingest API — PR 34 merged (`93638bf`). PR 59 merged (`8421c8b`): dev with `HSS_AUTH_MODE` unset is auth mode `none`. That commit is not in the live image `41a0880`. See `docs/INTEGRATION.md`.
-- WS-02 packet validation — PR 37, branch `ws-02/packet-validation`, open. Last recorded round failed (crash on malformed inputs, purpose list, CI not running those tests). Builder was fixing.
-- WS-03 orchestrator — PR 29 merged (`6f5ff86`). Stage stubs run in-process. Remote Modal stage execution is a follow-up before M2 (SD-81). Follow-up PR 57 merged (`bcc1baf`) and is not in the live image.
-- WS-04 pose backbone — PR 32, branch `ws-04/pose-backbone`, open. Diagnosis: poses themselves were fine; the scorer artifact and fallback rule were wrong. Builder was applying that fix list.
-- WS-05 scale layer — PR 35 merged (`0a7878b`). On `main`, not in the live image `41a0880`.
-- WS-06 dense scene — PR 31, branch `ws-06/dense-scene`, open (draft). Fixture scores matched the facade reference. Runtime proof on Modal was the remaining step.
-- WS-07 objects — PR 28, branch `ws-07/object-understanding`, open. A round-2 validator was running.
-- WS-08 meter and panel reads — PR 30 merged. Follow-up PR 52 merged (`27561f6`, live reads gate, key-name hygiene).
-- WS-09 criteria engine — PR 39, branch `ws-09/criteria-engine`, open. Round 2 still had a safety regression (inferred objects clearing checks), a delivery crash, lint, and a gravel-pass miss.
-- WS-10 result and AR — PR 42 merged. Follow-up PR 48 merged. Copy-parity PR 53 merged (`87b7c60`) and is not in the live image.
-- WS-11 eval and regression — PR 33, branch `ws-11/replay-and-gates`, open. Round 2 failed (replay client incomplete, a missing laser PLY passed silently, stubs left in other packages).
-- WS-12 deploy and infra — PR 36, branch `ws-12/infra-terraform`, open (draft). One environment, deploy only from `main`. The live image is `41a0880`, which is `main` at PR 56.
-- WS-13 real house and data — PR 25 merged. Wording fix PR 46 merged. PR 63 merged (`dc5cc3a`, modern ARKit tracks) and is not in the live image. Twelve houses are packaged. Draft labels for five new houses wait on Hunter.
-- WS-14 iOS kit — PR 43 merged (`55e0a41`). PR 54 merged (`321e482`, id patterns). PR 55 merged (`e941928`, prompt gaps and auth-off replay). PR 60 merged (`6fb87b9`): the kit doc says `CAPTURE_API_TOKEN` is optional.
+| Workstream | Current state and remaining work |
+| --- | --- |
+| WS-01 ingest API | PR 34 and auth follow-ups 59/65 merged. Background finalize 72 and transient-storage retry 76 merged. Amendment state reset 78 merged at 04:29 UTC. The deletion/background-finalize race reported on PR 72 remains open in the evidence reviewed for this snapshot. |
+| WS-02 packet validation | PR 37 merged. Follow-up PR 85 (`e0a8b93`) is open: malformed stream-cell diagnostics, still-id diagnostics, and test-environment isolation. |
+| WS-03 orchestrator | PRs 29/57/67 merged. Artifact publication fixes 77/79 merged. Early-read artifact ownership fix 71 is open; metadata handoff fix 74 depends on it. Remote Modal execution/result collection remains required before M2 (SD-81). |
+| WS-04 pose backbone | PR 32 (`3997bd8`) is open. Its body separates prior measured pose gates from the latest publication, registration-count, and tooling fixes. Validate the current head; older measurements alone do not validate the new mechanics. |
+| WS-05 scale layer | PR 35 merged. The snapshot main contains it; the current live image also postdates that merge. This is a source ancestry statement, not a new live scale-gate result. |
+| WS-06 dense scene | PR 31 (`4e2798c`) is open and has merge conflicts. Its body records correctness evidence and deferred L4 timing work; frozen-cloud scoring is not an image-to-scene proof. Resolve conflicts under the applicable merge gate. |
+| WS-07 objects | PR 28 and quota fallback 75 merged. A focused review on PR 75 reports dropped Grok fallback views/instances; it remains a follow-up, not a verified fix. |
+| WS-08 meter/panel reads | PR 30 and live-read gate 52 merged. Live gate still needs the coordinated capped run. Early handoff defects are tracked by 71/74. |
+| WS-09 criteria | PR 39 merged. PR 81 (`9021c53`) is open with conflicts: inferred-geometry guard, ground strip, and profile-A C2. PR 82 (`de13e1a`) is open: C3/judge photos and narrower wall requests. Delivery C2-off agreement report 83 merged. |
+| WS-10 result and AR | PRs 42/48/53/68/69 merged. Copy parity and bare early meter identity are on main. |
+| WS-11 eval and regression | PR 33 (`d8c2e43`) is open. It replaces the criteria stub adapter and repairs its test import boundary. Replay contract defects are claimed by child PR 84; the broader geometry/scoring gates remain with WS-11. |
+| WS-12 deploy/infra | PR 36 (`bc69292`) is open, no longer draft. Read current commits and validation records: its body still contains older bootstrap/deployment notes. No assist agent should apply Terraform. |
+| WS-13 real-house data | PRs 25/46/63 merged. Modern ARKit tracks are on main. Draft labels for five new houses still await Hunter. |
+| WS-14 iOS kit | PRs 43/54/55/60 merged. Contract patterns, prompt gaps, and optional-token replay guidance are on main. |
 
-## Integration and quality
+## Assist queue
 
-- End-to-end integration — M1 passed on the live URL (image `41a0880`, GCS, auth off): schema-valid `ResultResponse`, capture `cap_01M3GEDBNXKEZ5AWD6BR3GYRHW`, run `run_9b0b07f08045853f`, `manual_review`, 59 s, stub stages. Finalize currently takes about 60 s to respond; a fix is coming. PR 44 (`integration/e2e-dev`) stays open as a draft. The M2 dry run found stage handoff breaks. Live URL detail is the Current status block in `docs/INTEGRATION.md`.
-- Shared-file conflicts: every merge that touches `Makefile`, `pyproject.toml`, `uv.lock`, `.github/workflows/ci.yml`, or `server/tests/test_skeleton.py` conflicts the other PRs. SD-80 is the carry-over rule. Do not mix feature work into a conflict-merge commit.
-- Golden scene fix PR 51 merged. WS-00 security contracts PR 47 merged. Vision-calls-off PR 50 merged. PR 56 merged (`41a0880`, reads-gate ignore and on-only vision wording).
-- WS-00 fixtures PR 41 merged. Contracts PR 26 and skeleton PR 38 merged.
+| PR | Snapshot head | State / dependency |
+| --- | --- | --- |
+| [71](https://github.com/huntertcarver/house-scanning-server/pull/71) — preserve early-read artifacts | `c2c586f` | Open, ready. Requires the current-head independent gate. |
+| [74](https://github.com/huntertcarver/house-scanning-server/pull/74) — registered image metadata | `6875b22` | Draft; land 71 first, then validate the combined early-worker path. |
+| [84](https://github.com/huntertcarver/house-scanning-server/pull/84) — replay API contract | `ab9145d` | Draft into `ws-11/replay-and-gates`; author is reconciling the owner's adapter-test repair and finishing CI. |
 
-## Open pull requests at snapshot time
+Assist PRs 73 (bounded e2e uploads), 78 (amendments), and 80 (integration status) have merged. This records repository state, not an assertion that every independent validation report was published on GitHub.
 
-28, 31 (draft), 32, 33, 36 (draft), 37, 39, 44 (draft), 65, 67. PR 65 (WS-01 auth pin) and PR 67 (WS-03 hint de-dup) are with validators. No `assist/` PR is open. No `assist/` PR is open, and none targets a workstream branch. Confirm with `gh pr list` before acting. PR descriptions override this list when they disagree.
+## Integration seams still requiring evidence
+
+- M1: recorded no-token run on `41a0880` returned a schema-valid `manual_review` result in 59 s with stub stages. Integration PR 44 is now merged; upload contract repair 73 is also merged. A newer deployment needs its own end-to-end measurement.
+- M2: remote Modal stage execution and result collection (SD-81), actual stage handoff through result composition, and the coordinated live/model gates remain unverified here. Do not infer M2 from health 200, artifact publisher tests, or a stub-stage result.
+- Deletion race: an accepted background finalize can recreate deleted state and start a run. The deterministic reproduction is on [PR 72](https://github.com/huntertcarver/house-scanning-server/pull/72#issuecomment-5852443813); amendment fix 78 does not address it.
+- Object fallback: [PR 75 finding](https://github.com/huntertcarver/house-scanning-server/pull/75#issuecomment-5852531110) shows lost frame/instance evidence under full or partial quota failure. Coordinate any fix with WS-07.
+- Replay: [PR 33 finding](https://github.com/huntertcarver/house-scanning-server/pull/33#issuecomment-5852552949) covers the commit route, confidence-file omissions, and verdict URL. PR 84 owns that fix scope.
+- Shared-file merges must preserve all workstream targets, jobs, extras, and dependencies. Recheck CI and the exact-head validation rule after each merge.
+
+Open PRs at snapshot: 31, 32, 33, 36, 71, 74 (draft), 81, 82, 84 (draft into 33), 85. This documentation PR will be additional. PR descriptions and exact head states override this list when they move.
