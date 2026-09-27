@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import shutil
+import time
 from pathlib import Path
 
+from server.common.logging import log_event
 from server.contracts.api import ConfirmationRequest, StageData
 from server.contracts.jobs import (
     CommittedFile,
@@ -17,6 +19,7 @@ from server.orchestrator.clock import parse_iso
 from server.orchestrator.coordinator import RunCoordinator
 from server.orchestrator.early.capture_check import final_check, flush_pending
 from server.orchestrator.early.dispatch import dispatch
+from server.orchestrator.early.index import early_keys
 from server.orchestrator.events import emit_stage
 from server.orchestrator.executor import CoordinatorDied
 from server.orchestrator.graph import STAGE_NAMES
@@ -24,9 +27,12 @@ from server.orchestrator.prewarm import request_prewarm
 from server.orchestrator.services import branch_of, current, deadline_from, run_id_for
 from server.orchestrator.services import packet_sha256 as digest_of
 from server.orchestrator.stateio import get_json, put_json
+from server.orchestrator.sweeper import coordinator_is_dead
 from server.orchestrator.sweeper import sweep as sweep_runs
 
 _READ_PURPOSES = {"meter_close", "meter_oblique", "panel_close", "panel_open", "main_disconnect"}
+# A claim with no run record is abandoned. A later finalize or the sweeper takes it.
+CLAIM_LEASE_S = 30.0
 
 
 def start_run(
@@ -42,14 +48,26 @@ def start_run(
     if packet_sha256 and packet_sha256 != digest:
         raise ValueError("packet_sha256 does not match packet bytes")
     run_id = run_id_for(data, capture_id)
-    existing = _same_run(capture_id, digest)
-    if existing is not None:
-        _resume_if_stale(existing)
-        return services.state.get_run(existing.run_id)  # type: ignore[attr-defined]
     packet = json.loads(data)
     capture = services.state.get_capture(capture_id)  # type: ignore[attr-defined]
     if capture is None:
         raise KeyError(capture_id)
+    if not _acquire_claim(services, run_id, capture_id, digest, packet_uri):
+        joined = _join_run(run_id)
+        if joined is not None:
+            return joined
+        if not _acquire_claim(services, run_id, capture_id, digest, packet_uri):
+            joined = _join_run(run_id)
+            if joined is None:
+                raise KeyError(run_id)
+            return joined
+    existing = services.state.get_run(run_id)  # type: ignore[attr-defined]
+    if existing is not None and existing.capture_id == capture_id and existing.packet_sha256 == digest:
+        _resume_if_stale(existing)
+        stored = services.state.get_run(run_id)  # type: ignore[attr-defined]
+        if stored is None:
+            raise KeyError(run_id)
+        return stored
     now = services.clock.iso()
     run = RunRecord(
         run_id=run_id,
@@ -66,12 +84,18 @@ def start_run(
         artifacts={},
         spend_usd={"gpu": 0.0, "cpu": 0.0, "vlm_reads": 0.0, "vlm_objects": 0.0, "vlm_c3": 0.0},
     )
-    _add_early_vlm(run)
+    # The run record lands with the claim, before any slow read, so a dead
+    # caller cannot leave a claim that blocks the capture forever.
     services.state.put_run(run)  # type: ignore[attr-defined]
     put_json(
         services.state,
         f"run_control:{run_id}",
-        {"coordinator_respawns": 0, "cancel_requested": False, "merge_done": False},
+        {
+            "coordinator_heartbeat_at": now,
+            "coordinator_respawns": 0,
+            "cancel_requested": False,
+            "merge_done": False,
+        },
     )  # type: ignore[attr-defined]
     put_json(
         services.state,
@@ -92,6 +116,11 @@ def start_run(
     capture.run_id = run_id
     services.state.put_capture(capture)  # type: ignore[attr-defined]
     services.state.set_status(capture_id, "processing")  # type: ignore[attr-defined]
+    try:
+        _add_early_vlm(run)
+    except Exception as exc:
+        log_event("early_vlm.skip", capture_id=capture_id, error=type(exc).__name__)
+    services.state.put_run(run)  # type: ignore[attr-defined]
     emit_stage(
         services.state,
         capture_id,
@@ -157,7 +186,9 @@ def cancel_capture(capture_id: str) -> None:
 
 
 def sweep() -> int:
-    return sweep_runs(current())
+    services = current()
+    reclaimed = _reclaim_orphan_claims(services)
+    return sweep_runs(services) + reclaimed
 
 
 def purge_capture(capture_id: str) -> None:
@@ -188,24 +219,35 @@ def purge_capture(capture_id: str) -> None:
         state.delete_capture(capture_id)
 
 
-def _same_run(capture_id: str, digest: str) -> RunRecord | None:
+def _join_run(run_id: str) -> RunRecord | None:
+    """Another container owns this run. Do not create stages or drive unless it is stale.
+
+    None means the claim expired with no run record, so the caller may take it.
+    """
+
     services = current()
-    for run in services.state.runs_for_capture(capture_id):  # type: ignore[attr-defined]
-        if run.packet_sha256 == digest:
-            return run
-    return None
+    for _ in range(40):
+        existing = services.state.get_run(run_id)  # type: ignore[attr-defined]
+        if existing is not None:
+            _resume_if_stale(existing)
+            stored = services.state.get_run(run_id)  # type: ignore[attr-defined]
+            if stored is None:
+                raise KeyError(run_id)
+            return stored
+        time.sleep(0.05)
+    claim = services.state.get_kv(f"run_claim:{run_id}") or {}  # type: ignore[attr-defined]
+    if services.state.get_run(run_id) is None and _claim_expired(services, claim.get("at")):  # type: ignore[attr-defined]
+        return None
+    raise KeyError(run_id)
 
 
 def _resume_if_stale(run: RunRecord) -> None:
     services = current()
     raw = get_json(services.state, f"run_control:{run.run_id}") or {}  # type: ignore[attr-defined]
-    beat = raw.get("coordinator_heartbeat_at")
     if run.status not in {"pending", "running"}:
         return
-    if beat is not None:
-        age = (services.clock.now() - parse_iso(str(beat))).total_seconds()
-        if age <= services.orch.stale_s:
-            return
+    if not coordinator_is_dead(run, raw, now=services.clock.now(), stale_s=services.orch.stale_s):
+        return
     try:
         RunCoordinator(services).drive(run.run_id)
     except CoordinatorDied:
@@ -215,11 +257,66 @@ def _resume_if_stale(run: RunRecord) -> None:
 def _add_early_vlm(run: RunRecord) -> None:
     services = current()
     total = 0.0
-    for key in services.state.list_blobs(f"early:{run.capture_id}:"):  # type: ignore[attr-defined]
+    for key in early_keys(services.state, run.capture_id):
         blob = get_json(services.state, key) or {}  # type: ignore[attr-defined]
-        total += float(blob.get("cost_usd") or 0.0)
+        if isinstance(blob, dict):
+            total += float(blob.get("cost_usd") or 0.0)
     if total:
         run.spend_usd["vlm_reads"] = total
+
+
+def _acquire_claim(services: object, run_id: str, capture_id: str, digest: str, packet_uri: str) -> bool:
+    state = services.state  # type: ignore[attr-defined]
+    key = f"run_claim:{run_id}"
+    payload = {
+        "capture_id": capture_id,
+        "packet_sha256": digest,
+        "packet_uri": packet_uri,
+        "at": services.clock.iso(),  # type: ignore[attr-defined]
+    }
+    if state.put_if_absent(key, payload):
+        return True
+    if state.get_run(run_id) is not None:
+        return False
+    existing = state.get_kv(key) or {}
+    if not _claim_expired(services, existing.get("at")):
+        return False
+    state.delete_kv(key)
+    return bool(state.put_if_absent(key, payload))
+
+
+def _claim_expired(services: object, at: object) -> bool:
+    if not isinstance(at, str) or not at:
+        return True
+    try:
+        age = (services.clock.now() - parse_iso(at)).total_seconds()  # type: ignore[attr-defined]
+    except (TypeError, ValueError):
+        return True
+    return age >= CLAIM_LEASE_S
+
+
+def _reclaim_orphan_claims(services: object) -> int:
+    state = services.state  # type: ignore[attr-defined]
+    claims = state.iter_run_claims() if hasattr(state, "iter_run_claims") else []
+    taken = 0
+    for run_id, claim in claims:
+        if state.get_run(run_id) is not None:
+            continue
+        if not _claim_expired(services, claim.get("at")):
+            continue
+        state.delete_kv(f"run_claim:{run_id}")
+        capture_id = str(claim.get("capture_id") or "")
+        if not capture_id:
+            continue
+        packet_uri = str(claim.get("packet_uri") or f"captures/{capture_id}/packet.json")
+        digest = str(claim.get("packet_sha256") or "")
+        try:
+            start_run(capture_id, digest, packet_uri)
+        except Exception as exc:
+            log_event("run_claim.reclaim_failed", capture_id=capture_id, error=type(exc).__name__)
+            continue
+        taken += 1
+    return taken
 
 
 def _final_capture_check(capture_id: str, packet: dict) -> None:

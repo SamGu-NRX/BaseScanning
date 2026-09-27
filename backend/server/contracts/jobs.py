@@ -146,6 +146,9 @@ class StageRecord(Strict):
     respawns: JsonInt = 0
     heartbeat: IsoTime
     started_at: IsoTime | None = None
+    # Set when the worker enters the stage body. Queue and input hydration
+    # sit before this, so a 60s budget is not spent before the stage runs.
+    entered_at: IsoTime | None = None
     finished_at: IsoTime | None = None
     gpu: str | None = None
     worker_call_id: str | None = None

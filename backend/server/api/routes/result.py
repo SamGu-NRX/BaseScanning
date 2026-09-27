@@ -12,6 +12,7 @@ from server.api.deps import get_deps, load_owned, require_principal
 from server.api.errors import fail
 from server.common.logging import log_event
 from server.contracts.result import ResultResponse
+from server.orchestrator.stateio import get_json
 
 
 def _latest(deps, capture_id: str):
@@ -34,6 +35,19 @@ def _strip_hidden(value):
     return value
 
 
+def _artifacts(deps, run) -> dict:
+    """Re-read the run and the result blob. A scan can observe stage=done first."""
+
+    if run is None:
+        return {}
+    fresh = deps.state.get_run(run.run_id) or run
+    artifacts = dict(fresh.artifacts or {})
+    extra = get_json(deps.state, f"stage_artifacts:{fresh.run_id}:result") or {}
+    if isinstance(extra, dict):
+        artifacts.update({str(key): str(value) for key, value in extra.items() if value is not None})
+    return artifacts
+
+
 def register(app: FastAPI) -> None:
     @app.get("/v1/captures/{capture_id}/result")
     def get_result(capture_id: str, request: Request):
@@ -44,6 +58,10 @@ def register(app: FastAPI) -> None:
         run = _latest(deps, capture_id)
         stage = deps.state.get_stage(run.run_id, "result") if run else None
         ready = stage is not None and stage.status == "done"
+        artifacts = _artifacts(deps, run)
+        key = artifacts.get("result/result.json")
+        if key:
+            ready = True
         if not ready:
             body = ResultResponse(
                 runId=run.run_id if run else record.run_id,
@@ -54,7 +72,6 @@ def register(app: FastAPI) -> None:
             )
             log_event("result.served", ready=False, capture_id=capture_id, run_id=body.runId)
             return JSONResponse(body.model_dump(mode="json"))
-        key = (run.artifacts or {}).get("result/result.json")
         if not key:
             raise fail(404, "result_not_ready", "/", "result is not ready")
         try:
@@ -65,7 +82,6 @@ def register(app: FastAPI) -> None:
         payload["status"] = record.status
         payload["runId"] = run.run_id
         profile = deps.settings.RULES_PROFILE_DEFAULT
-        artifacts = run.artifacts or {}
         verdict_key = artifacts.get(f"verdicts/verdict.{profile}.json")
         if principal.reviewer and isinstance(verdict_key, str) and "result.internal.json" not in verdict_key:
             payload["verdictUrl"] = deps.storage.signed_get_url(verdict_key, deps.settings.HSS_INGEST_RESULT_URL_TTL_S)
@@ -97,7 +113,7 @@ def register(app: FastAPI) -> None:
             raise fail(403, "forbidden", "/", "review is for reviewers")
         load_owned(deps, capture_id, principal)
         run = _latest(deps, capture_id)
-        key = (run.artifacts or {}).get("result/review.html") if run else None
+        key = _artifacts(deps, run).get("result/review.html") if run else None
         if not key:
             raise fail(404, "result_not_ready", "/", "review is not ready")
         try:

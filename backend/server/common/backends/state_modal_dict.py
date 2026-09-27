@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import get_args
 
 from server.common.backends.state_memory import MemoryState
+from server.common.lease import with_lease
 from server.contracts.jobs import (
     CaptureRecord,
     CaptureStatus,
@@ -214,13 +215,98 @@ class ModalDictState(MemoryState):
         return self._model(f"capture:{capture_id}", CaptureRecord)
 
     def put_capture(self, rec: CaptureRecord) -> None:
+        previous = self.get_capture(rec.capture_id)
         self._kv[f"capture:{rec.capture_id}"] = rec.model_dump(mode="json")
+        # Seed only on create. A later status write must not hide runs that
+        # predate the index, including an empty list left by an older deploy.
+        if previous is None:
+            if not isinstance(self._kv.get(f"capture_runs:{rec.capture_id}"), list):
+                self._kv[f"capture_runs:{rec.capture_id}"] = []
+            self._kv[f"capture_runs_trusted:{rec.capture_id}"] = True
+            if self.get_kv(f"early_index:{rec.capture_id}") is None:
+                self.put_kv(f"early_index:{rec.capture_id}", {"keys": []})
+        self._reindex_open(previous, rec)
 
     def set_status(self, capture_id: str, status: CaptureStatus) -> None:
         current = self.get_capture(capture_id)
         if current is None:
             raise KeyError(capture_id)
         self.put_capture(current.model_copy(update={"status": status}))
+
+    def open_capture_ids(self, owner: str) -> list[str]:
+        """Point-read this principal's open captures. The first read backfills that owner."""
+
+        if self._kv.get(f"open_backfill:{owner}") is not True:
+            self._backfill_owner(owner)
+        current = self._kv.get(f"open_by_owner:{owner}")
+        if not isinstance(current, list):
+            return []
+        return [str(item) for item in current]
+
+    def _reindex_open(self, previous: CaptureRecord | None, rec: CaptureRecord | None) -> None:
+        if previous is not None and previous.status in _OPEN:
+            moved = (
+                rec is None
+                or rec.status not in _OPEN
+                or rec.owner_principal != previous.owner_principal
+                or rec.capture_id != previous.capture_id
+            )
+            if moved:
+                self._drop_open(previous.owner_principal, previous.capture_id)
+        if rec is not None and rec.status in _OPEN:
+            self._add_open(rec.owner_principal, rec.capture_id)
+
+    def _add_open(self, owner: str, capture_id: str) -> None:
+        def add() -> None:
+            key = f"open_by_owner:{owner}"
+            current = self._kv.get(key)
+            ids = [str(item) for item in current] if isinstance(current, list) else []
+            if capture_id not in ids:
+                ids.append(capture_id)
+                self._kv[key] = ids
+
+        with_lease(self, f"open:{owner}", add)
+
+    def _drop_open(self, owner: str, capture_id: str) -> None:
+        def drop() -> None:
+            key = f"open_by_owner:{owner}"
+            current = self._kv.get(key)
+            if not isinstance(current, list):
+                return
+            self._kv[key] = [str(item) for item in current if str(item) != capture_id]
+
+        with_lease(self, f"open:{owner}", drop)
+
+    def _backfill_owner(self, owner: str) -> None:
+        """One scan for this principal, even when a newer capture already wrote a list."""
+
+        found: list[str] = []
+        for key, value in self._items():
+            text = str(key)
+            if text.count(":") != 1 or not text.startswith("capture:") or not isinstance(value, dict):
+                continue
+            try:
+                rec = CaptureRecord.model_validate(value)
+            except ValueError:
+                continue
+            if rec.owner_principal != owner or rec.status not in _OPEN:
+                continue
+            if rec.capture_id not in found:
+                found.append(rec.capture_id)
+
+        def apply() -> None:
+            if self._kv.get(f"open_backfill:{owner}") is True:
+                return
+            key = f"open_by_owner:{owner}"
+            current = self._kv.get(key)
+            merged = [str(item) for item in current] if isinstance(current, list) else []
+            for capture_id in found:
+                if capture_id not in merged:
+                    merged.append(capture_id)
+            self._kv[key] = merged
+            self._kv[f"open_backfill:{owner}"] = True
+
+        with_lease(self, f"open:{owner}", apply)
 
     def list_open_captures(self) -> list[CaptureRecord]:
         records: list[CaptureRecord] = []
@@ -234,6 +320,9 @@ class ModalDictState(MemoryState):
 
     def delete_capture(self, capture_id: str) -> None:
         """Drop the capture and every record keyed by it. The tomb is the only survivor."""
+        previous = self.get_capture(capture_id)
+        if previous is not None and previous.status in _OPEN:
+            self._drop_open(previous.owner_principal, capture_id)
         run_ids = {rec.run_id for rec in self.runs_for_capture(capture_id)}
         tokens = {capture_id, *run_ids}
         tomb = f"tomb:{capture_id}"
@@ -277,10 +366,11 @@ class ModalDictState(MemoryState):
             else:
                 current = self._kv.get(key)
                 return current == payload
-        if self._kv.get(key) is not None:
-            return False
-        self._kv[key] = payload
-        return True
+        with self._claim_lock:
+            if self._kv.get(key) is not None:
+                return False
+            self._kv[key] = payload
+            return True
 
     def append_event(
         self,
@@ -332,11 +422,30 @@ class ModalDictState(MemoryState):
 
     def put_run(self, rec: RunRecord) -> None:
         self._kv[f"run:{rec.run_id}"] = rec.model_dump(mode="json")
+        self._index_run(rec)
+
+    def _index_run(self, rec: RunRecord) -> None:
+        key = f"capture_runs:{rec.capture_id}"
+        current = self._kv.get(key)
+        ids = [str(item) for item in current] if isinstance(current, list) else []
+        if rec.run_id not in ids:
+            ids.append(rec.run_id)
+            self._kv[key] = ids
+        self._kv[f"capture_runs_trusted:{rec.capture_id}"] = True
 
     def get_run(self, run_id: str) -> RunRecord | None:
         return self._model(f"run:{run_id}", RunRecord)
 
     def runs_for_capture(self, capture_id: str) -> list[RunRecord]:
+        """Point-read the capture's run ids. A full Dict scan is a multi-second RPC.
+
+        An index without the trusted marker is backfilled once. That covers
+        captures written before the index, and an empty list a status update
+        used to write over those runs.
+        """
+
+        if self._kv.get(f"capture_runs_trusted:{capture_id}") is True:
+            return self._runs_from_index(capture_id)
         records: list[RunRecord] = []
         for key, value in self._items():
             if not str(key).startswith("run:") or not isinstance(value, dict):
@@ -344,6 +453,19 @@ class ModalDictState(MemoryState):
             rec = RunRecord.model_validate(value)
             if rec.capture_id == capture_id:
                 records.append(rec.model_copy(deep=True))
+        self._kv[f"capture_runs:{capture_id}"] = [rec.run_id for rec in records]
+        self._kv[f"capture_runs_trusted:{capture_id}"] = True
+        return records
+
+    def _runs_from_index(self, capture_id: str) -> list[RunRecord]:
+        current = self._kv.get(f"capture_runs:{capture_id}")
+        if not isinstance(current, list):
+            return []
+        records: list[RunRecord] = []
+        for run_id in current:
+            rec = self.get_run(str(run_id))
+            if rec is not None and rec.capture_id == capture_id:
+                records.append(rec)
         return records
 
     def list_runs(self, *, status: set[StageStatus], started_before: datetime | None = None) -> list[RunRecord]:
@@ -382,7 +504,10 @@ class ModalDictState(MemoryState):
             return False
         if rec.worker_call_id not in (None, call_id):
             return False
-        self.upsert_stage(rec.model_copy(update={"heartbeat": at, "worker_call_id": call_id, "substep": substep}))
+        update = {"heartbeat": at, "worker_call_id": call_id, "substep": substep}
+        if substep == "start" and rec.entered_at is None:
+            update["entered_at"] = at
+        self.upsert_stage(rec.model_copy(update=update))
         return True
 
     def stale_stages(self, older_than_s: float) -> list[StageRecord]:

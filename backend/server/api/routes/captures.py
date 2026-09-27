@@ -110,7 +110,7 @@ def register(app: FastAPI) -> None:
             existing = deps.state.get_kv(idem_key)
             if existing:
                 return _existing_create(deps, existing, principal, digest)
-            open_count = sum(1 for rec in deps.state.list_open_captures() if rec.owner_principal == principal.label)
+            open_count = len(deps.state.open_capture_ids(principal.label))
             if open_count >= deps.settings.HSS_INGEST_MAX_OPEN_CAPTURES:
                 raise fail(429, "too_many_open_captures", "/", "too many open captures", **{"Retry-After": "60"})
             capture_id = deps.new_id("cap_")

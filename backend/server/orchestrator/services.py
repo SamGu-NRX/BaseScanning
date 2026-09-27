@@ -16,10 +16,17 @@ from server.common.backends.storage_local import LocalFsStorage
 from server.common.config import Settings, load, resolve_state, resolve_storage
 from server.common.fixture_meter import fixture_models_from_extras
 from server.contracts.jobs import RunRecord, StageContext, StageRecord, run_id_for_capture
-from server.orchestrator.artifacts import ReadThrough, hydrate_artifacts, hydrate_packet
+from server.orchestrator.artifacts import (
+    ReadThrough,
+    hydrate_artifacts,
+    hydrate_packet,
+    overlay_stage_artifacts,
+    packet_cache_dir,
+)
 from server.orchestrator.clock import Clock
 from server.orchestrator.config import OrchConfig, load_orch
 from server.orchestrator.executor import InlineExecutor
+from server.orchestrator.graph import select_stage_artifacts, stage_needs_packet_files
 from server.orchestrator.spend import vlm_budget_usd
 
 _CURRENT: contextvars.ContextVar[Services | None] = contextvars.ContextVar("hss_orch_services", default=None)
@@ -36,15 +43,23 @@ class Services:
     work_root: Path
 
     def stage_context(self, run: RunRecord, rec: StageRecord, call_id: str) -> StageContext:
+        run = overlay_stage_artifacts(self.state, run)
         work = self.work_root / run.run_id / rec.stage / f"attempt-{rec.attempt}"
         work.mkdir(parents=True, exist_ok=True)
         packet_dir = work / "packet"
         packet_dir.mkdir(exist_ok=True)
         reads = self.reads_for(run.capture_id)
-        hydrate_packet(reads, self.state, run.capture_id, packet_dir)
+        hydrate_packet(
+            reads,
+            self.state,
+            run.capture_id,
+            packet_dir,
+            include_files=stage_needs_packet_files(rec.stage),
+            cache_dir=packet_cache_dir(run.capture_id, run.packet_sha256),
+        )
         # Artifacts stay on raw storage. Scene merge replaces scene.json in place
         # after objects_3d has already read it, and a cache would keep the pre-merge bytes.
-        hydrate_artifacts(self.storage, work, run.artifacts)
+        hydrate_artifacts(self.storage, work, select_stage_artifacts(rec.stage, run.artifacts))
         spent = sum(float(run.spend_usd.get(key, 0.0)) for key in ("vlm_reads", "vlm_objects", "vlm_c3"))
         inputs = {"packet_dir": str(packet_dir), "run_control": str(work / "run_control.json")}
         (work / "run_control.json").write_text(
@@ -53,7 +68,10 @@ class Services:
         if run.parent_run_id:
             parent = self.state.get_run(run.parent_run_id)  # type: ignore[attr-defined]
             if parent is not None:
-                copied = hydrate_artifacts(self.storage, work / "parent", parent.artifacts)
+                parent = overlay_stage_artifacts(self.state, parent)
+                copied = hydrate_artifacts(
+                    self.storage, work / "parent", select_stage_artifacts(rec.stage, parent.artifacts)
+                )
                 for key, path in copied.items():
                     inputs[f"parent/{key}"] = path
         return StageContext(

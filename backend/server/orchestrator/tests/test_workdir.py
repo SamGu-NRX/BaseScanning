@@ -54,11 +54,15 @@ def test_packet_dir_and_prior_artifacts_are_on_disk(tmp_path: Path) -> None:
     work = services.work_root / run.run_id / "result" / "attempt-1"
     packet_dir = work / "packet"
     assert (packet_dir / "packet.json").read_bytes() == raw
-    assert (packet_dir / "features" / "k0.bin").read_bytes() == b"feat"
-    assert (packet_dir / "keyframes" / "k0.jpg").read_bytes() == b"jpeg"
-    assert (work / "poses" / "cameras.json").is_file()
+    # Result reads scene and verdicts, not the capture frames or the pose model.
+    assert not (packet_dir / "features" / "k0.bin").exists()
+    assert not (packet_dir / "keyframes" / "k0.jpg").exists()
+    assert not (work / "poses" / "cameras.json").exists()
     assert json.loads((work / "scene" / "scene.json").read_text())["format"] == "base-scene/v0"
-    assert (work / "poses" / "sparse" / "0" / ".keep").is_file()
+    scale_packet = services.work_root / run.run_id / "scale" / "attempt-1" / "packet"
+    assert (scale_packet / "keyframes" / "k0.jpg").read_bytes() == b"jpeg"
+    assert (scale_packet / "features" / "k0.bin").read_bytes() == b"feat"
+    assert (services.work_root / run.run_id / "scale" / "attempt-1" / "poses" / "cameras.json").is_file()
 
 
 def test_parent_artifacts_stay_under_parent(tmp_path: Path) -> None:
@@ -75,9 +79,12 @@ def test_parent_artifacts_stay_under_parent(tmp_path: Path) -> None:
             heartbeat=services.clock.iso(),
         )
         ctx = services.stage_context(child, rec, "call-child")
-    scene = Path(ctx.inputs["parent/scene/scene.json"])
-    assert scene.is_file()
-    assert scene.parent.parent.name == "parent"
+    # Dense reads poses, not the parent scene. Declared parent files stay under parent/.
+    poses = Path(ctx.inputs["parent/poses/cameras.json"])
+    assert poses.is_file()
+    assert poses.parent.parent.name == "parent"
+    assert not (ctx.work_dir / "poses" / "cameras.json").exists()
+    assert "parent/scene/scene.json" not in ctx.inputs
     assert not (ctx.work_dir / "scene" / "scene.json").exists()
     assert "poses" not in ctx.inputs
 

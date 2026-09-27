@@ -10,6 +10,7 @@ from server.contracts.api import CaptureCheckData, HintData
 from server.contracts.capture_check import CaptureCheckCode
 from server.contracts.jobs import CommittedFile
 from server.orchestrator.clock import parse_iso
+from server.orchestrator.early.index import remember_early
 from server.orchestrator.events import emit_capture_check, emit_hint
 from server.orchestrator.services import Services
 from server.orchestrator.stateio import get_json, put_json
@@ -144,7 +145,9 @@ def _publish(
         )
         _remember_hint(services, capture_id, code)
     stored = {"missing": missing, "at": services.clock.iso(), "complete": not codes, "frames": frames}
-    put_json(services.state, f"early:{capture_id}:capture_check", stored)  # type: ignore[attr-defined]
+    check_key = f"early:{capture_id}:capture_check"
+    put_json(services.state, check_key, stored)  # type: ignore[attr-defined]
+    remember_early(services.state, capture_id, check_key)
     services.storage.put_bytes(  # type: ignore[attr-defined]
         f"captures/{capture_id}/early/capture_check.json",
         json.dumps(stored).encode(),

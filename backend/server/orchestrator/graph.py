@@ -168,6 +168,95 @@ STAGES: dict[StageName, StageSpec] = {
 }
 
 
+# Artifact keys each stage reads from the run. A trailing slash is a directory.
+# Packet images are separate: only stages that open frame files download them.
+STAGE_INPUTS: dict[StageName, tuple[str, ...]] = {
+    "validate": (),
+    "poses": (),
+    "objects": (),
+    "reads": (),
+    "scale": (
+        "poses/cameras.json",
+        "poses/sparse.ply",
+        "poses/tracks.npz",
+        "poses/registration_report.json",
+        "reads/reads.json",
+        "early/meter_identity.json",
+        "objects/objects.json",
+    ),
+    "dense": (
+        "poses/cameras.json",
+        "poses/sparse.ply",
+        "poses/tracks.npz",
+        "poses/registration_report.json",
+        "scale/scale.json",
+    ),
+    "coverage": (
+        "dense/cloud.npz",
+        "dense/dense_report.json",
+        "dense/cameras_w.json",
+        "dense/tracks.npz",
+        "dense/depth/",
+        "poses/cameras.json",
+        "scale/scale.json",
+    ),
+    "scene": (
+        "coverage/",
+        "dense/dense.ply",
+        "dense/flagged.ply",
+        "poses/sparse.ply",
+        "objects/objects.json",
+    ),
+    "objects_3d": (
+        "scene/scene.json",
+        "objects/objects.json",
+        "poses/registration_report.json",
+    ),
+    "criteria": (
+        "scene/",
+        "coverage/",
+        "objects/objects_3d.json",
+        "objects/view_requests.json",
+        "reads/reads.json",
+        "scale/scale.json",
+    ),
+    "result": (
+        "scene/",
+        "verdicts/",
+        "reads/reads.json",
+        "scale/scale.json",
+    ),
+}
+
+# Stages that open committed frame files. The rest only need packet.json.
+PACKET_FILE_STAGES = frozenset({"validate", "poses", "objects", "scale", "dense"})
+
+
+def stage_needs_packet_files(stage: StageName) -> bool:
+    return stage in PACKET_FILE_STAGES
+
+
+def select_stage_artifacts(stage: StageName, artifacts: dict[str, str]) -> dict[str, str]:
+    """Keep the keys this stage reads. Everything else stays in storage."""
+
+    patterns = STAGE_INPUTS[stage]
+    selected: dict[str, str] = {}
+    for key, storage_key in artifacts.items():
+        if _input_match(key, patterns):
+            selected[key] = storage_key
+    return selected
+
+
+def _input_match(key: str, patterns: tuple[str, ...]) -> bool:
+    for pattern in patterns:
+        if pattern.endswith("/"):
+            if key.startswith(pattern) or f"{key.rstrip('/')}/" == pattern:
+                return True
+        elif key == pattern:
+            return True
+    return False
+
+
 def gpu_for_attempt(spec: StageSpec, attempt: int) -> str | None:
     if not spec.gpu_by_attempt:
         return None

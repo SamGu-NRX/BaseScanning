@@ -50,6 +50,14 @@ def test_dev_deploy_env_enables_hooks_and_stubs(monkeypatch: pytest.MonkeyPatch)
     assert capture["STATE_DICT_NAME"] == "hss-dev-state"
     assert capture["HSS_AUTH_MODE"] == "none"
     pipeline = mod.deploy_env("pipeline")
+    assert pipeline["MODAL_APP_NAME"] == "house-scanning"
+    assert mod.deploy_env("sweeper")["MODAL_APP_NAME"] == "house-scanning"
+    monkeypatch.setenv("MODAL_APP_NAME", "house-scanning-ws03")
+    assert mod.deploy_env("pipeline")["MODAL_APP_NAME"] == "house-scanning-ws03"
+    assert mod.deploy_env("sweeper")["MODAL_APP_NAME"] == "house-scanning-ws03"
+    assert mod.deploy_env("capture-api")["MODAL_APP_NAME"] == "house-scanning-ws03"
+    monkeypatch.delenv("MODAL_APP_NAME", raising=False)
+    pipeline = mod.deploy_env("pipeline")
     assert pipeline["HSS_DENSE_WEIGHTS"] == "/vol/hf"
     assert pipeline["HOUSE_WEIGHTS"] == "/vol/hf"
     assert pipeline["HF_HOME"] == "/vol/hf"

@@ -9,6 +9,7 @@ import numpy as np
 
 from server.contracts.api import HintData
 from server.contracts.jobs import CommittedFile
+from server.orchestrator.early.index import remember_early
 from server.orchestrator.events import emit_hint
 from server.orchestrator.services import Services
 from server.orchestrator.stateio import put_json
@@ -75,7 +76,9 @@ def on_commit(services: Services, capture_id: str, files: list[CommittedFile]) -
         else:
             blurry_run = 0
         body = {"frame_id": item.path, "stats": stats, "codes": codes, "at": services.clock.iso()}
-        put_json(services.state, f"early:{capture_id}:qa:{item.path}", body)
+        qa_key = f"early:{capture_id}:qa:{item.path}"
+        put_json(services.state, qa_key, body)
+        remember_early(services.state, capture_id, qa_key)
         services.storage.put_bytes(  # type: ignore[attr-defined]
             f"captures/{capture_id}/early/qa/{item.path}.json",
             json.dumps(body).encode(),

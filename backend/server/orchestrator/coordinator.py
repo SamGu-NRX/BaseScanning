@@ -20,10 +20,12 @@ from server.contracts.jobs import (
     StageStatus,
 )
 from server.eval.sceneio import validate as validate_document
+from server.orchestrator.artifacts import overlay_stage_artifacts
 from server.orchestrator.clock import parse_iso
 from server.orchestrator.events import emit_failed, emit_stage
 from server.orchestrator.executor import CoordinatorDied, InlineExecutor
 from server.orchestrator.graph import STAGE_NAMES, STAGES, gpu_for_attempt, ready_stages
+from server.orchestrator.manual_result import publish_manual_result
 from server.orchestrator.modal_spawn import (
     ModalPending,
     cancel_modal,
@@ -337,11 +339,11 @@ class RunCoordinator:
         metrics["respawns"] = float(rec.respawns)
         rec.metrics = metrics
         rec.artifact_uri = next(iter(result.artifacts.values()), None)
+        # Publish before done is visible. A downstream worker can observe done
+        # before this container's put_run, and must still be able to hydrate.
+        put_json(self.s.state, f"stage_artifacts:{run.run_id}:{rec.stage}", dict(result.artifacts))
         self.s.state.upsert_stage(rec)
         self._remember_stage(rec)
-        # Per-stage blob. Two workers finishing together each put_run the whole
-        # artifact map, and the later write drops the earlier stage's keys.
-        put_json(self.s.state, f"stage_artifacts:{run.run_id}:{rec.stage}", dict(result.artifacts))
         run.artifacts.update(result.artifacts)
         duration = float(metrics.get("duration_s", 0.0))
         usd = attempt_usd(duration, rec.gpu)
@@ -473,10 +475,12 @@ class RunCoordinator:
     def _sweep_timeouts(self, run: RunRecord) -> None:
         now = self.s.clock.now()
         for rec in list(self._rows(run.run_id)):
-            if rec.status != "running" or not rec.started_at:
+            # started_at is the spawn. Hydration and the Modal queue sit in
+            # front of entered_at, and a 60s stage budget must not include them.
+            if rec.status != "running" or not rec.entered_at:
                 continue
             spec = STAGES[rec.stage]
-            elapsed = (now - parse_iso(rec.started_at)).total_seconds()
+            elapsed = (now - parse_iso(rec.entered_at)).total_seconds()
             if elapsed <= spec.timeout_s:
                 continue
             if rec.worker_call_id:
@@ -484,12 +488,7 @@ class RunCoordinator:
             self._mark_error(run, rec, TimeoutError(f"timeout: {rec.stage} exceeded {spec.timeout_s}s"))
 
     def _overlay_artifacts(self, run: RunRecord) -> RunRecord:
-        artifacts = dict(run.artifacts)
-        for name in STAGE_NAMES:
-            extra = get_json(self.s.state, f"stage_artifacts:{run.run_id}:{name}")
-            if isinstance(extra, dict):
-                artifacts.update({str(key): str(value) for key, value in extra.items()})
-        return run.model_copy(update={"artifacts": artifacts})
+        return overlay_stage_artifacts(self.s.state, run)
 
     def _merge_if_ready(self, run: RunRecord, control: RunControl) -> None:
         if control.merge_done:
@@ -569,6 +568,7 @@ class RunCoordinator:
 
     def _close(self, run: RunRecord, decision: Decision, message: str) -> None:
         self._cancel_running(run.run_id)
+        self._write_manual_result(run, decision.failure_code or message)
         self._apply_decision(run, decision, message, emit=decision.event == "failed")
         run.status = "failed"
         run.finished_at = self.s.clock.iso()
@@ -637,6 +637,16 @@ class RunCoordinator:
                 rec.status = "skipped"
                 rec.finished_at = self.s.clock.iso()
                 self.s.state.upsert_stage(rec)
+
+    def _write_manual_result(self, run: RunRecord, reason: str) -> None:
+        if run.artifacts.get("result/result.json"):
+            return
+        stage = self.s.state.get_stage(run.run_id, "result")
+        if stage is not None and stage.status == "done":
+            return
+        key = publish_manual_result(self.s, run, reason)
+        run.artifacts["result/result.json"] = key
+        put_json(self.s.state, f"stage_artifacts:{run.run_id}:result", {"result/result.json": key})
 
     def _write_run_files(self, run: RunRecord) -> None:
         timings: dict[str, Any] = {}

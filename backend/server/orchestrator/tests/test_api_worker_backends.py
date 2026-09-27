@@ -153,7 +153,9 @@ def test_api_run_packet_and_artifacts_reach_fresh_worker(cloud, monkeypatch, tmp
         artifact = "packet/validation.json"
         published = deps.storage.get_bytes(result["artifacts"][artifact])
         assert json.loads(published)["ok"] is True
-        assert (ctx.work_dir / artifact).read_bytes() == published
+        # Poses does not declare the validation report. The bytes stay in storage.
+        assert not (ctx.work_dir / artifact).exists()
+        assert deps.storage.get_bytes(result["artifacts"][artifact]) == published
         assert deps.state.get_stage(run.run_id, "validate").status == "done"
 
     with patch.dict(os.environ, api_env, clear=True):

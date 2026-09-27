@@ -11,16 +11,31 @@ from server.orchestrator.services import Services
 from server.orchestrator.stateio import get_json, put_json
 
 
+def coordinator_is_dead(run, raw: dict, *, now, stale_s: float) -> bool:
+    """A missing heartbeat is dead only after the run itself is older than ``stale_s``.
+
+    Two finish threads can observe a run before its first heartbeat write. Treating
+    that gap as a dead coordinator starts a second drive and resets the stage rows.
+    """
+
+    beat = raw.get("coordinator_heartbeat_at")
+    if beat:
+        return (now - parse_iso(str(beat))).total_seconds() > stale_s
+    anchor = run.started_at or run.created_at
+    return (now - parse_iso(str(anchor))).total_seconds() > stale_s
+
+
 def sweep(services: Services, *, retry_schedule: list[float] | None = None) -> int:
     touched = 0
     runs = services.state.list_runs(status={"pending", "running"})  # type: ignore[attr-defined]
     for run in runs:
         raw = dict(get_json(services.state, f"run_control:{run.run_id}") or {})
-        beat = raw.get("coordinator_heartbeat_at")
-        age = None
-        if beat:
-            age = (services.clock.now() - parse_iso(str(beat))).total_seconds()
-        dead = age is None or age > services.orch.stale_s
+        dead = coordinator_is_dead(
+            run,
+            raw,
+            now=services.clock.now(),
+            stale_s=services.orch.stale_s,
+        )
         if dead and run.status in {"pending", "running"}:
             raw["coordinator_respawns"] = int(raw.get("coordinator_respawns") or 0) + 1
             put_json(services.state, f"run_control:{run.run_id}", raw)

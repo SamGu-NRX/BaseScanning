@@ -6,6 +6,7 @@ from pathlib import Path
 
 from server.contracts.api import HintData
 from server.contracts.jobs import CommittedFile
+from server.orchestrator.early.index import early_keys, remember_early
 from server.orchestrator.events import emit_hint
 from server.orchestrator.privacy import photo_egress_allowed
 from server.orchestrator.services import Services
@@ -24,7 +25,7 @@ def on_commit(services: Services, capture_id: str, files: list[CommittedFile]) -
         vision=services.settings.VISION_EXTERNAL_CALLS,
     ):
         return
-    used = len(services.state.list_blobs(f"early:{capture_id}:reads:"))  # type: ignore[attr-defined]
+    used = sum(1 for key in early_keys(services.state, capture_id) if ":reads:" in key)
     for item in files:
         purpose = str((item.meta or {}).get("purpose") or "")
         if purpose not in _PURPOSES or used >= _MAX_PER_CAPTURE:
@@ -42,6 +43,7 @@ def on_commit(services: Services, capture_id: str, files: list[CommittedFile]) -
         # Progress and cost summaries belong in state. The reads worker owns the
         # StillResult artifact consumed by its cache and the later reads stage.
         put_json(services.state, key, body)
+        remember_early(services.state, capture_id, key)
         try:
             read, hints = _read(services, capture_id, item, still_id, purpose)
         except Exception as exc:
@@ -57,7 +59,9 @@ def on_commit(services: Services, capture_id: str, files: list[CommittedFile]) -
         body["hints"] = [hint.model_dump(mode="json") for hint in hints]
         put_json(services.state, key, body)
         if purpose == "meter_close":
-            put_json(services.state, f"early:{capture_id}:meter_identity", {"meter_number": body.get("meter_number")})
+            meter_key = f"early:{capture_id}:meter_identity"
+            put_json(services.state, meter_key, {"meter_number": body.get("meter_number")})
+            remember_early(services.state, capture_id, meter_key)
         used += 1
 
 

@@ -13,6 +13,12 @@ from server.api.replay import run_replay
 from server.api.tests.conftest import create_body
 from server.common.config import Settings
 from server.contracts.jobs import RunRecord, StageRecord
+from server.orchestrator.clock import Clock
+from server.orchestrator.config import load_orch
+from server.orchestrator.coordinator import RunCoordinator
+from server.orchestrator.executor import InlineExecutor
+from server.orchestrator.outcomes import Facts, decide
+from server.orchestrator.services import Services, bind
 
 _PACKET = Path("data/fixtures/packets/mini-arkit/packet.json")
 
@@ -126,3 +132,99 @@ def test_configured_static_mode_requires_a_bearer(tmp_path) -> None:
     )
     assert response.status_code == 401
     assert response.json()["errors"][0]["code"] == "unauthorized"
+
+
+def test_result_reads_stage_artifact_when_the_run_lags(tmp_path) -> None:
+    """A done result stage can land before the run row's artifact map."""
+
+    app = create_app(settings=_settings(tmp_path))
+    client = TestClient(app)
+    created = client.post(
+        "/v1/captures",
+        json=create_body("packet-lag"),
+        headers={"Idempotency-Key": "packet-lag"},
+    )
+    assert created.status_code == 201, created.text
+    capture_id = created.json()["captureId"]
+    deps = app.state.deps
+    result_key = f"captures/{capture_id}/result/result.json"
+    deps.storage.put_bytes(
+        result_key,
+        json.dumps({"ready": True, "viewsNeeded": [], "memberActions": []}).encode(),
+        "application/json",
+    )
+    deps.state.put_run(
+        RunRecord(
+            run_id="run_lag",
+            capture_id=capture_id,
+            packet_sha256="a" * 64,
+            status="running",
+            branch="image",
+            flow="photo",
+            tier="photo_only",
+            profile_default="C",
+            created_at="2026-09-26T00:00:00.000Z",
+            deadline_at="2026-09-26T01:00:00.000Z",
+            artifacts={},
+        )
+    )
+    deps.state.upsert_stage(
+        StageRecord(run_id="run_lag", stage="result", status="done", attempt=1, heartbeat="2026-09-26T00:00:01.000Z")
+    )
+    deps.state.put_blob(
+        "stage_artifacts:run_lag:result",
+        json.dumps({"result/result.json": result_key}).encode(),
+    )
+    result = client.get(f"/v1/captures/{capture_id}/result")
+    assert result.status_code == 200, result.text
+    assert result.json()["runId"] == "run_lag"
+
+
+def test_exhausted_run_serves_the_manual_result_without_a_result_stage(tmp_path) -> None:
+    app = create_app(settings=_settings(tmp_path))
+    client = TestClient(app)
+    created = client.post(
+        "/v1/captures",
+        json=create_body("packet-exhausted"),
+        headers={"Idempotency-Key": "packet-exhausted"},
+    )
+    assert created.status_code == 201, created.text
+    capture_id = created.json()["captureId"]
+    deps = app.state.deps
+    run = RunRecord(
+        run_id="run_exhausted",
+        capture_id=capture_id,
+        packet_sha256="b" * 64,
+        status="failed",
+        branch="image",
+        flow="photo",
+        tier="photo_only",
+        profile_default="C",
+        created_at="2026-09-26T00:00:00.000Z",
+        deadline_at="2026-09-26T01:00:00.000Z",
+        artifacts={},
+        spend_usd={},
+    )
+    deps.state.put_run(run)
+    services = Services(
+        settings=deps.settings,
+        orch=load_orch(),
+        state=deps.state,
+        storage=deps.storage,
+        clock=Clock(),
+        executor=InlineExecutor(config=load_orch(), stubs=True),
+        work_root=tmp_path / "work",
+    )
+    with bind(services):
+        RunCoordinator(services)._close(
+            run,
+            decide(Facts(required_exhausted=True, exhausted_stage="scale", exhausted_code="timeout")),
+            "scale exceeded its budget",
+        )
+    deps.state.set_status(capture_id, "manual_review")
+    result = client.get(f"/v1/captures/{capture_id}/result")
+    assert result.status_code == 200, result.text
+    body = result.json()
+    assert body["runId"] == "run_exhausted"
+    assert body["outcome"]["kind"] == "manual_review"
+    assert "stage_exhausted:scale:timeout" in body["outcome"]["message"]

@@ -27,6 +27,10 @@ def test_open_captures_events_and_tomb() -> None:
     state.put_capture(_capture())
     state.put_capture(_capture().model_copy(update={"capture_id": "cap_2", "status": "processing"}))
     assert [rec.capture_id for rec in state.list_open_captures()] == ["cap_1"]
+    assert state.open_capture_ids("device") == ["cap_1"]
+    state.set_status("cap_1", "processing")
+    assert state.open_capture_ids("device") == []
+    state.set_status("cap_1", "uploading")
     state.upsert_file(
         FileRecord(
             capture_id="cap_1",

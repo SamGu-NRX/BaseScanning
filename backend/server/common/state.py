@@ -27,6 +27,10 @@ class StateStore(Protocol):
 
     def list_open_captures(self) -> list[CaptureRecord]: ...
 
+    def open_capture_ids(self, owner: str) -> list[str]:
+        """Ids of this principal's captures still in ``uploading`` or ``awaiting_files``."""
+        ...
+
     def delete_capture(self, capture_id: str) -> None:
         """Erase the capture and every state record keyed by it.
 

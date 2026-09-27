@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from datetime import UTC, datetime
 
 from server.contracts.jobs import (
@@ -46,24 +47,64 @@ class MemoryState:
         self._kv: dict[str, dict] = {}
         self._blobs: dict[str, bytes] = {}
         self._spend: dict[str, float] = {}
+        self._open_by_owner: dict[str, list[str]] = {}
+        self._claim_lock = threading.Lock()
 
     def get_capture(self, capture_id: str) -> CaptureRecord | None:
         rec = self._captures.get(capture_id)
         return None if rec is None else rec.model_copy(deep=True)
 
     def put_capture(self, rec: CaptureRecord) -> None:
+        previous = self._captures.get(rec.capture_id)
         self._captures[rec.capture_id] = rec.model_copy(deep=True)
+        if previous is None and self.get_kv(f"early_index:{rec.capture_id}") is None:
+            self.put_kv(f"early_index:{rec.capture_id}", {"keys": []})
+        self._reindex_open(previous, rec)
 
     def set_status(self, capture_id: str, status: CaptureStatus) -> None:
         current = self._captures[capture_id]
-        self._captures[capture_id] = current.model_copy(update={"status": status})
+        self.put_capture(current.model_copy(update={"status": status}))
+
+    def open_capture_ids(self, owner: str) -> list[str]:
+        """Capture ids this principal still has in the upload window. One list, no scan."""
+
+        return list(self._open_by_owner.get(owner, ()))
 
     def list_open_captures(self) -> list[CaptureRecord]:
         return [rec.model_copy(deep=True) for rec in self._captures.values() if rec.status in _OPEN]
 
+    def _reindex_open(self, previous: CaptureRecord | None, rec: CaptureRecord | None) -> None:
+        if previous is not None and previous.status in _OPEN:
+            moved = (
+                rec is None
+                or rec.status not in _OPEN
+                or rec.owner_principal != previous.owner_principal
+                or rec.capture_id != previous.capture_id
+            )
+            if moved:
+                self._drop_open(previous.owner_principal, previous.capture_id)
+        if rec is not None and rec.status in _OPEN:
+            self._add_open(rec.owner_principal, rec.capture_id)
+
+    def _add_open(self, owner: str, capture_id: str) -> None:
+        with self._claim_lock:
+            ids = self._open_by_owner.setdefault(owner, [])
+            if capture_id not in ids:
+                ids.append(capture_id)
+
+    def _drop_open(self, owner: str, capture_id: str) -> None:
+        with self._claim_lock:
+            ids = self._open_by_owner.get(owner)
+            if not ids:
+                return
+            self._open_by_owner[owner] = [item for item in ids if item != capture_id]
+
     def delete_capture(self, capture_id: str) -> None:
         """Remove the capture and everything keyed by it, then keep the tomb."""
 
+        previous = self._captures.get(capture_id)
+        if previous is not None and previous.status in _OPEN:
+            self._drop_open(previous.owner_principal, capture_id)
         run_ids = {run_id for run_id, rec in self._runs.items() if rec.capture_id == capture_id}
         self._captures.pop(capture_id, None)
         self._files = {key: rec for key, rec in self._files.items() if key[0] != capture_id}
@@ -151,9 +192,10 @@ class MemoryState:
             return False
         if rec.worker_call_id not in (None, call_id):
             return False
-        self._stages[(run_id, stage)] = rec.model_copy(
-            update={"heartbeat": at, "worker_call_id": call_id, "substep": substep}
-        )
+        update = {"heartbeat": at, "worker_call_id": call_id, "substep": substep}
+        if substep == "start" and rec.entered_at is None:
+            update["entered_at"] = at
+        self._stages[(run_id, stage)] = rec.model_copy(update=update)
         return True
 
     def stale_stages(self, older_than_s: float) -> list[StageRecord]:
@@ -168,14 +210,27 @@ class MemoryState:
         return stale
 
     def put_if_absent(self, key: str, value: dict) -> bool:
-        if key in self._kv:
-            return False
-        self._kv[key] = dict(value)
-        return True
+        with self._claim_lock:
+            if key in self._kv:
+                return False
+            self._kv[key] = dict(value)
+            return True
 
     def get_kv(self, key: str) -> dict | None:
         value = self._kv.get(key)
-        return None if value is None else dict(value)
+        if not isinstance(value, dict):
+            return None
+        return dict(value)
+
+    def iter_run_claims(self) -> list[tuple[str, dict]]:
+        """Sweeper scan. Request handlers must not call this."""
+
+        found: list[tuple[str, dict]] = []
+        for key, value in self._kv.items():
+            text = str(key)
+            if text.startswith("run_claim:") and isinstance(value, dict):
+                found.append((text[len("run_claim:") :], dict(value)))
+        return found
 
     def put_kv(self, key: str, value: dict) -> None:
         self._kv[key] = dict(value)
