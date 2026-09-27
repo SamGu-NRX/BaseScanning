@@ -8,16 +8,17 @@ Diff this block when the deployment changes. Keep the seven field names and thei
 
 | Field | Value |
 | --- | --- |
-| Updated UTC | 2026-09-27T06:45:07Z |
+| Updated UTC | 2026-09-27T07:03:34Z |
 | Live URL | `https://huntertcarver-dev--capture-api.modal.run` (routes under `/v1`) |
-| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","version":"8875483b0a93"}` (selected fields). No `Authorization` header. Checked 2026-09-27T06:45:07Z. |
-| Milestone | M1 was proven on image `41a0880`: a no-token run returned a schema-valid `ResultResponse` (`manual_review`, stub stages, 59 s), capture `cap_01M3GEDBNXKEZ5AWD6BR3GYRHW`, run `run_9b0b07f08045853f`. This image was not given a new capture replay. M2 real stages are not verified live. Stage stubs stay on. |
-| What works | Health 200 with `storage: gcs` and version `8875483b0a93`, the head of [PR 111](https://github.com/huntertcarver/house-scanning-server/pull/111) (main `be01020` plus the package-data mount). A one-shot container on that CPU image rendered `server/result/review/template.html` (3103 bytes, review CSS inlined, 5 criteria profiles, result schema title `Result v0`). The same template, schemas, `profiles.yaml`, and `data/meter-models` files were present on the GPU image. No GPU was requested. |
-| What's placeholder | `HSS_ORCH_STAGE_STUBS=1`, so a live capture's result stage still writes the stub review page and does not call this Jinja render. PR 111 is not merged. Real-stage M2 remains unverified. Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. |
-| Breaking changes since last update | Live version moved from `c786f76cb7af` to `8875483b0a93`. The new image includes merged main through `be01020` and mounts review HTML/CSS, schema JSON/YAML, criteria YAML, and `data/meter-models` into the CPU and GPU stage images. No new end-to-end milestone is claimed. |
+| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","version":"f1f0b6394f93"}` (selected fields). No `Authorization` header. Checked 2026-09-27T07:03:34Z. `f1f0b6394f93` is the first 12 hex chars of main `f1f0b6394f93b32c22f8225615451a352e300254`. |
+| Milestone | A no-token `mini-arkit` replay on this image returned a schema-valid `ResultResponse` (`manual_review`, stub stages, 70 s), capture `cap_01M3GTQPAS864253AEMFGVYWHM`, run `run_4dee057d229c1c21`. The earlier M1 on `41a0880` (59 s, `cap_01M3GEDBNXKEZ5AWD6BR3GYRHW`) still stands. M2 real stages are not verified live. Stage stubs stay on. |
+| What works | Health 200 with `storage: gcs` and version `f1f0b6394f93`, which is main `f1f0b63` ([PR 111](https://github.com/huntertcarver/house-scanning-server/pull/111)). One `mini-arkit` upload through finalize returned `manual_review` in 70 s and passed the device result schema. |
+| What's placeholder | `HSS_ORCH_STAGE_STUBS=1`, so this replay's result stage writes the stub review page. Real-stage M2 remains unverified. Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. |
+| Breaking changes since last update | Live version moved from `8875483b0a93` to `f1f0b6394f93`. An unmerged PR 91 deploy (`7803f67d6ee5`) had replaced the app in between; this deploy put `house-scanning` back on main. No new real-stage milestone is claimed. |
 
 ## Changelog
 
+- 2026-09-27T07:03:34Z — `house-scanning` dev redeployed from main `f1f0b63` (PR 111). No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and version `f1f0b6394f93`. One no-token `mini-arkit` replay returned a schema-valid `manual_review` in 70 s (`cap_01M3GTQPAS864253AEMFGVYWHM`, `run_4dee057d229c1c21`). Stubs stay on, so this is not an M2 pass. This deploy replaced an intervening unmerged PR 91 image `7803f67d6ee5`.
 - 2026-09-27T06:45:07Z — Dev app redeployed from [PR 111](https://github.com/huntertcarver/house-scanning-server/pull/111) head `8875483b0a93` (main `be01020` plus stage package data). No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and that version. Inside the CPU stage image, Jinja rendered `template.html` with the review CSS inlined; the GPU image had the same template, schemas, `profiles.yaml`, and meter-model files. Stubs stay on, so this is not a capture replay and not an M2 pass. Historical M1 evidence stays on `41a0880`.
 - 2026-09-27T05:33:50Z — Read-only, no-auth probes observed draft PR 91 image `c786f76cb7af`, health 200, and missing-capture 404. GCS storage and memory state are unchanged. Remote lifecycle findings remain under review; historical M1 evidence stays tied to `41a0880`, and no M2 or new latency measurement is asserted.
 - 2026-09-27T04:57:09Z — Read-only, no-auth probes observed image `ed257c3231b8` (main at PR 86), health 200, and missing-capture 404. The image includes WS-12 composition, retry-finalize guidance, and the amendment state fix. Historical M1 evidence remains tied to `41a0880`; no M2 or new finalize timing is asserted.
@@ -58,7 +59,7 @@ Regenerate the check with `uv run python -m server.contracts.export_schemas --ch
 
 ## Capture flow
 
-The live version is the one in **Current status**. That image is the PR 111 head, not a merged-main release. Stage stubs are on, so an uploaded capture does not prove the real result renderer.
+The live version is the one in **Current status**: main `f1f0b63`. Stage stubs are on, so an uploaded capture does not prove the real result renderer.
 
 Upload order that the replay client uses: meter and panel stills first; each keyframe JPEG immediately followed by its depth, confidence, and features; other stills; streams and mesh; TrueDepth with the meter stills; finalize (finalize may run before the last commits).
 
