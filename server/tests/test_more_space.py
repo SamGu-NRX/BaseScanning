@@ -17,7 +17,8 @@ error.
 
 import copy
 
-from helpers import parsed
+import pytest
+from helpers import parsed, rect, shared_fixture
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from test_final_review import cornered
@@ -102,3 +103,54 @@ def test_seeing_more_never_makes_a_check_worse(raw: dict, data) -> None:
     more = copy.deepcopy(raw)
     more["coverage"]["observed"].append(item)
     never_worse(outcomes(raw, s0), outcomes(more, s0))
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Open finding (listed, not fixed): an obstacle moved off the route turns UNSURE to FAIL",
+)
+def test_moving_a_gas_meter_off_the_route_start_never_makes_route_length_worse() -> None:
+    # Found by the property above in a random run (the same at 22292a8). Against the wall at
+    # x [0, 1] with +/- 0.5 ft, the gas meter may sit over the route's start at the meter, so the
+    # 20.42 ft run is +/- 1.1 ft of the 20 ft maximum: UNSURE. Moved 1 ft out it can't touch the
+    # route, the error drops to +/- 0.1 ft and the run is confidently over: FAIL. The FAIL is
+    # right; the statement above is stronger than the rules support when a move removes an error.
+    raw = cornered_example()
+    obstacle = {
+        "type": "gas_meter",
+        "wall_id": "w1",
+        "span_ft": [0, 1],
+        "bottom_ft": 0,
+        "top_ft": 1,
+        "source": "tape",
+        "plus_minus_ft": 0.5,
+    }
+
+    def at(z: float) -> dict:
+        scene = copy.deepcopy(raw)
+        footprint = [[0, z], [1, z], [1, z + 1], [0, z + 1]]
+        scene["objects"] = [{**obstacle, "footprint": footprint}]
+        return scene
+
+    never_worse(outcomes(at(0.0), -23.0), outcomes(at(1.0), -23.0))
+
+
+def cornered_example() -> dict:
+    """The shrunk scene: two collinear walls, limits at both ends, the ground seen 1 ft out."""
+    raw = shared_fixture()
+    raw["walls"] = [
+        {"id": "w1", "baseline": [[-30, 0], [4.0, 0]], "height_ft": 9, "plus_minus_ft": 0.1},
+        {"id": "w2", "baseline": [[4.0, 0], [24.0, 0.0]], "height_ft": 9, "plus_minus_ft": 0.1},
+    ]
+    raw["ground"] = [{"type": "lawn", "polygon": rect(-60, 60, -60, 60), "plus_minus_ft": 0}]
+    raw["overheads"], raw["facing"] = [], []
+    raw["coverage"] = {
+        "ends": {"left": {"kind": "limit"}, "right": {"kind": "limit"}},
+        "observed": [
+            {"band": "wall", "span_ft": [-30.0, 24.0]},
+            {"band": "ground", "span_ft": [-30.0, 24.0], "out_ft": 1.0},
+            {"band": "overhead", "span_ft": [-30.0, 24.0]},
+            {"band": "facing", "span_ft": [-30.0, 24.0]},
+        ],
+    }
+    return raw

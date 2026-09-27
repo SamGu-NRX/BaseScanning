@@ -49,11 +49,11 @@ def test_each_example_gets_its_decision_under_the_demo_policy(name: str, decisio
 
 
 def test_the_unsure_example_asks_for_views() -> None:
-    assert [
-        m
-        for m in decide("review-corner-not-walked.json")["missing_evidence"]
-        if m["kind"] == "band"
-    ]
+    # The walk stopped at the unexplored right end, so the view it lacks is past that end. It
+    # used to ask for ground at s [-3.93, -3] as well, which its capture had already seen past
+    # the left limit end.
+    missing = decide("review-corner-not-walked.json")["missing_evidence"]
+    assert [m["kind"] for m in missing] == ["past_end"]
 
 
 def test_the_strict_policy_sends_everything_to_a_person(monkeypatch: pytest.MonkeyPatch) -> None:

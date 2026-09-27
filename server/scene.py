@@ -342,8 +342,10 @@ class Scene:
         self, ground: list[tuple[float, float, float | None]] | None = None
     ) -> list[Geometry]:
         """Round an unexplored end the walls may turn any way, so the straight extension past it
-        proves nothing: everything within reach of that end counts as unseen, except ground in
-        front of the scanned walls that was actually observed and the house behind them."""
+        proves nothing: everything within reach of that end counts as unseen, except ground that
+        was actually observed where a view can show it (coverable_span: in front of the scanned
+        walls and past a limit end) and the house behind the walls. A disc can reach past the
+        other end; ground seen there past a limit end is as real as anywhere else."""
         ends = {"left": self.walls[0].a, "right": self.walls[-1].b}
         discs = [
             Point(ends[side]).buffer(self.reach_ft)
@@ -352,9 +354,10 @@ class Scene:
         ]
         if not discs:
             return []
+        lo, hi = self.coverable_span()
         seen_in_front = unary_union(
             [
-                self.band_polygon(max(a, self.s_min), min(b, self.s_max), out or 0.0)
+                self.band_polygon(max(a, lo), min(b, hi), out or 0.0)
                 for a, b, out in (self.observed.get("ground", []) if ground is None else ground)
             ]
         ).buffer(SEEN_GROWTH_FT)
@@ -436,15 +439,20 @@ class Scene:
         # chain's lines is the honest lower bound.
         return s_lo, s_hi, self.farthest_out(region)
 
+    def coverable_span(self) -> tuple[float, float]:
+        """The s range a view can settle: the scanned walls, plus the continuation past a limit
+        end. It stops at an unexplored end, past which the walls may turn any way."""
+        left = self.s_min if self.end_kinds.get("left") == "unexplored" else self.pieces[0].s0
+        right = self.s_max if self.end_kinds.get("right") == "unexplored" else self.pieces[-1].s1
+        return left, right
+
     def coverable(self, band: str) -> Geometry:
         """Where observing `band` can settle what is unseen: in front of the scanned walls, and
         past a limit end. Past an unexplored end the walls may turn any way, so no view settles
         it; only walking on does (a past_end request)."""
         key = f"coverable-{band}"
         if key not in self._cache:
-            left, right = self.pieces[0], self.pieces[-1]
-            lo = self.s_min if self.end_kinds.get("left") == "unexplored" else left.s0
-            hi = self.s_max if self.end_kinds.get("right") == "unexplored" else right.s1
+            lo, hi = self.coverable_span()
             if band == "ground":
                 self._cache[key] = self.band_polygon(lo, hi, self.reach_ft).difference(self.house())
             else:
