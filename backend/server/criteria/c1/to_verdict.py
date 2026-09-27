@@ -7,9 +7,6 @@ from server.criteria.harness import load
 from server.criteria.lattice import margin_outcome
 
 M = 0.3048
-# The first ground probe (5 cm, on a 10 cm voxel) sits on the wall skin. Including it
-# pulls a fully observed yard strip to about 0.88 and grades it partial or grazing.
-GROUND_WALL_FOOT_M = 0.15
 WALL_CHECKS = {"wall_backing", "opening_clearance", "under_window", "wall_equipment_above"}
 ROUTE_CHECKS = {"route_path", "route_length"}
 VOLUME = {"facing_gap", "headroom"}
@@ -104,8 +101,9 @@ def regions_for(check: E.Check, cand: E.Candidate, sc: E.Scene3D, sm, profile: d
             }
         ]
     thr = (check.threshold or 0.0) * M
-    out = max(depth, thr + 2 * M, GROUND_WALL_FOOT_M + 0.1)
-    return [{"wall_id": w.id, "s_m": _span(sm, w.id, cand.u0, cand.u1), "out_m": [GROUND_WALL_FOOT_M, out]}]
+    out = max(depth, thr + 2 * M)
+    # Brief region: out_m starts at the wall. The gravel pass holds with that start.
+    return [{"wall_id": w.id, "s_m": _span(sm, w.id, cand.u0, cand.u1), "out_m": [0.0, out]}]
 
 
 def _clamp_evidence(ev: dict) -> dict:
@@ -182,20 +180,21 @@ def _region_key(region: dict, ground_rule: str | None) -> tuple:
 
 
 def _restore_geometric(check: E.Check) -> str:
-    # Inferred geometry never clears a check, even when the yard later looks observed.
-    if "inferred geometry" in (check.reason or ""):
-        return "unsure"
     saved = getattr(check, "geom_outcome", None)
-    if saved in {"pass", "fail", "unsure"}:
-        return saved
-    if check.measured is not None and check.threshold is not None:
-        comparison = "at_most" if check.id in AT_MOST else "at_least"
-        pm = float(check.pm or 0.0)
-        outcome, _margin, _mou = margin_outcome(
-            float(check.measured), pm if pm > 0 else 0.3, float(check.threshold), comparison
-        )
-        return outcome
-    return "pass"
+    if saved not in {"pass", "fail", "unsure"}:
+        if check.measured is not None and check.threshold is not None:
+            comparison = "at_most" if check.id in AT_MOST else "at_least"
+            pm = float(check.pm or 0.0)
+            saved, _margin, _mou = margin_outcome(
+                float(check.measured), pm if pm > 0 else 0.3, float(check.threshold), comparison
+            )
+        else:
+            saved = "pass"
+    # The flag is the gate. Reason text is not: a rewritten sentence must not clear the check,
+    # and the words "inferred geometry" must not block a check that is not inferred.
+    if getattr(check, "inferred", False) and saved == "pass":
+        return "unsure"
+    return saved
 
 
 def regrade_runs(runs: list[dict], scene, scene_dir, profile, sc, sm, query, ground_rule: str) -> None:
@@ -295,6 +294,9 @@ def criterion_dict(check: E.Check, cand_id: str, evidence: list[dict], source_ki
         out["outcome"] = "unsure"
         out["unsure_cause"] = "grazing" if any(ev.get("status") == "grazing" for ev in bad) else "unobserved"
         out["reason"] = "coverage: " + out["reason"]
+    if getattr(check, "inferred", False) and out["outcome"] == "pass":
+        out["outcome"] = "unsure"
+        out["unsure_cause"] = "unobserved"
     return out
 
 
@@ -342,10 +344,10 @@ def apply_review_flags(checks: list[E.Check], meta: dict) -> None:
         elif c.subject in review_ids and c.outcome in (E.PASS, E.FAIL):
             c.outcome, c.cause = E.UNSURE, "unknown_attribute"
             c.reason = (c.reason + "; " if c.reason else "") + "confidence below 0.75"
-        elif c.subject in inferred_ids and (c.outcome == E.PASS or getattr(c, "geom_outcome", None) == E.PASS):
-            # Pin the saved geometric outcome. An observed query must not restore this pass.
-            c.geom_outcome = E.UNSURE
-            if c.outcome == E.PASS:
-                c.outcome, c.cause = E.UNSURE, "unobserved"
-            if "inferred geometry" not in (c.reason or ""):
-                c.reason = (c.reason + "; " if c.reason else "") + "inferred geometry"
+        if c.inferred or c.subject in inferred_ids:
+            c.inferred = True
+            if c.outcome == E.PASS or getattr(c, "geom_outcome", None) == E.PASS:
+                # Pin the saved geometric outcome. An observed query must not restore this pass.
+                c.geom_outcome = E.UNSURE
+                if c.outcome == E.PASS:
+                    c.outcome, c.cause = E.UNSURE, "unobserved"

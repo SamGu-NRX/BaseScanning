@@ -167,6 +167,7 @@ def convert(scene: dict, ground_rule: str = "angle80", profile_id: str = "C") ->
                 "wall_id": o.get("wall_id") or g.get("wall_id"),
                 "plus_minus_ft": o["plus_minus_m"] * FT,
                 "real": o.get("evidence") == "observed",
+                "evidence": _evidence(o),
                 "note": o.get("label", ""),
             }
             continue
@@ -209,6 +210,7 @@ def convert(scene: dict, ground_rule: str = "angle80", profile_id: str = "C") ->
             "plus_minus_ft": o["plus_minus_m"] * FT,
             "attrs": attrs,
             "real": o.get("evidence") == "observed",
+            "evidence": _evidence(o),
             "note": o.get("label", ""),
         }
         _fill_geom(rec, g, frames, wpt)
@@ -407,6 +409,13 @@ def _fill_geom(rec, g, frames, wpt):
         rec.update({"footprint": [p[[0, 2]].round(4).tolist()], "y0": p[1], "y1": p[1]})
 
 
+def _evidence(o: dict) -> str:
+    raw = o.get("evidence")
+    if raw in {"observed", "inferred", "generated"}:
+        return raw
+    return "observed"
+
+
 def _obstacle(o, frames):
     rec = {
         "id": o["id"],
@@ -414,6 +423,7 @@ def _obstacle(o, frames):
         "plus_minus_ft": o["plus_minus_m"] * FT,
         "attrs": o.get("attrs") or {},
         "real": o.get("evidence") == "observed",
+        "evidence": _evidence(o),
         "note": o.get("label", ""),
     }
     _fill_geom(rec, o["geometry"], frames, _wpt_from(frames))
@@ -445,4 +455,6 @@ def _overhead(o, frames, wpt):
         "y0": y0,
         "y1": y0 + 0.5,
         "plus_minus_ft": o["plus_minus_m"] * FT,
+        "evidence": _evidence(o),
+        "real": o.get("evidence") == "observed",
     }

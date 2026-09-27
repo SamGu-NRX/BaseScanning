@@ -130,6 +130,7 @@ class Obj:
     attrs: dict = field(default_factory=dict)
     real: bool = True
     note: str = ""
+    evidence: str = "observed"
 
 
 @dataclass
@@ -247,6 +248,7 @@ def load_scene(d: dict[str, Any]) -> Scene3D:
                     o.get("attrs", {}),
                     o.get("real", True),
                     o.get("note", ""),
+                    o.get("evidence") or ("observed" if o.get("real", True) else "inferred"),
                 )
             )
         return out
@@ -393,10 +395,16 @@ class Check:
     reason: str = ""
     # Geometric outcome before a coverage downgrade. Restored when query_region says observed.
     geom_outcome: str | None = None
+    # True when the subject is inferred, or any inferred object of this check lies within
+    # threshold + its ± + the check's reach. A pass on inferred geometry stays blocked.
+    inferred: bool = False
 
     def js(self):
+        skip = {"geom_outcome"}
+        if not self.inferred:
+            skip.add("inferred")
         return {k: (round(v, 4) if isinstance(v, float) else v) for k, v in self.__dict__.items()
-                if k != "geom_outcome" and v is not None and v != ""}
+                if k not in skip and v is not None and v != ""}
 
 
 def mark_unobserved(c: Check, cause: str = "unobserved") -> None:
@@ -602,6 +610,8 @@ class Solver3D:
                         bands: list[str], mode: str, counts=None, hide_ft: float = 1.0) -> Check:
         c = Check(cid, PASS, threshold=thr)
         wk = None
+        # radius the check already searches for unobserved space
+        check_reach = thr + w.pm
         for o in items:
             cnt = True if counts is None else counts(o)
             if cnt is False:
@@ -612,11 +622,17 @@ class Solver3D:
             cause = "margin"
             if cnt is None and out != PASS:
                 out, cause = UNSURE, "unknown_attribute"
+            # A nearer observed object can win the subject and still leave this inferred one
+            # inside the clearance the check is claiming.
+            if o.evidence == "inferred" and d <= thr + o.pm + check_reach:
+                c.inferred = True
             key = (SEV[out], -(d - e))
             if wk is None or key > wk:
                 wk = key
                 c.outcome, c.measured, c.pm, c.subject = out, d, e, o.id
                 c.cause = cause if out == UNSURE else None
+                if o.evidence == "inferred":
+                    c.inferred = True
         if c.outcome == FAIL or c.outcome == UNSURE:
             return c
         radius = thr + w.pm

@@ -17,9 +17,24 @@ from server.criteria import run as stage_run
 from server.criteria.c1 import engine3d as engine
 from server.criteria.c1.chain_hybrid import _sort_spans, adopt, chain_inputs_observed
 from server.criteria.c1.from_scene_v0 import CLASS, convert, stamp_ground_rule_ids
-from server.criteria.c1.to_verdict import GROUND_WALL_FOOT_M, chain_s, query_evidence, regions_for, s_of
+from server.criteria.c1.to_verdict import (
+    _restore_geometric,
+    apply_review_flags,
+    chain_s,
+    criterion_dict,
+    query_evidence,
+    regions_for,
+    s_of,
+)
+from server.criteria.c2.grid_adapter import c2_rules
 from server.criteria.c2.grid_adapter import from_scene as c2_from_scene
-from server.criteria.c2.sweep import cable_passable, majority_unknown_grid, opening_face_cells, rear_standoff
+from server.criteria.c2.sweep import (
+    cable_passable,
+    headroom_sample_heights,
+    majority_unknown_grid,
+    opening_face_cells,
+    rear_standoff,
+)
 from server.criteria.c3.client import api_key_for
 from server.criteria.c3.facts import disabled_facts
 from server.criteria.c3.judge import flags_from
@@ -1607,18 +1622,18 @@ def test_stage_run_reads_workdir_artifacts(monkeypatch, tmp_path):
     assert verdict_contract_errors(verdict) == []
 
 
-def _add_gas(scene_dir: Path, *, evidence: str, plus_minus_m: float) -> None:
+def _add_gas(scene_dir: Path, *, evidence: str, plus_minus_m: float, gas_id: str = "gas1", s_m: float = 2.5) -> None:
     path = scene_dir / "scene.json"
     scene = json.loads(path.read_text())
     scene["objects"].append(
         {
-            "id": "gas1",
+            "id": gas_id,
             "class": "gas_meter",
             "label": "gas meter",
             "geometry": {
                 "kind": "wall_rect",
                 "wall_id": "w1",
-                "s_m": [2.4, 2.6],
+                "s_m": [s_m - 0.1, s_m + 0.1],
                 "bottom_m": 0.4,
                 "top_m": 0.9,
             },
@@ -1653,7 +1668,7 @@ def _passing_on_inferred(verdict: dict) -> list[dict]:
             row for row in verdict["criteria"] if row.get("candidate_id") == cand["id"] and row["outcome"] == "pass"
         ]
         subjects = {(row.get("measured") or {}).get("subject") for row in rows}
-        if "gas1" in subjects or any("inferred geometry" in (row.get("reason") or "") for row in rows):
+        if "gas1" in subjects:
             bad.append(cand)
     return bad
 
@@ -1672,6 +1687,27 @@ def test_inferred_gas_meter_cannot_clear_a_check(tmp_path):
     assert gas_rows
     assert all(row["outcome"] != "pass" for row in gas_rows)
     assert _passing_on_inferred(verdict) == []
+    Verdict.model_validate(verdict)
+    assert verdict_contract_errors(verdict) == []
+
+
+@pytest.mark.skipif(not _coverage_ready(), reason="CoverageQuery arrives with the vendored harness")
+def test_inferred_meter_within_reach_blocks_a_nearer_observed_one(tmp_path):
+    """Observed gas at s 2.0 m and inferred gas at s 5.0 m. A start near 3 m is about 1.2 m
+    from the inferred meter; that spot used to pass gas_clearance on the observed subject."""
+    scene_dir = write(tmp_path / "wall")
+    _add_gas(scene_dir, evidence="observed", plus_minus_m=0.05, gas_id="gas2", s_m=2.0)
+    _add_gas(scene_dir, evidence="inferred", plus_minus_m=0.05, gas_id="gas1", s_m=5.0)
+    verdicts = evaluate_scene(scene_dir, tmp_path / "out", config=_profile_c_geometry())
+    verdict = verdicts["C"]
+    near = [
+        cand
+        for cand in verdict["candidates"]
+        if cand["wall_id"] == "w1" and cand["start_s_m"][0] <= 3.09 and cand["start_s_m"][1] >= 2.99
+    ]
+    assert near
+    assert all(cand["outcome"] != "pass" for cand in near)
+    assert all("gas_clearance" in cand["unsure"] or "gas_clearance" in cand["failing"] for cand in near)
     Verdict.model_validate(verdict)
     assert verdict_contract_errors(verdict) == []
 
@@ -1736,15 +1772,67 @@ def test_rear_standoff_uses_the_dense_wall_not_a_speck():
     assert rear == pytest.approx(-0.10 + 1.5 * 0.1)
 
 
-def test_ground_strip_starts_past_the_wall_skin():
+def test_ground_strip_starts_at_the_wall():
     wall = type("W", (), {"id": "w1"})()
     scene3d = type("S", (), {"walls": {"w1": wall}})()
     cand = type("C", (), {"wall": "w1", "u0": 1.0, "u1": 1.2, "route": type("R", (), {"stretches": []})()})()
     profile = {"battery": {"depth_ft": 1.833}}
     check = engine.Check("ground_surface", "pass", measured=0.0, pm=0.02, threshold=0.0)
     region = regions_for(check, cand, scene3d, {"w1": (0.0, 1)}, profile)[0]
-    assert region["out_m"][0] == GROUND_WALL_FOOT_M
-    assert region["out_m"][1] > GROUND_WALL_FOOT_M
+    assert region["out_m"][0] == 0.0
+    assert region["out_m"][1] > 0.0
+
+
+def test_inferred_flag_blocks_a_pass_regardless_of_wording(tmp_path):
+    """The gate is check.inferred, copied from the object's evidence. Reason text is not."""
+    scene_dir = write(tmp_path / "wall")
+    _add_gas(scene_dir, evidence="inferred", plus_minus_m=0.05)
+    scene = json.loads((scene_dir / "scene.json").read_text())
+    scene3d = convert(scene, "angle80", "C")
+    gas = next(obj for obj in scene3d["objects"] if obj["id"] == "gas1")
+    assert gas["evidence"] == "inferred"
+    assert "gas1" in scene3d["meta"]["inferred_ids"]
+    loaded = next(obj for obj in engine.load_scene(scene3d).objects if obj.id == "gas1")
+    assert loaded.evidence == "inferred"
+
+    check = engine.Check("gas_clearance", "pass", subject="gas1", measured=8.0, pm=0.1, threshold=3.0)
+    apply_review_flags([check], scene3d["meta"])
+    assert check.inferred is True
+    assert check.outcome == "unsure"
+    check.reason = "clearance holds"
+    check.geom_outcome = "pass"
+    check.outcome = "unsure"
+    check.cause = "unobserved"
+    assert _restore_geometric(check) == "unsure"
+
+    failed = engine.Check(
+        "gas_clearance", "unsure", subject="gas1", cause="unobserved", geom_outcome="fail", inferred=True
+    )
+    assert _restore_geometric(failed) == "fail"
+
+    phrase_only = engine.Check("gas_clearance", "unsure", reason="inferred geometry", geom_outcome="pass")
+    assert phrase_only.inferred is False
+    assert _restore_geometric(phrase_only) == "pass"
+
+    forced = engine.Check(
+        "gas_clearance", "pass", subject="gas1", measured=8.0, pm=0.1, threshold=3.0, inferred=True, reason="clear"
+    )
+    row = criterion_dict(forced, "cand", [], "annotation")
+    assert row["outcome"] == "unsure"
+    assert "inferred" not in row
+
+
+def test_profile_a_c2_headroom_is_not_an_empty_band():
+    """Delivery profile A was C2 skipped with 0 spots: headroom min is null, so the old
+    sample started at battery height (~1.0 m) and stopped at 0.5 m, and wh[-1] raised."""
+    rules = c2_rules(merged_profile("A"))
+    assert rules["headroom"]["min_ft"] == 0.0
+    height_m = rules["battery"]["height_ft"] * 0.3048
+    assert len(np.arange(height_m, 0.5, 0.025)) == 0
+    assert headroom_sample_heights(0.0, height_m, 0.0, 0.05) is None
+    rules_c = c2_rules(merged_profile("C"))
+    band = headroom_sample_heights(0.0, height_m, rules_c["headroom"]["min_ft"] * 0.3048, 0.05)
+    assert band is not None and len(band) > 0
 
 
 def test_reads_sample_matches_ws08_rows():

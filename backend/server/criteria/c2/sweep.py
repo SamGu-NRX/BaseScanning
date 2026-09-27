@@ -106,6 +106,18 @@ def worst(*outs):
     return max(outs, key=lambda o: RANK[o]) if outs else PASS
 
 
+def headroom_sample_heights(zg: float, battery_height_m: float, need_m: float, res: float):
+    """Heights to probe, or None when this profile does not apply headroom.
+
+    Profile A stores a null minimum as 0. Sampling from the battery top (~1.0 m) up to
+    need + 0.5 m is then an empty range, and indexing it raised IndexError. The runner
+    records that as C2 status ``skipped`` with 0 spots.
+    """
+    if need_m <= 0:
+        return None
+    return np.arange(zg + battery_height_m, zg + need_m + 0.5, res / 2)
+
+
 def check(cid, outcome, value_m=None, threshold_m=None, margin_m=None, err_m=None, unknown=0, subject=None, note=None):
     f = lambda x: None if x is None else round(x / FT, 2)
     return {
@@ -590,30 +602,35 @@ class Sweep:
 
         # headroom over the footprint (the first 0.1 m off the wall is wall relief)
         need_h = R["headroom"]["min_ft"] * FT
-        vh = np.arange(v0 + 0.1, v1, res / 2)
-        wh = np.arange(zg + H, zg + need_h + 0.5, res / 2)
-        U3, V3, W3 = np.meshgrid(us, vh, wh, indexing="ij")
-        st = sample_states(g, self.local(c, a, n, U3, V3, W3))
-        occ_w = (st == OCCUPIED).any(axis=(0, 1))
-        k1 = np.nonzero(occ_w)[0]
-        z_obst = wh[k1[0]] if len(k1) else wh[-1] + res / 2
-        clear_h = z_obst - zg
-        below = wh < min(z_obst, zg + need_h)
-        n_unk_h = int((st[:, :, below] == UNKNOWN).sum())
-        oh = c5(clear_h - need_h, res)
-        if oh == PASS and n_unk_h:
-            oh = UNSURE
-        checks.append(
-            check(
-                "headroom",
-                oh,
-                value_m=clear_h,
-                threshold_m=need_h,
-                margin_m=clear_h - need_h,
-                err_m=res,
-                unknown=n_unk_h,
+        wh = headroom_sample_heights(zg, H, need_h, res)
+        if wh is None:
+            checks.append(check("headroom", PASS, note="not required by this profile"))
+        elif len(wh) == 0:
+            checks.append(check("headroom", UNSURE, note="headroom band empty"))
+        else:
+            vh = np.arange(v0 + 0.1, v1, res / 2)
+            U3, V3, W3 = np.meshgrid(us, vh, wh, indexing="ij")
+            st = sample_states(g, self.local(c, a, n, U3, V3, W3))
+            occ_w = (st == OCCUPIED).any(axis=(0, 1))
+            k1 = np.nonzero(occ_w)[0]
+            z_obst = wh[k1[0]] if len(k1) else wh[-1] + res / 2
+            clear_h = z_obst - zg
+            below = wh < min(z_obst, zg + need_h)
+            n_unk_h = int((st[:, :, below] == UNKNOWN).sum())
+            oh = c5(clear_h - need_h, res)
+            if oh == PASS and n_unk_h:
+                oh = UNSURE
+            checks.append(
+                check(
+                    "headroom",
+                    oh,
+                    value_m=clear_h,
+                    threshold_m=need_h,
+                    margin_m=clear_h - need_h,
+                    err_m=res,
+                    unknown=n_unk_h,
+                )
             )
-        )
 
         # labelled objects: plan distance footprint <-> polygon
         foot = Polygon(
