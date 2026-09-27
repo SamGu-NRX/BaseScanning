@@ -1,5 +1,5 @@
 # `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
-.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci ios-kit result-golden reads-gate reads-extra
+.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci orchestrator-e2e ios-kit result-golden reads-gate reads-extra
 
 ONLY ?= small
 
@@ -33,6 +33,10 @@ validate-full:
 	uv run --frozen python scripts/validate_fixtures.py --full
 
 ci: lint test schemas hygiene validate
+
+orchestrator-e2e:
+	STATE_BACKEND=memory STORAGE_BACKEND=local HSS_ORCH_STAGE_STUBS=1 VISION_EXTERNAL_CALLS=off SMP_ENVIRONMENT=dev \
+		uv run --frozen pytest server/orchestrator/tests -q
 
 # Refresh the committed schema copies and pack the zip the iOS team installs.
 ios-kit:

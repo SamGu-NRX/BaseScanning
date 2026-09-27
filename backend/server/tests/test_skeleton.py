@@ -42,8 +42,8 @@ def test_api_and_orchestrator_stubs() -> None:
     orchestrator = importlib.import_module("server.orchestrator")
     with pytest.raises(NotImplementedError):
         api.create_app()
-    with pytest.raises(NotImplementedError):
-        orchestrator.sweep()
+    assert callable(orchestrator.start_run)
+    assert callable(orchestrator.sweep)
     assert orchestrator.validate_manifest is api.validate_manifest
 
 

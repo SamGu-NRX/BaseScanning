@@ -1,12 +1,15 @@
-"""Coordinator stubs. WS-03 fills these. Stages are called by name, not through adapters."""
+"""Orchestrator entry points (SD-23)."""
 
 from __future__ import annotations
 
-from typing import Literal
-
-from server.contracts.api import ConfirmationRequest
-from server.contracts.jobs import CommittedFile, RunRecord, Tier
-from server.packet.validate import validate_manifest
+from server.orchestrator.api import (
+    cancel_capture,
+    dispatch_early,
+    on_confirmation,
+    prewarm,
+    start_run,
+    sweep,
+)
 
 __all__ = [
     "cancel_capture",
@@ -19,37 +22,10 @@ __all__ = [
 ]
 
 
-def start_run(
-    capture_id: str,
-    packet_sha256: str,
-    packet_uri: str,
-    *,
-    parent_run_id: str | None = None,
-) -> RunRecord:
-    raise NotImplementedError("WS-03 implements server.orchestrator.start_run")
+def __getattr__(name: str):
+    """Lazy re-export so importing the orchestrator does not import packet validation first."""
+    if name == "validate_manifest":
+        from server.packet.validate import validate_manifest
 
-
-def prewarm(capture_id: str, *, tier: Tier, expected_keyframes: int | None = None) -> None:
-    raise NotImplementedError("WS-03 implements server.orchestrator.prewarm")
-
-
-def dispatch_early(capture_id: str, files: list[CommittedFile]) -> None:
-    raise NotImplementedError("WS-03 implements server.orchestrator.dispatch_early")
-
-
-def on_confirmation(
-    capture_id: str,
-    confirmation: ConfirmationRequest,
-    confirmation_id: str,
-    *,
-    by: Literal["device", "reviewer"],
-) -> None:
-    raise NotImplementedError("WS-03 implements server.orchestrator.on_confirmation")
-
-
-def cancel_capture(capture_id: str) -> None:
-    raise NotImplementedError("WS-03 implements server.orchestrator.cancel_capture")
-
-
-def sweep() -> int:
-    raise NotImplementedError("WS-03 implements server.orchestrator.sweep")
+        return validate_manifest
+    raise AttributeError(name)
