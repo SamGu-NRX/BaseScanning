@@ -30,6 +30,15 @@ def test_preview_stride_caps_the_cloud(tmp_path):
     assert len(cloud["x"]) <= 2
 
 
+def test_missing_cloud_file_is_preview_skipped(tmp_path):
+    scene = json.loads((DATA / "synthetic" / "scene.json").read_text())
+    scene["assets"][0]["path"] = "missing-laser.ply"
+    empty = tmp_path / "scene"
+    empty.mkdir()
+    assert build_preview(scene, empty, tmp_path / "preview.ply", max_points=10) == "preview_skipped"
+    assert not (tmp_path / "preview.ply").exists()
+
+
 def test_preview_skipped_without_a_cloud(tmp_path):
     scene = json.loads((DATA / "synthetic" / "scene.json").read_text())
     scene["assets"] = []

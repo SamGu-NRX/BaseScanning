@@ -446,6 +446,49 @@ def test_ws09_best_id_reject_names_drive_clearance(tmp_path):
     assert body["outcome"]["reasons"][0]["criterion"] == "drive_clearance"
 
 
+def test_shown_reject_names_unmatched_candidate_fails(tmp_path):
+    src = _ROOT / "data/fixtures/verdicts/eth3d-delivery/gt.C1.g80.json"
+    dest = tmp_path / "verdicts"
+    dest.mkdir()
+    (dest / "verdict.C.json").write_text(src.read_text())
+    config = ResultConfig(show_reject=True, catalogue_path=DATA / "prompts.en-US.json")
+    _go(tmp_path / "out", dest, reads=None, config=config)
+    reasons = _payload(tmp_path / "out")["outcome"]["reasons"]
+    assert [row["criterion"] for row in reasons] == [
+        "ground_surface",
+        "drive_clearance",
+        "opening_clearance",
+    ]
+
+
+def test_fallback_box_on_a_negative_run_narrower_than_the_battery(tmp_path):
+    verdict = json.loads((DATA / "synthetic" / "verdicts" / "verdict.C.json").read_text())
+    span = [-1.3, -1.2]
+    width = 0.7874
+    assert span[1] - span[0] < width
+    verdict["candidates"][0]["start_s_m"] = span
+    dest = tmp_path / "verdicts"
+    dest.mkdir()
+    (dest / "verdict.C.json").write_text(json.dumps(verdict))
+    composed = _go(tmp_path / "out", dest)
+    place = composed.response.outcome.recommendedPlacement
+    assert place is not None
+    assert place.startSM == pytest.approx(span[1])
+    assert place.boxSceneM.centerM[0] == pytest.approx(span[1] + width / 2)
+
+
+def test_missing_scene_cloud_skips_preview(tmp_path):
+    scene_dir = tmp_path / "scene"
+    scene_dir.mkdir()
+    scene = json.loads((DATA / "synthetic" / "scene.json").read_text())
+    scene["assets"][0]["path"] = "missing-laser.ply"
+    (scene_dir / "scene.json").write_text(json.dumps(scene))
+    composed = _go(tmp_path / "out", DATA / "synthetic" / "verdicts", scene=scene_dir)
+    assert "preview_skipped" in composed.warnings
+    assert composed.response.previewUrl is None
+    assert not (tmp_path / "out" / "preview.ply").is_file()
+
+
 def test_fallback_placement_uses_the_near_edge(tmp_path):
     verdict = json.loads((DATA / "synthetic" / "verdicts" / "verdict.C.json").read_text())
     verdict["candidates"][0]["start_s_m"] = [0.4516, 4.7696]

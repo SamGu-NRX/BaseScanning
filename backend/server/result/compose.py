@@ -480,12 +480,14 @@ def _reasons(verdict: dict | None, catalogue: Catalogue) -> list[RejectReason]:
     if verdict is None:
         return []
     spot_ids = _spot_candidate_ids(verdict, _chosen_id(verdict))
+    fails = [item for item in verdict.get("criteria") or [] if item.get("outcome") == "fail"]
+    matched = [item for item in fails if _at_spot(item, spot_ids)]
+    if not matched:
+        # Older verdicts stamp every candidate-scope row ``candidate_id: "spot"``
+        # while ``chosen_candidate`` is null. A shown reject still names those rows.
+        matched = [item for item in fails if item.get("scope") == "candidate"]
     rows = []
-    for item in verdict.get("criteria") or []:
-        if item.get("outcome") != "fail":
-            continue
-        if not _at_spot(item, spot_ids):
-            continue
+    for item in matched:
         measured = item.get("measured") or {}
         threshold = item.get("threshold") or {}
         comparison = threshold.get("comparison")
@@ -605,11 +607,9 @@ def _near_edge(span: list[float]) -> float:
 
 
 def _near_edge_placement(span: list[float], width: float) -> tuple[float, float]:
-    """startSM at the near edge; the box centre sits width/2 further into the run."""
+    """startSM is the near edge; the centre is always start + width/2 (WS-09)."""
     start = _near_edge(span)
-    other = float(span[1]) if abs(float(span[0]) - start) <= 1e-9 else float(span[0])
-    sign = 1.0 if other >= start else -1.0
-    return start, start + sign * width / 2
+    return start, start + width / 2
 
 
 def _push_point(pts: list[list[float]], point: list[float]) -> None:

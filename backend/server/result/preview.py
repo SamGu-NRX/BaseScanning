@@ -15,14 +15,20 @@ def build_preview(scene: dict, scene_dir: Path, out_path: Path, *, max_points: i
 
     existing = scene_dir / "preview.ply"
     if existing.is_file():
-        cloud = sceneio.read_ply(existing)
+        try:
+            cloud = sceneio.read_ply(existing)
+        except FileNotFoundError:
+            return "preview_skipped"
         xyz = np.c_[cloud["x"], cloud["y"], cloud["z"]].astype(float)
         gen = cloud["generated"].astype(np.uint8) if "generated" in cloud else _flags(scene, xyz)
         xyz, gen = _stride(xyz, gen, max_points)
         sceneio.write_ply(out_path, xyz, {"generated": gen})
         return None
 
-    xyz, gen_bool, _fields = sceneio.load_points(scene, scene_dir)
+    try:
+        xyz, gen_bool, _fields = sceneio.load_points(scene, scene_dir)
+    except FileNotFoundError:
+        return "preview_skipped"
     if xyz is None:
         return "preview_skipped"
     gen = gen_bool.astype(np.uint8) if gen_bool is not None else _flags(scene, xyz)

@@ -49,7 +49,9 @@ No model weights. `uv lock` after a dependency change, then `uv sync --frozen --
 - ETH3D golden rows need `make fixtures` and `make criteria-golden`, which are not on this branch.
 - WS-09 PR 39 writes the chosen spot's criteria with `candidate_id: "best"` and `site.chosen_candidate` as `runN` (run ids are assigned after the rows). The composer treats `best` as that spot when no row uses the run id. `placement.<profile>.json` `start_s_m` is a single number and `checks_at_spot[].margin_over_uncertainty` is null, so confidence comes from the verdict rows.
 - A hidden reject (`SHOW_REJECT_TO_HOMEOWNER=false`, SD-69) empties `site.reasons`, sets `verdictUrl` null, and shows each `fail` row as `unsure` with id `review` and no measurements. The true decision stays in `result.internal.json`, the reviewer page, and the webhook.
-- Without `placement.<profile>.json`, `startSM` is the run endpoint closer to the meter. The rebuilt cable route drops a point that repeats the previous one, including when that start is 0.
+- Without `placement.<profile>.json`, `startSM` is the run endpoint closer to the meter, and the box centre is always `startSM + width/2` (WS-09). The rebuilt cable route drops a point that repeats the previous one, including when that start is 0.
+- A shown reject whose fail rows do not match the spot ids still lists every candidate-scope `fail` row in `outcome.reasons`.
+- A scene asset path that is missing becomes `preview_skipped`. Compose does not raise `FileNotFoundError`.
 - ETH3D facade, delivery, and electro rows stay deferred (SD-70) until PR 39 merges. PR 41 is on main (`ca84005`); this branch has merged that main. PR 39 still lands later, and this branch will merge main once more (SD-71).
 - The prompt catalogue file from WS-14 is not in the repo. A missing file uses `copy.FALLBACK` and records `catalogue_missing`. The tests commit a copy of that fallback.
 - The stage posts the webhook once. `retry_schedule` is the 24 hour plan for a worker.
