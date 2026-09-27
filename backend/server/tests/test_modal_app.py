@@ -114,6 +114,29 @@ def test_real_run_switch_is_off_unless_the_deploy_shell_sets_it(monkeypatch: pyt
     assert capture_runtime_env("dev", "abc123") == held
 
 
+def test_every_service_bakes_the_deployed_app_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pipeline, sweeper, and the coordinator must not fall back to house-scanning."""
+
+    from server.api.modal_entry import capture_runtime_env
+    from server.common.deploy_switch import modal_app_name
+
+    monkeypatch.setenv("GIT_SHA", "abc123")
+    monkeypatch.setenv("MODAL_APP_NAME", "hss-probe")
+    monkeypatch.delenv("HSS_ORCH_MODAL_REMOTE", raising=False)
+    mod = _load(monkeypatch, "dev")
+    baked = {service: mod.deploy_env(service) for service in ("capture-api", "pipeline", "early-worker", "sweeper")}
+    assert capture_runtime_env("dev", "abc123") == baked["capture-api"]
+    monkeypatch.delenv("MODAL_APP_NAME")
+    importlib.reload(mod)
+    for service, env in baked.items():
+        assert env["MODAL_APP_NAME"] == "hss-probe", service
+        assert modal_app_name(env) == "hss-probe"
+    assert modal_app_name() == "house-scanning"
+    assert mod.deploy_env("pipeline")["MODAL_APP_NAME"] == "house-scanning"
+    assert mod.deploy_env("sweeper")["MODAL_APP_NAME"] == "house-scanning"
+    assert mod.APP_NAME == "house-scanning"
+
+
 def test_prod_deploy_env_does_not_force_stubs(monkeypatch: pytest.MonkeyPatch) -> None:
     mod = _load(monkeypatch, "prod")
     env = mod.deploy_env("capture-api")

@@ -10,6 +10,8 @@ import os
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 
+from server.common.deploy_switch import modal_app_name
+from server.common.logging import log_event
 from server.orchestrator.graph import STAGES
 from server.orchestrator.services import Services
 
@@ -37,20 +39,43 @@ def launch_modal(services: Services, run_id: str, stage: str, attempt: int, gpu:
     return _remote_spawn(run_id, stage, attempt, gpu)
 
 
+def _log_lookup(app_name: str, target: str) -> None:
+    log_event("modal_spawn", msg=f"app={app_name} {target}")
+
+
 def _remote_spawn(run_id: str, stage: str, attempt: int, gpu: str | None) -> str:
     """Look up the deployed function. A local ``App`` imported in the container is not running."""
 
     import modal
 
-    from server.common.deploy_switch import modal_app_name
-
     app_name = modal_app_name()
     if STAGES[stage].where == "gpu":  # type: ignore[index]
+        _log_lookup(app_name, "class=Pipeline")
         pipeline = modal.Cls.from_name(app_name, "Pipeline")
         call = pipeline.with_options(gpu=gpu or "L4")().run_stage.spawn(run_id, stage, attempt)
     else:
+        _log_lookup(app_name, "function=run_cpu_stage")
         call = modal.Function.from_name(app_name, "run_cpu_stage").spawn(run_id, stage, attempt)
     return str(call.object_id)
+
+
+def spawn_on_deployed_app(function_name: str, *args: str) -> dict[str, object]:
+    """Spawn ``function_name`` on this container's deployed app.
+
+    A throwaway probe refuses the house-scanning default so a missing bake
+    cannot start a call on the live app.
+    """
+
+    import modal
+
+    app_name = modal_app_name()
+    if app_name == "house-scanning":
+        _log_lookup(app_name, f"function={function_name} refused")
+        return {"app": app_name, "spawned": False, "call_id": "", "result": None}
+    _log_lookup(app_name, f"function={function_name}")
+    call = modal.Function.from_name(app_name, function_name).spawn(*args)
+    result = call.get(timeout=120)
+    return {"app": app_name, "spawned": True, "call_id": str(call.object_id), "result": result}
 
 
 def _collect_once(call_id: str) -> object:

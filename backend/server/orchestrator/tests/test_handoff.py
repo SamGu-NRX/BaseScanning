@@ -44,7 +44,7 @@ def _run(services, digest: str, *, deadline: str, status: str = "running") -> Ru
     return run
 
 
-def test_remote_spawn_looks_up_the_deployed_app(monkeypatch) -> None:
+def test_remote_spawn_looks_up_the_deployed_app(monkeypatch, capsys) -> None:
     import modal
 
     from server.orchestrator.modal_spawn import _remote_spawn
@@ -88,6 +88,53 @@ def test_remote_spawn_looks_up_the_deployed_app(monkeypatch) -> None:
     assert ("options", (("gpu", "L4"),)) in seen
     assert ("spawn", ("run_1", "validate", 1)) in seen
     assert ("spawn", ("run_1", "poses", 2)) in seen
+    logged = capsys.readouterr().out
+    assert "app=hss-probe function=run_cpu_stage" in logged
+    assert "app=hss-probe class=Pipeline" in logged
+    assert "house-scanning" not in logged
+
+
+def test_probe_spawn_uses_the_baked_app_and_refuses_the_default(monkeypatch, capsys) -> None:
+    import modal
+
+    from server.orchestrator.modal_spawn import spawn_on_deployed_app
+
+    seen: list[tuple[object, ...]] = []
+
+    class _Call:
+        object_id = "fc-probe"
+
+        def get(self, timeout: int = 0) -> str:
+            seen.append(("get", timeout))
+            return "d142c-probe"
+
+    class _Fn:
+        def spawn(self, *args: object) -> _Call:
+            seen.append(("spawn", args))
+            return _Call()
+
+    def from_name(app_name: str, name: str) -> _Fn:
+        seen.append(("fn", app_name, name))
+        return _Fn()
+
+    monkeypatch.setattr(modal.Function, "from_name", staticmethod(from_name))
+    monkeypatch.delenv("MODAL_APP_NAME", raising=False)
+    refused = spawn_on_deployed_app("capture_check", "d142c-probe")
+    assert refused == {"app": "house-scanning", "spawned": False, "call_id": "", "result": None}
+    assert seen == []
+    monkeypatch.setenv("MODAL_APP_NAME", "hss-probe")
+    spawned = spawn_on_deployed_app("capture_check", "d142c-probe")
+    assert spawned["spawned"] is True
+    assert spawned["app"] == "hss-probe"
+    assert spawned["result"] == "d142c-probe"
+    assert ("fn", "hss-probe", "capture_check") in seen
+    assert ("spawn", ("d142c-probe",)) in seen
+    logged = capsys.readouterr().out
+    assert "app=house-scanning function=capture_check refused" in logged
+    assert "app=hss-probe function=capture_check" in logged
+    for line in logged.splitlines():
+        if "hss-probe" in line:
+            assert "house-scanning" not in line
 
 
 def test_remote_spawn_passes_ids_and_does_not_hydrate(tmp_path, monkeypatch) -> None:

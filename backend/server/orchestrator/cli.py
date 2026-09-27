@@ -17,6 +17,7 @@ import modal
 from server.common.backends.state_memory import MemoryState
 from server.common.backends.storage_local import LocalFsStorage
 from server.common.config import Settings
+from server.common.deploy_switch import modal_app_name
 from server.contracts.jobs import CaptureRecord, CommittedFile
 from server.orchestrator.api import dispatch_early, start_run
 from server.orchestrator.clock import Clock
@@ -254,7 +255,7 @@ def run_modal(
         "allow_escalation": allow_escalation,
         "hard_stop_min": os.environ.get("HARD_STOP_MIN") or "",
     }
-    app_name = os.environ.get("MODAL_APP_NAME", "house-scanning")
+    app_name = modal_app_name()
     function = modal.Function.from_name(app_name, "run_capture", environment_name=env)
     result = function.remote(spec)
     print(json.dumps({"cmd": "run-modal", "modal": "available", "env": env, "remote": "spawned", **result}))

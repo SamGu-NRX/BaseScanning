@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import os
 
+from server.common.deploy_switch import modal_app_name
+from server.common.logging import log_event
 from server.contracts.packet import Tier
 from server.orchestrator.clock import parse_iso
 from server.orchestrator.services import Services
@@ -80,9 +82,9 @@ def _warm_spawns() -> tuple[object, object] | None:
     if os.environ.get("MODAL_TASK_ID"):
         import modal
 
-        from server.common.deploy_switch import modal_app_name
-
         app_name = modal_app_name()
+        log_event("modal_spawn", msg=f"app={app_name} class=Pipeline")
+        log_event("modal_spawn", msg=f"app={app_name} class=EarlyQa")
         pipeline = modal.Cls.from_name(app_name, "Pipeline")
         early = modal.Cls.from_name(app_name, "EarlyQa")
         return pipeline().warm.spawn, early().warm.spawn

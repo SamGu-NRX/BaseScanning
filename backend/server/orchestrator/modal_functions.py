@@ -19,7 +19,7 @@ from server.orchestrator.api import start_run
 from server.orchestrator.api import sweep as sweep_runs
 from server.orchestrator.coordinator import RunCoordinator
 from server.orchestrator.executor import CoordinatorDied
-from server.orchestrator.modal_spawn import sync_volume
+from server.orchestrator.modal_spawn import spawn_on_deployed_app, sync_volume
 from server.orchestrator.privacy import apply_deployed_privacy
 from server.orchestrator.services import bind, current, packet_sha256
 
@@ -177,7 +177,7 @@ def run_capture_impl(spec: dict[str, object]) -> dict[str, object]:
     }
 
 
-APP_NAME = "house-scanning"
+APP_NAME = os.environ.get("MODAL_APP_NAME", "").strip() or "house-scanning"
 PIPELINE_TIMEOUT_S = 1200
 COORDINATOR_TIMEOUT_S = 1560
 SWEEPER_TIMEOUT_S = 240
@@ -223,6 +223,18 @@ if modal is not None and app is not None:
     )
     def coordinate_run(run_id: str) -> str:
         return coordinate_run_impl(run_id)
+
+    @app.function(  # type: ignore[union-attr]
+        image=CPU_IMAGE,
+        cpu=1,
+        timeout=180,
+        retries=0,
+        **_cpu_secrets,
+    )
+    def prove_app_spawn() -> dict[str, object]:
+        """Spawn a no-op on this app. Sweeper secret, same bake as the coordinator."""
+
+        return spawn_on_deployed_app("capture_check", "d142c-probe")
 
     @app.function(  # type: ignore[union-attr]
         image=CPU_IMAGE,
@@ -306,6 +318,7 @@ if modal is not None and app is not None:
 else:
     Pipeline = _Missing("Pipeline")  # type: ignore[misc,assignment]
     coordinate_run = _Missing("coordinate_run")  # type: ignore[misc,assignment]
+    prove_app_spawn = _Missing("prove_app_spawn")  # type: ignore[misc,assignment]
     run_cpu_stage = _Missing("run_cpu_stage")  # type: ignore[misc,assignment]
     early_reads = _Missing("early_reads")  # type: ignore[misc,assignment]
     EarlyQa = _Missing("EarlyQa")  # type: ignore[misc,assignment]

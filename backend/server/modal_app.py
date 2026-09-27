@@ -131,6 +131,10 @@ def deploy_env(service: str) -> dict[str, str]:
         "SMP_ENVIRONMENT": ENV,
         "SMP_SERVICE_NAME": service,
         "GIT_SHA": os.environ.get("GIT_SHA", "unknown"),
+        # Every container looks stages up by this name. The local App object is
+        # not hydrated inside the container, and an unset name falls back to
+        # house-scanning. from_dict is last, so this wins over a named secret.
+        "MODAL_APP_NAME": modal_app_name(),
     }
     if service in {"pipeline", "sweeper"}:
         fields.update(_WEIGHTS_ENV)
@@ -147,8 +151,6 @@ def deploy_env(service: str) -> dict[str, str]:
             fields["HSS_ORCH_MODAL_REMOTE"] = "1"
         # Every capture-api container reads the run the finalize container wrote.
         fields.update(shared_state_env(ENV))
-        # Spawn and prewarm look up this deployed app. The local App object is not hydrated in the container.
-        fields["MODAL_APP_NAME"] = modal_app_name()
         fields.update(optional_runtime_env())
     if service in {"pipeline", "sweeper"}:
         fields.update(shared_remote_backends(ENV))
