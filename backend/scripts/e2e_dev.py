@@ -148,6 +148,17 @@ def _md5_b64(data: bytes) -> str:
     return base64.b64encode(hashlib.md5(data).digest()).decode()
 
 
+def _content_type(role: str, path: str) -> str:
+    if role == "stream":
+        return "application/gzip"
+    suffix = Path(path).suffix.lower()
+    if suffix in {".jpg", ".jpeg"}:
+        return "image/jpeg"
+    if suffix == ".heic":
+        return "image/heic"
+    return "application/octet-stream"
+
+
 def resolve_packet(path: Path) -> tuple[Path, dict]:
     if path.is_dir():
         candidate = path / "packet.json"
@@ -186,19 +197,24 @@ def upload(api: str, token: str, root: Path, packet: dict) -> str:
         blobs[rel] = data
         entry["sha256"] = _sha256(data)
         entry["bytes"] = len(data)
+        role = entry.get("role") or "still"
         files.append(
             {
                 "path": rel,
                 "bytes": len(data),
                 "sha256": _sha256(data),
                 "md5": _md5_b64(data),
-                "role": entry.get("role") or "still",
-                "contentType": "image/jpeg" if rel.endswith((".jpg", ".jpeg")) else "application/octet-stream",
+                "role": role,
+                "contentType": _content_type(role, rel),
             }
         )
-    if files:
-        registered = _json(f"{api}/v1/captures/{capture_id}/files", token, "POST", {"files": files})
+    batch_size = min(50, (created.get("upload") or {}).get("maxBatch", 50))
+    for start in range(0, len(files), batch_size):
+        batch = files[start : start + batch_size]
+        registered = _json(f"{api}/v1/captures/{capture_id}/files", token, "POST", {"files": batch})
         for item in registered.get("files") or []:
+            if item["state"] == "committed":
+                continue
             upload_info = item["upload"]
             status, data = _request(
                 upload_info["url"],
@@ -214,7 +230,7 @@ def upload(api: str, token: str, root: Path, packet: dict) -> str:
             f"{api}/v1/captures/{capture_id}/files:commit",
             token,
             "POST",
-            {"files": [{"path": rel, "sha256": _sha256(blob)} for rel, blob in blobs.items()]},
+            {"files": [{"path": item["path"], "sha256": item["sha256"]} for item in batch]},
         )
     raw = json.dumps(packet).encode()
     print(f"capture {capture_id} finalizing")
