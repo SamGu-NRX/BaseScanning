@@ -8,16 +8,17 @@ Diff this block when the deployment changes. Keep the seven field names and thei
 
 | Field | Value |
 | --- | --- |
-| Updated UTC | 2026-09-27T04:04:37Z |
+| Updated UTC | 2026-09-27T04:57:09Z |
 | Live URL | `https://huntertcarver-dev--capture-api.modal.run` (routes under `/v1`) |
-| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","version":"b25cd7e365a8"}` (selected fields). No `Authorization` header. Checked 2026-09-27T04:04:37Z. |
+| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","version":"ed257c3231b8"}` (selected fields). No `Authorization` header. Checked 2026-09-27T04:57:09Z. |
 | Milestone | M1 was proven on image `41a0880`: a no-token run returned a schema-valid `ResultResponse` (`manual_review`, stub stages, 59 s), capture `cap_01M3GEDBNXKEZ5AWD6BR3GYRHW`, run `run_9b0b07f08045853f`. The current image has only been checked with read-only API probes in this update; a new M1 run is not asserted. M2 is not verified live. |
-| What works | Current image: health 200 and a missing capture returns `404 capture_not_found`, both without `Authorization`. Image `b25cd7e` identifies main at PR 44, after the background-finalize change in PR 72. |
-| What's placeholder | Real-stage M2 and remote Modal result collection remain unverified (SD-81). Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. Known amendment and deletion failures during background finalize are recorded on [PR 72](https://github.com/huntertcarver/house-scanning-server/pull/72#issuecomment-5852443813); the amendment fix is [PR 78](https://github.com/huntertcarver/house-scanning-server/pull/78). No finalize latency was measured on this image. |
-| Breaking changes since last update | Image changed from `41a0880bc928` to `b25cd7e365a8`. In the source identified by that image, manifest validation/promotion/run startup occur after the 202 response; manifest failures arrive as `failed` events. The later `retry_finalize` event value from PR 76 is not in this image. |
+| What works | Current image: health 200 and a missing capture returns `404 capture_not_found`, both without `Authorization`. Image `ed257c3` identifies main at PR 86, including the WS-12 composition from PR 36, storage-retry event from PR 76, and amendment fix from PR 78. Those source changes have not been exercised end-to-end by these probes. |
+| What's placeholder | Real-stage M2 and remote Modal result collection remain unverified (SD-81). Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. The deletion/background-finalize race is recorded on [PR 72](https://github.com/huntertcarver/house-scanning-server/pull/72#issuecomment-5852443813), with fix [PR 87](https://github.com/huntertcarver/house-scanning-server/pull/87) outside this image. No finalize latency or amendment run was measured on this image. |
+| Breaking changes since last update | Image changed from `b25cd7e365a8` to `ed257c3231b8`. Its source includes `retry_finalize` on transient finalize-storage failures (PR 76) and resets packet-specific completion state for amendments (PR 78). Background manifest failures still arrive as `failed` events after a 202. No new end-to-end milestone is claimed. |
 
 ## Changelog
 
+- 2026-09-27T04:57:09Z — Read-only, no-auth probes observed image `ed257c3231b8` (main at PR 86), health 200, and missing-capture 404. The image includes WS-12 composition, retry-finalize guidance, and the amendment state fix. Historical M1 evidence remains tied to `41a0880`; no M2 or new finalize timing is asserted.
 - 2026-09-27T04:04:37Z — Read-only, no-auth probes observed image `b25cd7e365a8`, health 200, and missing-capture 404. Main at PR 44 includes PR 72 background finalize; distinguish its asynchronous manifest errors from synchronous request checks. The prior M1 measurement remains evidence for `41a0880`; no new end-to-end milestone is claimed.
 - 2026-09-27T03:30:22Z — M1 passed on the live URL. No-token `make e2e-dev` against image `41a0880` returned a schema-valid `ResultResponse` (`manual_review`, stub stages, 59 s). Finalize currently takes about 60 s to respond; a fix is coming. PR 53 is on `main` (`87b7c60`) and is not in this image.
 - 2026-09-27T03:28:30Z — PR 35 is on `main` (`0a7878b`, scale layer). The live image is still `41a0880bc928` and was not rebuilt.
@@ -55,7 +56,7 @@ Regenerate the check with `uv run python -m server.contracts.export_schemas --ch
 
 ## Capture flow
 
-The live health response identifies `b25cd7e365a8` (main at PR 44); current live probes are listed in **Current status**. Later main changes, including PR 76, require a new image before clients can rely on them.
+The live health response identifies `ed257c3231b8` (main at PR 86); current live probes are listed in **Current status**. PRs 76 and 78 are included in that image. Changes after PR 86 require a newer image, and source inclusion alone is not an end-to-end measurement.
 
 Upload order that the replay client uses: meter and panel stills first; each keyframe JPEG immediately followed by its depth, confidence, and features; other stills; streams and mesh; TrueDepth with the meter stills; finalize (finalize may run before the last commits).
 
