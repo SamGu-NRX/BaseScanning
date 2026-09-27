@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from server.common.scaleio import as_pose
 from server.dense.params import DenseParams
 
 
@@ -21,8 +22,12 @@ def net_wh(w: int, h: int, side: int = 518, patch: int = 14) -> tuple[int, int]:
 
 
 def camera_forward(pose: np.ndarray) -> np.ndarray:
-    """ARKit camera looks along -Z of the camera-to-world rotation."""
-    return -np.asarray(pose, float)[:3, 2]
+    """ARKit camera looks along -Z of the camera-to-world rotation.
+
+    ``cameras.json`` stores the c2w pose as 16 column-major floats. ``as_pose``
+    rebuilds that 4×4 (order F) before the axis is read.
+    """
+    return -as_pose(pose)[:3, 2]
 
 
 def build_windows(frames: list[dict], params: DenseParams) -> list[list[int]]:

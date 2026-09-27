@@ -1,7 +1,6 @@
 """CLI overrides the brief names for the meter anchor."""
 
-from server.coverage.run import _clicks
-from server.scene.pipeline import _parse_meter
+from server.coverage.run import _clicks, parse_meter_frames
 
 
 class _Cam:
@@ -10,7 +9,7 @@ class _Cam:
 
 
 def test_meter_frames_keep_pixel_commas():
-    rows = _parse_meter("k00012:1010,655,k00013:990,640")
+    rows = parse_meter_frames("k00012:1010,655,k00013:990,640")
     assert rows == [("k00012", 1010.0, 655.0), ("k00013", 990.0, 640.0)]
 
 

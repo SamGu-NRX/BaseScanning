@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from pathlib import Path
 
-from server.coverage.run import run_coverage
+from server.coverage.run import parse_meter_frames, run_coverage
 from server.dense.params import dense_params_from_env
 from server.dense.run import load_scale, run_dense
 from server.scene.params import scene_params_from_env
@@ -40,7 +39,7 @@ def main() -> None:
         models["max_frames"] = args.max_frames
     del args.cpu
     run_dense(packet, args.poses, scale, out / "dense", params=dense_params_from_env(), models=models)
-    override = _parse_meter(args.meter_frames)
+    override = parse_meter_frames(args.meter_frames)
     run_coverage(
         packet,
         args.poses,
@@ -63,16 +62,6 @@ def main() -> None:
         params=scene_params_from_env(),
     )
     print(out / "scene" / "scene.json")
-
-
-def _parse_meter(text: str) -> list[tuple[str, float, float]] | None:
-    """``id:u,v`` pairs. Commas separate both the pixel and the next frame."""
-    if not text:
-        return None
-    rows = [(fid, float(u), float(v)) for fid, u, v in re.findall(r"([^:,\s]+):([^,]+),([^,\s]+)", text)]
-    if not rows:
-        raise ValueError(f"meter frames must look like k00012:1010,655, not {text!r}")
-    return rows
 
 
 if __name__ == "__main__":

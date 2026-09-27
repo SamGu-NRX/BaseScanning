@@ -281,6 +281,20 @@ class RunCoordinator:
             ),
             clock=self.s.clock,
         )
+        if code == "no_meter_anchor":
+            self._close(
+                run,
+                Decision(
+                    5,
+                    "manual_review",
+                    "meter_tap_missing",
+                    "failed",
+                    "manual_review",
+                    "manual_review",
+                ),
+                message,
+            )
+            return
         if rec.stage == "validate":
             self._close(
                 run,

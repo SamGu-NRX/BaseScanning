@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -61,7 +63,7 @@ def run_coverage(
     if clicks is None:
         clicks = _clicks(packet, harness, meter_override, anchor_label or str(models.get("anchor_label") or ""))
     if not clicks:
-        raise SceneError("no_meter_anchor")
+        raise SceneError("no_meter_anchor", "meter tap missing")
     tracks = resolve_tracks(models, dense_dir, len(points))
     flow = str(models.get("flow") or "guided")
     pose_sources = [str(c.get("pose_source", "sfm")) for c in cameras]
@@ -178,6 +180,41 @@ def _cams(cameras: list[dict]) -> list:
     return out
 
 
+def parse_meter_frames(text: str) -> list[tuple[str, float, float]] | None:
+    """``id:u,v`` pairs. Commas separate both the pixel and the next frame."""
+    if not text:
+        return None
+    rows = [(fid, float(u), float(v)) for fid, u, v in re.findall(r"([^:,\s]+):([^,]+),([^,\s]+)", text)]
+    if not rows:
+        raise ValueError(f"meter frames must look like k00012:1010,655, not {text!r}")
+    return rows
+
+
+def _meter_override_from_stage(models: dict) -> list[tuple[str, float, float]] | None:
+    """Fixture override from ``models['meter_frames']`` or ``HSS_COVERAGE_METER_FRAMES``."""
+    raw = models.get("meter_frames")
+    if raw is None:
+        raw = os.environ.get("HSS_COVERAGE_METER_FRAMES", "")
+    if isinstance(raw, (list, tuple)):
+        if not raw:
+            return None
+        return [(str(fid), float(u), float(v)) for fid, u, v in raw]
+    return parse_meter_frames(str(raw or ""))
+
+
+def _anchor_from_stage(models: dict) -> str:
+    """Tap label from ``models['anchor_label']`` or ``HSS_COVERAGE_ANCHOR_FROM_TAP``.
+
+    Fixtures that have no ``meter`` tap pass ``reference_point`` here. The brief's
+    anchor order still ends in ``no_meter_anchor`` when no tap, detection,
+    close-up, or override resolves.
+    """
+    label = models.get("anchor_label")
+    if label:
+        return str(label)
+    return os.environ.get("HSS_COVERAGE_ANCHOR_FROM_TAP", "")
+
+
 def _clicks(packet: dict, cameras: list, override, anchor_label: str = "") -> list[tuple[int, float, float]]:
     if override:
         by_id = {cam.id: i for i, cam in enumerate(cameras)}
@@ -221,6 +258,8 @@ def run(ctx) -> StageResult:
         scale,
         out,
         params=params,
+        meter_override=_meter_override_from_stage(models),
+        anchor_label=_anchor_from_stage(models),
         heartbeat=getattr(ctx, "heartbeat", None),
         models=models,
     )

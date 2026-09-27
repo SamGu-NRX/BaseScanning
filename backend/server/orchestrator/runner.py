@@ -18,6 +18,9 @@ RETRYABLE_TYPES = (RuntimeError, OSError, TimeoutError)
 def is_retryable(exc: BaseException) -> bool:
     if isinstance(exc, StageSuperseded):
         return False
+    # A missing meter tap will not appear on a retry. SD-97: close on the first attempt.
+    if getattr(exc, "code", None) == "no_meter_anchor":
+        return False
     if isinstance(exc, RETRYABLE_TYPES):
         return True
     name = type(exc).__name__
@@ -104,6 +107,10 @@ def _ctype(path: Path) -> str:
 
 
 def error_parts(exc: BaseException) -> tuple[str, str]:
+    code = getattr(exc, "code", None)
+    if isinstance(code, str) and code and " " not in code:
+        text = str(exc)
+        return code, text if text and text != code else code
     text = str(exc)
     if ":" in text:
         code, _, message = text.partition(":")

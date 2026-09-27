@@ -3,12 +3,94 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 
+from server.common.scaleio import as_pose
 from server.dense.params import DenseParams
 from server.dense.run import _from_predictions, run_dense
 from server.dense.tracks import read_tracks, resolve_tracks, write_tracks
-from server.dense.windows import build_windows, net_wh
+from server.dense.windows import build_windows, camera_forward, net_wh
 from server.scene.harness import load as load_harness
+
+# Column-major ``pose`` rows from a real facade ``cameras.json`` (DSC_0324, DSC_0344, DSC_0393).
+_FACADE_CAMERAS = [
+    {
+        "image": "DSC_0324.jpg",
+        "pose": [
+            -0.999165,
+            -0.019218,
+            0.036066,
+            0.0,
+            -0.029416,
+            0.950839,
+            -0.308286,
+            0.0,
+            -0.028369,
+            -0.309089,
+            -0.95061,
+            0.0,
+            1.022616,
+            1.732442,
+            41.0284,
+            1.0,
+        ],
+    },
+    {
+        "image": "DSC_0344.jpg",
+        "pose": [
+            -0.004366,
+            -0.007289,
+            -0.999964,
+            0.0,
+            0.336004,
+            0.941824,
+            -0.008332,
+            0.0,
+            0.94185,
+            -0.336028,
+            -0.001663,
+            0.0,
+            5.856385,
+            1.44893,
+            27.531595,
+            1.0,
+        ],
+    },
+    {
+        "image": "DSC_0393.jpg",
+        "pose": [
+            -0.063255,
+            0.009783,
+            -0.997949,
+            0.0,
+            -0.033174,
+            0.999379,
+            0.011899,
+            0.0,
+            0.997446,
+            0.033859,
+            -0.062892,
+            0.0,
+            0.30703,
+            1.767714,
+            43.577231,
+            1.0,
+        ],
+    },
+]
+
+
+def test_camera_forward_reads_column_major_cameras_json():
+    frames = []
+    for index, cam in enumerate(_FACADE_CAMERAS):
+        pose = cam["pose"]
+        assert np.asarray(pose, float).shape == (16,)
+        forward = camera_forward(pose)
+        assert forward.shape == (3,)
+        assert forward == pytest.approx(-as_pose(pose)[:3, 2])
+        frames.append({"epoch": "e", "timestamp": index, "pose": pose})
+    # Different headings: the facing cut may drop the window, and it must not index the flat pose.
+    build_windows(frames, DenseParams(window=3, stride=3))
 
 
 def test_windows_drop_opposite_facing():

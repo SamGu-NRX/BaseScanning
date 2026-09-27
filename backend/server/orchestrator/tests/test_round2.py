@@ -9,9 +9,12 @@ import time
 from datetime import timedelta
 from pathlib import Path
 
+import numpy as np
+
 import server.orchestrator.executor as executor
 from server.contracts.api import HintData
 from server.contracts.jobs import CommittedFile, StageContext
+from server.coverage.run import run as coverage_stage
 from server.eval.geomscore import load_cameras
 from server.orchestrator.api import dispatch_early, prewarm, start_run
 from server.orchestrator.cli import main
@@ -20,6 +23,7 @@ from server.orchestrator.early.capture_check import _axes, _in_frame, _publish
 from server.orchestrator.heartbeat import Heartbeat
 from server.orchestrator.services import bind, packet_sha256
 from server.orchestrator.stateio import get_json
+from server.orchestrator.stubs import coverage as coverage_stub
 from server.orchestrator.stubs import criteria as criteria_stub
 from server.orchestrator.stubs import poses as poses_stub
 from server.orchestrator.stubs import scene as scene_stub
@@ -170,6 +174,44 @@ def test_validate_failure_with_unusable_images_fails_the_capture(tmp_path) -> No
     assert run.failure_code == "packet_invalid"
     assert run.outcome_kind is None
     assert services.state.get_capture("cap_test").status == "failed"
+
+
+def test_missing_meter_tap_closes_manual_review_on_the_first_attempt(tmp_path, monkeypatch) -> None:
+    """SD-97: orchestrated coverage with models=None and no meter tap does not retry."""
+    monkeypatch.delenv("HSS_COVERAGE_METER_FRAMES", raising=False)
+    monkeypatch.delenv("HSS_COVERAGE_ANCHOR_FROM_TAP", raising=False)
+
+    def run(ctx: StageContext):
+        assert ctx.models is None
+        dense = ctx.work_dir / "dense"
+        dense.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(dense / "cloud.npz", points=np.zeros((1, 3), np.float32), src=np.zeros(1, np.int16))
+        if not (dense / "dense_report.json").is_file():
+            (dense / "dense_report.json").write_text("{}\n")
+        return coverage_stage(ctx)
+
+    monkeypatch.setattr(coverage_stub, "run", run)
+    services, uri, _digest = build_services(tmp_path, "memory")
+    packet = json.loads(services.storage.get_bytes(uri))
+    packet["taps"] = [{"label": "reference_point", "keyframe": "k0", "pixel": [10, 20]}]
+    raw = json.dumps(packet).encode()
+    services.storage.put_bytes(uri, raw, "application/json")
+    with bind(services):
+        finished = start_run("cap_test", packet_sha256(raw), uri)
+    assert finished.failure_code == "meter_tap_missing"
+    assert finished.outcome_kind == "manual_review"
+    assert services.state.get_capture("cap_test").status == "manual_review"
+    record = services.state.get_stage(finished.run_id, "coverage")
+    assert record is not None
+    assert record.attempt == 1
+    assert record.failures == 1
+    assert record.status == "failed"
+    assert record.error_code == "no_meter_anchor"
+    coverage_events = [
+        event for event in _events(services) if event.type == "stage" and event.data.get("stage") == "coverage"
+    ]
+    assert [event.data.get("status") for event in coverage_events] == ["running", "failed"]
+    assert coverage_events[0].data.get("attempt") == 1
 
 
 def test_no_meter_model_finishes_as_no_meter_anchor(tmp_path, monkeypatch) -> None:

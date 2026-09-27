@@ -121,8 +121,9 @@ def run(ctx) -> StageResult:
         heartbeat=getattr(ctx, "heartbeat", None),
     )
     scene = json.loads(Path(path).read_text())
+    rel = Path(path).relative_to(work).as_posix()
     return StageResult(
-        artifacts={"scene.json": str(path)},
+        artifacts={rel: rel},
         metrics={"walls": float(len(scene.get("walls") or []))},
         warnings=list(scene.get("provenance", {}).get("notes") or []),
     )

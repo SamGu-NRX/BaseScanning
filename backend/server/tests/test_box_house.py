@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from server.common.role import coverage_only_dense
 from server.contracts.jobs import StageContext
 from server.coverage.query import DepthAwareCoverageQuery, query_status
 from server.coverage.requests import views_needed
+from server.coverage.run import CoverageReport
 from server.coverage.run import run as run_coverage_stage
 from server.dense.dense import align_centers, resolve_second_opinion
 from server.dense.depth import flying_pixel_mask, scale_depth_to_tracks
@@ -19,7 +21,7 @@ from server.dense.framew import up_from_gravity
 from server.dense.lidar_fuse import scale_about
 from server.dense.params import DenseParams
 from server.dense.run import run as run_dense_stage
-from server.dense.windows import flag_window, net_wh
+from server.dense.windows import camera_forward, flag_window, net_wh
 from server.eval.sceneio import read_ply, sha256_file
 from server.scene.build import build_metric_scene
 from server.scene.errors import SceneError
@@ -29,6 +31,8 @@ from server.scene.harness import load as load_harness
 from server.scene.merge import merge_object_lists
 from server.scene.params import SceneParams
 from server.scene.run import run as run_scene_stage
+
+coverage_run = importlib.import_module("server.coverage.run")
 
 
 def _pose(position, look) -> np.ndarray:
@@ -154,7 +158,7 @@ def test_box_house_lengths_coverage_and_completion(tmp_path: Path):
     load_harness()["sceneio"].save_json(scene, tmp_path / "scene.json")
 
 
-def test_dense_coverage_scene_chain_publishes_named_artifacts(tmp_path: Path):
+def test_dense_coverage_scene_chain_publishes_named_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """I-18: later stages open cloud.npz and scene_ready.json, and run returns those keys."""
     points, src, tracks, cameras, clicks = _box()
     frame = load_harness()["frame"]
@@ -173,7 +177,7 @@ def test_dense_coverage_scene_chain_publishes_named_artifacts(tmp_path: Path):
     packet = {
         "packetId": "box",
         "flow": "guided",
-        "taps": [{"label": "meter", "keyframe": cameras[click_i].id, "pixel": [click_u, click_v]}],
+        "taps": [{"label": "reference_point", "keyframe": cameras[click_i].id, "pixel": [click_u, click_v]}],
     }
     work = tmp_path / "work"
     packet_dir = tmp_path / "packet"
@@ -229,6 +233,9 @@ def test_dense_coverage_scene_chain_publishes_named_artifacts(tmp_path: Path):
     for key in dense_keys:
         assert dense_result.artifacts[key] == key
         assert (work / key).is_file()
+    assert camera_forward(cam_dicts[0]["pose"]) == pytest.approx(-cameras[0].pose[:3, 2])
+    monkeypatch.delenv("HSS_COVERAGE_METER_FRAMES", raising=False)
+    monkeypatch.setenv("HSS_COVERAGE_ANCHOR_FROM_TAP", "reference_point")
     coverage_result = run_coverage_stage(_ctx("coverage", None))
     coverage_keys = (
         "coverage/coverage.npz",
@@ -249,7 +256,7 @@ def test_dense_coverage_scene_chain_publishes_named_artifacts(tmp_path: Path):
     scene_result = run_scene_stage(_ctx("scene", None))
     scene = json.loads((work / "scene" / "scene.json").read_text())
     assert scene["walls"]
-    assert scene_result.artifacts["scene.json"].endswith("scene.json")
+    assert scene_result.artifacts == {"scene/scene.json": "scene/scene.json"}
     scene_dir = work / "scene"
     points_ply = scene_dir / "points.ply"
     ply = read_ply(points_ply)
@@ -259,6 +266,91 @@ def test_dense_coverage_scene_chain_publishes_named_artifacts(tmp_path: Path):
     asset = next(row for row in scene["assets"] if row.get("path") == "points.ply")
     digest = sha256_file(points_ply)
     assert digest == asset["sha256"]
+
+
+def test_coverage_stage_entry_reads_meter_frames(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """I-25: ``run(ctx)`` forwards the fixture meter-frame override and the anchor tap."""
+    captured: dict = {}
+
+    def fake(*_args, **kwargs):
+        captured["override"] = kwargs["meter_override"]
+        captured["anchor"] = kwargs["anchor_label"]
+        return CoverageReport(warnings=[], views_needed=[], timings={})
+
+    monkeypatch.setattr(coverage_run, "run_coverage", fake)
+    monkeypatch.setenv("HSS_COVERAGE_METER_FRAMES", "k9:1,2")
+    monkeypatch.setenv("HSS_COVERAGE_ANCHOR_FROM_TAP", "other")
+    packet_dir = tmp_path / "packet"
+    packet_dir.mkdir()
+    (packet_dir / "packet.json").write_text("{}")
+    work = tmp_path / "work"
+    work.mkdir()
+    ctx = StageContext(
+        capture_id="cap",
+        run_id="run",
+        stage="coverage",
+        attempt=1,
+        branch="image",
+        flow="guided",
+        tier="arkit",
+        work_dir=work,
+        inputs={"packet_dir": str(packet_dir)},
+        deadline_at="2099-01-01T00:00:00Z",
+        heartbeat=lambda _step: None,
+        vlm_budget_usd=0.0,
+        models={"meter_frames": "k00045:377.6,842.3,k00016:1551.7,801.8", "anchor_label": "reference_point"},
+        storage=object(),
+        state=object(),
+        settings=object(),
+    )
+    run_coverage_stage(ctx)
+    assert captured["override"] == [("k00045", 377.6, 842.3), ("k00016", 1551.7, 801.8)]
+    assert captured["anchor"] == "reference_point"
+    ctx.models = None
+    run_coverage_stage(ctx)
+    assert captured["override"] == [("k9", 1.0, 2.0)]
+    assert captured["anchor"] == "other"
+
+
+def test_coverage_stage_without_anchor_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Brief §4 step 9: no tap and no override is ``no_meter_anchor``, not a silent scene."""
+    monkeypatch.delenv("HSS_COVERAGE_METER_FRAMES", raising=False)
+    monkeypatch.delenv("HSS_COVERAGE_ANCHOR_FROM_TAP", raising=False)
+    work = tmp_path / "work"
+    dense = work / "dense"
+    dense.mkdir(parents=True)
+    np.savez_compressed(dense / "cloud.npz", points=np.zeros((1, 3)), src=np.zeros(1, np.int16))
+    (dense / "dense_report.json").write_text("{}\n")
+    pose = np.eye(4).flatten(order="F").tolist()
+    (dense / "cameras_w.json").write_text(
+        json.dumps([{"keyframe_id": "k0", "pose": pose, "intrinsics": [1, 1, 0, 0], "w": 4, "h": 4}])
+    )
+    packet_dir = tmp_path / "packet"
+    packet_dir.mkdir()
+    (packet_dir / "packet.json").write_text(
+        json.dumps({"taps": [{"label": "corner", "keyframe": "k0", "pixel": [1, 1]}]})
+    )
+    ctx = StageContext(
+        capture_id="cap",
+        run_id="run",
+        stage="coverage",
+        attempt=1,
+        branch="image",
+        flow="guided",
+        tier="arkit",
+        work_dir=work,
+        inputs={"packet_dir": str(packet_dir)},
+        deadline_at="2099-01-01T00:00:00Z",
+        heartbeat=lambda _step: None,
+        vlm_budget_usd=0.0,
+        models=None,
+        storage=object(),
+        state=object(),
+        settings=object(),
+    )
+    with pytest.raises(SceneError) as raised:
+        run_coverage_stage(ctx)
+    assert raised.value.code == "no_meter_anchor"
 
 
 def _corner_matches_walls(scene: dict) -> bool:
