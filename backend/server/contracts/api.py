@@ -217,7 +217,7 @@ class RetakeRequestData(Strict):
 class FailedData(Strict):
     code: str
     message: str
-    next: Literal["manual_review", "none"]
+    next: Literal["manual_review", "none", "retry_finalize"]
 
 
 class ConfirmationData(Strict):

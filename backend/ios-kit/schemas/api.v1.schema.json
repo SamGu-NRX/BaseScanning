@@ -1420,7 +1420,8 @@
         "next": {
           "enum": [
             "manual_review",
-            "none"
+            "none",
+            "retry_finalize"
           ],
           "title": "Next",
           "type": "string"

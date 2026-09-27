@@ -582,9 +582,12 @@ def _on_background_failure(deps: Deps, capture_id: str, exc: ApiFailure) -> None
             record.status = previous
             deps.state.put_capture(record)
     err = exc.errors[0] if exc.errors else {"code": "failed", "message": "finalize failed"}
+    # 503 restores the previous status, so the client can finalize again.
+    # "none" would tell it to give up.
+    nxt = "retry_finalize" if exc.status == 503 else "none"
     emit(
         deps,
         capture_id,
         "failed",
-        {"code": err["code"], "message": err["message"], "next": "none"},
+        {"code": err["code"], "message": err["message"], "next": nxt},
     )

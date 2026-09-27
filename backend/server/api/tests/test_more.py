@@ -246,7 +246,11 @@ def _early_then_flaky_commit(client, monkeypatch):
     )
     assert committed.status_code == 200, committed.text
     failed = client.get(f"/v1/captures/{capture_id}/events").json()["events"]
-    assert any(event["type"] == "failed" and event["data"].get("code") == "storage_unavailable" for event in failed)
+    storage_failed = [
+        event for event in failed if event["type"] == "failed" and event["data"].get("code") == "storage_unavailable"
+    ]
+    assert storage_failed
+    assert storage_failed[0]["data"]["next"] == "retry_finalize"
     assert client.get(f"/v1/captures/{capture_id}").json()["status"] == "awaiting_files"
     return capture_id, packet
 
