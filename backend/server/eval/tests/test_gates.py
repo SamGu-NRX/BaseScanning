@@ -326,6 +326,52 @@ def test_window_overlap_rejects_non_finite_coordinates(value: object):
     assert _overlaps([value, -3.383], [-3.891, -3.383]) is False
 
 
+_MISSING_SPAN = object()
+
+
+@pytest.mark.parametrize(
+    "span",
+    [
+        True,
+        [True, -3.383],
+        ["8.5", -3.383],
+        [float("nan"), -3.383],
+        [False, -3.383],
+        "abc",
+        [-3.891],
+        [-3.891, -3.383, 1.0],
+        _MISSING_SPAN,
+    ],
+    ids=[
+        "true",
+        "bool-endpoint",
+        "numeric-string",
+        "nan",
+        "false",
+        "abc",
+        "one-number",
+        "three-numbers",
+        "missing-key",
+    ],
+)
+def test_bad_span_fails_even_when_another_candidate_overlaps(tmp_path: Path, span: object):
+    dest = tmp_path / "positive" / "eth3d-facade" / "gt-laser-gravel" / "C"
+    dest.mkdir(parents=True)
+    verdict = _verdict("pass")
+    if span is _MISSING_SPAN:
+        del verdict["candidates"][0]["start_s_m"]
+    else:
+        verdict["candidates"][0]["start_s_m"] = span
+    planted = dest / "footprint3in.json"
+    planted.write_text(json.dumps(verdict))
+    config = _config_for(tmp_path, {"positive/eth3d-facade/gt-laser-gravel/C/footprint3in.json": planted})
+    report = evaluate(config, tmp_path, repo=ROOT)
+    row = next(item for item in report.rows if item["id"] == "positive/eth3d-facade/gt-laser-gravel/C/footprint3in")
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+    assert exit_code(report) == 1
+
+
 def _ground_strip(value: object, claims: object) -> dict:
     return {
         "metric": "false_observed_by_rule",

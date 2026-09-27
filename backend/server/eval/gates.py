@@ -973,9 +973,12 @@ def _positive_row(ident: str, spec: dict, verdict: dict, evidence: Path) -> dict
             passes = [
                 c
                 for c in verdict.get("candidates") or []
-                if c.get("outcome") == "pass" and c.get("wall_id") == wall and "start_s_m" in c
+                if isinstance(c, dict) and c.get("outcome") == "pass" and c.get("wall_id") == wall
             ]
-            if not any(_overlaps(c["start_s_m"], spec["start_s_m"]) for c in passes):
+            if any(not _finite_span(c.get("start_s_m")) for c in passes):
+                status = "FAIL"
+                note = "committed evidence invalid"
+            elif not any(_overlaps(c["start_s_m"], spec["start_s_m"]) for c in passes):
                 status = "FAIL"
                 note = "no pass candidate on the wall overlaps the chain-s window"
             route_max = spec.get("route_ft_max")
@@ -1691,12 +1694,15 @@ def _route_ft(verdict: dict) -> float | None:
     return route if kind == "ok" else None
 
 
-def _overlaps(span: list, window: list) -> bool:
-    try:
-        points = (span[0], span[1], window[0], window[1])
-    except (TypeError, IndexError, KeyError):
+def _finite_span(span: object) -> bool:
+    """A chain-s interval is exactly two finite numbers."""
+    if isinstance(span, (str, bytes)) or not isinstance(span, (list, tuple)) or len(span) != 2:
         return False
-    if not all(_finite_number(point) for point in points):
+    return all(_finite_number(point) for point in span)
+
+
+def _overlaps(span: list, window: list) -> bool:
+    if not _finite_span(span) or not _finite_span(window):
         return False
     lo, hi = sorted((float(span[0]), float(span[1])))
     wlo, whi = float(window[0]), float(window[1])
