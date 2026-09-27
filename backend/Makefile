@@ -1,5 +1,5 @@
 # `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
-.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra
+.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci criteria-golden e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra
 
 ONLY ?= small
 
@@ -33,6 +33,14 @@ validate-full:
 	uv run --frozen python scripts/validate_fixtures.py --full
 
 ci: lint test schemas hygiene validate
+
+# Unit suite, then verdicts for the three ETH3D laser sites at /tmp/crit/<site>/.
+# Laser PLYs come from `make fixtures ONLY=all`. C3 stays off.
+criteria-golden:
+	uv run --frozen pytest server/criteria/tests -q
+	HSS_CRITERIA_C3=off VISION_EXTERNAL_CALLS=off uv run --frozen python -m server.criteria.run --scene data/fixtures/scenes/eth3d-facade/gt-laser/scene.json --out /tmp/crit/facade --no-c3
+	HSS_CRITERIA_C3=off VISION_EXTERNAL_CALLS=off uv run --frozen python -m server.criteria.run --scene data/fixtures/scenes/eth3d-delivery/gt-laser/scene.json --out /tmp/crit/delivery --no-c3
+	HSS_CRITERIA_C3=off VISION_EXTERNAL_CALLS=off uv run --frozen python -m server.criteria.run --scene data/fixtures/scenes/eth3d-electro/gt-laser/scene.json --out /tmp/crit/electro --no-c3
 
 # SD-77: the live stack only (Modal dev capture-api, house-scanning bucket).
 # CAPTURE_API_URL must be https://huntertcarver-dev--capture-api.modal.run

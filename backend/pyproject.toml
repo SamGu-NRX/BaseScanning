@@ -9,6 +9,7 @@ dependencies = [
     "jsonschema==4.26.0",
     "matplotlib==3.11.2",
     "modal>=1.5.5",
+    "numba>=0.63",
     "numpy==2.5.3",
     "opencv-python-headless==5.0.0.93",
     "pillow==12.3.0",
@@ -18,6 +19,7 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "pyyaml>=6.0.3",
     "requests>=2.34.2",
+    "scikit-image>=0.26",
     "scipy==1.18.1",
     "shapely>=2.1.2",
     "jinja2>=3.1.4",
@@ -47,6 +49,17 @@ reads = [
     "numpy==2.5.3",
     "pydantic>=2.13.5",
     "jsonschema==4.26.0",
+]
+criteria = [
+    "numpy==2.5.3",
+    "scipy==1.18.1",
+    "shapely>=2.1.2",
+    "pyyaml>=6.0.3",
+    "jsonschema==4.26.0",
+    "pillow==12.3.0",
+    "numba>=0.63",
+    "scikit-image>=0.26",
+    "openai>=1.100",
 ]
 objects = [
     "torch>=2.6",
@@ -92,7 +105,7 @@ markers = [
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-extend-exclude = ["eval/vendor", "server/eval/vendor", "private"]
+extend-exclude = ["eval/vendor", "server/eval/vendor", "private", "server/criteria/c1/engine3d.py", "server/criteria/c2/grid.py", "server/criteria/c2/sweep.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
@@ -109,6 +122,8 @@ ignore = ["E501"]
 "{recon,scene,criteria}/[abc][1-9]-*/**" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
 "{recon,scene,criteria}/a1[0-9]-*/**" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
 "{recon,scene,criteria}/e2e-*/**" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
+"server/criteria/c1/engine3d.py" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
+"server/criteria/c2/{grid,sweep}.py" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
 
 [tool.coverage.run]
 omit = ["server/packet/cli.py", "server/packet/tests/*"]
@@ -126,7 +141,7 @@ module = ["server.contracts", "server.contracts.*"]
 follow_imports = "silent"
 
 [tool.ruff.format]
-exclude = ["packet/**", "eval/**", "server/eval/**", "criteria/spec/**", "data/**", "recon/**", "scene/**", "criteria/c[1-3]-*/**", "criteria/e2e-*/**", "docs/**", "server/common/geometry.py", "server/poses/colmap_prior.py", "server/dense/dense.py", "server/dense/models.py", "server/scale/lidar.py", "server/coverage/occlusion.py", "server/packet/validate_legacy.py", "server/orchestrator/legacy_run_packet.py", "ios-kit/packetgen/**"]
+exclude = ["packet/**", "eval/**", "server/eval/**", "criteria/spec/**", "data/**", "recon/**", "scene/**", "criteria/c[1-3]-*/**", "criteria/e2e-*/**", "docs/**", "server/common/geometry.py", "server/poses/colmap_prior.py", "server/dense/dense.py", "server/dense/models.py", "server/scale/lidar.py", "server/coverage/occlusion.py", "server/packet/validate_legacy.py", "server/orchestrator/legacy_run_packet.py", "server/criteria/c1/engine3d.py", "server/criteria/c2/grid.py", "server/criteria/c2/sweep.py", "ios-kit/packetgen/**"]
 
 [dependency-groups]
 data = [

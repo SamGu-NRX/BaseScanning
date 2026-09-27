@@ -12,13 +12,13 @@ import pytest
 
 from server.common.config import Settings
 
-# `reads` (WS-08), `objects` (WS-07), `scale` (WS-05), and `result` (WS-10) are implemented, so none is in this stub list.
+# `reads` (WS-08), `objects` (WS-07), `scale` (WS-05), `result` (WS-10),
+# and `criteria` (WS-09) are implemented, so none is in this stub list.
 STAGES = [
     "poses",
     "dense",
     "coverage",
     "scene",
-    "criteria",
 ]
 
 
