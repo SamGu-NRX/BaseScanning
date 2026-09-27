@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from server.api.app import create_app
+from server.api.deps import drain_finalize
 from server.common.config import Settings
 
 TOKEN = "d" * 40
@@ -32,10 +33,27 @@ def client(tmp_path):
         SMP_SERVICE_NAME="capture-api",
     )
     app = create_app(settings=settings)
-    test = TestClient(app)
+    test = ApiClient(app)
     test.headers["Authorization"] = f"Bearer {TOKEN}"
     test.app_state = app.state.deps
     return test
+
+
+class ApiClient(TestClient):
+    """Join finalize work after each request so status assertions stay deterministic.
+
+    `hold_finalize` leaves the background thread running so a test can measure the
+    response time without waiting on promotion or start_run.
+    """
+
+    hold_finalize = False
+
+    def request(self, *args, **kwargs):
+        response = super().request(*args, **kwargs)
+        deps = getattr(self, "app_state", None)
+        if deps is not None and not self.hold_finalize:
+            drain_finalize(deps)
+        return response
 
 
 def sha256_hex(data: bytes) -> str:

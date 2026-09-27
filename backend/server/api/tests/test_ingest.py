@@ -359,17 +359,20 @@ def test_tap_replay_and_depth_and_parent_and_header(client):
     capture_id = _create(client, "packet-tap", tier="arkit")
     packet, _frame = _arkit("packet-tap")
     packet["taps"][0]["pixel"] = [10.0, 5.0]
-    response, raw = _finalize(client, capture_id, packet)
-    assert ("tap_replay", "/taps/0") in _codes(response)
-    packet, _frame = _arkit("packet-tap", parent="parent-packet")
+    response, _raw = _finalize(client, capture_id, packet)
+    assert response.status_code == 202, response.text
+    assert ("tap_replay", "/taps/0") in _failed_events(client, capture_id)
+    assert client.get(f"/v1/captures/{capture_id}").json()["status"] == "failed"
+    capture_id = _create(client, "packet-parent", tier="arkit")
+    packet, _frame = _arkit("packet-parent", parent="parent-packet")
     response, _raw = _finalize(client, capture_id, packet)
     assert ("parent_unexpected", "/parentPacketId") in _codes(response)
-    packet, _frame = _arkit("packet-tap")
+    packet, _frame = _arkit("packet-parent")
     raw = json.dumps(packet).encode()
     bad = client.post(
         f"/v1/captures/{capture_id}/finalize",
         content=raw,
-        headers={"Idempotency-Key": "packet-tap", "Content-Type": "application/json", "X-Packet-Sha256": "c" * 64},
+        headers={"Idempotency-Key": "packet-parent", "Content-Type": "application/json", "X-Packet-Sha256": "c" * 64},
     )
     assert ("packet_sha_mismatch", "/headers/x-packet-sha256") in _codes(bad)
     depth = b"0123456789ab"  # 12 bytes, not 2*2*4
@@ -382,7 +385,16 @@ def test_tap_replay_and_depth_and_parent_and_header(client):
         files=[{"path": "depth/k1.bin", "bytes": len(depth), "sha256": sha256_hex(depth), "role": "depth"}],
     )
     response, _raw = _finalize(client, capture_id, packet)
-    assert any(code == "depth_size" and pointer.endswith("/bytes") for code, pointer in _codes(response))
+    assert response.status_code == 202, response.text
+    failed = _failed_events(client, capture_id)
+    assert any(code == "depth_size" and str(pointer).endswith("/bytes") for code, pointer in failed)
+
+
+def _failed_events(client, capture_id: str) -> list[tuple[str, str]]:
+    events = client.get(f"/v1/captures/{capture_id}/events").json()["events"]
+    return [
+        (event["data"].get("code"), event["data"].get("pointer", "")) for event in events if event["type"] == "failed"
+    ]
 
 
 def test_etag_forbidden_and_delete(client):

@@ -6,19 +6,24 @@ import gzip
 import hashlib
 import io
 import json
+import threading
+from concurrent.futures import Future
 
 from pydantic import ValidationError
 
 from server.api.deps import Deps, extras, isoformat, save_extras
-from server.api.errors import fail, pointer_from_loc
+from server.api.errors import ApiFailure, fail, pointer_from_loc
+from server.api.events import emit
+from server.api.finalize_checks import manifest_errors
 from server.api.hooks import safe_hook
 from server.api.ids import require_contract_id
 from server.api.keys import packet_key
 from server.api.promotion import promote
 from server.common.logging import log_event
-from server.contracts.api import AmendmentRequest, FinalizeResponse
+from server.contracts.api import AmendmentRequest, FinalizeResponse, StageData
 from server.contracts.jobs import CaptureRecord
 from server.contracts.packet import Packet
+from server.contracts.validation import ValidationIssue
 
 _INFLATE_CAP = 48 * 1024 * 1024
 _GZIP_CAP = 8 * 1024 * 1024
@@ -111,9 +116,38 @@ def render_finalize(status: str, missing: list[str], run_id: str) -> dict:
 
 
 def _multi(errors: list[dict]):
-    from server.api.errors import ApiFailure
-
     return ApiFailure(422, errors)
+
+
+class _FinishSlot:
+    def __init__(self) -> None:
+        self.inflight = False
+        self.again = False
+
+
+_slots: dict[str, _FinishSlot] = {}
+_slot_guard = threading.Lock()
+
+
+def _busy(capture_id: str) -> bool:
+    with _slot_guard:
+        slot = _slots.get(capture_id)
+        return bool(slot and slot.inflight)
+
+
+def _request_again(capture_id: str) -> None:
+    with _slot_guard:
+        slot = _slots.get(capture_id)
+        if slot is not None and slot.inflight:
+            slot.again = True
+
+
+def _clear_slot(capture_id: str) -> None:
+    with _slot_guard:
+        slot = _slots.get(capture_id)
+        if slot is not None:
+            slot.inflight = False
+            slot.again = False
 
 
 def accept_packet(
@@ -125,8 +159,6 @@ def accept_packet(
     parent_run_id: str | None = None,
     declared_sha: str | None = None,
 ) -> dict:
-    from server.api.finalize_checks import manifest_errors
-
     digest = _sha(raw)
     if declared_sha is not None and declared_sha != digest:
         raise fail(422, "packet_sha_mismatch", "/headers/x-packet-sha256", "X-Packet-Sha256 does not match the body")
@@ -134,18 +166,25 @@ def accept_packet(
         amend = deps.state.get_kv(f"amend:{record.capture_id}:{amendment_id}") or {}
         if amend.get("packet_sha256") == digest:
             extra = extras(deps, record.capture_id)
-            if amend.get("status") == "finalized" or extra.get("started_run_id") == amend.get("run_id"):
-                return render_finalize("processing", [], amend.get("run_id") or record.run_id or _run_id(raw))
             missing = list(extra.get("missing") or [])
-            run_id = amend.get("run_id") or _run_id(raw)
+            run_id = amend.get("run_id") or record.run_id or _run_id(raw)
+            if amend.get("status") == "finalized" or extra.get("started_run_id") == amend.get("run_id"):
+                return render_finalize("processing", [], run_id)
+            if _busy(record.capture_id):
+                if missing:
+                    return render_finalize("awaiting_files", missing, run_id)
+                return render_finalize("processing", [], run_id)
+            if record.status == "failed":
+                return render_finalize("processing", [], run_id)
             if not missing:
-                return finish_ready(
+                return schedule_finish(
                     deps,
                     record,
                     digest,
                     packet_key(record.capture_id, amendment_id),
                     run_id,
                     parent_run_id=parent_run_id,
+                    promote=True,
                 )
             return render_finalize("awaiting_files", missing, run_id)
         if amend.get("packet_sha256") and amend.get("packet_sha256") != digest:
@@ -155,10 +194,16 @@ def accept_packet(
             extra = extras(deps, record.capture_id)
             missing = list(extra.get("missing") or [])
             run_id = record.run_id or _run_id(raw)
-            if extra.get("run_started") or record.status == "processing":
+            if extra.get("run_started"):
+                return render_finalize("processing", [], run_id)
+            if _busy(record.capture_id):
+                if missing:
+                    return render_finalize("awaiting_files", missing, run_id)
+                return render_finalize("processing", [], run_id)
+            if record.status == "failed":
                 return render_finalize("processing", [], run_id)
             if not missing:
-                return finish_ready(deps, record, digest, packet_key(record.capture_id, None), run_id)
+                return schedule_finish(deps, record, digest, packet_key(record.capture_id, None), run_id, promote=True)
             return render_finalize("awaiting_files", missing, run_id)
         raise fail(409, "packet_sha_conflict", "/", "a different packet was already accepted")
     try:
@@ -197,9 +242,6 @@ def accept_packet(
         _compare_manifest(deps, record, packet)
         if amendment_id is None
         else _amendment_manifest(deps, record, packet, amendment_id)
-    )
-    errors.extend(
-        {"code": item.code, "pointer": item.pointer, "message": item.message} for item in manifest_errors(packet)
     )
     if errors:
         extra = extras(deps, record.capture_id)
@@ -241,9 +283,6 @@ def accept_packet(
         amend = deps.state.get_kv(f"amend:{record.capture_id}:{amendment_id}") or {}
         amend["packet_sha256"] = digest
         amend["run_id"] = run_id
-        if not missing:
-            amend["status"] = "finalized"
-            extra["open_amendment"] = None
         deps.state.put_kv(f"amend:{record.capture_id}:{amendment_id}", amend)
     save_extras(deps, record.capture_id, extra)
     log_event(
@@ -252,8 +291,16 @@ def accept_packet(
     if missing:
         record.status = "awaiting_files"
         deps.state.put_capture(record)
-        return render_finalize("awaiting_files", missing, run_id)
-    return finish_ready(deps, record, digest, key, run_id, parent_run_id=parent_run_id)
+        return schedule_finish(
+            deps,
+            record,
+            digest,
+            key,
+            run_id,
+            parent_run_id=parent_run_id,
+            promote=False,
+        )
+    return schedule_finish(deps, record, digest, key, run_id, parent_run_id=parent_run_id, promote=True)
 
 
 def _amendment_manifest(deps: Deps, record: CaptureRecord, packet: Packet, amendment_id: str) -> list[dict]:
@@ -342,13 +389,202 @@ def maybe_finish_after_commit(deps: Deps, record: CaptureRecord) -> None:
             missing.append(path)
     extra["missing"] = missing
     save_extras(deps, record.capture_id, extra)
-    if missing or extra.get("started_run_id") == accepted.get("run_id"):
+    if missing or extra.get("started_run_id") == accepted.get("run_id") or record.status == "failed":
         return
-    finish_ready(
+    if _busy(record.capture_id):
+        record.status = "processing"
+        record.run_id = accepted["run_id"]
+        deps.state.put_capture(record)
+        _emit_validate(deps, record.capture_id, accepted["run_id"])
+        _request_again(record.capture_id)
+        return
+    schedule_finish(
         deps,
         record,
         accepted["packet_sha256"],
         packet_key(record.capture_id, extra.get("amendment_id")),
         accepted["run_id"],
         parent_run_id=extra.get("parent_run_id"),
+        promote=True,
+    )
+
+
+def _emit_validate(deps: Deps, capture_id: str, run_id: str) -> None:
+    emit(
+        deps,
+        capture_id,
+        "stage",
+        StageData(stage="validate", status="running", attempt=1, runId=run_id).model_dump(mode="json"),
+    )
+
+
+def schedule_finish(
+    deps: Deps,
+    record: CaptureRecord,
+    digest: str,
+    key: str,
+    run_id: str,
+    *,
+    parent_run_id: str | None = None,
+    promote: bool,
+) -> dict:
+    """Queue promotion, manifest validation, and start_run off the request path.
+
+    The handler has already done the fast checks. A daemon thread in this container
+    runs the slow work so the 202 is not waiting on start_run. A later Modal spawn
+    can replace the thread; the capture status and events are the progress channel.
+    """
+    extra = extras(deps, record.capture_id)
+    extra["status_before"] = record.status
+    extra["finish"] = {
+        "digest": digest,
+        "key": key,
+        "run_id": run_id,
+        "parent_run_id": parent_run_id,
+    }
+    save_extras(deps, record.capture_id, extra)
+    if promote:
+        record.status = "processing"
+        record.run_id = run_id
+        deps.state.put_capture(record)
+        _emit_validate(deps, record.capture_id, run_id)
+        _kick(deps, record.capture_id)
+        return render_finalize("processing", [], run_id)
+    _kick(deps, record.capture_id)
+    return render_finalize("awaiting_files", list(extra.get("missing") or []), run_id)
+
+
+def _kick(deps: Deps, capture_id: str) -> None:
+    with _slot_guard:
+        slot = _slot_locked(capture_id)
+        if slot.inflight:
+            slot.again = True
+            return
+        slot.inflight = True
+        slot.again = False
+    _spawn(deps, capture_id)
+
+
+def _slot_locked(capture_id: str) -> _FinishSlot:
+    slot = _slots.get(capture_id)
+    if slot is None:
+        slot = _FinishSlot()
+        _slots[capture_id] = slot
+    return slot
+
+
+def _spawn(deps: Deps, capture_id: str) -> None:
+    future: Future[None] = Future()
+    deps.finalize_jobs.append(future)
+    threading.Thread(
+        target=_guard,
+        args=(deps, capture_id, future),
+        name=f"finalize-{capture_id}",
+        daemon=True,
+    ).start()
+
+
+def _guard(deps: Deps, capture_id: str, future: Future[None]) -> None:
+    try:
+        _finish_loop(deps, capture_id)
+    except Exception as exc:
+        _clear_slot(capture_id)
+        future.set_exception(exc)
+        return
+    future.set_result(None)
+
+
+def _finish_loop(deps: Deps, capture_id: str) -> None:
+    while True:
+        outcome = _work_once(deps, capture_id)
+        with _slot_guard:
+            slot = _slot_locked(capture_id)
+            again = slot.again
+            slot.again = False
+            if again and outcome == "incomplete":
+                continue
+            slot.inflight = False
+            return
+
+
+def _still_missing(deps: Deps, record: CaptureRecord, extra: dict) -> list[str]:
+    missing = []
+    for path in list(extra.get("paths") or []):
+        rec = deps.state.get_file(record.capture_id, path)
+        if rec is None or rec.state != "committed":
+            missing.append(path)
+    return missing
+
+
+def _work_once(deps: Deps, capture_id: str) -> str:
+    record = deps.state.get_capture(capture_id)
+    extra = extras(deps, capture_id)
+    if record is None or record.status == "failed" or extra.get("run_started"):
+        return "done"
+    job = extra.get("finish") or {}
+    key = job.get("key")
+    if not key:
+        return "done"
+    raw = deps.storage.get_bytes(key)
+    packet = Packet.model_validate(json.loads(raw))
+    if not extra.get("manifest_ok"):
+        issues = manifest_errors(packet)
+        if issues:
+            _fail_manifest(deps, record, issues)
+            return "failed"
+        extra = extras(deps, capture_id)
+        extra["manifest_ok"] = True
+        save_extras(deps, capture_id, extra)
+    record = deps.state.get_capture(capture_id) or record
+    extra = extras(deps, capture_id)
+    missing = _still_missing(deps, record, extra)
+    extra["missing"] = missing
+    save_extras(deps, capture_id, extra)
+    if missing:
+        return "incomplete"
+    try:
+        finish_ready(
+            deps,
+            record,
+            job["digest"],
+            key,
+            job["run_id"],
+            parent_run_id=job.get("parent_run_id"),
+        )
+    except ApiFailure as exc:
+        _on_background_failure(deps, capture_id, exc)
+        return "failed"
+    return "done"
+
+
+def _fail_manifest(deps: Deps, record: CaptureRecord, issues: list[ValidationIssue]) -> None:
+    extra = extras(deps, record.capture_id)
+    extra["last_422"] = [item.code for item in issues]
+    save_extras(deps, record.capture_id, extra)
+    record.status = "failed"
+    deps.state.put_capture(record)
+    for item in issues:
+        emit(
+            deps,
+            record.capture_id,
+            "failed",
+            {"code": item.code, "message": item.message, "next": "none", "pointer": item.pointer},
+        )
+    log_event("finalize.rejected", codes=extra["last_422"], capture_id=record.capture_id)
+
+
+def _on_background_failure(deps: Deps, capture_id: str, exc: ApiFailure) -> None:
+    if exc.status == 503:
+        extra = extras(deps, capture_id)
+        previous = extra.get("status_before") or "awaiting_files"
+        record = deps.state.get_capture(capture_id)
+        if record is not None:
+            record.status = previous
+            deps.state.put_capture(record)
+    err = exc.errors[0] if exc.errors else {"code": "failed", "message": "finalize failed"}
+    emit(
+        deps,
+        capture_id,
+        "failed",
+        {"code": err["code"], "message": err["message"], "next": "none"},
     )

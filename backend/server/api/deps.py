@@ -49,6 +49,7 @@ class Deps:
     clock: Callable[[], datetime] = utcnow
     new_id: Callable[[str], str] = default_id
     upload_slots: asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(4))
+    finalize_jobs: list = field(default_factory=list)
 
     def now(self) -> datetime:
         return self.clock()
@@ -101,3 +102,11 @@ def load_owned(deps: Deps, capture_id: str, principal: Principal, *, write: bool
 
 def window_end(deps: Deps) -> str:
     return isoformat(deps.now() + timedelta(hours=deps.settings.HSS_INGEST_FINALIZE_WINDOW_H))
+
+
+def drain_finalize(deps: Deps, timeout: float = 30) -> None:
+    """Wait for finalize work spawned off the request path. Tests call this."""
+    pending = list(deps.finalize_jobs)
+    deps.finalize_jobs.clear()
+    for job in pending:
+        job.result(timeout=timeout)
