@@ -121,6 +121,9 @@ def test_synthetic_wall_registers(tmp_path: Path):
     assert report["params"]["random_seed"] == 0
     assert report["params"]["num_threads"] == 4
     assert report["params"]["mapper_threads"] == 1
+    assert report["params"]["blas_threads"] == 1
+    assert report["params"]["blas_coretype"] == "HASWELL"
+    assert report["params"]["sift_matcher"] == "faiss"
     assert report["frame_budget"]["frames_dropped_quality"] == 0
     assert report["meter"]["source"] == "tap"
     assert report["closeups"]["meter_close"]["registered"]

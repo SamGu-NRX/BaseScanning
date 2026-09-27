@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# isort: off
+import server.poses.host_pin  # noqa: E402,F401  -- before numpy and pycolmap; GT-pose floor uses pinned OpenBLAS
 import numpy as np  # noqa: E402
 import pycolmap  # noqa: E402
 
@@ -29,6 +31,7 @@ from server.eval.frame import mat4_from_list  # noqa: E402
 from server.poses.params import PoseParams  # noqa: E402
 from server.poses.report import write_ply  # noqa: E402
 from server.poses.sfm import lock_intrinsics, triangulate_fixed  # noqa: E402
+# isort: on
 
 # server/eval commit named in the diagnosis, plus A7's one-line camera patch.
 # The patch lives in this script so server/eval stays untouched.

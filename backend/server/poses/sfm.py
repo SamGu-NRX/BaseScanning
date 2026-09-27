@@ -131,9 +131,7 @@ def match_imported(
         raise PosesError("too_few_frames")
     pair_path = db_path.with_suffix(".pairs.txt")
     pair_path.write_text("".join(f"{a} {b}\n" for a, b in pairs))
-    matching = pycolmap.FeatureMatchingOptions()
-    matching.num_threads = params.num_threads
-    matching.use_gpu = False
+    matching = matching_options(params)
     pairing = pycolmap.ImportedPairingOptions()
     pairing.match_list_path = str(pair_path)
     verification = pycolmap.TwoViewGeometryOptions()
@@ -271,6 +269,18 @@ def triangulate_fixed(
         options=options,
         refine_intrinsics=False,
     )
+
+
+def matching_options(params: PoseParams) -> pycolmap.FeatureMatchingOptions:
+    """Feature matching. Extraction and matching stay on ``params.num_threads``.
+
+    FAISS stays on. This wheel has no env switch for its SIMD level, so the
+    gate host is the ``ws-11-ci`` instance type rather than a matcher change.
+    """
+    matching = pycolmap.FeatureMatchingOptions()
+    matching.num_threads = params.num_threads
+    matching.use_gpu = False
+    return matching
 
 
 def registration_options(params: PoseParams) -> pycolmap.IncrementalMapperOptions:

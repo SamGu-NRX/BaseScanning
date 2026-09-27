@@ -5,9 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from server.contracts.jobs import StageContext, StageResult
+from server.poses import host_pin as _host_pin
 from server.poses.packet_io import load_packet
 from server.poses.params import PoseParams
 from server.poses.run import run_poses
+
+# host_pin loads pycolmap under the OpenBLAS pin, then restores the process
+# environment. Keep that import above ``server.poses.run``. Poses shares
+# run_stage_impl and the CPU and GPU images with the other stages, so the
+# variables are not set on the image.
+_ = _host_pin.OPENBLAS_CORETYPE
 
 STAGE = "poses"
 

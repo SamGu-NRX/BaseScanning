@@ -161,7 +161,11 @@ uv run python -m server.poses.run --packet .fixtures/packets/eth3d-facade/packet
 uv run modal run scripts/modal_poses.py --packet eth3d-facade --variant arkit-nonlidar --out /vol/results/ws04/facade-nonlidar
 
 # score against GT (shape-only, then metric)
-uv run python scripts/score_poses.py --run /tmp/ws04/facade-nonlidar --gt data/fixtures/scenes/eth3d-facade/gt-laser/scene.json \
+# SD-61: occluder PLYs have to sit beside the scene. `make gt` copies the
+# committed scene.json to this directory next to laser.ply and occluders.ply.
+# Other sites use `.fixtures/gt/<site>/gt-laser/scene.json`.
+uv run python scripts/score_poses.py --run /tmp/ws04/facade-nonlidar \
+    --gt .fixtures/gt/eth3d-facade/gt-laser/scene.json \
     --truth .fixtures/packets/eth3d-facade/_truth/truth.json --out /tmp/ws04/facade-nonlidar/score
 # (wraps: python -m server.eval.cli score-cloud --gt GT --cloud poses/sparse.ply --cameras poses/cameras_scored.json [--metric] --align auto --producer ws04)
 

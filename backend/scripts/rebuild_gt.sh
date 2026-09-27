@@ -94,7 +94,17 @@ for site in ("eth3d-facade", "eth3d-electro", "eth3d-delivery"):
     dest.mkdir(parents=True, exist_ok=True)
     for name in ("laser.ply", "occluders.ply"):
         shutil.copyfile(rebuild / site / name, dest / name)
-    note = f"{site}: differ={changed or 'none (runtime_s ignored)'}; kept committed scene.json; copied PLYs to {dest}"
+    # SD-61: the scorer resolves laser.ply and occluders.ply next to scene.json.
+    # The committed scene has no PLYs (they are gitignored). Copy it here so
+    # `.fixtures/gt/<site>/gt-laser/scene.json` is the score path after `make gt`.
+    shutil.copyfile(committed, dest / "scene.json")
+    coverage = committed.parent / "coverage.npz"
+    if coverage.is_file():
+        shutil.copyfile(coverage, dest / "coverage.npz")
+    note = (
+        f"{site}: differ={changed or 'none (runtime_s ignored)'}; "
+        f"kept committed scene.json; copied scene.json and PLYs to {dest}"
+    )
     notes.append(note)
     (dest / "scene-diff.txt").write_text(note + "\n")
     print(note)

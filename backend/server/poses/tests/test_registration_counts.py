@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
+import subprocess
+import sys
 from pathlib import Path
 
+from server.poses.host_pin import OPENBLAS_CORETYPE, OPENBLAS_THREADS, pin_numeric_host, restore_numeric_host
 from server.poses.params import PoseParams
 from server.poses.run import _checkpoint_database, _split_registration
-from server.poses.sfm import MAPPING_THREADS, pipeline_options, registration_options
+from server.poses.sfm import MAPPING_THREADS, matching_options, pipeline_options, registration_options
 
 
 def test_mapping_and_registration_are_single_threaded() -> None:
@@ -20,6 +24,30 @@ def test_mapping_and_registration_are_single_threaded() -> None:
     assert mapped.random_seed == 0
     assert registered.num_threads == 1
     assert registered.random_seed == 0
+
+
+def test_sift_matching_keeps_faiss_and_restores_openblas() -> None:
+    matched = matching_options(PoseParams(num_threads=4, seed=0))
+    assert matched.num_threads == 4
+    assert matched.use_gpu is False
+    assert matched.sift.cpu_brute_force_matcher is False
+    before = os.environ.get("OPENBLAS_CORETYPE")
+    previous = pin_numeric_host()
+    assert os.environ["OPENBLAS_NUM_THREADS"] == OPENBLAS_THREADS
+    assert os.environ["GOTO_NUM_THREADS"] == OPENBLAS_THREADS
+    assert os.environ["OPENBLAS_CORETYPE"] == OPENBLAS_CORETYPE
+    restore_numeric_host(previous)
+    assert os.environ.get("OPENBLAS_CORETYPE") == before
+    script = (
+        "import os, sys\n"
+        "for key in ('OPENBLAS_NUM_THREADS', 'GOTO_NUM_THREADS', 'OPENBLAS_CORETYPE'):\n"
+        "    os.environ.pop(key, None)\n"
+        "import server.poses.host_pin\n"
+        "assert os.environ.get('OPENBLAS_CORETYPE') is None\n"
+        "assert os.environ.get('OPENBLAS_NUM_THREADS') is None\n"
+        "assert 'pycolmap' in sys.modules\n"
+    )
+    subprocess.check_call([sys.executable, "-c", script])
 
 
 def test_split_counts_carried_frames_separately() -> None:
