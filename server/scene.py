@@ -72,6 +72,8 @@ class Piece:
     # Extra error per foot walked from the meter, for walls placed by AR taps without their own
     # plus_minus_ft (rules.yaml errors.drift_per_ft).
     drift: float = 0.0
+    # The wall's declared height_ft, when the scene gives one.
+    height: float | None = None
 
     def error_at(self, s: float) -> float:
         """Position error of this piece's line at s."""
@@ -147,7 +149,9 @@ class Scene:
     meter_pos: tuple[float, float, float]
     meter_plus_minus: float
     meter_piece: Piece
-    wall_spans: list[tuple[str | None, float, float]]  # each wall's stretch of s, as uploaded
+    # Each uploaded wall segment's (wall id, segment index, stretch of s), before collinear
+    # walls are joined into one piece: what a spot's wall_id and segment refer to.
+    wall_spans: list[tuple[str | None, int, float, float]]
     objects: list[SceneObject]
     # Objects with no footprint past an unexplored end: (index, type, side, s at their middle).
     # The wall may turn there, so they have no known place and are not measured (issue #42).
@@ -182,10 +186,14 @@ class Scene:
     def meter_xz(self) -> Point2:
         return (self.meter_pos[0], self.meter_pos[2])
 
+    def segment_at(self, s: float) -> tuple[str, int]:
+        """The uploaded wall and its segment under s: both from the same original segment, since
+        a joined straight piece can span two walls."""
+        wid, index, _, _ = min(self.wall_spans, key=lambda w: max(w[2] - s, s - w[3], 0.0))
+        return str(wid), index
+
     def wall_at(self, s: float) -> str:
-        """The id of the uploaded wall under s (a joined straight piece can span two)."""
-        best = min(self.wall_spans, key=lambda w: max(w[1] - s, s - w[2], 0.0))
-        return str(best[0])
+        return self.segment_at(s)[0]
 
     def piece_at(self, s: float) -> Piece:
         for p in self.pieces:
@@ -488,6 +496,8 @@ def _join_straight_walls(pieces: list[Piece]) -> list[Piece]:
                 _outward(along),
                 max(prev.plus_minus, p.plus_minus),
                 max(prev.drift, p.drift),
+                # A battery spanning the join backs onto the lower of two declared heights.
+                min((h for h in (prev.height, p.height) if h is not None), default=None),
             )
         else:
             out.append(p)
@@ -617,7 +627,11 @@ def parse_scene(raw: dict[str, Any], rules: Rules, input_bytes: bytes | None = N
         pts = _merge_collinear(pts, COLLINEAR_FT, f"/walls/{wi}/baseline")
         if prev_end is not None:
             gap = _norm(_sub(pts[0], prev_end))
-            if gap > join_tol:
+            # Two walls meet when the space between their ends is within both walls' errors (the
+            # taps may simply disagree), capped at sweep.wall_join_ft and never below float noise.
+            # A wider space is a real gap: a stretch with no wall, which s counts.
+            meets = min(join_tol, max(prev_err + wall_err, COVERAGE_TOLERANCE_FT))
+            if gap > meets:
                 along = (
                     (pts[0][0] - prev_end[0]) / gap,
                     (pts[0][1] - prev_end[1]) / gap,
@@ -658,6 +672,7 @@ def parse_scene(raw: dict[str, Any], rules: Rules, input_bytes: bytes | None = N
                     _outward(along),
                     wall_err,
                     wall_drift,
+                    wall.get("height_ft"),
                 )
             )
             s += length
@@ -698,7 +713,7 @@ def parse_scene(raw: dict[str, Any], rules: Rules, input_bytes: bytes | None = N
         )
     shift = best[2]
     pieces = [replace(p, s0=p.s0 - shift, s1=p.s1 - shift) for p in pieces]
-    wall_spans = [(p.wall_id, p.s0, p.s1) for p in pieces if p.kind == "wall"]
+    wall_spans = [(p.wall_id, p.index, p.s0, p.s1) for p in pieces if p.kind == "wall"]
     pieces = _join_straight_walls(pieces)
     meter_piece = next(p for p in pieces if p.kind == "wall" and p.s0 - EPS <= 0 <= p.s1 + EPS)
 

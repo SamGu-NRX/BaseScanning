@@ -79,8 +79,11 @@ def test_private_rules_load_from_base64(monkeypatch: pytest.MonkeyPatch) -> None
     loaded = load_rules()
     assert loaded.sources == ("public", "private")
     assert loaded.rules.clearances.gas_ft.value == 4.0
-    # The demo notice belongs to the public policy; private rules don't inherit it.
-    assert loaded.rules.policy.notice is None
+    # The demo notice belongs to the public policy; private rules replace it with one naming the
+    # checks still on public placeholders (this synthetic file sets only gas_ft).
+    notice = loaded.rules.policy.notice or ""
+    assert "not Base's" not in notice
+    assert "pool_clearance" in notice
 
 
 def test_bad_base64_is_a_startup_error(monkeypatch: pytest.MonkeyPatch) -> None:

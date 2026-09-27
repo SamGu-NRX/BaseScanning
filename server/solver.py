@@ -334,6 +334,20 @@ class Solver:
             )
             return c
         up_to = self.wall_height["backing"]
+        if piece.height is not None:
+            # A declared wall height, taken as given (as out_ft heights are), against the battery's.
+            tall = at_least(piece.height, 0.0, self.H)
+            if tall != PASS:
+                c.outcome = tall
+                c.measured, c.plus_minus, c.threshold = piece.height, 0.0, self.H
+                c.comparison = "at_least"
+                if tall == UNSURE:
+                    c.unsure_cause = "margin"
+                c.reason = (
+                    f"The wall is {ft(piece.height)} tall, not taller than the battery's "
+                    f"{ft(self.H)}."
+                )
+                return c
         missing = self.scene.missing("wall", s0, s1, up_to)
         if missing:
             c.outcome, c.unsure_cause = UNSURE, "unobserved"
@@ -624,7 +638,10 @@ class Solver:
         """Facing gap or headroom: the smallest measurement over the battery's stretch of wall."""
         t = rule.value
         c = Check(check_id, label, PASS, "", rule_key, rule, threshold=t, comparison="at_least")
-        missing = self.scene.missing(band, s0, s1)
+        # The battery may sit up to the wall's error either side of [s0, s1], so the space in
+        # front of or above every such position must have been seen.
+        lo, hi = s0 - wall_error, s1 + wall_error
+        missing = self.scene.missing(band, lo, hi)
         worst_key: tuple[int, float] | None = None
         # The lowest value surely under the battery, and whether the deciding entry only might be.
         surely: tuple[float, float] | None = None
@@ -664,7 +681,7 @@ class Solver:
         elif missing:
             c.outcome, c.unsure_cause = UNSURE, "unobserved"
             c.reason = f"The {noun} over the battery's stretch of wall was not measured everywhere."
-        elif (seen := self._seen_clear(band, entries, s0, s1)) <= t + subtract:
+        elif (seen := self._seen_clear(band, entries, lo, hi)) <= t + subtract:
             # A view (a walked path, a tilt-up frame) proves the space clear only as far as it
             # reached; where nothing was measured, that is all that is known.
             c.outcome, c.unsure_cause = UNSURE, "unobserved"
@@ -672,7 +689,7 @@ class Solver:
                 f"The {noun} was seen clear only to {ft(seen - subtract)} over part of the "
                 f"battery's stretch of wall; the rule needs more than {ft(t)}."
             )
-            missing = [(s0, s1)]
+            missing = [(lo, hi)]
         elif c.measured is None:
             c.reason = f"Nothing limits the {noun} over the battery's stretch of wall."
         else:
@@ -1275,8 +1292,7 @@ class Solver:
 
         def fail_run(piece: Piece, a: float, b: float, check_id: str) -> dict[str, Any]:
             return {
-                "wall_id": piece.wall_id,
-                "segment": piece.index,
+                **_locator(self.scene, a, a + self.W),
                 "start_ft": [_round(a), _round(b)],
                 "outcome": FAIL,
                 "failing": [check_id],
@@ -1354,8 +1370,7 @@ def _spot_json(solver: Solver, c: Candidate) -> dict[str, Any]:
     mx, mz = solver.scene.meter_xz
     return {
         "outcome": c.outcome,
-        "wall_id": solver.scene.wall_at((c.s0 + c.s1) / 2),
-        "segment": p.index,
+        **_locator(solver.scene, c.s0, c.s1),
         "span_ft": [_round(c.s0), _round(c.s1)],
         "width_ft": _round(solver.W),
         "depth_ft": _round(solver.D),
@@ -1443,14 +1458,27 @@ def _past_end_hint(scene: Scene, a: float, b: float) -> str:
     )
 
 
+def _locator(scene: Scene, s0: float, s1: float) -> dict[str, Any]:
+    """The uploaded wall and segment under a battery's middle, from the same original segment."""
+    wall_id, segment = scene.segment_at((s0 + s1) / 2)
+    return {"wall_id": wall_id, "segment": segment}
+
+
 def _sweep_json(cands: list[Candidate], scene: Scene, step: float) -> list[dict[str, Any]]:
     """Merge evaluated starts into runs. A run only grows by a start on the same straight piece
     within one sweep step of the previous one, so it never claims starts nobody evaluated."""
     runs: list[dict[str, Any]] = []
     prev: Candidate | None = None
     for c in sorted(cands, key=lambda c: c.s0):
-        wall = scene.wall_at((c.s0 + c.s1) / 2)
-        key = (wall, c.piece, c.outcome, sorted(c.failing()), sorted(c.unsure()))
+        where = _locator(scene, c.s0, c.s1)
+        key = (
+            where["wall_id"],
+            where["segment"],
+            c.piece,
+            c.outcome,
+            sorted(c.failing()),
+            sorted(c.unsure()),
+        )
         adjacent = prev is not None and prev.piece == c.piece and c.s0 - prev.s0 <= step + EPS
         prev = c
         if runs and adjacent and runs[-1]["_key"] == key:
@@ -1459,12 +1487,11 @@ def _sweep_json(cands: list[Candidate], scene: Scene, step: float) -> list[dict[
             runs.append(
                 {
                     "_key": key,
-                    "wall_id": wall,
-                    "segment": c.piece.index,
+                    **where,
                     "start_ft": [_round(c.s0), _round(c.s0)],
                     "outcome": c.outcome,
-                    "failing": key[3],
-                    "unsure": key[4],
+                    "failing": key[4],
+                    "unsure": key[5],
                 }
             )
     for run in runs:
