@@ -120,7 +120,9 @@ def test_tsdf_uses_voxel_block_grid_api():
 
 
 def test_tsdf_one_view_plane_is_kept():
-    pytest.importorskip("open3d")
+    # Pytest 9 skips only ModuleNotFoundError unless exc_type is set. A missing
+    # libEGL raises ImportError while the package is installed.
+    pytest.importorskip("open3d", exc_type=ImportError)
     plane = np.full((64, 64), 2.0, np.float32)
     verts = tsdf_points(
         [plane],
@@ -133,7 +135,7 @@ def test_tsdf_one_view_plane_is_kept():
 
 
 def test_tsdf_skips_a_frame_past_lidar_max():
-    pytest.importorskip("open3d")
+    pytest.importorskip("open3d", exc_type=ImportError)
     far = np.full((32, 32), 100.0, np.float32)
     plane = np.full((32, 32), 2.0, np.float32)
     k = np.array([40.0, 40.0, 16.0, 16.0])

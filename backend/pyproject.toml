@@ -78,6 +78,11 @@ scale = [
     "opencv-python-headless==5.0.0.93",
     "scipy==1.18.1",
 ]
+# Open3D TSDF. Also listed in the dev group because the CI test job syncs that
+# group and never passes --extra. A non-dev sync can still ask for this extra.
+dense = [
+    "open3d==0.20.0",
+]
 api = [
     "fastapi>=0.115",
     "uvicorn[standard]",
@@ -179,6 +184,9 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.16.9",
     "mypy>=1.13",
+    # The CI test job syncs this group and does not pass --extra. Open3D stays
+    # out of the base install; this is what makes the TSDF tests run there.
+    "open3d==0.20.0",
 ]
 
 [tool.importlinter]
