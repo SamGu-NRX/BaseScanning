@@ -1,6 +1,6 @@
 # Capture packet spec v0.4 (for the iOS team to build against)
 
-**What this is.** The contract between the iOS capture app and the server pipeline: one capture session becomes one *packet*, a folder (or zip) holding the photos plus everything ARKit, Core Motion and Core Location reported while taking them. The server builds the 3D asset and evaluates the eligibility criteria from it. This is v0.4 (changes are listed right below), doc revision 0.4.1 of 2026-09-26 (editorial fixes only, listed after the v0.4 changes; `formatVersion` stays `"0.4"`): field names can still change before 1.0, and every open question at the end has a default we will build against until you answer.
+**What this is.** The contract between the iOS capture app and the server pipeline: one capture session becomes one *packet*, a folder (or zip) holding the photos plus everything ARKit, Core Motion and Core Location reported while taking them. The server builds the 3D asset and evaluates the eligibility criteria from it. This is v0.4 (changes are listed right below), doc revision 0.4.2 of 2026-09-27 (`formatVersion` stays `"0.4"`; 0.4.1 was editorial, 0.4.2 adds the server id and path patterns): field names can still change before 1.0, and every open question at the end has a default we will build against until you answer.
 
 **Built on what already exists, not beside it.**
 - **PR #7 `measure-lab-session` v2** is the base. Keyframe, tap and tracking fields keep its names, units and conventions exactly (meters, gravity-aligned y-up world, column-major camera-to-world pose, unrotated landscape JPEG, `[fx, fy, cx, cy]`, `k00001.depth.f32` / `.confidence.u8`). A packet converts losslessly into a v2 `session.json`, so PR #10's replay, PR #9's converter and PR #12's field scoring read it unchanged.
@@ -31,6 +31,8 @@ Machine-readable schema (JSON Schema 2020-12): Appendix A, also at `internal/pac
 - Section 3.5: `arkitPoses` is requested at 30 Hz or more; the schema floor is `rateHz ≥ 10`.
 - Section 6: non-increasing timestamps within an epoch are a warning (`keyframe_order`); only two keyframes of one epoch with the same timestamp and different poses are an error (`keyframe_timestamp_conflict`).
 - Appendix D: the role `compat` is defined (server-derived transcodes, never sent by the app); finalize headers (`Idempotency-Key`, `X-Packet-Sha256`, `Content-Encoding: gzip`), the `422 format_version_unsupported` and `role_unknown` codes, the `POST /v1/captures/{id}/confirmations` one-tap answer, TrueDepth frames in the upload order, and `parentPacketId` on amendment packets.
+
+**Doc revision 0.4.2 (2026-09-27). The server models reject ids and paths outside the patterns in "Id and path characters". `formatVersion` stays `"0.4"`. Appendix A's JSON Schema is unchanged (`minLength`, and the older `relPath`); a packet can satisfy Appendix A and still be rejected by the server.**
 
 History: v0.2 briefly added a homeowner tape step; v0.3 removed it because no customer tools are allowed.
 
@@ -106,8 +108,8 @@ world_from_device = pose_rotation · [[0, 1, 0], [-1, 0, 0], [0, 0, 1]]ᵀ
 
 | Field | Level | Source | Notes |
 | --- | --- | --- | --- |
-| `format`, `formatVersion`, `packetId`, `createdAt` | R | app | `"house-capture-packet"`, `"0.4"`, UUID, ISO 8601 UTC; `packetId` is the Upload API's `Idempotency-Key` (Appendix D) |
-| `parentPacketId` | R on amendments | app | `packetId` of the packet a retake amendment answers (Appendix D step 5) |
+| `format`, `formatVersion`, `packetId`, `createdAt` | R | app | `"house-capture-packet"`, `"0.4"`, `StorageId`, ISO 8601 UTC; `packetId` is the Upload API's `Idempotency-Key` (Appendix D) |
+| `parentPacketId` | R on amendments | app | `StorageId`: `packetId` of the packet a retake amendment answers (Appendix D step 5) |
 | `units`, `conventions` | R | app | fixed text (Appendix B) |
 | `source.kind` | R | app | `device` for real sessions; `synthetic` packets come from our generator and are never evidence |
 | `session.id`, `startedAt`, `startedAtUptime` | R | [`ProcessInfo.systemUptime`](https://developer.apple.com/documentation/foundation/processinfo/systemuptime) | uptime at `startedAt` ties wall clock to uptime |
@@ -122,7 +124,15 @@ world_from_device = pose_rotation · [[0, 1, 0], [-1, 0, 0], [0, 0, 1]]ᵀ
 | `session.endedAtUptime`, `thermalStateMax`, `gates` | O | [`ProcessInfo.thermalState`](https://developer.apple.com/documentation/foundation/processinfo/thermalstate-swift.property) | `gates`: PR #7's capture thresholds |
 | `epochs[]`: `id`, `startTime`, `reason` | R (ARKit tiers) | app | `sessionStart`, `trackingReset`, `relocalizationFailed`, `userRestart` |
 | `tracking[]`: `time`, `state`, `epoch` | R (ARKit tiers) | [`ARCamera.trackingState`](https://developer.apple.com/documentation/arkit/arcamera/trackingstate-swift.enum) | one entry per change; PR #7 spellings: `normal`, `notAvailable`, `limited.initializing`, `limited.excessiveMotion`, `limited.insufficientFeatures`, `limited.relocalizing` |
-| `files[]`: `path`, `bytes`, `sha256`, `role` | R | app | every file except `packet.json` |
+| `files[]`: `path`, `bytes`, `sha256`, `role` | R | app | every file except `packet.json`; `path` is a `RelPath` |
+
+#### Id and path characters
+
+The server stores these strings in object keys and state keys, so it enforces a tighter pattern than Appendix A. Generate ids inside these patterns. A UUIDv4 written with hyphens is 36 characters and fits `StorageId`.
+
+- **`StorageId`** `^[A-Za-z0-9_-]{8,64}$` — `packetId`, `parentPacketId`, and `amendmentId`. UUIDs, ULIDs, and `mini-arkit` fit. `/`, `.` (so `..`), and control characters do not.
+- **`SegmentId`** `^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$` — `Keyframe.id` and `Still.id`, which become one path segment (`dense/depth/<id>.npz`, `normalized/stills/<id>.jpg`). No slash, no dot, no leading `-`, no control character. `k00001` and `s1` fit.
+- **`RelPath`** `^[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$` — every relative object key, including `files[].path` and `Mesh.file`. Each segment starts with an alphanumeric, so `.` / `..` segments, `foo..bar`, a leading `-`, `\`, and control characters are rejected.
 
 ### 3.2 Keyframes (ARKit tiers)
 
@@ -130,7 +140,7 @@ A keyframe is an `ARFrame` the app saved, with that frame's own pose and calibra
 
 | Field | Level | Source | Notes |
 | --- | --- | --- | --- |
-| `id`, `img`, `w`, `h` | R | [`ARFrame.capturedImage`](https://developer.apple.com/documentation/arkit/arframe/capturedimage) | JPEG quality 0.9, sRGB, **unrotated** |
+| `id`, `img`, `w`, `h` | R | [`ARFrame.capturedImage`](https://developer.apple.com/documentation/arkit/arframe/capturedimage) | `id` is a `SegmentId`; JPEG quality 0.9, sRGB, **unrotated** |
 | `intrinsics` | R | [`ARCamera.intrinsics`](https://developer.apple.com/documentation/arkit/arcamera/intrinsics), [`imageResolution`](https://developer.apple.com/documentation/arkit/arcamera/imageresolution) | per frame; do not reuse one value for the session |
 | `pose` | R | [`ARCamera.transform`](https://developer.apple.com/documentation/arkit/arcamera/transform) | |
 | `timestamp` | R | [`ARFrame.timestamp`](https://developer.apple.com/documentation/arkit/arframe/timestamp) | uptime seconds |
@@ -156,7 +166,7 @@ A keyframe is an `ARFrame` the app saved, with that frame's own pose and calibra
 | `taps[].frozen`, `tool`, `step`, `displayMappingCheck`, `confirmedByUser`, `refusal` | O | PR #7 | |
 | `planes[]`: `id`, `epoch`, `alignment`, `transform`, `planeExtent` | Rec | [`ARPlaneAnchor`](https://developer.apple.com/documentation/arkit/arplaneanchor), [`planeExtent`](https://developer.apple.com/documentation/arkit/arplaneanchor/planeextent) | snapshot at session end; the plane lies in the anchor's x-z plane, anchor +y is the normal |
 | `planes[].classification`, `center`, `boundary`, `firstSeen`, `lastUpdated` | O | [`classification`](https://developer.apple.com/documentation/arkit/arplaneanchor/classification-swift.enum), [`ARPlaneGeometry.boundaryVertices`](https://developer.apple.com/documentation/arkit/arplanegeometry) | |
-| `mesh`: `file`, `epoch`, `faceCount`, `classified` | O (LiDAR) | [`ARMeshAnchor`](https://developer.apple.com/documentation/arkit/armeshanchor) | one PLY in world meters |
+| `mesh`: `file`, `epoch`, `faceCount`, `classified` | O (LiDAR) | [`ARMeshAnchor`](https://developer.apple.com/documentation/arkit/armeshanchor) | `file` is a `RelPath`; one PLY in world meters |
 
 ### 3.4 Stills (checklist photos)
 
@@ -164,7 +174,7 @@ Base's checklist asks for the meter close-up, meter surroundings from 10+ steps 
 
 | Field | Level | Source | Notes |
 | --- | --- | --- | --- |
-| `id`, `purpose`, `img`, `w`, `h`, `timestamp`, `orientation` | R (tier `photo_only` needs ≥ 1) | app | `purpose`: `meter_close`, `meter_oblique`, `meter_surround`, `meter_left`, `meter_right`, `adjacent_wall`, `behind_fence`, `panel_close`, `panel_open`, `main_disconnect`, `panel_surround`, `house_overview`, `other` |
+| `id`, `purpose`, `img`, `w`, `h`, `timestamp`, `orientation` | R (tier `photo_only` needs ≥ 1) | app | `id` is a `SegmentId`. `purpose`: `meter_close`, `meter_oblique`, `meter_surround`, `meter_left`, `meter_right`, `adjacent_wall`, `behind_fence`, `panel_close`, `panel_open`, `main_disconnect`, `panel_surround`, `house_overview`, `other` |
 | `exif` | R for `photo_only`, Rec otherwise | [`AVCapturePhoto.metadata`](https://developer.apple.com/documentation/avfoundation/avcapturephoto/metadata) or `ARFrame.exifData` | `FocalLenIn35mmFilm` gives nominal intrinsics without ARKit |
 | `keyframe` | Rec when taken in AR | app | pose and intrinsics then come from that keyframe |
 | `gravity` | Rec | [`CMDeviceMotion.gravity`](https://developer.apple.com/documentation/coremotion/cmdevicemotion/gravity) | device frame, g; camera tilt and roll for photos without a pose |
@@ -1396,7 +1406,7 @@ This realises section 5 rule 5 without tus. Full request and response shapes, re
 2. During capture, in batches every ~2 s: `POST /v1/captures/{id}/files` with `{path, bytes, sha256, md5, role, contentType, meta}` per file (1–50 per call). `path` is the packet path (`keyframes/k00012.jpg`). `role` is exactly the `files[].role` value (`keyframe`, `depth`, `confidence`, `features`, `still`, `stream`, `truedepth`, `mesh`, `other`; `keyframe_image` → `422 role_unknown`). `meta` is the keyframe, still or `trueDepthFrame` record the file belongs to (images and TrueDepth frames only). The call returns a signed PUT URL per file. Files over 16 MiB get multipart part URLs instead.
 3. PUT each file's bytes to its URL with the returned `Content-Type` and `Content-MD5` headers, then `POST /v1/captures/{id}/files:commit` with `{path, sha256}`. A commit is the per-file acknowledgement in section 5 rule 5.
 4. `POST /v1/captures/{id}/finalize` with headers `Idempotency-Key: <packetId>`, `X-Packet-Sha256: <sha256 of the uncompressed body>` and `Content-Encoding: gzip`, body = `packet.json`. It may be sent before every file is committed (`202 awaiting_files` with the missing list; the run starts on the last commit); the manifest checks of section 6 answer `422` with JSON pointers.
-5. Results, live hints and retake requests arrive via `GET /v1/captures/{id}/events` (long-poll), APNs push, and `GET /v1/captures/{id}/result`. Retakes are amendments: `POST /v1/captures/{id}/amendments` with `{amendmentId, answers: [view or member-action ids]}`, then the same file calls under `amendments/{aid}/`, then `POST /v1/captures/{id}/amendments/{aid}/finalize` with an ordinary v0.4 packet whose `parentPacketId` is the parent's `packetId` (fresh `packetId`, same `formatVersion`).
+5. Results, live hints and retake requests arrive via `GET /v1/captures/{id}/events` (long-poll), APNs push, and `GET /v1/captures/{id}/result`. Retakes are amendments: `POST /v1/captures/{id}/amendments` with `{amendmentId, answers: [view or member-action ids]}`, then the same file calls under `amendments/{aid}/`, then `POST /v1/captures/{id}/amendments/{aid}/finalize` with an ordinary v0.4 packet whose `parentPacketId` is the parent's `packetId` (fresh `packetId`, same `formatVersion`). `amendmentId` is a `StorageId`.
 6. One-tap answers to a pre-filled read (the meter number, later panel brand or main amps): `POST /v1/captures/{id}/confirmations` with `{fieldId: "meter_number", kind: "confirmed" | "corrected" | "none", value?, imageId, clientAt}` → `201 {confirmationId, fieldId, imageId, kind, receivedAt, seq}`; a repeat with the same answer → `200`, a different answer → `409 confirmation_conflict`.
 
 Format notes:
