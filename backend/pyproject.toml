@@ -245,6 +245,11 @@ forbidden_modules = [
     "server.criteria",
     "server.result",
 ]
+# SD-84: these two edges are the only way server.eval reaches the stage entry points.
+ignore_imports = [
+    "server.eval.pipeline_adapters -> server.criteria",
+    "server.eval.pipeline_adapters -> server.poses",
+]
 
 [[tool.importlinter.contracts]]
 name = "Stages do not import each other"

@@ -32,16 +32,34 @@ import numpy as np
 import pycolmap
 
 HERE = Path(__file__).resolve().parent
-STORE = HERE.parents[2]
+REPO = HERE.parents[2]
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(HERE.parent))
-sys.path.insert(0, str(STORE / "internal/packet-generator"))
+# Vendored out of the store harness: packetgen is not in the repo. Prefer a checkout
+# beside the repo, then the fixture store the rest of the harness already uses.
+from server.common.config import default_fixture_source  # noqa: E402
+
+_PACKETGEN = next(
+    (
+        path
+        for path in (
+            REPO / "internal/packet-generator",
+            Path(default_fixture_source()) / "packet-generator",
+        )
+        if path.is_dir()
+    ),
+    None,
+)
+if _PACKETGEN is not None:
+    sys.path.insert(0, str(_PACKETGEN))
 
 from packetgen.noise import apply_drift, load_profiles  # noqa: E402
 
 from server.eval.coverage import CoverageQuery, bands_from_grid, coverage_rule, ground_sensitivity, set_wall_observed_fraction  # noqa: E402
 from server.eval.extract import ExtractParams, coverage_from_tracks, extract_scene, profile_entries  # noqa: E402
-from server.eval.frame import apply, mat4_from_list, pose_cv_to_arkit, project_arkit, transform_pose  # noqa: E402
+from server.eval.frame import apply, mat4_from_list, pose_cv_to_arkit, transform_pose  # noqa: E402
 from server.eval.sceneio import CoverageGrid, load_json, save_json, sha256_file, write_ply  # noqa: E402
+from server.eval.taps import meter_taps, opening_clicks  # noqa: E402
 from server.eval.visibility import Camera  # noqa: E402
 
 ANN = HERE.parent / "vendor/hs13_facade/annotations.json"
@@ -70,18 +88,14 @@ def align_sfm(R_sfm, c_sfm, R_ref, c_ref) -> np.ndarray:
     return T
 
 
-def pick_meter_views(gt_cams: list[Camera], meter: np.ndarray, n: int = 3) -> list[tuple[int, float, float]]:
-    """Views where the meter projects inside the image, facing the wall within 45 deg; nearest first."""
-    cands = []
-    for i, c in enumerate(gt_cams):
-        u, v, z = project_arkit(c.pose, c.K, meter[None])
-        if not (z[0] > 0.5 and 0.05 * c.w < u[0] < 0.95 * c.w and 0.05 * c.h < v[0] < 0.95 * c.h):
-            continue
-        to_cam = c.pose[:3, 3] - meter
-        if to_cam[2] / np.linalg.norm(to_cam) < np.cos(np.radians(45)):
-            continue
-        cands.append((float(np.linalg.norm(to_cam)), i, float(u[0]), float(v[0])))
-    return [(i, u, v) for _, i, u, v in sorted(cands)[:n]]
+def cameras_in_gt_frame(cams_w: list[Camera], T_w_gt: np.ndarray) -> list[Camera]:
+    """Reconstruction cameras, posed in the GT frame, keeping each recon ``K`` and size.
+
+    Opening and meter clicks are projected through that ``K``. A width ratio from the
+    DSLR image would land on the wrong pixel whenever the recon crop or principal point differs.
+    """
+    gt_from_ref = np.linalg.inv(T_w_gt)
+    return [Camera(cam.id, gt_from_ref @ cam.pose, cam.K, cam.w, cam.h) for cam in cams_w]
 
 
 def main() -> None:
@@ -158,26 +172,11 @@ def main() -> None:
     points_w = apply(T_ws, X_sfm)
     cams_w = [Camera(n, transform_pose(T_ws, P), K, w, h) for n, P, (K, w, h) in zip(names, sfm_pose, rec_cams)]
 
-    meter_gt = np.asarray(next(o for o in gt["objects"] if o["id"] == gt["frame"]["anchor"]["element_id"])["geometry"]["pos_m"])
-    taps = []
-    for i, u, v in pick_meter_views(gt_cams, meter_gt):
-        r = rec_cams[i][1] / gt_cams[i].w
-        taps.append((i, u * r, v * r))
+    click_cams = cameras_in_gt_frame(cams_w, T_w_gt)
+    widths = {i: cam.w for i, cam in enumerate(click_cams)}
+    taps = meter_taps(gt, click_cams, widths)
     params["meter_tap_views"] = [names[i] for i, _, _ in taps]
-
-    idx_by_name = {n: i for i, n in enumerate(names)}
-    kscale = ann["keyframes"]["scale"]
-    features = []
-    for f in ann["features"]:
-        pts = {}
-        for img, roles in f["points_px"].items():
-            if img not in idx_by_name:
-                continue
-            i = idx_by_name[img]
-            r = rec_cams[i][1] / (gt_cams[i].w * kscale)
-            pts[i] = {role: (roles[role][0] * r, roles[role][1] * r) for role in roles}
-        oid = f["label"].replace("w1 window ", "win").replace("w3 entrance door", "door")
-        features.append({"id": oid, "class": f["type"], "label": f["label"], "points_px": pts})
+    features = opening_clicks(gt, click_cams, widths)
 
     provenance = {
         "data": "hybrid", "site": gt["provenance"]["site"],
@@ -190,7 +189,7 @@ def main() -> None:
         "notes": ["Simulated ARKit: dataset poses + packetgen drift draw (see producer.params)." if not args.oracle
                   else "Oracle: SfM aligned to exact dataset poses; scale and gravity are ground truth.",
                   "Meter tap = ground-truth meter projected into the listed views (perfect tap).",
-                  "Openings = PR #13 hand clicks, rescaled to the 1600 px SfM images, cast through SfM cameras."],
+                  "Openings and the meter tap are GT points projected through each recon camera's own K."],
     }
     p = ExtractParams(scale_rel_pm=SCALE_REL_PM.get(tag, 0.06), voxel_m=args.voxel)
     scene, st = extract_scene(points_w, tracks, cams_w, taps, features, p, provenance,

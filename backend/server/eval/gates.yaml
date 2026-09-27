@@ -1,0 +1,37 @@
+# Thresholds are the brief's bars. Rescored on harness_sha with the laser PLY
+# present (visibility on). Stored colmap-oracle and colmap-nonlidar still
+# measure by_wall.w1.p90_in at 1.94 and 5.09, and false_observed_claims is
+# empty, so the bars are confirmed and not amended. The oracle re-extract
+# was refreshed on this sha (observed p90 1.31 in); it is not a gate row.
+sites:
+  eth3d-facade: {gt: data/fixtures/scenes/eth3d-facade/gt-laser/scene.json, labels: [A, B, C, S, demo]}
+  eth3d-electro: {gt: data/fixtures/scenes/eth3d-electro/gt-laser/scene.json, labels: [A, B, C, S]}
+  eth3d-delivery: {gt: data/fixtures/scenes/eth3d-delivery/gt-laser/scene.json, labels: [A, B, C, S]}
+placement_excluded_sites:
+  yt-12Ks1idWj40: "answer leak: frames after t0000.00 show the finished install (c3-vlm-baseline.md §6; house-labels v0.3)"
+e2e_packets: [eth3d-facade:arkit-lidar, eth3d-facade:arkit-nonlidar, eth3d-electro:arkit-nonlidar]
+geometry:
+  harness_sha: 55e7f52cc5d21819de2e818e2cf76dd97e1016c1
+  eth3d-facade/arkit-lidar: {by_wall.w1.p90_in_max: 3.0, false_observed_claims_max: 0, scale_error_pct_abs_max: 1.0}
+  eth3d-facade/arkit-nonlidar: {by_wall.w1.p90_in_max: 5.5, false_observed_claims_max: 0}
+  eth3d-electro/arkit-nonlidar: {on_truly_observed_elements.p90_in_max: 6.0, false_observed_claims_max: 0}
+verdicts:
+  unsafe_passes_max: 0
+  false_rejections_max: 0
+  coverage_contract_errors_max: 0
+  c5_margin_errors_max: 0
+  site_agreement_min: 1.0
+  start_agreement_min: {eth3d-facade/demo: 1.0}
+decidability:
+  gt_laser_min: {eth3d-facade: 0.38, eth3d-electro: 0.75}
+  photo_warn_below: {eth3d-facade: 0.29}
+  baseline_photo: {eth3d-facade: [0.12, 0.13], eth3d-electro: [0.24, 0.25]}
+  baseline_laser: {eth3d-facade: 0.38, eth3d-electro: 0.75}
+positive_pass:
+  - {site: eth3d-facade, scene: gt-laser-gravel, profile: C, ground_rule: footprint3in, expect: pass, wall: w1, start_s_m: [-3.891, -3.383], route_ft_max: 9.0}
+  - {site: eth3d-facade, scene: gt-laser-gravel, profile: C, ground_rule: angle80, expect: manual_review}
+  - {site: eth3d-facade, scene: gt-laser, profile: C, ground_rule: footprint3in, expect: manual_review}
+  - {site: eth3d-facade, scene: e2e/arkit-lidar, profile: C, ground_rule: footprint3in, expect: pass, allow_warn: true}
+safety: {no_coverage_no_pass: true, bounds_honest: true, veto_monotone: true, judge_monotone: true}
+lamar: {openings_p90_in_max: 4.6, segments: [2022-06-17_s0, 2022-06-17_s1, 2022-02-10_s0, 2022-02-10_s1, 2021-06-02_s0]}
+runtime: {e2e_wall_clock_min_max: 10, capture_check_s_max: 30, time_to_verdict_p50_s_max: 180}

@@ -28,10 +28,33 @@ except ImportError:
     pycolmap = None
 
 from server.eval.chain import Chain, ground_y, object_center
-from server.eval.coverage import (GROUND_RULES, MIN_VIEWS, CoverageQuery, bands_from_grid, build_grid, coverage_rule, grade,
-                                  ground_sensitivity, limit_for, query_region, set_wall_observed_fraction)
+from server.eval.coverage import (
+    GROUND_RULES,
+    MissingOccluderError,
+    load_occluders,
+    require_declared_cloud,
+    MIN_VIEWS,
+    CoverageQuery,
+    bands_from_grid,
+    build_grid,
+    coverage_rule,
+    grade,
+    ground_sensitivity,
+    limit_for,
+    query_region,
+    set_wall_observed_fraction,
+)
 from server.eval.extract import ExtractParams, extract_scene, profile_entries
-from server.eval.frame import align_by_rotations, apply, collinearity, mat4_from_list, pose_cv_to_arkit, scale_of, transform_pose, umeyama
+from server.eval.frame import (
+    align_by_rotations,
+    apply,
+    collinearity,
+    mat4_from_list,
+    pose_cv_to_arkit,
+    scale_of,
+    transform_pose,
+    umeyama,
+)
 from server.eval.keydist import key_distances, stations_from
 from server.eval.match import match, renamed
 from server.eval.sceneio import load_coverage, load_json, load_points, read_ply, save_json, sha256_file, write_ply
@@ -71,9 +94,15 @@ def err_stats(err_in: np.ndarray, within_own: np.ndarray | None = None) -> dict:
     a = np.abs(np.asarray(err_in, float))
     if len(a) == 0:
         return {"n": 0}
-    out = {"n": int(len(a)), "median_in": round(float(np.median(a)), 2), "p90_in": round(float(np.percentile(a, 90)), 2),
-           "max_in": round(float(a.max()), 2), "share_le_2in": round(float((a <= 2).mean()), 3),
-           "share_le_4in": round(float((a <= 4).mean()), 3), "share_le_6in": round(float((a <= 6).mean()), 3)}
+    out = {
+        "n": int(len(a)),
+        "median_in": round(float(np.median(a)), 2),
+        "p90_in": round(float(np.percentile(a, 90)), 2),
+        "max_in": round(float(a.max()), 2),
+        "share_le_2in": round(float((a <= 2).mean()), 3),
+        "share_le_4in": round(float((a <= 4).mean()), 3),
+        "share_le_6in": round(float((a <= 6).mean()), 3),
+    }
     if within_own is not None:
         out["calibration"] = round(float(np.mean(within_own)), 3)
     return out
@@ -100,8 +129,11 @@ def criteria_regions(gt: dict, laser: np.ndarray) -> dict[str, dict]:
     regions = {
         "meter_wall": {"mask": face & (wid == mwall), "probe_off": outw * 0.1, "normal": outw},
         "wall_face": {"mask": face, "probe_off": outw * 0.1, "normal": outw},
-        "ground_strip": {"mask": ground, "probe_off": np.tile([0.0, 0.05, 0.0], (len(laser), 1)),
-                         "normal": np.tile([0.0, 1.0, 0.0], (len(laser), 1))},
+        "ground_strip": {
+            "mask": ground,
+            "probe_off": np.tile([0.0, 0.05, 0.0], (len(laser), 1)),
+            "normal": np.tile([0.0, 1.0, 0.0], (len(laser), 1)),
+        },
     }
     vol = []
     for w in ch.walls:
@@ -119,8 +151,51 @@ def criteria_regions(gt: dict, laser: np.ndarray) -> dict[str, dict]:
 # --- scene vs scene --------------------------------------------------------------------------
 
 
-def score_scene(gt_path: Path, rc_path: Path, out_dir: Path | None = None, visibility: bool = True,
-                align_info: dict | None = None) -> dict:
+def wall_id_for(gt: dict, kid: str) -> str | None:
+    """Wall a key distance belongs to, from the GT element (contract rows are per wall)."""
+    ch = Chain(gt)
+    objects = {o["id"]: o for o in gt["objects"]}
+    if kid == "meter.height":
+        meter = objects[gt["frame"]["anchor"]["element_id"]]
+        if meter.get("wall_id"):
+            return meter["wall_id"]
+        return ch.nearest_wall(object_center(meter, ch)[[0, 2]]).id
+    if "[" not in kid:
+        return None
+    inner = kid.split("[", 1)[1].split("]", 1)[0]
+    if kid.startswith("corner."):
+        corner = next(c for c in gt["chain"].get("corners", []) if c["id"] == inner)
+        return corner["left_wall"]
+    if kid.startswith("wall.length"):
+        return inner
+    if kid.startswith("opening."):
+        oid = inner.split(":")[0].split("~")[0]
+        obj = objects[oid]
+        return obj["geometry"].get("wall_id") or obj.get("wall_id")
+    if kid.startswith("equipment."):
+        obj = objects[inner]
+        if obj.get("wall_id") or obj["geometry"].get("wall_id"):
+            return obj.get("wall_id") or obj["geometry"]["wall_id"]
+        return ch.nearest_wall(object_center(obj, ch)[[0, 2]]).id
+    if kid.startswith(("facing.depth", "overhead.clearance")):
+        return inner.split("@", 1)[0]
+    if kid.startswith("ground.region_dist"):
+        meter = objects[gt["frame"]["anchor"]["element_id"]]
+        mc = object_center(meter, ch)
+        mw = ch.by_id.get(meter.get("wall_id")) or ch.nearest_wall(mc[[0, 2]])
+        return mw.id
+    return None
+
+
+def score_scene(
+    gt_path: Path,
+    rc_path: Path,
+    out_dir: Path | None = None,
+    visibility: bool = True,
+    align_info: dict | None = None,
+    *,
+    allow_missing_occluders: bool = False,
+) -> dict:
     t0 = time.time()
     gt_path, rc_path = Path(gt_path), Path(rc_path)
     gt, rc0 = load_json(gt_path), load_json(rc_path)
@@ -141,8 +216,17 @@ def score_scene(gt_path: Path, rc_path: Path, out_dir: Path | None = None, visib
             status = "extent_limited"
         else:
             status = "scored"
-        row = {"id": k, "category": g["category"], "feeds": g["feeds"], "unit": g["unit"], "gt": round(g["value"], 4),
-               "status": status}
+        row = {
+            "id": k,
+            "category": g["category"],
+            "feeds": g["feeds"],
+            "unit": g["unit"],
+            "gt": round(g["value"], 4),
+            "status": status,
+        }
+        wid = wall_id_for(gt, k)
+        if wid:
+            row["wall_id"] = wid
         if r is not None:
             row["recon"] = round(r["value"], 4)
             row["recon_pm"] = round(r["pm"], 4)
@@ -152,8 +236,16 @@ def score_scene(gt_path: Path, rc_path: Path, out_dir: Path | None = None, visib
         rows.append(row)
     for k, r in kr.items():
         if k not in kg and not k.startswith(("facing.", "overhead.")):
-            rows.append({"id": k, "category": r["category"], "feeds": r["feeds"], "unit": r["unit"], "recon": round(r["value"], 4),
-                         "status": "phantom"})
+            rows.append(
+                {
+                    "id": k,
+                    "category": r["category"],
+                    "feeds": r["feeds"],
+                    "unit": r["unit"],
+                    "recon": round(r["value"], 4),
+                    "status": "phantom",
+                }
+            )
 
     sc = [r for r in rows if r["status"] == "scored" and r["unit"] == "m"]
     sd = [r for r in rows if r["status"] == "scored" and r["unit"] == "deg"]
@@ -161,11 +253,19 @@ def score_scene(gt_path: Path, rc_path: Path, out_dir: Path | None = None, visib
     for c in sorted({r["category"] for r in sc}):
         rr = [r for r in sc if r["category"] == c]
         by_cat[c] = err_stats([r["error"] for r in rr], [r["within_own_bound"] for r in rr])
-    status_counts = {s: sum(r["status"] == s for r in rows) for s in ("scored", "missing", "extent_limited", "phantom", "scale_reference")}
+    status_counts = {
+        s: sum(r["status"] == s for r in rows)
+        for s in ("scored", "missing", "extent_limited", "phantom", "scale_reference")
+    }
 
     # scale
-    ratios = [kr[r["id"]]["value"] / kg[r["id"]]["value"] for r in sc
-              if r["category"] in LENGTH_CATS and abs(kg[r["id"]]["value"]) > 3.0 and kg[r["id"]]["value"] * kr[r["id"]]["value"] > 0]
+    ratios = [
+        kr[r["id"]]["value"] / kg[r["id"]]["value"]
+        for r in sc
+        if r["category"] in LENGTH_CATS
+        and abs(kg[r["id"]]["value"]) > 3.0
+        and kg[r["id"]]["value"] * kr[r["id"]]["value"] > 0
+    ]
     g_ch, r_ch = Chain(gt), Chain(rc)
     lm_g, lm_r = [], []
     for o in rc["objects"]:
@@ -188,23 +288,88 @@ def score_scene(gt_path: Path, rc_path: Path, out_dir: Path | None = None, visib
     if align_info:
         scale["alignment"] = align_info
 
-    result = {"format": "base-geomscore/v0", "gt": str(gt_path), "recon": str(rc_path),
-              "gt_scene_id": gt["scene_id"], "recon_scene_id": rc0["scene_id"], "producer": rc0["provenance"]["producer"]["path"],
-              "match": m, "key_distances": {"overall": err_stats([r["error"] for r in sc], [r["within_own_bound"] for r in sc]),
-                                            "by_category": by_cat, "angles_deg": err_stats([r["error"] for r in sd]) if sd else {"n": 0},
-                                            "status_counts": status_counts, "rows": rows},
-              "scale": scale}
+    result = {
+        "format": "base-geomscore/v0",
+        "gt": str(gt_path),
+        "recon": str(rc_path),
+        "gt_scene_id": gt["scene_id"],
+        "recon_scene_id": rc0["scene_id"],
+        "producer": rc0["provenance"]["producer"]["path"],
+        "match": m,
+        "key_distances": {
+            "overall": err_stats([r["error"] for r in sc], [r["within_own_bound"] for r in sc]),
+            "by_category": by_cat,
+            "by_wall": {
+                wid: err_stats(
+                    [r["error"] for r in sc if r.get("wall_id") == wid],
+                    [r["within_own_bound"] for r in sc if r.get("wall_id") == wid],
+                )
+                for wid in sorted({r.get("wall_id") for r in sc if r.get("wall_id")})
+            },
+            "angles_deg": err_stats([r["error"] for r in sd]) if sd else {"n": 0},
+            "status_counts": status_counts,
+            "rows": rows,
+        },
+        "scale": scale,
+    }
     if sd:
-        result["key_distances"]["angles_deg"] = {"n": len(sd), "max_abs_deg": round(max(abs(r["error"]) for r in sd), 3)}
+        result["key_distances"]["angles_deg"] = {
+            "n": len(sd),
+            "max_abs_deg": round(max(abs(r["error"]) for r in sd), 3),
+        }
 
-    # point-based parts
-    laser, _, _ = load_points(gt, gt_path.parent, asset_id="laser") if any(a["id"] == "laser" for a in gt.get("assets", [])) \
-        else load_points(gt, gt_path.parent)
-    rpts, rgen, _ = load_points(rc, rc_path.parent)
-    if rpts is None:
-        rpts, rgen, _ = load_points(rc, rc_path.parent, kind="mesh")
-    if laser is not None and rpts is not None:
-        result.update(_point_scores(gt, gt_path, rc, rc_path, laser, rpts, rgen, visibility))
+    # point-based parts. A declared occluder that is not on disk is an error in every scoring path
+    # (SD-61). The debug flag omits it and marks the report provisional; gates reject that.
+    occluders, occluder_provisional = (None, False)
+    if visibility:
+        occluders, occluder_provisional = load_occluders(
+            gt, gt_path.parent, allow_missing_occluders=allow_missing_occluders
+        )
+        if occluder_provisional:
+            result["provisional"] = True
+    laser_id = "laser" if any(a.get("id") == "laser" for a in gt.get("assets", [])) else None
+    laser, laser_missing = require_declared_cloud(
+        gt,
+        gt_path.parent,
+        asset_id=laser_id,
+        allow_missing_occluders=allow_missing_occluders,
+        label="laser",
+    )
+    rpts, recon_missing = require_declared_cloud(
+        rc,
+        rc_path.parent,
+        allow_missing_occluders=allow_missing_occluders,
+        label="recon",
+    )
+    if rpts is None and not recon_missing:
+        rpts, recon_missing = require_declared_cloud(
+            rc,
+            rc_path.parent,
+            kind="mesh",
+            allow_missing_occluders=allow_missing_occluders,
+            label="recon mesh",
+        )
+    if laser_missing or recon_missing:
+        # Declared geometry is absent. Do not score visibility with no blockers.
+        result["provisional"] = True
+    elif laser is not None and rpts is not None:
+        _, rgen, _ = load_points(rc, rc_path.parent)
+        if rgen is None and not any(a.get("kind") == "point_cloud" for a in rc.get("assets") or []):
+            _, rgen, _ = load_points(rc, rc_path.parent, kind="mesh")
+        result.update(
+            _point_scores(
+                gt,
+                gt_path,
+                rc,
+                rc_path,
+                laser,
+                rpts,
+                rgen,
+                visibility,
+                occluders=occluders,
+                allow_missing_occluders=allow_missing_occluders,
+            )
+        )
     kc = result.get("key_distance_coverage", {})
     for row in rows:
         if row["id"] == "meter.height":
@@ -217,9 +382,12 @@ def score_scene(gt_path: Path, rc_path: Path, out_dir: Path | None = None, visib
                 row["coverage_claimed"] = kc[oid]["claimed"]["status"]
     obs_rows = [r for r in sc if r.get("coverage_truth") == "observed"]
     if kc:
-        result["key_distances"]["on_truly_observed_elements"] = err_stats([r["error"] for r in obs_rows], [r["within_own_bound"] for r in obs_rows])
+        result["key_distances"]["on_truly_observed_elements"] = err_stats(
+            [r["error"] for r in obs_rows], [r["within_own_bound"] for r in obs_rows]
+        )
         result["key_distances"]["on_grazing_or_unobserved_elements"] = err_stats(
-            [r["error"] for r in sc if r.get("coverage_truth") not in (None, "observed")])
+            [r["error"] for r in sc if r.get("coverage_truth") not in (None, "observed")]
+        )
         result["key_distances"]["false_observed_claims"] = sorted(k for k, v in kc.items() if v["false_observed_claim"])
     result["runtime_s"] = round(time.time() - t0, 1)
     if out_dir:
@@ -230,18 +398,31 @@ def score_scene(gt_path: Path, rc_path: Path, out_dir: Path | None = None, visib
     return result
 
 
-def _point_scores(gt, gt_path, rc, rc_path, laser, rpts, rgen, visibility: bool) -> dict:
+def _point_scores(
+    gt,
+    gt_path,
+    rc,
+    rc_path,
+    laser,
+    rpts,
+    rgen,
+    visibility: bool,
+    occluders: np.ndarray | None = None,
+    allow_missing_occluders: bool = False,
+) -> dict:
     out: dict = {}
     near_r = np.linalg.norm(rpts[:, [0, 2]], axis=1) < NEAR_M + 2
     near_l = np.linalg.norm(laser[:, [0, 2]], axis=1) < NEAR_M + 2
     T = icp_rigid(_sub(rpts[near_r], 150_000), laser[near_l]) if near_r.sum() > 50 else np.eye(4)
     R = T[:3, :3]
-    out["anchor"] = {"icp_translation_m": [round(float(v), 4) for v in T[:3, 3]],
-                     "icp_translation_norm_m": round(float(np.linalg.norm(T[:3, 3])), 4),
-                     "icp_yaw_deg": round(float(np.degrees(np.arctan2(R[0, 2], R[0, 0]))), 3),
-                     "icp_tilt_deg": round(float(np.degrees(np.arccos(np.clip(R[1, 1], -1, 1)))), 3),
-                     "meter_origin_offset_m": round(float(np.linalg.norm(apply(T, np.zeros((1, 3)))[0])), 4),
-                     "note": "Rigid ICP of recon points onto the laser (within 12 m of the meter). The translation is how far the recon's meter frame sits from the truth."}
+    out["anchor"] = {
+        "icp_translation_m": [round(float(v), 4) for v in T[:3, 3]],
+        "icp_translation_norm_m": round(float(np.linalg.norm(T[:3, 3])), 4),
+        "icp_yaw_deg": round(float(np.degrees(np.arctan2(R[0, 2], R[0, 0]))), 3),
+        "icp_tilt_deg": round(float(np.degrees(np.arccos(np.clip(R[1, 1], -1, 1)))), 3),
+        "meter_origin_offset_m": round(float(np.linalg.norm(apply(T, np.zeros((1, 3)))[0])), 4),
+        "note": "Rigid ICP of recon points onto the laser (within 12 m of the meter). The translation is how far the recon's meter frame sits from the truth.",
+    }
     regions = criteria_regions(gt, laser)
     tree_decl = cKDTree(rpts)
     tree_icp = cKDTree(apply(T, rpts))
@@ -250,16 +431,33 @@ def _point_scores(gt, gt_path, rc, rc_path, laser, rpts, rgen, visibility: bool)
     if visibility:
         gkf = {k["id"]: k for k in gt.get("keyframes", [])}
         ids = [k["id"] for k in rc.get("keyframes", []) if k["id"] in gkf] or list(gkf)
-        cams = [Camera(i, mat4_from_list(gkf[i]["pose"]), np.array(gkf[i]["intrinsics"]), gkf[i]["w"], gkf[i]["h"]) for i in ids]
+        cams = [
+            Camera(i, mat4_from_list(gkf[i]["pose"]), np.array(gkf[i]["intrinsics"]), gkf[i]["w"], gkf[i]["h"])
+            for i in ids
+        ]
         blockers = [laser]
-        if any(a["id"] == "occluders" for a in gt.get("assets", [])):
-            occ, _, _ = load_points(gt, gt_path.parent, asset_id="occluders")
-            blockers.append(occ)
+        if occluders is not None:
+            blockers.append(occluders)
+        elif any(a["id"] == "occluders" for a in gt.get("assets", [])):
+            occ, skipped = load_occluders(gt, gt_path.parent, allow_missing_occluders=allow_missing_occluders)
+            if skipped:
+                out["provisional"] = True
+            elif occ is not None:
+                blockers.append(occ)
         truth_q = CoverageQuery(cams, np.vstack(blockers))
         oracle = truth_q.oracle
-        out["visibility"] = {"cameras": len(cams), "rule": coverage_rule(),
-                             "truth": "GT cameras used by the recon, laser z-buffer + occluders"}
-        rc_q = CoverageQuery.from_scene(rc, rc_path.parent) if rc.get("keyframes") else None
+        out["visibility"] = {
+            "cameras": len(cams),
+            "rule": coverage_rule(),
+            "truth": "GT cameras used by the recon, laser z-buffer + occluders",
+        }
+        rc_q = None
+        if rc.get("keyframes"):
+            rc_q = CoverageQuery.from_scene(
+                rc, rc_path.parent, allow_missing_occluders=allow_missing_occluders
+            )
+            if getattr(rc_q, "provisional", False):
+                out["provisional"] = True
         out["key_distance_coverage"] = _kd_coverage(gt, rc, truth_q, rc_q)
     comp = {}
     for name, rg in regions.items():
@@ -291,14 +489,20 @@ def _point_scores(gt, gt_path, rc, rc_path, laser, rpts, rgen, visibility: bool)
             kind = "ground" if name == "ground_strip" else ("wall" if normals is not None else "free")
             t_obs = truth_q.incidences(*surf)
             r_obs = rc_q.incidences(*surf) if rc_q is not None else None
-            limits = [(None, limit_for(kind), None)] + ([(rid, r["max_incidence_deg"], r.get("max_footprint_m")) for rid, r in GROUND_RULES.items()]
-                                                  if kind == "ground" else [])
+            limits = [(None, limit_for(kind), None)] + (
+                [(rid, r["max_incidence_deg"], r.get("max_footprint_m")) for rid, r in GROUND_RULES.items()]
+                if kind == "ground"
+                else []
+            )
             for tag, lim, mfp in limits:
                 t_pp = truth_q.summarize(t_obs[0], t_obs[1], lim, t_obs[2], mfp)
                 t_ok = t_pp["views_good"] >= MIN_VIEWS
-                c = {"max_incidence_deg": lim, "truth_by_rule": grade(t_pp, {"region": name}, surface=kind, limit=lim, max_fp=mfp)["status"],
-                     "truly_observed_by_rule": round(float(t_ok.mean()), 4),
-                     "truly_grazing_only": round(float(((t_pp["views_any"] >= 1) & ~t_ok).mean()), 4)}
+                c = {
+                    "max_incidence_deg": lim,
+                    "truth_by_rule": grade(t_pp, {"region": name}, surface=kind, limit=lim, max_fp=mfp)["status"],
+                    "truly_observed_by_rule": round(float(t_ok.mean()), 4),
+                    "truly_grazing_only": round(float(((t_pp["views_any"] >= 1) & ~t_ok).mean()), 4),
+                }
                 if tag:
                     c["rule_id"] = tag
                     if mfp is not None:
@@ -321,7 +525,9 @@ def _point_scores(gt, gt_path, rc, rc_path, laser, rpts, rgen, visibility: bool)
         un["share_unseen_by_any_input_camera"] = round(float((~oracle.seen_by(sub, None).any(1)).mean()), 4)
     if grid is not None and len(rn):
         un["share_in_own_unknown_voxels"] = round(float((grid.state_at(rn) == 0).mean()), 4)
-    un["share_flagged_generated"] = round(float(rgen[np.linalg.norm(rpts[:, [0, 2]], axis=1) < NEAR_M].mean()), 4) if rgen is not None else 0.0
+    un["share_flagged_generated"] = (
+        round(float(rgen[np.linalg.norm(rpts[:, [0, 2]], axis=1) < NEAR_M].mean()), 4) if rgen is not None else 0.0
+    )
     un["generated_regions"] = len(rc.get("generated_regions", []))
     out["unobserved_geometry"] = un
     return out
@@ -343,7 +549,11 @@ def _kd_coverage(gt: dict, rc: dict, truth_q: CoverageQuery, rc_q: CoverageQuery
             w = o.get("wall_id") or g_ch.nearest_wall(c[[0, 2]]).id
             reg = {"wall_id": w, "s_m": [-0.3, 0.3], "height_m": [max(0.0, c[1] - 0.3), c[1] + 0.3]}
         elif g["kind"] == "wall_rect":
-            reg = {"wall_id": g["wall_id"], "s_m": list(g["s_m"]), "height_m": [g["bottom_m"], min(g["top_m"], HEADROOM_M + 1.5)]}
+            reg = {
+                "wall_id": g["wall_id"],
+                "s_m": list(g["s_m"]),
+                "height_m": [g["bottom_m"], min(g["top_m"], HEADROOM_M + 1.5)],
+            }
         else:
             continue
         e = {"region": reg, "truth": query_region(gt, None, reg, truth_q)}
@@ -352,54 +562,90 @@ def _kd_coverage(gt: dict, rc: dict, truth_q: CoverageQuery, rc_q: CoverageQuery
             rg = ro["geometry"]
             rreg = dict(reg)
             if rg["kind"] == "wall_rect" and rg["wall_id"] in rc_walls:
-                rreg = {"wall_id": rg["wall_id"], "s_m": list(rg["s_m"]), "height_m": [rg["bottom_m"], min(rg["top_m"], HEADROOM_M + 1.5)]}
+                rreg = {
+                    "wall_id": rg["wall_id"],
+                    "s_m": list(rg["s_m"]),
+                    "height_m": [rg["bottom_m"], min(rg["top_m"], HEADROOM_M + 1.5)],
+                }
             if rreg["wall_id"] in rc_walls:
                 e["claimed"] = query_region(rc, None, rreg, rc_q)
-        e["false_observed_claim"] = bool(e.get("claimed", {}).get("status") == "observed" and e["truth"]["status"] != "observed")
+        e["false_observed_claim"] = bool(
+            e.get("claimed", {}).get("status") == "observed" and e["truth"]["status"] != "observed"
+        )
         out[o["id"]] = e
     return out
 
 
 def markdown(r: dict) -> str:
     kd = r["key_distances"]
-    L = [f"# Geometry score: {r['recon_scene_id']} vs {r['gt_scene_id']}", "",
-         f"Producer `{r['producer']}`. Status counts: {kd['status_counts']}.", ""]
+    L = [
+        f"# Geometry score: {r['recon_scene_id']} vs {r['gt_scene_id']}",
+        "",
+        f"Producer `{r['producer']}`. Status counts: {kd['status_counts']}.",
+        "",
+    ]
     o = kd["overall"]
     if o.get("n"):
-        L += [f"**Key distances ({o['n']} scored):** median {o['median_in']} in, p90 {o['p90_in']} in, max {o['max_in']} in; "
-              f"≤2 in {o['share_le_2in']:.0%}, ≤4 in {o['share_le_4in']:.0%}, ≤6 in {o['share_le_6in']:.0%}; "
-              f"within the recon's own bound {o.get('calibration', 0):.0%}.", ""]
+        L += [
+            f"**Key distances ({o['n']} scored):** median {o['median_in']} in, p90 {o['p90_in']} in, max {o['max_in']} in; "
+            f"≤2 in {o['share_le_2in']:.0%}, ≤4 in {o['share_le_4in']:.0%}, ≤6 in {o['share_le_6in']:.0%}; "
+            f"within the recon's own bound {o.get('calibration', 0):.0%}.",
+            "",
+        ]
     s = r["scale"]
-    L += [f"**Scale:** KD ratio median {s.get('kd_ratio_median')} (n={s.get('kd_ratio_n')}, error {s.get('scale_error_pct')} %), "
-          f"landmark Umeyama {s.get('landmark_umeyama_scale')}." + (f" Alignment: {s['alignment']}." if s.get("alignment") else ""), ""]
+    L += [
+        f"**Scale:** KD ratio median {s.get('kd_ratio_median')} (n={s.get('kd_ratio_n')}, error {s.get('scale_error_pct')} %), "
+        f"landmark Umeyama {s.get('landmark_umeyama_scale')}."
+        + (f" Alignment: {s['alignment']}." if s.get("alignment") else ""),
+        "",
+    ]
     if "anchor" in r:
         a = r["anchor"]
-        L += [f"**Anchor:** ICP translation {a['icp_translation_norm_m']} m {a['icp_translation_m']}, yaw {a['icp_yaw_deg']}°, tilt {a['icp_tilt_deg']}°.", ""]
+        L += [
+            f"**Anchor:** ICP translation {a['icp_translation_norm_m']} m {a['icp_translation_m']}, yaw {a['icp_yaw_deg']}°, tilt {a['icp_tilt_deg']}°.",
+            "",
+        ]
     if kd.get("false_observed_claims") is not None:
         t = kd.get("on_truly_observed_elements", {})
-        L += [f"**On truly observed elements:** {t.get('n', 0)} KDs, median {t.get('median_in')} in, p90 {t.get('p90_in')} in. "
-              f"Elements the recon would claim observed but the truth grades grazing/unobserved: {kd['false_observed_claims'] or 'none'}.", ""]
-    L += ["| Key distance | Status | GT | Recon | Error | ± own | within | coverage claimed / truth |", "|---|---|---|---|---|---|---|---|"]
+        L += [
+            f"**On truly observed elements:** {t.get('n', 0)} KDs, median {t.get('median_in')} in, p90 {t.get('p90_in')} in. "
+            f"Elements the recon would claim observed but the truth grades grazing/unobserved: {kd['false_observed_claims'] or 'none'}.",
+            "",
+        ]
+    L += [
+        "| Key distance | Status | GT | Recon | Error | ± own | within | coverage claimed / truth |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
     for row in kd["rows"]:
         u = "in" if row["unit"] == "m" else "deg"
-        L.append(f"| `{row['id']}` | {row['status']} | {row.get('gt', '')} | {row.get('recon', '')} | "
-                 f"{row.get('error', '')} {u if 'error' in row else ''} | {row.get('recon_pm', '')} | {row.get('within_own_bound', '')} | "
-                 f"{row.get('coverage_claimed', '–')} / {row.get('coverage_truth', '–')} |")
+        L.append(
+            f"| `{row['id']}` | {row['status']} | {row.get('gt', '')} | {row.get('recon', '')} | "
+            f"{row.get('error', '')} {u if 'error' in row else ''} | {row.get('recon_pm', '')} | {row.get('within_own_bound', '')} | "
+            f"{row.get('coverage_claimed', '–')} / {row.get('coverage_truth', '–')} |"
+        )
     if "completeness" in r:
-        L += ["", "| Region | GT samples | ≤5/10/20 cm declared | ≤5/10/20 cm after ICP | grid claims observed | truly seen | false observed (grid) "
-              "| truth by rule (status, share, grazing-only) | recon claims by rule | false observed by rule |",
-              "|---|---|---|---|---|---|---|---|---|---|"]
+        L += [
+            "",
+            "| Region | GT samples | ≤5/10/20 cm declared | ≤5/10/20 cm after ICP | grid claims observed | truly seen | false observed (grid) "
+            "| truth by rule (status, share, grazing-only) | recon claims by rule | false observed by rule |",
+            "|---|---|---|---|---|---|---|---|---|---|",
+        ]
         for name, e in r["completeness"].items():
             fmt = lambda d: "/".join(f"{v:.0%}" for v in d.values()) if d else "–"  # noqa: E731
             c = e["coverage"]
-            L.append(f"| {name} | {e['gt_samples']} | {fmt(e.get('declared'))} | {fmt(e.get('after_icp'))} | "
-                     f"{c.get('claimed_observed')} | {c.get('truly_seen')} | {c.get('false_observed')} | "
-                     f"{c.get('truth_by_rule')}, {c.get('truly_observed_by_rule')}, {c.get('truly_grazing_only')} | "
-                     f"{c.get('claimed_by_rule')} | {c.get('false_observed_by_rule')} |")
+            L.append(
+                f"| {name} | {e['gt_samples']} | {fmt(e.get('declared'))} | {fmt(e.get('after_icp'))} | "
+                f"{c.get('claimed_observed')} | {c.get('truly_seen')} | {c.get('false_observed')} | "
+                f"{c.get('truth_by_rule')}, {c.get('truly_observed_by_rule')}, {c.get('truly_grazing_only')} | "
+                f"{c.get('claimed_by_rule')} | {c.get('false_observed_by_rule')} |"
+            )
         u = r["unobserved_geometry"]
-        L += ["", f"**Unobserved geometry** (recon points within {u['near_radius_m']} m): unseen by any input camera "
-              f"{u.get('share_unseen_by_any_input_camera')}, in own unknown voxels {u.get('share_in_own_unknown_voxels')}, "
-              f"flagged generated {u.get('share_flagged_generated')}."]
+        L += [
+            "",
+            f"**Unobserved geometry** (recon points within {u['near_radius_m']} m): unseen by any input camera "
+            f"{u.get('share_unseen_by_any_input_camera')}, in own unknown voxels {u.get('share_in_own_unknown_voxels')}, "
+            f"flagged generated {u.get('share_flagged_generated')}.",
+        ]
     return "\n".join(L) + "\n"
 
 
@@ -419,14 +665,27 @@ def load_cameras(path: Path) -> dict[str, dict]:
         for im in rec.images.values():
             cfw = im.cam_from_world() if callable(im.cam_from_world) else im.cam_from_world
             cam = rec.cameras[im.camera_id]
-            out[Path(im.name).stem] = {"pose": pose_cv_to_arkit(cfw.rotation.matrix(), np.asarray(cfw.translation)),
-                                       "K": np.asarray(cam.params[:4], float) if cam.model.name in ("PINHOLE", "OPENCV", "FULL_OPENCV")
-                                       else np.array([cam.params[0], cam.params[0], cam.params[1], cam.params[2]]),
-                                       "w": int(cam.width), "h": int(cam.height)}
+            out[Path(im.name).stem] = {
+                "pose": pose_cv_to_arkit(cfw.rotation.matrix(), np.asarray(cfw.translation)),
+                "K": np.asarray(cam.params[:4], float)
+                if cam.model.name in ("PINHOLE", "OPENCV", "FULL_OPENCV")
+                else np.array([cam.params[0], cam.params[0], cam.params[1], cam.params[2]]),
+                "w": int(cam.width),
+                "h": int(cam.height),
+            }
         return out
     for c in json.loads(path.read_text()):
-        pose = mat4_from_list(c["pose"]) if "pose" in c else pose_cv_to_arkit(np.asarray(c["R_cw"], float), np.asarray(c["t_cw"], float))
-        out[Path(c["image"]).stem] = {"pose": pose, "K": np.asarray(c["intrinsics"], float), "w": int(c["w"]), "h": int(c["h"])}
+        pose = (
+            mat4_from_list(c["pose"])
+            if "pose" in c
+            else pose_cv_to_arkit(np.asarray(c["R_cw"], float), np.asarray(c["t_cw"], float))
+        )
+        out[Path(c["image"]).stem] = {
+            "pose": pose,
+            "K": np.asarray(c["intrinsics"], float),
+            "w": int(c["w"]),
+            "h": int(c["h"]),
+        }
     return out
 
 
@@ -435,9 +694,21 @@ def load_cloud(path: Path) -> np.ndarray:
     return np.c_[d["x"], d["y"], d["z"]].astype(float)
 
 
-def score_cloud(gt_path: Path, cloud_path: Path, cameras_path: Path | None, out_dir: Path, metric: bool,
-                producer: str = "cloud", transform: np.ndarray | None = None, visibility: bool = True, align_mode: str = "auto",
-                params: ExtractParams | None = None, max_points: int = 400_000) -> dict:
+def score_cloud(
+    gt_path: Path,
+    cloud_path: Path,
+    cameras_path: Path | None,
+    out_dir: Path,
+    metric: bool,
+    producer: str = "cloud",
+    transform: np.ndarray | None = None,
+    visibility: bool = True,
+    align_mode: str = "auto",
+    params: ExtractParams | None = None,
+    max_points: int = 400_000,
+    *,
+    allow_missing_occluders: bool = False,
+) -> dict:
     """Align a bare cloud to the GT frame, build a scene with the reference extractor, score it."""
     t0 = time.time()
     gt_path, out_dir = Path(gt_path), Path(out_dir)
@@ -475,31 +746,68 @@ def score_cloud(gt_path: Path, cloud_path: Path, cameras_path: Path | None, out_
         else:
             align["method"] = f"similarity (unscaled cloud): {how} -> GT cameras; scale error not meaningful"
         R_al = T[:3, :3] / scale_of(T)
-        align["rotation_residual_deg_median"] = round(float(np.median([np.degrees(np.arccos(np.clip((np.trace(g.T @ R_al @ r) - 1) / 2, -1, 1)))
-                                                                        for g, r in zip(R_gt, R_src)])), 3)
+        align["rotation_residual_deg_median"] = round(
+            float(
+                np.median(
+                    [
+                        np.degrees(np.arccos(np.clip((np.trace(g.T @ R_al @ r) - 1) / 2, -1, 1)))
+                        for g, r in zip(R_gt, R_src)
+                    ]
+                )
+            ),
+            3,
+        )
         align["camera_rms_m"] = round(float(np.sqrt(np.mean(np.sum((apply(T, c_src) - c_gt) ** 2, 1)))), 4)
         align["cameras"] = len(names)
     Xw = apply(T, X)
     keep = np.linalg.norm(Xw[:, [0, 2]], axis=1) < 40
     Xw = _sub(Xw[keep], max_points, seed=1)
 
-    gt_cams = [Camera(n, mat4_from_list(gkf[n]["pose"]), np.array(gkf[n]["intrinsics"]), gkf[n]["w"], gkf[n]["h"]) for n in names]
-    cams = [Camera(n, transform_pose(T, cams_src[n]["pose"]), cams_src[n]["K"], cams_src[n]["w"], cams_src[n]["h"]) for n in names]
+    cams = [
+        Camera(n, transform_pose(T, cams_src[n]["pose"]), cams_src[n]["K"], cams_src[n]["w"], cams_src[n]["h"])
+        for n in names
+    ]
     w_out = {i: c.w for i, c in enumerate(cams)}
-    taps = meter_taps(gt, gt_cams, w_out)
-    feats = opening_clicks(gt, gt_cams, w_out)
+    # GT pose, but the reconstruction image's own intrinsics and size. A width-ratio rescale of GT
+    # pixels is only valid for an unchanged field of view; phone crops (A7) and any resampled frame
+    # (A10) put the click on the wrong pixel. DSLR rows, where K and size match, are unchanged.
+    tap_cams = [
+        Camera(
+            n,
+            mat4_from_list(gkf[n]["pose"]),
+            np.asarray(cams_src[n]["K"], float),
+            int(cams_src[n]["w"]),
+            int(cams_src[n]["h"]),
+        )
+        for n in names
+    ]
+    taps = meter_taps(gt, tap_cams, w_out)
+    feats = opening_clicks(gt, tap_cams, w_out)
     for f in feats:
-        f["source_model"] = "perfect clicks: GT opening edges projected through GT cameras"
+        f["source_model"] = (
+            "perfect clicks: GT opening edges projected through the GT pose and the reconstruction intrinsics"
+        )
     vis = VisibilityOracle(cams, Xw)
     seen = vis.seen_by(Xw, None)
     tracks = [np.flatnonzero(r) for r in seen]
     p = params or ExtractParams(scale_rel_pm=0.0 if not metric else 0.03)
-    prov = {"data": gt["provenance"]["data"], "site": gt["provenance"]["site"],
-            "producer": {"path": producer, "params": {"alignment": align, "extract": asdict(p), "cloud": str(cloud_path)}},
-            "inputs": {"images_used": len(names)}, "scale_source": "native_metric" if metric else "ground_truth",
-            "gravity_source": "ground_truth", "notes": ["Scene built by server.eval.geomscore.score_cloud (reference extractor, perfect GT taps and clicks)."]}
-    scene, st = extract_scene(Xw, tracks, cams, taps, feats, p, prov, f"{gt['provenance']['site']}/{producer}", "producer_cloud", T)
-    scene["overheads"], scene["facing"] = profile_entries(st["points_c"], scene, pm_m=0.05, min_count=p.profile_min_count)
+    prov = {
+        "data": gt["provenance"]["data"],
+        "site": gt["provenance"]["site"],
+        "producer": {"path": producer, "params": {"alignment": align, "extract": asdict(p), "cloud": str(cloud_path)}},
+        "inputs": {"images_used": len(names)},
+        "scale_source": "native_metric" if metric else "ground_truth",
+        "gravity_source": "ground_truth",
+        "notes": [
+            "Scene built by server.eval.geomscore.score_cloud (reference extractor, perfect GT taps and clicks)."
+        ],
+    }
+    scene, st = extract_scene(
+        Xw, tracks, cams, taps, feats, p, prov, f"{gt['provenance']['site']}/{producer}", "producer_cloud", T
+    )
+    scene["overheads"], scene["facing"] = profile_entries(
+        st["points_c"], scene, pm_m=0.05, min_count=p.profile_min_count
+    )
     xs = [q[0] for w in scene["walls"] for q in w["baseline_m"]]
     zs = [q[1] for w in scene["walls"] for q in w["baseline_m"]]
     lo, hi = np.array([min(xs) - 4, -0.5, min(zs) - 2]), np.array([max(xs) + 4, 6.0, max(zs) + 16])
@@ -507,23 +815,47 @@ def score_cloud(gt_path: Path, cloud_path: Path, cameras_path: Path | None, out_
     for pi, tr in enumerate(tracks):
         for ci in tr:
             by_cam.setdefault(int(ci), []).append(pi)
-    grid = build_grid(((st["cams_c"][ci].pose[:3, 3], st["points_c"][np.array(v)], None) for ci, v in sorted(by_cam.items())), lo, hi, p.voxel_m)
+    grid = build_grid(
+        ((st["cams_c"][ci].pose[:3, 3], st["points_c"][np.array(v)], None) for ci, v in sorted(by_cam.items())),
+        lo,
+        hi,
+        p.voxel_m,
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
     grid.save(out_dir / "coverage.npz")
     write_ply(out_dir / "points.ply", st["points_c"].astype(np.float32))
-    scene["coverage"] = {"method": "rays from each camera to the cloud points it sees (cloud z-buffer)", "grid": grid.meta("coverage"),
-                         "rule": coverage_rule()}
+    scene["coverage"] = {
+        "method": "rays from each camera to the cloud points it sees (cloud z-buffer)",
+        "grid": grid.meta("coverage"),
+        "rule": coverage_rule(),
+    }
     query = CoverageQuery(st["cams_c"], st["points_c"])
     scene["coverage"]["bands"] = bands_from_grid(grid, scene, query=query)
     scene["coverage"]["sensitivity"] = ground_sensitivity(grid, scene, query)
     set_wall_observed_fraction(scene, query)
-    scene["assets"] = [{"id": "points", "kind": "point_cloud", "path": "points.ply", "format": "ply", "in_scene_frame": True,
-                        "count": int(len(Xw)), "sha256": sha256_file(out_dir / "points.ply")},
-                       {"id": "coverage", "kind": "coverage_grid", "path": "coverage.npz", "format": "npz"}]
+    scene["assets"] = [
+        {
+            "id": "points",
+            "kind": "point_cloud",
+            "path": "points.ply",
+            "format": "ply",
+            "in_scene_frame": True,
+            "count": int(len(Xw)),
+            "sha256": sha256_file(out_dir / "points.ply"),
+        },
+        {"id": "coverage", "kind": "coverage_grid", "path": "coverage.npz", "format": "npz"},
+    ]
     scene["provenance"]["runtime_s"] = round(time.time() - t0, 1)
     save_json(scene, out_dir / "scene.json")
     (out_dir / "extract_report.json").write_text(json.dumps(st["report"], indent=1, default=float))
-    return score_scene(gt_path, out_dir / "scene.json", out_dir, visibility=visibility, align_info=align)
+    return score_scene(
+        gt_path,
+        out_dir / "scene.json",
+        out_dir,
+        visibility=visibility,
+        align_info=align,
+        allow_missing_occluders=allow_missing_occluders,
+    )
 
 
 def transform_from_arg(s: str | None) -> np.ndarray | None:
@@ -532,4 +864,3 @@ def transform_from_arg(s: str | None) -> np.ndarray | None:
     v = json.loads(Path(s).read_text()) if Path(s).exists() else json.loads(s)
     v = np.asarray(v, float)
     return v.reshape(4, 4) if v.shape == (4, 4) else mat4_from_list(v)
-

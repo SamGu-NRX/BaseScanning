@@ -37,6 +37,17 @@ DEFAULT_GROUND_RULE = "angle80"
 OBSERVED_SHARE = 0.9
 SEEN_SHARE_UNOBSERVED = 0.5
 
+
+def clamp_incidence_deg(value: float) -> float:
+    """Clip a viewing angle to the schema's ``[0, 90]`` before rounding to 0.1°.
+
+    A grazing angle just past 90 (the E2E π³ facade runs measured 90.2 after rounding)
+    fails ``best_incidence_deg`` / ``worst_best_incidence_deg`` ``maximum: 90`` and the
+    verdict is dropped.
+    """
+    return round(min(90.0, max(0.0, float(value))), 1)
+
+
 WALL_PROBE_HEIGHTS = (0.15, 0.5, 1.0)  # m, up to the battery's height (39.5 in)
 HEADROOM_M = 2.13  # 7 ft, the strictest headroom in the three profiles
 OVERHEAD_OUT_M = 0.91  # 3 ft out from the wall
@@ -48,6 +59,69 @@ FACING_MAX_OUT_M = 18.3
 def limit_for(surface: str, limits: dict | None = None) -> float | None:
     """Incidence limit of a surface kind; None for free space (any angle counts)."""
     return None if surface == "free" else (limits or INCIDENCE_LIMITS_DEG)[surface]
+
+
+class MissingOccluderError(FileNotFoundError):
+    """A declared occluder asset is missing, unreadable, or not a file (SD-61)."""
+
+
+def load_occluders(scene: dict, base: Path, *, allow_missing_occluders: bool = False) -> tuple[np.ndarray | None, bool]:
+    """Return ``(points, provisional)``.
+
+    No occluder asset → ``(None, False)``. A declared asset that is not a file raises
+    ``MissingOccluderError`` unless ``allow_missing_occluders`` (debug only), in which case the
+    cloud is omitted and ``provisional`` is true.
+    """
+    asset = next((a for a in scene.get("assets", []) if a.get("id") == "occluders"), None)
+    if asset is None:
+        return None, False
+    path = Path(base) / asset["path"]
+    if not path.is_file():
+        if not allow_missing_occluders:
+            raise MissingOccluderError(f"occluder asset {asset['path']} is not a file under {base}")
+        return None, True
+    occ, _, _ = load_points(scene, base, asset_id="occluders")
+    if occ is None:
+        if not allow_missing_occluders:
+            raise MissingOccluderError(f"occluder asset {asset['path']} is not readable under {base}")
+        return None, True
+    return occ, False
+
+
+def require_declared_cloud(
+    scene: dict,
+    base: Path,
+    *,
+    asset_id: str | None = None,
+    kind: str = "point_cloud",
+    allow_missing_occluders: bool = False,
+    label: str = "point cloud",
+) -> tuple[np.ndarray | None, bool]:
+    """Load the asset ``load_points`` would select.
+
+    No matching asset returns ``(None, False)``. A declared asset whose file is
+    missing or unreadable raises ``MissingOccluderError`` (SD-61: laser and recon
+    PLYs are occluder geometry). ``allow_missing_occluders`` returns ``(None, True)``
+    instead; the caller must not run visibility against an empty blocker set.
+    """
+    selected = next(
+        (
+            asset
+            for asset in scene.get("assets") or []
+            if (asset_id and asset.get("id") == asset_id) or (not asset_id and asset.get("kind") == kind)
+        ),
+        None,
+    )
+    if selected is None:
+        return None, False
+    points, _, _ = load_points(scene, base, kind=kind, asset_id=asset_id)
+    if points is None:
+        if not allow_missing_occluders:
+            raise MissingOccluderError(
+                f"{label} asset {selected.get('path')} is not a readable file under {base}"
+            )
+        return None, True
+    return points, False
 
 
 class CoverageQuery:
@@ -63,24 +137,62 @@ class CoverageQuery:
         self.centers = np.array([c.pose[:3, 3] for c in cams])
         self.fx = np.array([float(c.K[0]) for c in cams])
         self.limits = dict(limits or INCIDENCE_LIMITS_DEG)
+        self.provisional = False
 
     @classmethod
-    def from_scene(cls, scene: dict, base: Path, ids: list[str] | None = None, limits: dict | None = None) -> "CoverageQuery":
+    def from_scene(
+        cls,
+        scene: dict,
+        base: Path,
+        ids: list[str] | None = None,
+        limits: dict | None = None,
+        *,
+        allow_missing_occluders: bool = False,
+    ) -> "CoverageQuery":
         """Cameras = the scene's keyframes (optionally a subset); blockers = its point cloud plus
-        any asset with id `occluders`."""
+        any asset with id `occluders`. A declared occluder that is not a file is an error (SD-61)."""
         kfs = [k for k in scene.get("keyframes", []) if ids is None or k["id"] in ids]
         if not kfs:
             raise ValueError("coverage query needs keyframes")
-        cams = [Camera(k["id"], mat4_from_list(k["pose"]), np.asarray(k["intrinsics"], float), k["w"], k["h"]) for k in kfs]
-        pts, _, _ = load_points(scene, base)
+        cams = [
+            Camera(k["id"], mat4_from_list(k["pose"]), np.asarray(k["intrinsics"], float), k["w"], k["h"]) for k in kfs
+        ]
+        clouds: list[np.ndarray] = []
+        provisional = False
+        # A declared laser or recon PLY is occluder geometry (SD-61). It must fail
+        # even when an occluders PLY is present; that file is not a substitute.
+        pts, pts_provisional = require_declared_cloud(
+            scene,
+            base,
+            kind="point_cloud",
+            allow_missing_occluders=allow_missing_occluders,
+            label="laser or recon",
+        )
+        provisional = provisional or pts_provisional
         if pts is None:
-            pts, _, _ = load_points(scene, base, kind="mesh")
-        blockers = [pts]
-        if any(a["id"] == "occluders" for a in scene.get("assets", [])):
-            blockers.append(load_points(scene, base, asset_id="occluders")[0])
-        return cls(cams, np.vstack(blockers), limits=limits)
+            pts, mesh_provisional = require_declared_cloud(
+                scene,
+                base,
+                kind="mesh",
+                allow_missing_occluders=allow_missing_occluders,
+                label="mesh",
+            )
+            provisional = provisional or mesh_provisional
+        if pts is not None:
+            clouds.append(pts)
+        occ, occ_provisional = load_occluders(scene, base, allow_missing_occluders=allow_missing_occluders)
+        provisional = provisional or occ_provisional
+        if occ is not None:
+            clouds.append(occ)
+        if not clouds:
+            raise FileNotFoundError(f"no point cloud, mesh, or occluders file on disk under {base}")
+        query = cls(cams, np.vstack(clouds), limits=limits)
+        query.provisional = provisional
+        return query
 
-    def incidences(self, X: np.ndarray, normals: np.ndarray | None) -> tuple[np.ndarray, np.ndarray | None, np.ndarray | None]:
+    def incidences(
+        self, X: np.ndarray, normals: np.ndarray | None
+    ) -> tuple[np.ndarray, np.ndarray | None, np.ndarray | None]:
         """(seen [n, cams], incidence in degrees [n, cams] with inf where unseen, along-ray pixel
         footprint in metres [n, cams] = distance / (fx cos incidence)); the last two None without normals."""
         X = np.atleast_2d(np.asarray(X, float))
@@ -97,8 +209,13 @@ class CoverageQuery:
         return seen, np.where(seen, inc, np.inf), np.where(seen, fp, np.inf)
 
     @staticmethod
-    def summarize(seen: np.ndarray, inc: np.ndarray | None, limit: float | None, fp: np.ndarray | None = None,
-                  max_fp: float | None = None) -> dict[str, np.ndarray]:
+    def summarize(
+        seen: np.ndarray,
+        inc: np.ndarray | None,
+        limit: float | None,
+        fp: np.ndarray | None = None,
+        max_fp: float | None = None,
+    ) -> dict[str, np.ndarray]:
         out = {"views_any": seen.sum(1)}
         if inc is None or limit is None:
             out["views_good"] = out["views_any"]
@@ -114,14 +231,21 @@ class CoverageQuery:
         out["best_incidence_deg"] = np.where(np.isfinite(best), best, np.nan)
         return out
 
-    def per_probe(self, X: np.ndarray, normals: np.ndarray | None, surface: str = "wall", limit: float | None = None,
-                  max_fp: float | None = None) -> dict:
+    def per_probe(
+        self,
+        X: np.ndarray,
+        normals: np.ndarray | None,
+        surface: str = "wall",
+        limit: float | None = None,
+        max_fp: float | None = None,
+    ) -> dict:
         seen, inc, fp = self.incidences(X, normals)
         lim = limit if limit is not None else (limit_for(surface, self.limits) if normals is not None else None)
         return self.summarize(seen, inc, lim, fp, max_fp)
 
-    def evidence(self, X: np.ndarray, normals: np.ndarray | None, region: dict, surface: str,
-                 generated: np.ndarray | None = None) -> dict:
+    def evidence(
+        self, X: np.ndarray, normals: np.ndarray | None, region: dict, surface: str, generated: np.ndarray | None = None
+    ) -> dict:
         """Contract `coverage_evidence` for one queried region (probes X in the scene frame).
         Ground regions also carry `sensitivity`: the grade under every GROUND_RULES variant."""
         seen, inc, fp = self.incidences(X, normals)
@@ -130,15 +254,34 @@ class CoverageQuery:
         if surface == "ground" and inc is not None:
             ev["sensitivity"] = []
             for rid, r in GROUND_RULES.items():
-                g = grade(self.summarize(seen, inc, r["max_incidence_deg"], fp, r.get("max_footprint_m")), region, generated,
-                          surface, r["max_incidence_deg"], r.get("max_footprint_m"))
-                ev["sensitivity"].append({"rule_id": rid, **r, "status": g["status"], "observed_share": g["observed_share"],
-                                          "views_median": g["views_median"]})
+                g = grade(
+                    self.summarize(seen, inc, r["max_incidence_deg"], fp, r.get("max_footprint_m")),
+                    region,
+                    generated,
+                    surface,
+                    r["max_incidence_deg"],
+                    r.get("max_footprint_m"),
+                )
+                ev["sensitivity"].append(
+                    {
+                        "rule_id": rid,
+                        **r,
+                        "status": g["status"],
+                        "observed_share": g["observed_share"],
+                        "views_median": g["views_median"],
+                    }
+                )
         return ev
 
 
-def grade(pp: dict, region: dict, generated: np.ndarray | None = None, surface: str = "wall",
-          limit: float | None = None, max_fp: float | None = None) -> dict:
+def grade(
+    pp: dict,
+    region: dict,
+    generated: np.ndarray | None = None,
+    surface: str = "wall",
+    limit: float | None = None,
+    max_fp: float | None = None,
+) -> dict:
     good = pp["views_good"] >= MIN_VIEWS
     seen = pp["views_any"] >= 1
     n = len(good)
@@ -159,14 +302,22 @@ def grade(pp: dict, region: dict, generated: np.ndarray | None = None, surface: 
     bi = pp["best_incidence_deg"]
     finite = bi[~np.isnan(bi)]
     return {
-        "region": region, "status": status, "probes": int(n),
-        "observed_share": round(obs_share, 3), "seen_share": round(seen_share, 3),
+        "region": region,
+        "status": status,
+        "probes": int(n),
+        "observed_share": round(obs_share, 3),
+        "seen_share": round(seen_share, 3),
         "views_min": int(pp["views_good"].min()) if n else 0,
         "views_median": float(np.median(pp["views_good"])) if n else 0.0,
-        "best_incidence_deg": round(float(np.median(finite)), 1) if len(finite) else None,
-        "worst_best_incidence_deg": round(float(finite.max()), 1) if len(finite) else None,
-        "rule": {"min_views": MIN_VIEWS, "surface": surface, "max_incidence_deg": limit, "observed_share": OBSERVED_SHARE,
-                 **({"max_footprint_m": max_fp} if max_fp is not None else {})},
+        "best_incidence_deg": clamp_incidence_deg(float(np.median(finite))) if len(finite) else None,
+        "worst_best_incidence_deg": clamp_incidence_deg(float(finite.max())) if len(finite) else None,
+        "rule": {
+            "min_views": MIN_VIEWS,
+            "surface": surface,
+            "max_incidence_deg": limit,
+            "observed_share": OBSERVED_SHARE,
+            **({"max_footprint_m": max_fp} if max_fp is not None else {}),
+        },
     }
 
 
@@ -193,7 +344,9 @@ def region_probes(scene: dict, region: dict, step: float = 0.1) -> tuple[np.ndar
         return P, np.tile([0.0, 1.0, 0.0], (len(P), 1)), "ground"
     h0, h1 = region["height_m"]
     hs = np.arange(h0, h1 + 1e-9, max(step, 0.25))
-    P = np.array([[x + o * w.outward[0], g + h, z + o * w.outward[1]] for (x, z), g in zip(q, gy) for o in os_ for h in hs])
+    P = np.array(
+        [[x + o * w.outward[0], g + h, z + o * w.outward[1]] for (x, z), g in zip(q, gy) for o in os_ for h in hs]
+    )
     return P, None, "free"
 
 
@@ -205,19 +358,26 @@ def query_region(scene: dict, base: Path, region: dict, query: CoverageQuery | N
 
 
 def coverage_rule(limits: dict | None = None) -> dict:
-    return {"min_views": MIN_VIEWS, "max_incidence_deg": dict(limits or INCIDENCE_LIMITS_DEG), "observed_share": OBSERVED_SHARE}
+    return {
+        "min_views": MIN_VIEWS,
+        "max_incidence_deg": dict(limits or INCIDENCE_LIMITS_DEG),
+        "observed_share": OBSERVED_SHARE,
+    }
 
 
 def set_wall_observed_fraction(scene: dict, query: CoverageQuery) -> None:
     """walls[].observed_fraction = share of the face 0-2.13 m high meeting the observation rule."""
     by_id = {w["id"]: w for w in scene["walls"]}
     for cw in Chain(scene).walls:
-        ev = query_region(scene, None, {"wall_id": cw.id, "s_m": [cw.s0 + 0.05, cw.s1 - 0.05], "height_m": [0.05, HEADROOM_M]}, query)
+        ev = query_region(
+            scene, None, {"wall_id": cw.id, "s_m": [cw.s0 + 0.05, cw.s1 - 0.05], "height_m": [0.05, HEADROOM_M]}, query
+        )
         by_id[cw.id]["observed_fraction"] = ev["observed_share"]
 
 
-def build_grid(ray_sets, lo: np.ndarray, hi: np.ndarray, voxel: float, occupied_ok=None,
-               max_samples: int = 12_000_000) -> CoverageGrid:
+def build_grid(
+    ray_sets, lo: np.ndarray, hi: np.ndarray, voxel: float, occupied_ok=None, max_samples: int = 12_000_000
+) -> CoverageGrid:
     """ray_sets: iterable of (origin (3,), ends (M, 3), end_is_surface (M,) bool or None), one per
     camera. Free space is marked up to 0.75 voxel before each end; the end voxel is marked occupied
     when end_is_surface is true for that ray."""
@@ -282,9 +442,15 @@ def _runs(ss, ok, step):
     return out
 
 
-def bands_from_grid(grid: CoverageGrid, scene: dict, step: float = 0.25, query: CoverageQuery | None = None,
-                    ground_limit: float | None = None, only: tuple[str, ...] | None = None,
-                    ground_max_fp: float | None = None) -> list[dict]:
+def bands_from_grid(
+    grid: CoverageGrid,
+    scene: dict,
+    step: float = 0.25,
+    query: CoverageQuery | None = None,
+    ground_limit: float | None = None,
+    only: tuple[str, ...] | None = None,
+    ground_max_fp: float | None = None,
+) -> list[dict]:
     """PR #11-style band summary (in meters) of what the grid observed along each chain wall.
     With a `query`, the wall and ground bands also require the observation rule on the surface
     itself (>= MIN_VIEWS views within the surface's incidence limit; `ground_limit` overrides the
@@ -325,7 +491,7 @@ def bands_from_grid(grid: CoverageGrid, scene: dict, step: float = 0.25, query: 
             if query is not None:
                 k = (ss > a) & (ss < b)
                 e["views"] = int(np.nanmin(wall_views[k]))
-                e["best_incidence_deg"] = round(float(np.nanmax(wall_inc[k])), 1)
+                e["best_incidence_deg"] = clamp_incidence_deg(float(np.nanmax(wall_inc[k])))
             bands.append(e)
 
         if want <= {"wall"}:
@@ -334,7 +500,10 @@ def bands_from_grid(grid: CoverageGrid, scene: dict, step: float = 0.25, query: 
         g = np.stack([obs(d, 0.05) for d in outs], 1)
         g_views = g_inc = None
         if query is not None:
-            per = [query.per_probe(pts(d, 0.01), np.array([0.0, 1.0, 0.0]), "ground", ground_limit, ground_max_fp) for d in outs]
+            per = [
+                query.per_probe(pts(d, 0.01), np.array([0.0, 1.0, 0.0]), "ground", ground_limit, ground_max_fp)
+                for d in outs
+            ]
             g &= np.stack([pp["views_good"] >= MIN_VIEWS for pp in per], 1)
             g_views = np.stack([pp["views_good"] for pp in per], 1)
             g_inc = np.stack([pp["best_incidence_deg"] for pp in per], 1)
@@ -348,7 +517,7 @@ def bands_from_grid(grid: CoverageGrid, scene: dict, step: float = 0.25, query: 
                 k = (ss > e["s_m"][0]) & (ss < e["s_m"][1])
                 reach = outs <= e.get("out_m", GROUND_MAX_OUT_M) + 1e-9
                 e["views"] = int(g_views[np.ix_(k, reach)].min())
-                e["best_incidence_deg"] = round(float(np.nanmax(g_inc[np.ix_(k, reach)])), 1)
+                e["best_incidence_deg"] = clamp_incidence_deg(float(np.nanmax(g_inc[np.ix_(k, reach)])))
 
         if not want & {"overhead", "facing"}:
             continue
@@ -368,10 +537,22 @@ def bands_from_grid(grid: CoverageGrid, scene: dict, step: float = 0.25, query: 
 
 def ground_sensitivity(grid: CoverageGrid, scene: dict, query: CoverageQuery) -> list[dict]:
     """Ground bands under every GROUND_RULES variant (scene coverage.sensitivity)."""
-    return [{"surface": "ground", "rule_id": rid, **r,
-             "bands": bands_from_grid(grid, scene, query=query, ground_limit=r["max_incidence_deg"], only=("ground",),
-                                      ground_max_fp=r.get("max_footprint_m"))}
-            for rid, r in GROUND_RULES.items()]
+    return [
+        {
+            "surface": "ground",
+            "rule_id": rid,
+            **r,
+            "bands": bands_from_grid(
+                grid,
+                scene,
+                query=query,
+                ground_limit=r["max_incidence_deg"],
+                only=("ground",),
+                ground_max_fp=r.get("max_footprint_m"),
+            ),
+        }
+        for rid, r in GROUND_RULES.items()
+    ]
 
 
 def _emit_quantized(bands, wall_id, band, ss, vals, step, min_out, cap=None, q=0.5):

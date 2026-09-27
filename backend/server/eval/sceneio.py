@@ -124,8 +124,18 @@ def sha256_file(path: Path) -> str:
 
 # --- PLY -------------------------------------------------------------------------------------
 
-_PLY_TYPES = {"float": "<f4", "float32": "<f4", "double": "<f8", "uchar": "u1", "uint8": "u1",
-              "int": "<i4", "int32": "<i4", "uint": "<u4", "short": "<i2", "ushort": "<u2"}
+_PLY_TYPES = {
+    "float": "<f4",
+    "float32": "<f4",
+    "double": "<f8",
+    "uchar": "u1",
+    "uint8": "u1",
+    "int": "<i4",
+    "int32": "<i4",
+    "uint": "<u4",
+    "short": "<i2",
+    "ushort": "<u2",
+}
 
 
 def write_ply(path: Path, xyz: np.ndarray, fields: dict[str, np.ndarray] | None = None) -> None:
@@ -134,7 +144,13 @@ def write_ply(path: Path, xyz: np.ndarray, fields: dict[str, np.ndarray] | None 
     names = {np.dtype("u1"): "uchar", np.dtype("<f4"): "float", np.dtype("<i4"): "int"}
     for k, v in fields.items():
         v = np.asarray(v)
-        dt = np.dtype("u1") if v.dtype in (np.bool_, np.uint8) else np.dtype("<f4") if v.dtype.kind == "f" else np.dtype("<i4")
+        dt = (
+            np.dtype("u1")
+            if v.dtype in (np.bool_, np.uint8)
+            else np.dtype("<f4")
+            if v.dtype.kind == "f"
+            else np.dtype("<i4")
+        )
         cols.append((k, dt.str))
     arr = np.empty(len(xyz), dtype=cols)
     arr["x"], arr["y"], arr["z"] = xyz[:, 0], xyz[:, 1], xyz[:, 2]
@@ -185,7 +201,10 @@ def load_points(scene: dict, base: Path, kind: str = "point_cloud", asset_id: st
     """(xyz in scene frame, generated flags or None, all fields) of the first matching asset."""
     for a in scene.get("assets", []):
         if (asset_id and a["id"] == asset_id) or (not asset_id and a["kind"] == kind):
-            d = read_ply(Path(base) / a["path"])
+            path = Path(base) / a["path"]
+            if not path.is_file():
+                return None, None, None
+            d = read_ply(path)
             xyz = np.c_[d["x"], d["y"], d["z"]].astype(float)
             if not a.get("in_scene_frame", True):
                 xyz = apply(mat4_from_list(scene["frame"]["from_source"]), xyz)
@@ -236,8 +255,13 @@ class CoverageGrid:
         np.savez_compressed(path, **kw)
 
     def meta(self, asset_id: str) -> dict:
-        return {"asset": asset_id, "voxel_m": self.voxel, "origin_m": [round(float(v), 4) for v in self.origin],
-                "shape": [int(v) for v in self.shape], "min_views": self.min_views}
+        return {
+            "asset": asset_id,
+            "voxel_m": self.voxel,
+            "origin_m": [round(float(v), 4) for v in self.origin],
+            "shape": [int(v) for v in self.shape],
+            "min_views": self.min_views,
+        }
 
 
 def load_coverage(scene: dict, base: Path) -> CoverageGrid | None:
@@ -245,5 +269,10 @@ def load_coverage(scene: dict, base: Path) -> CoverageGrid | None:
     if not g:
         return None
     d = np.load(Path(base) / asset(scene, g["asset"])["path"])
-    return CoverageGrid(d["state"], d["views"] if "views" in d else None, np.asarray(g["origin_m"], float),
-                        float(g["voxel_m"]), int(g.get("min_views", 1)))
+    return CoverageGrid(
+        d["state"],
+        d["views"] if "views" in d else None,
+        np.asarray(g["origin_m"], float),
+        float(g["voxel_m"]),
+        int(g.get("min_views", 1)),
+    )

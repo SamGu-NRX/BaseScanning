@@ -1,5 +1,5 @@
 # `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
-.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci criteria-golden e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra weights
+.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci gates-offline e2e e2e-local lamar criteria-golden e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra weights
 
 ONLY ?= small
 
@@ -40,6 +40,18 @@ validate-full:
 	uv run --frozen python scripts/validate_fixtures.py --full
 
 ci: lint test schemas hygiene validate
+
+gates-offline:
+	nice -n 10 uv run python -m server.eval.cli gates --config server/eval/gates.yaml --inputs data/fixtures --out runs/gates-offline/gates.json
+
+e2e:
+	nice -n 10 uv run python -m server.eval.e2e --config server/eval/gates.yaml --inputs data/fixtures --out runs/e2e/latest
+
+e2e-local:
+	nice -n 10 uv run python -m server.eval.e2e --local --config server/eval/gates.yaml --inputs data/fixtures --out runs/e2e/local
+
+lamar:
+	nice -n 10 uv run python -m server.eval.lamar run --data $(HOME)/lamar --out runs/lamar
 
 # Unit suite, then verdicts for the three ETH3D laser sites at /tmp/crit/<site>/.
 # Laser PLYs come from `make fixtures ONLY=all`. C3 stays off.

@@ -14,6 +14,7 @@ __pycache__/
 .coverage
 .coverage.*
 .DS_Store
+runs/
 .fixtures/
 
 # data/ holds scripts and manifests only; frames, packets and videos live in the store or on disk.

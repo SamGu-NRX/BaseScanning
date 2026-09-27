@@ -24,7 +24,14 @@ from pathlib import Path
 
 from server.eval import VENDOR_DIR
 from server.eval.chain import Chain, object_bottom_top, object_center, object_plan_points, object_s_span
-from server.eval.coverage import GROUND_MAX_OUT_M, GROUND_RULES, HEADROOM_M, CoverageQuery, query_region
+from server.eval.coverage import (
+    GROUND_MAX_OUT_M,
+    GROUND_RULES,
+    HEADROOM_M,
+    CoverageQuery,
+    MissingOccluderError,
+    query_region,
+)
 from server.eval.frame import M_PER_FT
 from server.eval.sceneio import load_json, save_json
 
@@ -202,7 +209,10 @@ def to_verdict(result: dict, scene: dict, scene_path: Path, hs11_scene: dict, lo
                 else:
                     ev = {"region": reg, "status": "unobserved", "observed_share": 0.0, "views_min": 0, "views_median": 0.0,
                           "best_incidence_deg": None, "rule": {"min_views": 2, "max_incidence_deg": None}, "method": "no keyframes: cannot tell"}
-                ev["method"] = ev.get("method", "server.eval.coverage.query_region")
+                # The facade golden records this producer name. The callable is
+                # server.eval.coverage.query_region; the label stays so run-hs11
+                # matches gt.C1.g80.json.
+                ev["method"] = ev.get("method", "evalharness.coverage.query_region")
                 evs.append(ev)
         if c["measured_ft"] is not None:
             pm = c["plus_minus_ft"] or 0.0
@@ -312,7 +322,9 @@ def run(scene_path: Path, out_path: Path | None = None, ground_rule: str | None 
     result = solve(parse_scene(raw, loaded.rules), loaded)
     try:
         query = CoverageQuery.from_scene(scene, scene_path.parent)
-    except (ValueError, FileNotFoundError):
+    except ValueError:
+        # No keyframes: there is no coverage query to run. A missing PLY is
+        # FileNotFoundError or MissingOccluderError and must not be swallowed (SD-61).
         query = None
     v = to_verdict(result, scene, scene_path, raw, loaded, query, ground_rule, time.time() - t0)
     if out_path:

@@ -16,13 +16,46 @@ from server.eval.visibility import Camera
 
 def _in_view(c: Camera, X: np.ndarray, margin: float = 0.03) -> bool:
     u, v, z = project_arkit(c.pose, c.K, np.atleast_2d(X))
-    return bool(np.all((z > 0.5) & (u > margin * c.w) & (u < (1 - margin) * c.w) & (v > margin * c.h) & (v < (1 - margin) * c.h)))
+    return bool(
+        np.all(
+            (z > 0.5) & (u > margin * c.w) & (u < (1 - margin) * c.w) & (v > margin * c.h) & (v < (1 - margin) * c.h)
+        )
+    )
 
 
 def _facing(c: Camera, X: np.ndarray, normal3: np.ndarray, max_deg: float) -> float | None:
     to_cam = c.pose[:3, 3] - X
     d = float(np.linalg.norm(to_cam))
     return d if to_cam @ normal3 / d >= np.cos(np.radians(max_deg)) else None
+
+
+def place_meter_tap(u: float, v: float, gt_width: int, recon_width: int) -> tuple[float, float]:
+    """Keep a meter tap in the image that produced it.
+
+    The old extractor multiplied the pixel by ``recon_width / gt_width``. That matches a uniform
+    rescale of an unchanged field of view. A centred phone crop keeps the focal length and moves
+    the principal point, so the product lands on the wrong pixel. Differing widths are an error.
+    """
+    if int(gt_width) != int(recon_width):
+        raise ValueError(
+            f"phone frame width {int(gt_width)} does not match the rendered camera width {int(recon_width)}; "
+            "refusing to rescale the meter tap"
+        )
+    return float(u), float(v)
+
+
+def _require_native_width(c: Camera, w_out: dict[int, int], i: int) -> None:
+    """Pixels are in this camera's own image.
+
+    A width ratio only matches a uniform rescale of an unchanged field of view. A centred crop
+    or a phone field of view moves the principal point, so rescaling GT pixels by ``w_out / w_gt``
+    lands the click on the wrong pixel (about 20 in on every A7 phone-FOV path).
+    """
+    if i in w_out and int(w_out[i]) != int(c.w):
+        raise ValueError(
+            f"camera {c.id!r} is {c.w}px wide but the reconstruction image is {w_out[i]}px; "
+            "pass the reconstruction intrinsics and size (a width-ratio rescale is wrong for a crop)"
+        )
 
 
 def meter_taps(gt: dict, gt_cams: list[Camera], w_out: dict[int, int], n: int = 3) -> list[tuple[int, float, float]]:
@@ -38,9 +71,9 @@ def meter_taps(gt: dict, gt_cams: list[Camera], w_out: dict[int, int], n: int = 
             cands.append((d, i))
     out = []
     for _, i in sorted(cands)[:n]:
+        _require_native_width(gt_cams[i], w_out, i)
         u, v, _ = project_arkit(gt_cams[i].pose, gt_cams[i].K, M[None])
-        r = w_out[i] / gt_cams[i].w
-        out.append((i, float(u[0]) * r, float(v[0]) * r))
+        out.append((i, float(u[0]), float(v[0])))
     return out
 
 
@@ -71,10 +104,17 @@ def opening_clicks(gt: dict, gt_cams: list[Camera], w_out: dict[int, int], n: in
                 cands.append((d, i))
         views = {}
         for _, i in sorted(cands)[:n]:
-            r = w_out[i] / gt_cams[i].w
+            _require_native_width(gt_cams[i], w_out, i)
             u, v, _ = project_arkit(gt_cams[i].pose, gt_cams[i].K, P)
-            views[i] = {role: (float(u[k]) * r, float(v[k]) * r) for k, role in enumerate(pts)}
+            views[i] = {role: (float(u[k]), float(v[k])) for k, role in enumerate(pts)}
         if views:
-            feats.append({"id": o["id"], "class": o["class"], "label": o.get("label", o["class"]), "points_px": views,
-                          **({"attrs": o["attrs"]} if "attrs" in o else {})})
+            feats.append(
+                {
+                    "id": o["id"],
+                    "class": o["class"],
+                    "label": o.get("label", o["class"]),
+                    "points_px": views,
+                    **({"attrs": o["attrs"]} if "attrs" in o else {}),
+                }
+            )
     return feats
