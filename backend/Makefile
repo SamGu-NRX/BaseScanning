@@ -12,7 +12,7 @@ lint:
 	uv run --frozen lint-imports
 
 test:
-	uv run --frozen pytest -q
+	uv run --extra api --frozen pytest -q
 
 schemas:
 	uv run --frozen python -m server.contracts.export_schemas --check

@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+from server.common.config import Settings
+
 # `result` is implemented in this package. `reads` is implemented by WS-08.
 # Neither name is in this stub list. The other names are still stubs.
 STAGES = [
@@ -37,14 +39,14 @@ def test_objects_3d_is_unimplemented() -> None:
         objects.run_3d(None)
 
 
-def test_api_and_orchestrator_stubs() -> None:
+def test_api_app_and_orchestrator_stub() -> None:
     api = importlib.import_module("server.api")
     orchestrator = importlib.import_module("server.orchestrator")
-    with pytest.raises(NotImplementedError):
-        api.create_app()
+    app = api.create_app(settings=Settings(SMP_ENVIRONMENT="dev", VISION_EXTERNAL_CALLS="on"))
+    assert app.title == "capture-api"
     assert callable(orchestrator.start_run)
     assert callable(orchestrator.sweep)
-    assert orchestrator.validate_manifest is api.validate_manifest
+    assert callable(orchestrator.validate_manifest)
 
 
 def test_modal_app_imports_without_a_token(tmp_path: Path) -> None:

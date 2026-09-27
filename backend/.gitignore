@@ -41,3 +41,6 @@ reads-gate/
 *.splat
 # The build-plan reference set is the exception: ETH3D facade clouds for reviewers.
 !media/colmap-facade/point-clouds/*.ply
+
+# Terraform provider cache. Lock files stay committed.
+.terraform/

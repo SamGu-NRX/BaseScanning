@@ -7,6 +7,14 @@ from datetime import datetime
 from typing import Protocol
 
 
+class PreconditionFailed(Exception):
+    """The source generation no longer matches the committed one."""
+
+
+class StorageUnavailable(Exception):
+    """A storage call failed. The API turns this into 503 storage_unavailable."""
+
+
 @dataclass(frozen=True)
 class ObjectMeta:
     bytes: int

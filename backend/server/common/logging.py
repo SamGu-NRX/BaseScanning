@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
 
@@ -41,13 +42,17 @@ KEYS = (
 )
 
 
+request_fields: ContextVar[dict[str, Any] | None] = ContextVar("request_fields", default=None)
+
+
 def log_event(event: str, *, level: str = "info", msg: str = "", **fields: Any) -> dict[str, Any]:
     payload: dict[str, Any] = dict.fromkeys(KEYS)
     payload["ts"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     payload["level"] = level
     payload["event"] = event
     payload["msg"] = msg
-    for key, value in fields.items():
+    ctx = request_fields.get() or {}
+    for key, value in {**ctx, **fields}.items():
         if key in payload:
             payload[key] = value
     sys.stdout.write(json.dumps(payload, default=str, sort_keys=True) + "\n")

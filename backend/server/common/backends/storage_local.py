@@ -6,6 +6,7 @@ import base64
 import hashlib
 import json
 import re
+import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -22,20 +23,22 @@ class LocalFsStorage:
         self._uploads = self.root / ".uploads"
         self._meta: dict[str, ObjectMeta] = {}
         self._next_id = 1
+        self._lock = threading.RLock()
         self._load()
 
     def put_bytes(self, key: str, data: bytes, content_type: str) -> None:
         path = self._path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
-        self._meta[key] = ObjectMeta(
-            bytes=len(data),
-            md5_b64=base64.b64encode(hashlib.md5(data).digest()).decode(),
-            generation=str(self._next_id),
-            content_type=content_type,
-        )
-        self._next_id += 1
-        self._save()
+        with self._lock:
+            self._meta[key] = ObjectMeta(
+                bytes=len(data),
+                md5_b64=base64.b64encode(hashlib.md5(data).digest()).decode(),
+                generation=str(self._next_id),
+                content_type=content_type,
+            )
+            self._next_id += 1
+            self._save()
 
     def get_bytes(self, key: str) -> bytes:
         path = self._path(key)
@@ -47,9 +50,11 @@ class LocalFsStorage:
         return self._path(key).is_file()
 
     def head(self, key: str) -> ObjectMeta:
-        if key not in self._meta or not self.exists(key):
-            raise FileNotFoundError(key)
-        return self._meta[key]
+        with self._lock:
+            meta = self._meta.get(key)
+            if meta is None or not self.exists(key):
+                raise FileNotFoundError(key)
+            return meta
 
     def signed_put_url(self, key: str, content_type: str, md5_b64: str, ttl_s: int) -> SignedUrl:
         path = self._path(key)
@@ -65,13 +70,73 @@ class LocalFsStorage:
         return self._path(key).as_uri()
 
     def list_prefix(self, prefix: str) -> list[str]:
-        return sorted(key for key in self._meta if key.startswith(prefix) and self.exists(key))
+        with self._lock:
+            indexed = [key for key in self._meta if key.startswith(prefix)]
+        live = {key for key in indexed if self.exists(key)}
+        return sorted(set(self._walk_prefix(prefix)) | live)
 
     def delete_prefix(self, prefix: str) -> int:
-        keys = self.list_prefix(prefix)
-        for key in keys:
+        with self._lock:
+            keys = set(self.list_prefix(prefix))
+            keys.update(key for key in self._meta if key.startswith(prefix))
+        for key in sorted(keys):
             self.delete(key)
         return len(keys)
+
+    def prepare_tmp(self, key: str) -> Path:
+        tmp = self._path(f"{key}.uploading")
+        tmp.parent.mkdir(parents=True, exist_ok=True)
+        return tmp
+
+    def discard_tmp(self, tmp: Path) -> None:
+        if tmp.is_file():
+            tmp.unlink()
+
+    def commit_tmp(self, key: str, tmp: Path, content_type: str, md5_b64: str, nbytes: int) -> None:
+        final = self._path(key)
+        final.parent.mkdir(parents=True, exist_ok=True)
+        tmp.replace(final)
+        with self._lock:
+            self._meta[key] = ObjectMeta(
+                bytes=nbytes,
+                md5_b64=md5_b64,
+                generation=str(self._next_id),
+                content_type=content_type,
+            )
+            self._next_id += 1
+            self._save()
+
+    def _walk_prefix(self, prefix: str) -> list[str]:
+        """Keys under `prefix` from the filesystem, including objects missing from this process's index."""
+        if not prefix or prefix.startswith("/") or ".." in Path(prefix).parts:
+            raise ValueError("bad key")
+        root = self.root
+        target = (root / prefix).resolve()
+        if target != root and root not in target.parents:
+            raise ValueError("bad key")
+        if prefix.endswith("/"):
+            walk = target if target.is_dir() else None
+        elif target.is_file():
+            return [target.relative_to(root).as_posix()]
+        elif target.is_dir():
+            walk = target
+        else:
+            walk = target.parent if target.parent.is_dir() else None
+        if walk is None or not walk.is_dir():
+            return []
+        if walk != root and root not in walk.parents:
+            return []
+        found: list[str] = []
+        for file in walk.rglob("*"):
+            if not file.is_file() or file.name == ".hss-meta.json":
+                continue
+            relative = file.relative_to(root)
+            if ".uploads" in relative.parts:
+                continue
+            key = relative.as_posix()
+            if key.startswith(prefix):
+                found.append(key)
+        return found
 
     def copy(self, src: str, dst: str, *, if_generation_match: str | None = None) -> ObjectMeta:
         meta = self.head(src)
@@ -82,21 +147,23 @@ class LocalFsStorage:
 
     def delete(self, key: str) -> bool:
         path = self._path(key)
-        existed = path.is_file()
-        if existed:
-            path.unlink()
-        self._meta.pop(key, None)
-        self._save()
-        return existed
+        with self._lock:
+            existed = path.is_file()
+            if existed:
+                path.unlink()
+            self._meta.pop(key, None)
+            self._save()
+            return existed
 
     def initiate_multipart(self, key: str, content_type: str) -> str:
-        upload_id = f"up-{self._next_id}"
-        self._next_id += 1
-        folder = self._uploads / upload_id
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / "meta.json").write_text(json.dumps({"key": key, "content_type": content_type}))
-        self._save()
-        return upload_id
+        with self._lock:
+            upload_id = f"up-{self._next_id}"
+            self._next_id += 1
+            folder = self._uploads / upload_id
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / "meta.json").write_text(json.dumps({"key": key, "content_type": content_type}))
+            self._save()
+            return upload_id
 
     def signed_part_url(self, key: str, upload_id: str, part_number: int, ttl_s: int) -> SignedUrl:
         del key
@@ -146,16 +213,17 @@ class LocalFsStorage:
         self._meta = {key: ObjectMeta(**item) for key, item in raw["objects"].items()}
 
     def _save(self) -> None:
-        payload = {
-            "next_id": self._next_id,
-            "objects": {
-                key: {
-                    "bytes": meta.bytes,
-                    "md5_b64": meta.md5_b64,
-                    "generation": meta.generation,
-                    "content_type": meta.content_type,
-                }
-                for key, meta in self._meta.items()
-            },
-        }
-        self._index_path.write_text(json.dumps(payload, sort_keys=True))
+        with self._lock:
+            payload = {
+                "next_id": self._next_id,
+                "objects": {
+                    key: {
+                        "bytes": meta.bytes,
+                        "md5_b64": meta.md5_b64,
+                        "generation": meta.generation,
+                        "content_type": meta.content_type,
+                    }
+                    for key, meta in self._meta.items()
+                },
+            }
+            self._index_path.write_text(json.dumps(payload, sort_keys=True))

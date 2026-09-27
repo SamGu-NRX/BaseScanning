@@ -42,6 +42,19 @@ reads = [
     "pydantic>=2.13.5",
     "jsonschema==4.26.0",
 ]
+api = [
+    "fastapi>=0.115",
+    "uvicorn[standard]",
+    "httpx",
+    "google-cloud-storage>=2.18",
+    "google-auth>=2.30",
+    "google-resumable-media",
+    "boto3",
+    "PyJWT[crypto]",
+    "python-ulid",
+    "pydantic-settings>=2.6",
+    "import-linter>=2.1",
+]
 ios-kit = [
     "httpx>=0.28.1",
     "uvicorn>=0.35.0",
@@ -55,6 +68,7 @@ default-groups = ["dev", "data"]
 addopts = "-p no:cacheprovider --import-mode=importlib"
 testpaths = ["packet/tests", "tests", "server"]
 pythonpath = [".", "packet", "eval", "eval/vendor/hs11_server"]
+markers = ["live: needs real GCS or R2 credentials"]
 
 [tool.ruff]
 line-length = 120
