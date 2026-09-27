@@ -8,14 +8,27 @@ from typing import get_args
 import pytest
 from pydantic import ValidationError
 
+from server.common.backends.storage_local import LocalFsStorage
 from server.contracts.api import HintData
 from server.contracts.capture_check import HintCode
 from server.contracts.jobs import StageName
 from server.orchestrator.api import start_run
+from server.orchestrator.artifacts import ReadThrough
 from server.orchestrator.coordinator import RunCoordinator
 from server.orchestrator.services import bind, packet_sha256, run_id_for
-from server.orchestrator.stateio import get_json
+from server.orchestrator.stateio import get_json, put_json
+from server.orchestrator.stubs._common import json_bytes, write_files
 from server.orchestrator.tests.conftest import build_services
+
+_SYNTHETIC_DOOR = {
+    "id": "synthetic-door",
+    "class": "door",
+    "geometry": {"kind": "wall_rect", "wall_id": "w1", "s_m": [1.0, 2.0], "bottom_m": 0.0, "top_m": 2.1},
+    "confidence": 1,
+    "plus_minus_m": 0.02,
+    "source": {"kind": "reconstruction"},
+    "evidence": "observed",
+}
 
 
 def _events(services, capture_id="cap_test"):
@@ -66,12 +79,115 @@ def test_stub_run_partial_order_and_artifacts(services) -> None:
     assert internal["verdict_c_sha256"] == __import__("hashlib").sha256(verdict).hexdigest()
 
 
+class _CountingStorage:
+    def __init__(self, inner: LocalFsStorage) -> None:
+        self._inner = inner
+        self.gets: list[str] = []
+
+    def get_bytes(self, key: str) -> bytes:
+        self.gets.append(key)
+        return self._inner.get_bytes(key)
+
+    def __getattr__(self, name: str):
+        return getattr(self._inner, name)
+
+
 def test_run_id_changes_with_one_byte(tmp_path) -> None:
     services, uri, digest = build_services(tmp_path, "memory")
     raw = services.storage.get_bytes(uri)
-    assert run_id_for(raw) == "run_" + digest[:16]
-    assert run_id_for(raw + b" ") != run_id_for(raw)
+    assert run_id_for(raw, "cap_test") != "run_" + digest[:16]
+    assert run_id_for(raw, "cap_a") != run_id_for(raw, "cap_b")
+    assert run_id_for(raw, "cap_a") != run_id_for(raw + b" ", "cap_a")
     assert packet_sha256(raw) != packet_sha256(raw + b" ")
+
+
+def test_identical_packets_keep_separate_runs(tmp_path) -> None:
+    services, uri, digest = build_services(tmp_path, "memory")
+    raw = services.storage.get_bytes(uri)
+    other_id = "cap_other"
+    other_uri = f"captures/{other_id}/packet.json"
+    services.storage.put_bytes(other_uri, raw, "application/json")
+    original = services.state.get_capture("cap_test")
+    services.state.put_capture(original.model_copy(update={"capture_id": other_id, "packet_id": "packet-other"}))
+    with bind(services):
+        left = start_run("cap_test", digest, uri)
+        right = start_run(other_id, digest, other_uri)
+
+    assert left.run_id != right.run_id
+    assert services.state.get_run(left.run_id).capture_id == "cap_test"
+    assert services.state.get_run(right.run_id).capture_id == other_id
+    assert [run.run_id for run in services.state.runs_for_capture("cap_test")] == [left.run_id]
+    assert [run.run_id for run in services.state.runs_for_capture(other_id)] == [right.run_id]
+
+    left_stage = services.state.get_stage(left.run_id, "result")
+    right_stage = services.state.get_stage(right.run_id, "result")
+    assert left_stage is not None and right_stage is not None
+    assert left_stage.status == "done" and right_stage.status == "done"
+    services.state.upsert_stage(left_stage.model_copy(update={"status": "failed", "error_code": "probe"}))
+    assert services.state.get_stage(left.run_id, "result").status == "failed"
+    assert services.state.get_stage(right.run_id, "result").status == "done"
+
+    left_control = get_json(services.state, f"run_control:{left.run_id}")
+    right_control = get_json(services.state, f"run_control:{right.run_id}")
+    assert left_control["merge_done"] is True
+    assert right_control["merge_done"] is True
+    left_control["cancel_requested"] = True
+    put_json(services.state, f"run_control:{left.run_id}", left_control)
+    assert get_json(services.state, f"run_control:{right.run_id}")["cancel_requested"] is False
+
+    left_key = left.artifacts["result/result.json"]
+    right_key = right.artifacts["result/result.json"]
+    assert left_key != right_key
+    assert json.loads(services.storage.get_bytes(left_key))["runId"] == left.run_id
+    assert json.loads(services.storage.get_bytes(right_key))["runId"] == right.run_id
+    services.storage.put_bytes(left_key, b'{"runId":"tampered"}', "application/json")
+    assert json.loads(services.storage.get_bytes(right_key))["runId"] == right.run_id
+
+    left_final = [event.run_id for event in _events(services) if event.type == "verdict_ready"]
+    right_final = [event.run_id for event in _events(services, other_id) if event.type == "verdict_ready"]
+    assert left_final == [left.run_id]
+    assert right_final == [right.run_id]
+
+
+def _object_ids(data: bytes) -> list[str]:
+    return [obj["id"] for obj in json.loads(data)["objects"]]
+
+
+@pytest.mark.parametrize("backend", ["memory", "modal_dict"])
+def test_merged_scene_reaches_later_stages(tmp_path, monkeypatch, backend: str) -> None:
+    def publish_door(ctx):
+        body = {"format": "hss-objects-3d/v0", "objects": [_SYNTHETIC_DOOR]}
+        return write_files(ctx, {"objects/objects_3d.json": json_bytes(body)})
+
+    monkeypatch.setattr("server.orchestrator.stubs.objects_3d.run", publish_door)
+    services, uri, digest = build_services(tmp_path, backend)
+    with bind(services):
+        run = start_run("cap_test", digest, uri)
+    stored = _object_ids(services.storage.get_bytes(run.artifacts["scene/scene.json"]))
+    assert stored == ["meter", "synthetic-door"]
+    for stage in ("criteria", "result"):
+        path = services.work_root / run.run_id / stage / "attempt-1" / "scene" / "scene.json"
+        assert _object_ids(path.read_bytes()) == stored
+
+
+def test_inline_stages_read_the_packet_once(tmp_path) -> None:
+    services, uri, digest = build_services(tmp_path, "memory")
+    counter = _CountingStorage(services.storage)
+    services.storage = counter
+    with bind(services):
+        start_run("cap_test", digest, uri)
+    assert counter.gets.count(uri) == 1
+
+
+def test_read_through_does_not_cache_a_miss(tmp_path) -> None:
+    storage = LocalFsStorage(tmp_path)
+    reads = ReadThrough(storage)
+    assert reads.exists("missing") is False
+    storage.put_bytes("missing", b"now", "text/plain")
+    assert reads.exists("missing") is True
+    assert reads.get_bytes("missing") == b"now"
+    storage.put_bytes("missing", b"later", "text/plain")
+    assert reads.get_bytes("missing") == b"now"
 
 
 def test_second_start_is_idempotent(services) -> None:

@@ -109,6 +109,40 @@ def existing_object(storage: object, *keys: str) -> str | None:
     return None
 
 
+class ReadThrough:
+    """Memoize successful reads of immutable capture inputs.
+
+    Use this for the packet and committed files. Do not use it for published
+    artifacts: a later writer can replace the same key, and the cached bytes
+    would hide that write. A miss is not stored, so a key that appears after
+    an earlier lookup is fetched on the next read.
+    """
+
+    def __init__(self, storage: object) -> None:
+        self.storage = storage
+        self._bytes: dict[str, bytes] = {}
+        self._lists: dict[str, list[str]] = {}
+
+    def exists(self, key: str) -> bool:
+        if key in self._bytes:
+            return True
+        return self.storage.exists(key)  # type: ignore[attr-defined]
+
+    def get_bytes(self, key: str) -> bytes:
+        if key not in self._bytes:
+            self._bytes[key] = self.storage.get_bytes(key)  # type: ignore[attr-defined]
+        return self._bytes[key]
+
+    def list_prefix(self, prefix: str) -> list[str]:
+        cached = self._lists.get(prefix)
+        if cached:
+            return list(cached)
+        names = [str(name) for name in self.storage.list_prefix(prefix)]  # type: ignore[attr-defined]
+        if names:
+            self._lists[prefix] = names
+        return names
+
+
 def hydrate_packet(storage: object, state: object, capture_id: str, packet_dir: Path) -> None:
     """Copy ``captures/<id>/packet.json`` and the capture's committed files into ``packet_dir``."""
 

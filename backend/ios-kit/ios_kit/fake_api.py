@@ -271,7 +271,8 @@ def create_app(
             _later(hint_delay_s, lambda: _emit_hint(capture))
         listed = [row["path"] for row in packet.get("files") or []]
         missing = [path for path in listed if capture.files.get(path, {}).get("state") != "committed"]
-        run_id = "run_" + digest[:16]
+        # Same bytes as server.contracts.jobs.run_id_for_capture.
+        run_id = "run_" + hashlib.sha256(capture_id.encode() + b"\0" + raw).hexdigest()[:16]
         capture.run_id = run_id
         if missing:
             capture.status = "awaiting_files"

@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from server.api.routes.files import _path_ok
 from server.api.tests.conftest import OTHER, REVIEWER, TOKEN, create_body, md5_b64, photo_packet, sha256_hex
 from server.api.tests.test_ingest import _create, _file, _finalize, _put_commit
-from server.contracts.jobs import RunRecord, StageRecord
+from server.contracts.jobs import RunRecord, StageRecord, run_id_for_capture
 
 
 def test_content_type_invalid(client):
@@ -291,7 +291,7 @@ def test_gzip_finalize(client):
         },
     )
     assert response.status_code == 202, response.text
-    assert response.json()["runId"] == "run_" + sha256_hex(raw)[:16]
+    assert response.json()["runId"] == run_id_for_capture(capture_id, raw)
 
 
 def test_not_in_manifest(client):

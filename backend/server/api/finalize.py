@@ -21,7 +21,7 @@ from server.api.keys import packet_key
 from server.api.promotion import promote
 from server.common.logging import log_event
 from server.contracts.api import AmendmentRequest, FinalizeResponse, StageData
-from server.contracts.jobs import CaptureRecord
+from server.contracts.jobs import CaptureRecord, run_id_for_capture
 from server.contracts.packet import Packet
 from server.contracts.validation import ValidationIssue
 
@@ -50,8 +50,8 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _run_id(data: bytes) -> str:
-    return "run_" + _sha(data)[:16]
+def _run_id(capture_id: str, data: bytes) -> str:
+    return run_id_for_capture(capture_id, data)
 
 
 def inflate(body: bytes, encoding: str | None) -> bytes:
@@ -167,7 +167,7 @@ def accept_packet(
         if amend.get("packet_sha256") == digest:
             extra = extras(deps, record.capture_id)
             missing = list(extra.get("missing") or [])
-            run_id = amend.get("run_id") or record.run_id or _run_id(raw)
+            run_id = amend.get("run_id") or record.run_id or _run_id(record.capture_id, raw)
             if amend.get("status") == "finalized" or extra.get("started_run_id") == amend.get("run_id"):
                 return render_finalize("processing", [], run_id)
             if _busy(record.capture_id):
@@ -193,7 +193,7 @@ def accept_packet(
         if record.packet_sha256 == digest:
             extra = extras(deps, record.capture_id)
             missing = list(extra.get("missing") or [])
-            run_id = record.run_id or _run_id(raw)
+            run_id = record.run_id or _run_id(record.capture_id, raw)
             if extra.get("run_started"):
                 return render_finalize("processing", [], run_id)
             if _busy(record.capture_id):
@@ -251,7 +251,7 @@ def accept_packet(
         raise _multi(errors)
     key = packet_key(record.capture_id, amendment_id)
     deps.storage.put_bytes(key, raw, "application/json")
-    run_id = _run_id(raw)
+    run_id = _run_id(record.capture_id, raw)
     paths = [
         entry.path if amendment_id is None else f"amendments/{amendment_id}/{entry.path}" for entry in packet.files
     ]

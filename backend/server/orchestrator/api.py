@@ -37,11 +37,11 @@ def start_run(
     parent_run_id: str | None = None,
 ) -> RunRecord:
     services = current()
-    data = services.storage.get_bytes(packet_uri)  # type: ignore[attr-defined]
+    data = services.reads_for(capture_id).get_bytes(packet_uri)
     digest = digest_of(data)
     if packet_sha256 and packet_sha256 != digest:
         raise ValueError("packet_sha256 does not match packet bytes")
-    run_id = run_id_for(data)
+    run_id = run_id_for(data, capture_id)
     existing = _same_run(capture_id, digest)
     if existing is not None:
         _resume_if_stale(existing)

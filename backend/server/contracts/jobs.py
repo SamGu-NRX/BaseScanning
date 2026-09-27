@@ -225,6 +225,22 @@ def new_confirmation_id() -> str:
 
 
 def run_id_for_packet_bytes(packet_bytes: bytes) -> str:
-    """`run_` plus the first 16 hex chars of sha256(packet.json bytes as stored)."""
+    """Packet-only digest. Stored run ids also include the capture id.
+
+    Prefer ``run_id_for_capture``. This helper remains for callers that still
+    want the historical packet hash.
+    """
 
     return "run_" + hashlib.sha256(packet_bytes).hexdigest()[:16]
+
+
+def run_id_for_capture(capture_id: str, packet_bytes: bytes) -> str:
+    """`run_` plus 16 hex chars of sha256(capture_id + NUL + packet bytes).
+
+    Two captures of the same packet must not share a run record. Re-finalizing
+    one capture stays idempotent because the capture id does not change.
+    Amendment runs hash the amendment body with the same capture id.
+    """
+
+    material = capture_id.encode() + b"\0" + packet_bytes
+    return "run_" + hashlib.sha256(material).hexdigest()[:16]

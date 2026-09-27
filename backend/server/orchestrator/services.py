@@ -14,8 +14,8 @@ from pathlib import Path
 
 from server.common.backends.storage_local import LocalFsStorage
 from server.common.config import Settings, load, resolve_state, resolve_storage
-from server.contracts.jobs import RunRecord, StageContext, StageRecord
-from server.orchestrator.artifacts import hydrate_artifacts, hydrate_packet
+from server.contracts.jobs import RunRecord, StageContext, StageRecord, run_id_for_capture
+from server.orchestrator.artifacts import ReadThrough, hydrate_artifacts, hydrate_packet
 from server.orchestrator.clock import Clock
 from server.orchestrator.config import OrchConfig, load_orch
 from server.orchestrator.executor import InlineExecutor
@@ -39,7 +39,10 @@ class Services:
         work.mkdir(parents=True, exist_ok=True)
         packet_dir = work / "packet"
         packet_dir.mkdir(exist_ok=True)
-        hydrate_packet(self.storage, self.state, run.capture_id, packet_dir)
+        reads = self.reads_for(run.capture_id)
+        hydrate_packet(reads, self.state, run.capture_id, packet_dir)
+        # Artifacts stay on raw storage. Scene merge replaces scene.json in place
+        # after objects_3d has already read it, and a cache would keep the pre-merge bytes.
         hydrate_artifacts(self.storage, work, run.artifacts)
         spent = sum(float(run.spend_usd.get(key, 0.0)) for key in ("vlm_reads", "vlm_objects", "vlm_c3"))
         inputs = {"packet_dir": str(packet_dir), "run_control": str(work / "run_control.json")}
@@ -72,6 +75,20 @@ class Services:
             state=self.state,
             settings=self.settings,
         )
+
+    def reads_for(self, capture_id: str) -> ReadThrough:
+        """Reuse the packet and committed files across the stages of one capture.
+
+        The capture-api runs stages inline, and each stage used to download the
+        packet again. Published artifacts are not cached: a later writer can
+        replace the same key, as scene merge does.
+        """
+
+        slot = getattr(self, "_reads_slot", None)
+        if slot is None or slot[0] != capture_id or slot[1].storage is not self.storage:
+            slot = (capture_id, ReadThrough(self.storage))
+            self._reads_slot = slot
+        return slot[1]
 
 
 def current() -> Services:
@@ -111,8 +128,8 @@ def packet_sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def run_id_for(data: bytes) -> str:
-    return "run_" + packet_sha256(data)[:16]
+def run_id_for(data: bytes, capture_id: str) -> str:
+    return run_id_for_capture(capture_id, data)
 
 
 def deadline_from(clock: Clock, minutes: int) -> str:

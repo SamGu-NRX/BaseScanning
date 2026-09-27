@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 from server.api.tests.conftest import create_body, photo_packet, sha256_hex
 from server.api.tests.test_ingest import _file
+from server.contracts.jobs import run_id_for_capture
 
 
 def _create(client, packet_id="packet-0001"):
@@ -67,4 +68,4 @@ def test_register_commit_finalize(client):
     body = finalized.json()
     assert body["status"] == "processing"
     assert body["missing"] == []
-    assert body["runId"] == "run_" + sha256_hex(raw)[:16]
+    assert body["runId"] == run_id_for_capture(capture_id, raw)
