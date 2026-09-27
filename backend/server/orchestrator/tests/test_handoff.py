@@ -69,6 +69,66 @@ def test_remote_spawn_passes_ids_and_does_not_hydrate(tmp_path, monkeypatch) -> 
     assert record.worker_call_id == "fc-validate"
 
 
+def test_objects_remote_spawn_uses_the_gpu_image(monkeypatch) -> None:
+    seen: dict[str, object] = {}
+
+    class _Call:
+        object_id = "fc-objects"
+
+    class _Method:
+        def spawn(self, run_id: str, stage: str, attempt: int) -> _Call:
+            seen["spawn"] = (run_id, stage, attempt)
+            return _Call()
+
+    class _Handle:
+        run_stage = _Method()
+
+    class _Pipeline:
+        @staticmethod
+        def with_options(*, gpu: str) -> object:
+            seen["gpu"] = gpu
+            return lambda: _Handle()
+
+    def cpu_spawn(*args: object, **kwargs: object) -> None:
+        raise AssertionError((args, kwargs))
+
+    monkeypatch.setattr("server.orchestrator.modal_functions.Pipeline", _Pipeline)
+    monkeypatch.setattr(
+        "server.orchestrator.modal_functions.run_cpu_stage",
+        type("Cpu", (), {"spawn": staticmethod(cpu_spawn)})(),
+    )
+    from server.orchestrator.modal_spawn import _remote_spawn
+
+    assert _remote_spawn("run_facade", "objects", 1, "L4") == "fc-objects"
+    assert seen == {"gpu": "L4", "spawn": ("run_facade", "objects", 1)}
+
+
+def test_reads_remote_spawn_stays_on_the_cpu_image(monkeypatch) -> None:
+    seen: dict[str, object] = {}
+
+    class _Call:
+        object_id = "fc-reads"
+
+    def cpu_spawn(run_id: str, stage: str, attempt: int) -> _Call:
+        seen["cpu"] = (run_id, stage, attempt)
+        return _Call()
+
+    def boom(**kwargs: object) -> None:
+        raise AssertionError(kwargs)
+
+    monkeypatch.setattr(
+        "server.orchestrator.modal_functions.run_cpu_stage",
+        type("Cpu", (), {"spawn": staticmethod(cpu_spawn)})(),
+    )
+    monkeypatch.setattr(
+        "server.orchestrator.modal_functions.Pipeline", type("Gpu", (), {"with_options": staticmethod(boom)})()
+    )
+    from server.orchestrator.modal_spawn import _remote_spawn
+
+    assert _remote_spawn("run_facade", "reads", 1, None) == "fc-reads"
+    assert seen["cpu"] == ("run_facade", "reads", 1)
+
+
 def test_spawn_refuses_after_the_deadline(tmp_path, monkeypatch) -> None:
     calls: list[tuple[str, str | None]] = []
     _remote_ok(monkeypatch, calls)

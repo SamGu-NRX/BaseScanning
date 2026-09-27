@@ -103,7 +103,19 @@ STAGES: dict[StageName, StageSpec] = {
                 "poses/sparse/0/",
             ),
         ),
-        _cpu("objects", (("validate", _D),), 240, ("objects/objects.json",), optional=True),
+        # CLIP, SigLIP and OWLv2. Remote spawn uses Pipeline / GPU_IMAGE (24 GiB), not run_cpu_stage.
+        # The CPU function has no memory request; that container was killed mid-pass on the facade run.
+        StageSpec(
+            name="objects",
+            deps=(("validate", _D),),
+            where="gpu",
+            timeout_s=900,
+            max_attempts=3,
+            gpu_by_attempt=GPU_BY_ATTEMPT,
+            optional=True,
+            artifacts=("objects/objects.json",),
+            module="objects",
+        ),
         _cpu("reads", (("validate", _D),), 420, ("reads/reads.json",), optional=True),
         _cpu("scale", (("poses", _D), ("reads", _T)), 60, ("scale/scale.json",)),
         _gpu(

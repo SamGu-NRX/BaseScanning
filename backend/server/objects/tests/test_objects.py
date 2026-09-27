@@ -633,8 +633,10 @@ def _stub_local_models(monkeypatch):
     monkeypatch.delenv("VISION_EXTERNAL_CALLS", raising=False)
     run_mod = importlib.import_module("server.objects.run")
 
-    def embed(frames, cfg):
-        return {"clip": {frame.id: {} for frame in frames}, "siglip": {frame.id: {} for frame in frames}}
+    def embed(frames, cfg, **kwargs):
+        del cfg, kwargs
+        scores = {"clip": {frame.id: {} for frame in frames}, "siglip": {frame.id: {} for frame in frames}}
+        return scores, {}
 
     monkeypatch.setattr(run_mod, "_embed_and_score", embed)
     monkeypatch.setattr(run_mod, "run_owlv2", lambda frames, **kwargs: {})

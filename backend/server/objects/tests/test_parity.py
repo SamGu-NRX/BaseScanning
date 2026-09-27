@@ -40,8 +40,9 @@ def _breadth_root() -> Path | None:
     return None
 
 
-def test_class_scores_match_cached_embeddings():
+def test_class_scores_match_cached_embeddings(monkeypatch):
     """20 committed B3 image embeddings, scored with the text towers, within 1e-4."""
+    monkeypatch.setenv("HSS_OBJECTS_DEVICE", "cpu")
     pytest.importorskip("torch")
     pytest.importorskip("open_clip")
     pytest.importorskip("transformers")
@@ -59,8 +60,9 @@ def test_class_scores_match_cached_embeddings():
     assert worst <= 1e-4
 
 
-def test_owlv2_boxes_match_b1_on_ten_images():
+def test_owlv2_boxes_match_b1_on_ten_images(monkeypatch):
     """10 B1 house images: same labels, boxes within 2 px, scores within 0.01."""
+    monkeypatch.setenv("HSS_OBJECTS_DEVICE", "cpu")
     pytest.importorskip("torch")
     pytest.importorskip("transformers")
     from server.objects.config import FrameRef
@@ -82,7 +84,7 @@ def test_owlv2_boxes_match_b1_on_ten_images():
         if not path.is_file():
             pytest.skip(f"missing eval image {row['id']}")
         frames.append(FrameRef(row["id"], path, 0, 0, "keyframe"))
-    got = run_owlv2(frames, queries=B1_CLASSES)
+    got = run_owlv2(frames, queries=B1_CLASSES, device="cpu")
     worst_px = 0.0
     worst_score = 0.0
     for row in manifest:

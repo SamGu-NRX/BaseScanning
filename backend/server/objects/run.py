@@ -8,7 +8,9 @@ from pathlib import Path
 from server.contracts.jobs import StageResult
 from server.objects.config import PLANNED_USD, Cluster, FrameRef, ObjectsConfig, ObjectsError, effective_budget
 from server.objects.confirm import Budget, run_cascade, stored_gate_thresholds
+from server.objects.device import memory_snapshot, resolve_device
 from server.objects.emit import class_summary, finalize_box_px, ground_votes, objects_2d, to_objects
+from server.objects.gate import release_gates
 from server.objects.prompts import WS08_PURPOSES, is_free_standing, row_detector_class
 from server.objects.proposals import run_gdino, run_owlv2
 from server.objects.select import always_still, select_frames
@@ -105,9 +107,10 @@ def run_2d(
     warnings: list[str] = []
     if heartbeat:
         heartbeat("objects:gate")
+    frame_s: dict[str, dict[str, float]] = {}
     if scores is None:
         try:
-            scores = _embed_and_score(frames, cfg)
+            scores, frame_s = _embed_and_score(frames, cfg, heartbeat=heartbeat)
         except Exception as exc:  # noqa: BLE001 — a missing weight is a stage failure, not a degrade
             raise ObjectsError("gate_model_missing") from exc
     # Walkaround frames are the ones the gate ranks. Stills with a WS-08 purpose stay out of selection.
@@ -136,9 +139,11 @@ def run_2d(
     (out / "frame_scores.json").write_text(json.dumps(_scores_doc(scores)))
     if detections is None:
         try:
-            detections = run_owlv2(frames)
+            owl_s: dict[str, float] = {}
+            detections = run_owlv2(frames, device=cfg.device, timing=owl_s, beat=heartbeat)
+            frame_s["owlv2"] = owl_s
             if cfg.gdino_openings:
-                detections = _merge_openings(detections, run_gdino(frames))
+                detections = _merge_openings(detections, run_gdino(frames, device=cfg.device, beat=heartbeat))
         except ObjectsError:
             raise
         except Exception as exc:  # noqa: BLE001 — a missing weight is a stage failure, not an empty house
@@ -175,6 +180,9 @@ def run_2d(
         "gate_thresholds": thresholds,
         "objects": {"emitted": len(rows)},
         "warnings": warnings,
+        "device": resolve_device(cfg.device),
+        "frame_s": frame_s,
+        "memory": memory_snapshot(),
     }
     (out / "report.json").write_text(json.dumps(report, indent=1))
     return _wrap(
@@ -325,17 +333,28 @@ def _write_detections(path: Path, frames: list[FrameRef], detections: dict) -> N
     path.write_text("\n".join(lines) + ("\n" if lines else ""))
 
 
-def _embed_and_score(frames: list[FrameRef], cfg: ObjectsConfig) -> dict:
+def _embed_and_score(frames: list[FrameRef], cfg: ObjectsConfig, *, heartbeat=None) -> tuple[dict, dict]:
     from server.objects.gate import class_scores, embed_frames
 
     scores = {}
+    frame_s: dict[str, dict[str, float]] = {}
     usable = [f for f in frames if f.image.is_file()]
     if not usable:
         raise ObjectsError("gate_model_missing")
-    for model in cfg.gate_models:
-        emb = embed_frames(usable, model, max_side=cfg.max_side_px)
-        scores[model] = class_scores(emb, model)
-    return scores
+    try:
+        for model in cfg.gate_models:
+            if heartbeat:
+                heartbeat(f"objects:{model}")
+            timing: dict[str, float] = {}
+            emb = embed_frames(
+                usable, model, max_side=cfg.max_side_px, device=cfg.device, timing=timing, beat=heartbeat
+            )
+            scores[model] = class_scores(emb, model, device=cfg.device)
+            frame_s[model] = timing
+            release_gates()
+    finally:
+        release_gates()
+    return scores, frame_s
 
 
 def _houses(frames: list[FrameRef], packet: dict) -> dict[str, str]:

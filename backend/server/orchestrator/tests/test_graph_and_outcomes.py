@@ -61,6 +61,16 @@ def test_objects_3d_waits_for_scene_and_criteria_waits_for_objects_3d() -> None:
     assert "criteria" in ready_stages(status)
 
 
+def test_objects_stage_spawns_on_gpu() -> None:
+    spec = STAGES["objects"]
+    assert spec.where == "gpu"
+    assert spec.optional is True
+    assert spec.module == "objects"
+    assert spec.gpu_by_attempt == GPU_BY_ATTEMPT
+    assert [gpu_for_attempt(spec, n) for n in (1, 2, 3)] == ["L4", "L4", "A100-40GB"]
+    assert spec.timeout_s >= 900
+
+
 def test_gpu_by_attempt() -> None:
     assert GPU_BY_ATTEMPT == ("L4", "L4", "A100-40GB")
     assert STAGES["poses"].gpu_by_attempt == GPU_BY_ATTEMPT

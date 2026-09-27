@@ -62,9 +62,25 @@ def with_stage_package_data(image: modal.Image) -> modal.Image:
 
 
 def gpu_image() -> modal.Image:
-    """GPU function image. `HSS_GPU_IMAGE_ID` selects a finished prebuild."""
+    """GPU function image. `HSS_GPU_IMAGE_ID` selects a finished prebuild.
+
+    The COLMAP prebuild syncs the `gpu` extra only. CLIP, SigLIP and OWLv2 need
+    transformers, open_clip and sentencepiece (SigLIP's tokenizer) on that same
+    image. transformers 4.49.0 loads SigLIP2's processor with a null vocab file;
+    4.51.3 loads it. Pip may replace the CUDA torch wheel, so the cu124 pin is
+    installed again afterwards.
+    """
     image_id = os.environ.get("HSS_GPU_IMAGE_ID")
     base = modal.Image.from_id(image_id) if image_id else dockerfile_image()
+    base = base.pip_install(
+        "transformers==4.51.3",
+        "open_clip_torch==2.32.0",
+        "sentencepiece==0.2.0",
+    ).pip_install(
+        "torch==2.5.1",
+        "torchvision==0.20.1",
+        index_url="https://download.pytorch.org/whl/cu124",
+    )
     return with_stage_package_data(base)
 
 
