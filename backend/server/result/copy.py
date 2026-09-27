@@ -504,14 +504,62 @@ def _matches(entry: PromptEntry, given: dict) -> bool:
     return True
 
 
+_FEET_PER_METRE = 3.2808
+
+
+def _feet_text(metres: float) -> str:
+    return str(int(round(abs(metres) * _FEET_PER_METRE)))
+
+
+def _drop_zero_offset(text: str) -> str:
+    """A view centred on the meter is 'at your meter', not '0 ft along'."""
+    return text.replace(", 0 ft along the wall", "").replace(", 0 ft along", "")
+
+
+def _coerce(vars: dict[str, str | float]) -> dict[str, str]:
+    """Numeric ``s_ft`` / ``out_ft`` are metres and become whole feet. Strings pass through."""
+    values: dict[str, str] = {}
+    for key, value in vars.items():
+        if key in {"s_ft", "out_ft"} and isinstance(value, float | int) and not isinstance(value, bool):
+            values[key] = _feet_text(float(value))
+        else:
+            values[key] = str(value)
+    return values
+
+
+def _fill(text: str, values: dict[str, str]) -> str:
+    return text.format(**values)
+
+
+def _fill_missing(text: str, values: dict[str, str]) -> str:
+    """Drop an absent along-offset, then blank any placeholder that was not supplied."""
+    if "s_ft" not in values:
+        text = text.replace(", {s_ft} ft along the wall", "").replace(", {s_ft} ft along", "")
+
+    def repl(match: re.Match[str]) -> str:
+        return values.get(match.group(1), "")
+
+    filled = _VAR.sub(repl, text)
+    filled = re.sub(r"[ \t]{2,}", " ", filled)
+    filled = re.sub(r"\s+,", ",", filled)
+    filled = re.sub(r"\s+([.;])", r"\1", filled)
+    return filled.strip()
+
+
 def render(entry: PromptEntry, **vars: str | float) -> RenderedPrompt:
-    def fill(text: str) -> str:
-        def repl(match: re.Match[str]) -> str:
-            key = match.group(1)
-            if key not in vars:
-                raise KeyError(key)
-            return str(vars[key])
+    """Substitute `{name}` the way `ios_kit.prompts.render` does.
 
-        return _VAR.sub(repl, text)
-
-    return RenderedPrompt(promptId=entry.prompt_id, title=fill(entry.title), body=fill(entry.body))
+    A missing placeholder falls back to a sentence without that token instead of raising.
+    """
+    values = _coerce(vars)
+    try:
+        title = _fill(entry.title, values)
+        body = _fill(entry.body, values)
+    except KeyError:
+        title = _fill_missing(entry.title, values)
+        body = _fill_missing(entry.body, values)
+    else:
+        if values.get("s_ft") == "0":
+            title = _drop_zero_offset(title)
+            body = _drop_zero_offset(body)
+    return RenderedPrompt(promptId=entry.prompt_id, title=title, body=body)

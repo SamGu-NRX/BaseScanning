@@ -736,8 +736,9 @@ def _target_class(view: dict) -> str | None:
 
 
 def _vars(s_mid, out_m, target_class, threshold_ft) -> dict[str, str | float]:
-    s_ft = 0 if s_mid is None else int(round(abs(float(s_mid)) * 3.2808))
-    out_ft = 0 if out_m is None else int(round(float(out_m) * 3.2808))
+    # Metres. `render` turns numeric s_ft / out_ft into whole feet, matching the kit.
+    s_ft = 0.0 if s_mid is None else abs(float(s_mid))
+    out_ft = 0.0 if out_m is None else float(out_m)
     threshold = 0 if threshold_ft is None else int(round(float(threshold_ft)))
     return {
         "side": side_text(None if s_mid is None else float(s_mid)),

@@ -4,9 +4,12 @@ import itertools
 import json
 from typing import get_args
 
-import pytest
-
 from server.contracts.capture_check import CaptureCheckCode, HintCode
+
+try:
+    from ios_kit.prompts import render as kit_render
+except ImportError:
+    kit_render = None
 from server.result.copy import (
     CAUSE_RANK,
     CRITERION_IDS,
@@ -28,10 +31,11 @@ HEADLINES = {
     "manual_review": "We have what we need",
     "not_eligible": "Not a fit at this spot",
 }
+# Strings are already whole feet. Numbers are metres, as in ios_kit.prompts.render.
 VARS = {
     "side": side_text(2.0),
-    "s_ft": 12,
-    "out_ft": 12,
+    "s_ft": "12",
+    "out_ft": "12",
     "what": what_text("window"),
     "threshold_ft": 20,
 }
@@ -111,10 +115,71 @@ def test_copy_limits_and_banned_words():
             assert word not in blob
 
 
-def test_missing_variable_raises():
-    entry = select_prompt(FALLBACK, kind="past_end")
-    with pytest.raises(KeyError):
-        render(entry)
+def test_missing_variable_falls_back():
+    past_end = render(select_prompt(FALLBACK, kind="past_end"))
+    assert "{" not in past_end.title + past_end.body
+    assert past_end.body == "Walk to the end of this wall and photograph the corner and what comes after it."
+    generic = next(entry for entry in FALLBACK.prompts if entry.prompt_id == "vn.generic")
+    centred = render(generic, side="at your meter")
+    assert centred.body == "Photograph the area at your meter, from about 10 ft back."
+    assert ", 0 ft along" not in centred.body
+
+
+def test_centred_meter_drops_zero_offset():
+    generic = next(entry for entry in FALLBACK.prompts if entry.prompt_id == "vn.generic")
+    for s_ft in ("0", 0, 0.0):
+        body = render(generic, side="at your meter", s_ft=s_ft).body
+        assert body == "Photograph the area at your meter, from about 10 ft back."
+    ground = select_prompt(FALLBACK, kind="band", band="ground")
+    offset = render(ground, side="to the right of your meter", s_ft=4.3, out_ft=3.7)
+    assert "14 ft along" in offset.body
+    assert "12 ft" in offset.body
+    kept = render(generic, side="to the right of your meter", s_ft="7")
+    assert "7 ft along" in kept.body
+
+
+def _kit_render(entry, **vars) -> tuple[str, str, str]:
+    """`ios_kit.prompts.render` when the kit is installed, otherwise that function at aee89fc."""
+    if kit_render is None:
+        return _canonical_kit_render(entry, **vars)
+    rendered = kit_render(entry, **vars)
+    return rendered.promptId, rendered.title, rendered.body
+
+
+def _canonical_kit_render(entry, **vars) -> tuple[str, str, str]:
+    """Copy of ios_kit.prompts.render at aee89fc. Numbers for s_ft/out_ft are metres."""
+    values: dict[str, str] = {}
+    for key, value in vars.items():
+        if key in {"s_ft", "out_ft"} and isinstance(value, float | int) and not isinstance(value, bool):
+            values[key] = str(int(round(abs(float(value)) * 3.2808)))
+        else:
+            values[key] = str(value)
+    title = entry.title.format(**values)
+    body = entry.body.format(**values)
+    if values.get("s_ft") == "0":
+        title = title.replace(", 0 ft along the wall", "").replace(", 0 ft along", "")
+        body = body.replace(", 0 ft along the wall", "").replace(", 0 ft along", "")
+    if "{" in title or "{" in body:
+        raise KeyError("unresolved prompt placeholder")
+    return entry.prompt_id, title, body
+
+
+def test_render_parity_with_the_ios_kit():
+    samples = (
+        {"s_ft": "0", "out_ft": "12"},
+        {"s_ft": "7", "out_ft": "12"},
+        {"s_ft": 0.0, "out_ft": 3.7},
+        {"s_ft": 4.3, "out_ft": 3.7},
+    )
+    base = {"side": "at your meter", "what": "window", "threshold_ft": "20"}
+    for entry in FALLBACK.prompts:
+        for extra in samples:
+            kwargs = {**base, **extra}
+            got = render(entry, **kwargs)
+            prompt_id, title, body = _kit_render(entry, **kwargs)
+            assert got.promptId == prompt_id
+            assert got.title == title
+            assert got.body == body
 
 
 def test_catalogue_round_trip(tmp_path):

@@ -54,6 +54,7 @@ No model weights. `uv lock` after a dependency change, then `uv sync --frozen --
 - A scene asset path that is missing becomes `preview_skipped`. Compose does not raise `FileNotFoundError`.
 - ETH3D facade, delivery, and electro rows stay deferred (SD-70) until PR 39 merges. PR 41 is on main (`ca84005`); this branch has merged that main. PR 39 still lands later, and this branch will merge main once more (SD-71).
 - The prompt catalogue file from WS-14 is not in the repo. A missing file uses `copy.FALLBACK` and records `catalogue_missing`. The tests commit a copy of that fallback.
+- `render` matches `ios_kit.prompts`: numeric `s_ft` and `out_ft` are metres, a centred view drops `, 0 ft along`, and a missing placeholder is left out instead of raising.
 - The stage posts the webhook once. `retry_schedule` is the 24 hour plan for a worker.
 - Webhook ids are `evt_<run_id>` so a repeat of the same run is idempotent.
 - `server/tests/test_skeleton.py` no longer expects `result` to raise `NotImplementedError`.
