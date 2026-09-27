@@ -117,6 +117,9 @@ class SceneObject:
     source: str
     plus_minus: float
     geom: Geometry
+    # Placed by a plan outline (`footprint`), not along the walls in s: the battery moves against
+    # it with the meter's error, not with the walls' slide.
+    in_plan: bool = False
 
     @property
     def label(self) -> str:
@@ -967,6 +970,7 @@ def parse_scene(raw: dict[str, Any], rules: Rules, input_bytes: bytes | None = N
                     + (drift * max(abs(span[0]), abs(span[1])) if obj["source"] != "tape" else 0),
                 ),
                 geom=geom,
+                in_plan="footprint" in obj,
             )
         )
 

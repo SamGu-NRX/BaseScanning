@@ -518,23 +518,28 @@ class Solver:
         rule: Value,
         piece: Piece,
         fp: Polygon,
-        items: list[tuple[str, Geometry, float, bool | None]],
+        items: list[tuple[str, Geometry, float, bool | None, bool]],
         band: str,
         noun: str,
         wall_height: float | None = None,
+        along_err: float | None = None,
     ) -> Check:
         """Minimum plan distance from the footprint to each item. `items` holds (label, geometry,
-        error, counts) where counts None means an unknown attribute decides whether it applies.
+        error, counts, in plan) where counts None means an unknown attribute decides whether it
+        applies, and in plan says whether the item was placed in plan (the battery moves against
+        it by its full position error) or along the walls (by its error along them).
         `wall_height` is how high up the wall the face must have been seen, for a check that
         reads the wall band."""
         t = rule.value
         c = Check(check_id, label, PASS, "", rule_key, rule, threshold=t, comparison="at_least")
+        if along_err is None:
+            along_err = piece.plus_minus
         worst_key: tuple[int, float] | None = None
-        for name, geom, err, counts in items:
+        for name, geom, err, counts, in_plan in items:
             if counts is False:
                 continue
             d = fp.distance(geom)
-            e = err + piece.plus_minus
+            e = err + (piece.plus_minus if in_plan else along_err)
             outcome = at_least(d, e, t)
             cause = "margin"
             if counts is None and outcome != PASS:
@@ -606,8 +611,9 @@ class Solver:
             return None
         return None if exempt is None else not exempt
 
-    def check_along_wall(self, piece: Piece, s0: float, s1: float) -> Check:
-        """Wall-mounted boxes and vents directly above the battery, measured along the wall."""
+    def check_along_wall(self, along_err: float, s0: float, s1: float) -> Check:
+        """Wall-mounted boxes and vents directly above the battery, measured along the wall, so
+        against the battery's error along the walls (_errors)."""
         rule = self.r.clearances.wall_equipment_ft
         t = rule.value
         c = Check(
@@ -625,7 +631,7 @@ class Solver:
             gap = max(o.span[0] - s1, s0 - o.span[1])
             # Both ends of the gap carry error: the box's own, and the battery's position, which
             # is known only to the wall's error.
-            e = o.plus_minus + piece.plus_minus
+            e = o.plus_minus + along_err
             outcome = at_least(gap, e, t)
             key = (_SEVERITY[outcome], -(gap - e))
             if worst_key is None or key > worst_key:
@@ -1051,7 +1057,8 @@ class Solver:
         # Checks see the battery's position error (_error): its wall's at its far edge from the
         # meter, where AR drift is largest, and the meter's. The route and the meter's working
         # space count the meter's error themselves, so they take the wall's alone.
-        piece = replace(wall_piece, plus_minus=self._error(wall_piece, s0), drift=0.0)
+        plan_err, along_err = self._errors(wall_piece, s0)
+        piece = replace(wall_piece, plus_minus=max(plan_err, along_err), drift=0.0)
         on_wall = replace(piece, plus_minus=wall_piece.error_at(max(abs(s0), abs(s1))))
         c = r.clearances
         checks = [
@@ -1065,11 +1072,12 @@ class Solver:
                 c.gas_ft,
                 piece,
                 fp,
-                [(o.label, o.geom, o.plus_minus, True) for o in self.gas],
+                [(o.label, o.geom, o.plus_minus, True, o.in_plan) for o in self.gas],
                 # Gas meters hang on the wall as well as standing on the ground.
                 "ground+wall",
                 "gas meter or pipe",
                 self.wall_height["above"],
+                along_err=along_err,
             ),
             self.check_clearance(
                 "ac_clearance",
@@ -1078,9 +1086,10 @@ class Solver:
                 c.ac_ft,
                 piece,
                 fp,
-                [(o.label, o.geom, o.plus_minus, True) for o in self.ac],
+                [(o.label, o.geom, o.plus_minus, True, o.in_plan) for o in self.ac],
                 "ground",
                 "AC unit",
+                along_err=along_err,
             ),
             *(
                 [
@@ -1091,10 +1100,11 @@ class Solver:
                         c.battery_ft,
                         piece,
                         fp,
-                        [(o.label, o.geom, o.plus_minus, True) for o in self.batteries],
+                        [(o.label, o.geom, o.plus_minus, True, o.in_plan) for o in self.batteries],
                         "ground+wall",
                         "battery",
                         self.wall_height["above"],
+                        along_err=along_err,
                     )
                 ]
                 if self.battery_check
@@ -1108,11 +1118,12 @@ class Solver:
                 piece,
                 fp,
                 [
-                    (f"ground[{g.index}] {g.type}", g.polygon, g.plus_minus, True)
+                    (f"ground[{g.index}] {g.type}", g.polygon, g.plus_minus, True, True)
                     for g in self.drives
                 ],
                 "ground",
                 "drivable surface",
+                along_err=along_err,
             ),
             self.check_clearance(
                 "pool_clearance",
@@ -1121,9 +1132,10 @@ class Solver:
                 c.pool_ft,
                 piece,
                 fp,
-                [(o.label, o.geom, o.plus_minus, True) for o in self.pool],
+                [(o.label, o.geom, o.plus_minus, True, o.in_plan) for o in self.pool],
                 "ground",
                 "pool",
+                along_err=along_err,
             ),
             self.check_clearance(
                 "opening_clearance",
@@ -1132,12 +1144,16 @@ class Solver:
                 c.opening_ft,
                 piece,
                 fp,
-                [(o.label, o.geom, o.plus_minus, self._opening_counts(o)) for o in self.openings],
+                [
+                    (o.label, o.geom, o.plus_minus, self._opening_counts(o), o.in_plan)
+                    for o in self.openings
+                ],
                 "wall",
                 "door or window",
                 self.wall_height["openings"],
+                along_err=along_err,
             ),
-            self.check_along_wall(piece, s0, s1),
+            self.check_along_wall(along_err, s0, s1),
             self.check_measured(
                 "facing_gap",
                 "Open space in front",
@@ -1151,7 +1167,7 @@ class Solver:
                 "gap in front of the battery"
                 if r.facing.measured_from == "battery_front"
                 else "gap from the wall to whatever faces it",
-                piece.plus_minus,
+                along_err,
             ),
             self.check_measured(
                 "headroom",
@@ -1164,7 +1180,7 @@ class Solver:
                 s1,
                 0.0,
                 "headroom",
-                piece.plus_minus,
+                along_err,
             ),
         ]
         route, path, reach = self.route_for(on_wall, s0, s1)
@@ -1233,7 +1249,10 @@ class Solver:
         # Where a start is first clear of the segment's ends by the wall's error.
         # The battery's error beyond its wall's, as _error adds it: one value over a segment, as
         # the same walls lie between it and the meter wherever it stands on it.
-        extra = max(self.scene.meter_plus_minus, self._slide(piece, lo))
+        slide = self._slide(piece, lo)
+        extra = max(self.scene.meter_plus_minus, slide)
+        # Checks against spans take the error along the walls (_errors), this much smaller.
+        along = extra - slide
         for e in {piece.plus_minus + extra, piece.error_at(max(abs(lo), abs(hi))) + extra}:
             points += [piece.s0 + e, piece.s1 - W - e]
         # Along the wall: every place an interval can start or stop mattering, each with only
@@ -1243,7 +1262,7 @@ class Solver:
         # When the error drifts, offsets that include the battery's own error are placed with the
         # error at each start instead (below), since that is the error a start is judged with.
         drifts = piece.drift > 0
-        around = (0.0,) if drifts else (0.0, ew, -ew)
+        around = (0.0,) if drifts else (0.0, ew, -ew, ew - along, along - ew)
         boundaries: list[tuple[float, tuple[float, ...]]] = [(0.0, around)]
         boundaries += [(b, around) for b in self.ws_span]
         # Boundaries whose offset includes the battery's own error, with the fixed part of the
@@ -1251,9 +1270,12 @@ class Solver:
         drifting: list[tuple[float, float]] = [(0.0, 0.0), *((b, 0.0) for b in self.ws_span)]
         for o in self.scene.objects:
             e = o.plus_minus
-            own = (0.0, e, -e) if drifts else (0.0, e, -e, e + ew, -(e + ew))
+            near = e + ew - along
+            own = (0.0, e, -e) if drifts else (0.0, e, -e, e + ew, -(e + ew), near, -near)
             boundaries += [(b, own) for b in o.span]
             drifting += [(b, e) for b in o.span]
+        if along > EPS:
+            drifting += [(b, f - along) for b, f in drifting]
         for m in self.scene.overheads + self.scene.facing:
             boundaries += [(b, around) for b in m.span]
         for band in self.scene.observed.values():
@@ -1295,7 +1317,7 @@ class Solver:
             # battery straddles the meter.
             errs = [self._error(piece, s) for s in (lo, hi, min(max(-W / 2, lo), hi))]
             e_least, e_most = min(errs), max(errs)
-        for geom, base, fixed, k in self._clearance_edges(piece):
+        for geom, base, fixed, k in self._clearance_edges(along):
             if drifts and k != 0:
                 points += self._drifting_outline(
                     piece, geom, base, fixed, k, tracks, strip, e_least, e_most
@@ -1325,16 +1347,21 @@ class Solver:
         mids = [(a + b) / 2 for a, b in itertools.pairwise(pts) if b - a > 1e-6]
         return sorted(set(pts) | set(mids))
 
-    def _clearance_edges(self, piece: Piece) -> list[tuple[Geometry, float, float, float]]:
+    def _clearance_edges(self, along: float) -> list[tuple[Geometry, float, float, float]]:
         """(geometry, base, fixed error, k): outlines at distance base + k * (fixed error + the
-        battery's error) from the geometry bound some check's outcome."""
+        battery's error) from the geometry bound some check's outcome. An object placed along
+        the walls is judged with the battery's error along them, `along` less (_errors)."""
         c = self.r.clearances
+
+        def fixed(o: SceneObject) -> float:
+            return o.plus_minus if o.in_plan else o.plus_minus - along
+
         items = [
-            *((c.gas_ft.value, o.geom, o.plus_minus) for o in self.gas),
-            *((c.ac_ft.value, o.geom, o.plus_minus) for o in self.ac),
-            *((c.battery_ft.value, o.geom, o.plus_minus) for o in self.batteries),
-            *((c.pool_ft.value, o.geom, o.plus_minus) for o in self.pool),
-            *((c.opening_ft.value, o.geom, o.plus_minus) for o in self.openings),
+            *((c.gas_ft.value, o.geom, fixed(o)) for o in self.gas),
+            *((c.ac_ft.value, o.geom, fixed(o)) for o in self.ac),
+            *((c.battery_ft.value, o.geom, fixed(o)) for o in self.batteries),
+            *((c.pool_ft.value, o.geom, fixed(o)) for o in self.pool),
+            *((c.opening_ft.value, o.geom, fixed(o)) for o in self.openings),
             *((c.drive_ft.value, g.polygon, g.plus_minus) for g in self.drives),
         ]
         out = [(geom, t, err, k) for t, geom, err in items for k in (0.0, 1.0, -1.0) if t > 0]
@@ -1343,15 +1370,22 @@ class Solver:
         return out
 
     def _error(self, piece: Piece, s0: float) -> float:
-        """The battery's position error for a start at s0, as every check uses it: the wall's
-        error at the battery's far edge from the meter, plus the larger of what the rest can do.
-        The battery is placed by its offset from the meter (the AR view anchors it there), so
-        wherever the meter truly is, the battery goes with it: against anything placed in plan
-        (a wall's end, a ground patch, an object's outline) it moves by up to the meter's error.
-        Against anything placed along the walls in s it slides (_slide). test_within_errors has
-        a case of each."""
+        """The battery's position error for a start at s0 where a check compares it with both
+        kinds of position (a wall's end and the wall's spans of heights; seen areas): the larger
+        of _errors. The battery is placed by its offset from the meter (the AR view anchors it
+        there), so wherever the meter truly is, the battery goes with it: against anything placed
+        in plan it moves by up to the meter's error, and against anything placed along the walls
+        in s it slides (_slide). test_within_errors has a case of each."""
+        return max(self._errors(piece, s0))
+
+    def _errors(self, piece: Piece, s0: float) -> tuple[float, float]:
+        """The battery's position error for a start at s0 against what was placed in plan (a
+        wall's end, a ground patch, an object's outline), and against what was placed along the
+        walls in s (a span): its wall's error at its far edge from the meter plus the meter's in
+        plan, plus the slide (_slide) along the walls. On the meter's own wall the slide is 0: a
+        span there moves with the meter as the battery does."""
         wall = piece.error_at(max(abs(s0), abs(s0 + self.W)))
-        return wall + max(self.scene.meter_plus_minus, self._slide(piece, s0))
+        return wall + self.scene.meter_plus_minus, wall + self._slide(piece, s0)
 
     def _slide(self, piece: Piece, s0: float) -> float:
         """How far the battery's s can move against spans measured along the walls when it
