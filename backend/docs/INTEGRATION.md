@@ -8,16 +8,17 @@ Diff this block when the deployment changes. Keep the seven field names and thei
 
 | Field | Value |
 | --- | --- |
-| Updated UTC | 2026-09-27T05:33:50Z |
+| Updated UTC | 2026-09-27T06:45:07Z |
 | Live URL | `https://huntertcarver-dev--capture-api.modal.run` (routes under `/v1`) |
-| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","version":"c786f76cb7af"}` (selected fields). No `Authorization` header. Checked 2026-09-27T05:33:46Z. |
-| Milestone | M1 was proven on image `41a0880`: a no-token run returned a schema-valid `ResultResponse` (`manual_review`, stub stages, 59 s), capture `cap_01M3GEDBNXKEZ5AWD6BR3GYRHW`, run `run_9b0b07f08045853f`. The current image has only been checked with read-only API probes in this update; a new M1 run is not asserted. M2 is not verified live. |
-| What works | Current image: health 200 and a missing capture returns `404 capture_not_found`, both without `Authorization` (05:33:46–49Z). Version `c786f76cb7af` identifies a revision of draft [PR 91](https://github.com/huntertcarver/house-scanning-server/pull/91), not a merged-main release. These probes exercise no upload, reconstruction, remote worker, or result handoff. |
-| What's placeholder | Real-stage M2 and remote Modal result collection remain unverified (SD-81). PR 91 has open [lifecycle findings](https://github.com/huntertcarver/house-scanning-server/pull/91#issuecomment-5852861684) and [transport/heartbeat/persistence findings](https://github.com/huntertcarver/house-scanning-server/pull/91#issuecomment-5852885750); later heads need independent revalidation. Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. Deletion-race fix [PR 87](https://github.com/huntertcarver/house-scanning-server/pull/87) remains open. No finalize latency or amendment run was measured on this image. |
-| Breaking changes since last update | Image changed from `ed257c3231b8` to `c786f76cb7af`, a draft PR 91 revision implementing remote-result collection. Its deployment does not establish that the capture API uses or successfully completes that path. Background manifest failures still arrive as `failed` events after a 202. No new end-to-end milestone is claimed. |
+| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","version":"8875483b0a93"}` (selected fields). No `Authorization` header. Checked 2026-09-27T06:45:07Z. |
+| Milestone | M1 was proven on image `41a0880`: a no-token run returned a schema-valid `ResultResponse` (`manual_review`, stub stages, 59 s), capture `cap_01M3GEDBNXKEZ5AWD6BR3GYRHW`, run `run_9b0b07f08045853f`. This image was not given a new capture replay. M2 real stages are not verified live. Stage stubs stay on. |
+| What works | Health 200 with `storage: gcs` and version `8875483b0a93`, the head of [PR 111](https://github.com/huntertcarver/house-scanning-server/pull/111) (main `be01020` plus the package-data mount). A one-shot container on that CPU image rendered `server/result/review/template.html` (3103 bytes, review CSS inlined, 5 criteria profiles, result schema title `Result v0`). The same template, schemas, `profiles.yaml`, and `data/meter-models` files were present on the GPU image. No GPU was requested. |
+| What's placeholder | `HSS_ORCH_STAGE_STUBS=1`, so a live capture's result stage still writes the stub review page and does not call this Jinja render. PR 111 is not merged. Real-stage M2 remains unverified. Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. |
+| Breaking changes since last update | Live version moved from `c786f76cb7af` to `8875483b0a93`. The new image includes merged main through `be01020` and mounts review HTML/CSS, schema JSON/YAML, criteria YAML, and `data/meter-models` into the CPU and GPU stage images. No new end-to-end milestone is claimed. |
 
 ## Changelog
 
+- 2026-09-27T06:45:07Z — Dev app redeployed from [PR 111](https://github.com/huntertcarver/house-scanning-server/pull/111) head `8875483b0a93` (main `be01020` plus stage package data). No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and that version. Inside the CPU stage image, Jinja rendered `template.html` with the review CSS inlined; the GPU image had the same template, schemas, `profiles.yaml`, and meter-model files. Stubs stay on, so this is not a capture replay and not an M2 pass. Historical M1 evidence stays on `41a0880`.
 - 2026-09-27T05:33:50Z — Read-only, no-auth probes observed draft PR 91 image `c786f76cb7af`, health 200, and missing-capture 404. GCS storage and memory state are unchanged. Remote lifecycle findings remain under review; historical M1 evidence stays tied to `41a0880`, and no M2 or new latency measurement is asserted.
 - 2026-09-27T04:57:09Z — Read-only, no-auth probes observed image `ed257c3231b8` (main at PR 86), health 200, and missing-capture 404. The image includes WS-12 composition, retry-finalize guidance, and the amendment state fix. Historical M1 evidence remains tied to `41a0880`; no M2 or new finalize timing is asserted.
 - 2026-09-27T04:04:37Z — Read-only, no-auth probes observed image `b25cd7e365a8`, health 200, and missing-capture 404. Main at PR 44 includes PR 72 background finalize; distinguish its asynchronous manifest errors from synchronous request checks. The prior M1 measurement remains evidence for `41a0880`; no new end-to-end milestone is claimed.
@@ -57,7 +58,7 @@ Regenerate the check with `uv run python -m server.contracts.export_schemas --ch
 
 ## Capture flow
 
-The live health response identifies `c786f76cb7af`, a revision of draft PR 91; current live probes are listed in **Current status**. This is not a merged-main release. Remote-result code in the image does not prove that an uploaded capture traverses that path successfully.
+The live version is the one in **Current status**. That image is the PR 111 head, not a merged-main release. Stage stubs are on, so an uploaded capture does not prove the real result renderer.
 
 Upload order that the replay client uses: meter and panel stills first; each keyframe JPEG immediately followed by its depth, confidence, and features; other stills; streams and mesh; TrueDepth with the meter stills; finalize (finalize may run before the last commits).
 
