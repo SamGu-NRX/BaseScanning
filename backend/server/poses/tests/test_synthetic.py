@@ -106,7 +106,14 @@ def _pose_blob(out: Path) -> bytes:
 def test_synthetic_wall_registers(tmp_path: Path):
     packet_path, keyframes = _wall_packet(tmp_path / "packet")
     view = load_packet(packet_path)
-    params = PoseParams(gpu=False, num_threads=4, max_image_size=480, sfm_max_frames=48, timeout_s=180, seed=0)
+    # Production extraction and matching stay at 4 threads. That count is
+    # load-sensitive: a busy make ci compared 1,321 points to 1,323 and failed
+    # the exact cameras.json check. Mapping is already one thread. This pair
+    # uses one extract/match thread so the exact comparison is stable, and a
+    # long deadline so the wall-clock timeout does not trip while the machine
+    # is busy. The 180 s value is per run, checked after matching.
+    assert PoseParams().num_threads == 4
+    params = PoseParams(gpu=False, num_threads=1, max_image_size=480, sfm_max_frames=48, timeout_s=600, seed=0)
     report = run_poses(view, tmp_path / "out-a", params=params)
     assert report["frames_registered"] == 12
     counts = report["registration_counts"]
@@ -119,7 +126,7 @@ def test_synthetic_wall_registers(tmp_path: Path):
     assert not (poses / "_images").exists()
     assert report["prior"]["count"] == 12
     assert report["params"]["random_seed"] == 0
-    assert report["params"]["num_threads"] == 4
+    assert report["params"]["num_threads"] == 1
     assert report["params"]["mapper_threads"] == 1
     assert report["params"]["blas_threads"] == 1
     assert report["params"]["blas_coretype"] == "HASWELL"
