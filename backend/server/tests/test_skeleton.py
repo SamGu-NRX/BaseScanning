@@ -10,11 +10,11 @@ from pathlib import Path
 
 import pytest
 
+# `reads` is implemented by WS-08, so it is not in this stub list.
 STAGES = [
     "packet",
     "poses",
     "objects",
-    "reads",
     "scale",
     "dense",
     "coverage",

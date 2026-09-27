@@ -22,13 +22,25 @@ dependencies = [
     "shapely>=2.1.2",
 ]
 
+[project.optional-dependencies]
+# Brief §1: `uv sync --frozen --extra reads`. pillow, numpy, pydantic, and jsonschema
+# are also direct dependencies; they are repeated so the extra matches the brief list.
+reads = [
+    "openai>=1.40",
+    "pillow==12.3.0",
+    "zxing-cpp==3.1.1",
+    "numpy==2.5.3",
+    "pydantic>=2.13.5",
+    "jsonschema==4.26.0",
+]
+
 [tool.uv]
 package = false
 default-groups = ["dev", "data"]
 
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"
-testpaths = ["packet/tests", "tests", "server/contracts/tests", "server/common/tests", "server/eval/tests", "server/tests"]
+testpaths = ["packet/tests", "tests", "server/contracts/tests", "server/common/tests", "server/eval/tests", "server/tests", "server/reads/tests"]
 pythonpath = [".", "packet", "eval", "eval/vendor/hs11_server"]
 
 [tool.ruff]

@@ -1,5 +1,5 @@
 # `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
-.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci
+.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci reads-gate reads-extra
 
 ONLY ?= small
 
@@ -33,3 +33,10 @@ validate-full:
 	uv run --frozen python scripts/validate_fixtures.py --full
 
 ci: lint test schemas hygiene validate
+
+reads-gate:
+	uv run --frozen python scripts/reads_gate.py --set meter --set panel --set extra --out /tmp/reads-gate
+
+reads-extra:
+	uv sync --frozen --extra reads
+	uv run --frozen --extra reads python -c "import openai, zxingcpp"
