@@ -1,0 +1,215 @@
+{
+  "$defs": {
+    "ScaleEstimate": {
+      "additionalProperties": false,
+      "properties": {
+        "contour": {
+          "anyOf": [
+            {
+              "enum": [
+                "cover",
+                "ring",
+                "base"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contour"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "rel_sd": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 0,
+          "title": "Rel Sd"
+        },
+        "residual_pct": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Residual Pct"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "primary",
+                "check"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "sku": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sku"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "used": {
+          "title": "Used",
+          "type": "boolean"
+        },
+        "views": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "ge": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Views"
+        }
+      },
+      "required": [
+        "kind",
+        "rel_sd",
+        "used"
+      ],
+      "title": "ScaleEstimate",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "conflict": {
+      "title": "Conflict",
+      "type": "boolean"
+    },
+    "estimates": {
+      "items": {
+        "$ref": "#/$defs/ScaleEstimate"
+      },
+      "title": "Estimates",
+      "type": "array"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "rel_bound_95": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "ge": 0,
+      "title": "Rel Bound 95"
+    },
+    "scale_factor": {
+      "anyOf": [
+        {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scale Factor"
+    },
+    "source": {
+      "enum": [
+        "meter_model",
+        "lidar",
+        "arkit",
+        "none"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "verified",
+        "single_reference",
+        "unverified"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "rel_bound_95",
+    "status",
+    "estimates",
+    "conflict"
+  ],
+  "title": "Scale block v0",
+  "type": "object"
+}

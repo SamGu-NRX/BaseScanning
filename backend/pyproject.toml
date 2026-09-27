@@ -24,8 +24,8 @@ package = false
 
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"
-testpaths = ["packet/tests", "tests"]
-pythonpath = ["packet", "eval", "eval/vendor/hs11_server"]
+testpaths = ["packet/tests", "tests", "server/contracts/tests"]
+pythonpath = [".", "packet", "eval", "eval/vendor/hs11_server"]
 
 [tool.ruff]
 line-length = 120

@@ -1,0 +1,2916 @@
+{
+  "$defs": {
+    "Admission": {
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requestid"
+        },
+        "supports": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/AdmissionSupport"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supports"
+        },
+        "usable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Usable"
+        }
+      },
+      "title": "Admission",
+      "type": "object"
+    },
+    "AdmissionSupport": {
+      "additionalProperties": false,
+      "properties": {
+        "requirement": {
+          "title": "Requirement",
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "title": "Revision"
+        }
+      },
+      "required": [
+        "requirement",
+        "revision"
+      ],
+      "title": "AdmissionSupport",
+      "type": "object"
+    },
+    "AmendmentRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "amendmentId": {
+          "title": "Amendmentid",
+          "type": "string"
+        },
+        "answers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Answers",
+          "type": "array"
+        }
+      },
+      "required": [
+        "amendmentId",
+        "answers"
+      ],
+      "title": "AmendmentRequest",
+      "type": "object"
+    },
+    "AmendmentResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "amendmentId": {
+          "title": "Amendmentid",
+          "type": "string"
+        },
+        "pathPrefix": {
+          "title": "Pathprefix",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amendmentId",
+        "pathPrefix"
+      ],
+      "title": "AmendmentResponse",
+      "type": "object"
+    },
+    "ApiError": {
+      "additionalProperties": false,
+      "properties": {
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/ApiErrorItem"
+          },
+          "title": "Errors",
+          "type": "array"
+        }
+      },
+      "required": [
+        "errors"
+      ],
+      "title": "ApiError",
+      "type": "object"
+    },
+    "ApiErrorItem": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "pointer": {
+          "title": "Pointer",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "pointer",
+        "message"
+      ],
+      "title": "ApiErrorItem",
+      "type": "object"
+    },
+    "CaptureCheckData": {
+      "additionalProperties": false,
+      "properties": {
+        "complete": {
+          "title": "Complete",
+          "type": "boolean"
+        },
+        "meterRead": {
+          "anyOf": [
+            {
+              "enum": [
+                "ok",
+                "unreadable",
+                "pending",
+                "absent"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Meterread"
+        },
+        "missing": {
+          "items": {
+            "enum": [
+              "meter_close",
+              "meter_oblique",
+              "meter_closeups_in_session",
+              "meter_tap",
+              "door_view_meter_side",
+              "panel_close",
+              "panel_open",
+              "main_disconnect",
+              "keyframe_count",
+              "keyframe_cadence",
+              "tracking_quality",
+              "photo_count",
+              "wall_left_of_meter",
+              "wall_right_of_meter",
+              "ground_downward_left",
+              "ground_downward_right"
+            ],
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "prompts": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompts"
+        }
+      },
+      "required": [
+        "complete",
+        "missing"
+      ],
+      "title": "CaptureCheckData",
+      "type": "object"
+    },
+    "CaptureStatusResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "captureId": {
+          "title": "Captureid",
+          "type": "string"
+        },
+        "createdAt": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+          "title": "Createdat",
+          "type": "string"
+        },
+        "filesCommitted": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Filescommitted"
+        },
+        "filesRegistered": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Filesregistered"
+        },
+        "finalizeBy": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+          "title": "Finalizeby",
+          "type": "string"
+        },
+        "flow": {
+          "enum": [
+            "guided",
+            "photo"
+          ],
+          "title": "Flow",
+          "type": "string"
+        },
+        "packetId": {
+          "title": "Packetid",
+          "type": "string"
+        },
+        "runId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runid"
+        },
+        "status": {
+          "enum": [
+            "uploading",
+            "awaiting_files",
+            "processing",
+            "needs_views",
+            "complete",
+            "manual_review",
+            "failed",
+            "expired"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "tier": {
+          "enum": [
+            "arkit_lidar",
+            "arkit",
+            "photo_only"
+          ],
+          "title": "Tier",
+          "type": "string"
+        }
+      },
+      "required": [
+        "captureId",
+        "packetId",
+        "status",
+        "tier",
+        "flow",
+        "createdAt",
+        "finalizeBy",
+        "filesRegistered",
+        "filesCommitted"
+      ],
+      "title": "CaptureStatusResponse",
+      "type": "object"
+    },
+    "CommitFile": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "CommitFile",
+      "type": "object"
+    },
+    "CommitRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "items": {
+            "$ref": "#/$defs/CommitFile"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Files",
+          "type": "array"
+        }
+      },
+      "required": [
+        "files"
+      ],
+      "title": "CommitRequest",
+      "type": "object"
+    },
+    "CommitResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "committed": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Committed",
+          "type": "array"
+        },
+        "mismatch": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Mismatch",
+          "type": "array"
+        },
+        "notFound": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notfound",
+          "type": "array"
+        }
+      },
+      "required": [
+        "committed",
+        "notFound",
+        "mismatch"
+      ],
+      "title": "CommitResponse",
+      "type": "object"
+    },
+    "CompleteMultipartRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/MultipartPart"
+          },
+          "title": "Parts",
+          "type": "array"
+        },
+        "path": {
+          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "title": "Path",
+          "type": "string"
+        },
+        "uploadId": {
+          "title": "Uploadid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "uploadId",
+        "parts"
+      ],
+      "title": "CompleteMultipartRequest",
+      "type": "object"
+    },
+    "ConfirmPrompt": {
+      "additionalProperties": false,
+      "properties": {
+        "allowNone": {
+          "title": "Allownone",
+          "type": "boolean"
+        },
+        "candidates": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Candidates",
+          "type": "array"
+        },
+        "fieldId": {
+          "enum": [
+            "meter_number",
+            "panel_brand",
+            "main_breaker_amps"
+          ],
+          "title": "Fieldid",
+          "type": "string"
+        },
+        "imageId": {
+          "title": "Imageid",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "pick",
+            "type",
+            "none"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "preselected": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preselected"
+        }
+      },
+      "required": [
+        "imageId",
+        "fieldId",
+        "mode",
+        "candidates",
+        "allowNone"
+      ],
+      "title": "ConfirmPrompt",
+      "type": "object"
+    },
+    "ConfirmationData": {
+      "additionalProperties": false,
+      "properties": {
+        "by": {
+          "enum": [
+            "device",
+            "reviewer"
+          ],
+          "title": "By",
+          "type": "string"
+        },
+        "confirmationId": {
+          "title": "Confirmationid",
+          "type": "string"
+        },
+        "fieldId": {
+          "enum": [
+            "meter_number",
+            "panel_brand",
+            "main_breaker_amps"
+          ],
+          "title": "Fieldid",
+          "type": "string"
+        },
+        "imageId": {
+          "title": "Imageid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "confirmed",
+            "corrected",
+            "none"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "confirmationId",
+        "fieldId",
+        "imageId",
+        "kind",
+        "by"
+      ],
+      "title": "ConfirmationData",
+      "type": "object"
+    },
+    "ConfirmationRequest": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "confirmed",
+                  "corrected"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "clientAt": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+          "title": "Clientat",
+          "type": "string"
+        },
+        "fieldId": {
+          "enum": [
+            "meter_number",
+            "panel_brand",
+            "main_breaker_amps"
+          ],
+          "title": "Fieldid",
+          "type": "string"
+        },
+        "imageId": {
+          "title": "Imageid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "confirmed",
+            "corrected",
+            "none"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9 ./-]{1,32}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "fieldId",
+        "kind",
+        "imageId",
+        "clientAt"
+      ],
+      "title": "ConfirmationRequest",
+      "type": "object"
+    },
+    "ConfirmationResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "by": {
+          "enum": [
+            "device",
+            "reviewer"
+          ],
+          "title": "By",
+          "type": "string"
+        },
+        "confirmationId": {
+          "title": "Confirmationid",
+          "type": "string"
+        },
+        "fieldId": {
+          "enum": [
+            "meter_number",
+            "panel_brand",
+            "main_breaker_amps"
+          ],
+          "title": "Fieldid",
+          "type": "string"
+        },
+        "imageId": {
+          "title": "Imageid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "confirmed",
+            "corrected",
+            "none"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "receivedAt": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+          "title": "Receivedat",
+          "type": "string"
+        },
+        "seq": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Seq"
+        }
+      },
+      "required": [
+        "confirmationId",
+        "fieldId",
+        "imageId",
+        "kind",
+        "by",
+        "receivedAt",
+        "seq"
+      ],
+      "title": "ConfirmationResponse",
+      "type": "object"
+    },
+    "CreateCaptureRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "device": {
+          "$ref": "#/$defs/DeviceInfo"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExpectedCounts"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "flow": {
+          "enum": [
+            "guided",
+            "photo"
+          ],
+          "title": "Flow",
+          "type": "string"
+        },
+        "formatVersion": {
+          "title": "Formatversion",
+          "type": "string"
+        },
+        "orderRef": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Orderref"
+        },
+        "packetId": {
+          "minLength": 8,
+          "title": "Packetid",
+          "type": "string"
+        },
+        "tier": {
+          "enum": [
+            "arkit_lidar",
+            "arkit",
+            "photo_only"
+          ],
+          "title": "Tier",
+          "type": "string"
+        }
+      },
+      "required": [
+        "packetId",
+        "formatVersion",
+        "tier",
+        "flow",
+        "device"
+      ],
+      "title": "CreateCaptureRequest",
+      "type": "object"
+    },
+    "CreateCaptureResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "captureId": {
+          "title": "Captureid",
+          "type": "string"
+        },
+        "eventsUrl": {
+          "title": "Eventsurl",
+          "type": "string"
+        },
+        "finalizeBy": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+          "title": "Finalizeby",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "uploading",
+            "awaiting_files",
+            "processing",
+            "needs_views",
+            "complete",
+            "manual_review",
+            "failed",
+            "expired"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "upload": {
+          "$ref": "#/$defs/UploadLimits"
+        }
+      },
+      "required": [
+        "captureId",
+        "status",
+        "upload",
+        "eventsUrl",
+        "finalizeBy"
+      ],
+      "title": "CreateCaptureResponse",
+      "type": "object"
+    },
+    "DepthRef": {
+      "additionalProperties": false,
+      "properties": {
+        "confidenceFile": {
+          "anyOf": [
+            {
+              "pattern": "^(?!/)(?!.*\\.\\./).+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "keep_null": true,
+          "title": "Confidencefile"
+        },
+        "file": {
+          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "title": "File",
+          "type": "string"
+        },
+        "h": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "title": "H"
+        },
+        "smoothed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Smoothed"
+        },
+        "w": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "title": "W"
+        }
+      },
+      "required": [
+        "file",
+        "w",
+        "h"
+      ],
+      "title": "DepthRef",
+      "type": "object"
+    },
+    "DeviceInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "appVersion": {
+          "title": "Appversion",
+          "type": "string"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "systemVersion": {
+          "title": "Systemversion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "systemVersion",
+        "appVersion"
+      ],
+      "title": "DeviceInfo",
+      "type": "object"
+    },
+    "DeviceRegisterRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "bundleId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bundleid"
+        },
+        "platform": {
+          "const": "ios",
+          "title": "Platform",
+          "type": "string"
+        },
+        "token": {
+          "title": "Token",
+          "type": "string"
+        }
+      },
+      "required": [
+        "token",
+        "platform"
+      ],
+      "title": "DeviceRegisterRequest",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+          "title": "At",
+          "type": "string"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        },
+        "seq": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "title": "Seq"
+        },
+        "type": {
+          "enum": [
+            "files_committed",
+            "hint",
+            "capture_check",
+            "stage",
+            "verdict_ready",
+            "retake_request",
+            "review_started",
+            "review_completed",
+            "failed",
+            "confirmation"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "type",
+        "at",
+        "data"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "EventsResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "events": {
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "next": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Next"
+        },
+        "status": {
+          "enum": [
+            "uploading",
+            "awaiting_files",
+            "processing",
+            "needs_views",
+            "complete",
+            "manual_review",
+            "failed",
+            "expired"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "next",
+        "events"
+      ],
+      "title": "EventsResponse",
+      "type": "object"
+    },
+    "Exif": {
+      "additionalProperties": true,
+      "properties": {
+        "BrightnessValue": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Brightnessvalue"
+        },
+        "DateTimeOriginal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Datetimeoriginal"
+        },
+        "ExposureBiasValue": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exposurebiasvalue"
+        },
+        "ExposureTime": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "gt": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exposuretime"
+        },
+        "FNumber": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "gt": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fnumber"
+        },
+        "FocalLenIn35mmFilm": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "gt": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Focallenin35Mmfilm"
+        },
+        "FocalLength": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "gt": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Focallength"
+        },
+        "ISOSpeedRatings": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Isospeedratings"
+        },
+        "LensModel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lensmodel"
+        },
+        "Make": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Make"
+        },
+        "Model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "OffsetTimeOriginal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Offsettimeoriginal"
+        },
+        "Orientation": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "ge": 1,
+              "le": 8
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Orientation"
+        },
+        "PixelXDimension": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pixelxdimension"
+        },
+        "PixelYDimension": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pixelydimension"
+        },
+        "SubsecTimeOriginal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subsectimeoriginal"
+        }
+      },
+      "title": "Exif",
+      "type": "object"
+    },
+    "ExpectedCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "keyframes": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "ge": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Keyframes"
+        },
+        "stills": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "ge": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stills"
+        }
+      },
+      "title": "ExpectedCounts",
+      "type": "object"
+    },
+    "Exposure": {
+      "additionalProperties": false,
+      "properties": {
+        "duration": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "gt": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration"
+        },
+        "fNumber": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "gt": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fnumber"
+        },
+        "iso": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "gt": 0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Iso"
+        },
+        "offset": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Offset"
+        }
+      },
+      "title": "Exposure",
+      "type": "object"
+    },
+    "FailedData": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "next": {
+          "enum": [
+            "manual_review",
+            "none"
+          ],
+          "title": "Next",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "next"
+      ],
+      "title": "FailedData",
+      "type": "object"
+    },
+    "FeaturesRef": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 0,
+          "title": "Count"
+        },
+        "file": {
+          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "title": "File",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "count"
+      ],
+      "title": "FeaturesRef",
+      "type": "object"
+    },
+    "FilesCommittedData": {
+      "additionalProperties": false,
+      "properties": {
+        "committed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Committed"
+        },
+        "listed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Listed"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Paths",
+          "type": "array"
+        }
+      },
+      "required": [
+        "paths",
+        "committed"
+      ],
+      "title": "FilesCommittedData",
+      "type": "object"
+    },
+    "FinalizeResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "etaS": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 0,
+          "title": "Etas"
+        },
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "runId": {
+          "title": "Runid",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "awaiting_files",
+            "processing"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "missing",
+        "runId",
+        "etaS"
+      ],
+      "title": "FinalizeResponse",
+      "type": "object"
+    },
+    "HealthResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "degraded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "storage": {
+          "title": "Storage",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "wifTokenExpiresAt": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wiftokenexpiresat"
+        }
+      },
+      "required": [
+        "status",
+        "storage",
+        "state",
+        "version"
+      ],
+      "title": "HealthResponse",
+      "type": "object"
+    },
+    "HintData": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "confirm": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "confirm"
+            ]
+          },
+          "then": {
+            "properties": {
+              "code": {
+                "const": "meter_number_confirm"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "meter_close",
+            "meter_oblique",
+            "meter_closeups_in_session",
+            "meter_tap",
+            "door_view_meter_side",
+            "panel_close",
+            "panel_open",
+            "main_disconnect",
+            "keyframe_count",
+            "keyframe_cadence",
+            "tracking_quality",
+            "photo_count",
+            "wall_left_of_meter",
+            "wall_right_of_meter",
+            "ground_downward_left",
+            "ground_downward_right",
+            "frames_blurry",
+            "frames_dark",
+            "frames_overexposed",
+            "wall_gap_left",
+            "wall_gap_right",
+            "ground_not_seen_left",
+            "ground_not_seen_right",
+            "meter_plate_unreadable",
+            "meter_number_confirm",
+            "panel_label_unreadable"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "confirm": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConfirmPrompt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "frames": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frames"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "promptId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Promptid"
+        },
+        "retake": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retake"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "HintData",
+      "type": "object"
+    },
+    "Keyframe": {
+      "additionalProperties": false,
+      "properties": {
+        "admission": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Admission"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cameraGrainIntensity": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "ge": 0,
+              "le": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cameragrainintensity"
+        },
+        "depth": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DepthRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "keep_null": true
+        },
+        "epoch": {
+          "title": "Epoch",
+          "type": "string"
+        },
+        "exif": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exif"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "exposure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exposure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ext": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ext"
+        },
+        "features": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FeaturesRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "keep_null": true
+        },
+        "h": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "title": "H"
+        },
+        "highResolution": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Highresolution"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "img": {
+          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "title": "Img",
+          "type": "string"
+        },
+        "intrinsics": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Intrinsics",
+          "type": "array"
+        },
+        "lightEstimate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LightEstimate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pose": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxItems": 16,
+          "minItems": 16,
+          "title": "Pose",
+          "type": "array"
+        },
+        "purpose": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Purpose"
+        },
+        "reason": {
+          "enum": [
+            "motion",
+            "tap",
+            "freeze",
+            "still",
+            "request",
+            "auto"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "timestamp": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Timestamp"
+        },
+        "tracking": {
+          "enum": [
+            "normal",
+            "notAvailable",
+            "limited.initializing",
+            "limited.excessiveMotion",
+            "limited.insufficientFeatures",
+            "limited.relocalizing"
+          ],
+          "title": "Tracking",
+          "type": "string"
+        },
+        "w": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "title": "W"
+        },
+        "worldMappingStatus": {
+          "anyOf": [
+            {
+              "enum": [
+                "notAvailable",
+                "limited",
+                "extending",
+                "mapped"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Worldmappingstatus"
+        }
+      },
+      "required": [
+        "id",
+        "img",
+        "w",
+        "h",
+        "intrinsics",
+        "pose",
+        "timestamp",
+        "tracking",
+        "epoch",
+        "reason"
+      ],
+      "title": "Keyframe",
+      "type": "object"
+    },
+    "LightEstimate": {
+      "additionalProperties": false,
+      "properties": {
+        "ambientColorTemperature": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ambientcolortemperature"
+        },
+        "ambientIntensity": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ambientintensity"
+        }
+      },
+      "title": "LightEstimate",
+      "type": "object"
+    },
+    "MultipartPart": {
+      "additionalProperties": false,
+      "properties": {
+        "etag": {
+          "title": "Etag",
+          "type": "string"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "N"
+        }
+      },
+      "required": [
+        "n",
+        "etag"
+      ],
+      "title": "MultipartPart",
+      "type": "object"
+    },
+    "RegisterFile": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 0,
+          "title": "Bytes"
+        },
+        "contentType": {
+          "title": "Contenttype",
+          "type": "string"
+        },
+        "md5": {
+          "title": "Md5",
+          "type": "string"
+        },
+        "meta": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RegisterFileMeta"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "path": {
+          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "title": "Path",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "keyframe",
+            "depth",
+            "confidence",
+            "features",
+            "still",
+            "stream",
+            "truedepth",
+            "mesh",
+            "compat",
+            "other"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "bytes",
+        "sha256",
+        "md5",
+        "role",
+        "contentType"
+      ],
+      "title": "RegisterFile",
+      "type": "object"
+    },
+    "RegisterFileMeta": {
+      "additionalProperties": false,
+      "description": "Exactly one of `keyframe`, `still`, or `trueDepthFrame`.",
+      "properties": {
+        "keyframe": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Keyframe"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "still": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Still"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "trueDepthFrame": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TrueDepthFrame"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "RegisterFileMeta",
+      "type": "object"
+    },
+    "RegisterFilesRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "items": {
+            "$ref": "#/$defs/RegisterFile"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Files",
+          "type": "array"
+        }
+      },
+      "required": [
+        "files"
+      ],
+      "title": "RegisterFilesRequest",
+      "type": "object"
+    },
+    "RegisterFilesResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "items": {
+            "$ref": "#/$defs/RegisteredFile"
+          },
+          "title": "Files",
+          "type": "array"
+        }
+      },
+      "required": [
+        "files"
+      ],
+      "title": "RegisterFilesResponse",
+      "type": "object"
+    },
+    "RegisteredFile": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "committed"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "upload": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UploadTarget"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "path",
+        "state"
+      ],
+      "title": "RegisteredFile",
+      "type": "object"
+    },
+    "RetakeRequestData": {
+      "additionalProperties": false,
+      "properties": {
+        "memberActions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Memberactions",
+          "type": "array"
+        },
+        "runId": {
+          "title": "Runid",
+          "type": "string"
+        },
+        "viewsNeeded": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Viewsneeded",
+          "type": "array"
+        }
+      },
+      "required": [
+        "runId",
+        "viewsNeeded",
+        "memberActions"
+      ],
+      "title": "RetakeRequestData",
+      "type": "object"
+    },
+    "StageData": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Attempt"
+        },
+        "durationS": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Durations"
+        },
+        "errorCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Errorcode"
+        },
+        "gpu": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gpu"
+        },
+        "runId": {
+          "title": "Runid",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "validate",
+            "poses",
+            "objects",
+            "reads",
+            "scale",
+            "dense",
+            "coverage",
+            "scene",
+            "objects_3d",
+            "criteria",
+            "result"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "running",
+            "done",
+            "failed",
+            "stale",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "status",
+        "attempt",
+        "runId"
+      ],
+      "title": "StageData",
+      "type": "object"
+    },
+    "Still": {
+      "additionalProperties": false,
+      "properties": {
+        "exif": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exif"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ext": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ext"
+        },
+        "gravity": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gravity"
+        },
+        "h": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "title": "H"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "img": {
+          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "title": "Img",
+          "type": "string"
+        },
+        "intrinsics": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intrinsics"
+        },
+        "intrinsicsSource": {
+          "anyOf": [
+            {
+              "enum": [
+                "arkit",
+                "calibration",
+                "exif_focal35"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intrinsicssource"
+        },
+        "keyframe": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Keyframe"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StillLocation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "orientation": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "le": 8,
+          "title": "Orientation"
+        },
+        "purpose": {
+          "title": "Purpose",
+          "type": "string"
+        },
+        "timestamp": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Timestamp"
+        },
+        "w": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "title": "W"
+        }
+      },
+      "required": [
+        "id",
+        "purpose",
+        "img",
+        "w",
+        "h",
+        "timestamp",
+        "orientation"
+      ],
+      "title": "Still",
+      "type": "object"
+    },
+    "StillLocation": {
+      "additionalProperties": false,
+      "properties": {
+        "horizontalAccuracy": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Horizontalaccuracy"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": -90,
+          "le": 90,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": -180,
+          "le": 180,
+          "title": "Longitude"
+        }
+      },
+      "required": [
+        "latitude",
+        "longitude"
+      ],
+      "title": "StillLocation",
+      "type": "object"
+    },
+    "TrueDepthFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "depth": {
+          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "title": "Depth",
+          "type": "string"
+        },
+        "h": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "title": "H"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "pattern": "^(?!/)(?!.*\\.\\./).+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image"
+        },
+        "intrinsics": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Intrinsics",
+          "type": "array"
+        },
+        "timestamp": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Timestamp"
+        },
+        "w": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "title": "W"
+        }
+      },
+      "required": [
+        "depth",
+        "w",
+        "h",
+        "intrinsics",
+        "timestamp"
+      ],
+      "title": "TrueDepthFrame",
+      "type": "object"
+    },
+    "UploadLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "maxBatch": {
+          "default": 50,
+          "title": "Maxbatch",
+          "type": "integer"
+        },
+        "maxFiles": {
+          "default": 2000,
+          "title": "Maxfiles",
+          "type": "integer"
+        },
+        "maxSinglePutBytes": {
+          "default": 16777216,
+          "title": "Maxsingleputbytes",
+          "type": "integer"
+        },
+        "partBytes": {
+          "default": 8388608,
+          "title": "Partbytes",
+          "type": "integer"
+        },
+        "urlTtlS": {
+          "default": 3600,
+          "title": "Urlttls",
+          "type": "integer"
+        }
+      },
+      "title": "UploadLimits",
+      "type": "object"
+    },
+    "UploadPart": {
+      "additionalProperties": false,
+      "properties": {
+        "n": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 1,
+          "title": "N"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "n",
+        "url"
+      ],
+      "title": "UploadPart",
+      "type": "object"
+    },
+    "UploadTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "completeUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completeurl"
+        },
+        "expiresAt": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expiresat"
+        },
+        "headers": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Headers"
+        },
+        "method": {
+          "enum": [
+            "PUT",
+            "MULTIPART"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "parts": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/UploadPart"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parts"
+        },
+        "uploadId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uploadid"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "method"
+      ],
+      "title": "UploadTarget",
+      "type": "object"
+    },
+    "VerdictReadyData": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "eligible",
+            "needs_more_photos",
+            "not_eligible",
+            "manual_review"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "runId": {
+          "title": "Runid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "kind"
+      ],
+      "title": "VerdictReadyData",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/CreateCaptureRequest"
+    },
+    {
+      "$ref": "#/$defs/CreateCaptureResponse"
+    },
+    {
+      "$ref": "#/$defs/RegisterFilesRequest"
+    },
+    {
+      "$ref": "#/$defs/RegisterFilesResponse"
+    },
+    {
+      "$ref": "#/$defs/CommitRequest"
+    },
+    {
+      "$ref": "#/$defs/CommitResponse"
+    },
+    {
+      "$ref": "#/$defs/CompleteMultipartRequest"
+    },
+    {
+      "$ref": "#/$defs/FinalizeResponse"
+    },
+    {
+      "$ref": "#/$defs/ApiError"
+    },
+    {
+      "$ref": "#/$defs/EventsResponse"
+    },
+    {
+      "$ref": "#/$defs/ConfirmationRequest"
+    },
+    {
+      "$ref": "#/$defs/ConfirmationResponse"
+    },
+    {
+      "$ref": "#/$defs/HealthResponse"
+    },
+    {
+      "$ref": "#/$defs/CaptureStatusResponse"
+    },
+    {
+      "$ref": "#/$defs/AmendmentRequest"
+    },
+    {
+      "$ref": "#/$defs/AmendmentResponse"
+    },
+    {
+      "$ref": "#/$defs/DeviceRegisterRequest"
+    }
+  ],
+  "title": "Ingest API v1"
+}
