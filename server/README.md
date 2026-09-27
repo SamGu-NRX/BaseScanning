@@ -91,7 +91,7 @@ Notation, all in feet: the battery stands at s from `s0` to `s1` (width W = 2.58
 | `meter_working_space` | `meter` | nothing to observe |
 | `gas_clearance` (r = 3) | `objects` of type `gas_meter`, with `footprint` when it stands off the wall | ground over [s0 − r − e, s1 + r + e] out to D + r + e, and wall band over the same span, seen higher than headroom height (6.5) |
 | `ac_clearance` (r = 3), `pool_clearance` (r = 10) | `objects` of type `ac`, `pool` | ground over [s0 − r − e, s1 + r + e] out to D + r + e |
-| `battery_clearance` (r = 3), when the scene marks one | `objects` of type `battery`, with `footprint` (a battery already installed; issue #27) | ground over [s0 − r − e, s1 + r + e] out to D + r + e. The cable detours over an existing battery on its route |
+| `battery_clearance` (r = 3), when the scene marks one or the rules set it above `gas_ft` | `objects` of type `battery`, with `footprint` (a battery already installed; issue #27) | ground over [s0 − r − e, s1 + r + e] out to D + r + e, and wall band over the same span, seen higher than headroom height (6.5). The cable detours over an existing battery on its route |
 | `drive_clearance` (r = 5) | `ground` patches of type `drive` | as above |
 | `opening_clearance` (r = 3) | `objects` of type `door`, `window`, `garage_door`; `attrs.operable` and `attrs.well` for windows | wall band over [s0 − r − e, s1 + r + e], seen higher than headroom height (6.5), or than `openings.exempt_bottom_above_ft` when the rules set a lower one |
 | `wall_equipment_above` (r = 0) | `objects` of type `elec_box`, `vent` | wall band over [s0 − r, s1 + r], seen higher than headroom height (6.5) |

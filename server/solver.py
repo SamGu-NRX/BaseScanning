@@ -19,7 +19,7 @@ from dataclasses import dataclass, field, replace
 from functools import partial
 from typing import Any
 
-from shapely import Geometry, LineString, Polygon, get_coordinates, unary_union
+from shapely import Geometry, LineString, Point, Polygon, get_coordinates, unary_union
 
 from rules import LoadedRules, Rules, Value
 from scene import (
@@ -242,11 +242,11 @@ class Solver:
         self.gas = [o for o in objs if o.type == "gas_meter"]
         self.ac = [o for o in objs if o.type == "ac"]
         self.batteries = [o for o in objs if o.type == "battery"]
-        # Without an existing battery, its check would only ask for the ground the AC check
-        # already needs (same band, and a radius no larger), so it is left out and answers for
-        # scenes without one stay as they were.
+        # A battery stands on the ground against the wall, so its check reads both bands. Without
+        # an existing battery it would only ask for what the gas check already needs (the same
+        # two bands, to the same height, with a radius no larger), so it is left out then.
         self.battery_check = bool(self.batteries) or (
-            r.clearances.battery_ft.value > r.clearances.ac_ft.value
+            r.clearances.battery_ft.value > r.clearances.gas_ft.value
         )
         self.pool = [o for o in objs if o.type == "pool"]
         self.openings = [o for o in objs if o.type in r.openings.types]
@@ -551,7 +551,9 @@ class Solver:
         worst_key: tuple[int, float] | None = None
         for o in self.equipment:
             gap = max(o.span[0] - s1, s0 - o.span[1])
-            e = o.plus_minus
+            # Both ends of the gap carry error: the box's own, and the battery's position, which
+            # is known only to the wall's error.
+            e = o.plus_minus + piece.plus_minus
             outcome = at_least(gap, e, t)
             key = (_SEVERITY[outcome], -(gap - e))
             if worst_key is None or key > worst_key:
@@ -744,14 +746,28 @@ class Solver:
         h = r.height_ft.value
         path_line = self.scene.wall_line(lo, hi) if hi - lo > EPS else None
         e = self.scene.meter_plus_minus + piece.plus_minus
+        maybe_blockers: list[str] = []
         for o in self.route_objects:
-            if path_line is None or min(hi, o.span[1]) - max(lo, o.span[0]) <= EPS:
+            if path_line is None:
                 continue
+            # The object's ends carry its error and the route's ends the meter's and the wall's,
+            # so a crossing is definite only when the overlap survives all of them, and possible
+            # while any overlap is within them.
+            tol = o.plus_minus + self.scene.meter_plus_minus + piece.plus_minus
+            overlap = min(hi, o.span[1]) - max(lo, o.span[0])
+            if overlap + tol <= EPS:
+                continue
+            definite = overlap - tol > EPS
             effect = r.crossing[o.type]  # type: ignore[index]
             # Something the cable can go round or behind is only in its way when it touches the
             # wall the cable runs along; a door or garage blocks it wherever it is drawn.
             standoff = o.geom.distance(path_line) - o.plus_minus - piece.plus_minus
             if effect in ("detour", "allow") and standoff > _MEASURE_EPS:
+                continue
+            if effect == "fail" and not definite:
+                # A door that may or may not reach the route: neither clear nor blocking.
+                maybe_blockers.append(o.label)
+                crossings.append({"subject": o.label, "span_ft": list(o.span), "effect": "review"})
                 continue
             crossings.append({"subject": o.label, "span_ft": list(o.span), "effect": effect})
             effects.append(effect)
@@ -771,6 +787,10 @@ class Solver:
                     extra = min(options)
                     if extra > EPS:
                         detours.append({"subject": o.label, "extra_ft": extra})
+                        if not definite:
+                            # A detour that may not be needed: counted, and its size added to
+                            # the error so the run can still come out without it.
+                            e += extra
         corners = sum(
             1
             for a, b in zip(self.scene.pieces, self.scene.pieces[1:], strict=False)
@@ -797,6 +817,13 @@ class Solver:
             blockers = [x["subject"] for x in crossings if x["effect"] == "fail"]
             path.subject = blockers[0]
             path.reason = f"The cable would have to cross {', '.join(blockers)}."
+        elif maybe_blockers:
+            path.outcome, path.unsure_cause = UNSURE, "margin"
+            path.subject = maybe_blockers[0]
+            path.reason = (
+                f"{path.subject} ends within measurement error of the cable's route, so it may be "
+                "in the way."
+            )
         elif "review" in effects:
             path.outcome, path.unsure_cause = UNSURE, "rule_requires_review"
             path.subject = next(x["subject"] for x in crossings if x["effect"] == "review")
@@ -927,8 +954,9 @@ class Solver:
                         piece,
                         fp,
                         [(o.label, o.geom, o.plus_minus, True) for o in self.batteries],
-                        "ground",
+                        "ground+wall",
                         "battery",
+                        self.wall_height["above"],
                     )
                 ]
                 if self.battery_check
@@ -1038,12 +1066,20 @@ class Solver:
         # its own error offsets (combining every boundary with every error would grow as their
         # product).
         ew = piece.error_at(max(abs(lo), abs(hi)))
-        around = (0.0, ew, -ew)
+        # When the error drifts, offsets that include the battery's own error are placed with the
+        # error at each start instead (below), since that is the error a start is judged with.
+        drifts = piece.drift > 0
+        around = (0.0,) if drifts else (0.0, ew, -ew)
         boundaries: list[tuple[float, tuple[float, ...]]] = [(0.0, around)]
         boundaries += [(b, around) for b in self.ws_span]
+        # Boundaries whose offset includes the battery's own error, with the fixed part of the
+        # offset: re-placed below with the error at each start when that error drifts.
+        drifting: list[tuple[float, float]] = [(0.0, 0.0), *((b, 0.0) for b in self.ws_span)]
         for o in self.scene.objects:
             e = o.plus_minus
-            boundaries += [(b, (0.0, e, -e, e + ew, -(e + ew))) for b in o.span]
+            own = (0.0, e, -e) if drifts else (0.0, e, -e, e + ew, -(e + ew))
+            boundaries += [(b, own) for b in o.span]
+            drifting += [(b, e) for b in o.span]
         for m in self.scene.overheads + self.scene.facing:
             boundaries += [(b, around) for b in m.span]
         for band in self.scene.observed.values():
@@ -1054,6 +1090,21 @@ class Solver:
         for b, offsets in boundaries:
             for off in offsets:
                 points += [b + off, b - W - off]
+        if drifts:
+            for b, fixed in drifting:
+                for k in (1.0, -1.0):
+                    points.append(
+                        self._settle(
+                            lambda s, b=b, f=fixed, k=k: b + k * (f + self._error(piece, s)),
+                            b + k * (fixed + ew),
+                        )
+                    )
+                    points.append(
+                        self._settle(
+                            lambda s, b=b, f=fixed, k=k: b - W - k * (f + self._error(piece, s)),
+                            b - W - k * (fixed + ew),
+                        )
+                    )
         rt = self.r.route
         e_route = self.scene.meter_plus_minus + ew
         for line in (rt.confident_reach_ft.value, rt.max_ft.value):
@@ -1062,17 +1113,30 @@ class Solver:
         # Plan clearances: where a footprint corner's track along the wall crosses the line at
         # the rule's distance (and within error of it) from any part of an object, including
         # the middle of a slanted edge, and where it crosses a ground patch's edge.
-        tracks = [LineString([piece.point(lo, v), piece.point(hi + W, v)]) for v in (0.0, D)]
+        offsets = (0.0, D)
+        tracks = [LineString([piece.point(lo, v), piece.point(hi + W, v)]) for v in offsets]
         strip = piece.rect(lo, hi + W, 0.0, D)
-        for geom, dist in self._clearance_edges(piece):
+        for geom, base, fixed, k in self._clearance_edges(piece):
+            dist = base + k * (fixed + ew)
+            # A rule's outline needs a positive distance; a ground patch's may shrink it (base 0).
+            if base > 0 and dist <= 0:
+                continue
             region = geom.buffer(dist) if dist != 0 else geom
             boundary = region.boundary
-            for track in tracks:
+            for v, track in zip(offsets, tracks, strict=True):
                 if track.distance(boundary) > EPS:
                     continue
                 for x, z in _coords_of(track.intersection(boundary)):
                     u = piece.local((x, z))[0]
-                    points += [u, u - W]
+                    if k == 0 or not drifts:
+                        points += [u, u - W]
+                        continue
+                    # The offset used the segment's largest error; a start is judged with the
+                    # error at its own position, so re-place it with that error.
+                    for corner in (0.0, W):
+                        points.append(
+                            self._settle_on(piece, v, geom, base, fixed, k, u - corner, corner)
+                        )
             # Where the region lies inside the footprint's strip, the footprint's side edges
             # meet it at the region's extent along the wall (an object standing a little off the
             # wall is reached by a side edge, not a corner).
@@ -1085,10 +1149,10 @@ class Solver:
         mids = [(a + b) / 2 for a, b in itertools.pairwise(pts) if b - a > 1e-6]
         return sorted(set(pts) | set(mids))
 
-    def _clearance_edges(self, piece: Piece) -> list[tuple[Geometry, float]]:
-        """(geometry, offset) pairs whose offset outlines bound some check's outcome."""
+    def _clearance_edges(self, piece: Piece) -> list[tuple[Geometry, float, float, float]]:
+        """(geometry, base, fixed error, k): outlines at distance base + k * (fixed error + the
+        battery's error) from the geometry bound some check's outcome."""
         c = self.r.clearances
-        ew = piece.error_at(max(abs(piece.s0), abs(piece.s1)))
         items = [
             *((c.gas_ft.value, o.geom, o.plus_minus) for o in self.gas),
             *((c.ac_ft.value, o.geom, o.plus_minus) for o in self.ac),
@@ -1097,15 +1161,70 @@ class Solver:
             *((c.opening_ft.value, o.geom, o.plus_minus) for o in self.openings),
             *((c.drive_ft.value, g.polygon, g.plus_minus) for g in self.drives),
         ]
-        out: list[tuple[Geometry, float]] = []
-        for t, geom, err in items:
-            for d in (t, t + err + ew, t - err - ew):
-                if d > 0:
-                    out.append((geom, d))
+        out = [(geom, t, err, k) for t, geom, err in items for k in (0.0, 1.0, -1.0) if t > 0]
         for g in self.scene.ground:
-            for d in (0.0, g.plus_minus + ew, -(g.plus_minus + ew)):
-                out.append((g.polygon, d))
+            out += [(g.polygon, 0.0, g.plus_minus, k) for k in (0.0, 1.0, -1.0)]
         return out
+
+    def _error(self, piece: Piece, s0: float) -> float:
+        """The battery's position error for a start at s0: the wall's error at its far edge from
+        the meter, as evaluate uses."""
+        return piece.error_at(max(abs(s0), abs(s0 + self.W)))
+
+    @staticmethod
+    def _settle(place: Callable[[float], float], start: float) -> float:
+        """A boundary whose position depends on the error at that position: iterate from the
+        largest-error estimate. Each round shrinks the difference by the drift rate."""
+        for _ in range(8):
+            start = place(start)
+        return start
+
+    def _settle_on(
+        self,
+        piece: Piece,
+        v: float,
+        geom: Geometry,
+        base: float,
+        fixed: float,
+        k: float,
+        start: float,
+        corner: float,
+    ) -> float:
+        """Where the footprint corner `corner` along from the start, `v` out from the wall, is at
+        distance base + k * (fixed + the error at that start) from `geom` (signed: negative
+        inside it). Found by bracketing and bisecting near `start`, the largest-error estimate,
+        with point distances rather than a buffer per step, which is slow for large patches."""
+
+        def gap(s: float) -> float:
+            p = Point(piece.point(s + corner, v))
+            d = (
+                -geom.boundary.distance(p)
+                if geom.area > 0 and geom.contains(p)
+                else geom.distance(p)
+            )
+            return d - (base + k * (fixed + self._error(piece, s)))
+
+        g0 = gap(start)
+        if abs(g0) <= 1e-9:
+            return start
+        step = max(
+            abs(piece.error_at(max(abs(start), abs(start + self.W))) - self._error(piece, start)),
+            0.01,
+        )
+        for m in range(1, 9):
+            for other in (start - m * step, start + m * step):
+                if gap(other) * g0 < 0:
+                    a, b = sorted((start, other))
+                    ga = gap(a)
+                    for _ in range(40):
+                        mid = (a + b) / 2
+                        gm = gap(mid)
+                        if gm * ga <= 0:
+                            b = mid
+                        else:
+                            a, ga = mid, gm
+                    return (a + b) / 2
+        return start
 
     def candidates(self, budget_s: float) -> list[Candidate]:
         started = time.perf_counter()

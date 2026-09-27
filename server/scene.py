@@ -790,7 +790,8 @@ def parse_scene(raw: dict[str, Any], rules: Rules, input_bytes: bytes | None = N
             # Set aside when nothing of a mark with length remains on the scanned wall (its span
             # can start exactly at the end, leaving a single point); a point mark stays.
             if hi < lo - EPS or (span[1] - span[0] > EPS and hi - lo <= EPS):
-                side = "right" if span[0] > scene.s_max else "left"
+                # A span starting exactly at the right end is past it too.
+                side = "right" if span[0] >= scene.s_max - EPS else "left"
                 scene.set_aside.append((i, obj["type"], side, (span[0] + span[1]) / 2))
                 continue
             geom = scene.wall_line(lo, max(lo, hi))

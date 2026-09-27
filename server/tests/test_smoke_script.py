@@ -4,6 +4,7 @@ follows a redirect with it."""
 import http.server
 import importlib.util
 import threading
+import urllib.request
 from pathlib import Path
 from typing import ClassVar
 
@@ -85,3 +86,14 @@ def test_a_keyed_request_does_not_follow_a_redirect() -> None:
     finally:
         target.shutdown()
         redirecting.shutdown()
+
+
+def test_a_keyed_request_never_goes_through_a_proxy(monkeypatch: pytest.MonkeyPatch) -> None:
+    # CodeRabbit on 9edcd4b: with http_proxy set, a keyed request to localhost could go through
+    # the proxy, key included. Load the script with a proxy configured: the keyed opener must
+    # still have no proxy handler (an empty proxy table registers none).
+    monkeypatch.setenv("http_proxy", "http://127.0.0.1:9")
+    monkeypatch.setenv("https_proxy", "http://127.0.0.1:9")
+    fresh = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fresh)
+    assert not [h for h in fresh._KEYED.handlers if isinstance(h, urllib.request.ProxyHandler)]
