@@ -32,6 +32,7 @@ import pytest
 from helpers import parsed, rect, shared_fixture
 from hypothesis import assume, given, reject, settings, target
 from hypothesis import strategies as st
+from shapely.geometry import Point
 from test_final_review import cornered
 from test_s4_round import PUBLIC
 
@@ -156,8 +157,26 @@ def near_misses(raw: dict, piece, s0: float, data) -> dict:
             "source": "tape",
             "plus_minus_ft": e,
         }
-        where = data.draw(st.sampled_from(["left", "right", "front"]), label=f"near {i} where")
-        if where == "front" and kind in ("gas_meter", "ac", "pool", "battery"):
+        where = data.draw(
+            st.sampled_from(["left", "right", "front", "other wall"]), label=f"near {i} where"
+        )
+        others = [p for p in parsed(out, PUBLIC).walls if p.wall_id != piece.wall_id]
+        if where == "other wall" and others:
+            # On another wall's line, no outline, where its plan distance from the battery is
+            # just past the rule: it moves with that wall and the corners between.
+            other = others[0]
+            fp = piece.rect(s0, s0 + W, 0.0, PUBLIC.rules.battery.depth_ft.value)
+            near = [
+                s
+                for s in (other.s0 + x * 0.05 for x in range(int((other.s1 - other.s0) / 0.05)))
+                if fp.distance(Point(other.point(s))) >= gap + e
+            ]
+            if not near:
+                continue
+            a = min(near, key=lambda s: fp.distance(Point(other.point(s))))
+            obj["wall_id"] = other.wall_id
+            obj["span_ft"] = [a, a + 0.05]
+        elif where == "front" and kind in ("gas_meter", "ac", "pool", "battery"):
             a = s0 + data.draw(st.floats(-1.0, W), label=f"near {i} along")
             o = PUBLIC.rules.battery.depth_ft.value + gap + e
             corners = [(a, o), (a + 1, o), (a + 1, o + 1), (a, o + 1)]
@@ -180,6 +199,23 @@ def moved(point: list[float], radius: float, k: int | None) -> list[float]:
     return [point[0] + radius * dx, point[1] + radius * dz]
 
 
+def corner_moved(point: list[float], wall: dict, nxt: dict, next_error: float, k) -> list[float]:
+    """A corner two walls share, moved in direction k by up to the larger of their errors, as
+    far as it stays within each wall's error across that wall's line: along an exact wall it may
+    still move by the other wall's error (the caretaker's hazard-wall case)."""
+    if k is None:
+        return list(point)
+    dx, dz = DIRECTIONS[k]
+    limits = []
+    for w, e in ((wall, error_of(wall)), (nxt, next_error)):
+        (ax, az), (bx, bz) = w["baseline"][0], w["baseline"][-1]
+        length = math.hypot(bx - ax, bz - az)
+        across = abs(dx * -(bz - az) / length + dz * (bx - ax) / length)
+        limits.append(e / across if across > 1e-12 else math.inf)
+    radius = min(max(error_of(wall), next_error), *limits)
+    return [point[0] + radius * dx, point[1] + radius * dz]
+
+
 def perturbed(raw: dict, data) -> tuple[dict, tuple[float, float]]:
     """The scene with every input moved within its declared error (the docstring's model), and
     the meter's plan displacement."""
@@ -198,10 +234,11 @@ def perturbed(raw: dict, data) -> tuple[dict, tuple[float, float]]:
             if j == 0 and joined(i):
                 pts[0] = list(walls[i - 1]["baseline"][-1])
                 continue
-            radius = error_of(wall)
+            k = data.draw(direction, label=f"wall {i} point {j}")
             if j == len(pts) - 1 and i + 1 < len(walls) and joined(i + 1):
-                radius = min(radius, error_of(walls[i + 1]))
-            pts[j] = moved(pts[j], radius, data.draw(direction, label=f"wall {i} point {j}"))
+                pts[j] = corner_moved(pts[j], wall, given[i + 1], error_of(walls[i + 1]), k)
+            else:
+                pts[j] = moved(pts[j], error_of(wall), k)
     m = out["meter"]
     k = data.draw(direction, label="meter")
     x, _, z = m["pos"]
@@ -529,3 +566,38 @@ def test_the_wall_above_the_battery_is_seen_wherever_the_battery_may_stand() -> 
     above = next(c for c in checks if c.id == "wall_equipment_above")
     assert above.outcome == "unsure"
     assert above.unsure_cause == "unobserved"
+
+
+def test_a_hazard_on_another_walls_line_moves_with_that_wall() -> None:
+    # The caretaker's class (3.037 PASS became 2.951 FAIL at 3baa338): the meter and battery on
+    # exact w1, a gas meter with no outline on w2 (+/- 0.3 ft), 3.037 ft away. It lies on w2's
+    # line at its s: moving w2's corner 0.3 ft along w1 and its far end back puts it 2.866 ft
+    # from the battery, read as exact. Its check left w2's error out.
+    raw = shared_fixture()
+    raw["meter"]["plus_minus_ft"] = 0.0
+    raw["walls"] = [
+        {"id": "w1", "baseline": [[-30, 0], [4.0, 0]], "height_ft": 9, "plus_minus_ft": 0.0},
+        {"id": "w2", "baseline": [[4.0, 0], [4.0, 20]], "height_ft": 9, "plus_minus_ft": 0.3},
+    ]
+    raw["ground"] = [{"type": "lawn", "polygon": rect(-60, 60, -60, 60), "plus_minus_ft": 0}]
+    raw["overheads"], raw["facing"] = [], []
+    raw["objects"] = [
+        {
+            "type": "gas_meter",
+            "wall_id": "w2",
+            "span_ft": [8.52, 9.52],
+            "bottom_ft": 0,
+            "top_ft": 3,
+            "source": "tape",
+            "plus_minus_ft": 0.0,
+        }
+    ]
+    checks = evaluate_start(parsed(raw, PUBLIC), PUBLIC, 0.0, "w1").checks
+    gas = next(c for c in checks if c.id == "gas_clearance")
+    assert gas.measured == pytest.approx(3.0373, abs=1e-3)
+    assert gas.outcome == "unsure"
+    moved = copy.deepcopy(raw)
+    moved["walls"][0]["baseline"][1] = [4.3, 0]
+    moved["walls"][1]["baseline"] = [[4.3, 0], [3.7, 20]]
+    truth = same_battery(raw, 0.0, "w1", exact(moved), (0.0, 0.0))["gas_clearance"]
+    assert truth.measured < 3.0

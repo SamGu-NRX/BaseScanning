@@ -552,7 +552,7 @@ class Solver:
             if counts is False or geom.is_empty:
                 continue
             d = fp.distance(geom)
-            e = err + (piece.plus_minus if in_plan else along_err)
+            e = err + (piece.plus_minus if in_plan else along_err + self._chain_to(piece, geom))
             outcome = at_least(d, e, t)
             cause = "margin"
             if counts is None and outcome != PASS:
@@ -1218,6 +1218,26 @@ class Solver:
         checks += [path, reach]
         return Candidate(wall_piece, s0, s1, fp, checks, route, worst([x.outcome for x in checks]))
 
+    def _chain_to(self, piece: Piece, geom: Geometry) -> float:
+        """How far a hazard placed along the walls (no outline: it lies on its wall's line at its
+        s) can move against a battery on `piece`, from the walls between them other than the
+        battery's own: each can move its line by its error, and its corners slide what lies past
+        them along the chain by the error times the turn against the battery's wall. A gas meter
+        on another wall's line moved 0.17 ft when that wall's ends moved within 0.3 ft, which its
+        check left out (test_within_errors)."""
+        extent = self.scene.s_extent(geom)
+        if extent is None:
+            return 0.0
+        lo, hi = min(piece.s0, extent[0]), max(piece.s1, extent[1])
+        total = 0.0
+        for p in self.scene.walls:
+            a, b = max(p.s0, lo), min(p.s1, hi)
+            if b - a <= EPS or (abs(p.s0 - piece.s0) <= EPS and abs(p.s1 - piece.s1) <= EPS):
+                continue
+            turn = math.hypot(piece.along[0] - p.along[0], piece.along[1] - p.along[1])
+            total += p.error_at(max(abs(a), abs(b))) * (1 + turn)
+        return total
+
     def _walls_between(self, piece: Piece, lo: float, hi: float) -> float:
         """The summed errors of the wall segments other than `piece` over [lo, hi], each at its
         end furthest from the meter within the stretch."""
@@ -1362,7 +1382,7 @@ class Solver:
             # battery straddles the meter.
             errs = [self._error(piece, s) for s in (lo, hi, min(max(-W / 2, lo), hi))]
             e_least, e_most = min(errs), max(errs)
-        for geom, base, fixed, k in self._clearance_edges(along):
+        for geom, base, fixed, k in self._clearance_edges(piece, along):
             if drifts and k != 0:
                 points += self._drifting_outline(
                     piece, geom, base, fixed, k, tracks, strip, e_least, e_most
@@ -1392,14 +1412,18 @@ class Solver:
         mids = [(a + b) / 2 for a, b in itertools.pairwise(pts) if b - a > 1e-6]
         return sorted(set(pts) | set(mids))
 
-    def _clearance_edges(self, along: float) -> list[tuple[Geometry, float, float, float]]:
+    def _clearance_edges(
+        self, piece: Piece, along: float
+    ) -> list[tuple[Geometry, float, float, float]]:
         """(geometry, base, fixed error, k): outlines at distance base + k * (fixed error + the
         battery's error) from the geometry bound some check's outcome. An object placed along
         the walls is judged with the battery's error along them, `along` less (_errors)."""
         c = self.r.clearances
 
         def fixed(o: SceneObject) -> float:
-            return o.plus_minus if o.in_plan else o.plus_minus - along
+            return (
+                o.plus_minus if o.in_plan else o.plus_minus - along + self._chain_to(piece, o.geom)
+            )
 
         items = [
             *((c.gas_ft.value, o.geom, fixed(o)) for o in self.gas),
