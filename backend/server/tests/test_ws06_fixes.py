@@ -411,6 +411,8 @@ def _install_loader(monkeypatch: pytest.MonkeyPatch, module: str, class_name: st
 
 def test_dense_loads_local_snapshots_and_falls_back_to_hub(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """SD-59: HSS_DENSE_WEIGHTS local dirs, hub repo id only when the dir is missing."""
+    # All models are doubles here; normal CPU CI does not install torch either.
+    monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace(device=lambda name: name))
     house = tmp_path / "house-weights"
     house.mkdir()
     monkeypatch.setenv("HOUSE_WEIGHTS", str(house))
