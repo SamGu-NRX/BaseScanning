@@ -16,6 +16,7 @@ from server.scene.contract import check_scene
 from server.scene.errors import SceneError
 from server.scene.harness import load as load_harness
 from server.scene.merge import merge_objects
+from server.scene.objects2d import apply_detections
 from server.scene.params import SceneParams, scene_params_from_env
 from server.scene.render import render_topdown
 
@@ -44,7 +45,7 @@ def build_scene(
         raise SceneError("input_missing:scene_ready", f"missing {ready.name}")
     scene = json.loads(ready.read_text())
     if objects_path is not None and Path(objects_path).is_file():
-        _cast_note(scene, json.loads(Path(objects_path).read_text()))
+        apply_detections(scene, json.loads(Path(objects_path).read_text()))
     loaded = _load_grid(coverage_dir, scene)
     points = _load_points(coverage_dir)
     src = _load_src(coverage_dir, len(points))
@@ -75,13 +76,6 @@ def build_scene(
         + "\n"
     )
     return scene_path
-
-
-def _cast_note(scene: dict, payload: dict) -> None:
-    if payload.get("format") != "hss-objects/v0":
-        return
-    note = scene["provenance"].setdefault("notes", [])
-    note.append(f"objects_2d:{len(payload.get('objects') or [])}")
 
 
 def _load_grid(coverage_dir: Path, scene: dict):
