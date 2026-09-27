@@ -49,11 +49,11 @@ def test_criteria_adapter_uses_ws09(tmp_path: Path):
 
 
 def test_missing_stage_still_skips_with_not_merged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """SD-84: a missing criteria module still SKIPs. WS-04 is not on this tree, so poses SKIP."""
+    """SD-84: a blocked stage import still SKIPs. Poses is on this tree, so the live call is run_poses."""
     real_import = builtins.__import__
 
     def blocked(name, globals=None, locals=None, fromlist=(), level=0):
-        if name == "server.criteria":
+        if name in {"server.criteria", "server.poses"}:
             raise ImportError("blocked")
         return real_import(name, globals, locals, fromlist, level)
 
@@ -62,9 +62,13 @@ def test_missing_stage_still_skips_with_not_merged(tmp_path: Path, monkeypatch: 
         criteria_engine()
     with pytest.raises(ImportError, match="not_merged:ws-09"):
         evaluate_scene(tmp_path, tmp_path / "out")
-
-    monkeypatch.undo()
     with pytest.raises(ImportError, match="not_merged:ws-04"):
         poses_run()
     assert available(tmp_path) == "not_merged:ws-04"
-    assert not Path("server/poses/run.py").is_file()
+
+    monkeypatch.undo()
+    run = poses_run()
+    assert run.__module__ == "server.poses.run"
+    assert run.__name__ == "run_poses"
+    assert Path("server/poses/run.py").is_file()
+    assert available(tmp_path) is None

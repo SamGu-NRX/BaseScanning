@@ -13,15 +13,15 @@ import pytest
 from server.common.config import Settings
 
 # packet (WS-01), reads (WS-08), objects (WS-07), scale (WS-05), result (WS-10),
-# criteria (WS-09), and dense/coverage/scene (WS-06) are implemented.
-# poses still raises.
-UNIMPLEMENTED = ["poses"]
+# criteria (WS-09), dense/coverage/scene (WS-06), and poses (WS-04) are implemented.
+UNIMPLEMENTED: list[str] = []
 IMPLEMENTED = [
     "packet",
     "reads",
     "objects",
     "scale",
     "criteria",
+    "poses",
     "dense",
     "coverage",
     "scene",
