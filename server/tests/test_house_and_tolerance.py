@@ -71,14 +71,20 @@ def test_only_gaps_within_the_tolerance_close(gap: float, closes: bool) -> None:
 
 @st.composite
 def facades(draw: st.DrawFn) -> dict:
-    """A facade with a corner and, sometimes, a wall running back parallel behind the first,
-    at any error; no ground observations at all."""
+    """A facade with a corner, a wall running back parallel behind the first, or a gap between
+    two walls (a side passage), at any error; no ground observations at all."""
     raw = shared_fixture()
     c = draw(st.floats(10.0, 25.0))
     angle = math.radians(draw(st.floats(-100.0, 100.0)))
     e1, e2 = draw(st.floats(0.0, 1.0)), draw(st.floats(0.0, 5.0))
     walls = [{"id": "w1", "baseline": [[-20, 0], [c, 0]], "height_ft": 9, "plus_minus_ft": e1}]
-    if draw(st.booleans()):
+    layout = draw(st.sampled_from(["back", "corner", "gap"]))
+    if layout == "gap":
+        # Wider than the join tolerance (sweep.wall_join_ft, 0.6), so it stays a gap.
+        g = c + draw(st.floats(1.0, 8.0))
+        end = [g + 15 * math.cos(angle), 15 * math.sin(angle)]
+        walls.append({"id": "w2", "baseline": [[g, 0], end], "height_ft": 9, "plus_minus_ft": e2})
+    elif layout == "back":
         depth = draw(st.floats(0.5, 20.0))
         walls += [
             {"id": "w2", "baseline": [[c, 0], [c, -depth]], "height_ft": 9, "plus_minus_ft": e1},

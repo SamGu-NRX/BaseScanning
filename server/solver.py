@@ -20,7 +20,7 @@ from functools import partial
 from typing import Any
 
 import shapely
-from shapely import Geometry, LineString, Polygon, get_coordinates, unary_union
+from shapely import Geometry, LineString, Point, Polygon, get_coordinates, unary_union
 
 from rules import LoadedRules, Rules, Value
 from scene import (
@@ -305,7 +305,7 @@ class Solver:
         self.ws_poly = scene.band_polygon(self.ws_span[0], self.ws_span[1], ws.depth_ft.value)
         self._good_union = unary_union([g.polygon for g in self.good]).buffer(1e-7)
         recorded = unary_union([g.polygon for g in scene.ground])
-        outdoor = scene.band_polygon(scene.pieces[0].s0, scene.pieces[-1].s1, scene.reach_ft)
+        outdoor = scene.outdoor_band(scene.reach_ft)
         # Outdoor ground no patch describes; opened to drop floating point slivers.
         self._unclassified = outdoor.difference(recorded).buffer(-1e-6).buffer(1e-6)
         self._buffers: dict[tuple[int, float], Geometry] = {}
@@ -479,6 +479,17 @@ class Solver:
                 # overlay refuses beside an area (the real sim scene after the snapped overlays).
                 region = polygonal(region)
             region = _meet(region, self.scene.coverable(view))
+            if view == "ground":
+                # Behind a gap only a view pointed into the passage shows the ground (a span
+                # within the gap, Scene.view_polygon), so that part is asked for on its own.
+                for gap, passage in zip(
+                    self.scene.gaps, self.scene.passages(self.scene.reach_ft), strict=True
+                ):
+                    behind = polygonal(_meet(region, passage))
+                    if behind.area > 1e-12:
+                        a, b, depth = self.scene.view_to_cover(behind, gap.s0, gap.s1)
+                        out.append(View("ground", a, b, _up(depth)))
+                        region = shapely.difference(region, passage, grid_size=_OVERLAY_GRID)
             # Where that meets an unexplored end exactly, a sliver with no length along the wall
             # is left; a request for it could never be settled.
             extents = []
@@ -523,6 +534,7 @@ class Solver:
         noun: str,
         wall_height: float | None = None,
         along_err: float | None = None,
+        unknown_reason: str | None = None,
     ) -> Check:
         """Minimum plan distance from the footprint to each item. `items` holds (label, geometry,
         error, counts, in plan) where counts None means an unknown attribute decides whether it
@@ -536,7 +548,8 @@ class Solver:
             along_err = piece.plus_minus
         worst_key: tuple[int, float] | None = None
         for name, geom, err, counts, in_plan in items:
-            if counts is False:
+            # Nothing to measure to (no ground left unrecorded): its distance would be NaN.
+            if counts is False or geom.is_empty:
                 continue
             d = fp.distance(geom)
             e = err + (piece.plus_minus if in_plan else along_err)
@@ -567,7 +580,7 @@ class Solver:
         )
         if c.outcome == UNSURE:
             if c.unsure_cause == "unknown_attribute":
-                c.reason = (
+                c.reason = unknown_reason or (
                     f"{c.subject} is within {ft(t)} of the battery, and whether the rule applies "
                     "to it (for example whether a window opens) was not recorded."
                 )
@@ -1120,11 +1133,27 @@ class Solver:
                 piece,
                 fp,
                 [
-                    (f"ground[{g.index}] {g.type}", g.polygon, g.plus_minus, True, True)
-                    for g in self.drives
+                    *(
+                        (f"ground[{g.index}] {g.type}", g.polygon, g.plus_minus, True, True)
+                        for g in self.drives
+                    ),
+                    # Seen ground with no recorded surface may be a driveway: unknown, as
+                    # ground_surface treats it (final review: it counted as no driveway).
+                    (
+                        "ground with no recorded surface",
+                        self._unclassified,
+                        self._ground_error,
+                        None,
+                        True,
+                    ),
                 ],
                 "ground",
                 "drivable surface",
+                unknown_reason=(
+                    f"Ground within {ft(c.drive_ft.value)} of the battery was seen but its surface "
+                    "was not recorded, so it may be a driveway. Recording what that ground is (a "
+                    "`ground` patch with its type) settles it."
+                ),
                 along_err=along_err,
             ),
             self.check_clearance(
@@ -1571,6 +1600,14 @@ def evaluate_start(
 # --- decision and result -------------------------------------------------------------------------
 
 
+def _unseen_near(solver: Solver, c: Candidate, end: list[float]) -> bool:
+    """Whether unseen ground past an unexplored end at `end` lies within reach of a check at c:
+    in that end's area (within reach of it), and within reach of c's footprint."""
+    scene = solver.scene
+    area = _meet(polygonal(Point(end).buffer(scene.reach_ft)), polygonal(solver.unobserved_ground))
+    return not area.is_empty and c.footprint.distance(area) < scene.reach_ft
+
+
 def _rank_pass(c: Candidate) -> tuple:
     return (c.route.length, abs((c.s0 + c.s1) / 2), c.s0)
 
@@ -1822,17 +1859,46 @@ def solve(scene: Scene, loaded: LoadedRules, budget_s: float = SOLVE_BUDGET_S) -
             }
         )
         missing = _missing_json(best, scene)
-        if missing:
+        # An unseen check no view can settle waits on ground past an unexplored end: walking past
+        # it settles that, even an end too far for a spot past it to reach (the final review's
+        # ETH3D case: pool_clearance UNSURE with no request and no reason).
+        requested = {i for m in missing for i in m["checks"]}
+        leftover = [
+            c.id
+            for c in best.checks
+            if c.outcome == UNSURE and c.unsure_cause == "unobserved" and c.id not in requested
+        ]
+        walk_to = [
+            side
+            for side, e in ends.items()
+            if leftover
+            and e["kind"] == "unexplored"
+            and side not in open_ends
+            and _unseen_near(solver, best, e["point"])
+        ]
+        if missing or leftover:
             reasons.append(
                 {
                     "code": "unobserved_area",
-                    "checks": sorted({i for m in missing for i in m["checks"]}),
+                    "checks": sorted(requested | set(leftover)),
                     "message": "Part of the area the checks need was not seen.",
                 }
             )
         if open_ends:
             reasons.append(unexplored_reason)
             missing += past_end_requests()
+        missing += [
+            {
+                "kind": "past_end",
+                "side": side,
+                "span_ft": [ends[side]["s_ft"], ends[side]["s_ft"]],
+                "message": (
+                    f"Walk past the {side} end of the scan ({where(ends[side]['s_ft'])}): ground "
+                    "a check at the best spot needs lies past it."
+                ),
+            }
+            for side in walk_to
+        ]
         spot_at = where((best.s0 + best.s1) / 2)
         unseen = [c for c in best.checks if c.outcome == UNSURE and c.unsure_cause == "unobserved"]
         if unseen:

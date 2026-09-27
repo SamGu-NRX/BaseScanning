@@ -250,6 +250,31 @@ class Scene:
             parts.append(_wedge(prev.b, prev.outward, nxt.outward, out))
         return unary_union(parts)
 
+    def passages(self, out: float) -> list[Geometry]:
+        """The ground behind each gap's line out to `out`: a side passage between two walls. No
+        wall faces it and it isn't the house, so it is yard like the ground in front."""
+        return [g.rect(g.s0, g.s1, -out, 0.0) for g in self.gaps]
+
+    def outdoor_band(self, out: float, span: tuple[float, float] | None = None) -> Geometry:
+        """The ground within `out` of the chain (over `span`, the whole chain by default) that can
+        hold a hazard: in front of it, and behind each gap (house() is still to be taken
+        out)."""
+        lo, hi = span or (self.pieces[0].s0, self.pieces[-1].s1)
+        return unary_union([self.band_polygon(lo, hi, out), *self.passages(out)])
+
+    def view_polygon(self, s_lo: float, s_hi: float, out: float) -> Geometry:
+        """What a ground view over [s_lo, s_hi] out to `out` shows: the band in front of the
+        chain, and where its span lies within a gap, the passage behind the gap's line as well:
+        the camera pointed into the passage from the opening, as a view past a limit end shows
+        both sides of the continued line. A view that runs along the walls across a gap shows
+        only the front (final review: a side passage counted as seen from a view along the
+        walls)."""
+        parts = [self.band_polygon(s_lo, s_hi, out)]
+        for g in self.gaps:
+            if s_lo >= g.s0 - GAP_VIEW_SLACK_FT and s_hi <= g.s1 + GAP_VIEW_SLACK_FT and out > EPS:
+                parts.append(g.rect(max(s_lo, g.s0), min(s_hi, g.s1), -out, 0.0))
+        return unary_union(parts)
+
     def s_of(self, p: Point2) -> float:
         """s of the chain point nearest to a plan point."""
         best = min(self.pieces, key=lambda q: Point(p).distance(LineString([q.a, q.b])))
@@ -312,11 +337,10 @@ class Scene:
     def unobserved_ground_given(self, ground: list[tuple[float, float, float | None]]) -> Geometry:
         """The ground nobody saw, given these ground views: what unobserved_ground is for the
         scene's own views, and what a request is checked against with its capture added."""
-        lo, hi = self.pieces[0].s0, self.pieces[-1].s1
         # Behind a scanned wall is the house: at an inside corner one wall's strip reaches back
         # across the other's line, and that ground no view in front of a wall can show.
-        outdoor = _minus(self.band_polygon(lo, hi, self.reach_ft), self.house())
-        seen = unary_union([self.band_polygon(a, b, out or 0.0) for a, b, out in ground])
+        outdoor = _minus(self.outdoor_band(self.reach_ft), self.house())
+        seen = unary_union([self.view_polygon(a, b, out or 0.0) for a, b, out in ground])
         # Growing what was seen (SEEN_GROWTH_FT) closes gaps between observed spans narrower
         # than the tolerance, as missing() ignores them for the 1D bands.
         unseen = _minus(outdoor, seen.buffer(SEEN_GROWTH_FT))
@@ -360,7 +384,7 @@ class Scene:
         lo, hi = self.coverable_span()
         seen_in_front = unary_union(
             [
-                self.band_polygon(max(a, lo), min(b, hi), out or 0.0)
+                self.view_polygon(max(a, lo), min(b, hi), out or 0.0)
                 for a, b, out in (self.observed.get("ground", []) if ground is None else ground)
             ]
         ).buffer(SEEN_GROWTH_FT)
@@ -410,8 +434,12 @@ class Scene:
         area = polygonal(region)
 
         def covers(a: float, b: float, depth: float) -> bool:
+            # The checks count any unseen ground within their radius, however small. At 1e-9 sq
+            # ft a lens where a clearance circle meets the view's edge survived 1.7e-5 ft inside
+            # the radius (test_final_review, the 108 degree corner); 1e-12 is still far above
+            # the snapped overlays' noise (around 1e-18).
             unseen = polygonal(self.unobserved_ground_given([*ground, (a, b, depth)]))
-            return shapely.intersection(area, unseen, grid_size=1e-9).area <= 1e-9
+            return shapely.intersection(area, unseen, grid_size=1e-9).area <= 1e-12
 
         tol = COVERAGE_TOLERANCE_FT
         # A region's nearest wall need not be the one it lies in front of (at an inside corner,
@@ -457,7 +485,7 @@ class Scene:
         if key not in self._cache:
             lo, hi = self.coverable_span()
             if band == "ground":
-                self._cache[key] = _minus(self.band_polygon(lo, hi, self.reach_ft), self.house())
+                self._cache[key] = _minus(self.outdoor_band(self.reach_ft, (lo, hi)), self.house())
             else:
                 self._cache[key] = self.wall_line(lo, hi).buffer(1e-6, cap_style="flat")
         return self._cache[key]
@@ -628,7 +656,15 @@ def _outward(along: Point2) -> Point2:
 
 
 def _xz(point: list[float]) -> Point2:
-    return (float(point[0]), float(point[1]))
+    return (_flush(point[0]), _flush(point[1]))
+
+
+def _flush(v: float) -> float:
+    """A plan coordinate, with anything below the overlay grid (OVERLAY_GRID_FT) read as 0. A
+    subnormal one (7.8e-314 ft in a wall's end) made GEOS drop the ground behind a gap from the
+    unseen area (test_final_opus_review)."""
+    v = float(v)
+    return 0.0 if abs(v) < OVERLAY_GRID_FT else v
 
 
 def _span(value: list[float], path: str) -> tuple[float, float]:
@@ -653,6 +689,13 @@ def _error(item: dict[str, Any], default: float) -> float:
     return float(item["plus_minus_ft"]) if "plus_minus_ft" in item else default
 
 
+# The most straight wall segments a scene may have, counted after nearly collinear taps merge.
+# The solve grows faster than their square (house() and the unseen ground intersect every
+# segment's strips): zigzag walls took 0.37 s at 200 segments, 2.7 s at 398 and 19-29 s at 798
+# (final review probe r_time2; this machine under load). A house's outline needs far fewer; the
+# schema allows 50 walls.
+MAX_WALL_PIECES = 200
+
 # Grid the ground overlays snap to, far below any measurement. Unsnapped, subtracting the house
 # from the band in front of two exact walls meeting at a 51 degree corner gave a polygon with a
 # hole outside its shell, and the next overlay raised "side location conflict"
@@ -676,6 +719,10 @@ SEEN_GROWTH_FT = 0.005 - SEAM_FT
 # Coverage gaps narrower than this (1/8 in) are float noise between a capture's rounded spans and
 # the unrolled walls, 25 times smaller than the smallest default position error (tape, 0.05 ft).
 COVERAGE_TOLERANCE_FT = 0.01
+
+# How far past a gap's ends a view may start or end and still count as pointed into the passage:
+# a request's span can be widened by the tolerance when it is computed.
+GAP_VIEW_SLACK_FT = 2 * COVERAGE_TOLERANCE_FT
 
 # Coordinates beyond this are not a house scan; they would only exhaust memory in the sweep.
 MAX_COORDINATE_FT = 1e5
@@ -856,6 +903,15 @@ def parse_scene(raw: dict[str, Any], rules: Rules, input_bytes: bytes | None = N
     pieces = [replace(p, s0=p.s0 - shift, s1=p.s1 - shift) for p in pieces]
     wall_spans = [(wid, i, a - shift, b - shift, h) for wid, i, a, b, h in spans]
     pieces = _join_straight_walls(pieces)
+    walls_n = sum(1 for p in pieces if p.kind == "wall")
+    if walls_n > MAX_WALL_PIECES:
+        raise SceneError(
+            "/walls",
+            f"the walls have {walls_n} straight wall segments, more than the {MAX_WALL_PIECES} a "
+            "house's outline needs; the solve grows faster than their square, so a scene this "
+            "fragmented is refused before it starts (taps within 0.05 ft of a straight line are "
+            "already merged)",
+        )
     meter_piece = next(p for p in pieces if p.kind == "wall" and p.s0 - EPS <= 0 <= p.s1 + EPS)
 
     # How far out from the walls the outdoor area matters: the largest clearance, plus the

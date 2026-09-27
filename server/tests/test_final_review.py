@@ -3,8 +3,8 @@
 import copy
 import math
 
-from helpers import at_start, parsed, rect, shared_fixture
-from hypothesis import given, settings
+from helpers import at_start, everything_observed, pads_ground, parsed, rect, shared_fixture
+from hypothesis import example, given, settings
 from hypothesis import strategies as st
 from test_s4_round import PUBLIC, answer
 
@@ -171,8 +171,38 @@ def cornered(draw: st.DrawFn) -> dict:
     return raw
 
 
+def corner_108() -> dict:
+    """The example the final review saved (finding 6): a 108 degree corner, walls +/- 0.1 ft,
+    ground seen 1 ft out, overheads unseen over s [-2, 0]."""
+    raw = shared_fixture()
+    raw["walls"] = [
+        {"id": "w1", "baseline": [[-30, 0], [6.1875, 0]], "height_ft": 9, "plus_minus_ft": 0.1},
+        {
+            "id": "w2",
+            "baseline": [[6.1875, 0], [12.367839887498949, 19.02113032590307]],
+            "height_ft": 9,
+            "plus_minus_ft": 0.1,
+        },
+    ]
+    raw["ground"] = [{"type": "lawn", "polygon": rect(-60, 60, -60, 60), "plus_minus_ft": 0}]
+    raw["overheads"], raw["facing"] = [], []
+    raw["coverage"] = {
+        "ends": {"left": {"kind": "limit"}, "right": {"kind": "limit"}},
+        "observed": [
+            {"band": "wall", "span_ft": [-30.0, 26.1875]},
+            {"band": "ground", "span_ft": [-30.0, 26.1875], "out_ft": 1.0},
+            {"band": "overhead", "span_ft": [-30.0, -2.0]},
+            {"band": "overhead", "span_ft": [0.0, 26.1875]},
+            {"band": "facing", "span_ft": [-30.0, 26.1875]},
+        ],
+    }
+    return raw
+
+
+# The saved example runs on every run, CI's fixed examples included.
 @settings(max_examples=30, deadline=None)
 @given(raw=cornered())
+@example(raw=corner_108())
 def test_capturing_exactly_what_is_requested_settles_it_in_one_round(raw: dict) -> None:
     # Before: near a corner the ground depth was the distance from the chain line, less than
     # the strip in front of the wall needs, so each capture fell short and the next answer
@@ -180,5 +210,46 @@ def test_capturing_exactly_what_is_requested_settles_it_in_one_round(raw: dict) 
     result = answer(raw)
     if result["decision"] != "manual_review" or result["spot"] is None:
         return
+    assert unseen_without_a_reason(result) == []
     s0 = exact_start(raw, result)
     assert unseen_at(supplied_exactly(raw, result), s0, result["spot"]["wall_id"]) == []
+
+
+def unseen_without_a_reason(result: dict) -> list[str]:
+    """Unseen checks at the spot that the answer's unobserved_area reason doesn't name: the
+    result contract has every UNSURE check carry a request or a reason."""
+    named = {i for r in result["reasons"] if r["code"] == "unobserved_area" for i in r["checks"]}
+    return [
+        c["id"]
+        for c in result["checks"]
+        if c.get("unsure_cause") == "unobserved" and c["id"] not in named
+    ]
+
+
+def test_a_request_leaves_no_lens_where_a_clearance_circle_meets_a_view() -> None:
+    # Before: the ground request's depth was accepted once under 1e-9 sq ft stayed unseen, and a
+    # 9.5e-10 sq ft lens where the pool circle meets the view's edge, 1.7e-5 ft inside the
+    # radius, left pool_clearance unseen after the exact capture.
+    raw = corner_108()
+    result = answer(raw)
+    s0 = exact_start(raw, result)
+    assert unseen_at(supplied_exactly(raw, result), s0, result["spot"]["wall_id"]) == []
+
+
+def test_ground_past_an_end_beyond_reach_is_asked_for() -> None:
+    # The manager's ETH3D case, rebuilt: the pool circle at the only allowed pad reaches past an
+    # unexplored end that no spot past it could reach. Before, pool_clearance was UNSURE with no
+    # request and no reason (only walking past the end shows that ground, and no past_end
+    # request was made for an end beyond reach).
+    raw = shared_fixture()
+    raw["walls"] = [
+        {"id": "w1", "baseline": [[-20, 0], [30, 0]], "height_ft": 9, "plus_minus_ft": 0.0}
+    ]
+    raw["ground"] = pads_ground([(20.0, 23.0)], -40, 60)
+    raw["overheads"], raw["facing"] = [], []
+    raw["coverage"] = everything_observed(-20, 30)
+    raw["coverage"]["ends"]["right"] = {"kind": "unexplored"}
+    result = answer(raw)
+    assert unseen_without_a_reason(result) == []
+    walk = [m for m in result["missing_evidence"] if m["kind"] == "past_end"]
+    assert [m["side"] for m in walk] == ["right"]
