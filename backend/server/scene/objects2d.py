@@ -102,7 +102,7 @@ def _cast_boxes(scene: dict, payload: dict) -> None:
         if str(obj.get("class") or "") not in CAST_CLASSES:
             continue
         registered = _registered_views(obj, frames)
-        if len(registered) < MIN_VIEWS:
+        if len({str(view["image"]) for view in registered}) < MIN_VIEWS:
             continue
         candidates = []
         for view in registered:

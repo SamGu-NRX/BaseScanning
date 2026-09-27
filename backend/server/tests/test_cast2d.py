@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
+from server.objects.config import ObjectsConfig
+from server.objects.confirm import Candidate
+from server.objects.emit import finalize_box_px, objects_2d
 from server.scene.contract import check_scene
 from server.scene.objects2d import apply_detections, ground_material
 
@@ -154,6 +158,37 @@ def test_one_registered_view_is_not_cast():
         },
     )
     assert [obj["id"] for obj in scene["objects"]] == ["meter"]
+
+
+@pytest.mark.parametrize("duplicate_source", ["confirmation", "multiple_instances"])
+def test_multiple_boxes_from_one_frame_need_another_registered_frame(duplicate_source):
+    scene = _scene()
+    box = [0.4, 0.4, 0.6, 0.6]
+    candidate = Candidate(
+        "window",
+        frames=["cam-a"],
+        boxes={"cam-a": box},
+        scores={"cam-a": 0.9},
+        confidence=0.95,
+        state="yes",
+        best_frame="cam-a",
+    )
+    if duplicate_source == "confirmation":
+        candidate.grok_box = box
+    else:
+        candidate.all_boxes = [("cam-a", box, 0.9), ("cam-a", [0.1, 0.4, 0.3, 0.6], 0.8)]
+    rows = finalize_box_px(objects_2d([candidate], ObjectsConfig(external_vision=False)), {"cam-a": (100, 100)})
+    assert len(rows[0]["views"]) == 2
+    assert {view["image"] for view in rows[0]["views"]} == {"cam-a"}
+    payload = {"format": "hss-objects/v0", "objects": rows}
+    apply_detections(scene, payload)
+    assert [obj["id"] for obj in scene["objects"]] == ["meter"]
+
+    rows[0]["views"].append(_box("cam-b"))
+    apply_detections(scene, payload)
+    check_scene(scene)
+    cast = next(obj for obj in scene["objects"] if obj["class"] == "window")
+    assert len(cast["source"]["views"]) == 3
 
 
 def test_wrong_format_is_ignored():
