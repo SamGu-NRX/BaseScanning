@@ -370,12 +370,29 @@ def _taps(pk: dict, bag: Bag, params: PacketParams) -> float | None:
     return worst
 
 
+def _flag_unsafe_still_ids(pk: dict, bag: Bag) -> None:
+    """Flag unsafe still ids before schema scrub removes the field."""
+    for index, still in _records(pk.get("stills")):
+        issue = still_id_issue(still.get("id"))
+        if issue is not None:
+            bag.error("path_unsafe", pointer("stills", index, "id"), issue)
+
+
+def _drop_schema_on_unsafe_still_ids(bag: Bag) -> None:
+    """The segment-id pattern rejects the same pointer. Keep the single `path_unsafe`."""
+    unsafe = {
+        issue.pointer
+        for issue in bag.errors
+        if issue.code == "path_unsafe" and issue.pointer.startswith("/stills/") and issue.pointer.endswith("/id")
+    }
+    if not unsafe:
+        return
+    bag.errors = [issue for issue in bag.errors if issue.code != "schema" or issue.pointer not in unsafe]
+
+
 def _stills(pk: dict, bag: Bag) -> None:
     frames = {frame.get("id"): frame for _index, frame in _records(pk.get("keyframes"))}
     for i, still in _records(pk.get("stills")):
-        issue = still_id_issue(still.get("id"))
-        if issue is not None:
-            bag.error("path_unsafe", pointer("stills", i, "id"), issue)
         purpose = still.get("purpose")
         if isinstance(purpose, str) and purpose not in KNOWN_PURPOSES:
             bag.warn("unknown_purpose", pointer("stills", i, "purpose"), f"purpose {purpose} is treated as other")
@@ -774,7 +791,9 @@ def _validate_dict(
             pointer("formatVersion"),
             f"formatVersion {pk.get('formatVersion')} is not {params.format_version}",
         )
+    _flag_unsafe_still_ids(pk, bag)
     pk = _record_schema(pk, bag)
+    _drop_schema_on_unsafe_still_ids(bag)
     _tier_rules(pk, bag)
     source = pk.get("source")
     kind = source.get("kind") if isinstance(source, dict) else None

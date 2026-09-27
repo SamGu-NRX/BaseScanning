@@ -508,16 +508,22 @@ def test_tap_epoch_mismatch_when_both_epochs_exist(tmp_path: Path):
     assert [issue.code for issue in report.errors] == ["tap_epoch_mismatch"]
 
 
-def test_check_packet_ok_matches_on_shared_checks():
+def test_check_packet_ok_matches_on_shared_checks(monkeypatch: pytest.MonkeyPatch):
     """SD-64: agree with check_packet only on the cases it handles.
 
     ok matches on clean packets. check_packet error codes are a subset of WS-02's.
     Tap replay, depth, streams, poses, image format and file listing stay on the
     ValidationReport; WS-00 does not implement those checks.
+
+    Synthetic fixtures are a warning unless this process is prod. An earlier test
+    (`apply_deployed_privacy`) writes `SMP_ENVIRONMENT=prod` straight into
+    `os.environ`, which monkeypatch does not undo when the variable was absent.
+    Pin the variable here so the comparison does not depend on that leftover.
     """
     from server.contracts.packet import Packet
     from server.contracts.validation import check_packet
 
+    monkeypatch.delenv("SMP_ENVIRONMENT", raising=False)
     manifests = list((EXAMPLE.parent).glob("example-packet*.json"))
     fixtures = Path(".fixtures/packets")
     if fixtures.is_dir():

@@ -71,39 +71,15 @@ def check_streams(pk: dict, root: Path, bag: Bag, params: PacketParams) -> dict[
     return derived
 
 
-# Columns the capture spec stores as numbers. Text columns (epoch, tracking) are left alone.
-_NUMERIC_COLUMNS = {
-    "t",
-    "ax",
-    "ay",
-    "az",
-    "gx",
-    "gy",
-    "gz",
-    "gravX",
-    "gravY",
-    "gravZ",
-    "rotX",
-    "rotY",
-    "rotZ",
-    "tx",
-    "ty",
-    "tz",
-    "qx",
-    "qy",
-    "qz",
-    "qw",
-    "fx",
-    "fy",
-    "cx",
-    "cy",
-}
+# Text columns. Everything else, including sensor axes the allowlist used to skip
+# (acc*, mag*, latitude, ...), has to be a finite float. `timestamp` is ISO-8601.
+_TEXT_COLUMNS = frozenset({"epoch", "tracking", "timestamp"})
 
 
 def _malformed_cells(header: list[str], rows: list[list[str]]) -> bool:
-    """Ragged rows, NUL bytes, and non-numeric cells in numeric columns."""
+    """One bad cell is enough: ragged rows, NUL bytes, non-numeric values, or non-finite `t`."""
     width = len(header)
-    numeric = [index for index, name in enumerate(header) if name in _NUMERIC_COLUMNS]
+    numeric = [index for index, name in enumerate(header) if name not in _TEXT_COLUMNS]
     for row in rows:
         if len(row) != width or any("\x00" in cell for cell in row):
             return True

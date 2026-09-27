@@ -13,8 +13,10 @@ import pytest
 
 from server.packet.cli import main
 from server.packet.normalize import normalize_packet
+from server.packet.params import PacketParams
 from server.packet.purposes import KNOWN_PURPOSES
-from server.packet.report import PacketError, ValidationReport
+from server.packet.report import Bag, PacketError, ValidationReport
+from server.packet.streams import check_streams
 from server.packet.tests.factory import write_arkit
 from server.packet.validate import validate_and_normalize, validate_manifest, validate_packet
 
@@ -195,7 +197,8 @@ def test_unsafe_still_ids_do_not_escape(tmp_path: Path):
         manifest = root / "packet.json"
         manifest.write_text(json.dumps(packet), encoding="utf-8")
         report = validate_packet(manifest, stage="full")
-        assert any(issue.code == "path_unsafe" and issue.pointer == "/stills/0/id" for issue in report.errors)
+        id_errors = [issue for issue in report.errors if issue.pointer == "/stills/0/id"]
+        assert [issue.code for issue in id_errors] == ["path_unsafe"]
         assert "heic_transcoded" not in {issue.code for issue in report.warnings}
         normalize_packet(manifest, flow="photo", report=report)
         escaped = list(root.rglob("*.jpg"))
@@ -230,12 +233,21 @@ def test_manifest_depth_size_uses_declared_bytes(tmp_path: Path):
     assert matches[0].pointer.endswith("/bytes")
 
 
-def test_malformed_stream_cell_warns_on_a_real_pointer(tmp_path: Path):
+@pytest.mark.parametrize(
+    "body",
+    [
+        "t,ax,ay,az,gx,gy,gz\n0,nope,0,0,0,0,0\n",
+        "t,ax,ay,az,gx,gy,gz\n0,0,0\n",
+        "t,ax,ay,az,gx,gy,gz\nnan,0,0,0,0,0,0\n",
+        "t,ax,ay,az,gx,gy,gz\nNaN,nope,0\n0,0,0,0,0,0,0,1\n",
+    ],
+)
+def test_malformed_stream_cell_warns_once(tmp_path: Path, body: str):
     manifest = write_arkit(tmp_path)
     packet = json.loads(manifest.read_text(encoding="utf-8"))
     path = tmp_path / "streams/imuRaw.csv.gz"
     with gzip.open(path, "wt") as handle:
-        handle.write("t,ax,ay,az,gx,gy,gz\n0,nope,0,0,0,0,0\n")
+        handle.write(body)
     blob = path.read_bytes()
     for entry in packet["files"]:
         if entry["path"].endswith("imuRaw.csv.gz"):
@@ -250,6 +262,29 @@ def test_malformed_stream_cell_warns_on_a_real_pointer(tmp_path: Path):
     for part in warnings[0].pointer.strip("/").split("/"):
         assert isinstance(cursor, dict)
         cursor = cursor[part]
+
+
+def test_text_columns_stay_quiet_and_other_sensor_text_warns(tmp_path: Path):
+    def write(name: str, text: str) -> None:
+        with gzip.open(tmp_path / name, "wt") as handle:
+            handle.write(text)
+
+    write("heading.csv.gz", "t,timestamp,magneticHeading\n1,2026-09-26T15:01:29.978Z,12.5\n")
+    write("bad.csv.gz", "t,timestamp,magneticHeading\n1,2026-09-26T15:01:29.978Z,nope\n")
+    write("poses.csv.gz", "t,epoch,tracking,tx\n1,e1,limited.initializing,0.1\n")
+    packet = {
+        "files": [{"path": name} for name in ("heading.csv.gz", "bad.csv.gz", "poses.csv.gz")],
+        "streams": {
+            "heading": {"file": "heading.csv.gz", "columns": ["t", "timestamp", "magneticHeading"]},
+            "headingBad": {"file": "bad.csv.gz", "columns": ["t", "timestamp", "magneticHeading"]},
+            "arkitPoses": {"file": "poses.csv.gz", "columns": ["t", "epoch", "tracking", "tx"]},
+        },
+        "keyframes": [],
+    }
+    bag = Bag()
+    check_streams(packet, tmp_path, bag, PacketParams())
+    cells = [issue for issue in bag.warnings if issue.code == "stream_cell"]
+    assert [issue.pointer for issue in cells] == ["/streams/headingBad/file"]
 
 
 def test_many_missing_files_stay_linear(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

@@ -56,7 +56,11 @@ def test_modal_bodies_call_the_coordinator(tmp_path, monkeypatch) -> None:
 
 
 def test_missing_environment_blocks_photo_egress(monkeypatch) -> None:
-    monkeypatch.delenv("SMP_ENVIRONMENT", raising=False)
+    # Record the key before apply_deployed_privacy creates it. delenv on an
+    # absent variable does not register an undo, so the prod write would leak
+    # into later tests (synthetic packets then fail shared checks).
+    monkeypatch.setitem(os.environ, "SMP_ENVIRONMENT", "prod")
+    del os.environ["SMP_ENVIRONMENT"]
     monkeypatch.setenv("VISION_EXTERNAL_CALLS", "on")
     apply_deployed_privacy()
     assert os.environ["SMP_ENVIRONMENT"] == "prod"
