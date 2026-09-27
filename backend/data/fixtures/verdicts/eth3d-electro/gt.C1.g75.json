@@ -1,0 +1,1085 @@
+{
+ "format": "base-verdict/v0",
+ "verdict_id": "eth3d-electro/gt-laser/C1-rules-hs11/ground75",
+ "scene": {
+  "scene_id": "eth3d-electro/gt-laser",
+  "site": "eth3d-electro",
+  "sha256": "58ba8625f8e90c6ec8e9ec421885735ff0c48a0c459b27be780b0f83575c6557",
+  "producer_path": "gt-laser",
+  "data": "real"
+ },
+ "evaluator": {
+  "path": "C1-rules-hs11",
+  "version": "PR #11 t3/server @ cd0da8b",
+  "rules_profile": "demo",
+  "rules_sha256": "68693248e605d4252cd14dd74afd2e4e042408b9632612a0a4ac6dc5a708da2b",
+  "auto_approve": true,
+  "runtime_s": 0.93,
+  "ground_incidence_deg": 75.0
+ },
+ "site": {
+  "decision": "manual_review",
+  "reasons": [
+   "all_spots_fail",
+   "unexplored_end"
+  ],
+  "chosen_candidate": null
+ },
+ "criteria": [
+  {
+   "id": "wall_backing",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "pass",
+   "reason": "The whole footprint backs onto one straight, observed wall segment.",
+   "measured": null,
+   "threshold": null,
+   "fact": {
+    "value": true,
+    "clean": true,
+    "raw": "pass",
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        -1.9006557784,
+        0.70674412
+       ],
+       "height_m": [
+        0.05,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 567,
+      "observed_share": 1.0,
+      "seen_share": 1.0,
+      "views_min": 5,
+      "views_median": 12.0,
+      "best_incidence_deg": 13.0,
+      "worst_best_incidence_deg": 25.2,
+      "rule": {
+       "min_views": 2,
+       "surface": "wall",
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "evalharness.coverage.query_region"
+     }
+    ]
+   }
+  },
+  {
+   "id": "ground_surface",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "pass",
+   "reason": "The whole footprint stands on an allowed surface.",
+   "measured": null,
+   "threshold": null,
+   "fact": {
+    "value": true,
+    "clean": true,
+    "raw": "pass",
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        -0.9906557784,
+        -0.20325588000000003
+       ],
+       "out_m": [
+        0.0,
+        0.8588
+       ]
+      },
+      "status": "observed",
+      "probes": 72,
+      "observed_share": 1.0,
+      "seen_share": 1.0,
+      "views_min": 9,
+      "views_median": 9.0,
+      "best_incidence_deg": 70.3,
+      "worst_best_incidence_deg": 72.0,
+      "rule": {
+       "min_views": 2,
+       "surface": "ground",
+       "max_incidence_deg": 80.0,
+       "observed_share": 0.9
+      },
+      "sensitivity": [
+       {
+        "max_incidence_deg": 75.0,
+        "status": "observed",
+        "observed_share": 0.972,
+        "views_median": 4.0
+       },
+       {
+        "max_incidence_deg": 80.0,
+        "status": "observed",
+        "observed_share": 1.0,
+        "views_median": 9.0
+       }
+      ],
+      "method": "evalharness.coverage.query_region"
+     }
+    ]
+   }
+  },
+  {
+   "id": "meter_working_space",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "unsure",
+   "reason": "The battery is within measurement error of the meter's 2 ft 6 in wide by 3 ft 0 in deep working space.",
+   "measured": {
+    "value_ft": -0.58315,
+    "plus_minus_ft": 0.6561,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        -1.9006557784,
+        0.70674412
+       ],
+       "height_m": [
+        0.05,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 567,
+      "observed_share": 1.0,
+      "seen_share": 1.0,
+      "views_min": 5,
+      "views_median": 12.0,
+      "best_incidence_deg": 13.0,
+      "worst_best_incidence_deg": 25.2,
+      "rule": {
+       "min_views": 2,
+       "surface": "wall",
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "evalharness.coverage.query_region"
+     }
+    ],
+    "subject": "meter"
+   },
+   "threshold": {
+    "value_ft": 0.0,
+    "comparison": "at_least",
+    "rule_key": "meter_working_space.width_ft",
+    "source": "NEC 110.26(A)(2): 30 in wide working space",
+    "placeholder": false
+   },
+   "unsure_cause": "margin",
+   "margin_ft": -0.5831,
+   "margin_over_uncertainty": -0.889
+  },
+  {
+   "id": "gas_clearance",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "pass",
+   "reason": "Nearest gas meter or pipe is 4 ft 11 in (\u00b1 0 ft 6 in) away, clear of the 3 ft 0 in rule, and the area around the battery was seen.",
+   "measured": {
+    "value_ft": 4.879407,
+    "plus_minus_ft": 0.4921,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        -1.9006557784,
+        0.70674412
+       ],
+       "height_m": [
+        0.05,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 567,
+      "observed_share": 1.0,
+      "seen_share": 1.0,
+      "views_min": 5,
+      "views_median": 12.0,
+      "best_incidence_deg": 13.0,
+      "worst_best_incidence_deg": 25.2,
+      "rule": {
+       "min_views": 2,
+       "surface": "wall",
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "evalharness.coverage.query_region"
+     }
+    ],
+    "subject": "objects[5] gas_meter"
+   },
+   "threshold": {
+    "value_ft": 3.0,
+    "comparison": "at_least",
+    "rule_key": "clearances.gas_ft",
+    "source": "Base help page: 3 ft from the gas meter; Austin Energy \u00a71.9; Texas Gas Service",
+    "placeholder": false
+   },
+   "margin_ft": 1.8794,
+   "margin_over_uncertainty": 3.819
+  },
+  {
+   "id": "ac_clearance",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "pass",
+   "reason": "No AC unit within 3 ft 0 in of the battery, and that whole area was seen.",
+   "measured": null,
+   "threshold": {
+    "value_ft": 3.0,
+    "comparison": "at_least",
+    "rule_key": "clearances.ac_ft",
+    "source": "Base help page: 3 ft from AC units, fences and other batteries",
+    "placeholder": false
+   },
+   "fact": {
+    "value": true,
+    "clean": true,
+    "raw": "pass",
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        -1.9006557784,
+        0.70674412
+       ],
+       "height_m": [
+        0.05,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 567,
+      "observed_share": 1.0,
+      "seen_share": 1.0,
+      "views_min": 5,
+      "views_median": 12.0,
+      "best_incidence_deg": 13.0,
+      "worst_best_incidence_deg": 25.2,
+      "rule": {
+       "min_views": 2,
+       "surface": "wall",
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "evalharness.coverage.query_region"
+     }
+    ]
+   }
+  },
+  {
+   "id": "drive_clearance",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "unsure",
+   "reason": "Not everything within 5 ft 0 in of the battery was seen, so a drivable surface could hide there.",
+   "measured": null,
+   "threshold": {
+    "value_ft": 5.0,
+    "comparison": "at_least",
+    "rule_key": "clearances.drive_ft",
+    "source": "No public value (docs/01 rules table: TBD)",
+    "placeholder": true
+   },
+   "unsure_cause": "unobserved"
+  },
+  {
+   "id": "pool_clearance",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "unsure",
+   "reason": "Not everything within 10 ft 0 in of the battery was seen, so a pool could hide there.",
+   "measured": null,
+   "threshold": {
+    "value_ft": 10.0,
+    "comparison": "at_least",
+    "rule_key": "clearances.pool_ft",
+    "source": "No public value (docs/01 rules table: TBD); the demo ring drawn in docs/eli5.html",
+    "placeholder": true
+   },
+   "unsure_cause": "unobserved"
+  },
+  {
+   "id": "opening_clearance",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "fail",
+   "reason": "objects[2] door is 0 ft 0 in (\u00b1 0 ft 8 in) from the battery; the rule needs more than 3 ft 0 in.",
+   "measured": {
+    "value_ft": 0.0,
+    "plus_minus_ft": 0.6561,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        -1.9006557784,
+        0.70674412
+       ],
+       "height_m": [
+        0.05,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 567,
+      "observed_share": 1.0,
+      "seen_share": 1.0,
+      "views_min": 5,
+      "views_median": 12.0,
+      "best_incidence_deg": 13.0,
+      "worst_best_incidence_deg": 25.2,
+      "rule": {
+       "min_views": 2,
+       "surface": "wall",
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "evalharness.coverage.query_region"
+     }
+    ],
+    "subject": "objects[2] door"
+   },
+   "threshold": {
+    "value_ft": 3.0,
+    "comparison": "at_least",
+    "rule_key": "clearances.opening_ft",
+    "source": "IRC 2021 R328.4: 3 ft from doors and windows directly entering the dwelling. Applying it to garage doors (openings.types) is a demo choice the code does not require",
+    "placeholder": false
+   },
+   "margin_ft": -3.0,
+   "margin_over_uncertainty": -4.572
+  },
+  {
+   "id": "wall_equipment_above",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "pass",
+   "reason": "Nothing is mounted on the wall above the battery.",
+   "measured": null,
+   "threshold": {
+    "value_ft": 0.0,
+    "comparison": "at_least",
+    "rule_key": "clearances.wall_equipment_ft",
+    "source": "No public value; 0 means only overlap fails",
+    "placeholder": true
+   },
+   "fact": {
+    "value": true,
+    "clean": true,
+    "raw": "pass",
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        -1.9006557784,
+        0.70674412
+       ],
+       "height_m": [
+        0.05,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 567,
+      "observed_share": 1.0,
+      "seen_share": 1.0,
+      "views_min": 5,
+      "views_median": 12.0,
+      "best_incidence_deg": 13.0,
+      "worst_best_incidence_deg": 25.2,
+      "rule": {
+       "min_views": 2,
+       "surface": "wall",
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "evalharness.coverage.query_region"
+     }
+    ]
+   }
+  },
+  {
+   "id": "facing_gap",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "pass",
+   "reason": "Nothing limits the gap in front of the battery over the battery's stretch of wall.",
+   "measured": null,
+   "threshold": {
+    "value_ft": 3.0,
+    "comparison": "at_least",
+    "rule_key": "facing.min_ft",
+    "source": "Base help page: 3 ft from fences",
+    "placeholder": false
+   },
+   "fact": {
+    "value": true,
+    "clean": true,
+    "raw": "pass",
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        -0.9906557784,
+        -0.20325588000000003
+       ],
+       "out_m": [
+        0.1,
+        2.0587999999999997
+       ],
+       "height_m": [
+        0.3,
+        1.83
+       ]
+      },
+      "status": "observed",
+      "probes": 1120,
+      "observed_share": 1.0,
+      "seen_share": 1.0,
+      "views_min": 11,
+      "views_median": 13.0,
+      "best_incidence_deg": null,
+      "worst_best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "surface": "free",
+       "max_incidence_deg": null,
+       "observed_share": 0.9
+      },
+      "method": "evalharness.coverage.query_region"
+     }
+    ]
+   }
+  },
+  {
+   "id": "headroom",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "pass",
+   "reason": "The headroom is 7 ft 0 in (\u00b1 0 ft 1 in), clear of the 6 ft 6 in rule.",
+   "measured": {
+    "value_ft": 6.9849,
+    "plus_minus_ft": 0.0984,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        -0.9906557784,
+        -0.20325588000000003
+       ],
+       "out_m": [
+        0.1,
+        0.5588
+       ],
+       "height_m": [
+        0.3,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 320,
+      "observed_share": 1.0,
+      "seen_share": 1.0,
+      "views_min": 11,
+      "views_median": 12.0,
+      "best_incidence_deg": null,
+      "worst_best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "surface": "free",
+       "max_incidence_deg": null,
+       "observed_share": 0.9
+      },
+      "method": "evalharness.coverage.query_region"
+     }
+    ],
+    "subject": "overheads[7]"
+   },
+   "threshold": {
+    "value_ft": 6.5,
+    "comparison": "at_least",
+    "rule_key": "headroom.min_ft",
+    "source": "NEC 110.26(A)(3) working-space headroom, applied to the battery as a demo choice",
+    "placeholder": true
+   },
+   "margin_ft": 0.4849,
+   "margin_over_uncertainty": 4.928
+  },
+  {
+   "id": "route_path",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "pass",
+   "reason": "The cable runs along continuous, observed wall with nothing blocking it.",
+   "measured": null,
+   "threshold": null,
+   "fact": {
+    "value": true,
+    "clean": true,
+    "raw": "pass",
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        -0.9906557784,
+        0.0
+       ],
+       "height_m": [
+        0.05,
+        1.5
+       ]
+      },
+      "status": "observed",
+      "probes": 150,
+      "observed_share": 1.0,
+      "seen_share": 1.0,
+      "views_min": 9,
+      "views_median": 12.0,
+      "best_incidence_deg": 13.9,
+      "worst_best_incidence_deg": 20.2,
+      "rule": {
+       "min_views": 2,
+       "surface": "wall",
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "evalharness.coverage.query_region"
+     }
+    ]
+   }
+  },
+  {
+   "id": "route_length",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "pass",
+   "reason": "The cable run is 0 ft 8 in (\u00b1 0 ft 8 in), within the 15 ft 0 in confident reach.",
+   "measured": {
+    "value_ft": 0.66685,
+    "plus_minus_ft": 0.6561,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        -0.9906557784,
+        0.0
+       ],
+       "height_m": [
+        0.05,
+        1.5
+       ]
+      },
+      "status": "observed",
+      "probes": 150,
+      "observed_share": 1.0,
+      "seen_share": 1.0,
+      "views_min": 9,
+      "views_median": 12.0,
+      "best_incidence_deg": 13.9,
+      "worst_best_incidence_deg": 20.2,
+      "rule": {
+       "min_views": 2,
+       "surface": "wall",
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "evalharness.coverage.query_region"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 20.0,
+    "comparison": "at_most",
+    "rule_key": "route.max_ft",
+    "source": "Base help page: within 20 ft of the meter. Review past 15 ft 0 in: No public value",
+    "placeholder": true,
+    "review_value_ft": 15.0
+   },
+   "margin_ft": 19.3331,
+   "margin_over_uncertainty": 29.467
+  }
+ ],
+ "candidates": [
+  {
+   "id": "sw1",
+   "wall_id": "w1",
+   "start_s_m": [
+    -10.8834,
+    -8.5618
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "sw2",
+   "wall_id": "w2",
+   "start_s_m": [
+    -6.3778,
+    -6.2279
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "sw3",
+   "wall_id": "w2",
+   "start_s_m": [
+    -6.2278,
+    -5.3142
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "gas_clearance",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "sw4",
+   "wall_id": "w2",
+   "start_s_m": [
+    -5.313,
+    -5.1594
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "drive_clearance",
+    "gas_clearance",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "sw5",
+   "wall_id": "w2",
+   "start_s_m": [
+    -5.1592,
+    -5.1435
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "drive_clearance",
+    "gas_clearance",
+    "pool_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "sw6",
+   "wall_id": "w2",
+   "start_s_m": [
+    -5.128,
+    -4.7117
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "drive_clearance",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw7",
+   "wall_id": "w2",
+   "start_s_m": [
+    -4.7003,
+    -4.4298
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw8",
+   "wall_id": "w2",
+   "start_s_m": [
+    -4.4226,
+    -1.7135
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw9",
+   "wall_id": "w2",
+   "start_s_m": [
+    -1.7135,
+    -1.6111
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw10",
+   "wall_id": "w2",
+   "start_s_m": [
+    -1.5883,
+    -1.4135
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "drive_clearance",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw11",
+   "wall_id": "w2",
+   "start_s_m": [
+    -1.4116,
+    -1.3685
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "drive_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw12",
+   "wall_id": "w2",
+   "start_s_m": [
+    -1.3589,
+    -1.1213
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "drive_clearance",
+    "meter_working_space",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw13",
+   "wall_id": "w2",
+   "start_s_m": [
+    -1.1147,
+    -0.9907
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "drive_clearance",
+    "meter_working_space",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw14",
+   "wall_id": "w2",
+   "start_s_m": [
+    -0.978,
+    -0.978
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "gas_clearance",
+    "meter_working_space",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw15",
+   "wall_id": "w2",
+   "start_s_m": [
+    -0.9653,
+    -0.9144
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw16",
+   "wall_id": "w2",
+   "start_s_m": [
+    -0.908,
+    -0.0654
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "gas_clearance",
+    "headroom",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw17",
+   "wall_id": "w2",
+   "start_s_m": [
+    -0.0517,
+    0.178
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "gas_clearance",
+    "ground_surface",
+    "headroom",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw18",
+   "wall_id": "w2",
+   "start_s_m": [
+    0.197,
+    0.4216
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "gas_clearance",
+    "ground_surface",
+    "headroom",
+    "meter_working_space",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw19",
+   "wall_id": "w2",
+   "start_s_m": [
+    0.4281,
+    0.4748
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "gas_clearance",
+    "ground_surface",
+    "headroom",
+    "meter_working_space",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw20",
+   "wall_id": "w2",
+   "start_s_m": [
+    0.478,
+    0.578
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "gas_clearance",
+    "ground_surface",
+    "meter_working_space",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw21",
+   "wall_id": "w2",
+   "start_s_m": [
+    0.5846,
+    1.3346
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw22",
+   "wall_id": "w2",
+   "start_s_m": [
+    1.3346,
+    2.0846
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "ground_surface",
+    "headroom",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "sw23",
+   "wall_id": "w2",
+   "start_s_m": [
+    2.0901,
+    2.1884
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "ground_surface",
+    "headroom",
+    "pool_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  }
+ ],
+ "views_needed": [
+  {
+   "kind": "past_end",
+   "wall_id": "w2",
+   "s_m": [
+    2.976,
+    2.976
+   ],
+   "criteria": [],
+   "why": "Keep walking past the right end of the scan (9 ft 9 in right of the meter): a spot within reach may be there.",
+   "side": "right",
+   "id": "vn1"
+  }
+ ]
+}

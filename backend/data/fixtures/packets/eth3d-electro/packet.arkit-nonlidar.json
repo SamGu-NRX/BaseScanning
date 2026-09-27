@@ -1,0 +1,4305 @@
+{
+ "format": "house-capture-packet",
+ "formatVersion": "0.4",
+ "packetId": "095432d3-2e07-4eaa-9977-18f4ebb913e2",
+ "createdAt": "2026-09-26T20:52:12.993Z",
+ "units": {
+  "length": "meters",
+  "angle": "degrees",
+  "time": "seconds of device uptime, the clock of ARFrame.timestamp and CMDeviceMotion.timestamp",
+  "image": "pixels of the saved JPEG",
+  "rotationRate": "radians per second",
+  "acceleration": "g (9.80665 m/s^2)",
+  "magneticField": "microtesla"
+ },
+ "conventions": {
+  "world": "ARKit world frame with worldAlignment .gravity: right-handed, y up (away from gravity), origin at the device's position when the session (epoch) started, -z the camera's initial facing projected onto the horizontal",
+  "camera": "ARKit camera frame: +x right and +y up in the unrotated landscape sensor image, the camera looks along -z",
+  "device": "Core Motion device frame: +x right and +y toward the top with the phone upright in portrait, +z out of the screen",
+  "pose": "camera-to-world 4x4 matrix, 16 numbers column by column (simd_float4x4 layout), meters",
+  "intrinsics": "[fx, fy, cx, cy] in pixels of the saved, unrotated landscape image",
+  "pixel": "[u, v] continuous image coordinates: (0, 0) is the top-left corner of the top-left pixel, v grows down",
+  "ray": "origin is the camera position; direction is a unit vector; camera-space direction ((u - cx)/fx, -(v - cy)/fy, -1)",
+  "geodetic": "WGS84 degrees; altitude above mean sea level, ellipsoidalAltitude above the WGS84 ellipsoid, meters",
+  "heading": "degrees clockwise from north, 0 to 360"
+ },
+ "source": {
+  "kind": "synthetic",
+  "generator": "packetgen 0.1.0",
+  "variant": "arkit-nonlidar",
+  "noiseProfile": "nonlidar_modern",
+  "sourceDataset": "ETH3D high-res multi-view benchmark, training scene 'electro'; https://www.eth3d.net/datasets; CC BY-NC-SA 4.0 (ETH3D)",
+  "synthesizedFields": [
+   "keyframes[].pose (clean pose from the source + ARKit-like drift, profile nonlidar_modern)",
+   "keyframes[].intrinsics (source calibration + per-session focal and principal-point error)",
+   "keyframes[].timestamp (walking-speed model)",
+   "keyframes[].tracking",
+   "epochs",
+   "keyframes[].exposure",
+   "keyframes[].lightEstimate",
+   "keyframes[].features (SfM points re-expressed in the drifted world)",
+   "planes (RANSAC on reference geometry)",
+   "taps (auto reference point)",
+   "streams.motion",
+   "streams.heading",
+   "streams.location",
+   "streams.imuRaw (from streams.motion plus gyro bias and sensor noise)",
+   "streams.arkitPoses (observed trajectory interpolated per epoch at 30 Hz)",
+   "keyframes[].exif"
+  ],
+  "notes": ""
+ },
+ "session": {
+  "id": "BA3D1C3B-5209-525C-9FAC-9C3343952380",
+  "startedAt": "2026-09-26T17:50:19.570Z",
+  "startedAtUptime": 85318.3104,
+  "endedAtUptime": 85424.4107,
+  "timeZone": "America/Chicago",
+  "appVersion": "packetgen-synthetic 0.1.0",
+  "deviceModel": "iPhone15,4",
+  "systemVersion": "26.0",
+  "tier": "arkit",
+  "lidarAvailable": false,
+  "sceneDepthEnabled": false,
+  "meshReconstructionSupported": false,
+  "sceneReconstruction": "none",
+  "worldAlignment": "gravity",
+  "planeDetection": [
+   "horizontal",
+   "vertical"
+  ],
+  "videoFormat": {
+   "imageResolution": [
+    1920,
+    1440
+   ],
+   "framesPerSecond": 60
+  },
+  "locationAuthorization": "fullAccuracy",
+  "motionReferenceFrame": "xTrueNorthZVertical",
+  "gates": {
+   "trackingStableSeconds": 1.0,
+   "minimumGroundLookDown": 30.0,
+   "minimumContactSeparation": 2.0,
+   "maximumAngleFromWallNormal": 60.0,
+   "wallValidationTolerance": 0.0508,
+   "minimumCameraOffsetFromWall": 0.1,
+   "minimumRayAngle": 15.0,
+   "maximumRayGap": 0.0508,
+   "keyframeSpacingMeters": 0.5,
+   "keyframeSpacingDegrees": 15.0
+  }
+ },
+ "epochs": [
+  {
+   "id": "e1",
+   "startTime": 85318.3104,
+   "reason": "sessionStart"
+  }
+ ],
+ "keyframes": [
+  {
+   "id": "k00001",
+   "img": "keyframes/k00001.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1191.199,
+    1190.973,
+    962.992,
+    721.617
+   ],
+   "pose": [
+    0.99845,
+    -0.055495,
+    -0.004255,
+    0.0,
+    0.055649,
+    0.993895,
+    0.095273,
+    0.0,
+    -0.001058,
+    -0.095361,
+    0.995443,
+    0.0,
+    -0.002013,
+    -0.001608,
+    0.001858,
+    1.0
+   ],
+   "timestamp": 85322.1458,
+   "tracking": "limited.initializing",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0005098099379499207,
+    "offset": -0.142,
+    "iso": 32,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0005098099379499207,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.938,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:23",
+    "SubsecTimeOriginal": "406",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1436.8,
+    "ambientColorTemperature": 6294.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00001.bin",
+    "count": 250
+   },
+   "depth": null
+  },
+  {
+   "id": "k00002",
+   "img": "keyframes/k00002.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.910748,
+    -0.052172,
+    -0.409654,
+    0.0,
+    0.087329,
+    0.993885,
+    0.067574,
+    0.0,
+    0.403623,
+    -0.097317,
+    0.909735,
+    0.0,
+    -0.14616,
+    0.025873,
+    -1.243701,
+    1.0
+   ],
+   "timestamp": 85323.8338,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0009095487670796076,
+    "offset": 0.168,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0009095487670796076,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.459,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:25",
+    "SubsecTimeOriginal": "094",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1169.6,
+    "ambientColorTemperature": 6260.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00002.bin",
+    "count": 250
+   },
+   "depth": null
+  },
+  {
+   "id": "k00003",
+   "img": "keyframes/k00003.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.880977,
+    -0.041961,
+    -0.471296,
+    0.0,
+    0.083495,
+    0.994216,
+    0.067555,
+    0.0,
+    0.465735,
+    -0.098865,
+    0.879385,
+    0.0,
+    -0.930794,
+    0.042047,
+    -2.180666,
+    1.0
+   ],
+   "timestamp": 85325.3194,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0010828280922819413,
+    "offset": 0.042,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0010828280922819413,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.207,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:26",
+    "SubsecTimeOriginal": "579",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1076.1,
+    "ambientColorTemperature": 6697.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00003.bin",
+    "count": 250
+   },
+   "depth": null
+  },
+  {
+   "id": "k00004",
+   "img": "keyframes/k00004.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.664293,
+    -0.039153,
+    -0.746444,
+    0.0,
+    0.097661,
+    0.994612,
+    0.034743,
+    0.0,
+    0.741064,
+    -0.095979,
+    0.664538,
+    0.0,
+    -1.672673,
+    0.078753,
+    -2.798783,
+    1.0
+   ],
+   "timestamp": 85326.7175,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0009306682906771621,
+    "offset": 0.173,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0009306682906771621,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.426,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:27",
+    "SubsecTimeOriginal": "977",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1116.8,
+    "ambientColorTemperature": 5272.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00004.bin",
+    "count": 247
+   },
+   "depth": null
+  },
+  {
+   "id": "k00005",
+   "img": "keyframes/k00005.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.184218,
+    -0.025681,
+    -0.982552,
+    0.0,
+    0.096815,
+    0.995273,
+    -0.007863,
+    0.0,
+    0.978107,
+    -0.093674,
+    0.185834,
+    0.0,
+    -2.546345,
+    0.102276,
+    -3.424425,
+    1.0
+   ],
+   "timestamp": 85327.9309,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0010185410582491117,
+    "offset": -0.19,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0010185410582491117,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.295,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:29",
+    "SubsecTimeOriginal": "191",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 961.8,
+    "ambientColorTemperature": 5206.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00005.bin",
+    "count": 234
+   },
+   "depth": null
+  },
+  {
+   "id": "k00006",
+   "img": "keyframes/k00006.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    -0.124142,
+    -0.028139,
+    -0.991866,
+    0.0,
+    0.083085,
+    0.995793,
+    -0.038649,
+    0.0,
+    0.98878,
+    -0.087206,
+    -0.121281,
+    0.0,
+    -3.578355,
+    0.140423,
+    -3.62866,
+    1.0
+   ],
+   "timestamp": 85329.1408,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0014944725314623409,
+    "offset": -0.12,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0014944725314623409,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.742,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:30",
+    "SubsecTimeOriginal": "401",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 790.3,
+    "ambientColorTemperature": 5959.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00006.bin",
+    "count": 241
+   },
+   "depth": null
+  },
+  {
+   "id": "k00007",
+   "img": "keyframes/k00007.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1193.171,
+    1193.086,
+    962.499,
+    722.373
+   ],
+   "pose": [
+    -0.79139,
+    -0.013742,
+    -0.611156,
+    0.0,
+    0.036914,
+    0.996848,
+    -0.070214,
+    0.0,
+    0.610196,
+    -0.078128,
+    -0.788389,
+    0.0,
+    -4.638884,
+    0.166615,
+    -3.419212,
+    1.0
+   ],
+   "timestamp": 85331.4119,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0014069297664185624,
+    "offset": 0.092,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0014069297664185624,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.829,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:32",
+    "SubsecTimeOriginal": "672",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 913.8,
+    "ambientColorTemperature": 6034.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00007.bin",
+    "count": 205
+   },
+   "depth": null
+  },
+  {
+   "id": "k00008",
+   "img": "keyframes/k00008.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1193.171,
+    1193.086,
+    962.499,
+    722.373
+   ],
+   "pose": [
+    -0.940861,
+    -0.014819,
+    -0.338465,
+    0.0,
+    0.010946,
+    0.997191,
+    -0.07409,
+    0.0,
+    0.338613,
+    -0.073414,
+    -0.938057,
+    0.0,
+    -5.575579,
+    0.181545,
+    -2.801116,
+    1.0
+   ],
+   "timestamp": 85332.7536,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0015928797968901417,
+    "offset": -0.256,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0015928797968901417,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.65,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:34",
+    "SubsecTimeOriginal": "013",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 933.6,
+    "ambientColorTemperature": 6054.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00008.bin",
+    "count": 223
+   },
+   "depth": null
+  },
+  {
+   "id": "k00009",
+   "img": "keyframes/k00009.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1193.171,
+    1193.086,
+    962.499,
+    722.373
+   ],
+   "pose": [
+    -0.968743,
+    -0.015569,
+    0.247573,
+    0.0,
+    -0.029362,
+    0.998209,
+    -0.052116,
+    0.0,
+    -0.246317,
+    -0.057757,
+    -0.967466,
+    0.0,
+    -5.840751,
+    0.168892,
+    -1.872735,
+    1.0
+   ],
+   "timestamp": 85334.1019,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0018835700060711494,
+    "offset": -0.096,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0018835700060711494,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.408,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:35",
+    "SubsecTimeOriginal": "362",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 926.2,
+    "ambientColorTemperature": 6666.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00009.bin",
+    "count": 151
+   },
+   "depth": null
+  },
+  {
+   "id": "k00010",
+   "img": "keyframes/k00010.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    -0.792562,
+    -0.022203,
+    0.609388,
+    0.0,
+    -0.045735,
+    0.998687,
+    -0.023097,
+    0.0,
+    -0.608075,
+    -0.046176,
+    -0.792536,
+    0.0,
+    -5.633761,
+    0.149772,
+    -0.916098,
+    1.0
+   ],
+   "timestamp": 85335.3012,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001244224361015672,
+    "offset": -0.008,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.001244224361015672,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.007,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:36",
+    "SubsecTimeOriginal": "561",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 929.6,
+    "ambientColorTemperature": 5782.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00010.bin",
+    "count": 114
+   },
+   "depth": null
+  },
+  {
+   "id": "k00011",
+   "img": "keyframes/k00011.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    -0.54456,
+    -0.037548,
+    0.837881,
+    0.0,
+    -0.056669,
+    0.998361,
+    0.007909,
+    0.0,
+    -0.836805,
+    -0.043175,
+    -0.545796,
+    0.0,
+    -5.028392,
+    0.114159,
+    0.003123,
+    1.0
+   ],
+   "timestamp": 85336.9432,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001269819856026187,
+    "offset": 0.024,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.001269819856026187,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.977,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:38",
+    "SubsecTimeOriginal": "203",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 931.2,
+    "ambientColorTemperature": 5901.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00011.bin",
+    "count": 91
+   },
+   "depth": null
+  },
+  {
+   "id": "k00012",
+   "img": "keyframes/k00012.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    -0.153982,
+    -0.047211,
+    0.986945,
+    0.0,
+    -0.058329,
+    0.997551,
+    0.038617,
+    0.0,
+    -0.986351,
+    -0.051621,
+    -0.156358,
+    0.0,
+    -3.955159,
+    0.062541,
+    0.83866,
+    1.0
+   ],
+   "timestamp": 85338.6738,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0014212412786450816,
+    "offset": 0.35,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0014212412786450816,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.815,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:39",
+    "SubsecTimeOriginal": "934",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1065.6,
+    "ambientColorTemperature": 6307.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00012.bin",
+    "count": 111
+   },
+   "depth": null
+  },
+  {
+   "id": "k00013",
+   "img": "keyframes/k00013.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    0.370499,
+    -0.064603,
+    0.926584,
+    0.0,
+    -0.029078,
+    0.996283,
+    0.08109,
+    0.0,
+    -0.928378,
+    -0.056987,
+    0.367243,
+    0.0,
+    -2.680171,
+    0.020879,
+    1.299229,
+    1.0
+   ],
+   "timestamp": 85340.5864,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0015249710707028468,
+    "offset": -0.078,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0015249710707028468,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.713,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:41",
+    "SubsecTimeOriginal": "846",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1035.9,
+    "ambientColorTemperature": 6561.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00013.bin",
+    "count": 110
+   },
+   "depth": null
+  },
+  {
+   "id": "k00014",
+   "img": "keyframes/k00014.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    0.534669,
+    -0.062754,
+    0.842728,
+    0.0,
+    -0.014149,
+    0.996435,
+    0.083176,
+    0.0,
+    -0.844943,
+    -0.056395,
+    0.531875,
+    0.0,
+    -1.488786,
+    -0.013387,
+    1.616167,
+    1.0
+   ],
+   "timestamp": 85342.2469,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0009478873989253583,
+    "offset": -0.061,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0009478873989253583,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.399,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:43",
+    "SubsecTimeOriginal": "507",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1011.5,
+    "ambientColorTemperature": 6158.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00014.bin",
+    "count": 101
+   },
+   "depth": null
+  },
+  {
+   "id": "k00015",
+   "img": "keyframes/k00015.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.611036,
+    -0.06065,
+    0.789276,
+    0.0,
+    -0.010315,
+    0.996366,
+    0.084549,
+    0.0,
+    -0.791535,
+    -0.059804,
+    0.60819,
+    0.0,
+    -0.223183,
+    -0.056478,
+    1.590029,
+    1.0
+   ],
+   "timestamp": 85343.8464,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0012297125378700957,
+    "offset": -0.089,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0012297125378700957,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.024,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:45",
+    "SubsecTimeOriginal": "106",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1014.4,
+    "ambientColorTemperature": 6612.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00015.bin",
+    "count": 133
+   },
+   "depth": null
+  },
+  {
+   "id": "k00016",
+   "img": "keyframes/k00016.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.963376,
+    -0.05948,
+    0.261475,
+    0.0,
+    0.035667,
+    0.994848,
+    0.094895,
+    0.0,
+    -0.265773,
+    -0.082093,
+    0.960534,
+    0.0,
+    0.566658,
+    -0.084511,
+    0.858841,
+    1.0
+   ],
+   "timestamp": 85345.146,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0017180468191010936,
+    "offset": 0.08,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0017180468191010936,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.541,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:46",
+    "SubsecTimeOriginal": "406",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1037.9,
+    "ambientColorTemperature": 5909.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00016.bin",
+    "count": 250
+   },
+   "depth": null
+  },
+  {
+   "id": "k00017",
+   "img": "keyframes/k00017.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1191.199,
+    1190.973,
+    962.992,
+    721.617
+   ],
+   "pose": [
+    0.990474,
+    -0.05775,
+    -0.125002,
+    0.0,
+    0.069691,
+    0.99319,
+    0.093361,
+    0.0,
+    0.118759,
+    -0.101184,
+    0.987754,
+    0.0,
+    0.750299,
+    -0.069642,
+    -0.281288,
+    1.0
+   ],
+   "timestamp": 85347.3694,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.000500205927640048,
+    "offset": -0.035,
+    "iso": 32,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.000500205927640048,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.965,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:48",
+    "SubsecTimeOriginal": "629",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1372.9,
+    "ambientColorTemperature": 6218.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00017.bin",
+    "count": 249
+   },
+   "depth": null
+  },
+  {
+   "id": "k00018",
+   "img": "keyframes/k00018.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1191.199,
+    1190.973,
+    962.992,
+    721.617
+   ],
+   "pose": [
+    0.935649,
+    -0.064175,
+    0.347049,
+    0.0,
+    0.028,
+    0.993727,
+    0.108268,
+    0.0,
+    -0.35182,
+    -0.091584,
+    0.931576,
+    0.0,
+    -0.613601,
+    -0.025449,
+    -0.739457,
+    1.0
+   ],
+   "timestamp": 85349.7662,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0007493328763543527,
+    "offset": 0.253,
+    "iso": 32,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0007493328763543527,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.382,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:51",
+    "SubsecTimeOriginal": "026",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1288.8,
+    "ambientColorTemperature": 5826.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00018.bin",
+    "count": 249
+   },
+   "depth": null
+  },
+  {
+   "id": "k00019",
+   "img": "keyframes/k00019.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    -0.437966,
+    -0.05255,
+    0.897454,
+    0.0,
+    -0.064964,
+    0.997529,
+    0.026708,
+    0.0,
+    -0.89664,
+    -0.046606,
+    -0.440298,
+    0.0,
+    -0.516407,
+    -0.027518,
+    -0.668272,
+    1.0
+   ],
+   "timestamp": 85352.4633,
+   "tracking": "limited.excessiveMotion",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0012160564666925775,
+    "offset": -0.073,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0012160564666925775,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.04,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:53",
+    "SubsecTimeOriginal": "723",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 969.4,
+    "ambientColorTemperature": 6382.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00019.bin",
+    "count": 174
+   },
+   "depth": null
+  },
+  {
+   "id": "k00020",
+   "img": "keyframes/k00020.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1193.171,
+    1193.086,
+    962.499,
+    722.373
+   ],
+   "pose": [
+    -0.925676,
+    -0.009698,
+    -0.378194,
+    0.0,
+    0.014484,
+    0.99803,
+    -0.061043,
+    0.0,
+    0.378041,
+    -0.061983,
+    -0.923712,
+    0.0,
+    -0.512969,
+    -0.051175,
+    -0.343513,
+    1.0
+   ],
+   "timestamp": 85355.2599,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.000906278335584236,
+    "offset": -0.193,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.000906278335584236,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.464,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:56",
+    "SubsecTimeOriginal": "520",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1064.1,
+    "ambientColorTemperature": 5319.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00020.bin",
+    "count": 169
+   },
+   "depth": null
+  },
+  {
+   "id": "k00021",
+   "img": "keyframes/k00021.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.422192,
+    -0.027841,
+    -0.906079,
+    0.0,
+    0.10471,
+    0.994336,
+    0.018237,
+    0.0,
+    0.900439,
+    -0.102574,
+    0.422716,
+    0.0,
+    -1.037819,
+    -0.011514,
+    -0.588974,
+    1.0
+   ],
+   "timestamp": 85358.1815,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001434286191662718,
+    "offset": -0.016,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.001434286191662718,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.802,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:59",
+    "SubsecTimeOriginal": "441",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1059.1,
+    "ambientColorTemperature": 6099.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00021.bin",
+    "count": 242
+   },
+   "depth": null
+  },
+  {
+   "id": "k00022",
+   "img": "keyframes/k00022.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.430378,
+    -0.037407,
+    -0.901873,
+    0.0,
+    0.104535,
+    0.994483,
+    0.008636,
+    0.0,
+    0.896575,
+    -0.097995,
+    0.431914,
+    0.0,
+    -3.123777,
+    0.036926,
+    -1.77087,
+    1.0
+   ],
+   "timestamp": 85361.0994,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013489725077153757,
+    "offset": 0.135,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0013489725077153757,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.89,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:02",
+    "SubsecTimeOriginal": "359",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 991.1,
+    "ambientColorTemperature": 5516.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00022.bin",
+    "count": 240
+   },
+   "depth": null
+  },
+  {
+   "id": "k00023",
+   "img": "keyframes/k00023.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.943748,
+    -0.058652,
+    0.325421,
+    0.0,
+    0.02835,
+    0.994871,
+    0.097092,
+    0.0,
+    -0.329446,
+    -0.082405,
+    0.940571,
+    0.0,
+    -3.060791,
+    0.041108,
+    -1.913695,
+    1.0
+   ],
+   "timestamp": 85363.4654,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.00044263797460508333,
+    "offset": 0.152,
+    "iso": 32,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.00044263797460508333,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 9.142,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:04",
+    "SubsecTimeOriginal": "725",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1381.9,
+    "ambientColorTemperature": 5844.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00023.bin",
+    "count": 248
+   },
+   "depth": null
+  },
+  {
+   "id": "k00024",
+   "img": "keyframes/k00024.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1193.171,
+    1193.086,
+    962.499,
+    722.373
+   ],
+   "pose": [
+    -0.8668,
+    -0.010668,
+    -0.498544,
+    0.0,
+    0.026608,
+    0.997358,
+    -0.067604,
+    0.0,
+    0.497947,
+    -0.071863,
+    -0.864225,
+    0.0,
+    -3.072168,
+    0.027197,
+    -1.444978,
+    1.0
+   ],
+   "timestamp": 85367.914,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0011445893227013226,
+    "offset": 0.119,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0011445893227013226,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.127,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:09",
+    "SubsecTimeOriginal": "174",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 864.7,
+    "ambientColorTemperature": 5966.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00024.bin",
+    "count": 185
+   },
+   "depth": null
+  },
+  {
+   "id": "k00025",
+   "img": "keyframes/k00025.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    -0.452936,
+    -0.044362,
+    0.890438,
+    0.0,
+    -0.066751,
+    0.997645,
+    0.015749,
+    0.0,
+    -0.88904,
+    -0.052305,
+    -0.454831,
+    0.0,
+    -2.676615,
+    0.027339,
+    -1.472943,
+    1.0
+   ],
+   "timestamp": 85370.25,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0012358390935496284,
+    "offset": 0.152,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0012358390935496284,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.016,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:11",
+    "SubsecTimeOriginal": "510",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 975.5,
+    "ambientColorTemperature": 5519.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00025.bin",
+    "count": 119
+   },
+   "depth": null
+  },
+  {
+   "id": "k00026",
+   "img": "keyframes/k00026.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.364196,
+    -0.032159,
+    -0.930767,
+    0.0,
+    0.105693,
+    0.994374,
+    0.007,
+    0.0,
+    0.925305,
+    -0.100926,
+    0.365546,
+    0.0,
+    -5.451337,
+    0.139608,
+    -2.947663,
+    1.0
+   ],
+   "timestamp": 85375.8045,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0008928469485631605,
+    "offset": 0.078,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0008928469485631605,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.485,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:17",
+    "SubsecTimeOriginal": "064",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 949.4,
+    "ambientColorTemperature": 5348.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00026.bin",
+    "count": 241
+   },
+   "depth": null
+  },
+  {
+   "id": "k00027",
+   "img": "keyframes/k00027.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    0.912482,
+    -0.062143,
+    0.40437,
+    0.0,
+    0.026222,
+    0.995247,
+    0.093776,
+    0.0,
+    -0.408275,
+    -0.074965,
+    0.909775,
+    0.0,
+    -5.286629,
+    0.133283,
+    -3.184675,
+    1.0
+   ],
+   "timestamp": 85378.3333,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0008549341551014213,
+    "offset": -0.016,
+    "iso": 32,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0008549341551014213,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.192,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:19",
+    "SubsecTimeOriginal": "593",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1176.4,
+    "ambientColorTemperature": 5872.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00027.bin",
+    "count": 249
+   },
+   "depth": null
+  },
+  {
+   "id": "k00028",
+   "img": "keyframes/k00028.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    -0.461002,
+    -0.037578,
+    0.886603,
+    0.0,
+    -0.055984,
+    0.998344,
+    0.013204,
+    0.0,
+    -0.885632,
+    -0.043548,
+    -0.462342,
+    0.0,
+    -4.999175,
+    0.133481,
+    -2.90047,
+    1.0
+   ],
+   "timestamp": 85381.001,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001017853750800537,
+    "offset": -0.072,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.001017853750800537,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.296,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:22",
+    "SubsecTimeOriginal": "261",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 988.4,
+    "ambientColorTemperature": 6799.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00028.bin",
+    "count": 35
+   },
+   "depth": null
+  },
+  {
+   "id": "k00029",
+   "img": "keyframes/k00029.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1193.171,
+    1193.086,
+    962.499,
+    722.373
+   ],
+   "pose": [
+    -0.917974,
+    -0.008055,
+    -0.396557,
+    0.0,
+    0.020842,
+    0.997432,
+    -0.068506,
+    0.0,
+    0.396091,
+    -0.071153,
+    -0.91545,
+    0.0,
+    -5.366049,
+    0.153711,
+    -2.710452,
+    1.0
+   ],
+   "timestamp": 85383.248,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013754292435185914,
+    "offset": 0.081,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0013754292435185914,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.862,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:24",
+    "SubsecTimeOriginal": "508",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 885.2,
+    "ambientColorTemperature": 5623.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00029.bin",
+    "count": 230
+   },
+   "depth": null
+  },
+  {
+   "id": "k00030",
+   "img": "keyframes/k00030.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    -0.506018,
+    -0.042534,
+    0.861473,
+    0.0,
+    -0.063169,
+    0.997928,
+    0.012167,
+    0.0,
+    -0.860206,
+    -0.048262,
+    -0.507657,
+    0.0,
+    -2.927078,
+    0.0972,
+    -1.666922,
+    1.0
+   ],
+   "timestamp": 85386.9095,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013304462077256183,
+    "offset": -0.061,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0013304462077256183,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.91,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:28",
+    "SubsecTimeOriginal": "169",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1002.4,
+    "ambientColorTemperature": 5633.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00030.bin",
+    "count": 116
+   },
+   "depth": null
+  },
+  {
+   "id": "k00031",
+   "img": "keyframes/k00031.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.017,
+    1191.373,
+    962.541,
+    722.192
+   ],
+   "pose": [
+    0.63765,
+    -0.016904,
+    -0.77014,
+    0.0,
+    0.764613,
+    -0.10764,
+    0.635437,
+    0.0,
+    -0.093639,
+    -0.994046,
+    -0.055712,
+    0.0,
+    -3.5093,
+    0.081731,
+    -4.44733,
+    1.0
+   ],
+   "timestamp": 85391.4114,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0009529807844821676,
+    "offset": -0.117,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0009529807844821676,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.391,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:32",
+    "SubsecTimeOriginal": "671",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1192.3,
+    "ambientColorTemperature": 5452.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00031.bin",
+    "count": 195
+   },
+   "depth": null
+  },
+  {
+   "id": "k00032",
+   "img": "keyframes/k00032.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.017,
+    1191.373,
+    962.541,
+    722.192
+   ],
+   "pose": [
+    0.688416,
+    -0.010361,
+    -0.725242,
+    0.0,
+    0.719508,
+    -0.116534,
+    0.684637,
+    0.0,
+    -0.091608,
+    -0.993133,
+    -0.072769,
+    0.0,
+    -3.274133,
+    0.132322,
+    -5.514216,
+    1.0
+   ],
+   "timestamp": 85394.0926,
+   "tracking": "limited.excessiveMotion",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0006290683344691179,
+    "offset": -0.191,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0006290683344691179,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.991,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:35",
+    "SubsecTimeOriginal": "353",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1116.8,
+    "ambientColorTemperature": 6479.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00032.bin",
+    "count": 169
+   },
+   "depth": null
+  },
+  {
+   "id": "k00033",
+   "img": "keyframes/k00033.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.017,
+    1191.373,
+    962.541,
+    722.192
+   ],
+   "pose": [
+    0.12923,
+    -0.005903,
+    -0.991599,
+    0.0,
+    0.985158,
+    -0.113182,
+    0.129064,
+    0.0,
+    -0.112993,
+    -0.993557,
+    -0.008811,
+    0.0,
+    -4.710765,
+    0.125307,
+    -0.974278,
+    1.0
+   ],
+   "timestamp": 85399.917,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0006240099782098454,
+    "offset": 0.083,
+    "iso": 32,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0006240099782098454,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.646,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:41",
+    "SubsecTimeOriginal": "177",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1304.9,
+    "ambientColorTemperature": 5744.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00033.bin",
+    "count": 28
+   },
+   "depth": null
+  },
+  {
+   "id": "k00034",
+   "img": "keyframes/k00034.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1193.587,
+    1195.194,
+    965.422,
+    721.81
+   ],
+   "pose": [
+    -0.918337,
+    0.044303,
+    -0.393314,
+    0.0,
+    0.312104,
+    0.692179,
+    -0.650754,
+    0.0,
+    0.243413,
+    -0.720365,
+    -0.64948,
+    0.0,
+    -4.69778,
+    0.205019,
+    -0.963219,
+    1.0
+   ],
+   "timestamp": 85402.6512,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0007377688077090215,
+    "offset": -0.099,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0007377688077090215,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.761,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:43",
+    "SubsecTimeOriginal": "911",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1198.8,
+    "ambientColorTemperature": 5414.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00034.bin",
+    "count": 145
+   },
+   "depth": null
+  },
+  {
+   "id": "k00035",
+   "img": "keyframes/k00035.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1193.171,
+    1193.086,
+    962.499,
+    722.373
+   ],
+   "pose": [
+    0.956455,
+    -0.002376,
+    0.291869,
+    0.0,
+    -0.213394,
+    0.676551,
+    0.704799,
+    0.0,
+    -0.199139,
+    -0.736392,
+    0.646584,
+    0.0,
+    -3.823079,
+    0.254643,
+    -3.86356,
+    1.0
+   ],
+   "timestamp": 85407.1343,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013322513847378228,
+    "offset": -0.032,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0013322513847378228,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.908,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:48",
+    "SubsecTimeOriginal": "394",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1030.0,
+    "ambientColorTemperature": 5401.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00035.bin",
+    "count": 248
+   },
+   "depth": null
+  },
+  {
+   "id": "k00036",
+   "img": "keyframes/k00036.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    0.97444,
+    -0.021897,
+    0.223576,
+    0.0,
+    -0.077502,
+    0.901366,
+    0.426066,
+    0.0,
+    -0.210854,
+    -0.432503,
+    0.876631,
+    0.0,
+    -3.804052,
+    0.269679,
+    -3.898455,
+    1.0
+   ],
+   "timestamp": 85407.8157,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0008225545014866311,
+    "offset": -0.113,
+    "iso": 32,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0008225545014866311,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.248,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:49",
+    "SubsecTimeOriginal": "076",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1245.0,
+    "ambientColorTemperature": 5939.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00036.bin",
+    "count": 250
+   },
+   "depth": null
+  },
+  {
+   "id": "k00037",
+   "img": "keyframes/k00037.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.945503,
+    -0.033719,
+    0.323863,
+    0.0,
+    -0.025506,
+    0.983898,
+    0.176902,
+    0.0,
+    -0.324613,
+    -0.175522,
+    0.929419,
+    0.0,
+    -3.793136,
+    0.266057,
+    -3.935847,
+    1.0
+   ],
+   "timestamp": 85408.5459,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0008664390622763418,
+    "offset": -0.061,
+    "iso": 32,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0008664390622763418,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.173,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:49",
+    "SubsecTimeOriginal": "806",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1253.7,
+    "ambientColorTemperature": 6329.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00037.bin",
+    "count": 250
+   },
+   "depth": null
+  },
+  {
+   "id": "k00038",
+   "img": "keyframes/k00038.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.979067,
+    -0.028244,
+    0.201568,
+    0.0,
+    -0.007576,
+    0.984582,
+    0.174759,
+    0.0,
+    -0.203396,
+    -0.172628,
+    0.963758,
+    0.0,
+    -3.596172,
+    0.269974,
+    -4.402721,
+    1.0
+   ],
+   "timestamp": 85409.2356,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0012614708116699912,
+    "offset": -0.025,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0012614708116699912,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.987,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:50",
+    "SubsecTimeOriginal": "496",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1131.1,
+    "ambientColorTemperature": 5254.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00038.bin",
+    "count": 250
+   },
+   "depth": null
+  },
+  {
+   "id": "k00039",
+   "img": "keyframes/k00039.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.930325,
+    -0.0107,
+    0.366579,
+    0.0,
+    0.024556,
+    0.999148,
+    -0.033155,
+    0.0,
+    -0.365911,
+    0.039846,
+    0.929796,
+    0.0,
+    -3.575375,
+    0.262188,
+    -4.42589,
+    1.0
+   ],
+   "timestamp": 85410.1733,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0007076667553849744,
+    "offset": 0.046,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0007076667553849744,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.821,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:51",
+    "SubsecTimeOriginal": "433",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1150.8,
+    "ambientColorTemperature": 5758.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00039.bin",
+    "count": 250
+   },
+   "depth": null
+  },
+  {
+   "id": "k00040",
+   "img": "keyframes/k00040.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.017,
+    1191.373,
+    962.541,
+    722.192
+   ],
+   "pose": [
+    0.904421,
+    -0.019987,
+    0.426173,
+    0.0,
+    -0.419125,
+    0.145052,
+    0.896267,
+    0.0,
+    -0.079731,
+    -0.989222,
+    0.122811,
+    0.0,
+    -3.657522,
+    0.205476,
+    -4.266179,
+    1.0
+   ],
+   "timestamp": 85412.4382,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0009532227804375826,
+    "offset": 0.086,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0009532227804375826,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.391,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:53",
+    "SubsecTimeOriginal": "698",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1198.1,
+    "ambientColorTemperature": 5369.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00040.bin",
+    "count": 182
+   },
+   "depth": null
+  },
+  {
+   "id": "k00041",
+   "img": "keyframes/k00041.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.075,
+    1191.89,
+    962.575,
+    722.642
+   ],
+   "pose": [
+    0.330017,
+    -0.018848,
+    0.943787,
+    0.0,
+    -0.052656,
+    0.997877,
+    0.03834,
+    0.0,
+    -0.942506,
+    -0.062349,
+    0.328325,
+    0.0,
+    -3.804009,
+    0.256807,
+    -4.28702,
+    1.0
+   ],
+   "timestamp": 85415.1271,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0008869128277102545,
+    "offset": -0.309,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0008869128277102545,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.495,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:56",
+    "SubsecTimeOriginal": "387",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 917.4,
+    "ambientColorTemperature": 5615.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00041.bin",
+    "count": 148
+   },
+   "depth": null
+  },
+  {
+   "id": "k00042",
+   "img": "keyframes/k00042.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    0.138809,
+    -0.019661,
+    0.990124,
+    0.0,
+    -0.059336,
+    0.997842,
+    0.028133,
+    0.0,
+    -0.98854,
+    -0.062655,
+    0.137343,
+    0.0,
+    -2.529799,
+    0.232428,
+    -3.900833,
+    1.0
+   ],
+   "timestamp": 85416.7712,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0012916836387873152,
+    "offset": 0.142,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0012916836387873152,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.953,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:58",
+    "SubsecTimeOriginal": "031",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 926.7,
+    "ambientColorTemperature": 5389.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00042.bin",
+    "count": 95
+   },
+   "depth": null
+  },
+  {
+   "id": "k00043",
+   "img": "keyframes/k00043.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    0.008206,
+    -0.021155,
+    0.999743,
+    0.0,
+    -0.063118,
+    0.997772,
+    0.021631,
+    0.0,
+    -0.997973,
+    -0.063279,
+    0.006853,
+    0.0,
+    -1.474112,
+    0.216857,
+    -3.354101,
+    1.0
+   ],
+   "timestamp": 85418.1995,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0016574954989071427,
+    "offset": 0.306,
+    "iso": 50,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0016574954989071427,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.593,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:59",
+    "SubsecTimeOriginal": "459",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 900.7,
+    "ambientColorTemperature": 5218.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00043.bin",
+    "count": 137
+   },
+   "depth": null
+  },
+  {
+   "id": "k00044",
+   "img": "keyframes/k00044.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    -0.01879,
+    -0.025652,
+    0.999494,
+    0.0,
+    -0.062418,
+    0.997751,
+    0.024434,
+    0.0,
+    -0.997873,
+    -0.061927,
+    -0.020349,
+    0.0,
+    -0.199761,
+    0.173263,
+    -2.544006,
+    1.0
+   ],
+   "timestamp": 85420.1129,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0010376684580838049,
+    "offset": 0.133,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0010376684580838049,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.269,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:52:01",
+    "SubsecTimeOriginal": "373",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 961.4,
+    "ambientColorTemperature": 5825.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00044.bin",
+    "count": 172
+   },
+   "depth": null
+  },
+  {
+   "id": "k00045",
+   "img": "keyframes/k00045.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1192.17,
+    1192.051,
+    962.62,
+    723.241
+   ],
+   "pose": [
+    0.012035,
+    -0.026602,
+    0.999574,
+    0.0,
+    -0.057427,
+    0.997978,
+    0.027251,
+    0.0,
+    -0.998277,
+    -0.057731,
+    0.010483,
+    0.0,
+    1.42745,
+    0.142686,
+    -1.623755,
+    1.0
+   ],
+   "timestamp": 85422.4107,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0009671457895547813,
+    "offset": -0.072,
+    "iso": 100,
+    "fNumber": 1.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0009671457895547813,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.37,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:52:03",
+    "SubsecTimeOriginal": "671",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 943.1,
+    "ambientColorTemperature": 6668.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar/k00045.bin",
+    "count": 205
+   },
+   "depth": null
+  }
+ ],
+ "stills": [],
+ "taps": [
+  {
+   "id": "t1",
+   "time": 85363.5154,
+   "label": "reference_point",
+   "tool": "mark",
+   "step": "single",
+   "keyframe": "k00023",
+   "frozen": false,
+   "pixel": [
+    989.573,
+    712.173
+   ],
+   "rayOrigin": [
+    -3.060791,
+    0.041108,
+    -1.913695
+   ],
+   "rayDirection": [
+    0.35096654,
+    0.0897885,
+    -0.93207323
+   ],
+   "hit": {
+    "position": [
+     -2.419241,
+     0.205237,
+     -3.617478
+    ],
+    "target": "estimatedPlane",
+    "alignment": "any",
+    "distance": 1.828
+   },
+   "confirmedByUser": true,
+   "epoch": "e1"
+  }
+ ],
+ "tracking": [
+  {
+   "time": 85322.1458,
+   "state": "limited.initializing",
+   "epoch": "e1"
+  },
+  {
+   "time": 85323.8338,
+   "state": "normal",
+   "epoch": "e1"
+  },
+  {
+   "time": 85352.4633,
+   "state": "limited.excessiveMotion",
+   "epoch": "e1"
+  },
+  {
+   "time": 85355.2599,
+   "state": "normal",
+   "epoch": "e1"
+  },
+  {
+   "time": 85394.0926,
+   "state": "limited.excessiveMotion",
+   "epoch": "e1"
+  },
+  {
+   "time": 85399.917,
+   "state": "normal",
+   "epoch": "e1"
+  }
+ ],
+ "planes": [
+  {
+   "id": "3B668B72-9A11-5187-B054-E8D6548105FC",
+   "epoch": "e1",
+   "alignment": "horizontal",
+   "classification": "floor",
+   "transform": [
+    0.881836,
+    -0.023477,
+    0.47097,
+    0.0,
+    0.019937,
+    0.999722,
+    0.012506,
+    0.0,
+    -0.471132,
+    -0.001638,
+    0.88206,
+    0.0,
+    -1.828418,
+    -1.460877,
+    -1.406375,
+    1.0
+   ],
+   "center": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "planeExtent": {
+    "width": 15.5587,
+    "height": 8.279,
+    "rotationOnYAxis": 0.0
+   },
+   "boundary": [
+    [
+     -7.6116,
+     4.1029
+    ],
+    [
+     -7.7391,
+     3.8001
+    ],
+    [
+     -7.7688,
+     1.6619
+    ],
+    [
+     -7.7742,
+     1.1987
+    ],
+    [
+     -7.7785,
+     -0.0444
+    ],
+    [
+     -7.7738,
+     -2.8302
+    ],
+    [
+     -7.6811,
+     -4.0346
+    ],
+    [
+     -7.5662,
+     -4.1237
+    ],
+    [
+     -7.5299,
+     -4.1246
+    ],
+    [
+     -7.0429,
+     -4.1362
+    ],
+    [
+     -5.8523,
+     -4.1395
+    ],
+    [
+     1.4724,
+     -4.1395
+    ],
+    [
+     7.5981,
+     -4.1336
+    ],
+    [
+     7.7283,
+     -4.1316
+    ],
+    [
+     7.7636,
+     -3.8553
+    ],
+    [
+     7.7705,
+     -2.1081
+    ],
+    [
+     7.7772,
+     1.3294
+    ],
+    [
+     7.763,
+     3.1428
+    ],
+    [
+     7.7323,
+     3.7141
+    ],
+    [
+     7.5981,
+     4.0325
+    ],
+    [
+     7.2368,
+     4.1247
+    ],
+    [
+     4.9307,
+     4.1324
+    ],
+    [
+     2.4749,
+     4.1391
+    ],
+    [
+     -1.6389,
+     4.1395
+    ],
+    [
+     -5.2373,
+     4.139
+    ],
+    [
+     -5.9626,
+     4.1299
+    ]
+   ],
+   "sourceInliers": 35074
+  },
+  {
+   "id": "B29AE006-5450-57B9-B3B7-2A32AE0203B1",
+   "epoch": "e1",
+   "alignment": "vertical",
+   "classification": "wall",
+   "transform": [
+    0.857424,
+    0.001035,
+    0.514609,
+    0.0,
+    -0.514608,
+    -0.00171,
+    0.857424,
+    0.0,
+    0.001767,
+    -0.999998,
+    -0.000933,
+    0.0,
+    2.797835,
+    0.204382,
+    -4.588291,
+    1.0
+   ],
+   "center": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "planeExtent": {
+    "width": 8.5817,
+    "height": 2.8234,
+    "rotationOnYAxis": 0.0
+   },
+   "boundary": [
+    [
+     4.2899,
+     -0.8861
+    ],
+    [
+     4.2907,
+     0.7887
+    ],
+    [
+     4.2682,
+     1.2982
+    ],
+    [
+     4.2588,
+     1.3875
+    ],
+    [
+     3.9226,
+     1.4082
+    ],
+    [
+     0.6848,
+     1.4115
+    ],
+    [
+     -2.3548,
+     1.4056
+    ],
+    [
+     -2.5196,
+     1.4023
+    ],
+    [
+     -3.9016,
+     1.3714
+    ],
+    [
+     -4.2207,
+     1.3224
+    ],
+    [
+     -4.2493,
+     1.2242
+    ],
+    [
+     -4.2688,
+     1.0774
+    ],
+    [
+     -4.2899,
+     0.4317
+    ],
+    [
+     -4.2876,
+     -0.4266
+    ],
+    [
+     -4.286,
+     -0.8668
+    ],
+    [
+     -4.2777,
+     -1.3424
+    ],
+    [
+     -4.2625,
+     -1.3901
+    ],
+    [
+     -4.0984,
+     -1.4112
+    ],
+    [
+     -0.7454,
+     -1.406
+    ],
+    [
+     1.3997,
+     -1.3996
+    ],
+    [
+     3.8131,
+     -1.3086
+    ],
+    [
+     4.1774,
+     -1.2714
+    ],
+    [
+     4.261,
+     -1.095
+    ]
+   ],
+   "sourceInliers": 3937
+  },
+  {
+   "id": "62B50560-99A6-5433-8D9F-32B9B2A8F899",
+   "epoch": "e1",
+   "alignment": "vertical",
+   "classification": "wall",
+   "transform": [
+    0.398254,
+    0.000381,
+    -0.917274,
+    0.0,
+    0.917272,
+    0.001109,
+    0.398254,
+    0.0,
+    0.001169,
+    -0.999998,
+    9.1e-05,
+    0.0,
+    -10.2595,
+    4.609959,
+    -2.386256,
+    1.0
+   ],
+   "center": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "planeExtent": {
+    "width": 7.4864,
+    "height": 1.8925,
+    "rotationOnYAxis": 0.0
+   },
+   "boundary": [
+    [
+     -0.3625,
+     -0.9423
+    ],
+    [
+     3.454,
+     -0.934
+    ],
+    [
+     3.7375,
+     -0.8228
+    ],
+    [
+     3.7428,
+     0.318
+    ],
+    [
+     3.724,
+     0.6978
+    ],
+    [
+     3.6993,
+     0.8931
+    ],
+    [
+     3.6876,
+     0.9101
+    ],
+    [
+     3.534,
+     0.9434
+    ],
+    [
+     0.2715,
+     0.9462
+    ],
+    [
+     -1.8316,
+     0.9438
+    ],
+    [
+     -2.4476,
+     0.941
+    ],
+    [
+     -3.6729,
+     0.9344
+    ],
+    [
+     -3.7202,
+     0.8682
+    ],
+    [
+     -3.7422,
+     0.7795
+    ],
+    [
+     -3.7122,
+     0.0846
+    ],
+    [
+     -3.6856,
+     -0.1103
+    ],
+    [
+     -3.4176,
+     -0.3364
+    ],
+    [
+     -2.882,
+     -0.7632
+    ],
+    [
+     -2.5467,
+     -0.9022
+    ],
+    [
+     -1.1998,
+     -0.9368
+    ]
+   ],
+   "sourceInliers": 1785
+  }
+ ],
+ "streams": {
+  "motion": {
+   "file": "streams/arkit-nonlidar/motion.csv.gz",
+   "rateHz": 100,
+   "referenceFrame": "xTrueNorthZVertical",
+   "columns": [
+    "t",
+    "qx",
+    "qy",
+    "qz",
+    "qw",
+    "rotX",
+    "rotY",
+    "rotZ",
+    "gravX",
+    "gravY",
+    "gravZ",
+    "accX",
+    "accY",
+    "accZ",
+    "magX",
+    "magY",
+    "magZ",
+    "magAccuracy",
+    "heading"
+   ]
+  },
+  "heading": {
+   "file": "streams/arkit-nonlidar/heading.csv.gz",
+   "headingOrientation": "portrait",
+   "headingFilter": 1.0,
+   "columns": [
+    "t",
+    "timestamp",
+    "magneticHeading",
+    "trueHeading",
+    "headingAccuracy",
+    "x",
+    "y",
+    "z"
+   ]
+  },
+  "location": {
+   "file": "streams/arkit-nonlidar/location.csv.gz",
+   "desiredAccuracy": "best",
+   "columns": [
+    "t",
+    "timestamp",
+    "latitude",
+    "longitude",
+    "altitude",
+    "ellipsoidalAltitude",
+    "horizontalAccuracy",
+    "verticalAccuracy",
+    "course",
+    "courseAccuracy",
+    "speed",
+    "speedAccuracy"
+   ]
+  },
+  "imuRaw": {
+   "file": "streams/arkit-nonlidar/imu_raw.csv.gz",
+   "rateHz": 100,
+   "columns": [
+    "t",
+    "ax",
+    "ay",
+    "az",
+    "gx",
+    "gy",
+    "gz"
+   ]
+  },
+  "arkitPoses": {
+   "file": "streams/arkit-nonlidar/arkit_poses.csv.gz",
+   "rateHz": 30,
+   "columns": [
+    "t",
+    "epoch",
+    "tracking",
+    "tx",
+    "ty",
+    "tz",
+    "qx",
+    "qy",
+    "qz",
+    "qw",
+    "fx",
+    "fy",
+    "cx",
+    "cy"
+   ]
+  }
+ },
+ "scaleReference": {
+  "meterCloseUp": {
+   "captured": false,
+   "still": null
+  },
+  "ext": {
+   "method": "a9-meter-model",
+   "obliqueCloseUp": {
+    "captured": false,
+    "still": null
+   },
+   "doorViews": [],
+   "doorOnMeterSide": null,
+   "trueDepthScan": {
+    "captured": false
+   }
+  }
+ },
+ "files": [
+  {
+   "path": "features/arkit-nonlidar/k00001.bin",
+   "bytes": 5000,
+   "sha256": "152a57514c27ffa68be7ee3dbdfbaad40c3c7f4c240470eecf48a75122a1c0fd",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00002.bin",
+   "bytes": 5000,
+   "sha256": "a8849c1a493987931f74592ed239cc8c4d93fbd614757abd95556c9c5d3ef0e3",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00003.bin",
+   "bytes": 5000,
+   "sha256": "ef8c5e4e4353aed6e6b3e033804283bde081123bf3c33eded51a81f1591a9c9c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00004.bin",
+   "bytes": 4940,
+   "sha256": "2ca5de925cf9a6c9210924f970a63a0c76621e87053df456e4ef8ed70cd80752",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00005.bin",
+   "bytes": 4680,
+   "sha256": "c4de67d0f4ba164dce744d5c4c7c53a0eb367aa235094d41768c53f50a466fbb",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00006.bin",
+   "bytes": 4820,
+   "sha256": "4e915cf8f956d9ac8cb8dc032d3b9d3d2234f7994d30950570dde0fcdf5a9465",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00007.bin",
+   "bytes": 4100,
+   "sha256": "ce4dca18ac19e1cc6bb3856b7338a401bb44e0ccde064a487bd1e51604201976",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00008.bin",
+   "bytes": 4460,
+   "sha256": "0d130f954a60b2dde30cbb28b920fe78f4309c1e5727b8aa5cb7d854e3d5103e",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00009.bin",
+   "bytes": 3020,
+   "sha256": "9f4f4e28627c12238bbef61564927f2f1a8a80773d58e4e7173edfcca07d238c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00010.bin",
+   "bytes": 2280,
+   "sha256": "73ad5bac9e228725cb6ca1c74e05791f022234a068f2a232ecb55f400c6ecdde",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00011.bin",
+   "bytes": 1820,
+   "sha256": "4e2d6affbed76a0b3dbe75289a1aa3f28a6e7bd01c048d28b37e431beb563125",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00012.bin",
+   "bytes": 2220,
+   "sha256": "f2bb3fa7b1ced25530d2f2751edc658c857153c5f04e6fe944ea66664aa090bb",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00013.bin",
+   "bytes": 2200,
+   "sha256": "f8811cf5647cb94a2c9e4c5c2342256a9d2372bf4da6d0f0f752fa33b089179e",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00014.bin",
+   "bytes": 2020,
+   "sha256": "b87c9221849cb4dc31bf61ae055ad3ef36593805da5cfb7048091ca0ccc7776b",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00015.bin",
+   "bytes": 2660,
+   "sha256": "316b14a8665857627f9a00f994c999aca84ab51b4c18c056cc7cfe23dc9246b5",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00016.bin",
+   "bytes": 5000,
+   "sha256": "79c9651f3fedb99e68e3e08baec5fbfecca67e094326f4b5f5736a79a1ee0699",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00017.bin",
+   "bytes": 4980,
+   "sha256": "7c991866ea1a701a897bb34885507c7aeb014cab61287786ec297f09a132019d",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00018.bin",
+   "bytes": 4980,
+   "sha256": "035fc42fece9a2026f8002c27aae6969b6db7a013d1f87692579211716a6198d",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00019.bin",
+   "bytes": 3480,
+   "sha256": "964da2b8f3254f054421bf6fd01a7148a8e612729d11b074e095a6befc03e0ff",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00020.bin",
+   "bytes": 3380,
+   "sha256": "48f59ef030fc1e9e121e6750fd9798b9cc6e879767f8ff5bd8d59c5bfeb58beb",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00021.bin",
+   "bytes": 4840,
+   "sha256": "f643bcb0541f1442a8f635c78f9c09c3880906c63a7138af7b6c1a5996c02607",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00022.bin",
+   "bytes": 4800,
+   "sha256": "2ea99770d40d6494d72aed37b238f983ca44553bcbcec60366d03f3286759f99",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00023.bin",
+   "bytes": 4960,
+   "sha256": "b09953619e01edc6e11ae87499f498a3c4ff38eeebb14703453891a33b4e3f3d",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00024.bin",
+   "bytes": 3700,
+   "sha256": "247f2320b749d273579fdc610e71e3eb3c49a20382a276f188e7c40b9ee87b50",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00025.bin",
+   "bytes": 2380,
+   "sha256": "99f9b205898a37ce339e79094a060d3003d27bf726c6818f758ec73a836b4858",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00026.bin",
+   "bytes": 4820,
+   "sha256": "bfa4d2c5ff0b1e616a86b6a09e7e43eae04d7e898d12af7d997f15ea1cffb931",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00027.bin",
+   "bytes": 4980,
+   "sha256": "74b02c58e94136ec6fff07dcbd87da230c5c053f076f80e7af422ce904a1c2b1",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00028.bin",
+   "bytes": 700,
+   "sha256": "a4323733ecbd9392b351d49cb21a9b50e32727e0f5343c7c84f1b4f7ee418f06",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00029.bin",
+   "bytes": 4600,
+   "sha256": "2c4d1fc8883c0ea0cfdebb129d0a6c2c630a295f771985d46691353d48a806b1",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00030.bin",
+   "bytes": 2320,
+   "sha256": "c8a0640c025988fce5aaffeb2e1c3275bc22e23ca4840f88f5a2cf6a2db37ed2",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00031.bin",
+   "bytes": 3900,
+   "sha256": "27da16eb799a9189abf1a8127fde0e20253313242a3a03b81c1cb97ae372b20b",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00032.bin",
+   "bytes": 3380,
+   "sha256": "4ce962ba2827892e52e2040fead68bf2684a319b98c4c51bb3584df0f995c1a3",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00033.bin",
+   "bytes": 560,
+   "sha256": "5f527f720fbd17e55cb1713155f14fa383a5f8b9283ab35c81dbf5c0ff9fc3bf",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00034.bin",
+   "bytes": 2900,
+   "sha256": "878582a616b0822472a3a54c27417b984418897c227a8d4958a7e336dddfbe91",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00035.bin",
+   "bytes": 4960,
+   "sha256": "dd31e063466eadeba3eb4192fab0df85d7736617aeaa8de985979dfb7815f5ff",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00036.bin",
+   "bytes": 5000,
+   "sha256": "23163aaa6336a426bbf5864076017ab7b6e03eff778bdc6e89543d2900476e62",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00037.bin",
+   "bytes": 5000,
+   "sha256": "b1b21f0760b0aeb4c7a0943536256fefd4e2110804336f69a31b164c99887219",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00038.bin",
+   "bytes": 5000,
+   "sha256": "1fd218b3c86b7223f902b901ec1550d9d7b5c652bd643a18dc0c801af38e81d9",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00039.bin",
+   "bytes": 5000,
+   "sha256": "26d93fc5135c8210b1e95981f15a829beb5b8bc29ebad7c8289dac7b5fc3bdf1",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00040.bin",
+   "bytes": 3640,
+   "sha256": "ffdaf3e4bc6472a5c6535d76921db281a66da01efa7bbf19b44f7dbd51ebe813",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00041.bin",
+   "bytes": 2960,
+   "sha256": "206bd03b33d7a84208596f80a172eb7044bf0deef3fbee6f592d031d9a61a3ff",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00042.bin",
+   "bytes": 1900,
+   "sha256": "a5eb270d0bf41a3c3a7ca8dd92dff808c613c3a7b8c7313ae9915ba4ce5701f5",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00043.bin",
+   "bytes": 2740,
+   "sha256": "432b3811d602a845e31fa75b1426cc49b9a1e933df2c3dff88b0da6f6cf6c766",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00044.bin",
+   "bytes": 3440,
+   "sha256": "7e2ce3d4952f5fc128cc9c17d5b15c86f82d2faf8d5ea93c8f18a29ae9eb8eb5",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar/k00045.bin",
+   "bytes": 4100,
+   "sha256": "7875138f73d6bd66dad080089685ffb09fed853704cea2e460189b4b6e8b4d4c",
+   "role": "features"
+  },
+  {
+   "path": "keyframes/k00001.jpg",
+   "bytes": 417616,
+   "sha256": "4cc921a74a409167cda49609f6b9c555c7b535b80da7a788612719c206c064f9",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00002.jpg",
+   "bytes": 425919,
+   "sha256": "399610b13c423d390f2a8c750e139272de80d01f9c45f0ca9e00a4e1eed04c47",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00003.jpg",
+   "bytes": 431176,
+   "sha256": "1b5f897aaddfdcd7d23d2bb4022b9ca585481221e079c2e319670249636efb5d",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00004.jpg",
+   "bytes": 485642,
+   "sha256": "074dc10bb6a117444227a0556973a915a8e823bed1aa119c4ef2a47427ef70c3",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00005.jpg",
+   "bytes": 469065,
+   "sha256": "c26d1eaf78175a7611760f9ddc83ffc3b1d988ded0587bd10a9db8c0f7c08edb",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00006.jpg",
+   "bytes": 502969,
+   "sha256": "b2ec9da70200b9c4f596a2c4bbbe2ada6ab73a6598c556caf7c074858925902b",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00007.jpg",
+   "bytes": 536860,
+   "sha256": "6412d0c5a8fa3e0f8d2a2eb0672495550e586f1ee3a4f9ad27f2a5ea65f16336",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00008.jpg",
+   "bytes": 501336,
+   "sha256": "5e28dc135d1941ca4836c9045640416fce528963f5990869e7c16da784d34a67",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00009.jpg",
+   "bytes": 564110,
+   "sha256": "e624c23de0699f403cf0d46b12f9d85074a09e0355ce956e50284132f5f859a6",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00010.jpg",
+   "bytes": 593318,
+   "sha256": "b3944d26e2140afecef96c28720be9e9e69e5b5105f47a5aa5c29a4981300a28",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00011.jpg",
+   "bytes": 658011,
+   "sha256": "6a616174eb5925371bd199bbf35f36d777db2135b6114fe403f823133dd29a94",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00012.jpg",
+   "bytes": 687618,
+   "sha256": "fcaba2602760c158fefa01aadebb4f49641666ed95654e084fe47d8f44e1e337",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00013.jpg",
+   "bytes": 582464,
+   "sha256": "0c2ee066d5ffd4af714c41eb512bfd86356e32eb21149707f914013d39c56013",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00014.jpg",
+   "bytes": 589494,
+   "sha256": "f987bebb7a4e1924121d847e25ee31b7c34b94e249bf7088b3c43559b2ff69e8",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00015.jpg",
+   "bytes": 581557,
+   "sha256": "e088108949d330890bdedd624749535dd6026c3364f85a218f0ac789f94ff53f",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00016.jpg",
+   "bytes": 458443,
+   "sha256": "bf6c2585b08af0164cb29e21b6f045c3583d92557e9f8ef1f98d303f97f0c103",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00017.jpg",
+   "bytes": 424738,
+   "sha256": "d87e839f8f0fb053cf334ec13b790aabdc1ca3d54d476f59bf769bcf6487484a",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00018.jpg",
+   "bytes": 373505,
+   "sha256": "51e8a060c6d67fe65ce851321572cb6e2ce382681fcf367084703230bda97de3",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00019.jpg",
+   "bytes": 776026,
+   "sha256": "0cd9812dad07ef815b047e103067d987edf833163c89366aff6bc710fafa9f99",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00020.jpg",
+   "bytes": 407906,
+   "sha256": "68894caf5a5829ba96405368e467ef743bd920edba34b6dcd2329e836023c0d5",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00021.jpg",
+   "bytes": 483827,
+   "sha256": "d474b22334385f12a36a345b8c2558addac3cb29f8aa1b3dffd36587953683ed",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00022.jpg",
+   "bytes": 448116,
+   "sha256": "cdeae4f51c133f467df92cec0377911a44935f9a465e650b1c5bc9ad0884fbb3",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00023.jpg",
+   "bytes": 419209,
+   "sha256": "3c71f2deb8f05eb309bf3ce228804a31ff39be6167ac5a350ff3cdfbfba80996",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00024.jpg",
+   "bytes": 441165,
+   "sha256": "3ed89a02aa759aa32df71b530a055d89c964c9180c9bcb4639e15630a57fddc6",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00025.jpg",
+   "bytes": 723715,
+   "sha256": "5e39d77e353ee567aebfdea78a1a52f9a1ef5424903d2d8873ae84cd254c650b",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00026.jpg",
+   "bytes": 447759,
+   "sha256": "87b6c8ace143b2e1a9d301f0e6151c13be141ad9bb48dcb66e64e9f1db0de403",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00027.jpg",
+   "bytes": 424968,
+   "sha256": "3d85b4ad6da9b9f708833c4174dcf60c4edc261e5cadd5a18677438658e04db7",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00028.jpg",
+   "bytes": 670712,
+   "sha256": "8b9ffe547306475787947bb16fb02df93cb13cac5f891204bb8dc566f08c884f",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00029.jpg",
+   "bytes": 499547,
+   "sha256": "6bd3c6580f0a9a41794a8cfc91adf992048b9a1dfac081c8b4d75180e1e8bc69",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00030.jpg",
+   "bytes": 738845,
+   "sha256": "e300d9e5b4051ee1571681d949847e514a7a627d305f1f1ac29c5791cbacadee",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00031.jpg",
+   "bytes": 373547,
+   "sha256": "182d69f552260c089e333820f3a75411737432d11ac050cf12e3d9d36b8a9895",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00032.jpg",
+   "bytes": 387731,
+   "sha256": "904cf783510bb17da6f4e7742570bf751d53c0b96aed030d11a29c176471b4a9",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00033.jpg",
+   "bytes": 333483,
+   "sha256": "01d20cfaa6b1b92f51f2a4e16ce148f3524e707d5ea7d1b5f95ffb0ea9a8a541",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00034.jpg",
+   "bytes": 367652,
+   "sha256": "4d9aaf29b398b8cbf470d23c6f38c149a9af91500d412aaeb0877698762893ca",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00035.jpg",
+   "bytes": 359644,
+   "sha256": "dd6fffd1c9fc9c72c3af35e40678fe46415204f3dd0779d8efab1e95b1e27427",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00036.jpg",
+   "bytes": 393961,
+   "sha256": "ad5251b9762dadaa5609ebc17aa3a8e7df2a9b9fb459c2383ffbad6793180d55",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00037.jpg",
+   "bytes": 363640,
+   "sha256": "a19911cc25f656188b2ebbb8ed7aa958c85b7926b7bf213f6a2db895f60e19fe",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00038.jpg",
+   "bytes": 364094,
+   "sha256": "55c97dba6ab60f104ecfccb5a9cec2dfe2d873747fc61b52eb8e247abadaf102",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00039.jpg",
+   "bytes": 404632,
+   "sha256": "47a4163aec175cf6cce0911bc5df07845ee85646181a4cc3a7292f1ba7bf04e0",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00040.jpg",
+   "bytes": 350301,
+   "sha256": "efd84749455d2f2016a697df7d6b9520c896416acf396675576a0ae6dfc47546",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00041.jpg",
+   "bytes": 453410,
+   "sha256": "456b9a9dcf280d123e0159701b0b4a37166c581bd2a6a80b1ce08ec36631ece0",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00042.jpg",
+   "bytes": 470001,
+   "sha256": "20f850be30697246f8e341734bb344b26f118803095dada6fc44fafbbb806f4b",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00043.jpg",
+   "bytes": 476795,
+   "sha256": "59552a6aba0cf5187581b5861e8c014af83883c2a77fc4048045119fe38bf353",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00044.jpg",
+   "bytes": 518132,
+   "sha256": "3bb02973dd407dbcebbd7f4ab7a3e8b00af4205a9f4b96e449117e25e6584981",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00045.jpg",
+   "bytes": 536016,
+   "sha256": "d64bffae68f49f707af94281df25321f0df3946963aa5de595f4ae1dc8d45459",
+   "role": "keyframe"
+  },
+  {
+   "path": "streams/arkit-nonlidar/arkit_poses.csv.gz",
+   "bytes": 96192,
+   "sha256": "dfb3928d6f12324658d34b239d00b7c2ce223b3679d4e0302ffc41b0ccbb2ed2",
+   "role": "stream"
+  },
+  {
+   "path": "streams/arkit-nonlidar/heading.csv.gz",
+   "bytes": 28797,
+   "sha256": "8739621577d28755fe5627c5a221b0c2dbbefcef157a293bc4df8100a9af1e1e",
+   "role": "stream"
+  },
+  {
+   "path": "streams/arkit-nonlidar/imu_raw.csv.gz",
+   "bytes": 250317,
+   "sha256": "50fd6f3bc0c5d49c2c148b7ada961028bd425486ef6f3a895c6e3a3aa7419cf1",
+   "role": "stream"
+  },
+  {
+   "path": "streams/arkit-nonlidar/location.csv.gz",
+   "bytes": 4865,
+   "sha256": "ae4ef06368df80480740ffcc62a40cd6d8af69f05d0cb982dfbd45e4c9b57280",
+   "role": "stream"
+  },
+  {
+   "path": "streams/arkit-nonlidar/motion.csv.gz",
+   "bytes": 727673,
+   "sha256": "e3d5b54b4f025208ccae8d177d5c9309490f28d79d7da19e2009e236c205c3b9",
+   "role": "stream"
+  }
+ ]
+}

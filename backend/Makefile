@@ -1,5 +1,4 @@
-# Skeleton targets. The fixtures PR adds the scripts behind fixtures, gt and validate,
-# and then `ci` gains `validate` (brief §8: make ci on main after that PR).
+# `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
 .PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci
 
 ONLY ?= small
@@ -33,4 +32,4 @@ validate:
 validate-full:
 	uv run --frozen python scripts/validate_fixtures.py --full
 
-ci: lint test schemas hygiene
+ci: lint test schemas hygiene validate

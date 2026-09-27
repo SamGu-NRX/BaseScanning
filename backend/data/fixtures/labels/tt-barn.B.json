@@ -1,0 +1,109 @@
+{
+ "format": "base-labels/v0",
+ "site": "tt-barn",
+ "data": "real",
+ "labeller": "Track C criteria worker (draft, for Hunter's approval)",
+ "method": "Hand review of frames against internal/criteria/SSR_Prompts.md; exported from internal/criteria/house-labels.json by export_labels_v0.py. Site-scope labels plus start_range labels where a scene with a meter exists.",
+ "rules_profile": "B",
+ "site_decision": "manual_review",
+ "labels": [
+  {
+   "id": "tt-barn.B.meter_number",
+   "criterion": "meter_number",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] No confirmed electric meter; empty string only if no electric meter number is photographed. Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.cl320",
+   "criterion": "cl320",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] truth: not_applicable; expected: {\"cl320Label\": \"cl320_unclear\", \"hasCl320Meter\": false, \"insufficientEvidence\": true} Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.oversized_can",
+   "criterion": "oversized_can",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] truth: not_applicable; expected: {\"meterCanLabel\": \"meter_can_unclear\", \"hasLargeOrOversizedMeterCan\": false, \"insufficientEvidence\": true} Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.meter_type",
+   "criterion": "meter_type",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] No usable view: all four y-coordinates and distance_ratio = 0. Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.meter_mount",
+   "criterion": "meter_mount",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[medium] truth: not_applicable; expected: {\"type\": \"unknown\", \"clean-decision\": false} Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.meter_not_accessible",
+   "criterion": "meter_not_accessible",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] No meter in the sampled frames. The small wall boxes by the gable-end doors (000343, 000355) are drinking-fountain fixtures, not electrical. Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.multiple_mains",
+   "criterion": "multiple_mains",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] No panel photographed. Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.main_panel_type",
+   "criterion": "main_panel_type",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] truth: not_applicable; expected: \"manual_review\" Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.meter_panel_relationship",
+   "criterion": "meter_panel_relationship",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] truth: not_applicable; expected: {\"meterPanelRelationship\": \"insufficient_evidence\", \"mainPanelLocation\": \"not_visible\", \"evidenceSufficiency\": \"insufficient\"} Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.panel_not_accessible",
+   "criterion": "panel_not_accessible",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] truth: not_applicable; expected: \"manual_review\" Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.panel_in_house",
+   "criterion": "panel_in_house",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] truth: not_applicable; expected: \"manual_review\" Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.not_same_wall",
+   "criterion": "not_same_wall",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] truth: not_applicable; expected: \"manual_review\" Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.panel_recall",
+   "criterion": "panel_recall",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] truth: not_applicable; expected: \"manual_review\" Evidence: none."
+  },
+  {
+   "id": "tt-barn.B.placement",
+   "criterion": "placement",
+   "scope": "site",
+   "truth": "borderline",
+   "why": "[high] No meter, so truth not_applicable. Expected: manual_review with needs_more_photos (meter location); no reject. Notes for a virtual meter: a single-storey sided park building (restrooms plus storage) seen in a full loop with all corners. The gable end has a porch roof over a recessed doorway and drinking fountains (000343): headroom and door-swing fails under the roof. The roll-up doors count as garage doors, so the route can't cross them; their concrete aprons/plaza (000028, 000040) may be drivable (undeterminable; C would review, A/B fail 5 ft if drivable). The long side walls have man doors, lattice screens and a narrow concrete walk with open lawn beyond (000109, 000136): a C spot on lawn beside a walk is plausible there. Evidence: 000028, 000040, 000109, 000124, 000136, 000151, 000343, 000355, 000370, 000094, 000205, 000328."
+  }
+ ]
+}

@@ -22,6 +22,15 @@ data/**/*.npz
 data/**/*.ply
 data/**/*.bin
 
+# Fetched tars, PLYs and extracts. Never commit them.
+.fixtures/
+
+# Golden fixtures that are committed on purpose (coverage grids, mini-arkit stills).
+!data/fixtures/**/*.jpg
+!data/fixtures/**/*.jpeg
+!data/fixtures/**/*.npz
+!data/fixtures/**/*.bin
+
 # Reconstruction outputs. Small JSON results under breadth outputs/ folders are committed.
 *.ply
 *.splat

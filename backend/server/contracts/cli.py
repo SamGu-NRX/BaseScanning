@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from server.contracts._base import dump_json
 from server.contracts.labels import Labels, labels_consistency_errors
 from server.contracts.packet import Packet
+from server.contracts.packet_resolve import PacketLayoutError, resolve_packet_manifest
 from server.contracts.scene import Scene, scene_consistency_errors
 from server.contracts.validation import check_packet
 from server.contracts.verdict import Verdict, verdict_contract_errors
@@ -40,11 +41,22 @@ def main(argv: list[str] | None = None) -> int:
     packets.add_argument("paths", nargs="+", type=Path)
     packets.add_argument("--files", action="store_true", help="hash files next to each manifest")
     packets.add_argument("--no-files", action="store_true", help="manifest checks only")
+    packets.add_argument(
+        "--variant",
+        default=None,
+        help="packet.<variant>.json when the folder has no packet.json (default arkit-nonlidar)",
+    )
     args = parser.parse_args(argv)
     if args.command == "check":
         return _check(args.files)
     root_mode = bool(args.files) and not args.no_files
-    return _check_packets(args.paths, with_files=root_mode)
+    passed = argv if argv is not None else sys.argv[1:]
+    variant_explicit = any(arg == "--variant" or arg.startswith("--variant=") for arg in passed)
+    try:
+        return _check_packets(args.paths, with_files=root_mode, variant=args.variant, variant_explicit=variant_explicit)
+    except PacketLayoutError as exc:
+        print(f"FAIL {exc}", file=sys.stderr)
+        return 1
 
 
 def _check(paths: list[Path]) -> int:
@@ -98,9 +110,15 @@ def _sceneio_errors(document: dict) -> list[str]:
     return []
 
 
-def _check_packets(paths: list[Path], *, with_files: bool) -> int:
+def _check_packets(
+    paths: list[Path],
+    *,
+    with_files: bool,
+    variant: str | None = None,
+    variant_explicit: bool = False,
+) -> int:
     failed = False
-    for path in _expand(paths):
+    for path in _expand(paths, variant=variant, variant_explicit=variant_explicit):
         document = json.loads(path.read_text())
         try:
             packet = Packet.model_validate(document)
@@ -122,15 +140,18 @@ def _check_packets(paths: list[Path], *, with_files: bool) -> int:
     return 1 if failed else 0
 
 
-def _expand(paths: list[Path]) -> list[Path]:
+def _expand(
+    paths: list[Path],
+    *,
+    variant: str | None = None,
+    variant_explicit: bool = False,
+) -> list[Path]:
     found: list[Path] = []
     for path in paths:
         if path.is_dir():
-            packet = path / "packet.json"
-            if packet.is_file():
-                found.append(packet)
-            else:
-                found.extend(sorted(path.glob("packet.*.json")))
+            found.append(resolve_packet_manifest(path, variant, variant_explicit=variant_explicit))
+        elif variant_explicit and path.name == "packet.json":
+            raise PacketLayoutError(f"--variant on variant-less packet {path}")
         else:
             found.append(path)
     return found
