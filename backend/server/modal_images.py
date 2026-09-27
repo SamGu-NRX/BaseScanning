@@ -81,6 +81,9 @@ def gpu_image() -> modal.Image:
         "torchvision==0.20.1",
         index_url="https://download.pytorch.org/whl/cu124",
     )
+    # The prebuilt COLMAP image has no GCS client. Remote workers hydrate the packet from it.
+    # Installed after the cu124 pin so this layer does not replace the CUDA torch wheel.
+    base = base.pip_install("google-cloud-storage>=2.18", "google-auth>=2.30")
     return with_stage_package_data(base)
 
 

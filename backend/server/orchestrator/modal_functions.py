@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 
+from server.common.deploy_switch import real_runs_enabled, shared_remote_backends
 from server.contracts.jobs import CaptureRecord
 from server.orchestrator.api import start_run
 from server.orchestrator.api import sweep as sweep_runs
@@ -84,13 +85,18 @@ def use_shared_dev_backends() -> None:
         return
     if os.environ.get("SMP_ENVIRONMENT", "dev") == "prod":
         return
+    if real_runs_enabled():
+        # Same dict and GCS bucket capture-api baked. Do not point storage at /vol.
+        os.environ.update(shared_remote_backends(os.environ.get("SMP_ENVIRONMENT", "dev")))
+        return
     os.environ["STATE_BACKEND"] = "modal_dict"
     os.environ.setdefault("STATE_DICT_NAME", "hss-dev-state")
     os.environ.setdefault("SMP_ENVIRONMENT", "dev")
-    # Artifacts stay on the mounted volume. The CUDA image has no GCS client.
+    # Preserve GCS baked into workers even when the deploy-shell remote flag is absent.
     # Stage scratch is a local temp dir, so a commit does not upload the packet again.
     os.environ["VOLUME_ROOT"] = "/vol"
-    os.environ["STORAGE_BACKEND"] = "local"
+    if os.environ.get("STORAGE_BACKEND") != "gcs":
+        os.environ["STORAGE_BACKEND"] = "local"
 
 
 def coordinate_run_impl(run_id: str) -> str:

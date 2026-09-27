@@ -314,6 +314,79 @@ def test_executor_uses_configured_heartbeat_period(tmp_path, monkeypatch) -> Non
     assert set(seen) == {7}
 
 
+def test_prewarm_uses_async_spawn_inside_a_running_loop(tmp_path, monkeypatch) -> None:
+    import asyncio
+
+    log: list[str] = []
+
+    class _Spawn:
+        def __call__(self) -> str:
+            log.append("sync")
+            return "fc-sync"
+
+        async def aio(self) -> str:
+            log.append("aio")
+            return "fc-aio"
+
+    def factory(name: str):
+        class _Handle:
+            warm = type("Warm", (), {"spawn": _Spawn()})()
+
+        class _Cls:
+            def __call__(self):
+                return _Handle()
+
+        del name
+        return _Cls()
+
+    monkeypatch.setattr("server.orchestrator.modal_functions.modal_available", lambda: True)
+    monkeypatch.setattr("server.orchestrator.modal_functions.Pipeline", factory("pipeline"))
+    monkeypatch.setattr("server.orchestrator.modal_functions.EarlyQa", factory("early_qa"))
+    services, _uri, _digest = build_services(tmp_path, "memory")
+
+    async def drive() -> None:
+        with bind(services):
+            prewarm("cap_async", tier="arkit")
+        await asyncio.sleep(0)
+
+    asyncio.run(drive())
+    assert log == ["aio", "aio"]
+    assert get_json(services.state, "prewarm:cap_async")["spawned"] == {"pipeline": True, "early_qa": True}
+
+
+def test_prewarm_looks_up_the_deployed_app_inside_a_container(tmp_path, monkeypatch) -> None:
+    import modal
+
+    seen: list[tuple[str, str]] = []
+
+    class _Spawn:
+        def __call__(self) -> str:
+            return "fc-sync"
+
+        async def aio(self) -> str:
+            return "fc-aio"
+
+    class _Handle:
+        warm = type("Warm", (), {"spawn": _Spawn()})()
+
+    class _Cls:
+        def __call__(self):
+            return _Handle()
+
+    def from_name(app_name: str, name: str):
+        seen.append((app_name, name))
+        return _Cls()
+
+    monkeypatch.setenv("MODAL_TASK_ID", "ta-probe")
+    monkeypatch.setenv("MODAL_APP_NAME", "hss-probe")
+    monkeypatch.setattr("server.orchestrator.modal_functions.modal_available", lambda: True)
+    monkeypatch.setattr(modal.Cls, "from_name", staticmethod(from_name))
+    services, _uri, _digest = build_services(tmp_path, "memory")
+    with bind(services):
+        prewarm("cap_lookup", tier="arkit")
+    assert seen == [("hss-probe", "Pipeline"), ("hss-probe", "EarlyQa")]
+
+
 def test_prewarm_spawns_pipeline_and_early_qa(tmp_path, monkeypatch) -> None:
     log: list[str] = []
 

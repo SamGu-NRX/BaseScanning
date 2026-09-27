@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import os
+
 from server.contracts.packet import Tier
 from server.orchestrator.clock import parse_iso
 from server.orchestrator.services import Services
@@ -48,16 +51,54 @@ def request_prewarm(
     put_json(services.state, "gpu_last_call_at", services.clock.iso())
 
 
+def _spawn_call(spawn: object) -> None:
+    """``.spawn()`` raises inside an async request. Use ``.spawn.aio`` on a running loop."""
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        spawn()  # type: ignore[operator]
+        return
+    aio = getattr(spawn, "aio", None)
+    if aio is None:
+        spawn()  # type: ignore[operator]
+        return
+    asyncio.get_running_loop().create_task(aio())
+
+
+def _warm_spawns() -> tuple[object, object] | None:
+    """Handles for ``Pipeline.warm`` and ``EarlyQa.warm``.
+
+    Inside a container the imported ``App`` is not the deployed one, so ``.spawn``
+    raises ``ExecutionError`` (app is not running). Look the classes up by name.
+    """
+
+    from server.orchestrator.modal_functions import EarlyQa, Pipeline, modal_available
+
+    if not modal_available():
+        return None
+    if os.environ.get("MODAL_TASK_ID"):
+        import modal
+
+        from server.common.deploy_switch import modal_app_name
+
+        app_name = modal_app_name()
+        pipeline = modal.Cls.from_name(app_name, "Pipeline")
+        early = modal.Cls.from_name(app_name, "EarlyQa")
+        return pipeline().warm.spawn, early().warm.spawn
+    return Pipeline().warm.spawn, EarlyQa().warm.spawn
+
+
 def _spawn_warm() -> dict[str, bool]:
     """Ask Modal to enter Pipeline and EarlyQa. Absent Modal records the request only.
 
     Imported lazily: ``modal_functions`` imports ``api``, which imports this module.
     """
 
-    from server.orchestrator.modal_functions import EarlyQa, Pipeline, modal_available
-
-    if not modal_available():
+    handles = _warm_spawns()
+    if handles is None:
         return {"pipeline": False, "early_qa": False}
-    Pipeline().warm.spawn()
-    EarlyQa().warm.spawn()
+    pipeline_spawn, early_spawn = handles
+    _spawn_call(pipeline_spawn)
+    _spawn_call(early_spawn)
     return {"pipeline": True, "early_qa": True}

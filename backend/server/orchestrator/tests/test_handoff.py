@@ -44,6 +44,52 @@ def _run(services, digest: str, *, deadline: str, status: str = "running") -> Ru
     return run
 
 
+def test_remote_spawn_looks_up_the_deployed_app(monkeypatch) -> None:
+    import modal
+
+    from server.orchestrator.modal_spawn import _remote_spawn
+
+    seen: list[tuple[object, ...]] = []
+
+    class _Call:
+        object_id = "fc-looked-up"
+
+    class _Method:
+        def spawn(self, *args: object) -> _Call:
+            seen.append(("spawn", args))
+            return _Call()
+
+    class _Handle:
+        run_stage = _Method()
+
+    class _Cls:
+        def with_options(self, **kwargs: object) -> _Cls:
+            seen.append(("options", tuple(sorted(kwargs.items()))))
+            return self
+
+        def __call__(self) -> _Handle:
+            return _Handle()
+
+    def cls_from_name(app_name: str, name: str) -> _Cls:
+        seen.append(("cls", app_name, name))
+        return _Cls()
+
+    def fn_from_name(app_name: str, name: str) -> _Method:
+        seen.append(("fn", app_name, name))
+        return _Method()
+
+    monkeypatch.setenv("MODAL_APP_NAME", "hss-probe")
+    monkeypatch.setattr(modal.Cls, "from_name", staticmethod(cls_from_name))
+    monkeypatch.setattr(modal.Function, "from_name", staticmethod(fn_from_name))
+    assert _remote_spawn("run_1", "validate", 1, None) == "fc-looked-up"
+    assert _remote_spawn("run_1", "poses", 2, "L4") == "fc-looked-up"
+    assert ("fn", "hss-probe", "run_cpu_stage") in seen
+    assert ("cls", "hss-probe", "Pipeline") in seen
+    assert ("options", (("gpu", "L4"),)) in seen
+    assert ("spawn", ("run_1", "validate", 1)) in seen
+    assert ("spawn", ("run_1", "poses", 2)) in seen
+
+
 def test_remote_spawn_passes_ids_and_does_not_hydrate(tmp_path, monkeypatch) -> None:
     calls: list[tuple[str, str | None]] = []
     _remote_ok(monkeypatch, calls)
@@ -70,6 +116,8 @@ def test_remote_spawn_passes_ids_and_does_not_hydrate(tmp_path, monkeypatch) -> 
 
 
 def test_objects_remote_spawn_uses_the_gpu_image(monkeypatch) -> None:
+    import modal
+
     seen: dict[str, object] = {}
 
     class _Call:
@@ -83,46 +131,49 @@ def test_objects_remote_spawn_uses_the_gpu_image(monkeypatch) -> None:
     class _Handle:
         run_stage = _Method()
 
-    class _Pipeline:
-        @staticmethod
-        def with_options(*, gpu: str) -> object:
-            seen["gpu"] = gpu
-            return lambda: _Handle()
+    class _Cls:
+        def with_options(self, **kwargs: object) -> _Cls:
+            seen["gpu"] = kwargs.get("gpu")
+            return self
 
-    def cpu_spawn(*args: object, **kwargs: object) -> None:
-        raise AssertionError((args, kwargs))
+        def __call__(self) -> _Handle:
+            return _Handle()
 
-    monkeypatch.setattr("server.orchestrator.modal_functions.Pipeline", _Pipeline)
-    monkeypatch.setattr(
-        "server.orchestrator.modal_functions.run_cpu_stage",
-        type("Cpu", (), {"spawn": staticmethod(cpu_spawn)})(),
-    )
+    def cls_from_name(app_name: str, name: str) -> _Cls:
+        seen["cls"] = (app_name, name)
+        return _Cls()
+
+    def fn_from_name(app_name: str, name: str) -> None:
+        raise AssertionError((app_name, name))
+
+    monkeypatch.setattr(modal.Cls, "from_name", staticmethod(cls_from_name))
+    monkeypatch.setattr(modal.Function, "from_name", staticmethod(fn_from_name))
     from server.orchestrator.modal_spawn import _remote_spawn
 
     assert _remote_spawn("run_facade", "objects", 1, "L4") == "fc-objects"
-    assert seen == {"gpu": "L4", "spawn": ("run_facade", "objects", 1)}
+    assert seen["cls"] == ("house-scanning", "Pipeline")
+    assert seen["gpu"] == "L4"
+    assert seen["spawn"] == ("run_facade", "objects", 1)
 
 
 def test_reads_remote_spawn_stays_on_the_cpu_image(monkeypatch) -> None:
+    import modal
+
     seen: dict[str, object] = {}
 
     class _Call:
         object_id = "fc-reads"
 
-    def cpu_spawn(run_id: str, stage: str, attempt: int) -> _Call:
-        seen["cpu"] = (run_id, stage, attempt)
-        return _Call()
+    class _Method:
+        def spawn(self, run_id: str, stage: str, attempt: int) -> _Call:
+            seen["cpu"] = (run_id, stage, attempt)
+            return _Call()
 
-    def boom(**kwargs: object) -> None:
-        raise AssertionError(kwargs)
+    def cls_from_name(app_name: str, name: str) -> None:
+        raise AssertionError((app_name, name))
 
-    monkeypatch.setattr(
-        "server.orchestrator.modal_functions.run_cpu_stage",
-        type("Cpu", (), {"spawn": staticmethod(cpu_spawn)})(),
-    )
-    monkeypatch.setattr(
-        "server.orchestrator.modal_functions.Pipeline", type("Gpu", (), {"with_options": staticmethod(boom)})()
-    )
+    monkeypatch.setattr(modal.Cls, "from_name", staticmethod(cls_from_name))
+    monkeypatch.setattr(modal.Function, "from_name", staticmethod(lambda app_name, name: _Method()))
     from server.orchestrator.modal_spawn import _remote_spawn
 
     assert _remote_spawn("run_facade", "reads", 1, None) == "fc-reads"

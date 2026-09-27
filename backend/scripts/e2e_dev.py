@@ -25,6 +25,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from server.common.deploy_switch import REAL_RUN_CLIENT_WAIT_S
 from server.contracts.result import Outcome, ResultResponse
 
 # SD-77. One deployed stack. The origin is the Modal dev capture-api label.
@@ -290,12 +291,16 @@ def live_origin(raw: str) -> str | None:
     return url
 
 
+def parser() -> argparse.ArgumentParser:
+    built = argparse.ArgumentParser(description="Live-stack capture upload and result-schema check")
+    built.add_argument("--self-check", action="store_true")
+    built.add_argument("--packet", type=Path)
+    built.add_argument("--timeout", type=float, default=float(REAL_RUN_CLIENT_WAIT_S))
+    return built
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Live-stack capture upload and result-schema check")
-    parser.add_argument("--self-check", action="store_true")
-    parser.add_argument("--packet", type=Path)
-    parser.add_argument("--timeout", type=float, default=180)
-    args = parser.parse_args(argv)
+    args = parser().parse_args(argv)
     if args.self_check:
         return self_check()
     raw_api = os.environ.get("CAPTURE_API_URL", "").strip()

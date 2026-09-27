@@ -16,6 +16,14 @@ import subprocess
 
 import modal
 
+from server.common.deploy_switch import (
+    baked_stage_stubs,
+    modal_app_name,
+    optional_runtime_env,
+    real_runs_enabled,
+    shared_remote_backends,
+    shared_state_env,
+)
 from server.modal_images import CPU_IMAGE as CPU_IMAGE
 from server.modal_images import gpu_image
 
@@ -134,8 +142,22 @@ def deploy_env(service: str) -> dict[str, str]:
         if ENV == "dev":
             # SD-86. The setting WS-01 already owns is HSS_AUTH_MODE.
             fields["HSS_AUTH_MODE"] = "none"
+        # Same switch capture_runtime_env reads. Default deploy leaves it off.
+        if real_runs_enabled():
+            fields["HSS_ORCH_MODAL_REMOTE"] = "1"
+        # Every capture-api container reads the run the finalize container wrote.
+        fields.update(shared_state_env(ENV))
+        # Spawn and prewarm look up this deployed app. The local App object is not hydrated in the container.
+        fields["MODAL_APP_NAME"] = modal_app_name()
+        fields.update(optional_runtime_env())
+    if service in {"pipeline", "sweeper"}:
+        fields.update(shared_remote_backends(ENV))
     if ENV == "dev":
         fields.update(_DEV_STAGE_ENV)
+    # Dev writes stubs "0" only when remote is on and the shell set stubs to 0.
+    stubs = baked_stage_stubs(ENV)
+    if stubs is not None:
+        fields["HSS_ORCH_STAGE_STUBS"] = stubs
     return fields
 
 

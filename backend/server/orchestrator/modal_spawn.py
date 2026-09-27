@@ -38,12 +38,18 @@ def launch_modal(services: Services, run_id: str, stage: str, attempt: int, gpu:
 
 
 def _remote_spawn(run_id: str, stage: str, attempt: int, gpu: str | None) -> str:
-    from server.orchestrator.modal_functions import Pipeline, run_cpu_stage
+    """Look up the deployed function. A local ``App`` imported in the container is not running."""
 
+    import modal
+
+    from server.common.deploy_switch import modal_app_name
+
+    app_name = modal_app_name()
     if STAGES[stage].where == "gpu":  # type: ignore[index]
-        call = Pipeline.with_options(gpu=gpu or "L4")().run_stage.spawn(run_id, stage, attempt)
+        pipeline = modal.Cls.from_name(app_name, "Pipeline")
+        call = pipeline.with_options(gpu=gpu or "L4")().run_stage.spawn(run_id, stage, attempt)
     else:
-        call = run_cpu_stage.spawn(run_id, stage, attempt)
+        call = modal.Function.from_name(app_name, "run_cpu_stage").spawn(run_id, stage, attempt)
     return str(call.object_id)
 
 

@@ -13,12 +13,42 @@ Diff this block when the deployment changes. Keep the seven field names and thei
 | Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","version":"04be3089a3d0"}` (selected fields). No `Authorization` header. Checked 2026-09-27T09:11:28Z and again 2026-09-27T09:25:18Z. `04be3089a3d0` is the first 12 hex chars of main `04be3089a3d099f3ae715f9ef37338845c6fd242`. |
 | Milestone | A no-token `mini-arkit` replay on this image returned a schema-valid `ResultResponse` (`manual_review`, stub stages). Client elapsed, upload through that result, was 168.0 s. Capture `cap_01M3H24K8PK10GSK00AVATFKCQ`, run `run_06cd631bae08c30f` (differs from `run_4dee057d229c1c21` on the previous image). The earlier M1 on `41a0880` (59 s) still stands. M2 real stages are not verified live. Stage stubs stay on. |
 | What works | Health 200 with `storage: gcs` and version `04be3089a3d0`, main `04be308` ([PR 126](https://github.com/huntertcarver/house-scanning-server/pull/126) and [PR 124](https://github.com/huntertcarver/house-scanning-server/pull/124)). One `mini-arkit` upload through finalize returned `manual_review` in 168.0 s and passed the device result schema. |
-| What's placeholder | `HSS_ORCH_STAGE_STUBS=1` and `HSS_ORCH_MODAL_REMOTE` unset, so this replay's stub stages run inside capture-api and the result stage writes the stub review page. This stub replay's 168.0 s client elapsed is longer than the 114.9 s replay on `1468206`. Real-stage M2 remains unverified. Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. |
+| What's placeholder | `HSS_ORCH_STAGE_STUBS=1` and `HSS_ORCH_MODAL_REMOTE` unset, so this replay's stub stages run inside capture-api and the result stage writes the stub review page. This stub replay's 168.0 s client elapsed is longer than the 114.9 s replay on `1468206`. Real-stage M2 remains unverified. Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. The real-run switch is prepared and not deployed; see **Switch for real runs**. |
 | Breaking changes since last update | Live version moved from `14682067c0d3` to `04be3089a3d0`. The image includes per-capture run ids, so this replay's run id differs from `run_4dee057d229c1c21`. No new real-stage milestone is claimed. |
+
+## Switch for real runs
+
+Not deployed. The integration lead's M2 result decides when to flip it. The live image stays on the status table above.
+
+Live capture-api has `HSS_ORCH_MODAL_REMOTE` unset, so the coordinator runs every stage inline in that container. The container timeout is 600 s. Poses and dense spawn on the GPU image (`Pipeline` on `GPU_IMAGE`, L4 when `HSS_GPU_IMAGE_ID` is the prebuilt CUDA image). Objects placement is the objects stage's own spec. The coordinator still lives in capture-api and has to outlive the 20-minute hard stop while those calls run.
+
+Capture-api may run more than one container (`max_containers` defaults to 4, one spare `buffer_containers`, `@modal.concurrent` with `target_inputs` 1). Every capture-api container shares one Modal Dict (`STATE_BACKEND=modal_dict`, SD-72) and GCS, so a poll on a second container sees the run the first container created. Create claims the packet idempotency key with one atomic dict insert, so two containers cannot both return 201 for the same packet.
+
+Two steps. From a main checkout:
+
+1. Remote spawn and the GPU image. This bakes `HSS_ORCH_MODAL_REMOTE=1` into capture-api, raises its timeout from 600 s to 1560 s (the same budget as `coordinate_run`), and sends poses and dense to `Pipeline` on `GPU_IMAGE`. The same step bakes `STATE_BACKEND=modal_dict` and `STORAGE_BACKEND=gcs` into capture-api, pipeline, and sweeper, so a worker hydrates the packet the API wrote. Dev still writes `HSS_ORCH_STAGE_STUBS=1` until step 2.
+
+```
+HSS_ORCH_MODAL_REMOTE=1 HSS_GPU_IMAGE_ID=im-744i3sKYjXb3UoVuBs8XoV \
+SMP_ENVIRONMENT=dev GIT_SHA=$(git rev-parse HEAD) \
+uv run modal deploy -m server.modal_app -e dev
+```
+
+2. Stubs off. Set `HSS_ORCH_STAGE_STUBS=0` in the same deploy shell. Dev writes `0` only when `HSS_ORCH_MODAL_REMOTE=1` and an explicit `HSS_ORCH_STAGE_STUBS=0` are both set. That value is baked into capture-api, pipeline, and sweeper. Any other dev deploy writes `1`.
+
+```
+HSS_ORCH_MODAL_REMOTE=1 HSS_ORCH_STAGE_STUBS=0 HSS_GPU_IMAGE_ID=im-744i3sKYjXb3UoVuBs8XoV \
+SMP_ENVIRONMENT=dev GIT_SHA=$(git rev-parse HEAD) \
+uv run modal deploy -m server.modal_app -e dev
+```
+
+Client wait. With the remote flag on, finalize's processing `etaS` is 1500 s. `awaiting_files` stays 200 s. With the flag unset, processing `etaS` stays 180 s. `scripts/e2e_dev.py --timeout` defaults to 1500 s so a real run fits; pass `--timeout` to override. The kit replay `--timeout` default stays 900 s; pass `--timeout 1500` there for a real run.
 
 ## Changelog
 
+- 2026-09-27T09:40:00Z — The real-run switch still is not deployed. With `HSS_ORCH_MODAL_REMOTE=1`, capture-api, pipeline, and sweeper share Modal Dict state and GCS. Capture-api can scale past one container, and prewarm uses `.spawn.aio` from an async request. Objects placement is not part of this switch.
 - 2026-09-27T09:25:18Z — `house-scanning` dev redeployed from main `04be308` (PR 126 and PR 124). Stubs stay on and remote stage spawning stays off. No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and version `04be3089a3d0`. One no-token `mini-arkit` replay returned a schema-valid `manual_review` in 168.0 s (`cap_01M3H24K8PK10GSK00AVATFKCQ`, `run_06cd631bae08c30f`). That run id differs from `run_4dee057d229c1c21`. The client elapsed is longer than the 114.9 s replay on `1468206`. This is not an M2 pass.
+- 2026-09-27T08:57:24Z — Prepared the real-run switch in code and left it off. No deploy. Live capture-api still has remote stage spawning unset and a 600 s timeout. The M2 result decides when to set `HSS_ORCH_MODAL_REMOTE=1` with `HSS_GPU_IMAGE_ID` and redeploy, which raises the capture-api timeout to 1560 s.
 - 2026-09-27T08:25:32Z — `house-scanning` dev redeployed from main `1468206` (PR 91, including PR 115). No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and version `14682067c0d3`. One no-token `mini-arkit` replay returned a schema-valid `manual_review` in 114.9 s (`cap_01M3GZCCRVHPRS830RYVQCW5C9`, `run_4dee057d229c1c21`). That client elapsed is longer than the 70 s replay on `f1f0b63`. Stubs stay on, so this is not an M2 pass.
 - 2026-09-27T07:03:34Z — `house-scanning` dev redeployed from main `f1f0b63` (PR 111). No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and version `f1f0b6394f93`. One no-token `mini-arkit` replay returned a schema-valid `manual_review` in 70 s (`cap_01M3GTQPAS864253AEMFGVYWHM`, `run_4dee057d229c1c21`). Stubs stay on, so this is not an M2 pass. This deploy replaced an intervening unmerged PR 91 image `7803f67d6ee5`.
 - 2026-09-27T06:45:07Z — Dev app redeployed from [PR 111](https://github.com/huntertcarver/house-scanning-server/pull/111) head `8875483b0a93` (main `be01020` plus stage package data). No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and that version. Inside the CPU stage image, Jinja rendered `template.html` with the review CSS inlined; the GPU image had the same template, schemas, `profiles.yaml`, and meter-model files. Stubs stay on, so this is not a capture replay and not an M2 pass. Historical M1 evidence stays on `41a0880`.

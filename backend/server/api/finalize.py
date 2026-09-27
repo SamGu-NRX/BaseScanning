@@ -19,6 +19,7 @@ from server.api.hooks import safe_hook
 from server.api.ids import require_contract_id
 from server.api.keys import packet_key
 from server.api.promotion import promote
+from server.common.deploy_switch import finalize_eta_s
 from server.common.logging import log_event
 from server.contracts.api import AmendmentRequest, FinalizeResponse, StageData
 from server.contracts.jobs import CaptureRecord, run_id_for_capture
@@ -111,7 +112,7 @@ def _compare_manifest(deps: Deps, record: CaptureRecord, packet: Packet) -> list
 
 
 def render_finalize(status: str, missing: list[str], run_id: str) -> dict:
-    eta = 200 if status == "awaiting_files" else 180
+    eta = finalize_eta_s(status)
     return FinalizeResponse(status=status, missing=missing, runId=run_id, etaS=eta).model_dump(mode="json")
 
 

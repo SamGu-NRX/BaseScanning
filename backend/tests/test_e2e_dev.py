@@ -8,6 +8,14 @@ import sys
 from pathlib import Path
 
 
+def test_e2e_dev_default_timeout_covers_a_real_run() -> None:
+    import scripts.e2e_dev as mod
+
+    assert mod.REAL_RUN_CLIENT_WAIT_S == 1500
+    assert mod.parser().parse_args([]).timeout == 1500
+    assert mod.parser().parse_args(["--timeout", "180"]).timeout == 180
+
+
 def test_e2e_dev_self_check() -> None:
     root = Path(__file__).resolve().parents[1]
     env = os.environ.copy()

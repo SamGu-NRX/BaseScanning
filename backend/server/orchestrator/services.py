@@ -97,7 +97,10 @@ def current() -> Services:
         return bound
     settings = load()
     orch = load_orch()
-    if settings.VOLUME_ROOT:
+    # GCS is the packet store. VOLUME_ROOT must not hide it behind a private directory.
+    if settings.STORAGE_BACKEND == "gcs":
+        storage = resolve_storage(settings)
+    elif settings.VOLUME_ROOT:
         storage = LocalFsStorage(Path(settings.VOLUME_ROOT))
     else:
         storage = resolve_storage(settings)

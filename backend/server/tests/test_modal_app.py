@@ -35,6 +35,8 @@ def test_secret_names(monkeypatch: pytest.MonkeyPatch, env: str) -> None:
 
 def test_dev_deploy_env_enables_hooks_and_stubs(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GIT_SHA", "abc123")
+    monkeypatch.delenv("HSS_ORCH_MODAL_REMOTE", raising=False)
+    monkeypatch.delenv("HSS_ORCH_STAGE_STUBS", raising=False)
     mod = _load(monkeypatch, "dev")
     for service in ("capture-api", "pipeline", "early-worker", "sweeper"):
         env = mod.deploy_env(service)
@@ -44,6 +46,8 @@ def test_dev_deploy_env_enables_hooks_and_stubs(monkeypatch: pytest.MonkeyPatch)
         assert env["SMP_SERVICE_NAME"] == service
     capture = mod.deploy_env("capture-api")
     assert capture["STORAGE_BACKEND"] == "gcs"
+    assert capture["STATE_BACKEND"] == "modal_dict"
+    assert capture["STATE_DICT_NAME"] == "hss-dev-state"
     assert capture["HSS_AUTH_MODE"] == "none"
     pipeline = mod.deploy_env("pipeline")
     assert pipeline["HSS_DENSE_WEIGHTS"] == "/vol/hf"
@@ -53,10 +57,61 @@ def test_dev_deploy_env_enables_hooks_and_stubs(monkeypatch: pytest.MonkeyPatch)
     assert mod.deploy_env("sweeper")["HF_HOME"] == "/vol/hf"
     assert "HSS_AUTH_MODE" not in mod.deploy_env("pipeline")
     assert "STORAGE_BACKEND" not in mod.deploy_env("pipeline")
+    assert "STATE_BACKEND" not in mod.deploy_env("pipeline")
     from server.api.modal_entry import capture_runtime_env, capture_secret_names
 
     assert capture_runtime_env("dev", "abc123") == capture
     assert capture_secret_names("dev") == mod.secret_names("capture-api")
+
+
+def test_real_run_switch_is_off_unless_the_deploy_shell_sets_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GIT_SHA", "abc123")
+    monkeypatch.delenv("HSS_ORCH_MODAL_REMOTE", raising=False)
+    mod = _load(monkeypatch, "dev")
+    capture = mod.deploy_env("capture-api")
+    assert "HSS_ORCH_MODAL_REMOTE" not in capture
+    from server.api.modal_entry import capture_runtime_env, web_function_timeout_s
+
+    assert capture_runtime_env("dev", "abc123") == capture
+    assert web_function_timeout_s() == 600
+    monkeypatch.setenv("HSS_ORCH_MODAL_REMOTE", "1")
+    monkeypatch.delenv("HSS_ORCH_STAGE_STUBS", raising=False)
+    enabled = mod.deploy_env("capture-api")
+    assert enabled["HSS_ORCH_MODAL_REMOTE"] == "1"
+    assert enabled["HSS_ORCH_STAGE_STUBS"] == "1"
+    assert capture_runtime_env("dev", "abc123") == enabled
+    assert web_function_timeout_s() == 1560
+    entry = Path("server/api/modal_entry.py").read_text()
+    assert "web_function_timeout_s()" in entry
+    assert "max_containers=_max_containers" in entry
+    assert "CAPTURE_API_MAX_CONTAINERS = 4" in entry
+    assert "CAPTURE_API_TARGET_INPUTS = 1" in entry
+    assert "buffer_containers=CAPTURE_API_BUFFER_CONTAINERS" in entry
+    assert "@modal.concurrent" in entry
+    monkeypatch.setenv("HSS_ORCH_STAGE_STUBS", "0")
+    for service in ("capture-api", "pipeline", "sweeper"):
+        baked = mod.deploy_env(service)
+        assert baked["HSS_ORCH_STAGE_STUBS"] == "0"
+        assert baked["STATE_BACKEND"] == "modal_dict"
+        assert baked["STORAGE_BACKEND"] == "gcs"
+        assert baked["STATE_DICT_NAME"] == "hss-dev-state"
+        if service == "capture-api":
+            assert baked["HSS_ORCH_MODAL_REMOTE"] == "1"
+        else:
+            assert "HSS_ORCH_MODAL_REMOTE" not in baked
+    early = mod.deploy_env("early-worker")
+    assert early["HSS_ORCH_STAGE_STUBS"] == "0"
+    assert "HSS_ORCH_MODAL_REMOTE" not in early
+    assert "STATE_BACKEND" not in early
+    assert "STORAGE_BACKEND" not in early
+    assert capture_runtime_env("dev", "abc123") == mod.deploy_env("capture-api")
+    monkeypatch.setenv("HSS_ORCH_STAGE_STUBS", " 0 ")
+    assert mod.deploy_env("pipeline")["HSS_ORCH_STAGE_STUBS"] == "0"
+    monkeypatch.delenv("HSS_ORCH_MODAL_REMOTE")
+    held = mod.deploy_env("capture-api")
+    assert held["HSS_ORCH_STAGE_STUBS"] == "1"
+    assert "HSS_ORCH_MODAL_REMOTE" not in held
+    assert capture_runtime_env("dev", "abc123") == held
 
 
 def test_prod_deploy_env_does_not_force_stubs(monkeypatch: pytest.MonkeyPatch) -> None:

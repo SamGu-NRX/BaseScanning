@@ -13,11 +13,31 @@ from __future__ import annotations
 
 import os
 
+from server.common.deploy_switch import (
+    baked_stage_stubs,
+    modal_app_name,
+    optional_runtime_env,
+    real_runs_enabled,
+    shared_state_env,
+    web_function_timeout_s,
+)
+
 api_app = None
 app = None
 ingest_sweep = None
 capture_api = None
 gcs_probe = None
+
+# Inline stub runs. Real runs raise this with the remote switch; see
+# docs/INTEGRATION.md "Switch for real runs". 1560s matches coordinate_run
+# and outlives the 20-minute hard stop while remote stages run.
+# More than one container so a long inline run cannot be the only input slot.
+CAPTURE_API_MAX_CONTAINERS = 4
+CAPTURE_API_BUFFER_CONTAINERS = 1
+CAPTURE_API_MAX_INPUTS = 32
+# One in-flight input is enough to scale. A higher target packs the poll onto the container
+# that is already running the inline pipeline.
+CAPTURE_API_TARGET_INPUTS = 1
 
 
 def capture_runtime_env(env: str, git_sha: str) -> dict[str, str]:
@@ -34,9 +54,18 @@ def capture_runtime_env(env: str, git_sha: str) -> dict[str, str]:
     }
     if env == "dev":
         fields["HSS_INGEST_HOOKS"] = "auto"
-        fields["HSS_ORCH_STAGE_STUBS"] = "1"
         # SD-86. Auth off for the demo stack. Static tokens and JWT stay unused.
         fields["HSS_AUTH_MODE"] = "none"
+    stubs = baked_stage_stubs(env)
+    if stubs is not None:
+        fields["HSS_ORCH_STAGE_STUBS"] = stubs
+    # Scale-out reads the same run the container that accepted finalize wrote.
+    fields.update(shared_state_env(env))
+    fields["MODAL_APP_NAME"] = modal_app_name()
+    fields.update(optional_runtime_env())
+    if real_runs_enabled():
+        # Coordinator stays here and spawns remote stages. Objects placement is WS-07.
+        fields["HSS_ORCH_MODAL_REMOTE"] = "1"
     return fields
 
 
@@ -76,16 +105,23 @@ if modal is not None:
     ]
     _volumes = {"/vol": modal.Volume.from_name("house-capture-pipeline", create_if_missing=True)}
 
+    _min_containers = int(os.environ.get("HSS_API_MIN_CONTAINERS", "1"))
+    _max_containers = int(os.environ.get("HSS_API_MAX_CONTAINERS", str(CAPTURE_API_MAX_CONTAINERS)))
+    if _max_containers < _min_containers:
+        _max_containers = _min_containers
+
     @api_app.function(
         image=api_image,
         secrets=_secrets,
         volumes=_volumes,
-        min_containers=int(os.environ.get("HSS_API_MIN_CONTAINERS", "1")),
-        max_containers=1,
+        min_containers=_min_containers,
+        max_containers=_max_containers,
+        buffer_containers=CAPTURE_API_BUFFER_CONTAINERS,
         scaledown_window=300,
-        timeout=600,
+        timeout=web_function_timeout_s(),
     )
-    @modal.concurrent(max_inputs=200)
+    # Replaces allow_concurrent_inputs. A poll must run while another input is in flight.
+    @modal.concurrent(max_inputs=CAPTURE_API_MAX_INPUTS, target_inputs=CAPTURE_API_TARGET_INPUTS)
     # SD-32. The shared app keeps this label. A throwaway deploy sets another so
     # it does not take the webhook the live house-scanning app already owns.
     @modal.asgi_app(label=os.environ.get("HSS_CAPTURE_API_LABEL", "capture-api"))

@@ -399,6 +399,30 @@ class ModalDictState(MemoryState):
                 stale.append(rec.model_copy(deep=True))
         return stale
 
+    def put_if_absent(self, key: str, value: dict) -> bool:
+        """Insert once across processes. Modal Dict ``skip_if_exists`` is the atomic claim.
+
+        MemoryState's check-then-assign is one process. Two capture-api containers
+        sharing this dict must not both win the same idempotency key.
+        """
+
+        payload = dict(value)
+        backing = self._backing()
+        put = getattr(backing, "put", None)
+        if callable(put) and not isinstance(backing, dict):
+            try:
+                # False means the key already existed, including when the stored
+                # value is identical. A matching read is not a second win.
+                inserted = put(key, payload, skip_if_exists=True)
+            except TypeError:
+                pass
+            else:
+                return bool(inserted)
+        if self._kv.get(key) is not None:
+            return False
+        self._kv[key] = payload
+        return True
+
     def put_blob(self, key: str, value: bytes) -> None:
         self._kv[f"blob:{key}"] = value
 
