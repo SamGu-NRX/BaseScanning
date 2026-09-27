@@ -5,15 +5,19 @@ cursor:
 
 # Builder briefs: index, dependency order, shared conventions, kickoff templates
 
-2026-09-26 22:45 UTC. Store root `$S` = `/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2`. Repo `huntertcarver/house-scanning-server`. Master plan: `$S/docs/server-pipeline-build-plan.md`. Brief template: `$S/internal/build/brief-template.md`; every brief has its 13 sections in order (Card, Start gate, Files, Interfaces, Behaviour, Reuse, Fixtures, Commands, Done when, Validator checklist, Constraints, Out of scope, Open questions).
+Repo copies for agents in this checkout: this README, the `ws-*.md` briefs, `docs/build/server-pipeline-build-plan.md`, and `docs/build/decisions.md`. Paths in these files that named those documents now point here. Other `$S/internal/...` paths still name research that is not in this repo.
 
-Precedence when texts disagree: `$S/internal/build/seam-decisions.md` (ids `SD-nn`, incl. the §10 addendum SD-43…SD-59) > the group decision log > the brief > the master plan. Measured breadth reports beat all prose (`$S/internal/breadth/*.md`, `$S/internal/modal-pipeline/benchmark.md`). Final reconciliation pass 23:3x UTC: every addendum row is applied to its briefs and the late A7 (interim) and A10 reports are folded in; the per-brief record is `$S/internal/build/final-pass-report.md`.
+These briefs do not quote Base SSR prompt wording. Where a brief names `SSR_Prompts.md` or `ssr-quick-reference-notion.md`, that is a do-not-copy rule, not a quotation.
 
-Read order for any agent joining a workstream: (1) this README, (2) `$S/internal/build/seam-decisions.md`, (3) the group decision log (`$S/internal/build/decision-log-group-<a|b|c>.md`, group letter in §1), (4) the brief, (5) the contract docs the brief cites (`$S/docs/capture-packet-spec.md`, `$S/docs/scene-and-verdict-format.md`, `$S/docs/hosted-architecture.md`, `$S/docs/criteria-spec.md`).
+2026-09-26 22:45 UTC. Store root `$S` = `/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2`. Repo `huntertcarver/house-scanning-server`. Master plan: `docs/build/server-pipeline-build-plan.md`. Brief template: `$S/internal/build/brief-template.md`; every brief has its 13 sections in order (Card, Start gate, Files, Interfaces, Behaviour, Reuse, Fixtures, Commands, Done when, Validator checklist, Constraints, Out of scope, Open questions).
+
+Precedence when texts disagree: `docs/build/decisions.md` (ids `SD-nn`, incl. the §10 addendum SD-43…SD-59) > the group decision log > the brief > the master plan. Measured breadth reports beat all prose (`$S/internal/breadth/*.md`, `$S/internal/modal-pipeline/benchmark.md`). Final reconciliation pass 23:3x UTC: every addendum row is applied to its briefs and the late A7 (interim) and A10 reports are folded in; the per-brief record is `$S/internal/build/final-pass-report.md`.
+
+Read order for any agent joining a workstream: (1) this README, (2) `docs/build/decisions.md`, (3) the group decision log (`$S/internal/build/decision-log-group-<a|b|c>.md`, group letter in §1), (4) the brief, (5) the contract docs the brief cites (`$S/docs/capture-packet-spec.md`, `$S/docs/scene-and-verdict-format.md`, `$S/docs/hosted-architecture.md`, `$S/docs/criteria-spec.md`).
 
 ## 1. Brief index
 
-| WS | Brief (`$S/docs/build/`) | Group | One-line scope | PRs (branches `ws-XX/<kebab>`) |
+| WS | Brief (`docs/build/`) | Group | One-line scope | PRs (branches `ws-XX/<kebab>`) |
 |---|---|---|---|---|
 | WS-00 | `ws-00-skeleton-and-contracts.md` | A | `server/` package skeleton, one typed contract package (pydantic v2 + JSON Schema) for every artifact that crosses a workstream boundary, golden fixtures behind `make validate`, CI jobs `contracts` and `fixtures`; decides names, units, frames and gates, never an algorithm | three, in order: `ws-00/contracts`, `ws-00/skeleton`, `ws-00/fixtures` |
 | WS-01 | `ws-01-ingest-api.md` | A | the `/v1` FastAPI (captures, per-file signed-URL upload, commit, finalize, events long-poll, status, result, amendments, confirmations, devices, delete, healthz) as a Modal asgi app; `Storage` backends GCS (Modal OIDC → WIF, keyless V4 signing), R2, volume; state `modal.Dict` now, Postgres later; Terraform modules `capture_bucket`, `modal_wif` | `ws-01/ingest-api`, then `ws-01/multipart` |
@@ -118,7 +122,7 @@ Milestones: M0 = waves 0–3 (a fixture packet flows through the API and the orc
 
 ## 4. Shared conventions
 
-Copied from `$S/internal/build/seam-decisions.md`; the `SD-nn` ids point at the full rows. Where a brief still says otherwise, the seam file wins and the group log records the edit.
+Copied from `docs/build/decisions.md`; the `SD-nn` ids point at the full rows. Where a brief still says otherwise, the seam file wins and the group log records the edit.
 
 ### 4.1 Names: storage keys, stage folders, ids (SD-01…SD-09)
 
@@ -183,10 +187,10 @@ Fill the angle-bracketed fields; keep the rest verbatim. Both templates assume t
 ```
 You are the builder for <WS-XX name> in huntertcarver/house-scanning-server.
 Read, in this order, before writing any code:
-  1. $S/docs/build/README.md (this file; §4 conventions win over brief text)
-  2. $S/internal/build/seam-decisions.md (every SD-nn row that names your WS)
+  1. docs/build/README.md (this file; §4 conventions win over brief text)
+  2. docs/build/decisions.md (every SD-nn row that names your WS)
   3. $S/internal/build/decision-log-group-<a|b|c>.md (your group's applied decisions; if absent, the brief on disk is current)
-  4. $S/docs/build/<brief file>, every section
+  4. docs/build/<brief file>, every section
   5. the contract docs your brief cites under $S/docs/
 Check the start gate (brief §1). If any item is missing, stop and report; never invent it.
 Branch: <ws-XX/kebab-name> (the Card's branch; one PR unless the Card says otherwise).
@@ -200,7 +204,7 @@ Report: PR link, the pasted gate table, the stubs you relied on, the [default ch
 
 ```
 You are the independent validator for <WS-XX name>, PR <link>, commit <sha>, in huntertcarver/house-scanning-server.
-Read $S/docs/build/README.md §4, $S/internal/build/seam-decisions.md, $S/internal/build/decision-log-group-<a|b|c>.md, then $S/docs/build/<brief file> §7–§10.
+Read docs/build/README.md §4, docs/build/decisions.md, $S/internal/build/decision-log-group-<a|b|c>.md, then docs/build/<brief file> §7–§10.
 Fresh clone at the PR head; your own environment, fixtures and caches; never reuse the builder's outputs or /tmp.
 Run every §7 command and every §8 item yourself; do the §9 hand checks; recompute every number the PR pastes.
 File $S/internal/build/validation/<ws-XX>.md with frontmatter `cursor: {subagentId: "<your id>"}` and sections: commit SHA, environment, commands with exit codes, §8 table item / expected / observed / PASS-FAIL, hand checks, defects, verdict.

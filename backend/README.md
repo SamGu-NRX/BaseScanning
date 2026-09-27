@@ -2,6 +2,13 @@
 
 The server side of the Base Power battery site survey. The iOS app ([SamGu-NRX/house-scanning](https://github.com/SamGu-NRX/house-scanning)) walks a homeowner around their house and sends a capture packet; this repo decides, in one session, where a battery can go and what views are still missing.
 
+## For integrators
+
+Agents watching this repo overnight should start here, not in chat:
+
+- [`docs/INTEGRATION.md`](docs/INTEGRATION.md) — how to call the deployed capture API. Read **Current status** first. That section has a fixed field list (`Updated UTC`, `Live URL`, `Health check result`, `Milestone`, `What works`, `What's placeholder`, `Breaking changes since last update`). Diff that block when the deployment changes.
+- [`docs/BUILD_STATUS.md`](docs/BUILD_STATUS.md) — which workstreams are merged, open, or blocked.
+
 ## Pipeline
 
 ```

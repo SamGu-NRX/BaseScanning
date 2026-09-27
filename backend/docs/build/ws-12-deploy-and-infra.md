@@ -1,6 +1,6 @@
 # WS-12 builder brief: deployment and infrastructure (Modal now, GCP later)
 
-Store root for every `internal/...` and `docs/...` path: `/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2`. Plan section: `docs/server-pipeline-build-plan.md` §6 "WS-12". Recipe: `docs/smp-adoption-review.md` §4 (SMP = `huntertcarver/Software-Manufacturing-Plant`, `main` at `38b696f`; SMP paths below are relative to that repo). Items marked `[default chosen]` are decisions the plan, the review or the code left open; they are listed with rationale in `internal/build/layout-decisions-ws-12.md` (resolutions in `internal/build/decision-log-group-a.md`). Cross-brief seams follow `internal/build/seam-decisions.md` (cited as `SD-nn`) and WS-00 (`docs/build/ws-00-skeleton-and-contracts.md`). Never paste secret values anywhere: names only.
+Store root for every `internal/...` and `docs/...` path: `/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2`. Plan section: `docs/server-pipeline-build-plan.md` §6 "WS-12". Recipe: `docs/smp-adoption-review.md` §4 (SMP = `huntertcarver/Software-Manufacturing-Plant`, `main` at `38b696f`; SMP paths below are relative to that repo). Items marked `[default chosen]` are decisions the plan, the review or the code left open; they are listed with rationale in `internal/build/layout-decisions-ws-12.md` (resolutions in `internal/build/decision-log-group-a.md`). Cross-brief seams follow `docs/build/decisions.md` (cited as `SD-nn`) and WS-00 (`docs/build/ws-00-skeleton-and-contracts.md`). Never paste secret values anywhere: names only.
 
 ## 0. Card
 
