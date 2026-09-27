@@ -79,13 +79,21 @@ def is_contract_artifact(key: str) -> bool:
 
 
 def local_artifact(work_dir: Path, rel: str) -> Path | None:
-    """A work-dir file or an absolute path a stage already wrote. Missing paths are ignored."""
+    """A file or directory under ``work_dir``. Paths that resolve outside it are ignored."""
 
-    path = Path(rel)
-    if path.is_absolute():
-        return path if path.exists() else None
-    candidate = work_dir / rel
-    return candidate if candidate.exists() else None
+    if not rel:
+        return None
+    root = work_dir.resolve()
+    candidate = Path(rel)
+    if not candidate.is_absolute():
+        candidate = work_dir / candidate
+    try:
+        resolved = candidate.resolve()
+    except OSError:
+        return None
+    if resolved != root and root not in resolved.parents:
+        return None
+    return resolved if resolved.exists() else None
 
 
 def existing_object(storage: object, *keys: str) -> str | None:

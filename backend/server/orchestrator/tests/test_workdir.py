@@ -123,8 +123,8 @@ def test_workdir_relative_path_is_what_gets_uploaded(tmp_path: Path) -> None:
     assert services.storage.get_bytes(canonical) == payload
 
 
-# server.poses.run (WS-04) returns every file under poses/ at most 5_000_000 bytes, keyed by the
-# work-dir relative path. server.objects.run.run_3d (WS-07) returns these two §3.9 keys.
+# server.poses.run (WS-04) returns every file under poses/, keyed by the work-dir relative path.
+# server.objects.run.run_3d (WS-07) returns these two §3.9 keys.
 _WS04_POSE_FILES = (
     "poses/cameras.json",
     "poses/sparse.ply",
@@ -145,7 +145,7 @@ _I18_FILES = (
     "dense/cameras_w.json",
     "coverage/scene_ready.json",
 )
-_WS04_MAX_BYTES = 5_000_000
+_OVERSIZED = "poses/sparse/0/huge.bin"
 
 
 def test_publisher_uploads_ws04_and_ws07_returned_keys(tmp_path: Path) -> None:
@@ -176,27 +176,48 @@ def test_publisher_uploads_ws04_and_ws07_returned_keys(tmp_path: Path) -> None:
         dest = ctx.work_dir / key
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(key.encode())
-    oversized = ctx.work_dir / "poses" / "sparse" / "0" / "huge.bin"
-    oversized.write_bytes(b"x" * (_WS04_MAX_BYTES + 1))
+    oversized = ctx.work_dir / _OVERSIZED
+    oversized.write_bytes(b"x" * (5_000_000 + 1))
     pose_artifacts = {
         str(path.relative_to(ctx.work_dir)): str(path.relative_to(ctx.work_dir))
         for path in (ctx.work_dir / "poses").rglob("*")
-        if path.is_file() and path.stat().st_size <= _WS04_MAX_BYTES
+        if path.is_file()
     }
-    assert set(pose_artifacts) == set(_WS04_POSE_FILES)
-    assert "poses/sparse/0/huge.bin" not in pose_artifacts
+    assert set(_WS04_POSE_FILES) <= set(pose_artifacts)
+    assert _OVERSIZED in pose_artifacts
+    assert oversized.stat().st_size > 5_000_000
     returned = {
         **pose_artifacts,
         **{key: key for key in (*_WS07_OBJECT_FILES, *_I18_FILES, "scale/report.json")},
     }
     stored = _publish(ctx, StageResult(artifacts=returned, metrics={}, warnings=[]))
     assert set(stored) == set(returned)
+    expected = {key: (ctx.work_dir / key).read_bytes() for key in returned}
     for key, storage_key in stored.items():
-        assert services.storage.get_bytes(storage_key) == key.encode()
+        assert services.storage.get_bytes(storage_key) == expected[key]
     restored = tmp_path / "next-work"
     written = hydrate_artifacts(services.storage, restored, stored)
     assert set(written) == set(returned)
     for key in returned:
-        assert (restored / key).read_bytes() == key.encode()
+        assert (restored / key).read_bytes() == expected[key]
+    outside = tmp_path / "outside.bin"
+    outside.write_bytes(b"nope")
+    rejected = _publish(
+        ctx,
+        StageResult(
+            artifacts={
+                "../secret": "poses/cameras.json",
+                "poses/from-outside.bin": str(outside),
+                "reads/escaped.bin": "../outside.bin",
+            },
+            metrics={},
+            warnings=[],
+        ),
+    )
+    assert rejected == {}
+    prefix = f"captures/cap_test/runs/{run.run_id}"
+    assert not services.storage.exists(f"{prefix}/poses/from-outside.bin")
+    assert not services.storage.exists(f"{prefix}/reads/escaped.bin")
+    assert services.storage.get_bytes(stored["poses/cameras.json"]) == expected["poses/cameras.json"]
     skipped = hydrate_artifacts(services.storage, restored, {"../secret": stored["poses/cameras.json"]})
     assert skipped == {}

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from server.contracts.jobs import StageContext, StageName, StageResult
-from server.orchestrator.artifacts import existing_object, local_artifact
+from server.orchestrator.artifacts import _safe_rel, existing_object, local_artifact
 from server.orchestrator.clock import Clock
 from server.orchestrator.graph import STAGES
 from server.orchestrator.heartbeat import Heartbeat, StageSuperseded
@@ -59,16 +59,23 @@ def run_stage(
 def _publish(ctx: StageContext, result: StageResult) -> dict[str, str]:
     stored: dict[str, str] = {}
     prefix = f"captures/{ctx.capture_id}/runs/{ctx.run_id}"
+    root = ctx.work_dir.resolve()
     for key, rel in result.artifacts.items():
+        if _safe_rel(key) is None:
+            continue
         storage_key = f"{prefix}/{key}".rstrip("/")
         source = local_artifact(ctx.work_dir, rel)
         if source is not None and source.is_dir():
             wrote = False
             for child in source.rglob("*"):
-                if child.is_file():
-                    suffix = child.relative_to(source).as_posix()
-                    ctx.storage.put_bytes(f"{storage_key}/{suffix}", child.read_bytes(), _ctype(child))
-                    wrote = True
+                if not child.is_file():
+                    continue
+                resolved = child.resolve()
+                if resolved != root and root not in resolved.parents:
+                    continue
+                suffix = child.relative_to(source).as_posix()
+                ctx.storage.put_bytes(f"{storage_key}/{suffix}", resolved.read_bytes(), _ctype(resolved))
+                wrote = True
             if not wrote:
                 ctx.storage.put_bytes(f"{storage_key}/.keep", b"", "application/octet-stream")
             stored[key] = f"{storage_key}/.keep"
@@ -79,6 +86,9 @@ def _publish(ctx: StageContext, result: StageResult) -> dict[str, str]:
             continue
         # A stage may return a storage key (WS-08 does today) or a work-dir path it
         # has not written yet. Never replace an existing object with empty bytes.
+        # A path outside the work dir is not a storage key; do not ask the backend.
+        if _safe_rel(rel) is None:
+            continue
         kept = existing_object(ctx.storage, rel, storage_key)
         if kept is not None:
             stored[key] = kept
