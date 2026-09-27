@@ -1464,6 +1464,39 @@
       "sha256": "378b68fed0f5cc4d5cf1a4b59041575e8a526b01cac824bd4f7f78811cffd8ef",
       "committed": false,
       "licence": "YouTube frames stay out of the public repo and the store. sha256 is a local tar of scrubbed packet JSON plus keyframes, streams and features. The tar and the packet JSON are not committed: exposure and pose numbers contain long digit runs. This tar also omits the GPS stream and the truth folder."
+    },
+    {
+      "id": "ios-kit-mini-arkit-lidar",
+      "kind": "packet_mini",
+      "repo_path": "ios-kit/fixtures/mini-arkit-lidar/packet.json",
+      "cache_path": null,
+      "source": "eth3d-electro arkit-lidar keyframes k00020:k00025, kit mini",
+      "bytes": 27801,
+      "sha256": "75bd350dc60cf3f6ab196c45329d06d604f8bf52f232e56a8a1373a692a9a0b2",
+      "committed": true,
+      "licence": "ETH3D CC BY-NC-SA 4.0, evaluation only"
+    },
+    {
+      "id": "ios-kit-mini-arkit",
+      "kind": "packet_mini",
+      "repo_path": "ios-kit/fixtures/mini-arkit/packet.json",
+      "cache_path": null,
+      "source": "eth3d-electro arkit-nonlidar keyframes k00020:k00025, kit mini",
+      "bytes": 21888,
+      "sha256": "72277a0c5d27f78aa8250c3da192fd9d4279f72fc1db721a50c73e8d089d26b3",
+      "committed": true,
+      "licence": "ETH3D CC BY-NC-SA 4.0, evaluation only"
+    },
+    {
+      "id": "ios-kit-mini-photo-only",
+      "kind": "packet_mini",
+      "repo_path": "ios-kit/fixtures/mini-photo-only/packet.json",
+      "cache_path": null,
+      "source": "eth3d-electro pose-free stills s00020:s00025, kit mini",
+      "bytes": 8730,
+      "sha256": "f381996738c178ec9d9bbab566150682724fe29e15d83e589f613e63df4fc764",
+      "committed": true,
+      "licence": "ETH3D CC BY-NC-SA 4.0, evaluation only"
     }
   ]
 }

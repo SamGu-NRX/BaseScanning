@@ -1,0 +1,74 @@
+{
+ "runId": "run_example_not_eligible",
+ "status": "complete",
+ "viewsNeeded": [],
+ "memberActions": [],
+ "outcome": {
+  "kind": "not_eligible",
+  "profile": "C",
+  "message": "This spot doesn't meet the installation rules.",
+  "viewsNeeded": [],
+  "reasons": [
+   {
+    "criterion": "drive_clearance",
+    "text": "The spot is closer than 3 ft to the driveway.",
+    "evidence": {
+     "images": [
+      "k00041"
+     ],
+     "boxesPx": [
+      [
+       120.0,
+       80.0,
+       420.0,
+       360.0
+      ]
+     ]
+    },
+    "measuredFt": 0.0,
+    "plusMinusFt": 0.3,
+    "thresholdFt": 3.0,
+    "comparison": "at_least"
+   }
+  ],
+  "arkitEpoch": "e1",
+  "frameToArkit": [
+   1.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   1.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   1.0,
+   0.0,
+   0.9831,
+   -1.4,
+   -3.25,
+   1.0
+  ]
+ },
+ "site": {
+  "decision": "reject",
+  "reasons": [
+   "drive_clearance"
+  ],
+  "profile": "C"
+ },
+ "scale": {
+  "source": "meter_model",
+  "status": "verified",
+  "relBound95": 0.014
+ },
+ "meter": {
+  "status": "not_captured",
+  "candidates": [],
+  "barcodeConfirmed": false,
+  "readersAgree": false,
+  "clean": false,
+  "value": null
+ }
+}

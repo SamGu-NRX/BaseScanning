@@ -1,5 +1,5 @@
 # `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
-.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci result-golden reads-gate reads-extra
+.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci ios-kit result-golden reads-gate reads-extra
 
 ONLY ?= small
 
@@ -33,6 +33,27 @@ validate-full:
 	uv run --frozen python scripts/validate_fixtures.py --full
 
 ci: lint test schemas hygiene validate
+
+# Refresh the committed schema copies and pack the zip the iOS team installs.
+ios-kit:
+	cp server/contracts/schemas/capture-packet.v0.4.schema.json ios-kit/schemas/capture-packet.v0.4.schema.json
+	cp server/contracts/schemas/result.v0.schema.json ios-kit/schemas/result.v0.schema.json
+	cp server/contracts/schemas/api.v1.schema.json ios-kit/schemas/api.v1.schema.json
+	cp server/contracts/schemas/capture-packet.v0.4.schema.json ios-kit/schema/capture-packet.schema.json
+	cp data/fixtures/packets/examples/example-packet.json ios-kit/examples/packets/example-packet.json
+	cp data/fixtures/packets/examples/example-packet-photo-only.json ios-kit/examples/packets/example-packet-photo-only.json
+	cp data/fixtures/packets/mini-arkit/packet.json ios-kit/examples/packets/example-packet-meter-stills.json
+	rm -rf dist/ios-kit-stage dist/ios-kit-0.4.0.zip
+	mkdir -p dist/ios-kit-stage/spec dist/ios-kit-stage/schema dist/ios-kit-stage/fixtures
+	cp ios-kit/README.md ios-kit/VERSION ios-kit/CHANGELOG.md ios-kit/requirements.txt dist/ios-kit-stage/
+	cp docs/capture-packet-spec.md dist/ios-kit-stage/spec/capture-packet-spec.md
+	cp -R ios-kit/schemas ios-kit/examples ios-kit/prompts ios-kit/packetgen dist/ios-kit-stage/
+	cp ios-kit/schema/capture-packet.schema.json dist/ios-kit-stage/schema/
+	cp ios-kit/fixtures/LICENCE-NOTES.md dist/ios-kit-stage/fixtures/
+	cp -R ios-kit/fixtures/mini-arkit ios-kit/fixtures/mini-arkit-lidar ios-kit/fixtures/mini-photo-only dist/ios-kit-stage/fixtures/
+	cd dist/ios-kit-stage && zip -qr ../ios-kit-0.4.0.zip . -x '*__pycache__*'
+	rm -rf dist/ios-kit-stage
+	cmp server/contracts/schemas/capture-packet.v0.4.schema.json ios-kit/schemas/capture-packet.v0.4.schema.json
 
 # Compose the committed synthetic fixture. ETH3D rows wait on make fixtures and make criteria-golden.
 result-golden:

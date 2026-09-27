@@ -42,6 +42,10 @@ reads = [
     "pydantic>=2.13.5",
     "jsonschema==4.26.0",
 ]
+ios-kit = [
+    "httpx>=0.28.1",
+    "uvicorn>=0.35.0",
+]
 
 [tool.uv]
 package = false
@@ -74,7 +78,7 @@ ignore = ["E501"]
 "{recon,scene,criteria}/e2e-*/**" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
 
 [tool.ruff.format]
-exclude = ["packet/**", "eval/**", "server/eval/**", "criteria/spec/**", "data/**", "recon/**", "scene/**", "criteria/c[1-3]-*/**", "criteria/e2e-*/**", "docs/**", "server/common/geometry.py", "server/poses/colmap_prior.py", "server/dense/dense.py", "server/dense/models.py", "server/scale/lidar.py", "server/coverage/occlusion.py", "server/packet/validate_legacy.py", "server/orchestrator/legacy_run_packet.py"]
+exclude = ["packet/**", "eval/**", "server/eval/**", "criteria/spec/**", "data/**", "recon/**", "scene/**", "criteria/c[1-3]-*/**", "criteria/e2e-*/**", "docs/**", "server/common/geometry.py", "server/poses/colmap_prior.py", "server/dense/dense.py", "server/dense/models.py", "server/scale/lidar.py", "server/coverage/occlusion.py", "server/packet/validate_legacy.py", "server/orchestrator/legacy_run_packet.py", "ios-kit/packetgen/**"]
 
 [dependency-groups]
 data = [
