@@ -179,7 +179,8 @@ def reach_outcome(length: float, error: float, confident: float, maximum: float)
     maximum, UNSURE in between or on either line."""
     if (length - error) - maximum > EPS:
         return FAIL
-    if confident - (length + error) > EPS:
+    # Clear of both lines: the rules keep confident <= maximum, and this holds regardless.
+    if min(confident, maximum) - (length + error) > EPS:
         return PASS
     return UNSURE
 

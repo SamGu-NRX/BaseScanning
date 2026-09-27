@@ -146,6 +146,17 @@ class Route(_Strict):
     corner_allowance_ft: Value
     crossing: dict[ObjectType, Effect]
 
+    @model_validator(mode="after")
+    def _confident_within_max(self) -> "Route":
+        # Past the confident reach a run goes to review, past the maximum it fails; a confident
+        # reach beyond the maximum would let a run over the maximum pass.
+        if self.confident_reach_ft.value > self.max_ft.value:
+            raise ValueError(
+                f"route.confident_reach_ft ({self.confident_reach_ft.value}) must not exceed "
+                f"route.max_ft ({self.max_ft.value})"
+            )
+        return self
+
 
 class Rules(_Strict):
     policy: Policy
@@ -286,8 +297,17 @@ def _placeholders_left(merged: dict[str, Any], private_keys: frozenset[str]) -> 
 
     def walk(node: dict[str, Any], path: str) -> None:
         if node.get("placeholder") is True:
-            private = any(p == path or p.startswith(f"{path}.") for p in private_keys)
-            if not private:
+            # A cited value is replaced when the private file sets it; a group (such as ground)
+            # only when it sets every child that decides something, not just one of them.
+            if "value" in node:
+                replaced = path in private_keys
+            else:
+                children = [k for k in node if k not in ("source", "placeholder")]
+                replaced = all(
+                    any(p == f"{path}.{k}" or p.startswith(f"{path}.{k}.") for p in private_keys)
+                    for k in children
+                )
+            if not replaced:
                 left.append(path)
             return
         for key, value in node.items():

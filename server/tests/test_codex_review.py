@@ -7,7 +7,7 @@ from helpers import at_start, observed_band, parsed, rect, shared_fixture
 from test_s4_round import PUBLIC, answer
 
 from rules import deep_merge, load_rules, public_rules_dict, rules_from_dict
-from solver import FAIL, PASS, UNSURE
+from solver import FAIL, PASS, UNSURE, reach_outcome
 
 W = 31 / 12
 
@@ -193,3 +193,46 @@ def test_walls_sharing_an_endpoint_still_meet() -> None:
     raw = two_walls(0.0)
     raw["walls"][1]["baseline"] = [[3, 0], [40, 0]]
     assert parsed(raw, PUBLIC).gaps == []
+
+
+# --- Codex review of 7133283 ----------------------------------------------------------------------
+
+
+def test_a_confident_reach_past_the_maximum_is_refused() -> None:
+    data = deep_merge(public_rules_dict(), {"route": {"confident_reach_ft": {"value": 30.0}}})
+    with pytest.raises(ValueError, match=r"route\.confident_reach_ft"):
+        rules_from_dict(data)
+
+
+def test_a_run_that_may_exceed_the_maximum_never_passes() -> None:
+    # Before: with confident reach 30 and maximum 20, a 21 ± 2 ft run passed.
+    assert reach_outcome(21.0, 2.0, 30.0, 20.0) != PASS
+    assert reach_outcome(10.0, 2.0, 30.0, 20.0) == PASS
+
+
+def test_a_wall_view_without_out_ft_reaches_headroom_height_only() -> None:
+    # Before: an omitted out_ft counted as infinite, so an 8 ft battery's back passed from it,
+    # while the same view declared at 6.5 ft (headroom height) went to review.
+    tall = rules_from_dict(
+        deep_merge(public_rules_dict(), {"battery": {"height_ft": {"value": 8.0}}})
+    )
+    raw = shared_fixture()
+    del raw["walls"][0]["height_ft"]
+    observed_band(raw, "wall", [(-40, 40)])  # no out_ft
+    omitted = at_start(raw, 6.0, "wall_backing", tall)
+    raw["coverage"]["observed"][-1]["out_ft"] = 6.5
+    declared = at_start(raw, 6.0, "wall_backing", tall)
+    assert (omitted.outcome, omitted.unsure_cause) == (UNSURE, "unobserved")
+    assert (declared.outcome, declared.unsure_cause) == (UNSURE, "unobserved")
+
+
+def test_an_omitted_wall_view_still_settles_every_public_check() -> None:
+    # Headroom height itself is enough for boxes and openings above the battery.
+    assert at_start(shared_fixture(), 6.0, "wall_equipment_above", PUBLIC).outcome == PASS
+
+
+def test_a_partial_ground_override_keeps_ground_surface_in_the_notice(tmp_path: Path) -> None:
+    # Before: setting only ground.drivable and ground.source hid the public ground.allowed.
+    private = tmp_path / "rules.yaml"
+    private.write_text("ground:\n  drivable: [drive]\n  source: 'test'\n")
+    assert "ground_surface" in (load_rules(private).rules.policy.notice or "")

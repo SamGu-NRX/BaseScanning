@@ -161,6 +161,8 @@ class Scene:
     observed: dict[str, list[tuple[float, float, float | None]]]
     end_kinds: dict[str, str]
     reach_ft: float  # how far out from the walls the outdoor area is modelled
+    # A wall view without out_ft reached headroom height (headroom.min_ft), per the contract.
+    wall_default_ft: float = math.inf
     _cache: dict[str, Any] = field(default_factory=dict, repr=False)
 
     # --- chain -----------------------------------------------------------------------------------
@@ -277,9 +279,16 @@ class Scene:
             [
                 (a, b)
                 for a, b, out in self.observed.get(band, [])
-                if up_to is None or out is None or out > up_to
+                if up_to is None
+                or (out is None and up_to <= self._default_reach(band) + EPS)
+                or (out is not None and out > up_to)
             ]
         )
+
+    def _default_reach(self, band: str) -> float:
+        """How high a view without out_ft reached: headroom height for the wall, which settles
+        every check that needs no more; all the way up for the other bands."""
+        return self.wall_default_ft if band == "wall" else math.inf
 
     def missing(
         self, band: str, s_lo: float, s_hi: float, up_to: float | None = None
@@ -802,6 +811,7 @@ def parse_scene(raw: dict[str, Any], rules: Rules, input_bytes: bytes | None = N
         observed={},
         end_kinds={"left": "unexplored", "right": "unexplored"},
         reach_ft=reach,
+        wall_default_ft=rules.headroom.min_ft.value,
     )
 
     # What each end is decides where an object without a footprint can be placed, so it is read
