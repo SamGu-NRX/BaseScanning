@@ -8,16 +8,18 @@ Diff this block when the deployment changes. Keep the seven field names and thei
 
 | Field | Value |
 | --- | --- |
-| Updated UTC | 2026-09-27T03:19:47Z |
+| Updated UTC | 2026-09-27T03:30:22Z |
 | Live URL | `https://huntertcarver-dev--capture-api.modal.run` (routes under `/v1`) |
 | Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","wifTokenExpiresAt":"2026-09-29T03:14:16.000Z","version":"41a0880bc928"}`. No `Authorization` header. Checked 2026-09-27T03:19:47Z. |
-| Milestone | M1. The live image is `41a0880` (`main` at PR 56), which includes the capture routes (PR 34) and WS-03 (PR 29, stage stubs in-process). PR 57 (`bcc1baf`) and PR 59 (`8421c8b`) are on `main` and are not in this image. M2 is not live. |
-| What works | Health check above. A missing capture without `Authorization` returns `404 {"errors":[{"code":"capture_not_found"}]}` (auth off, SD-86), rechecked 2026-09-27T03:19:47Z. Those routes are on this live image. |
-| What's placeholder | Stage handlers may be stubs until M2 (`server/orchestrator/stubs` on `main`; SD-73, SD-81). Multipart completion returns `501 multipart_not_implemented` (follow-up branch `ws-01/multipart`). No APNs push and no outbound webhook; poll `GET /events`. Live state backend is `memory`, storage is `gcs`. This image does not include PR 57 or PR 59. On `main`, dev with `HSS_AUTH_MODE` unset is auth mode `none` (PR 59). |
-| Breaking changes since last update | Live version moved from `e8b7bcb87cc0` to `41a0880bc928`. The missing-capture response is unchanged. |
+| Milestone | M1 live. A no-token `make e2e-dev` against the live URL (image `41a0880`, GCS, auth off) returned a schema-valid `ResultResponse`: capture `cap_01M3GEDBNXKEZ5AWD6BR3GYRHW`, run `run_9b0b07f08045853f`, `manual_review`, 59 s end to end, stub stages. M2 is not live. |
+| What works | Health check above. The M1 run above completed with no `Authorization` header. A missing capture without that header returns `404 {"errors":[{"code":"capture_not_found"}]}`. |
+| What's placeholder | All processing stages are stubs. Known limitation: finalize currently takes about 60 s to respond, and a fix is coming. Multipart completion returns `501 multipart_not_implemented` (follow-up branch `ws-01/multipart`). No APNs push and no outbound webhook; poll `GET /events`. Live state backend is `memory`, storage is `gcs`. This image does not include later `main` commits (PR 35, PR 53, PR 57, PR 59). |
+| Breaking changes since last update | none. The live image is unchanged. |
 
 ## Changelog
 
+- 2026-09-27T03:30:22Z — M1 passed on the live URL. No-token `make e2e-dev` against image `41a0880` returned a schema-valid `ResultResponse` (`manual_review`, stub stages, 59 s). Finalize currently takes about 60 s to respond; a fix is coming. PR 53 is on `main` (`87b7c60`) and is not in this image.
+- 2026-09-27T03:28:30Z — PR 35 is on `main` (`0a7878b`, scale layer). The live image is still `41a0880bc928` and was not rebuilt.
 - 2026-09-27T03:19:47Z — Live health is version `41a0880bc928` (`main` at PR 56). A missing capture with no `Authorization` header is still `404 capture_not_found`. PR 57 (`bcc1baf`) and PR 59 (`8421c8b`) are on `main` and are not in this image.
 - 2026-09-27T03:14:29Z — PR 34 is on `main` (`93638bf`), so the capture routes are no longer waiting on that PR. PR 29 stays on `main` (`6f5ff86`). Live health rechecked at 03:13:03Z: still version `e8b7bcb87cc0`. PR 55 is on `main` (`e941928`): kit replay sends no `Authorization` header when `CAPTURE_API_TOKEN` is unset. PR 54 is on `main` (`321e482`).
 - 2026-09-27T03:06:17Z — First note. Demo auth is off. Live health: `storage=gcs`, `state=memory`, version `e8b7bcb87cc0`. Capture routes are deployed on that image and coming with PR 34 onto `main`. iOS kit is on `main` via merged PR 43. Kit replay still requires `CAPTURE_API_TOKEN` on `main`; dropping that header is open PR 55.
