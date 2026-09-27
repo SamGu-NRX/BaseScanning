@@ -51,6 +51,7 @@ def markdown(report: GateReport) -> str:
     lines += [
         "",
         f"summary: pass {summary.get('pass', 0)}, fail {summary.get('fail', 0)}, "
+        f"known_fail {summary.get('known_fail', 0)}, "
         f"warn {summary.get('warn', 0)}, skip {summary.get('skip', 0)}",
     ]
     return "\n".join(lines) + "\n"

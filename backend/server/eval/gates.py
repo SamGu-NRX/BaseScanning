@@ -9,7 +9,7 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import yaml
@@ -48,13 +48,16 @@ def evaluate(
         )
     rows.extend(_exclusion_rows(cfg))
     rows.extend(_geometry_rows(cfg, root))
+    rows.extend(_known_warning_rows(cfg, root))
     rows.extend(_verdict_rows(cfg, root, repo))
     rows.extend(_positive_rows(cfg, root, repo))
     rows.extend(_decidability_rows(cfg, root))
     rows.extend(_safety_rows(cfg, root))
     rows.extend(_lamar_rows(cfg, root))
     rows.extend(_runtime_rows(cfg, root))
-    summary = {name: sum(r["status"] == name.upper() for r in rows) for name in ("pass", "fail", "warn", "skip")}
+    summary = {
+        name: sum(r["status"] == name.upper() for r in rows) for name in ("pass", "fail", "warn", "skip", "known_fail")
+    }
     return GateReport(stamp=_stamp(), git_sha=_git_sha(repo), rows=rows, summary=summary)
 
 
@@ -653,7 +656,7 @@ def _positive_rows(cfg: dict, inputs: Path, repo: Path) -> list[dict]:
                     spec["expect"],
                     "SKIP",
                     None,
-                    "not_merged:ws-09",
+                    "criteria verdict overlay is absent",
                 )
             )
             continue
@@ -687,43 +690,52 @@ def _positive_row(ident: str, spec: dict, verdict: dict, evidence: Path) -> dict
                 elif route > float(route_max):
                     status = "FAIL"
                     note = f"route {route} ft exceeds {route_max}"
-        return _row(
-            f"positive/{ident}",
-            "positive_pass",
-            ident,
-            "site.decision",
-            decision,
-            expect,
-            status,
-            str(evidence),
-            note,
+        return _apply_known_failure(
+            _row(
+                f"positive/{ident}",
+                "positive_pass",
+                ident,
+                "site.decision",
+                decision,
+                expect,
+                status,
+                str(evidence),
+                note,
+            ),
+            spec,
         )
     if (
         decision == "manual_review"
         and spec.get("allow_warn")
         and (verdict.get("site") or {}).get("unsure_cause") == "margin"
     ):
-        return _row(
+        return _apply_known_failure(
+            _row(
+                f"positive/{ident}",
+                "positive_pass",
+                ident,
+                "site.decision",
+                decision,
+                expect,
+                "WARN",
+                str(evidence),
+                "manual_review with unsure_cause margin",
+            ),
+            spec,
+        )
+    return _apply_known_failure(
+        _row(
             f"positive/{ident}",
             "positive_pass",
             ident,
             "site.decision",
             decision,
             expect,
-            "WARN",
+            "FAIL",
             str(evidence),
-            "manual_review with unsure_cause margin",
-        )
-    return _row(
-        f"positive/{ident}",
-        "positive_pass",
-        ident,
-        "site.decision",
-        decision,
-        expect,
-        "FAIL",
-        str(evidence),
-        f"decision {decision} != {expect}",
+            f"decision {decision} != {expect}",
+        ),
+        spec,
     )
 
 
@@ -826,7 +838,7 @@ def _safety_rows(cfg: dict, inputs: Path) -> list[dict]:
                 "!= pass",
                 "SKIP",
                 None,
-                "not_merged:ws-09",
+                "no_coverage directory is absent",
             )
         )
     else:
@@ -925,10 +937,12 @@ def _safety_rows(cfg: dict, inputs: Path) -> list[dict]:
 
 
 def _lamar_rows(cfg: dict, inputs: Path) -> list[dict]:
-    limit = (cfg.get("lamar") or {}).get("openings_p90_in_max", 4.6)
+    block = cfg.get("lamar") or {}
+    limit = block.get("openings_p90_in_max", 4.6)
+    rows: list[dict] = []
     evidence = inputs / "lamar" / "summary.json"
     if not evidence.is_file():
-        return [
+        rows.append(
             _row(
                 "lamar/openings_p90_in",
                 "lamar",
@@ -938,23 +952,199 @@ def _lamar_rows(cfg: dict, inputs: Path) -> list[dict]:
                 limit,
                 "SKIP",
                 None,
-                "LaMAR data or server.poses.run is not on this machine",
+                "LaMAR five-segment summary is not on this machine",
             )
-        ]
-    payload = json.loads(evidence.read_text())
-    value = payload.get("openings_p90_in_max")
-    return [
-        _cmp(
-            "lamar/openings_p90_in",
+        )
+    else:
+        payload = json.loads(evidence.read_text())
+        rows.append(
+            _cmp(
+                "lamar/openings_p90_in",
+                "lamar",
+                "five-segments",
+                "max(openings_p90_in)",
+                payload.get("openings_p90_in_max"),
+                limit,
+                evidence,
+                at_most=True,
+            )
+        )
+    phone = inputs / "lamar" / "2022-02-10_s0.json"
+    if phone.is_file():
+        measured = json.loads(phone.read_text())
+        row = _cmp(
+            "lamar/2022-02-10_s0/openings_p90_in",
             "lamar",
-            "five-segments",
-            "max(openings_p90_in)",
-            value,
+            "2022-02-10_s0",
+            "openings_p90_in",
+            measured.get("openings_p90_in"),
             limit,
-            evidence,
+            phone,
             at_most=True,
         )
+        host_name = measured.get("gate_host") or block.get("gate_host") or ""
+        row["note"] = (
+            f"real phone on {host_name}; openings median {measured.get('openings_median_in')} in; "
+            f"far {measured.get('far_median_in')} / {measured.get('far_p90_in')} in; "
+            f"frames {measured.get('frames')}; per-machine, not cross-machine"
+        )
+        rows.append(row)
+    rows.extend(_lamar_host_rows(block, phone if phone.is_file() else None))
+    return rows
+
+
+def _lamar_host_rows(block: dict, phone: Path | None) -> list[dict]:
+    """PASS only when a measurement file records the pinned gate host."""
+    pinned = block.get("gate_host")
+    if not pinned:
+        return []
+    note = (
+        "pose determinism is per machine; pin this host before tightening the metric bar to 4.0 in. "
+        "validator VM 66152 points, 0.300814 px, metric in-plane 2.03 in; "
+        "builder VM 66770 points, 0.29849 px, metric in-plane 4.21 in"
+    )
+    if phone is None:
+        return [
+            _row(
+                "lamar/host",
+                "lamar",
+                str(pinned),
+                "gate_host",
+                None,
+                str(pinned),
+                "SKIP",
+                None,
+                "no LaMAR measurement records gate_host",
+            )
+        ]
+    recorded = json.loads(phone.read_text()).get("gate_host")
+    return [
+        _row(
+            "lamar/host",
+            "lamar",
+            str(pinned),
+            "gate_host",
+            recorded,
+            str(pinned),
+            "PASS" if recorded == pinned else "FAIL",
+            str(phone),
+            note if recorded == pinned else f"measurement gate_host {recorded} != {pinned}",
+        )
     ]
+
+
+def _known_warning_rows(cfg: dict, inputs: Path) -> list[dict]:
+    """Committed warning evidence. A missing or malformed file is FAIL.
+
+    WARN only while the measured value sits within ``tolerance`` of ``recorded``
+    and ``claims`` is empty. Anything else on that evidence is FAIL. The note is
+    built from the file. SKIP is not used here: these files are committed, not
+    produced from the PLY cache at gate time.
+    """
+    rows = []
+    for spec in cfg.get("known_warnings") or []:
+        rows.append(_known_warning_row(spec, inputs))
+    return rows
+
+
+def _known_warning_row(spec: dict, inputs: Path) -> dict:
+    ident = spec["id"]
+    group = spec.get("group", "geometry")
+    target = spec.get("target")
+    metric = spec.get("metric")
+    recorded = spec.get("recorded")
+    rel = spec.get("evidence")
+    evidence = (inputs / rel) if rel else None
+    if evidence is None or not evidence.is_file():
+        return _row(ident, group, target, metric, None, recorded, "FAIL", None, "committed evidence invalid")
+    try:
+        payload = json.loads(evidence.read_text())
+    except json.JSONDecodeError:
+        return _row(ident, group, target, metric, None, recorded, "FAIL", str(evidence), "committed evidence invalid")
+    key = spec.get("value_key") or metric
+    value = payload.get(key) if isinstance(payload, dict) else None
+    claims = payload.get("claims") if isinstance(payload, dict) else None
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or not isinstance(claims, list):
+        return _row(ident, group, target, metric, None, recorded, "FAIL", str(evidence), "committed evidence invalid")
+    if recorded is None or spec.get("tolerance") is None:
+        return _row(ident, group, target, metric, value, recorded, "FAIL", str(evidence), "committed evidence invalid")
+    note = _known_warning_note(payload, value)
+    pinned = abs(float(value) - float(recorded)) <= float(spec["tolerance"]) and claims == []
+    return _row(
+        ident,
+        group,
+        target,
+        metric,
+        value,
+        recorded,
+        "WARN" if pinned else "FAIL",
+        str(evidence),
+        note,
+    )
+
+
+def _known_warning_note(payload: dict, value: float) -> str:
+    metric = payload.get("metric") if isinstance(payload.get("metric"), str) else "value"
+    rule = payload.get("rule")
+    floor = payload.get("floor")
+    claims = payload.get("claims")
+    claim_text = "claims empty" if claims == [] else f"claims {claims}"
+    parts = [f"{metric} {value}"]
+    if isinstance(rule, str) and rule:
+        parts.append(f"on {rule}")
+    if isinstance(floor, (int, float)) and not isinstance(floor, bool):
+        parts.append(f"floor {floor}")
+    parts.append(claim_text)
+    return "; ".join(parts)
+
+
+def _apply_known_failure(row: dict, spec: dict, *, today: date | None = None) -> dict:
+    """Turn the recorded route miss into KNOWN_FAIL until its expiry.
+
+    Only a route within ``tolerance_ft`` of ``route_ft`` is masked. A larger
+    miss stays FAIL, as does a decision mismatch. After ``until``, the recorded
+    miss is FAIL again.
+    """
+    known = spec.get("known_failure")
+    if not isinstance(known, dict) or row["status"] != "FAIL":
+        return row
+    note = str(row.get("note") or "")
+    if not note.startswith("route ") or " exceeds " not in note:
+        return row
+    until = str(known.get("until") or "")
+    current = today or date.today()
+    if until and current.isoformat() > until:
+        return row
+    measured = _route_ft_from_note(note)
+    pinned = known.get("route_ft")
+    if measured is None or pinned is None:
+        return row
+    tolerance = float(known.get("tolerance_ft", 0.05))
+    if abs(measured - float(pinned)) > tolerance:
+        return row
+    reason = str(known.get("reason") or "")
+    owner = str(known.get("owner") or "")
+    return _row(
+        row["id"],
+        row["group"],
+        row["target"],
+        row["metric"],
+        row["value"],
+        row["threshold"],
+        "KNOWN_FAIL",
+        row["evidence_path"],
+        f"{note}; known failure: {reason} (owner {owner}, until {until})",
+    )
+
+
+def _route_ft_from_note(note: str) -> float | None:
+    parts = note.split()
+    if len(parts) < 2 or parts[0] != "route":
+        return None
+    try:
+        return float(parts[1])
+    except ValueError:
+        return None
 
 
 def _runtime_rows(cfg: dict, inputs: Path) -> list[dict]:

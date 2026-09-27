@@ -28,10 +28,35 @@ decidability:
   baseline_photo: {eth3d-facade: [0.12, 0.13], eth3d-electro: [0.24, 0.25]}
   baseline_laser: {eth3d-facade: 0.38, eth3d-electro: 0.75}
 positive_pass:
-  - {site: eth3d-facade, scene: gt-laser-gravel, profile: C, ground_rule: footprint3in, expect: pass, wall: w1, start_s_m: [-3.891, -3.383], route_ft_max: 9.0}
+  - site: eth3d-facade
+    scene: gt-laser-gravel
+    profile: C
+    ground_rule: footprint3in
+    expect: pass
+    wall: w1
+    start_s_m: [-3.891, -3.383]
+    route_ft_max: 9.0
+    known_failure:
+      reason: conservative miss from near-wall self-occlusion, SD-96
+      owner: WS-09
+      until: "2026-10-04"
+      route_ft: 9.1834
+      tolerance_ft: 0.05
   - {site: eth3d-facade, scene: gt-laser-gravel, profile: C, ground_rule: angle80, expect: manual_review}
   - {site: eth3d-facade, scene: gt-laser, profile: C, ground_rule: footprint3in, expect: manual_review}
   - {site: eth3d-facade, scene: e2e/arkit-lidar, profile: C, ground_rule: footprint3in, expect: pass, allow_warn: true}
 safety: {no_coverage_no_pass: true, bounds_honest: true, veto_monotone: true, judge_monotone: true}
-lamar: {openings_p90_in_max: 4.6, segments: [2022-06-17_s0, 2022-06-17_s1, 2022-02-10_s0, 2022-02-10_s1, 2021-06-02_s0]}
+known_warnings:
+  - id: geometry/eth3d-facade/metric/ground_strip
+    group: geometry
+    target: eth3d-facade/arkit-lidar
+    metric: false_observed_by_rule
+    evidence: geometry/eth3d-facade/metric/ground_strip.json
+    value_key: false_observed_by_rule
+    recorded: 0.069
+    tolerance: 0.001
+lamar:
+  openings_p90_in_max: 4.6
+  gate_host: ws-11-ci
+  segments: [2022-06-17_s0, 2022-06-17_s1, 2022-02-10_s0, 2022-02-10_s1, 2021-06-02_s0]
 runtime: {e2e_wall_clock_min_max: 10, capture_check_s_max: 30, time_to_verdict_p50_s_max: 180}

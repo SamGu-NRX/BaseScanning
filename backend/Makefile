@@ -1,5 +1,5 @@
 # `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
-.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci gates-offline e2e e2e-local lamar criteria-golden e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra weights
+.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci gates-offline gates-update e2e e2e-local lamar criteria-golden e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra weights
 
 ONLY ?= small
 
@@ -41,8 +41,13 @@ validate-full:
 
 ci: lint test schemas hygiene validate
 
+# Scores the committed fixtures. Producers write under runs/ unless --update.
 gates-offline:
-	nice -n 10 uv run python -m server.eval.cli gates --config server/eval/gates.yaml --inputs data/fixtures --out runs/gates-offline/gates.json
+	nice -n 10 uv run --frozen python -m server.eval.cli gates --config server/eval/gates.yaml --inputs data/fixtures --out runs/gates-offline/gates.json
+
+gates-update:
+	uv run --frozen python -m server.eval.producers --update --inputs data/fixtures
+	$(MAKE) gates-offline
 
 e2e:
 	nice -n 10 uv run python -m server.eval.e2e --config server/eval/gates.yaml --inputs data/fixtures --out runs/e2e/latest

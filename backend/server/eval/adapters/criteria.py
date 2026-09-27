@@ -33,6 +33,8 @@ class CriteriaConfig:
     ground_rule: str = "footprint3in"
     c2: bool = True
     c3: bool = True
+    # None keeps the engine default (absent photo facts force review).
+    absent_facts: str | None = None
 
 
 def evaluate_scene(
@@ -49,12 +51,15 @@ def evaluate_scene(
     cfg = config or CriteriaConfig()
     # WS-09's CriteriaConfig.profiles is a tuple. The engine writes
     # criteria_report.json with decidability.<profile>.share and returns verdicts.
-    engine_cfg = engine.CriteriaConfig(
-        profiles=tuple(cfg.profiles),
-        ground_rule=cfg.ground_rule,
-        c2=cfg.c2,
-        c3=cfg.c3,
-    )
+    engine_kwargs = {
+        "profiles": tuple(cfg.profiles),
+        "ground_rule": cfg.ground_rule,
+        "c2": cfg.c2,
+        "c3": cfg.c3,
+    }
+    if cfg.absent_facts is not None:
+        engine_kwargs["absent_facts"] = cfg.absent_facts
+    engine_cfg = engine.CriteriaConfig(**engine_kwargs)
     produced = engine.evaluate_scene(scene_dir, out_dir, reads=reads, config=engine_cfg)
     for profile, verdict in produced.items():
         if profile not in _PROFILES:

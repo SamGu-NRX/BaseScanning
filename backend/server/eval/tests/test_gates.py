@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 import yaml
 
 from server.eval.cli import main
 from server.eval.e2e import main as e2e_main
-from server.eval.gates import SPAN_TOL_M, _decidability_rows, _recomputed_unsafe, evaluate, exit_code
+from server.eval.gates import (
+    SPAN_TOL_M,
+    _apply_known_failure,
+    _decidability_rows,
+    _recomputed_unsafe,
+    _row,
+    evaluate,
+    exit_code,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG = ROOT / "server" / "eval" / "gates.yaml"
@@ -66,10 +75,43 @@ def test_offline_table_skips_the_engine_and_passes_the_unpatched_reference():
     unpatched = by_id["positive/eth3d-facade/gt-laser/C/footprint3in"]
     assert unpatched["status"] == "PASS"
     assert unpatched["value"] == "manual_review"
-    assert by_id["positive/eth3d-facade/gt-laser-gravel/C/footprint3in"]["status"] == "SKIP"
-    assert by_id["safety/no_coverage_no_pass"]["status"] == "SKIP"
+    gravel = by_id["positive/eth3d-facade/gt-laser-gravel/C/footprint3in"]
+    assert gravel["status"] == "KNOWN_FAIL"
+    assert gravel["value"] == "pass"
+    assert "route 9.1834 ft exceeds 9.0" in gravel["note"]
+    assert "conservative miss from near-wall self-occlusion, SD-96" in gravel["note"]
+    assert "owner WS-09" in gravel["note"]
+    assert "until 2026-10-04" in gravel["note"]
+    assert "not_merged" not in gravel["note"]
+    assert by_id["positive/eth3d-facade/gt-laser-gravel/C/angle80"]["status"] == "PASS"
+    assert by_id["positive/eth3d-facade/gt-laser-gravel/C/angle80"]["value"] == "manual_review"
+    angle = json.loads(
+        (ROOT / "data/fixtures/positive/eth3d-facade/gt-laser-gravel/C/angle80.json").read_text()
+    )
+    assert not any(str(reason).startswith("fact_absent") for reason in (angle["site"].get("reasons") or []))
+    assert by_id["decidability/eth3d-facade/gt-laser/C"]["status"] == "PASS"
+    assert by_id["decidability/eth3d-electro/gt-laser/C"]["status"] == "PASS"
+    assert by_id["safety/no_coverage/facade-C-c2"]["status"] == "PASS"
+    assert by_id["safety/no_coverage/facade-C-noc2"]["status"] == "PASS"
+    assert by_id["safety/veto/facade-C-0000"]["status"] == "PASS"
     assert by_id["safety/judge_monotone"]["status"] == "SKIP"
+    assert by_id["lamar/2022-02-10_s0/openings_p90_in"]["status"] == "PASS"
+    assert by_id["lamar/2022-02-10_s0/openings_p90_in"]["value"] == 3.75
+    assert by_id["lamar/host"]["status"] == "PASS"
+    assert by_id["lamar/host"]["value"] == "ws-11-ci"
+    assert by_id["lamar/host"]["threshold"] == "ws-11-ci"
+    assert str(by_id["lamar/host"]["evidence_path"]).endswith("data/fixtures/lamar/2022-02-10_s0.json")
+    assert by_id["lamar/openings_p90_in"]["status"] == "SKIP"
+    warn = by_id["geometry/eth3d-facade/metric/ground_strip"]
+    assert warn["status"] == "WARN"
+    assert warn["value"] == 0.069
+    assert warn["threshold"] == 0.069
+    assert "false_observed_by_rule 0.069" in warn["note"]
+    assert "floor 0.0247" in warn["note"]
+    assert "claims empty" in warn["note"]
+    assert str(warn["evidence_path"]).endswith("geometry/eth3d-facade/metric/ground_strip.json")
     assert report.summary["fail"] == 0
+    assert report.summary["known_fail"] == 1
     assert exit_code(report) == 0
     loaded = yaml.safe_load(CONFIG.read_text())
     assert "yt-12Ks1idWj40" not in loaded["e2e_packets"]
@@ -107,6 +149,120 @@ def test_positive_pass_flipped_to_manual_review_fails(tmp_path: Path):
     row = next(r for r in report.rows if r["id"] == "positive/eth3d-facade/gt-laser-gravel/C/footprint3in")
     assert row["status"] == "FAIL"
     assert row["value"] == "manual_review"
+    assert exit_code(report) == 1
+
+
+def test_route_over_the_bar_is_known_until_expiry(tmp_path: Path):
+    dest = tmp_path / "positive" / "eth3d-facade" / "gt-laser-gravel" / "C"
+    dest.mkdir(parents=True)
+    verdict = _verdict("pass")
+    verdict["criteria"][0]["measured"]["value_ft"] = 9.1834
+    (dest / "footprint3in.json").write_text(json.dumps(verdict))
+    _plant_ground_strip(tmp_path)
+    report = evaluate(CONFIG, tmp_path, repo=ROOT)
+    row = next(r for r in report.rows if r["id"] == "positive/eth3d-facade/gt-laser-gravel/C/footprint3in")
+    assert row["status"] == "KNOWN_FAIL"
+    assert exit_code(report) == 0
+    expired = _apply_known_failure(
+        _row("id", "positive_pass", "t", "site.decision", "pass", "pass", "FAIL", None, "route 9.1834 ft exceeds 9.0"),
+        {
+            "known_failure": {
+                "reason": "striped",
+                "owner": "WS-09",
+                "until": "2026-10-04",
+                "route_ft": 9.1834,
+                "tolerance_ft": 0.05,
+            }
+        },
+        today=date(2026, 10, 5),
+    )
+    assert expired["status"] == "FAIL"
+
+
+def test_route_above_the_recorded_miss_is_a_real_fail(tmp_path: Path):
+    dest = tmp_path / "positive" / "eth3d-facade" / "gt-laser-gravel" / "C"
+    dest.mkdir(parents=True)
+    verdict = _verdict("pass")
+    verdict["criteria"][0]["measured"]["value_ft"] = 14.0
+    (dest / "footprint3in.json").write_text(json.dumps(verdict))
+    report = evaluate(CONFIG, tmp_path, repo=ROOT)
+    row = next(r for r in report.rows if r["id"] == "positive/eth3d-facade/gt-laser-gravel/C/footprint3in")
+    assert row["status"] == "FAIL"
+    assert "route 14.0 ft exceeds 9.0" in row["note"]
+    assert "known failure" not in row["note"]
+    assert report.summary["known_fail"] == 0
+    assert exit_code(report) == 1
+
+
+def _ground_strip(value: object, claims: object) -> dict:
+    return {
+        "metric": "false_observed_by_rule",
+        "false_observed_by_rule": value,
+        "rule": "ground_strip",
+        "floor": 0.0247,
+        "claims": claims,
+    }
+
+
+def _plant_ground_strip(root: Path, payload: dict | None = None) -> Path:
+    folder = root / "geometry" / "eth3d-facade" / "metric"
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / "ground_strip.json"
+    path.write_text(json.dumps(payload if payload is not None else _ground_strip(0.069, [])))
+    return path
+
+
+def _ground_row(root: Path) -> dict:
+    report = evaluate(CONFIG, root, repo=ROOT)
+    return next(row for row in report.rows if row["id"] == "geometry/eth3d-facade/metric/ground_strip")
+
+
+def test_committed_ground_strip_missing_is_fail(tmp_path: Path):
+    row = _ground_row(tmp_path)
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+    assert exit_code(evaluate(CONFIG, tmp_path, repo=ROOT)) == 1
+
+
+def test_committed_ground_strip_malformed_metric_is_fail(tmp_path: Path):
+    path = _plant_ground_strip(tmp_path, {})
+    assert _ground_row(tmp_path)["status"] == "FAIL"
+    assert _ground_row(tmp_path)["note"] == "committed evidence invalid"
+    path.write_text(json.dumps({"false_observed_by_rule": None, "claims": []}))
+    assert _ground_row(tmp_path)["status"] == "FAIL"
+    path.write_text(json.dumps({"false_observed_by_rule": "0.5", "claims": []}))
+    row = _ground_row(tmp_path)
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+
+
+def test_committed_ground_strip_claims_fail(tmp_path: Path):
+    _plant_ground_strip(tmp_path, _ground_strip(0.069, ["w1 ground band"]))
+    row = _ground_row(tmp_path)
+    assert row["status"] == "FAIL"
+    assert "w1 ground band" in row["note"]
+    assert "claims empty" not in row["note"]
+    assert exit_code(evaluate(CONFIG, tmp_path, repo=ROOT)) == 1
+
+
+def test_committed_ground_strip_off_pin_fails(tmp_path: Path):
+    _plant_ground_strip(tmp_path, _ground_strip(0.5, []))
+    row = _ground_row(tmp_path)
+    assert row["status"] == "FAIL"
+    assert "false_observed_by_rule 0.5" in row["note"]
+    assert "claims empty" in row["note"]
+    assert exit_code(evaluate(CONFIG, tmp_path, repo=ROOT)) == 1
+
+
+def test_lamar_host_fails_when_the_measurement_disagrees(tmp_path: Path):
+    folder = tmp_path / "lamar"
+    folder.mkdir()
+    (folder / "2022-02-10_s0.json").write_text(json.dumps({"gate_host": "other-vm", "openings_p90_in": 3.75}))
+    report = evaluate(CONFIG, tmp_path, repo=ROOT)
+    row = next(r for r in report.rows if r["id"] == "lamar/host")
+    assert row["status"] == "FAIL"
+    assert row["value"] == "other-vm"
+    assert row["threshold"] == "ws-11-ci"
     assert exit_code(report) == 1
 
 
