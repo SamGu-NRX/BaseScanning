@@ -19,6 +19,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+import shapely
 from jsonschema import Draft202012Validator
 from shapely import Geometry, LineString, Point, Polygon, unary_union
 from shapely.validation import explain_validity
@@ -302,21 +303,41 @@ class Scene:
 
     def unobserved_ground(self) -> Geometry:
         if "ground" not in self._cache:
-            lo, hi = self.pieces[0].s0, self.pieces[-1].s1
-            outdoor = self.band_polygon(lo, hi, self.reach_ft)
-            seen = unary_union(
-                [
-                    self.band_polygon(a, b, out or 0.0)
-                    for a, b, out in self.observed.get("ground", [])
-                ]
-            )
-            # Growing what was seen by half the tolerance closes gaps between observed spans
-            # narrower than it, as missing() ignores them for the 1D bands.
-            unseen = outdoor.difference(seen.buffer(COVERAGE_TOLERANCE_FT / 2))
-            self._cache["ground"] = unary_union([unseen, *self._unexplored_discs()])
+            self._cache["ground"] = self.unobserved_ground_given(self.observed.get("ground", []))
         return self._cache["ground"]
 
-    def _unexplored_discs(self) -> list[Geometry]:
+    def unobserved_ground_given(self, ground: list[tuple[float, float, float | None]]) -> Geometry:
+        """The ground nobody saw, given these ground views: what unobserved_ground is for the
+        scene's own views, and what a request is checked against with its capture added."""
+        lo, hi = self.pieces[0].s0, self.pieces[-1].s1
+        # Behind a scanned wall is the house: at an inside corner one wall's strip reaches back
+        # across the other's line, and that ground no view in front of a wall can show.
+        outdoor = self.band_polygon(lo, hi, self.reach_ft).difference(self.house())
+        seen = unary_union([self.band_polygon(a, b, out or 0.0) for a, b, out in ground])
+        # Growing what was seen by half the tolerance closes gaps between observed spans
+        # narrower than it, as missing() ignores them for the 1D bands.
+        unseen = outdoor.difference(seen.buffer(COVERAGE_TOLERANCE_FT / 2))
+        # Remove anything thinner than the tolerance (seams where the strips and corner wedges
+        # of two polygons meet, even when they spur off a larger unseen area): no view can be
+        # requested for it, so it would leave a check that nothing settles. Shrinking and
+        # regrowing by half the tolerance does that and moves the rest of the boundary by at
+        # most that much, the same allowance the seen strips get above.
+        half = COVERAGE_TOLERANCE_FT / 2
+        unseen = unseen.buffer(-half, join_style="mitre").buffer(half, join_style="mitre")
+        return unary_union([unseen, *self._unexplored_discs(ground)])
+
+    def house(self) -> Geometry:
+        """Behind each scanned wall segment, out to the modelled reach: the house itself, not
+        ground a hazard could hide on."""
+        if "house" not in self._cache:
+            self._cache["house"] = unary_union(
+                [p.rect(p.s0, p.s1, -self.reach_ft, 0.0) for p in self.walls]
+            )
+        return self._cache["house"]
+
+    def _unexplored_discs(
+        self, ground: list[tuple[float, float, float | None]] | None = None
+    ) -> list[Geometry]:
         """Round an unexplored end the walls may turn any way, so the straight extension past it
         proves nothing: everything within reach of that end counts as unseen, except ground in
         front of the scanned walls that was actually observed and the house behind them."""
@@ -331,12 +352,10 @@ class Scene:
         seen_in_front = unary_union(
             [
                 self.band_polygon(max(a, self.s_min), min(b, self.s_max), out or 0.0)
-                for a, b, out in self.observed.get("ground", [])
+                for a, b, out in (self.observed.get("ground", []) if ground is None else ground)
             ]
         ).buffer(COVERAGE_TOLERANCE_FT / 2)
-        # Behind a scanned segment is the house itself, not ground a hazard could hide on.
-        behind = unary_union([p.rect(p.s0, p.s1, -self.reach_ft, 0.0) for p in self.walls])
-        known = unary_union([seen_in_front, behind])
+        known = unary_union([seen_in_front, self.house()])
         return [d.difference(known) for d in discs]
 
     def seen_to(self, band: str, s_lo: float, s_hi: float) -> float:
@@ -367,6 +386,42 @@ class Scene:
         ]
         return max((line.distance(p) for p in points), default=0.0)
 
+    def view_to_cover(
+        self, region: Geometry, s_lo: float, s_hi: float
+    ) -> tuple[float, float, float]:
+        """The ground view (s_lo, s_hi, out_ft) after which none of `region` is unseen, with the
+        smallest depth, found by bisection on exactly the geometry the checks use, so capturing
+        it settles the request in one round. The region's distance from the chain's lines is
+        not enough: near a corner a point can be close to one line but in front of another
+        wall, and past an unexplored end only ground in front of the scanned walls counts. A
+        span ending exactly at a convex corner misses the wedge in front of it, so if no depth
+        settles the region the span is widened by the tolerance at both ends and tried again."""
+        ground = list(self.observed.get("ground", []))
+
+        area = polygonal(region)
+
+        def covers(a: float, b: float, depth: float) -> bool:
+            unseen = polygonal(self.unobserved_ground_given([*ground, (a, b, depth)]))
+            return shapely.intersection(area, unseen, grid_size=1e-9).area <= 1e-9
+
+        tol = COVERAGE_TOLERANCE_FT
+        for a, b in ((s_lo, s_hi), (s_lo - tol, s_hi + tol)):
+            lo, hi = 0.0, max(self.farthest_out(region), 1e-3)
+            while not covers(a, b, hi) and hi <= 4 * self.reach_ft + 100:
+                lo, hi = hi, hi * 2
+            if not covers(a, b, hi):
+                continue
+            for _ in range(30):
+                mid = (lo + hi) / 2
+                if covers(a, b, mid):
+                    hi = mid
+                else:
+                    lo = mid
+            return a, b, hi
+        # No view settles it (a view's span decides what it can reach); the distance from the
+        # chain's lines is the honest lower bound.
+        return s_lo, s_hi, self.farthest_out(region)
+
     def coverable(self, band: str) -> Geometry:
         """Where observing `band` can settle what is unseen: in front of the scanned walls, and
         past a limit end. Past an unexplored end the walls may turn any way, so no view settles
@@ -377,7 +432,7 @@ class Scene:
             lo = self.s_min if self.end_kinds.get("left") == "unexplored" else left.s0
             hi = self.s_max if self.end_kinds.get("right") == "unexplored" else right.s1
             if band == "ground":
-                self._cache[key] = self.band_polygon(lo, hi, self.reach_ft)
+                self._cache[key] = self.band_polygon(lo, hi, self.reach_ft).difference(self.house())
             else:
                 self._cache[key] = self.wall_line(lo, hi).buffer(1e-6, cap_style="flat")
         return self._cache[key]
@@ -406,6 +461,13 @@ class Scene:
                 [self.unobserved_wall_lines(up_to), self.unexplored_area()]
             )
         return self._cache[key]
+
+
+def polygonal(geom: Geometry) -> Geometry:
+    """Only the areas of a geometry: overlays can leave line or point fragments beside them,
+    which an area overlay refuses as mixed-dimension input."""
+    parts = [g for g in getattr(geom, "geoms", [geom]) if g.geom_type.endswith("Polygon")]
+    return unary_union(parts) if parts else Polygon()
 
 
 def merge_intervals(intervals: list[tuple[float, float]]) -> list[tuple[float, float]]:

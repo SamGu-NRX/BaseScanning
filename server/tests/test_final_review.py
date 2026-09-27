@@ -1,13 +1,14 @@
 """Regression tests for the Codex review of #11 at 9176125, and the scoreboard's S2-3 properties."""
 
 import copy
+import math
 
 from helpers import at_start, parsed, rect, shared_fixture
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from test_s4_round import PUBLIC, answer
 
-from solver import FAIL, PASS, UNSURE, at_least, evaluate_start
+from solver import FAIL, PASS, SOLVE_BUDGET_S, UNSURE, Solver, at_least, evaluate_start
 
 W = 31 / 12
 
@@ -109,3 +110,75 @@ def test_the_wall_behind_every_possible_position_must_be_seen() -> None:
     raw["coverage"]["observed"].append({"band": "wall", "span_ft": [-40, 6 + W]})
     backing = at_start(raw, 6.0, "wall_backing", PUBLIC)
     assert (backing.outcome, backing.unsure_cause) == (UNSURE, "unobserved")
+
+
+# --- S4 on 4a9fa44: a request is a fixed point ---------------------------------------------------
+
+
+def supplied_exactly(raw: dict, result: dict) -> dict:
+    out = copy.deepcopy(raw)
+    for item in result["missing_evidence"]:
+        if item["kind"] == "band":
+            depth = {"out_ft": item["out_ft"]} if "out_ft" in item else {}
+            out["coverage"]["observed"].append(
+                {"band": item["band"], "span_ft": item["span_ft"], **depth}
+            )
+    return out
+
+
+def unseen_at(raw: dict, s0: float, wall_id: str) -> list[str]:
+    candidate = evaluate_start(parsed(raw, PUBLIC), PUBLIC, s0, wall_id)
+    return [c.id for c in candidate.checks if c.unsure_cause == "unobserved"]
+
+
+def exact_start(raw: dict, result: dict) -> float:
+    scene = parsed(raw, PUBLIC)
+    target = result["spot"]["span_ft"][0]
+    return min(
+        (c.s0 for c in Solver(scene, PUBLIC).candidates(SOLVE_BUDGET_S)),
+        key=lambda s: abs(s - target),
+    )
+
+
+@st.composite
+def cornered(draw: st.DrawFn) -> dict:
+    """A wall that turns at x = c by `angle` degrees (positive: an inside corner, turning
+    toward the yard), with gaps in every band's coverage and random view depths."""
+    c = draw(st.floats(4.0, 14.0))
+    angle = math.radians(draw(st.floats(-80.0, 80.0)))
+    end = [c + 20 * math.cos(angle), 20 * math.sin(angle)]
+    raw = shared_fixture()
+    raw["walls"] = [
+        {"id": "w1", "baseline": [[-30, 0], [c, 0]], "height_ft": 9, "plus_minus_ft": 0.1},
+        {"id": "w2", "baseline": [[c, 0], end], "height_ft": 9, "plus_minus_ft": 0.1},
+    ]
+    raw["ground"] = [{"type": "lawn", "polygon": rect(-60, 60, -60, 60), "plus_minus_ft": 0}]
+    raw["overheads"], raw["facing"] = [], []
+    raw["coverage"] = {
+        "ends": {"left": {"kind": "limit"}, "right": {"kind": "limit"}},
+        "observed": [],
+    }
+    for band in ("wall", "ground", "overhead", "facing"):
+        cuts = draw(st.lists(st.floats(-10.0, c + 20.0), max_size=4))
+        edges = [-30.0, *sorted(cuts[: len(cuts) // 2 * 2]), c + 20.0]
+        depth = draw(st.floats(1.0, 12.0))
+        for a, b in zip(edges[::2], edges[1::2], strict=True):
+            if b > a:
+                item = {"band": band, "span_ft": [a, b]}
+                if band == "ground" or draw(st.booleans()):
+                    item["out_ft"] = depth
+                raw["coverage"]["observed"].append(item)
+    return raw
+
+
+@settings(max_examples=30, deadline=None)
+@given(raw=cornered())
+def test_capturing_exactly_what_is_requested_settles_it_in_one_round(raw: dict) -> None:
+    # Before: near a corner the ground depth was the distance from the chain line, less than
+    # the strip in front of the wall needs, so each capture fell short and the next answer
+    # asked for 0.005 ft more over the same stretch.
+    result = answer(raw)
+    if result["decision"] != "manual_review" or result["spot"] is None:
+        return
+    s0 = exact_start(raw, result)
+    assert unseen_at(supplied_exactly(raw, result), s0, result["spot"]["wall_id"]) == []

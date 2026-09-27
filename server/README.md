@@ -109,7 +109,7 @@ Ends and corners:
 - `unexplored` means the wall continues. Within cable reach it raises a `past_end` request when no spot passes, because a spot may be round it; nothing else settles it.
 - `limit` means no usable wall past it. Ground past a limit end still counts for clearances (a pool behind a fence is still a pool): show it by pointing the camera past the end, reported as a ground span beyond the chain's end, which covers both sides of the wall's continued line.
 
-Supplying exactly what a request in `missing_evidence` names settles it: a `coverage.observed` entry with its `band` and `span_ft`, and an `out_ft` at least the request's `out_ft` (ground, facing, overhead and wall requests carry one).
+Ground behind a scanned wall is the house and never counts as unseen, even where a neighbouring wall's strip reaches across it at an inside corner. A ground request's `out_ft` is the smallest depth, over its span, for which the unseen ground in question would be covered, computed with the same geometry the checks use. Supplying exactly what a request in `missing_evidence` names settles it: a `coverage.observed` entry with its `band` and `span_ft`, and an `out_ft` at least the request's `out_ft` (ground, facing, overhead and wall requests carry one).
 
 ## Reading a result
 

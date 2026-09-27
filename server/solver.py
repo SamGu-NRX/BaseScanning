@@ -19,6 +19,7 @@ from dataclasses import dataclass, field, replace
 from functools import partial
 from typing import Any
 
+import shapely
 from shapely import Geometry, LineString, Polygon, get_coordinates, unary_union
 
 from rules import LoadedRules, Rules, Value
@@ -137,6 +138,16 @@ def _is_private(keys: tuple[str, ...], private_keys: frozenset[str]) -> bool:
 # test in Solver._covered.
 _BUFFER_SEGMENTS = 16
 _CIRCUMSCRIBE = 1 / math.cos(math.pi / (4 * _BUFFER_SEGMENTS))
+
+
+# GEOS 3.13 can return an empty intersection for large polygons that share boundaries (an
+# unseen area inside the coverable one gave 0 instead of 172 sq ft); snapping the overlay to a
+# grid this fine keeps it exact to far below any measurement.
+_OVERLAY_GRID = 1e-9
+
+
+def _meet(a: Geometry, b: Geometry) -> Geometry:
+    return shapely.intersection(a, b, grid_size=_OVERLAY_GRID)
 
 
 def _within(fp: Polygon, radius: float) -> Geometry:
@@ -451,18 +462,26 @@ class Solver:
             ]
         out = []
         for view, unseen in parts:
-            region = unseen.intersection(within).intersection(self.scene.coverable(view))
+            region = _meet(_meet(unseen, within), self.scene.coverable(view))
             # Where that meets an unexplored end exactly, a sliver with no length along the wall
             # is left; a request for it could never be settled.
-            extents = [
-                e
-                for part in getattr(region, "geoms", [region])
-                if (e := self.scene.s_extent(part)) and e[1] - e[0] >= COVERAGE_TOLERANCE_FT
-            ]
+            extents = []
+            for part in getattr(region, "geoms", [region]):
+                e = self.scene.s_extent(part)
+                if not e:
+                    continue
+                if e[1] - e[0] >= COVERAGE_TOLERANCE_FT:
+                    extents.append(e)
+                elif part.area > COVERAGE_TOLERANCE_FT**2:
+                    # A real area whose points all map to one s: the wedge in front of a convex
+                    # corner. A view spanning the corner covers it.
+                    mid = (e[0] + e[1]) / 2
+                    extents.append((mid - COVERAGE_TOLERANCE_FT, mid + COVERAGE_TOLERANCE_FT))
             if extents:
                 a, b = min(a for a, _ in extents), max(b for _, b in extents)
                 if view == "ground":
-                    depth = _up(self.scene.farthest_out(region))
+                    a, b, depth = self.scene.view_to_cover(region, a, b)
+                    depth = _up(depth)
                 else:
                     depth = None if up_to is None else _above(up_to)
                 out.append(View(view, a, b, depth))
@@ -704,6 +723,11 @@ class Solver:
         elif missing:
             c.outcome, c.unsure_cause = UNSURE, "unobserved"
             c.reason = f"The {noun} over the battery's stretch of wall was not measured everywhere."
+            # The request must settle the check in one round, so it also names the stretches
+            # that were seen, but not far enough where no measurement covers them.
+            missing = merge_intervals(
+                missing + self._too_shallow(band, entries, lo, hi, t + subtract)
+            )
         elif (seen := self._seen_clear(band, entries, lo, hi)) <= t + subtract:
             # A view (a walked path, a tilt-up frame) proves the space clear only as far as it
             # reached; where nothing was measured, that is all that is known.
@@ -721,6 +745,20 @@ class Solver:
             # Seen clear further than the rule needs, or with nothing in the way, settles it.
             c.missing = [View(band, a, b, _above(t + subtract)) for a, b in missing]
         return c
+
+    def _too_shallow(
+        self, band: str, entries: list[Measured], s0: float, s1: float, need: float
+    ) -> list[tuple[float, float]]:
+        """Stretches of [s0, s1] no measurement covers that were seen, but clear only to `need`
+        or less."""
+        measured = merge_intervals([m.span for m in entries])
+        free = subtract_intervals((s0, s1), measured)
+        seen = [
+            part
+            for a, b in free
+            for part in subtract_intervals((a, b), self.scene.missing(band, a, b))
+        ]
+        return [(a, b) for a, b in seen if self.scene.seen_to(band, a, b) <= need]
 
     def _seen_clear(self, band: str, entries: list[Measured], s0: float, s1: float) -> float:
         """How far clear the band was seen over the parts of [s0, s1] no measurement covers:
@@ -1357,7 +1395,8 @@ def evaluate_start(
     """Evaluate one battery start position (its left edge at s0), even one that crosses a corner.
     The footprint follows the straight segment that contains s0."""
     solver = Solver(scene, loaded)
-    walls = [p for p in scene.walls if wall_id is None or p.wall_id == wall_id]
+    # A wall joined into its collinear neighbour's piece has no piece of its own id.
+    walls = [p for p in scene.walls if wall_id is None or p.wall_id == wall_id] or scene.walls
     piece = next((p for p in walls if p.s0 - EPS <= s0 < p.s1 - EPS), walls[-1])
     return solver.evaluate(piece, s0)
 
