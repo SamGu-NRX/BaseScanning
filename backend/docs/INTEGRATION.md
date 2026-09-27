@@ -8,16 +8,17 @@ Diff this block when the deployment changes. Keep the seven field names and thei
 
 | Field | Value |
 | --- | --- |
-| Updated UTC | 2026-09-27T07:03:34Z |
+| Updated UTC | 2026-09-27T08:25:32Z |
 | Live URL | `https://huntertcarver-dev--capture-api.modal.run` (routes under `/v1`) |
-| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","version":"f1f0b6394f93"}` (selected fields). No `Authorization` header. Checked 2026-09-27T07:03:34Z. `f1f0b6394f93` is the first 12 hex chars of main `f1f0b6394f93b32c22f8225615451a352e300254`. |
-| Milestone | A no-token `mini-arkit` replay on this image returned a schema-valid `ResultResponse` (`manual_review`, stub stages, 70 s), capture `cap_01M3GTQPAS864253AEMFGVYWHM`, run `run_4dee057d229c1c21`. The earlier M1 on `41a0880` (59 s, `cap_01M3GEDBNXKEZ5AWD6BR3GYRHW`) still stands. M2 real stages are not verified live. Stage stubs stay on. |
-| What works | Health 200 with `storage: gcs` and version `f1f0b6394f93`, which is main `f1f0b63` ([PR 111](https://github.com/huntertcarver/house-scanning-server/pull/111)). One `mini-arkit` upload through finalize returned `manual_review` in 70 s and passed the device result schema. |
-| What's placeholder | `HSS_ORCH_STAGE_STUBS=1`, so this replay's result stage writes the stub review page. Real-stage M2 remains unverified. Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. |
-| Breaking changes since last update | Live version moved from `8875483b0a93` to `f1f0b6394f93`. An unmerged PR 91 deploy (`7803f67d6ee5`) had replaced the app in between; this deploy put `house-scanning` back on main. No new real-stage milestone is claimed. |
+| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","version":"14682067c0d3"}` (selected fields). No `Authorization` header. Checked 2026-09-27T08:23:18Z and again 2026-09-27T08:25:32Z. `14682067c0d3` is the first 12 hex chars of main `14682067c0d3e920002f7091452fc7471c9488dc`. |
+| Milestone | A no-token `mini-arkit` replay on this image returned a schema-valid `ResultResponse` (`manual_review`, stub stages). Client elapsed, upload through that result, was 114.9 s. Capture `cap_01M3GZCCRVHPRS830RYVQCW5C9`, run `run_4dee057d229c1c21` (run id is the packet digest, same id as the 70 s replay on `f1f0b63`). The earlier M1 on `41a0880` (59 s) still stands. M2 real stages are not verified live. Stage stubs stay on. |
+| What works | Health 200 with `storage: gcs` and version `14682067c0d3`, main `1468206` ([PR 91](https://github.com/huntertcarver/house-scanning-server/pull/91), which includes [PR 115](https://github.com/huntertcarver/house-scanning-server/pull/115) at `b5bf118`). One `mini-arkit` upload through finalize returned `manual_review` in 114.9 s and passed the device result schema. |
+| What's placeholder | `HSS_ORCH_STAGE_STUBS=1`, so this replay's result stage writes the stub review page. This stub replay's 114.9 s client elapsed is longer than the 70 s replay on `f1f0b63`. Real-stage M2 remains unverified. Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. |
+| Breaking changes since last update | Live version moved from `f1f0b6394f93` to `14682067c0d3`. The image includes the I-27 criteria fix and Modal result collection. No new real-stage milestone is claimed. |
 
 ## Changelog
 
+- 2026-09-27T08:25:32Z — `house-scanning` dev redeployed from main `1468206` (PR 91, including PR 115). No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and version `14682067c0d3`. One no-token `mini-arkit` replay returned a schema-valid `manual_review` in 114.9 s (`cap_01M3GZCCRVHPRS830RYVQCW5C9`, `run_4dee057d229c1c21`). That client elapsed is longer than the 70 s replay on `f1f0b63`. Stubs stay on, so this is not an M2 pass.
 - 2026-09-27T07:03:34Z — `house-scanning` dev redeployed from main `f1f0b63` (PR 111). No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and version `f1f0b6394f93`. One no-token `mini-arkit` replay returned a schema-valid `manual_review` in 70 s (`cap_01M3GTQPAS864253AEMFGVYWHM`, `run_4dee057d229c1c21`). Stubs stay on, so this is not an M2 pass. This deploy replaced an intervening unmerged PR 91 image `7803f67d6ee5`.
 - 2026-09-27T06:45:07Z — Dev app redeployed from [PR 111](https://github.com/huntertcarver/house-scanning-server/pull/111) head `8875483b0a93` (main `be01020` plus stage package data). No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and that version. Inside the CPU stage image, Jinja rendered `template.html` with the review CSS inlined; the GPU image had the same template, schemas, `profiles.yaml`, and meter-model files. Stubs stay on, so this is not a capture replay and not an M2 pass. Historical M1 evidence stays on `41a0880`.
 - 2026-09-27T05:33:50Z — Read-only, no-auth probes observed draft PR 91 image `c786f76cb7af`, health 200, and missing-capture 404. GCS storage and memory state are unchanged. Remote lifecycle findings remain under review; historical M1 evidence stays tied to `41a0880`, and no M2 or new latency measurement is asserted.
@@ -59,7 +60,7 @@ Regenerate the check with `uv run python -m server.contracts.export_schemas --ch
 
 ## Capture flow
 
-The live version is the one in **Current status**: main `f1f0b63`. Stage stubs are on, so an uploaded capture does not prove the real result renderer.
+The live version is the one in **Current status**: main `1468206`. Stage stubs are on, so an uploaded capture does not prove the real result renderer.
 
 Upload order that the replay client uses: meter and panel stills first; each keyframe JPEG immediately followed by its depth, confidence, and features; other stills; streams and mesh; TrueDepth with the meter stills; finalize (finalize may run before the last commits).
 
