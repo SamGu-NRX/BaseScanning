@@ -20,9 +20,18 @@ dependencies = [
     "requests>=2.34.2",
     "scipy==1.18.1",
     "shapely>=2.1.2",
+    "jinja2>=3.1.4",
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
+result = [
+    "numpy==2.5.3",
+    "jsonschema==4.26.0",
+    "jinja2>=3.1.4",
+    "pillow==12.3.0",
+    "httpx>=0.27",
+]
 # Brief §1: `uv sync --frozen --extra reads`. pillow, numpy, pydantic, and jsonschema
 # are also direct dependencies; they are repeated so the extra matches the brief list.
 reads = [
@@ -40,7 +49,7 @@ default-groups = ["dev", "data"]
 
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"
-testpaths = ["packet/tests", "tests", "server/contracts/tests", "server/common/tests", "server/eval/tests", "server/tests", "server/reads/tests"]
+testpaths = ["packet/tests", "tests", "server/contracts/tests", "server/common/tests", "server/eval/tests", "server/tests", "server/result/tests", "server/reads/tests"]
 pythonpath = [".", "packet", "eval", "eval/vendor/hs11_server"]
 
 [tool.ruff]

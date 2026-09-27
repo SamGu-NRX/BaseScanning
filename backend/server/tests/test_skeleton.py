@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-# `reads` is implemented by WS-08, so it is not in this stub list.
+# `result` is implemented in this package. `reads` is implemented by WS-08.
+# Neither name is in this stub list. The other names are still stubs.
 STAGES = [
     "packet",
     "poses",
@@ -20,7 +21,6 @@ STAGES = [
     "coverage",
     "scene",
     "criteria",
-    "result",
 ]
 
 
