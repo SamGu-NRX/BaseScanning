@@ -6,7 +6,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, model_validator
 
-from server.contracts._base import IsoTime, JsonInt, JsonNum, RelPath, Sha256Hex, Strict
+from server.contracts._base import IsoTime, JsonInt, JsonNum, RelPath, Sha256Hex, StorageId, Strict
 from server.contracts.capture_check import CaptureCheckCode, HintCode
 from server.contracts.jobs import CaptureStatus, EventType, Flow, StageName, StageStatus
 from server.contracts.packet import FileRole, Keyframe, Still, Tier, TrueDepthFrame
@@ -39,7 +39,7 @@ class ExpectedCounts(Strict):
 
 
 class CreateCaptureRequest(Strict):
-    packetId: str = Field(min_length=8)
+    packetId: StorageId
     formatVersion: str
     tier: Tier
     flow: Flow
@@ -275,7 +275,7 @@ class HealthResponse(Strict):
 
 class CaptureStatusResponse(Strict):
     captureId: str
-    packetId: str
+    packetId: StorageId
     status: CaptureStatus
     tier: Tier
     flow: Flow
@@ -287,12 +287,12 @@ class CaptureStatusResponse(Strict):
 
 
 class AmendmentRequest(Strict):
-    amendmentId: str
+    amendmentId: StorageId
     answers: list[str]
 
 
 class AmendmentResponse(Strict):
-    amendmentId: str
+    amendmentId: StorageId
     pathPrefix: str
 
 

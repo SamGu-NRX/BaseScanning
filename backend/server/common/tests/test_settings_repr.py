@@ -5,6 +5,7 @@ from server.common.config import Settings
 
 def test_settings_repr_redacts_secrets() -> None:
     settings = Settings(
+        SMP_ENVIRONMENT="dev",
         OPENAI_API_KEY="sk-test-secret-value",
         XAI_API_KEY="xai-test-secret-value",
         CAPTURE_API_TOKENS="token-secret-value",

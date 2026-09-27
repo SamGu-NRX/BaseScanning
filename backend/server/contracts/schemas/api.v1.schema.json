@@ -77,6 +77,7 @@
       "additionalProperties": false,
       "properties": {
         "amendmentId": {
+          "pattern": "^[A-Za-z0-9_-]{8,64}$",
           "title": "Amendmentid",
           "type": "string"
         },
@@ -99,6 +100,7 @@
       "additionalProperties": false,
       "properties": {
         "amendmentId": {
+          "pattern": "^[A-Za-z0-9_-]{8,64}$",
           "title": "Amendmentid",
           "type": "string"
         },
@@ -276,6 +278,7 @@
           "type": "string"
         },
         "packetId": {
+          "pattern": "^[A-Za-z0-9_-]{8,64}$",
           "title": "Packetid",
           "type": "string"
         },
@@ -333,7 +336,7 @@
       "additionalProperties": false,
       "properties": {
         "path": {
-          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
           "title": "Path",
           "type": "string"
         },
@@ -413,7 +416,7 @@
           "type": "array"
         },
         "path": {
-          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
           "title": "Path",
           "type": "string"
         },
@@ -726,7 +729,7 @@
           "title": "Orderref"
         },
         "packetId": {
-          "minLength": 8,
+          "pattern": "^[A-Za-z0-9_-]{8,64}$",
           "title": "Packetid",
           "type": "string"
         },
@@ -800,7 +803,7 @@
         "confidenceFile": {
           "anyOf": [
             {
-              "pattern": "^(?!/)(?!.*\\.\\./).+$",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
               "type": "string"
             },
             {
@@ -812,7 +815,7 @@
           "title": "Confidencefile"
         },
         "file": {
-          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
           "title": "File",
           "type": "string"
         },
@@ -1447,7 +1450,7 @@
           "title": "Count"
         },
         "file": {
-          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
           "title": "File",
           "type": "string"
         }
@@ -1834,12 +1837,12 @@
           "title": "Highresolution"
         },
         "id": {
-          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$",
           "title": "Id",
           "type": "string"
         },
         "img": {
-          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
           "title": "Img",
           "type": "string"
         },
@@ -2077,7 +2080,7 @@
           "default": null
         },
         "path": {
-          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
           "title": "Path",
           "type": "string"
         },
@@ -2415,12 +2418,12 @@
           "title": "H"
         },
         "id": {
-          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$",
           "title": "Id",
           "type": "string"
         },
         "img": {
-          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
           "title": "Img",
           "type": "string"
         },
@@ -2597,7 +2600,7 @@
       "additionalProperties": false,
       "properties": {
         "depth": {
-          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
           "title": "Depth",
           "type": "string"
         },
@@ -2616,7 +2619,7 @@
         "image": {
           "anyOf": [
             {
-              "pattern": "^(?!/)(?!.*\\.\\./).+$",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
               "type": "string"
             },
             {

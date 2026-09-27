@@ -27,7 +27,14 @@ class StateStore(Protocol):
 
     def list_open_captures(self) -> list[CaptureRecord]: ...
 
-    def delete_capture(self, capture_id: str) -> None: ...
+    def delete_capture(self, capture_id: str) -> None:
+        """Erase the capture and every state record keyed by it.
+
+        Drops the capture, its file records, confirmations and other extras,
+        events, runs, and those runs' stage records. Leaves ``tomb:{capture_id}``
+        and is idempotent. Object bytes are not this method's job.
+        """
+        ...
 
     def upsert_file(self, rec: FileRecord) -> None: ...
 

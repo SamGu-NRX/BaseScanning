@@ -23,6 +23,19 @@ def _when(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _segments(key: str) -> set[str]:
+    return {part for part in key.replace("/", ":").split(":") if part}
+
+
+def _drop_keyed(store: dict, tokens: set[str], *, keep: set[str] | None = None) -> None:
+    kept = keep or set()
+    for key in list(store):
+        if key in kept:
+            continue
+        if _segments(key) & tokens:
+            store.pop(key, None)
+
+
 class MemoryState:
     def __init__(self) -> None:
         self._captures: dict[str, CaptureRecord] = {}
@@ -49,8 +62,20 @@ class MemoryState:
         return [rec.model_copy(deep=True) for rec in self._captures.values() if rec.status in _OPEN]
 
     def delete_capture(self, capture_id: str) -> None:
+        """Remove the capture and everything keyed by it, then keep the tomb."""
+
+        run_ids = {run_id for run_id, rec in self._runs.items() if rec.capture_id == capture_id}
         self._captures.pop(capture_id, None)
-        self._kv[f"tomb:{capture_id}"] = {"capture_id": capture_id}
+        self._files = {key: rec for key, rec in self._files.items() if key[0] != capture_id}
+        self._events.pop(capture_id, None)
+        for run_id in run_ids:
+            self._runs.pop(run_id, None)
+        self._stages = {key: rec for key, rec in self._stages.items() if key[0] not in run_ids}
+        tokens = {capture_id, *run_ids}
+        tomb = f"tomb:{capture_id}"
+        _drop_keyed(self._kv, tokens, keep={tomb})
+        _drop_keyed(self._blobs, tokens)
+        self._kv[tomb] = {"capture_id": capture_id}
 
     def upsert_file(self, rec: FileRecord) -> None:
         self._files[(rec.capture_id, rec.path)] = rec.model_copy(deep=True)

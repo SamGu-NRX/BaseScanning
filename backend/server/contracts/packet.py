@@ -16,7 +16,9 @@ from server.contracts._base import (
     Mat4,
     Point2,
     RelPath,
+    SegmentId,
     Sha256Hex,
+    StorageId,
     Strict,
     Vec3,
     keep_null,
@@ -206,7 +208,7 @@ class Admission(Strict):
 
 
 class Keyframe(Strict):
-    id: str = Field(min_length=1)
+    id: SegmentId
     img: RelPath
     w: JsonInt = Field(ge=1)
     h: JsonInt = Field(ge=1)
@@ -236,7 +238,7 @@ class StillLocation(Strict):
 
 
 class Still(Strict):
-    id: str = Field(min_length=1)
+    id: SegmentId
     purpose: str
     img: RelPath
     w: JsonInt = Field(ge=1)
@@ -321,7 +323,7 @@ class Plane(Strict):
 
 
 class Mesh(Strict):
-    file: str
+    file: RelPath
     epoch: str
     faceCount: JsonInt | None = Field(default=None, ge=0)
     classified: bool | None = None
@@ -492,8 +494,8 @@ class FileEntry(Strict):
 class Packet(Strict):
     format: Literal["house-capture-packet"]
     formatVersion: str = Field(pattern=r"^0\.[0-9]+$")
-    packetId: str = Field(min_length=8)
-    parentPacketId: str | None = Field(default=None, min_length=8)
+    packetId: StorageId
+    parentPacketId: StorageId | None = None
     createdAt: IsoTime
     units: Units
     conventions: Conventions

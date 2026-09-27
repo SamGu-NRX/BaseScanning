@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from server.common.backends.state_memory import MemoryState
@@ -30,7 +30,16 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
     SMP_PRODUCT_ID: str = "house-scanning"
-    SMP_ENVIRONMENT: Literal["dev", "prod"] = "dev"
+    # Missing or unknown values are coerced to prod so the privacy guard fails closed.
+    SMP_ENVIRONMENT: Literal["dev", "prod"] = "prod"
+
+    @field_validator("SMP_ENVIRONMENT", mode="before")
+    @classmethod
+    def unknown_environment_is_prod(cls, value: object) -> object:
+        if isinstance(value, str) and value in ("dev", "prod"):
+            return value
+        return "prod"
+
     SMP_SERVICE_NAME: Literal["capture-api", "early-worker", "pipeline", "sweeper"] = "capture-api"
     STORAGE_BACKEND: Literal["local", "gcs", "r2", "volume"] = "local"
     STATE_BACKEND: Literal["memory", "modal_dict", "postgres"] = "memory"

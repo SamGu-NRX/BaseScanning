@@ -11,7 +11,7 @@ from typing import Any, Literal
 
 from pydantic import ConfigDict, Field
 
-from server.contracts._base import IsoTime, JsonInt, JsonNum, RelPath, Sha256Hex, Strict
+from server.contracts._base import IsoTime, JsonInt, JsonNum, RelPath, Sha256Hex, StorageId, Strict
 from server.contracts.packet import FileRole, Tier
 
 CaptureStatus = Literal[
@@ -77,7 +77,7 @@ _ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 class CaptureRecord(Strict):
     capture_id: str
-    packet_id: str
+    packet_id: StorageId
     parent_capture_id: str | None = None
     status: CaptureStatus
     tier: Tier

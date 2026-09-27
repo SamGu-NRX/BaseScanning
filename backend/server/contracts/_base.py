@@ -5,10 +5,19 @@ from __future__ import annotations
 import re
 from typing import Annotated, Any
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints, WithJsonSchema
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
 
 _ISO_TIME = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$")
-_REL_PATH = re.compile(r"^(?!/)(?!.*\.\./).+$")
+# Ids interpolated into state keys or object prefixes (packetId, parentPacketId, amendmentId).
+# Rejects "/", ".", "..", and control characters. UUIDs, ULIDs, and mini-arkit fit.
+_STORAGE_ID = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+# Single path segment (keyframe id, still id). No slash, dot, leading "-", or control character.
+_SEGMENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
+# Relative object key. Each segment starts with an alphanumeric, dots start a new token
+# (so "." / ".." / "foo..bar" cannot appear), and nothing outside [A-Za-z0-9._-] is allowed.
+_REL_PATH = re.compile(
+    r"^[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$"
+)
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -82,9 +91,9 @@ def _pattern(expression: re.Pattern[str]):
 
 
 IsoTime = Annotated[str, StringConstraints(pattern=_ISO_TIME.pattern), _pattern(_ISO_TIME)]
-# pydantic-core's regex engine rejects the lookaheads, so the pattern is published with WithJsonSchema.
-# The BeforeValidator still checks it with the stdlib, which is what the copied packet schema uses too.
-RelPath = Annotated[str, _pattern(_REL_PATH), WithJsonSchema({"type": "string", "pattern": _REL_PATH.pattern})]
+StorageId = Annotated[str, StringConstraints(pattern=_STORAGE_ID.pattern), _pattern(_STORAGE_ID)]
+SegmentId = Annotated[str, StringConstraints(pattern=_SEGMENT_ID.pattern), _pattern(_SEGMENT_ID)]
+RelPath = Annotated[str, StringConstraints(pattern=_REL_PATH.pattern), _pattern(_REL_PATH)]
 Sha256Hex = Annotated[str, StringConstraints(pattern=_SHA256.pattern), _pattern(_SHA256)]
 
 

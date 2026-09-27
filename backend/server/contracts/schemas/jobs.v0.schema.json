@@ -46,6 +46,7 @@
           "type": "string"
         },
         "packet_id": {
+          "pattern": "^[A-Za-z0-9_-]{8,64}$",
           "title": "Packet Id",
           "type": "string"
         },
@@ -159,7 +160,7 @@
           "title": "Meta"
         },
         "path": {
-          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
           "title": "Path",
           "type": "string"
         },
@@ -365,7 +366,7 @@
           "title": "Meta"
         },
         "path": {
-          "pattern": "^(?!/)(?!.*\\.\\./).+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*(/[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*)*$",
           "title": "Path",
           "type": "string"
         },

@@ -80,6 +80,117 @@ def test_runs_heartbeat_and_spend() -> None:
     assert state.list_runs(status={"running"}, started_before=datetime.now(UTC))
 
 
+def test_delete_capture_erases_records_keyed_by_it() -> None:
+    state = MemoryState()
+    state.put_capture(_capture())
+    state.put_capture(_capture().model_copy(update={"capture_id": "cap_10", "packet_id": "packet-5678"}))
+    state.upsert_file(
+        FileRecord(
+            capture_id="cap_1",
+            path="stills/s1.jpg",
+            role="still",
+            bytes=3,
+            sha256="a" * 64,
+            md5="b",
+            content_type="image/jpeg",
+            state="committed",
+        )
+    )
+    state.upsert_file(
+        FileRecord(
+            capture_id="cap_10",
+            path="stills/s1.jpg",
+            role="still",
+            bytes=3,
+            sha256="b" * 64,
+            md5="c",
+            content_type="image/jpeg",
+            state="committed",
+        )
+    )
+    state.append_event("cap_1", "files_committed", {"paths": ["stills/s1.jpg"], "committed": 1})
+    state.put_kv("confirm:cap_1:meter_number", {"value": "MTR 12345678"})
+    state.put_kv("confirmix:cap_1", {"fields": ["meter_number"]})
+    state.put_kv("capturex:cap_1", {"device": "iPhone"})
+    state.put_kv("open:cap_1", {"finalize_by": "2026-09-27T00:00:00Z"})
+    state.put_kv("amend:cap_1:amendment-1", {"path": "amendments/amendment-1/"})
+    state.put_kv("confirm:cap_10:meter_number", {"value": "keep"})
+    state.put_kv("idem:create:packet-1234", {"ref": "cap_1"})
+    state.put_blob("captures/cap_1/packet.json", b"packet")
+    state.put_blob("blob:run_control:run_abc", b"control")
+    state.put_blob("captures/cap_10/packet.json", b"other")
+    state.put_run(
+        RunRecord(
+            run_id="run_abc",
+            capture_id="cap_1",
+            packet_sha256="a" * 64,
+            status="running",
+            branch="image",
+            flow="guided",
+            tier="arkit",
+            profile_default="C",
+            created_at="2026-09-26T00:00:00Z",
+            deadline_at="2026-09-26T01:00:00Z",
+            artifacts={},
+        )
+    )
+    state.put_run(
+        RunRecord(
+            run_id="run_other",
+            capture_id="cap_10",
+            packet_sha256="b" * 64,
+            status="running",
+            branch="image",
+            flow="guided",
+            tier="arkit",
+            profile_default="C",
+            created_at="2026-09-26T00:00:00Z",
+            deadline_at="2026-09-26T01:00:00Z",
+            artifacts={},
+        )
+    )
+    state.upsert_stage(
+        StageRecord(run_id="run_abc", stage="poses", status="running", attempt=1, heartbeat="2026-09-26T00:00:00Z")
+    )
+    state.upsert_stage(
+        StageRecord(run_id="run_other", stage="poses", status="running", attempt=1, heartbeat="2026-09-26T00:00:00Z")
+    )
+    state.add_spend("total", 0.2)
+
+    state.delete_capture("cap_1")
+
+    assert state.get_capture("cap_1") is None
+    assert state.files("cap_1") == []
+    assert state.events_after("cap_1", 0) == []
+    assert state.runs_for_capture("cap_1") == []
+    assert state.get_run("run_abc") is None
+    assert state.get_stage("run_abc", "poses") is None
+    assert [rec.capture_id for rec in state.list_open_captures()] == ["cap_10"]
+    for key in (
+        "confirm:cap_1:meter_number",
+        "confirmix:cap_1",
+        "capturex:cap_1",
+        "open:cap_1",
+        "amend:cap_1:amendment-1",
+    ):
+        assert state.get_kv(key) is None
+    assert state.get_blob("captures/cap_1/packet.json") is None
+    assert state.get_blob("blob:run_control:run_abc") is None
+    assert state.get_kv("tomb:cap_1") == {"capture_id": "cap_1"}
+    assert state.get_kv("idem:create:packet-1234") == {"ref": "cap_1"}
+    assert state.get_kv("confirm:cap_10:meter_number") == {"value": "keep"}
+    assert state.get_capture("cap_10") is not None
+    assert state.get_file("cap_10", "stills/s1.jpg") is not None
+    assert state.get_run("run_other") is not None
+    assert state.get_stage("run_other", "poses") is not None
+    assert state.get_blob("captures/cap_10/packet.json") == b"other"
+    assert state.get_spend("total") == 0.2
+
+    state.delete_capture("cap_1")
+    assert state.get_kv("tomb:cap_1") == {"capture_id": "cap_1"}
+    assert state.get_capture("cap_10") is not None
+
+
 def test_stale_stages_are_running_only() -> None:
     state = MemoryState()
     old = (datetime.now(UTC) - timedelta(seconds=90)).strftime("%Y-%m-%dT%H:%M:%SZ")
