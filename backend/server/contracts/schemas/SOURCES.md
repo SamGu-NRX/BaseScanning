@@ -15,6 +15,6 @@ Hand-written schemas. Byte-identical to the store. Do not edit.
   - sha256: `2c88646d3d33385a450263ab50dbb72509611ed8d5ce4f4694b59046ae97bab6`
   - bytes: 2130
 - `capture-packet.v0.4.schema.json`
-  - source: `internal/packet-generator/schema/capture-packet.schema.json`
-  - sha256: `56eb4397a1cedd4796e5ef73df7c23f6b56112619977c76ff245be9ecf95c43a`
-  - bytes: 34776
+  - source: `internal/packet-generator/schema/capture-packet.schema.json`, then spec 0.4.1 Appendix A (`$id` host `huntertcarver/house-scanning-server`; `obliqueCloseUp.still` purpose `meter_oblique`)
+  - sha256: `397b48b4a8d69668d65efda447aa8fbbfe8c1c13dc24bcfaf0cbb674c1ba3333`
+  - bytes: 34789

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/SamGu-NRX/house-scanning/schemas/capture-packet-0.4.schema.json",
+  "$id": "https://github.com/huntertcarver/house-scanning-server/schemas/capture-packet-0.4.schema.json",
   "title": "House capture packet v0.4 (packet.json)",
   "description": "Everything one capture session produced on the phone: photos plus ARKit, Core Motion and Core Location metadata. Raw sensor units (meters, seconds of device uptime, ARKit world). Field names and conventions of keyframes, taps and tracking follow measure-lab-session v2 (PR #7). Unknown fields are rejected so typos fail loudly; put experiments under `ext`.",
   "type": "object",
@@ -566,7 +566,7 @@
                   "type": "boolean",
                   "description": "Second meter close-up from about 30 degrees to the side at the same distance, inside the ARKit session."
                 },
-                "still": {"type": ["string", "null"], "description": "Id of that still (purpose meter_close)."},
+                "still": {"type": ["string", "null"], "description": "Id of that still (purpose meter_oblique)."},
                 "arkitDistanceM": {
                   "type": ["number", "null"],
                   "exclusiveMinimum": 0,
