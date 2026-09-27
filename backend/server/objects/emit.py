@@ -137,13 +137,17 @@ def ground_votes(presence: dict) -> list[dict]:
 def class_summary(presence: dict) -> dict:
     summary: dict[str, dict] = {}
     for fid, row in presence.items():
-        final = row.get("confirm") or row.get("cheap") or {}
-        present = final.get("present") or {}
-        for cls, ans in present.items():
-            if ans != "yes":
+        primary = (row.get("confirm") or row.get("cheap") or {}).get("present") or {}
+        second = (row.get("second") or {}).get("present") or {}
+        for cls in dict.fromkeys([*primary, *second]):
+            primary_ans = primary.get(cls)
+            # A missing primary reader does not veto the vendor that answered.
+            grok_yes = primary_ans not in {"yes", "no"} and second.get(cls) == "yes"
+            if primary_ans != "yes" and not grok_yes:
                 continue
             slot = summary.setdefault(cls, {"state": "present", "frames_yes": [], "best_frame": fid})
-            slot["frames_yes"].append(fid)
+            if fid not in slot["frames_yes"]:
+                slot["frames_yes"].append(fid)
             slot["best_frame"] = fid
     return summary
 

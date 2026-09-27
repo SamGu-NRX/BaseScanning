@@ -10,7 +10,7 @@ from server.objects.config import PLANNED_USD, ObjectsConfig
 from server.objects.gate import frame_needs_transpose
 from server.objects.prompts import DECISION
 from server.objects.proposals import iou
-from server.objects.vlm import VisionClient
+from server.objects.vlm import ProviderDown, VisionClient
 
 Answer = str  # yes | no | unsure | unavailable
 
@@ -24,6 +24,10 @@ def agreement(gpt: Answer, grok: Answer) -> tuple[str, float]:
     if gpt == "unsure" and grok == "yes":
         return "disagree", 0.5
     if gpt == "no" and grok == "no":
+        return "drop", 0.0
+    if gpt == "unavailable" and grok == "yes":
+        return "single", 0.5
+    if gpt == "unavailable" and grok == "no":
         return "drop", 0.0
     if gpt == "yes" and grok == "off":
         return "single", 0.75
@@ -117,15 +121,17 @@ def run_cascade(
 
     # (a) GPT-5.5 on hazard frames before any cheaper call. Hazard is never skipped.
     confirm_answers: dict[str, dict] = {}
+    openai_down = False
     for fid in sel.hazard_frames:
+        if openai_down:
+            break
         frame = frames_by_id.get(fid)
         if frame is None:
             continue
         budget.allow("hazard", PLANNED_USD["gpt-5.5"])
-        try:
-            ans = client.presence("gpt-5.5", frame.image, transpose=frame_needs_transpose(frame))
-        except RuntimeError:
-            warnings.append("vlm_unavailable")
+        ans, stopped = _presence(client, "gpt-5.5", frame, warnings)
+        openai_down = openai_down or stopped
+        if ans is None:
             continue
         budget.charge("gpt-5.5", ans.cost_usd if not ans.cached else 0.0)
         confirm_answers[fid] = {"present": ans.present, "ground_type": ans.ground_type, "quality": ans.quality}
@@ -134,24 +140,27 @@ def run_cascade(
     # (b) mini on every selected frame. A miss here also drops later stages.
     mini_answers: dict[str, dict] = {}
     for fid in sel.frames:
+        if openai_down:
+            break
         frame = frames_by_id.get(fid)
         if frame is None:
             continue
         if not budget.allow("cheap", PLANNED_USD["gpt-5.4-mini"]):
             _exhaust(budget, warnings, ("cheap", "confirm", "second"))
             break
-        try:
-            ans = client.presence("gpt-5.4-mini", frame.image, transpose=frame_needs_transpose(frame))
-        except RuntimeError:
-            warnings.append("vlm_unavailable")
+        ans, stopped = _presence(client, "gpt-5.4-mini", frame, warnings)
+        openai_down = openai_down or stopped
+        if ans is None:
             continue
         budget.charge("gpt-5.4-mini", ans.cost_usd if not ans.cached else 0.0)
         mini_answers[fid] = {"present": ans.present, "ground_type": ans.ground_type, "quality": ans.quality}
         presence.setdefault(fid, {})["cheap"] = mini_answers[fid]
 
     # (c) GPT-5.5 on the remaining frames that still need a confirm.
-    if "confirm" not in budget.skipped_stages:
+    if "confirm" not in budget.skipped_stages and not openai_down:
         for fid in sel.frames:
+            if openai_down:
+                break
             if fid in confirm_answers:
                 continue
             need = _needs_confirm(fid, mini_answers.get(fid), sel, gate_scores, gate_thresholds)
@@ -163,10 +172,9 @@ def run_cascade(
             frame = frames_by_id.get(fid)
             if frame is None:
                 continue
-            try:
-                ans = client.presence("gpt-5.5", frame.image, transpose=frame_needs_transpose(frame))
-            except RuntimeError:
-                warnings.append("vlm_unavailable")
+            ans, stopped = _presence(client, "gpt-5.5", frame, warnings)
+            openai_down = openai_down or stopped
+            if ans is None:
                 continue
             budget.charge("gpt-5.5", ans.cost_usd if not ans.cached else 0.0)
             confirm_answers[fid] = {"present": ans.present, "ground_type": ans.ground_type, "quality": ans.quality}
@@ -183,7 +191,11 @@ def run_cascade(
         for cand in candidates:
             cand.confidence = min(cand.confidence, 0.5)
     else:
-        decision = [c for c in candidates if c.cls in DECISION]
+        grok_answers: dict = {}
+        if openai_down:
+            grok_answers = _ask_grok_frames(sel, frames_by_id, client, budget, warnings, presence)
+            _adopt_grok_yeses(candidates, grok_answers)
+        decision = [c for c in candidates if c.cls in DECISION and c.best_frame not in grok_answers]
         for cand in decision[:8]:
             if not budget.allow("second", PLANNED_USD["grok-4.7"]):
                 _exhaust(budget, warnings, ("second",))
@@ -195,6 +207,9 @@ def run_cascade(
                 continue
             try:
                 ans = client.boxes("grok-4.7", frame.image, transpose=frame_needs_transpose(frame))
+            except ProviderDown:
+                warnings.append("vlm_unavailable")
+                break
             except RuntimeError:
                 state, conf = agreement(_gpt_of(cand, confirm_answers, mini_answers), "unavailable")
                 cand.state, cand.confidence = state, conf
@@ -223,6 +238,80 @@ def run_cascade(
                 )
         candidates = [c for c in candidates if c.state != "drop"]
     return CascadeResult(presence=presence, candidates=candidates, budget=budget, warnings=warnings)
+
+
+def _presence(client, model: str, frame, warnings: list[str]):
+    """One presence call. An OpenAI quota error returns stopped=True and does not try the next GPT frame."""
+    try:
+        ans = client.presence(model, frame.image, transpose=frame_needs_transpose(frame))
+    except ProviderDown as exc:
+        warnings.append("vlm_unavailable")
+        return None, exc.provider == "openai"
+    except RuntimeError:
+        warnings.append("vlm_unavailable")
+        return None, False
+    return ans, False
+
+
+def _ask_grok_frames(sel, frames_by_id, client, budget: Budget, warnings: list[str], presence: dict) -> dict:
+    """Grok reads hazard frames first, then the rest of the selection. Cap is 8 calls."""
+    order: list[str] = []
+    for fid in [*sel.hazard_frames, *sel.frames]:
+        if fid not in order:
+            order.append(fid)
+    answers: dict = {}
+    calls = 0
+    for fid in order:
+        if calls >= 8:
+            break
+        if "second" in budget.skipped_stages:
+            break
+        if not budget.allow("second", PLANNED_USD["grok-4.7"]):
+            _exhaust(budget, warnings, ("second",))
+            break
+        frame = frames_by_id.get(fid)
+        if frame is None:
+            continue
+        calls += 1
+        try:
+            ans = client.boxes("grok-4.7", frame.image, transpose=frame_needs_transpose(frame))
+        except ProviderDown:
+            warnings.append("vlm_unavailable")
+            break
+        except RuntimeError:
+            warnings.append("vlm_unavailable")
+            continue
+        budget.charge("grok-4.7", ans.cost_usd if not ans.cached else 0.0)
+        answers[fid] = ans
+        presence.setdefault(fid, {})["second"] = {"present": ans.present, "ground_type": ans.ground_type}
+    return answers
+
+
+def _adopt_grok_yeses(candidates: list[Candidate], answers: dict) -> None:
+    """Keep a decision class Grok marked yes when GPT never answered it."""
+    have = {cand.cls for cand in candidates}
+    for fid, ans in answers.items():
+        for cls, grok in (ans.present or {}).items():
+            if cls in have or cls not in DECISION or grok != "yes":
+                continue
+            box = next((obj["box"] for obj in ans.objects if obj.get("label") == cls), None)
+            state, conf = agreement("unavailable", "yes")
+            boxes = {fid: box} if box else {}
+            scores = {fid: float(conf)} if box else {}
+            kept = [(fid, box, float(conf))] if box else []
+            cand = Candidate(
+                cls,
+                [fid],
+                boxes,
+                scores,
+                confidence=conf,
+                state=state,
+                best_frame=fid,
+                all_boxes=kept,
+                grok_box=box,
+            )
+            candidates.append(cand)
+            have.add(cls)
 
 
 def _exhaust(budget: Budget, warnings: list[str], stages: tuple[str, ...]) -> None:

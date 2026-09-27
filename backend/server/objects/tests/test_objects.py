@@ -9,9 +9,9 @@ from pathlib import Path
 import pytest
 
 from server.objects.cli import _select_cascade, cross_fit, offline_zero_scores
-from server.objects.config import PLANNED_USD, Cluster, FrameRef, ObjectsConfig, ObjectsError
-from server.objects.confirm import Budget, agreement
-from server.objects.emit import to_objects, validate_object
+from server.objects.config import PLANNED_USD, Cluster, FrameRef, FrameSelection, ObjectsConfig, ObjectsError
+from server.objects.confirm import Budget, agreement, run_cascade
+from server.objects.emit import class_summary, to_objects, validate_object
 from server.objects.prompts import WS08_PURPOSES
 from server.objects.run import run, run_3d
 from server.objects.select import select_house
@@ -44,10 +44,63 @@ def _load(name: str):
         ("no", "no", "drop", 0.0),
         ("yes", "off", "single", 0.75),
         ("no", "yes", "drop", 0.0),
+        ("unavailable", "yes", "single", 0.5),
+        ("unavailable", "no", "drop", 0.0),
     ],
 )
 def test_agreement_table(gpt, grok, state, conf):
     assert agreement(gpt, grok) == (state, conf)
+
+
+class _Quota(RuntimeError):
+    status_code = 429
+
+
+def test_openai_quota_still_asks_grok(tmp_path: Path, monkeypatch):
+    """A GPT quota error stops OpenAI only. Grok still answers and those yeses count."""
+    monkeypatch.setattr("server.objects.vlm.time.sleep", lambda _seconds: None)
+    calls: list[str] = []
+
+    def transport(model, image, prompt):
+        calls.append(model)
+        if not str(model).startswith("grok"):
+            raise _Quota("insufficient_quota")
+        body = json.dumps(
+            {
+                "objects": [
+                    {"label": "gas_meter", "box_2d": [100, 200, 400, 500], "confidence": 0.8},
+                    {"label": "electric_meter", "box_2d": [500, 100, 800, 400], "confidence": 0.8},
+                ],
+                "present": {"gas_meter": "yes", "electric_meter": "yes"},
+                "ground_type": "concrete_or_paving",
+            }
+        )
+        return body, 20, 10, 0.02
+
+    frames = {}
+    for name, color in (("a", (20, 40, 60)), ("b", (90, 10, 10))):
+        path = tmp_path / f"{name}.jpg"
+        _write_image(path, color)
+        frames[name] = FrameRef(name, path, 8, 8, "keyframe")
+    client = VisionClient(ObjectsConfig(), tmp_path / "cache", transport=transport)
+    result = run_cascade(
+        FrameSelection(frames=["a", "b"], hazard_frames=["a"], filtered_frac=0.0),
+        frames,
+        client,
+        Budget(0.85),
+        ObjectsConfig(),
+        {},
+        gate_scores={},
+        gate_thresholds={},
+    )
+    assert calls == ["gpt-5.5", "grok-4.7", "grok-4.7"]
+    assert result.warnings.count("vlm_unavailable") == 1
+    assert client.down == {"openai"}
+    summary = class_summary(result.presence)
+    assert summary["gas_meter"]["state"] == "present"
+    assert summary["electric_meter"]["state"] == "present"
+    assert result.budget.calls.get("grok-4.7") == 2
+    assert "gpt-5.5" not in result.budget.calls
 
 
 def test_budget_skips_later_stages_and_never_hazard():

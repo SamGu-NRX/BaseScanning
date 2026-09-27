@@ -35,6 +35,30 @@ class LiveBudgetExceeded(RuntimeError):
     """The next vendor call would meet or pass the live-test spend cap."""
 
 
+class ProviderDown(RuntimeError):
+    """One vendor is refusing calls. The other vendor still runs."""
+
+    def __init__(self, provider: str, code: str) -> None:
+        super().__init__(f"vlm_unavailable:{provider}:{code}")
+        self.provider = provider
+        self.code = code
+
+
+def provider_of(model: str) -> str:
+    return "xai" if model.startswith("grok") else "openai"
+
+
+def error_code(exc: BaseException) -> str:
+    """Quota (402/429 or an insufficient-quota body) takes that provider offline. Other errors retry."""
+    status = getattr(exc, "status_code", None)
+    if status in {402, 429}:
+        return "provider_quota"
+    text = str(exc).lower()
+    if "insufficient_quota" in text or "provider_quota" in text:
+        return "provider_quota"
+    return "provider_error"
+
+
 @dataclass
 class LiveSpend:
     """Session tally for the two `-m live` tests. Cache hits are not charged."""
@@ -155,6 +179,7 @@ class VisionClient:
     live_spend: LiveSpend | None = None
     requests: int = 0
     cache_hits: int = 0
+    down: set[str] = field(default_factory=set)
     _mem: dict = field(default_factory=dict)
 
     def presence(
@@ -208,6 +233,9 @@ class VisionClient:
             hit["cached"] = True
             hit["cost_usd"] = 0.0
             return hit
+        provider = provider_of(model)
+        if provider in self.down:
+            raise ProviderDown(provider, "provider_quota")
         last = "vlm_unavailable"
         for attempt in range(3):
             try:
@@ -231,7 +259,12 @@ class VisionClient:
                 return rec
             except LiveBudgetExceeded:
                 raise
+            except ProviderDown:
+                raise
             except Exception as exc:  # noqa: BLE001 — vendor and parse failures retry, then degrade
+                if error_code(exc) == "provider_quota":
+                    self.down.add(provider)
+                    raise ProviderDown(provider, "provider_quota") from exc
                 last = repr(exc)[:300]
                 if attempt < 2:
                     time.sleep(3 * (attempt + 1))

@@ -31,7 +31,7 @@ uv run pytest server/objects/tests -q -m "not live"
 uv run ruff check server/objects
 ```
 
-`pytest server/objects/tests -m "not live"` on this build: 72 passed, 2 deselected (the live tests). Live tests were not executed.
+`pytest server/objects/tests -m "not live"` on this build: 75 passed, 2 deselected (the live tests). Live tests were not executed.
 
 ## Rebuild from scratch
 
@@ -43,7 +43,7 @@ Observed on this branch, cached answers only.
 
 | Check | Bar | Observed |
 |---|---|---|
-| `pytest -m "not live"` | N ≥ 30, exit 0 | 72 passed, 2 deselected (`-m live` not run) |
+| `pytest -m "not live"` | N ≥ 30, exit 0 | 75 passed, 2 deselected (`-m live` not run) |
 | `class_scores` vs 20 cached embeddings | within 1e-4 | `test_class_scores_match_cached_embeddings` on `data/fixtures/objects/b3/emb20.json`. Text towers download with the `objects` extra |
 | Selection, 11 houses | exact top-2 union | 166/1321 frames, matches `selection_top2_union.json` |
 | OWLv2 boxes, 10 images | within 2 px and 0.01 score | `test_owlv2_boxes_match_b1_on_ten_images`. Weights download with the `objects` extra; the ten images stay in the eval store |
@@ -67,4 +67,4 @@ The brief still says `VISION_EXTERNAL_CALLS` defaults on in dev and is required 
 
 ## Known limits
 
-`run` reads keyframes and stills from `packet_dir/packet.json` (image paths relative to that directory, or `files[]` rows with role `keyframe`/`still` when the arrays are empty) and returns `objects/objects.json`. `run_3d` reads `scene/scene.json` and `objects/objects.json` from the stage work dir and returns `objects/objects_3d.json` and `objects/view_requests.json`. It casts boxes onto scene walls when keyframe ids match the 2D views; the facade GT scene uses `DSC_*` ids, so a `cli run` against that scene emits `location_unsure`. `lift-eval` places openings from the packet's clean poses instead. Class-score parity uses the committed `emb20.json` embeddings and downloads the text towers. OWLv2 parity downloads its weights and reads the ten eval images from the local breadth store when that store is present. The response cache is the reproducibility path. A missing vendor call degrades the stage. It does not fail it, except for a missing packet or a missing gate weight.
+`run` reads keyframes and stills from `packet_dir/packet.json` (image paths relative to that directory, or `files[]` rows with role `keyframe`/`still` when the arrays are empty) and returns `objects/objects.json`. `run_3d` reads `scene/scene.json` and `objects/objects.json` from the stage work dir and returns `objects/objects_3d.json` and `objects/view_requests.json`. It casts boxes onto scene walls when keyframe ids match the 2D views; the facade GT scene uses `DSC_*` ids, so a `cli run` against that scene emits `location_unsure`. `lift-eval` places openings from the packet's clean poses instead. Class-score parity uses the committed `emb20.json` embeddings and downloads the text towers. OWLv2 parity downloads its weights and reads the ten eval images from the local breadth store when that store is present. The response cache is the reproducibility path. A missing vendor call degrades the stage. It does not fail it, except for a missing packet or a missing gate weight. An OpenAI quota error (402/429) takes only that provider offline and Grok still reads the selected frames.
