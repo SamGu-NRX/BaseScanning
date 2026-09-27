@@ -1,9 +1,12 @@
 """Regression tests for the main-track review of #11 at 9edcd4b; each failed before its fix."""
 
 import json
+import math
 
 from fastapi.testclient import TestClient
 from helpers import at_start, observed_band, pads_ground, parsed, rect, shared_fixture
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from test_s4_round import PUBLIC, answer
 
 import api
@@ -106,30 +109,57 @@ def test_the_battery_check_is_left_out_only_when_the_gas_check_covers_it() -> No
 # --- 4. start positions where the error grows with drift ---------------------------------------
 
 
-def drift_window() -> tuple[dict, float, float]:
-    lo, hi = 8.005, 8.030
+def drift_window(lo: float = 8.005, hi: float = 8.030, z: float = 0.9) -> tuple[dict, float, float]:
+    """Two exact gas-meter points placed so a start passes only inside (lo, hi): each is 3 ft
+    plus the battery's error at that end away from the battery's nearest part. The error grows
+    0.16 ft per foot from the meter (default wall error). `z` is how far out from the wall the
+    points stand; past the battery's depth the nearest part of it is a front corner."""
 
     def e(s: float) -> float:
         return 0.3 + 0.16 * (s + W)
 
+    def along(s: float) -> float:
+        out = max(0.0, z - 22 / 12)
+        return math.sqrt((3 + e(s)) ** 2 - out**2)
+
     raw = shared_fixture()
     del raw["walls"][0]["plus_minus_ft"]  # default error with drift
     raw["ground"] = pads_ground([(lo - e(lo) - 0.01, hi + W + e(hi) + 0.01)])
-    raw["objects"] = []
-    for x in (lo - 3 - e(lo), hi + W + 3 + e(hi)):
-        raw["objects"].append(
-            {
-                "type": "gas_meter",
-                "wall_id": "w1",
-                "span_ft": [x, x],
-                "bottom_ft": 0,
-                "top_ft": 0.1,
-                "source": "tape",
-                "plus_minus_ft": 0,
-                "footprint": [[x, 0.9]],
-            }
-        )
+    raw["objects"] = [
+        {
+            "type": "gas_meter",
+            "wall_id": "w1",
+            "span_ft": [x, x],
+            "bottom_ft": 0,
+            "top_ft": 0.1,
+            "source": "tape",
+            "plus_minus_ft": 0,
+            "footprint": [[x, z]],
+        }
+        for x in (lo - along(lo), hi + W + along(hi))
+    ]
     return raw, lo, hi
+
+
+def test_the_narrow_interval_is_found_with_the_meters_in_front() -> None:
+    # The caretaker's follow-up: the same interval with the gas points 1 ft in front of the
+    # battery, so the nearest part is a front corner and the distance runs diagonally.
+    raw, lo, hi = drift_window(z=22 / 12 + 1)
+    assert evaluate_start(parsed(raw, PUBLIC), PUBLIC, (lo + hi) / 2).outcome == PASS
+    assert solve(parsed(raw, PUBLIC), PUBLIC)["stats"]["pass"] > 0
+
+
+@settings(max_examples=25, deadline=None)
+@given(
+    lo=st.floats(min_value=3.0, max_value=12.0),
+    width=st.floats(min_value=0.004, max_value=0.2),
+    z=st.floats(min_value=0.1, max_value=4.0),
+)
+def test_a_start_that_passes_is_found_by_the_solve(lo: float, width: float, z: float) -> None:
+    raw, lo, hi = drift_window(lo, lo + width, z)
+    scene = parsed(raw, PUBLIC)
+    if evaluate_start(scene, PUBLIC, (lo + hi) / 2).outcome == PASS:
+        assert solve(scene, PUBLIC)["stats"]["pass"] > 0
 
 
 def test_a_passing_interval_narrower_than_the_grid_is_found() -> None:
