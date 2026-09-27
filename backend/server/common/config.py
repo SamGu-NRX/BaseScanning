@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from server.common.backends.state_memory import MemoryState
@@ -97,6 +97,13 @@ class Settings(BaseSettings):
     HSS_AUTH_ISSUER: str | None = None
     HSS_AUTH_AUDIENCE: str = "capture-api"
     HSS_API_MIN_CONTAINERS: int = Field(default=1)
+
+    @model_validator(mode="after")
+    def dev_deploy_auth_defaults_to_none(self) -> Settings:
+        """Dev deploy is auth-off unless HSS_AUTH_MODE is configured (SD-86)."""
+        if self.SMP_ENVIRONMENT == "dev" and "HSS_AUTH_MODE" not in self.model_fields_set:
+            self.HSS_AUTH_MODE = "none"
+        return self
 
 
 def load() -> Settings:

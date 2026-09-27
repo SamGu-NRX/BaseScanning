@@ -28,11 +28,14 @@ if modal is not None:
     # hss-dev-gcp is attached once the GCP project exists. Volume deploys only need the API secret.
     _secrets = [modal.Secret.from_name(f"hss-{_env}-api")]
     _volumes = {"/vol": modal.Volume.from_name("house-capture-pipeline", create_if_missing=True)}
+    # Deploy environment only. HSS_AUTH_MODE stays in the secret or Settings (dev defaults to none).
+    _runtime_env = {"SMP_ENVIRONMENT": _env}
 
     @api_app.function(
         image=api_image,
         secrets=_secrets,
         volumes=_volumes,
+        env=_runtime_env,
         min_containers=int(os.environ.get("HSS_API_MIN_CONTAINERS", "1")),
         max_containers=1,
         scaledown_window=300,
@@ -43,12 +46,15 @@ if modal is not None:
     def capture_api():
         from server.api.app import create_app
 
-        # Demo stack (SD-86): no bearer. Static tokens and JWT stay unused.
-        os.environ["HSS_AUTH_MODE"] = "none"
         return create_app()
 
     @api_app.function(
-        image=api_image, secrets=_secrets, volumes=_volumes, schedule=modal.Period(minutes=5), timeout=240
+        image=api_image,
+        secrets=_secrets,
+        volumes=_volumes,
+        env=_runtime_env,
+        schedule=modal.Period(minutes=5),
+        timeout=240,
     )
     def ingest_sweep():
         from server.api.sweeper import ingest_sweep as sweep

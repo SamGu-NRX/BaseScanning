@@ -17,24 +17,26 @@ from server.contracts.jobs import RunRecord, StageRecord
 _PACKET = Path("data/fixtures/packets/mini-arkit/packet.json")
 
 
-def _settings(tmp_path) -> Settings:
-    return Settings(
-        STORAGE_BACKEND="volume",
-        STATE_BACKEND="memory",
-        VOLUME_ROOT=str(tmp_path / "vol"),
-        CAPTURE_API_PUBLIC_URL="http://testserver",
-        UPLOAD_URL_HMAC_SECRET="h" * 32,
-        HSS_AUTH_MODE="none",
-        HSS_INGEST_HOOKS="null",
-        GIT_SHA="0123456789abcdef",
-        VISION_EXTERNAL_CALLS="on",
-        SMP_ENVIRONMENT="dev",
-        SMP_SERVICE_NAME="capture-api",
-    )
+def _settings(tmp_path, **overrides) -> Settings:
+    values = {
+        "STORAGE_BACKEND": "volume",
+        "STATE_BACKEND": "memory",
+        "VOLUME_ROOT": str(tmp_path / "vol"),
+        "CAPTURE_API_PUBLIC_URL": "http://testserver",
+        "UPLOAD_URL_HMAC_SECRET": "h" * 32,
+        "HSS_INGEST_HOOKS": "null",
+        "GIT_SHA": "0123456789abcdef",
+        "VISION_EXTERNAL_CALLS": "on",
+        "SMP_ENVIRONMENT": "dev",
+        "SMP_SERVICE_NAME": "capture-api",
+    }
+    values.update(overrides)
+    return Settings(**values)
 
 
 def test_missing_authorization_is_the_demo_device(tmp_path) -> None:
     settings = _settings(tmp_path)
+    assert settings.HSS_AUTH_MODE == "none"
     assert authenticate(None, settings, {}) == Principal(label="demo", reviewer=False)
     presented = authenticate("Bearer not-used", settings, {})
     assert presented.label == "demo"
@@ -110,3 +112,17 @@ def test_replay_mini_arkit_without_a_token(tmp_path) -> None:
     assert summary["committed"] == 11
     assert summary["listed"] == 11
     assert summary["status"] == "processing"
+
+
+def test_configured_static_mode_requires_a_bearer(tmp_path) -> None:
+    settings = _settings(tmp_path, HSS_AUTH_MODE="static")
+    assert settings.HSS_AUTH_MODE == "static"
+    app = create_app(settings=settings)
+    client = TestClient(app)
+    response = client.post(
+        "/v1/captures",
+        json=create_body("packet-static"),
+        headers={"Idempotency-Key": "packet-static"},
+    )
+    assert response.status_code == 401
+    assert response.json()["errors"][0]["code"] == "unauthorized"
