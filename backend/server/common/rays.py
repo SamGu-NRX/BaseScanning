@@ -15,15 +15,25 @@ def rays_from_tracks(
 
     Sparse tracks use ``end_is_surface=None``. LiDAR (src 2) and π³ (src 1) ends
     are surfaces. ``src`` aligns with ``points``.
+
+    Camera membership is inverted once. An empty track list is one pass over the
+    points, not one pass per camera: the coverage cloud is hundreds of thousands
+    of points and the old nested scan blew the L4 coverage cap.
     """
     pts = np.asarray(points, float)
     src = np.asarray(src)
+    buckets: list[list[int]] = [[] for _ in cameras]
+    n_cams = len(cameras)
+    for point_index, cams in enumerate(tracks):
+        seen = np.asarray(cams).ravel()
+        if seen.size == 0:
+            continue
+        for cam_index in dict.fromkeys(int(v) for v in seen):
+            if 0 <= cam_index < n_cams:
+                buckets[cam_index].append(point_index)
     out = []
     for cam_index, cam in enumerate(cameras):
-        origins_rows = []
-        for point_index, cams in enumerate(tracks):
-            if cam_index in set(int(v) for v in np.asarray(cams).ravel()):
-                origins_rows.append(point_index)
+        origins_rows = buckets[cam_index]
         if not origins_rows:
             out.append((cam.pose[:3, 3], np.zeros((0, 3)), None))
             continue

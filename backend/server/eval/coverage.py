@@ -408,10 +408,28 @@ def build_grid(
         surf = None if surf is None else np.asarray(surf, bool)[order]
         dirs = (ends - o) / np.maximum(L, 1e-9)[:, None]
         a = 0
-        while a < len(ends):
-            nmax = int(np.ceil(L[min(len(L) - 1, a)] / step)) + 1
-            b = min(len(ends), a + max(1, max_samples // max(nmax, 1)))
-            nmax = int(np.ceil(L[b - 1] / step)) + 1
+        n_rays = len(ends)
+
+        def nmax_at(index: int) -> int:
+            return int(np.ceil(L[index] / step)) + 1
+
+        while a < n_rays:
+            # Batch from the longest ray in the batch. Sizing from the shortest ray
+            # allocated a rectangle as wide as a much longer neighbour and spent the
+            # L4 coverage budget marching samples past the short rays' ends.
+            if nmax_at(a) > max_samples:
+                b = a + 1
+            else:
+                lo_b = a + 1
+                hi_b = n_rays
+                while lo_b < hi_b:
+                    mid = (lo_b + hi_b + 1) // 2
+                    if (mid - a) * nmax_at(mid - 1) <= max_samples:
+                        lo_b = mid
+                    else:
+                        hi_b = mid - 1
+                b = lo_b
+            nmax = nmax_at(b - 1)
             t = (np.arange(nmax) * step)[None, :]
             keep = t < (L[a:b, None] - 0.75 * voxel)
             P = o + dirs[a:b, None, :] * t[..., None]

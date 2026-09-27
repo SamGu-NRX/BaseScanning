@@ -2,12 +2,15 @@
 
 ``uv run modal run scripts/modal_scene.py --images-dir DIR --max-frames 4``
 
-The script never prints token values. Weights cache on the ``hss-ws06-weights`` volume.
+The script never prints token values. Weights are read from the ``house-capture-pipeline`` volume at ``/vol/hf`` in the ``dev`` environment. Prove with ``modal run -e dev``. The prove path does not download weights.
+
+``modal volume put`` does not follow ``MODAL_ENVIRONMENT`` unless ``-e`` is passed, so frame uploads name the same environment as ``modal run -e``.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -17,11 +20,12 @@ from pathlib import Path
 import modal
 import numpy as np
 
+from server.common.rays import rays_from_tracks
 from server.dense.models import DA3_REPO, MOGE_WEIGHTS, PI3_REPO, pretrained_source
 from server.dense.params import dense_params_from_env
 
 APP_NAME = "hss-ws06-dense"
-VOL_NAME = "hss-ws06-weights"
+VOL_NAME = "house-capture-pipeline"
 GPU = "L4"
 # Published Modal rate used by the housepipe bench. A hard timeout keeps one run under a dollar.
 GPU_USD_PER_S = 0.000222
@@ -63,6 +67,11 @@ image = (
     .run_commands("pip install --no-cache-dir numpy==1.26.4")
     .apt_install("libegl1", "libopengl0", "libgl1-mesa-dri", "libusb-1.0-0", "libx11-6", "libxext6", "libsm6")
     .add_local_python_source("server")
+    # The python-source mount keeps .py only. Scene validation reads these json files.
+    .add_local_dir(
+        str(Path(__file__).resolve().parent.parent / "server" / "contracts" / "schemas"),
+        remote_path="/root/server/contracts/schemas",
+    )
 )
 
 app = modal.App(APP_NAME)
@@ -91,10 +100,22 @@ def fetch_weights() -> dict:
 
     started = time.perf_counter()
     repos = ("yyfz233/Pi3", "depth-anything/DA3-LARGE-1.1", "Ruicheng/moge-2-vits-normal")
+    fetched: list[str] = []
+    present: list[str] = []
     for repo in repos:
-        snapshot_download(repo, local_dir=f"/vol/hf/{repo.replace('/', '--')}")
-    volume.commit()
-    return {"fetched": list(repos), "cpu_s": round(time.perf_counter() - started, 1)}
+        dest = Path(f"/vol/hf/{repo.replace('/', '--')}")
+        if dest.is_dir() and any(dest.iterdir()):
+            present.append(repo)
+            continue
+        snapshot_download(repo, local_dir=str(dest))
+        fetched.append(repo)
+    if fetched:
+        volume.commit()
+    return {
+        "fetched": fetched,
+        "present": present,
+        "cpu_s": round(time.perf_counter() - started, 1),
+    }
 
 
 @app.function(image=image, gpu=GPU, cpu=2, timeout=GPU_TIMEOUT_S, volumes={"/vol": volume})
@@ -201,6 +222,20 @@ def _write_measurement_wall(poses_dir: Path, write_ply) -> None:
     write_ply(poses_dir / "sparse.ply", np.vstack([wall, ground]).astype(np.float32))
 
 
+def volume_put_argv(local: str, remote: str, env: str) -> list[str]:
+    """Argv for ``modal volume put``. ``-e`` is required; the flagless command uses the workspace default."""
+    argv = [sys.executable, "-m", "modal", "volume", "put", "--force"]
+    if env:
+        argv.extend(["-e", env])
+    argv.extend([VOL_NAME, str(local), remote])
+    return argv
+
+
+def _volume_put(local: str, remote: str, env: str) -> None:
+    print(json.dumps({"volume_put": remote, "modal_env": env or "workspace-default"}), flush=True)
+    subprocess.check_call(volume_put_argv(local, remote, env))
+
+
 def _image_paths(folder: Path) -> list[Path]:
     return sorted(path for path in Path(folder).iterdir() if path.suffix.lower() in {".jpg", ".jpeg", ".png"})
 
@@ -243,7 +278,7 @@ def _packet_and_cameras(paths: list[Path], flow: str) -> tuple[dict, list[dict],
 
 
 @app.function(image=image, gpu=GPU, cpu=4, memory=16384, timeout=PROVE_TIMEOUT_S, volumes={"/vol": volume})
-def prove_gates(run_id: str) -> dict:
+def prove_gates(run_id: str, yt_frames: int = 153, facade_frames: int = 76) -> dict:
     """L4 timings and a scene this package wrote. Cached weights only; no download.
 
     Frames come from ``/vol/in/<run_id>/`` only, so an older upload cannot shadow this run.
@@ -261,6 +296,7 @@ def prove_gates(run_id: str) -> dict:
     os.environ["EGL_PLATFORM"] = "surfaceless"
     os.environ["LIBGL_ALWAYS_SOFTWARE"] = "1"
     os.environ["HSS_DENSE_GEOMETRY"] = "image"
+    os.environ["HSS_COVERAGE_STEP_LOG"] = "1"
     started = time.perf_counter()
     steps: dict[str, float] = {}
 
@@ -358,7 +394,7 @@ def prove_gates(run_id: str) -> dict:
             "cameras": cameras,
         }
 
-    yt = one_dense("yt", "guided", "none", 153)
+    yt = one_dense("yt", "guided", "none", int(yt_frames))
     if not yt.get("ok"):
         return {"ok": False, "stage": "yt", "steps": steps, **{k: v for k, v in yt.items() if k != "packet"}}
     mark(
@@ -419,7 +455,7 @@ def prove_gates(run_id: str) -> dict:
             models={"flow": "guided"},
         )
         coverage_doc = json.loads((cov_dir / "coverage_report.json").read_text())
-        mark("coverage", coverage_s=float(coverage_doc["timings"]["coverage_s"]))
+        mark("coverage", **coverage_doc["timings"])
         scene_dir = Path("/vol/out") / run_id / "yt" / "scene"
         scene_path = build_scene(
             yt["packet"],
@@ -483,11 +519,20 @@ def prove_gates(run_id: str) -> dict:
     partial_path.parent.mkdir(parents=True, exist_ok=True)
     partial_path.write_text(json.dumps(partial) + "\n")
     volume.commit()
-    try:
-        facade = one_dense("facade", "photo", "da3", 76)
-    except Exception as exc:
-        facade = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-    mark("facade", ok=bool(facade.get("ok")), dense_s=facade.get("dense_s"), error=facade.get("error"))
+    if int(facade_frames) <= 0:
+        facade = {"ok": True, "frames": 0, "dense_s": None, "skipped": True}
+    else:
+        try:
+            facade = one_dense("facade", "photo", "da3", int(facade_frames))
+        except Exception as exc:
+            facade = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    mark(
+        "facade",
+        ok=bool(facade.get("ok")),
+        dense_s=facade.get("dense_s"),
+        error=facade.get("error"),
+        skipped=bool(facade.get("skipped")),
+    )
     elapsed = time.perf_counter() - started
     volume.commit()
     yt_s = float(yt["dense_s"])
@@ -528,15 +573,69 @@ def prove_gates(run_id: str) -> dict:
         },
         "caps": {
             "yt_dense_le_90": yt_s <= 90.0,
-            "facade_dense_le_150": facade_s <= 150.0,
+            "facade_dense_le_150": None if facade.get("dense_s") is None else facade_s <= 150.0,
             "coverage_le_60": coverage_s <= 60.0,
             "scene_le_30": scene_s <= 30.0,
         },
     }
 
 
+@app.function(image=image, cpu=2, memory=8192, timeout=10 * 60)
+def profile_empty_rays(n_points: int = 200_000, n_cams: int = 153) -> dict:
+    """Time empty-track rays on the container CPU. No weight download and no GPU."""
+
+    class _Cam:
+        def __init__(self, index: int) -> None:
+            self.pose = np.eye(4)
+            self.pose[0, 3] = float(index)
+
+    n_points = int(n_points)
+    n_cams = int(n_cams)
+    cameras = [_Cam(i) for i in range(n_cams)]
+    points = np.zeros((n_points, 3), np.float64)
+    tracks = [np.zeros(0, np.int32) for _ in range(n_points)]
+    src = np.zeros(n_points, np.int32)
+    started = time.perf_counter()
+    rays = rays_from_tracks(cameras, points, tracks, src)
+    new_s = time.perf_counter() - started
+    sample = min(8_000, n_points)
+    legacy_hits = 0
+    legacy_started = time.perf_counter()
+    for cam_index, _cam in enumerate(cameras):
+        for cam_ids in tracks[:sample]:
+            if cam_index in set(int(v) for v in np.asarray(cam_ids).ravel()):
+                legacy_hits += 1
+    legacy_sample_s = time.perf_counter() - legacy_started
+    scale = n_points / sample if sample else 1.0
+    return {
+        "n_points": n_points,
+        "n_cams": n_cams,
+        "rays_s": round(new_s, 3),
+        "empty": all(row[1].shape[0] == 0 for row in rays),
+        "legacy_sample_points": sample,
+        "legacy_sample_s": round(legacy_sample_s, 3),
+        "legacy_extrapolated_s": round(legacy_sample_s * scale, 1),
+        "legacy_hits": legacy_hits,
+    }
+
+
 @app.local_entrypoint()
-def main(images_dir: str = "", max_frames: int = 4, prove: int = 0, run_id: str = "") -> None:
+def main(
+    images_dir: str = "",
+    max_frames: int = 4,
+    prove: int = 0,
+    run_id: str = "",
+    yt_frames: int = 153,
+    facade_frames: int = 76,
+    profile_rays: int = 0,
+) -> None:
+    if profile_rays:
+        worst = 10 * 60 * CPU_USD_PER_S
+        if worst > SPEND_STOP_USD:
+            raise SystemExit(f"refusing launch: worst-case ${worst:.2f} exceeds ${SPEND_STOP_USD:.0f}")
+        result = profile_empty_rays.remote(int(profile_rays), 153)
+        print(json.dumps(result, indent=1))
+        return
     if prove:
         worst = PROVE_TIMEOUT_S * GPU_USD_PER_S
         if worst > SPEND_STOP_USD:
@@ -549,24 +648,26 @@ def main(images_dir: str = "", max_frames: int = 4, prove: int = 0, run_id: str 
                 Path(
                     "/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal/data/houses/yt-LCPBf86oloE/frames"
                 ),
-                153,
+                int(yt_frames),
             ),
             "facade": (
                 Path("/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal/data/houses/eth3d-facade/frames"),
-                76,
+                int(facade_frames),
             ),
         }
+        modal_env = os.environ.get("MODAL_ENVIRONMENT") or ""
+        if modal_env != "dev":
+            raise SystemExit("prove reads /vol/hf on the dev volume; launch with `modal run -e dev`")
         for name, (source, limit) in houses.items():
-            dest = stage / name
-            if dest.is_dir() and _image_paths(dest):
+            if limit <= 0:
                 continue
-            dest.mkdir(parents=True, exist_ok=True)
-            for path in _image_paths(source)[:limit]:
-                shutil.copyfile(path, dest / path.name)
-            subprocess.check_call(
-                [sys.executable, "-m", "modal", "volume", "put", "--force", VOL_NAME, str(dest), f"in/{run_id}/{name}"]
-            )
-        result = prove_gates.remote(run_id)
+            dest = stage / name
+            if not (dest.is_dir() and _image_paths(dest)):
+                dest.mkdir(parents=True, exist_ok=True)
+                for path in _image_paths(source)[:limit]:
+                    shutil.copyfile(path, dest / path.name)
+            _volume_put(str(dest), f"in/{run_id}/{name}", modal_env)
+        result = prove_gates.remote(run_id, int(yt_frames), int(facade_frames))
         print(json.dumps(result, indent=1))
         return
     n = max(3, min(int(max_frames), MAX_FRAMES))
@@ -578,10 +679,9 @@ def main(images_dir: str = "", max_frames: int = 4, prove: int = 0, run_id: str 
     worst = GPU_TIMEOUT_S * GPU_USD_PER_S + FETCH_TIMEOUT_S * 2 * CPU_USD_PER_S
     if worst > SPEND_STOP_USD:
         raise SystemExit(f"refusing launch: worst-case ${worst:.2f} exceeds ${SPEND_STOP_USD:.0f}")
+    modal_env = os.environ.get("MODAL_ENVIRONMENT") or ""
     for path in paths:
-        subprocess.check_call(
-            [sys.executable, "-m", "modal", "volume", "put", "--force", VOL_NAME, str(path), f"in/{path.name}"]
-        )
+        _volume_put(str(path), f"in/{path.name}", modal_env)
     fetched = fetch_weights.remote()
     result = dense_and_depth.remote(n)
     result["weight_fetch"] = fetched

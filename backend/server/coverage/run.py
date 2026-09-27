@@ -116,10 +116,12 @@ def run_coverage(
     draft = dict(scene)
     draft.pop("assets", None)
     (out_dir / "scene_draft.json").write_text(json.dumps(draft, indent=1) + "\n")
+    timings = {"coverage_s": round(time.perf_counter() - started, 3)}
+    timings.update(state.get("step_s") or {})
     cov = CoverageReport(
         warnings=state["notes"],
         views_needed=needed,
-        timings={"coverage_s": round(time.perf_counter() - started, 3)},
+        timings=timings,
     )
     (out_dir / "coverage_report.json").write_text(
         json.dumps(

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import os
 import subprocess
+import time
 from pathlib import Path
 
 import numpy as np
@@ -117,6 +120,17 @@ def build_metric_scene(
 ) -> tuple[dict, dict, list[dict]]:
     """Return ``(scene, state, views_needed)``. ``points`` are in frame W."""
     notes = list(warnings or [])
+    step_s: dict[str, float] = {}
+    tick = time.perf_counter()
+
+    def lap(name: str) -> None:
+        nonlocal tick
+        now = time.perf_counter()
+        step_s[name] = round(now - tick, 3)
+        tick = now
+        if os.environ.get("HSS_COVERAGE_STEP_LOG"):
+            print(json.dumps({"checkpoint": name, "step_s": step_s[name]}), flush=True)
+
     harness = load_harness()
     extract = harness["extract"]
     frame = harness["frame"]
@@ -191,6 +205,7 @@ def build_metric_scene(
     guard_tracks = m_tracks if len(m_tracks) == len(scene_pts) else None
     base_unobserved = apply_ground_guard(scene, scene_pts, guard_tracks, params, notes, state=state)
     _retarget_keyframes(scene, state, scale, pose_sources)
+    lap("extract")
     lo, hi = grid_bounds(scene, state["points_c"])
     n_vox = int(np.prod(np.ceil((hi - lo) / params.voxel_m)))
     voxel = params.voxel_m
@@ -209,7 +224,9 @@ def build_metric_scene(
             ray_src = np.concatenate([ray_src, np.ones(len(extra_c), int)])
             ray_tracks = list(ray_tracks) + [tracks[int(i)] for i in extra_idx]
     sets = rays_from_tracks(state["cams_c"], ray_pts, ray_tracks, ray_src)
+    lap("rays")
     grid = coverage.build_grid(sets, lo, hi, voxel)
+    lap("grid")
     set_observed_fractions(scene, grid)
     upgrade_evidence(scene, grid, notes)
     maps = depth_maps or {}
@@ -218,10 +235,14 @@ def build_metric_scene(
         query = coverage_query_factory(state["cams_c"], state["points_c"], maps)
     if query is not None:
         bands = coverage.bands_from_grid(grid, scene, query=query)
+        lap("bands")
         sensitivity = coverage.ground_sensitivity(grid, scene, query)
+        lap("sensitivity")
     else:
         bands = coverage.bands_from_grid(grid, scene)
+        lap("bands")
         sensitivity = []
+        lap("sensitivity")
     for band in bands:
         if "best_incidence_deg" in band and band["best_incidence_deg"] is not None:
             band["best_incidence_deg"] = clamp_angle(band["best_incidence_deg"], notes)
@@ -251,6 +272,7 @@ def build_metric_scene(
     state["grid"] = grid
     state["notes"] = scene["provenance"]["notes"]
     state["measure_src"] = src_scene
+    state["step_s"] = step_s
     check_scene(scene)
     return scene, state, needed
 
