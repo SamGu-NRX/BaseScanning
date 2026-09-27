@@ -13,7 +13,7 @@ from pathlib import Path
 from server.eval.adapters.criteria import CriteriaConfig, evaluate_scene
 from server.eval.adapters.hs11 import run as run_c1
 from server.eval.coverage import GROUND_RULES, query_region
-from server.eval.gates import evaluate, exit_code
+from server.eval.gates import evaluate, exit_code, refresh_committed_hashes
 from server.eval.geomscore import score_cloud, score_scene, transform_from_arg
 from server.eval.report import markdown, write
 from server.eval.sceneio import load_json, validate
@@ -141,7 +141,8 @@ def main(argv=None) -> int:
     gg = sub.add_parser("gates", help="evaluate gates.yaml and write the gate table")
     gg.add_argument("--config", type=Path, required=True)
     gg.add_argument("--inputs", type=Path, required=True)
-    gg.add_argument("--out", type=Path, required=True)
+    gg.add_argument("--out", type=Path)
+    gg.add_argument("--refresh-hashes", action="store_true", help="rewrite committed_sha256 from --inputs")
     gg.add_argument("--strict", action="store_true")
     gg.add_argument(
         "--allow-missing-occluders",
@@ -171,6 +172,11 @@ def main(argv=None) -> int:
             )
         return 0
     if a.cmd == "gates":
+        if a.refresh_hashes:
+            refresh_committed_hashes(a.config, a.inputs)
+            return 0
+        if a.out is None:
+            raise SystemExit("gates: --out is required")
         report = evaluate(a.config, a.inputs, allow_missing_occluders=a.allow_missing_occluders)
         write(report, a.out)
         sys.stdout.write(markdown(report))

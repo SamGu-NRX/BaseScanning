@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import shutil
 from datetime import date
 from pathlib import Path
 
+import pytest
 import yaml
 
 from server.eval.cli import main
@@ -13,15 +16,46 @@ from server.eval.e2e import main as e2e_main
 from server.eval.gates import (
     SPAN_TOL_M,
     _apply_known_failure,
+    _cmp,
     _decidability_rows,
+    _false_rejections,
+    _geometry_rows,
+    _known_warning_row,
+    _overlaps,
     _recomputed_unsafe,
+    _rescored_rows,
     _row,
+    _stripped_coverage_pass,
     evaluate,
     exit_code,
+    refresh_committed_hashes,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG = ROOT / "server" / "eval" / "gates.yaml"
+FIXTURES = ROOT / "data" / "fixtures"
+
+
+def _config_for(tmp_path: Path, files: dict[str, Path]) -> Path:
+    """Copy gates.yaml and retarget pins so a planted file is the committed bytes."""
+    text = CONFIG.read_text()
+    for rel, path in files.items():
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        prefix = f"  {rel}: "
+        lines = []
+        replaced = False
+        for line in text.splitlines(keepends=True):
+            if line.startswith(prefix):
+                lines.append(f"{prefix}{digest}\n")
+                replaced = True
+            else:
+                lines.append(line)
+        if not replaced:
+            raise AssertionError(f"no sha256 pin for {rel}")
+        text = "".join(lines)
+    dest = tmp_path / "gates.yaml"
+    dest.write_text(text)
+    return dest
 
 
 def _verdict(decision: str, *, unsure_cause: str | None = None) -> dict:
@@ -35,16 +69,6 @@ def _verdict(decision: str, *, unsure_cause: str | None = None) -> dict:
             {"id": "b", "wall_id": "w1", "start_s_m": [-3.383267547339912, -3.383267547339912], "outcome": "pass"},
         ],
         "criteria": [{"id": "route_length", "outcome": "pass", "measured": {"value_ft": 8.5166}}],
-    }
-
-
-def _score(unsafe: int) -> dict:
-    return {
-        "headline": {"unsafe_passes": unsafe, "pass_recall": None, "labelled_pass_positions": 0},
-        "start_range": {"positions": {"false_rejection": 0}},
-        "site": {"criteria": []},
-        "coverage_contract_errors": [],
-        "c5_margin_errors": [],
     }
 
 
@@ -85,9 +109,7 @@ def test_offline_table_skips_the_engine_and_passes_the_unpatched_reference():
     assert "not_merged" not in gravel["note"]
     assert by_id["positive/eth3d-facade/gt-laser-gravel/C/angle80"]["status"] == "PASS"
     assert by_id["positive/eth3d-facade/gt-laser-gravel/C/angle80"]["value"] == "manual_review"
-    angle = json.loads(
-        (ROOT / "data/fixtures/positive/eth3d-facade/gt-laser-gravel/C/angle80.json").read_text()
-    )
+    angle = json.loads((ROOT / "data/fixtures/positive/eth3d-facade/gt-laser-gravel/C/angle80.json").read_text())
     assert not any(str(reason).startswith("fact_absent") for reason in (angle["site"].get("reasons") or []))
     assert by_id["decidability/eth3d-facade/gt-laser/C"]["status"] == "PASS"
     assert by_id["decidability/eth3d-electro/gt-laser/C"]["status"] == "PASS"
@@ -120,11 +142,20 @@ def test_offline_table_skips_the_engine_and_passes_the_unpatched_reference():
 
 def test_unsafe_pass_exits_1(tmp_path: Path):
     inputs = tmp_path / "inputs"
-    target = inputs / "verdict-scores" / "eth3d-facade"
+    target = inputs / "verdicts" / "eth3d-facade" / "c1-3d"
     target.mkdir(parents=True)
-    (target / "C.json").write_text(json.dumps(_score(1)))
+    planted = target / "C.json"
+    planted.write_text(
+        json.dumps(
+            {
+                "site": {"decision": "pass"},
+                "candidates": [{"id": "spot", "wall_id": "w1", "outcome": "pass"}],
+            }
+        )
+    )
+    config = _config_for(tmp_path, {"verdicts/eth3d-facade/c1-3d/C.json": planted})
     out = tmp_path / "gates.json"
-    code = main(["gates", "--config", str(CONFIG), "--inputs", str(inputs), "--out", str(out)])
+    code = main(["gates", "--config", str(config), "--inputs", str(inputs), "--out", str(out)])
     assert code == 1
     report = json.loads(out.read_text())
     failed = [row for row in report["rows"] if row["status"] == "FAIL"]
@@ -144,8 +175,10 @@ def test_stripped_coverage_that_passes_is_a_fail(tmp_path: Path):
 def test_positive_pass_flipped_to_manual_review_fails(tmp_path: Path):
     dest = tmp_path / "positive" / "eth3d-facade" / "gt-laser-gravel" / "C"
     dest.mkdir(parents=True)
-    (dest / "footprint3in.json").write_text(json.dumps(_verdict("manual_review")))
-    report = evaluate(CONFIG, tmp_path, repo=ROOT)
+    planted = dest / "footprint3in.json"
+    planted.write_text(json.dumps(_verdict("manual_review")))
+    config = _config_for(tmp_path, {"positive/eth3d-facade/gt-laser-gravel/C/footprint3in.json": planted})
+    report = evaluate(config, tmp_path, repo=ROOT)
     row = next(r for r in report.rows if r["id"] == "positive/eth3d-facade/gt-laser-gravel/C/footprint3in")
     assert row["status"] == "FAIL"
     assert row["value"] == "manual_review"
@@ -153,13 +186,14 @@ def test_positive_pass_flipped_to_manual_review_fails(tmp_path: Path):
 
 
 def test_route_over_the_bar_is_known_until_expiry(tmp_path: Path):
-    dest = tmp_path / "positive" / "eth3d-facade" / "gt-laser-gravel" / "C"
-    dest.mkdir(parents=True)
+    inputs = tmp_path / "inputs"
+    shutil.copytree(FIXTURES, inputs)
     verdict = _verdict("pass")
     verdict["criteria"][0]["measured"]["value_ft"] = 9.1834
-    (dest / "footprint3in.json").write_text(json.dumps(verdict))
-    _plant_ground_strip(tmp_path)
-    report = evaluate(CONFIG, tmp_path, repo=ROOT)
+    planted = inputs / "positive/eth3d-facade/gt-laser-gravel/C/footprint3in.json"
+    planted.write_text(json.dumps(verdict))
+    config = _config_for(tmp_path, {"positive/eth3d-facade/gt-laser-gravel/C/footprint3in.json": planted})
+    report = evaluate(config, inputs, repo=ROOT)
     row = next(r for r in report.rows if r["id"] == "positive/eth3d-facade/gt-laser-gravel/C/footprint3in")
     assert row["status"] == "KNOWN_FAIL"
     assert exit_code(report) == 0
@@ -184,14 +218,112 @@ def test_route_above_the_recorded_miss_is_a_real_fail(tmp_path: Path):
     dest.mkdir(parents=True)
     verdict = _verdict("pass")
     verdict["criteria"][0]["measured"]["value_ft"] = 14.0
-    (dest / "footprint3in.json").write_text(json.dumps(verdict))
-    report = evaluate(CONFIG, tmp_path, repo=ROOT)
+    planted = dest / "footprint3in.json"
+    planted.write_text(json.dumps(verdict))
+    config = _config_for(tmp_path, {"positive/eth3d-facade/gt-laser-gravel/C/footprint3in.json": planted})
+    report = evaluate(config, tmp_path, repo=ROOT)
     row = next(r for r in report.rows if r["id"] == "positive/eth3d-facade/gt-laser-gravel/C/footprint3in")
     assert row["status"] == "FAIL"
     assert "route 14.0 ft exceeds 9.0" in row["note"]
     assert "known failure" not in row["note"]
     assert report.summary["known_fail"] == 0
     assert exit_code(report) == 1
+
+
+_NON_FINITE = [True, "8.5", float("nan"), False, "abc"]
+
+
+@pytest.mark.parametrize("value_ft", _NON_FINITE, ids=["true", "numeric-string", "nan", "false", "abc"])
+def test_gravel_route_rejects_non_finite_values(tmp_path: Path, value_ft: object):
+    dest = tmp_path / "positive" / "eth3d-facade" / "gt-laser-gravel" / "C"
+    dest.mkdir(parents=True)
+    verdict = _verdict("pass")
+    verdict["criteria"][0]["measured"]["value_ft"] = value_ft
+    planted = dest / "footprint3in.json"
+    planted.write_text(json.dumps(verdict))
+    config = _config_for(tmp_path, {"positive/eth3d-facade/gt-laser-gravel/C/footprint3in.json": planted})
+    report = evaluate(config, tmp_path, repo=ROOT)
+    row = next(item for item in report.rows if item["id"] == "positive/eth3d-facade/gt-laser-gravel/C/footprint3in")
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+    assert exit_code(report) == 1
+
+
+@pytest.mark.parametrize("value", _NON_FINITE, ids=["true", "numeric-string", "nan", "false", "abc"])
+def test_comparisons_reject_non_finite_values(value: object):
+    row = _cmp("id", "group", "target", "metric", value, 100, Path("evidence.json"), at_most=True)
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+
+
+@pytest.mark.parametrize("value", _NON_FINITE, ids=["true", "numeric-string", "nan", "false", "abc"])
+def test_geometry_scale_rejects_non_finite_values(tmp_path: Path, value: object):
+    evidence = tmp_path / "geometry" / "site" / "variant" / "geomscore.json"
+    evidence.parent.mkdir(parents=True)
+    evidence.write_text(json.dumps({"scale": {"scale_error_pct": value}}))
+    rows = _geometry_rows({"geometry": {"site/variant": {"scale_error_pct_abs_max": 100}}}, tmp_path)
+    row = next(item for item in rows if item["metric"] == "abs(scale_error_pct)")
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+
+
+@pytest.mark.parametrize("value", _NON_FINITE, ids=["true", "numeric-string", "nan", "false", "abc"])
+def test_known_warning_rejects_non_finite_values(tmp_path: Path, value: object):
+    _plant_ground_strip(tmp_path, _ground_strip(value, []))
+    row = _known_warning_row(
+        {
+            "id": "geometry/eth3d-facade/metric/ground_strip",
+            "metric": "false_observed_by_rule",
+            "evidence": "geometry/eth3d-facade/metric/ground_strip.json",
+            "value_key": "false_observed_by_rule",
+            "recorded": 0.069,
+            "tolerance": 0.001,
+        },
+        tmp_path,
+        pins=None,
+    )
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+
+
+@pytest.mark.parametrize("value", _NON_FINITE, ids=["true", "numeric-string", "nan", "false", "abc"])
+def test_pass_candidates_reject_non_finite_values(value: object):
+    reason = _stripped_coverage_pass({"site": {"decision": "manual_review"}, "pass_candidates": value})
+    assert reason == "committed evidence invalid"
+
+
+@pytest.mark.parametrize("value", _NON_FINITE, ids=["true", "numeric-string", "nan", "false", "abc"])
+def test_false_rejections_reject_non_finite_values(value: object):
+    score = {"start_range": {"positions": {"false_rejection": value}}}
+    row = _cmp(
+        "id",
+        "verdicts",
+        "target",
+        "false_rejections",
+        _false_rejections(score),
+        100,
+        Path("score.json"),
+        at_most=True,
+    )
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+
+
+@pytest.mark.parametrize("value", _NON_FINITE, ids=["true", "numeric-string", "nan", "false", "abc"])
+def test_stored_unsafe_passes_reject_non_finite_values(value: object):
+    rows = _rescored_rows(
+        {},
+        "eth3d-facade/C",
+        {"score": {"headline": {"unsafe_passes": value}}, "candidates": []},
+        Path("verdict.json"),
+        None,
+    )
+    assert any(item["note"] == "committed evidence invalid" for item in rows)
+
+
+@pytest.mark.parametrize("value", _NON_FINITE, ids=["true", "numeric-string", "nan", "false", "abc"])
+def test_window_overlap_rejects_non_finite_coordinates(value: object):
+    assert _overlaps([value, -3.383], [-3.891, -3.383]) is False
 
 
 def _ground_strip(value: object, claims: object) -> dict:
@@ -212,8 +344,8 @@ def _plant_ground_strip(root: Path, payload: dict | None = None) -> Path:
     return path
 
 
-def _ground_row(root: Path) -> dict:
-    report = evaluate(CONFIG, root, repo=ROOT)
+def _ground_row(root: Path, config: Path = CONFIG) -> dict:
+    report = evaluate(config, root, repo=ROOT)
     return next(row for row in report.rows if row["id"] == "geometry/eth3d-facade/metric/ground_strip")
 
 
@@ -237,28 +369,32 @@ def test_committed_ground_strip_malformed_metric_is_fail(tmp_path: Path):
 
 
 def test_committed_ground_strip_claims_fail(tmp_path: Path):
-    _plant_ground_strip(tmp_path, _ground_strip(0.069, ["w1 ground band"]))
-    row = _ground_row(tmp_path)
+    planted = _plant_ground_strip(tmp_path, _ground_strip(0.069, ["w1 ground band"]))
+    config = _config_for(tmp_path, {"geometry/eth3d-facade/metric/ground_strip.json": planted})
+    row = _ground_row(tmp_path, config)
     assert row["status"] == "FAIL"
     assert "w1 ground band" in row["note"]
     assert "claims empty" not in row["note"]
-    assert exit_code(evaluate(CONFIG, tmp_path, repo=ROOT)) == 1
+    assert exit_code(evaluate(config, tmp_path, repo=ROOT)) == 1
 
 
 def test_committed_ground_strip_off_pin_fails(tmp_path: Path):
-    _plant_ground_strip(tmp_path, _ground_strip(0.5, []))
-    row = _ground_row(tmp_path)
+    planted = _plant_ground_strip(tmp_path, _ground_strip(0.5, []))
+    config = _config_for(tmp_path, {"geometry/eth3d-facade/metric/ground_strip.json": planted})
+    row = _ground_row(tmp_path, config)
     assert row["status"] == "FAIL"
     assert "false_observed_by_rule 0.5" in row["note"]
     assert "claims empty" in row["note"]
-    assert exit_code(evaluate(CONFIG, tmp_path, repo=ROOT)) == 1
+    assert exit_code(evaluate(config, tmp_path, repo=ROOT)) == 1
 
 
 def test_lamar_host_fails_when_the_measurement_disagrees(tmp_path: Path):
     folder = tmp_path / "lamar"
     folder.mkdir()
-    (folder / "2022-02-10_s0.json").write_text(json.dumps({"gate_host": "other-vm", "openings_p90_in": 3.75}))
-    report = evaluate(CONFIG, tmp_path, repo=ROOT)
+    planted = folder / "2022-02-10_s0.json"
+    planted.write_text(json.dumps({"gate_host": "other-vm", "openings_p90_in": 3.75}))
+    config = _config_for(tmp_path, {"lamar/2022-02-10_s0.json": planted})
+    report = evaluate(config, tmp_path, repo=ROOT)
     row = next(r for r in report.rows if r["id"] == "lamar/host")
     assert row["status"] == "FAIL"
     assert row["value"] == "other-vm"
@@ -269,8 +405,10 @@ def test_lamar_host_fails_when_the_measurement_disagrees(tmp_path: Path):
 def test_gravel_pass_holds_when_the_verdict_matches(tmp_path: Path):
     dest = tmp_path / "positive" / "eth3d-facade" / "gt-laser-gravel" / "C"
     dest.mkdir(parents=True)
-    (dest / "footprint3in.json").write_text(json.dumps(_verdict("pass")))
-    report = evaluate(CONFIG, tmp_path, repo=ROOT)
+    planted = dest / "footprint3in.json"
+    planted.write_text(json.dumps(_verdict("pass")))
+    config = _config_for(tmp_path, {"positive/eth3d-facade/gt-laser-gravel/C/footprint3in.json": planted})
+    report = evaluate(config, tmp_path, repo=ROOT)
     row = next(r for r in report.rows if r["id"] == "positive/eth3d-facade/gt-laser-gravel/C/footprint3in")
     assert row["status"] == "PASS"
 
@@ -296,9 +434,11 @@ def test_flipping_a_candidate_in_c_json_exits_nonzero(tmp_path: Path):
     flipped["score"] = {"headline": {"unsafe_passes": 0}}
     dest = tmp_path / "verdicts" / "eth3d-facade" / "c1-3d"
     dest.mkdir(parents=True)
-    (dest / "C.json").write_text(json.dumps(flipped))
+    planted = dest / "C.json"
+    planted.write_text(json.dumps(flipped))
+    config = _config_for(tmp_path, {"verdicts/eth3d-facade/c1-3d/C.json": planted})
     out = tmp_path / "gates.json"
-    code = main(["gates", "--config", str(CONFIG), "--inputs", str(tmp_path), "--out", str(out)])
+    code = main(["gates", "--config", str(config), "--inputs", str(tmp_path), "--out", str(out)])
     assert code != 0
     report = json.loads(out.read_text())
     failed = [row for row in report["rows"] if row["status"] == "FAIL" and row["metric"] == "unsafe_passes"]
@@ -410,6 +550,183 @@ def test_provisional_output_is_rejected(tmp_path: Path):
         ]
     )
     assert code == 1
+
+
+@pytest.mark.parametrize(
+    "rel",
+    [
+        "verdicts/eth3d-facade/c1-3d/C.json",
+        "verdicts/eth3d-facade/c1-3d/A.json",
+        "labels/eth3d-facade.C.json",
+        "verdicts/eth3d-facade/gt.C1.g80.json",
+        "labels/eth3d-facade.demo.labels.json",
+        "verdicts/eth3d-delivery/gt.C2.S.json",
+        "positive/eth3d-facade/gt-laser-gravel/C/footprint3in.json",
+        "positive/eth3d-facade/gt-laser-gravel/C/angle80.json",
+        "criteria/eth3d-facade/gt-laser/criteria_report.json",
+        "criteria/eth3d-electro/gt-laser/criteria_report.json",
+        "safety/no_coverage",
+        "safety/no_coverage/facade-C-c2.json",
+        "safety/veto",
+        "safety/veto/facade-C-0000.json",
+        "lamar/2022-02-10_s0.json",
+        "geometry/eth3d-facade/metric/ground_strip.json",
+    ],
+)
+def test_deleting_a_committed_input_fails_closed(tmp_path: Path, rel: str):
+    inputs = tmp_path / "inputs"
+    shutil.copytree(FIXTURES, inputs)
+    target = inputs / rel
+    if target.is_dir():
+        shutil.rmtree(target)
+    else:
+        target.unlink()
+    base = evaluate(CONFIG, FIXTURES, repo=ROOT)
+    report = evaluate(CONFIG, inputs, repo=ROOT)
+    assert exit_code(report) == 1
+    assert any(row["status"] == "FAIL" and row["note"] == "committed evidence invalid" for row in report.rows)
+    after = {row["id"]: row for row in report.rows}
+    for row in base.rows:
+        assert row["id"] in after
+        updated = after[row["id"]]
+        if row["status"] != "SKIP":
+            assert updated["status"] != "SKIP"
+        if row["evidence_path"] and updated["evidence_path"]:
+            assert Path(updated["evidence_path"]).name == Path(row["evidence_path"]).name
+        if updated["evidence_path"]:
+            assert str(FIXTURES) not in updated["evidence_path"]
+
+
+def test_extra_veto_file_is_committed_evidence_invalid(tmp_path: Path):
+    inputs = tmp_path / "inputs"
+    shutil.copytree(FIXTURES, inputs)
+    extra = inputs / "safety/veto/facade-C-0080.json"
+    extra.write_text("{}")
+    report = evaluate(CONFIG, inputs, repo=ROOT)
+    row = next(item for item in report.rows if item["id"].endswith("facade-C-0080.json"))
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+    assert exit_code(report) == 1
+
+
+def test_malformed_c1_verdict_does_not_score_another_copy(tmp_path: Path):
+    inputs = tmp_path / "inputs"
+    shutil.copytree(FIXTURES, inputs)
+    (inputs / "verdicts/eth3d-facade/c1-3d/C.json").write_text("{")
+    report = evaluate(CONFIG, inputs, repo=ROOT)
+    row = next(item for item in report.rows if item["id"] == "positive/eth3d-facade/gt-laser/C/footprint3in")
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+    assert Path(row["evidence_path"]).name == "C.json"
+    assert str(FIXTURES) not in row["evidence_path"]
+    demo = next(item for item in report.rows if item["id"] == "verdict/eth3d-facade/demo/unsafe_passes")
+    assert Path(demo["evidence_path"]).name == "gt.C1.g80.json"
+    assert exit_code(report) == 1
+
+
+def _copied_fixtures(tmp_path: Path) -> Path:
+    inputs = tmp_path / "inputs"
+    shutil.copytree(FIXTURES, inputs)
+    return inputs
+
+
+def test_empty_no_coverage_verdict_is_invalid(tmp_path: Path):
+    inputs = _copied_fixtures(tmp_path)
+    (inputs / "safety/no_coverage/facade-C-c2.json").write_text("{}")
+    report = evaluate(CONFIG, inputs, repo=ROOT)
+    row = next(item for item in report.rows if item["id"] == "safety/no_coverage/facade-C-c2")
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+    assert row["value"] is None
+    assert exit_code(report) == 1
+
+
+def test_null_lamar_openings_metric_is_invalid(tmp_path: Path):
+    inputs = _copied_fixtures(tmp_path)
+    path = inputs / "lamar/2022-02-10_s0.json"
+    measured = json.loads(path.read_text())
+    measured["openings_p90_in"] = None
+    path.write_text(json.dumps(measured))
+    report = evaluate(CONFIG, inputs, repo=ROOT)
+    row = next(item for item in report.rows if item["id"] == "lamar/2022-02-10_s0/openings_p90_in")
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+    assert exit_code(report) == 1
+    measured.pop("openings_p90_in")
+    path.write_text(json.dumps(measured))
+    report = evaluate(CONFIG, inputs, repo=ROOT)
+    row = next(item for item in report.rows if item["id"] == "lamar/2022-02-10_s0/openings_p90_in")
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+
+
+def test_boolean_metrics_are_not_numbers(tmp_path: Path):
+    inputs = _copied_fixtures(tmp_path)
+    phone = inputs / "lamar/2022-02-10_s0.json"
+    measured = json.loads(phone.read_text())
+    measured["openings_p90_in"] = False
+    phone.write_text(json.dumps(measured))
+    report = evaluate(CONFIG, inputs, repo=ROOT)
+    row = next(item for item in report.rows if item["id"] == "lamar/2022-02-10_s0/openings_p90_in")
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+    assert row["value"] is None
+    criteria = inputs / "criteria/eth3d-facade/gt-laser/criteria_report.json"
+    document = json.loads(criteria.read_text())
+    document["decidability"]["C"]["share"] = True
+    criteria.write_text(json.dumps(document))
+    phone.write_text(json.dumps({**measured, "openings_p90_in": 3.75}))
+    report = evaluate(CONFIG, inputs, repo=ROOT)
+    share = next(item for item in report.rows if item["id"] == "decidability/eth3d-facade/gt-laser/C")
+    assert share["status"] == "FAIL"
+    assert share["note"] == "committed evidence invalid"
+    assert share["value"] != 1.0
+    assert exit_code(report) == 1
+
+
+def test_empty_labels_object_is_invalid_not_a_crash(tmp_path: Path):
+    inputs = _copied_fixtures(tmp_path)
+    (inputs / "labels/eth3d-facade.C.json").write_text("{}")
+    report = evaluate(CONFIG, inputs, repo=ROOT)
+    failed = [
+        item
+        for item in report.rows
+        if item["id"].startswith("verdict/eth3d-facade/C/") and item["note"] == "committed evidence invalid"
+    ]
+    assert failed
+    assert exit_code(report) == 1
+
+
+def test_same_name_bytes_from_another_verdict_are_invalid(tmp_path: Path):
+    inputs = _copied_fixtures(tmp_path)
+    g80 = inputs / "verdicts/eth3d-facade/gt.C1.g80.json"
+    fp3 = FIXTURES / "verdicts/eth3d-facade/gt.C1.fp3.json"
+    g80.write_bytes(fp3.read_bytes())
+    report = evaluate(CONFIG, inputs, repo=ROOT)
+    row = next(item for item in report.rows if item["id"] == "verdict/eth3d-facade/demo/unsafe_passes")
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+    assert str(row["evidence_path"]).endswith("gt.C1.g80.json")
+    assert exit_code(report) == 1
+
+
+def test_refresh_rewrites_pins_after_a_committed_edit(tmp_path: Path):
+    inputs = _copied_fixtures(tmp_path)
+    phone = inputs / "lamar/2022-02-10_s0.json"
+    payload = json.loads(phone.read_text())
+    payload["note"] = "rewritten overlay"
+    phone.write_text(json.dumps(payload))
+    before = evaluate(CONFIG, inputs, repo=ROOT)
+    row = next(item for item in before.rows if item["id"] == "lamar/2022-02-10_s0/openings_p90_in")
+    assert row["status"] == "FAIL"
+    assert row["note"] == "committed evidence invalid"
+    assert exit_code(before) == 1
+    config = tmp_path / "gates.yaml"
+    shutil.copy(CONFIG, config)
+    refresh_committed_hashes(config, inputs)
+    after = evaluate(config, inputs, repo=ROOT)
+    assert after.summary["fail"] == 0
+    assert exit_code(after) == 0
 
 
 def test_e2e_with_api_url_uses_the_table_exit_code(tmp_path: Path, monkeypatch):

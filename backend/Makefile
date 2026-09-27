@@ -47,6 +47,7 @@ gates-offline:
 
 gates-update:
 	uv run --frozen python -m server.eval.producers --update --inputs data/fixtures
+	uv run --frozen python -m server.eval.cli gates --refresh-hashes --config server/eval/gates.yaml --inputs data/fixtures
 	$(MAKE) gates-offline
 
 e2e:
