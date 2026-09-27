@@ -25,6 +25,8 @@ from server.orchestrator.stubs import poses as poses_stub
 from server.orchestrator.stubs import scene as scene_stub
 from server.orchestrator.stubs._common import json_bytes, ply, tracks, write_files
 from server.orchestrator.tests.conftest import build_services
+from server.reads.cache import put_json as put_storage_json
+from server.reads.cache import still_key
 from server.reads.types import StillResult
 
 
@@ -411,8 +413,10 @@ def test_read_hints_and_early_blobs_are_stored(tmp_path, monkeypatch) -> None:
     hint = HintData(code="meter_plate_unreadable", message="Take another close-up of the nameplate.")
 
     def fake(still, storage, cfg):
-        del storage, cfg
-        return StillResult(still=still, cost_usd=0.1), [hint]
+        del cfg
+        result = StillResult(still=still, cost_usd=0.1)
+        put_storage_json(storage, still_key(still.capture_id, still.still_id), result.model_dump(mode="json"))
+        return result, [hint]
 
     monkeypatch.setattr("server.orchestrator.early.reads.read_still", fake)
     services, _uri, _digest = build_services(tmp_path, "memory")
@@ -440,8 +444,9 @@ def test_read_hints_and_early_blobs_are_stored(tmp_path, monkeypatch) -> None:
     hints = [event for event in _events(services) if event.type == "hint"]
     assert hints[0].data["code"] == "meter_plate_unreadable"
     stored = json.loads(services.storage.get_bytes("captures/cap_test/early/reads/s00001.json"))
-    assert stored["still_id"] == "s00001"
-    assert stored["hints"][0]["code"] == "meter_plate_unreadable"
+    assert StillResult.model_validate(stored).still.still_id == "s00001"
+    summary = get_json(services.state, "early:cap_test:reads:meter.png")
+    assert summary["hints"][0]["code"] == "meter_plate_unreadable"
     assert services.storage.exists("captures/cap_test/early/reads/s00002.json")
     assert not services.storage.exists("captures/cap_test/early/reads/stills/s00002.jpg.json")
     assert services.storage.exists("captures/cap_test/early/qa/meter.png.json")
