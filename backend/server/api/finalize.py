@@ -521,44 +521,51 @@ def _still_missing(deps: Deps, record: CaptureRecord, extra: dict) -> list[str]:
 
 
 def _work_once(deps: Deps, capture_id: str) -> str:
-    record = deps.state.get_capture(capture_id)
-    extra = extras(deps, capture_id)
-    if record is None or record.status == "failed" or extra.get("run_started"):
-        return "done"
-    job = extra.get("finish") or {}
-    key = job.get("key")
-    if not key:
-        return "done"
-    raw = deps.storage.get_bytes(key)
+    with deps.locks.finish_sync(capture_id):
+        record = deps.state.get_capture(capture_id)
+        extra = extras(deps, capture_id)
+        if record is None or record.status == "failed" or extra.get("run_started"):
+            return "done"
+        job = extra.get("finish") or {}
+        key = job.get("key")
+        if not key:
+            return "done"
+        raw = deps.storage.get_bytes(key)
     packet = Packet.model_validate(json.loads(raw))
-    if not extra.get("manifest_ok"):
-        issues = manifest_errors(packet)
+    # Pure validation need not hold up DELETE. Its outcome is applied only after
+    # reacquiring the publication lock and confirming the capture still exists.
+    issues = manifest_errors(packet) if not extra.get("manifest_ok") else []
+    with deps.locks.finish_sync(capture_id):
+        record = deps.state.get_capture(capture_id)
+        extra = extras(deps, capture_id)
+        if record is None or record.status == "failed" or extra.get("run_started"):
+            return "done"
+        if extra.get("finish") != job:
+            return "incomplete"
         if issues:
             _fail_manifest(deps, record, issues)
             return "failed"
-        extra = extras(deps, capture_id)
         extra["manifest_ok"] = True
+        missing = _still_missing(deps, record, extra)
+        extra["missing"] = missing
         save_extras(deps, capture_id, extra)
-    record = deps.state.get_capture(capture_id) or record
-    extra = extras(deps, capture_id)
-    missing = _still_missing(deps, record, extra)
-    extra["missing"] = missing
-    save_extras(deps, capture_id, extra)
-    if missing:
-        return "incomplete"
-    try:
-        finish_ready(
-            deps,
-            record,
-            job["digest"],
-            key,
-            job["run_id"],
-            parent_run_id=job.get("parent_run_id"),
-        )
-    except ApiFailure as exc:
-        _on_background_failure(deps, capture_id, exc)
-        return "failed"
-    return "done"
+        if missing:
+            return "incomplete"
+        # Promotion, the synchronous run hook, and both success/failure state
+        # writes finish before DELETE cancels runs and removes their outputs.
+        try:
+            finish_ready(
+                deps,
+                record,
+                job["digest"],
+                key,
+                job["run_id"],
+                parent_run_id=job.get("parent_run_id"),
+            )
+        except ApiFailure as exc:
+            _on_background_failure(deps, capture_id, exc)
+            return "failed"
+        return "done"
 
 
 def _fail_manifest(deps: Deps, record: CaptureRecord, issues: list[ValidationIssue]) -> None:

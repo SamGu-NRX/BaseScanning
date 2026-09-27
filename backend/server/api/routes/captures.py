@@ -179,7 +179,7 @@ def register(app: FastAPI) -> None:
         principal = require_principal(request)
         deps = get_deps(request)
         deps.charge(principal.label, "delete", 10)
-        async with deps.locks.acquire(capture_id):
+        async with deps.locks.acquire(capture_id), deps.locks.finish_async(capture_id):
             tomb = deps.state.get_kv(f"tomb:{capture_id}")
             record = deps.state.get_capture(capture_id)
             if record is None:
