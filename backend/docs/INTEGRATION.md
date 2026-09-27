@@ -8,19 +8,19 @@ Diff this block when the deployment changes. Keep the seven field names and thei
 
 | Field | Value |
 | --- | --- |
-| Updated UTC | 2026-09-27T09:25:18Z |
+| Updated UTC | 2026-09-27T14:40:54Z |
 | Live URL | `https://huntertcarver-dev--capture-api.modal.run` (routes under `/v1`) |
-| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"memory","version":"04be3089a3d0"}` (selected fields). No `Authorization` header. Checked 2026-09-27T09:11:28Z and again 2026-09-27T09:25:18Z. `04be3089a3d0` is the first 12 hex chars of main `04be3089a3d099f3ae715f9ef37338845c6fd242`. |
-| Milestone | A no-token `mini-arkit` replay on this image returned a schema-valid `ResultResponse` (`manual_review`, stub stages). Client elapsed, upload through that result, was 168.0 s. Capture `cap_01M3H24K8PK10GSK00AVATFKCQ`, run `run_06cd631bae08c30f` (differs from `run_4dee057d229c1c21` on the previous image). The earlier M1 on `41a0880` (59 s) still stands. M2 real stages are not verified live. Stage stubs stay on. |
-| What works | Health 200 with `storage: gcs` and version `04be3089a3d0`, main `04be308` ([PR 126](https://github.com/huntertcarver/house-scanning-server/pull/126) and [PR 124](https://github.com/huntertcarver/house-scanning-server/pull/124)). One `mini-arkit` upload through finalize returned `manual_review` in 168.0 s and passed the device result schema. |
-| What's placeholder | `HSS_ORCH_STAGE_STUBS=1` and `HSS_ORCH_MODAL_REMOTE` unset, so this replay's stub stages run inside capture-api and the result stage writes the stub review page. This stub replay's 168.0 s client elapsed is longer than the 114.9 s replay on `1468206`. Real-stage M2 remains unverified. Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. Live state is `memory`, storage is `gcs`. The real-run switch is prepared and not deployed; see **Switch for real runs**. |
-| Breaking changes since last update | Live version moved from `14682067c0d3` to `04be3089a3d0`. The image includes per-capture run ids, so this replay's run id differs from `run_4dee057d229c1c21`. No new real-stage milestone is claimed. |
+| Health check result | `GET /v1/healthz` → 200 `{"status":"ok","storage":"gcs","state":"modal_dict","version":"bc8438301ab6"}` (selected fields). No `Authorization` header. Checked 2026-09-27T14:26:32Z and again 2026-09-27T14:40:54Z. `bc8438301ab6` is the first 12 hex chars of main `bc8438301ab662170c49ba5c5eddd0fcb6521e4b`. |
+| Milestone | Real runs are live. One no-token electro `arkit-nonlidar` capture, with dev fixture meter pixels `k00023:989.573,712.173` and anchor `reference_point`, returned a schema-valid `ResultResponse` (`manual_review`, outcome `needs_more_photos`). Every stage completed on attempt 1. Client elapsed, upload through that result, was 662.8 s. Capture `cap_01M3HM8XBNBA7HRTZ8BKZS6ENZ`, run `run_29ef8133acb82c6f`. Create through finalize was 3 min 35 s (expect about 5 min; WS-01 is fixing uploads). The pipeline, finalize accept through the result stage, was 7 min 31 s (expect about 8 min). Completed `GET /result` reads stayed at or under 1.5 s (median about 0.9 s). |
+| What works | Health 200 with `storage: gcs`, `state: modal_dict`, and version `bc8438301ab6`, main `bc84383` ([PR 143](https://github.com/huntertcarver/house-scanning-server/pull/143)). `HSS_ORCH_MODAL_REMOTE=1`, `HSS_ORCH_STAGE_STUBS=0`, GPU image `im-744i3sKYjXb3UoVuBs8XoV`. One electro upload returned a schema-valid real result. Result reads on that capture stayed fast. |
+| What's placeholder | Create through finalize is still the slow part (this run 3 min 35 s; expect about 5 min). WS-01 is fixing that upload path. Older notes that say an upload only proves stub stages are stale. Multipart completion is `501 multipart_not_implemented`; no APNs push or outbound webhook, so poll `GET /events`. |
+| Breaking changes since last update | Live version moved from `3e97f031d109` to `bc8438301ab6`. Real stage spawning is on and stage stubs are off. A capture on this image runs the pipeline instead of the stub review page. |
 
 ## Switch for real runs
 
-Not deployed. The integration lead's M2 result decides when to flip it. The live image stays on the status table above.
+Deployed. The live image in **Current status** was built with the second step below (`HSS_ORCH_MODAL_REMOTE=1`, `HSS_ORCH_STAGE_STUBS=0`, `HSS_GPU_IMAGE_ID=im-744i3sKYjXb3UoVuBs8XoV`) from main `bc84383`.
 
-Live capture-api has `HSS_ORCH_MODAL_REMOTE` unset, so the coordinator runs every stage inline in that container. The container timeout is 600 s. Poses and dense spawn on the GPU image (`Pipeline` on `GPU_IMAGE`, L4 when `HSS_GPU_IMAGE_ID` is the prebuilt CUDA image). Objects placement is the objects stage's own spec. The coordinator still lives in capture-api and has to outlive the 20-minute hard stop while those calls run.
+Live capture-api has `HSS_ORCH_MODAL_REMOTE=1`, so the coordinator spawns each stage and the container timeout is 1560 s. Poses and dense spawn on the GPU image (`Pipeline` on `GPU_IMAGE`, L4 when `HSS_GPU_IMAGE_ID` is the prebuilt CUDA image). Objects placement is the objects stage's own spec. The coordinator still lives in capture-api and has to outlive the 20-minute hard stop while those calls run.
 
 Capture-api may run more than one container (`max_containers` defaults to 4, one spare `buffer_containers`, `@modal.concurrent` with `target_inputs` 1). Every capture-api container shares one Modal Dict (`STATE_BACKEND=modal_dict`, SD-72) and GCS, so a poll on a second container sees the run the first container created. Create claims the packet idempotency key with one atomic dict insert, so two containers cannot both return 201 for the same packet.
 
@@ -64,6 +64,7 @@ The process env vars `HSS_COVERAGE_METER_FRAMES` and `HSS_COVERAGE_ANCHOR_FROM_T
 
 ## Changelog
 
+- 2026-09-27T14:40:54Z — `house-scanning` dev is on main `bc84383` with real runs live (`HSS_ORCH_MODAL_REMOTE=1`, stubs off, GPU image `im-744i3sKYjXb3UoVuBs8XoV`). Health version `bc8438301ab6`. One electro non-lidar capture returned a schema-valid `manual_review` in 662.8 s (`cap_01M3HM8XBNBA7HRTZ8BKZS6ENZ`, `run_29ef8133acb82c6f`). Create through finalize was 3 min 35 s (expect about 5 min; WS-01 owns that upload path). The pipeline was 7 min 31 s (expect about 8 min). `GET /result` stayed at or under 1.5 s.
 - 2026-09-27T12:10:00Z — `scripts/e2e_dev.py` retries commit and finalize with a 900 s read timeout. Dev replays can pass meter pixels on `fixtureMeter` (or `HSS_E2E_METER_FRAMES`). Prod ignores that override (SD-97). No deploy.
 - 2026-09-27T09:40:00Z — The real-run switch still is not deployed. With `HSS_ORCH_MODAL_REMOTE=1`, capture-api, pipeline, and sweeper share Modal Dict state and GCS. Capture-api can scale past one container, and prewarm uses `.spawn.aio` from an async request. Objects placement is not part of this switch.
 - 2026-09-27T09:25:18Z — `house-scanning` dev redeployed from main `04be308` (PR 126 and PR 124). Stubs stay on and remote stage spawning stays off. No-auth `GET /v1/healthz` returned 200 with `storage: gcs` and version `04be3089a3d0`. One no-token `mini-arkit` replay returned a schema-valid `manual_review` in 168.0 s (`cap_01M3H24K8PK10GSK00AVATFKCQ`, `run_06cd631bae08c30f`). That run id differs from `run_4dee057d229c1c21`. The client elapsed is longer than the 114.9 s replay on `1468206`. This is not an M2 pass.
@@ -110,7 +111,7 @@ Regenerate the check with `uv run python -m server.contracts.export_schemas --ch
 
 ## Capture flow
 
-The live version is the one in **Current status**: main `04be308`. Stage stubs are on, so an uploaded capture does not prove the real result renderer.
+The live version is the one in **Current status**: main `bc84383`, real stages on. Create through finalize is still slow (about 5 minutes; the electro run on this image was 3 min 35 s). WS-01 is fixing that upload path. A finished upload does exercise the real result renderer.
 
 Upload order that the replay client uses: meter and panel stills first; each keyframe JPEG immediately followed by its depth, confidence, and features; other stills; streams and mesh; TrueDepth with the meter stills; finalize (finalize may run before the last commits).
 
