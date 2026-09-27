@@ -6,7 +6,10 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
+.coverage
+.coverage.*
 .DS_Store
+.fixtures/
 
 # data/ holds scripts and manifests only; frames, packets and videos live in the store or on disk.
 data/houses/

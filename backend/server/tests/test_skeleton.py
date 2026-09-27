@@ -14,7 +14,6 @@ from server.common.config import Settings
 
 # `reads` (WS-08), `objects` (WS-07), `scale` (WS-05), and `result` (WS-10) are implemented, so none is in this stub list.
 STAGES = [
-    "packet",
     "poses",
     "dense",
     "coverage",
