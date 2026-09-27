@@ -133,7 +133,7 @@ def _publish(
     for code in missing:
         if code not in {"wall_gap_left", "wall_gap_right", "ground_not_seen_left", "ground_not_seen_right"}:
             continue
-        if code.startswith("wall_gap_") and _hint_seen(services, capture_id, code):
+        if _hint_seen(services, capture_id, code):
             continue
         emit_hint(
             services.state,
@@ -141,8 +141,7 @@ def _publish(
             HintData(code=code, message="Keep walking so this side of the meter is in frame."),  # type: ignore[arg-type]
             clock=services.clock,
         )
-        if code.startswith("wall_gap_"):
-            _remember_hint(services, capture_id, code)
+        _remember_hint(services, capture_id, code)
     stored = {"missing": missing, "at": services.clock.iso(), "complete": not codes, "frames": frames}
     put_json(services.state, f"early:{capture_id}:capture_check", stored)  # type: ignore[attr-defined]
     services.storage.put_bytes(  # type: ignore[attr-defined]

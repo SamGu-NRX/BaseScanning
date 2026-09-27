@@ -138,7 +138,7 @@ def test_reads_dispatch_uses_still_ref(tmp_path, monkeypatch) -> None:
         dispatch_early("cap_test", [item])
     still = seen["still"]
     assert still.capture_id == "cap_test"
-    assert still.still_id == "meter.png"
+    assert still.still_id == "meter"
     assert still.path == "uploads/meter.png"
     assert still.purpose == "meter_close"
     assert seen["storage"] is services.storage
@@ -392,19 +392,19 @@ def test_start_run_flushes_a_debounced_capture_check(tmp_path) -> None:
     assert len(after) >= len(before) + 2
 
 
-def test_wall_gap_hint_is_published_once(tmp_path) -> None:
+def test_wall_gap_and_ground_hints_are_published_once(tmp_path) -> None:
     services, _uri, _digest = build_services(tmp_path, "memory")
     services.clock.advance(0)
+    missing = ["wall_gap_left", "ground_not_seen_left", "ground_not_seen_right"]
     with bind(services):
-        _publish(services, "cap_test", ["wall_gap_left"], meter_read="absent", frames=1)
+        _publish(services, "cap_test", missing, meter_read="absent", frames=1)
         services.clock.advance(3)
-        _publish(services, "cap_test", ["wall_gap_left"], meter_read="absent", frames=2)
-    hints = [
-        event
-        for event in _events(services)
-        if event.type == "hint" and (event.data or {}).get("code") == "wall_gap_left"
-    ]
-    assert len(hints) == 1
+        _publish(services, "cap_test", missing, meter_read="absent", frames=2)
+    for code in missing:
+        hints = [
+            event for event in _events(services) if event.type == "hint" and (event.data or {}).get("code") == code
+        ]
+        assert len(hints) == 1
 
 
 def test_read_hints_and_early_blobs_are_stored(tmp_path, monkeypatch) -> None:
@@ -424,14 +424,26 @@ def test_read_hints_and_early_blobs_are_stored(tmp_path, monkeypatch) -> None:
         bytes=8,
         generation="1",
         key="uploads/meter.png",
-        meta={"purpose": "meter_close"},
+        meta={"id": "s00001", "purpose": "meter_close"},
+    )
+    nested = CommittedFile(
+        path="stills/s00002.jpg",
+        role="still",
+        sha256="ab" * 32,
+        bytes=8,
+        generation="1",
+        key="captures/cap_test/stills/s00002.jpg",
+        meta={"id": "s00002", "purpose": "panel_close"},
     )
     with bind(services):
-        dispatch_early("cap_test", [item])
+        dispatch_early("cap_test", [item, nested])
     hints = [event for event in _events(services) if event.type == "hint"]
     assert hints[0].data["code"] == "meter_plate_unreadable"
-    stored = json.loads(services.storage.get_bytes("captures/cap_test/early/reads/meter.png.json"))
+    stored = json.loads(services.storage.get_bytes("captures/cap_test/early/reads/s00001.json"))
+    assert stored["still_id"] == "s00001"
     assert stored["hints"][0]["code"] == "meter_plate_unreadable"
+    assert services.storage.exists("captures/cap_test/early/reads/s00002.json")
+    assert not services.storage.exists("captures/cap_test/early/reads/stills/s00002.jpg.json")
     assert services.storage.exists("captures/cap_test/early/qa/meter.png.json")
     assert services.storage.exists("captures/cap_test/early/capture_check.json")
 
