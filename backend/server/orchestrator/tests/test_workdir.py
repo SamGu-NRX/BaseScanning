@@ -7,7 +7,7 @@ from pathlib import Path
 
 from server.contracts.jobs import FileRecord, StageRecord, StageResult
 from server.orchestrator.api import start_run
-from server.orchestrator.artifacts import is_contract_artifact
+from server.orchestrator.artifacts import hydrate_artifacts, is_contract_artifact
 from server.orchestrator.graph import STAGES
 from server.orchestrator.runner import _publish
 from server.orchestrator.services import bind, packet_sha256
@@ -121,3 +121,82 @@ def test_workdir_relative_path_is_what_gets_uploaded(tmp_path: Path) -> None:
     )
     assert stored["reads/reads.json"] == canonical
     assert services.storage.get_bytes(canonical) == payload
+
+
+# server.poses.run (WS-04) returns every file under poses/ at most 5_000_000 bytes, keyed by the
+# work-dir relative path. server.objects.run.run_3d (WS-07) returns these two §3.9 keys.
+_WS04_POSE_FILES = (
+    "poses/cameras.json",
+    "poses/sparse.ply",
+    "poses/tracks.npz",
+    "poses/registration_report.json",
+    "poses/sparse/0/cameras.txt",
+    "poses/sparse/0/frames.txt",
+    "poses/sparse/0/images.txt",
+    "poses/sparse/0/points3D.txt",
+    "poses/sparse/0/rigs.txt",
+    "poses/fragments/fixed/cameras.txt",
+    "poses/fragments/prior/cameras.txt",
+)
+_WS07_OBJECT_FILES = ("objects/objects_3d.json", "objects/view_requests.json")
+_I18_FILES = (
+    "dense/cloud.npz",
+    "dense/tracks.npz",
+    "dense/cameras_w.json",
+    "coverage/scene_ready.json",
+)
+_WS04_MAX_BYTES = 5_000_000
+
+
+def test_publisher_uploads_ws04_and_ws07_returned_keys(tmp_path: Path) -> None:
+    objects_source = (Path(__file__).resolve().parents[3] / "server" / "objects" / "run.py").read_text()
+    assert 'objects_3d_key = "objects/objects_3d.json"' in objects_source
+    assert 'view_requests_key = "objects/view_requests.json"' in objects_source
+    for key in (
+        *_WS04_POSE_FILES,
+        *_WS07_OBJECT_FILES,
+        *_I18_FILES,
+        "poses/sparse/0/",
+        "poses/fragments/",
+        "dense/depth/",
+    ):
+        assert is_contract_artifact(key), key
+    assert not is_contract_artifact("scale/report.json")
+
+    services, uri, digest = build_services(tmp_path, "memory")
+    with bind(services):
+        run = start_run("cap_test", digest, uri)
+    rec = services.state.get_stage(run.run_id, "poses")
+    assert rec is not None
+    ctx = services.stage_context(run, rec, "call")
+    ctx.work_dir = tmp_path / "stage-out"
+    ctx.work_dir.mkdir()
+    returned_files = (*_WS04_POSE_FILES, *_WS07_OBJECT_FILES, *_I18_FILES, "scale/report.json")
+    for key in returned_files:
+        dest = ctx.work_dir / key
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(key.encode())
+    oversized = ctx.work_dir / "poses" / "sparse" / "0" / "huge.bin"
+    oversized.write_bytes(b"x" * (_WS04_MAX_BYTES + 1))
+    pose_artifacts = {
+        str(path.relative_to(ctx.work_dir)): str(path.relative_to(ctx.work_dir))
+        for path in (ctx.work_dir / "poses").rglob("*")
+        if path.is_file() and path.stat().st_size <= _WS04_MAX_BYTES
+    }
+    assert set(pose_artifacts) == set(_WS04_POSE_FILES)
+    assert "poses/sparse/0/huge.bin" not in pose_artifacts
+    returned = {
+        **pose_artifacts,
+        **{key: key for key in (*_WS07_OBJECT_FILES, *_I18_FILES, "scale/report.json")},
+    }
+    stored = _publish(ctx, StageResult(artifacts=returned, metrics={}, warnings=[]))
+    assert set(stored) == set(returned)
+    for key, storage_key in stored.items():
+        assert services.storage.get_bytes(storage_key) == key.encode()
+    restored = tmp_path / "next-work"
+    written = hydrate_artifacts(services.storage, restored, stored)
+    assert set(written) == set(returned)
+    for key in returned:
+        assert (restored / key).read_bytes() == key.encode()
+    skipped = hydrate_artifacts(services.storage, restored, {"../secret": stored["poses/cameras.json"]})
+    assert skipped == {}

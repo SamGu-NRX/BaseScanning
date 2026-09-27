@@ -1,7 +1,7 @@
 """Stage work dirs and published bytes.
 
-Artifact keys are the WS-00 §3.9 table. A stage reads ``work_dir/<key>``.
-The capture packet and committed files live in ``packet_dir`` (SD-17).
+Artifact keys are the WS-00 §3.9 table, plus every other path a stage returns.
+A stage reads ``work_dir/<key>``. The capture packet and committed files live in ``packet_dir`` (SD-17).
 """
 
 from __future__ import annotations
@@ -20,19 +20,25 @@ CONTRACT_ARTIFACTS = frozenset(
         "poses/tracks.npz",
         "poses/registration_report.json",
         "poses/sparse/0/",
+        "poses/fragments/",
         "poses/database.db",
         "scale/scale.json",
         "objects/objects.json",
         "objects/objects_3d.json",
+        "objects/view_requests.json",
         "reads/reads.json",
         "dense/dense.ply",
         "dense/flagged.ply",
         "dense/depth/",
         "dense/dense_report.json",
+        "dense/cloud.npz",
+        "dense/tracks.npz",
+        "dense/cameras_w.json",
         "coverage/coverage.npz",
         "coverage/bands.json",
         "coverage/points.ply",
         "coverage/scene_draft.json",
+        "coverage/scene_ready.json",
         "coverage/coverage_report.json",
         "scene/scene.json",
         "scene/build_report.json",
@@ -56,15 +62,14 @@ CONTRACT_ARTIFACTS = frozenset(
 
 _SCENE_COPIES = frozenset({"coverage.npz", "points.ply", "dense.ply", "sparse.ply", "scale.json"})
 
+# §3.9 directory rows. A stage returns the files inside the directory, not the trailing-slash key.
+_DIRECTORY_PREFIXES = tuple(key for key in CONTRACT_ARTIFACTS if key.endswith("/"))
+
 
 def is_contract_artifact(key: str) -> bool:
-    """True when ``key`` is a §3.9 name or one of that table's patterned files."""
+    """True when ``key`` is a §3.9 name, a file inside a §3.9 directory, or a patterned sidecar."""
 
-    if key in CONTRACT_ARTIFACTS:
-        return True
-    if key.startswith("poses/fragments/"):
-        return True
-    if key.startswith("dense/depth/"):
+    if key in CONTRACT_ARTIFACTS or any(key.startswith(prefix) for prefix in _DIRECTORY_PREFIXES):
         return True
     if key.startswith("verdicts/placement."):
         return True
@@ -134,11 +139,11 @@ def hydrate_packet(storage: object, state: object, capture_id: str, packet_dir: 
 
 
 def hydrate_artifacts(storage: object, dest_root: Path, artifacts: dict[str, str]) -> dict[str, str]:
-    """Download §3.9 artifacts. Returned paths are the files a later stage opens."""
+    """Download every safe path a stage returned, including every §3.9 name."""
 
     written: dict[str, str] = {}
     for key, storage_key in artifacts.items():
-        if not is_contract_artifact(key) or not storage_key:
+        if _safe_rel(key) is None or not storage_key:
             continue
         dest = dest_root / key
         if key.endswith("/") or storage_key.endswith("/.keep"):
