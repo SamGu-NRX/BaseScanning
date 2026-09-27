@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
+import hashlib
+import importlib.util
 import io
 import logging
 import socket
+from pathlib import Path
 
 import pytest
 from PIL import Image
 
+from server.common.config import Settings
 from server.contracts.jobs import StageContext, StageResult
+from server.contracts.packet import Packet
 from server.reads import run
 from server.reads.aggregate import build_reads, merge_meter, merge_panels
 from server.reads.barcode import read_barcodes
 from server.reads.cache import MemoryStorage, cache_key, get_json, identity_key, put_json, still_key
 from server.reads.candidates import core, normalize
+from server.reads.client import _api_key, call_reader
 from server.reads.config import ReadsConfig, vision_external_calls
 from server.reads.facts import coverage_contract_errors, to_criteria
 from server.reads.hints import hints_for
@@ -63,6 +69,8 @@ def _meter(number: str | None, extra: list[str] | None = None, **kwargs: object)
 
 
 def _cfg(**kwargs: object) -> ReadsConfig:
+    # Production `ReadsConfig` leaves vision off (SD-67). These tests opt in unless they say otherwise.
+    kwargs.setdefault("external_vision", True)
     return ReadsConfig(**kwargs)  # type: ignore[arg-type]
 
 
@@ -103,6 +111,87 @@ def test_missing_zxing_skips_under_pytest(monkeypatch: pytest.MonkeyPatch, caplo
     with caplog.at_level(logging.ERROR):
         assert read_barcodes(image) == []
     assert any("zxingcpp is not installed" in record.message for record in caplog.records)
+
+
+def test_api_key_ignores_pooled_and_production_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "named-openai")
+    monkeypatch.setenv("XAI_API_KEY", "named-xai")
+    monkeypatch.setenv("OpenAIChatGraphPooledProdApiKey", "pooled-openai")
+    monkeypatch.setenv("XAI_CHATGRAPH_PROD_API_KEY", "pooled-xai")
+    assert _api_key("gpt-5.5") == "named-openai"
+    assert _api_key("grok-4.7") == "named-xai"
+    monkeypatch.delenv("OPENAI_API_KEY")
+    monkeypatch.delenv("XAI_API_KEY")
+    assert _api_key("gpt-5.5") is None
+    assert _api_key("gpt-5.4-mini") is None
+    assert _api_key("grok-4.7") is None
+
+
+def test_vision_defaults_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("VISION_EXTERNAL_CALLS", raising=False)
+    monkeypatch.setenv("SMP_ENVIRONMENT", "dev")
+    settings = Settings()
+    assert settings.VISION_EXTERNAL_CALLS == "off"
+    assert ReadsConfig().external_vision is False
+    assert ReadsConfig.from_env().external_vision is False
+    assert ReadsConfig.from_env(settings).external_vision is False
+
+
+def test_missing_openai_raises_before_retries(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr("server.reads.client.OpenAI", None)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+
+    def slept(*_args: object) -> None:
+        raise AssertionError("retry sleep")
+
+    monkeypatch.setattr("server.reads.client.time.sleep", slept)
+    with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError, match="openai is not installed"):
+        call_reader("gpt-5.5", "meter/v0", "prompt", "data:", "abc", ReadsConfig(external_vision=True, attempts=3))
+    assert any("openai is not installed" in record.message for record in caplog.records)
+
+
+def test_missing_openai_is_disabled_under_pytest(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("server.reads.client.OpenAI", None)
+    answer = call_reader("gpt-5.5", "meter/v0", "prompt", "data:", "abc", ReadsConfig(external_vision=True, attempts=3))
+    assert answer.error == "disabled"
+    assert answer.answer is None
+
+
+def test_demo_packet_is_contract_v0_4() -> None:
+    root = Path(__file__).resolve().parents[3]
+    spec = importlib.util.spec_from_file_location("reads_fixture_packet", root / "scripts" / "reads_fixture_packet.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 6), (1, 2, 3)).save(buf, format="JPEG")
+    data = buf.getvalue()
+    digest = hashlib.sha256(data).hexdigest()
+    packet = module.build_packet(
+        [
+            {
+                "id": "s1",
+                "purpose": "meter_close",
+                "img": "stills/s1.jpg",
+                "w": 8,
+                "h": 6,
+                "timestamp": 0,
+                "orientation": 1,
+            }
+        ],
+        [{"path": "stills/s1.jpg", "bytes": len(data), "sha256": digest, "role": "still"}],
+    )
+    assert packet["format"] == "house-capture-packet"
+    assert packet["formatVersion"] == "0.4"
+    assert packet["keyframes"] == []
+    assert packet["stills"][0]["img"] == "stills/s1.jpg"
+    assert "path" not in packet["stills"][0]
+    assert "sha256" not in packet["stills"][0]
+    assert packet["files"][0]["sha256"] == digest
+    assert packet["files"][0]["role"] == "still"
+    Packet.model_validate(packet)
 
 
 def test_auto_fill_requires_barcode() -> None:
@@ -665,7 +754,13 @@ def test_run_returns_contract_stage_result(tmp_path) -> None:
     )
     result = run(ctx)
     assert isinstance(result, StageResult)
-    assert result.artifacts["reads/reads.json"] == "captures/cap_test/runs/run_test/reads/reads.json"
+    rel = result.artifacts["reads/reads.json"]
+    assert rel == "_attempts/reads/attempt-1/reads.json"
+    assert Path(rel).is_absolute() is False
+    written = (tmp_path / rel).read_bytes()
+    stored = ctx.storage.get_bytes("captures/cap_test/runs/run_test/reads/reads.json")
+    assert written == stored
+    assert written
     assert result.metrics["cost_usd"] == 0
     assert result.warnings == []
 

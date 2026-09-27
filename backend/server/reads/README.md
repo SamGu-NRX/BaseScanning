@@ -13,7 +13,7 @@ decision stays in `policy.py` and `panel_policy.py`. Clearance numbers are not h
 
 ## Knobs
 
-`HSS_READS_*` in `config.py`. The shared switch is `VISION_EXTERNAL_CALLS`. Keys, when a live call is actually wanted, are `OPENAI_API_KEY` or `OpenAIChatGraphPooledProdApiKey`, and `XAI_API_KEY` or `XAI_CHATGRAPH_PROD_API_KEY`. This tree does not read those values into logs.
+`HSS_READS_*` in `config.py`. The shared switch is `VISION_EXTERNAL_CALLS`, default off (SD-67). A live call reads only `OPENAI_API_KEY` and `XAI_API_KEY`. Pooled and production key names are not consulted. This tree does not read key values into logs.
 
 `HSS_READS_PANEL_PROMPT` defaults to `panel/v0`. Cached answers that pass the gate were collected with v0. `panel/v1` adds enclosure and mains counts and has not been measured live.
 
@@ -25,9 +25,15 @@ Install the vision extra before a live call or a fresh barcode decode: `uv sync 
 
 `confirmed` uses Base's recall list only. Pushmatic is a review hint: it is never `confirmed` and it never `pass`es. The offline gate reports hazard recall as 5/5 routed-or-confirmed (the four Base-list confirms plus the Pushmatic review) and `confirmed` as 4/5.
 
-## Live gate (SD-62)
+## Live gate
 
-The live gate and the live timing row are not merge blockers while this Mac has no provider keys. `--live` stays in `scripts/reads_gate.py` and does not call a provider. The post-merge smoke run is on Modal `dev` with the `hss-dev-vlm` secret, after WS-12 deploys.
+`make reads-gate` stays offline. The provider path is:
+
+```sh
+python scripts/reads_gate.py --live --set meter --set panel --set extra --workers 12 --max-usd 12 --out /tmp/reads-gate-live
+```
+
+`--max-usd` defaults to 12. Each call reserves the completion-token ceiling (8000 output tokens plus 4500 input tokens) and settles to the measured `cost_usd` when the call returns. A call whose hold would pass the cap is not started. Both `OPENAI_API_KEY` and `XAI_API_KEY` must be set; otherwise the process exits 2 and does not open a provider socket. `--live` is the authorized run and turns external calls on unless `VISION_EXTERNAL_CALLS` is explicitly off. Images come from `$B2_DATA/<set>/images/<id>.jpg`. Prompts are `meter/v0` for the pair and `panel/v0` (mini, then GPT-5.5 only when the cheap tier escalates). Live counts pass within ±2 photos. Wrong auto-fills and false hazard alarms stay at 0. `out/raw/` holds the answers used to score; `gate.json` is counts only.
 
 ## Tests
 

@@ -25,6 +25,11 @@ data/**/*.bin
 # Fetched tars, PLYs and extracts. Never commit them.
 .fixtures/
 
+# scripts/reads_gate.py --live --out. Holds real meter numbers (barcode payloads
+# and reader answers). The default is /tmp/reads-gate, outside the repo. Never
+# commit or upload this folder, including an in-repo copy.
+reads-gate/
+
 # Golden fixtures that are committed on purpose (coverage grids, mini-arkit stills).
 !data/fixtures/**/*.jpg
 !data/fixtures/**/*.jpeg

@@ -25,9 +25,16 @@ def run(ctx: StageContext) -> StageResult:
     )
     packet = _packet(ctx)
     reads = build_reads(ctx.capture_id, ctx.storage, cfg, packet)
-    key = write_reads(ctx.capture_id, ctx.run_id, ctx.storage, reads)
+    rel = write_reads(
+        ctx.capture_id,
+        ctx.run_id,
+        ctx.storage,
+        reads,
+        work_dir=ctx.work_dir,
+        attempt=ctx.attempt,
+    )
     return StageResult(
-        artifacts={"reads/reads.json": key},
+        artifacts={"reads/reads.json": rel},
         metrics={"cost_usd": reads.cost_usd, "stills": float(len(reads.timings_s))},
         warnings=list(reads.warnings),
     )

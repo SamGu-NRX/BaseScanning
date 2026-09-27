@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from server.reads.cache import Storage, get_json, identity_key, put_json, reads_key, still_key
 from server.reads.config import ReadsConfig
 from server.reads.facts import to_criteria
@@ -341,9 +344,26 @@ def fresh_still_result_key(capture_id: str, still_id: str) -> str:
     return still_key(capture_id, still_id)
 
 
-def write_reads(capture_id: str, run_id: str, storage: Storage, reads: Reads) -> str:
-    key = reads_key(capture_id, run_id)
-    put_json(storage, key, reads.model_dump(mode="json"))
+def reads_attempt_rel(attempt: int) -> str:
+    """Path under `StageContext.work_dir`. WS-03 uploads that file to `reads/reads.json`."""
+    return f"_attempts/reads/attempt-{attempt}/reads.json"
+
+
+def write_reads(
+    capture_id: str,
+    run_id: str,
+    storage: Storage,
+    reads: Reads,
+    *,
+    work_dir: Path,
+    attempt: int,
+) -> str:
+    payload = reads.model_dump(mode="json")
+    put_json(storage, reads_key(capture_id, run_id), payload)
     if reads.meter_identity is not None:
         put_json(storage, identity_key(capture_id), reads.meter_identity.model_dump(mode="json"))
-    return key
+    rel = reads_attempt_rel(attempt)
+    dest = work_dir / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(json.dumps(payload).encode())
+    return rel

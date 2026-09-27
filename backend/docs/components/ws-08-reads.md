@@ -37,7 +37,7 @@ PYTHONPATH=. uv run pytest server/reads/tests -q
 make reads-gate
 ```
 
-`make reads-gate` scores the stored jsonl. It does not print meter numbers. Do not pass `--live` (about $12).
+`make reads-gate` scores the stored jsonl. It does not print meter numbers and it does not call a provider. The live path is `scripts/reads_gate.py --live --max-usd 12` (default cap 12, `--workers` default 12). It calls providers only when `OPENAI_API_KEY` and `XAI_API_KEY` are both set. `--live` writes real meter numbers into `--out` (default `/tmp/reads-gate`). Never commit or upload that folder. A `reads-gate/` directory inside the repo is gitignored.
 
 ## Rebuild from scratch
 
@@ -45,7 +45,7 @@ The package is plain Python under `server/reads/`. Prompts `meter/v0` and `panel
 
 ## Last gate table
 
-Offline replay, `panel/v0`, cached answers. Live not run.
+Offline replay, `panel/v0`, cached answers. The `--live` provider path is implemented with `--max-usd` default 12 and was not executed in this change.
 
 | check | observed | threshold |
 |---|---|---|
@@ -71,7 +71,7 @@ Offline replay, `panel/v0`, cached answers. Live not run.
 | verdict schema | 0 errors | `server/contracts/schemas/verdict.v0.schema.json` |
 | contract errors | empty | pass needs observed and min_views 1 |
 
-Unit tests: 43 passed in `server/reads/tests`. `VISION_EXTERNAL_CALLS=off` opens no socket.
+Unit tests: 60 passed in `server/reads/tests`. `VISION_EXTERNAL_CALLS` defaults off and opens no socket. `--live` still refuses when that switch is explicitly off.
 
 ## Known limits
 
@@ -81,5 +81,5 @@ Unit tests: 43 passed in `server/reads/tests`. `VISION_EXTERNAL_CALLS=off` opens
 - No `METER_HMAC_KEY`, so the HMAC label fixture is not generated. The gate reads store labels at runtime and does not commit them.
 - Barcode cores for the offline gate come from the stored paddle jsonl (20 of 83 photos), not a fresh zxing decode.
 - `confirmed` hazard is Base's recall list only. The §8 5/5 figure is the B3 hazard bit, which also counts agreed pushmatic. x0013 is that case: review hint, not `confirmed`.
-- `pyproject.toml` has no `reads` extra. WS-00 owns that file and did not declare one. `openai` and `zxing-cpp` stay optional imports, so CI runs without them.
+- The `reads` extra is `openai`, `pillow`, `zxing-cpp==3.1.1`, `numpy`, `pydantic`, and `jsonschema`. `make reads-extra` installs it. A missing `zxingcpp` raises outside pytest.
 - `reads.json` `confirm` matches `HintData.confirm` (`pick|type|none`, string `preselected`). The brief example that used `prefill|choose` and an index is the pre-merge shape.

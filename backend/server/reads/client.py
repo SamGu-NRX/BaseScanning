@@ -11,6 +11,11 @@ import time
 from server.reads.config import ReadsConfig
 from server.reads.types import ReaderAnswer
 
+try:
+    from openai import OpenAI
+except ImportError:  # the reads extra is optional for the default CI install
+    OpenAI = None
+
 log = logging.getLogger("server.reads")
 
 # USD per million tokens (input, output). Grok completion tokens may omit reasoning.
@@ -38,9 +43,10 @@ def parse_answer(text: str) -> dict | None:
 
 
 def _api_key(model: str) -> str | None:
-    if model.startswith("grok"):
-        return os.environ.get("XAI_API_KEY") or os.environ.get("XAI_CHATGRAPH_PROD_API_KEY")
-    return os.environ.get("OPENAI_API_KEY") or os.environ.get("OpenAIChatGraphPooledProdApiKey")
+    """SD-67: only the named keys. Pooled and production aliases are not read."""
+    name = "XAI_API_KEY" if model.startswith("grok") else "OPENAI_API_KEY"
+    value = os.environ.get(name)
+    return value or None
 
 
 def _provider(model: str) -> str:
@@ -77,17 +83,27 @@ def log_call(
     log.info("%s", json.dumps({k: v for k, v in record.items() if v is not None}))
 
 
+def _require_openai() -> None:
+    if OpenAI is None:
+        log.error("openai is not installed; install the reads extra")
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            return
+        raise RuntimeError("openai is not installed")
+
+
 def complete_chat(model: str, prompt: str, data_url: str, timeout_s: float) -> tuple[str, dict]:
     """One chat completion. Tests monkeypatch this; it is the only network entry."""
-    from openai import OpenAI
-
+    _require_openai()
+    client_cls = OpenAI
+    if client_cls is None:
+        raise RuntimeError("openai is not installed")
     key = _api_key(model)
     if not key:
         raise RuntimeError("provider_error")
     kwargs = {"api_key": key, "timeout": timeout_s}
     if model.startswith("grok"):
         kwargs["base_url"] = "https://api.x.ai/v1"
-    client = OpenAI(**kwargs)
+    client = client_cls(**kwargs)
     response = client.chat.completions.create(
         model=model,
         max_completion_tokens=8000,
@@ -130,6 +146,9 @@ def call_reader(
     capture_id: str | None = None,
 ) -> ReaderAnswer:
     if not cfg.external_vision:
+        return ReaderAnswer(model=model, prompt_id=prompt_id, error="disabled")
+    _require_openai()
+    if OpenAI is None:
         return ReaderAnswer(model=model, prompt_id=prompt_id, error="disabled")
     last_error = "provider_error"
     for attempt in range(cfg.attempts):
