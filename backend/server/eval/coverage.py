@@ -350,11 +350,142 @@ def region_probes(scene: dict, region: dict, step: float = 0.1) -> tuple[np.ndar
     return P, None, "free"
 
 
+# SD-101. The 80° ground rule stays. A scene that flagged its ground plane and did not
+# reanchor must not decide from incidence against that plane. Electro's kept plane is
+# level and the cameras are already standing height (~1.5 m) above it, so a discarded
+# high cluster does not blank an honest observation. Facade's kept plane is tilted and
+# the cameras sit ~4.3 m above it: that is still the rejected datum.
+_LEVEL_UP = 0.99
+_STANDING_HEIGHT_M = (0.9, 2.5)
+_FOOT_TOP_M = 0.40
+
+
+def _scene_notes(scene: dict) -> list[str]:
+    raw = (scene.get("provenance") or {}).get("notes") or []
+    if isinstance(raw, str):
+        return [raw]
+    return [str(note) for note in raw]
+
+
+def _plane_up(scene: dict) -> float:
+    normal = np.asarray(((scene.get("ground") or {}).get("surface") or {}).get("normal") or [0.0, 1.0, 0.0], float)
+    length = float(np.linalg.norm(normal)) or 1.0
+    return float(normal[1] / length)
+
+
+def _camera_centers(scene: dict) -> np.ndarray | None:
+    centers = [mat4_from_list(kf["pose"])[:3, 3] for kf in scene.get("keyframes") or [] if kf.get("pose")]
+    if not centers:
+        return None
+    return np.asarray(centers, float)
+
+
+def _heights_above_plane(scene: dict, centers: np.ndarray) -> np.ndarray | None:
+    """Camera height above the ground plane at each camera's own plan position."""
+    if "ground" not in scene or len(centers) == 0:
+        return None
+    try:
+        gy = ground_y(scene, np.asarray(centers, float)[:, [0, 2]])
+    except (KeyError, ValueError, IndexError, ZeroDivisionError):
+        return None
+    return np.asarray(centers, float)[:, 1] - gy
+
+
+def _median_in_standing_band(heights: np.ndarray) -> bool:
+    low, high = _STANDING_HEIGHT_M
+    return bool(low <= float(np.median(heights)) <= high)
+
+
+def _any_outside_standing_band(heights: np.ndarray) -> bool:
+    if len(heights) == 0:
+        return False
+    low, high = _STANDING_HEIGHT_M
+    return bool(np.any((heights < low) | (heights > high)))
+
+
+def _seeing_centers(query: CoverageQuery, probes: np.ndarray) -> np.ndarray:
+    probes = np.atleast_2d(np.asarray(probes, float))
+    if len(probes) == 0 or len(query.centers) == 0:
+        return np.zeros((0, 3))
+    seen = query.oracle.seen_by(probes, None)
+    return query.centers[np.asarray(seen).any(axis=0)]
+
+
+def ground_incidence_untrusted(scene: dict, seeing_centers: np.ndarray | None = None) -> bool:
+    """True when ground incidence must not come back `observed`.
+
+    The scene flagged `ground_plane_rejected` or `ground_base_unobserved` and did not
+    record `ground_reanchored`. A level plane whose cameras sit at standing height is the
+    datum that survived the guard (electro). A tilt, a median camera height outside
+    0.9–2.5 m, or any camera that sees the region outside that band, means incidence is
+    still using the rejected fit (facade). Height is the plane under each camera, not
+    under a wall midpoint.
+    """
+    notes = _scene_notes(scene)
+    flagged = any(note == "ground_base_unobserved" or note.startswith("ground_plane_rejected") for note in notes)
+    if not flagged or "ground_reanchored" in notes:
+        return False
+    if _plane_up(scene) < _LEVEL_UP:
+        return True
+    centers = _camera_centers(scene)
+    if centers is None:
+        return True
+    heights = _heights_above_plane(scene, centers)
+    if heights is None or not _median_in_standing_band(heights):
+        return True
+    if seeing_centers is None:
+        return False
+    seen = np.atleast_2d(np.asarray(seeing_centers, float))
+    if len(seen) == 0 or seen.shape[1] == 0:
+        return False
+    seen_heights = _heights_above_plane(scene, seen)
+    if seen_heights is None:
+        return True
+    return _any_outside_standing_band(seen_heights)
+
+
+def _depends_on_flagged_plane(surface: str, region: dict) -> bool:
+    """Ground strips, and a wall band that is only the foot, take their height from the plane."""
+    if surface == "ground":
+        return True
+    if surface != "wall":
+        return False
+    span = region.get("height_m")
+    if not span or len(span) < 2:
+        return False
+    return float(span[1]) <= _FOOT_TOP_M
+
+
+def _downgrade_observed(row: dict) -> dict:
+    if row.get("status") != "observed":
+        return row
+    out = dict(row)
+    out["status"] = "partial"
+    return out
+
+
+def withhold_untrusted_ground(
+    scene: dict,
+    ev: dict,
+    surface: str,
+    region: dict,
+    seeing_centers: np.ndarray | None = None,
+) -> dict:
+    """Cap an untrusted ground or wall-foot grade at `partial`, never `observed`."""
+    if not ground_incidence_untrusted(scene, seeing_centers) or not _depends_on_flagged_plane(surface, region):
+        return ev
+    ev = _downgrade_observed(ev)
+    if ev.get("sensitivity"):
+        ev["sensitivity"] = [_downgrade_observed(row) for row in ev["sensitivity"]]
+    return ev
+
+
 def query_region(scene: dict, base: Path, region: dict, query: CoverageQuery | None = None) -> dict:
     """What a measurement backend must attach to every answer about `region`."""
     q = query or CoverageQuery.from_scene(scene, base)
     P, N, surface = region_probes(scene, region)
-    return q.evidence(P, N, region, surface)
+    ev = q.evidence(P, N, region, surface)
+    return withhold_untrusted_ground(scene, ev, surface, region, _seeing_centers(q, P))
 
 
 def coverage_rule(limits: dict | None = None) -> dict:
