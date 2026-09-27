@@ -8,7 +8,7 @@ uv run --project .. python -m ios_kit replay --packet fixtures/mini-arkit --api 
 uv run --project .. python -m ios_kit.fake_api --port 8765 --root /tmp/fake-captures --result-kind needs_more_photos
 ```
 
-The token is the env var `CAPTURE_API_TOKEN`. Commands do not print it. `make ios-kit` refreshes the schema copies and writes `dist/ios-kit-0.4.0.zip` (schemas, examples, prompts, vendored `packetgen`, `schema/`, the three minis, the spec). The zip omits `ios_kit/` and `tests/`.
+The API token is optional (`CAPTURE_API_TOKEN` only when a deploy enables auth; the demo has auth off, SD-86). Commands do not print it. `make ios-kit` refreshes the schema copies and writes `dist/ios-kit-0.4.0.zip` (schemas, examples, prompts, vendored `packetgen`, `schema/`, the three minis, the spec). The zip omits `ios_kit/` and `tests/`.
 
 Run kit commands from `ios-kit` so the vendored `packetgen` is imported. The repo `pythonpath` lists `packet/` first, and that copy does not open `.csv.gz` streams.
 
