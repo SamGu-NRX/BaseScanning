@@ -34,6 +34,7 @@ from server.criteria.harness import load
 from server.criteria.occluders import missing_occluder_geometry
 from server.criteria.views_needed import build as build_views
 from server.criteria.views_needed import coverage_requests, observed_wall_spans, view_requests
+from server.eval.sceneio import schema_errors
 
 log = logging.getLogger("server.criteria")
 HERE = Path(__file__).resolve().parent
@@ -251,7 +252,9 @@ def _require_verdict(verdict: dict) -> None:
         Verdict.model_validate(verdict)
     except ValidationError as exc:
         raise CriteriaInputError("verdict_invalid") from exc
-    if verdict_contract_errors(verdict):
+    # Pydantic allows a null station. The JSON schema does not, which is how a
+    # region view with wall_id/s_m null left the stage and failed later.
+    if schema_errors(verdict) or verdict_contract_errors(verdict):
         raise CriteriaInputError("verdict_invalid")
 
 

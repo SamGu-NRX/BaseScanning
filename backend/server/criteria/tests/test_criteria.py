@@ -43,11 +43,20 @@ from server.criteria.compose import attach_c3_facts, both_ends_ok
 from server.criteria.config import CriteriaConfig
 from server.criteria.lattice import c2_veto, judge_join, margin_outcome, site_decision
 from server.criteria.occluders import assert_not_provisional, missing_occluder_geometry, ply_vertex_count
-from server.criteria.run import CriteriaInputError, _query, _run_c2, _views_from_runs, evaluate_scene, merged_profile
+from server.criteria.run import (
+    CriteriaInputError,
+    _query,
+    _require_verdict,
+    _run_c2,
+    _views_from_runs,
+    evaluate_scene,
+    merged_profile,
+)
 from server.criteria.tests.data.facade_gravel import write as write_gravel
 from server.criteria.tests.data.synthetic_flatwall.make import write
 from server.criteria.views_needed import build as build_views
 from server.criteria.views_needed import observed_wall_spans
+from server.eval.sceneio import schema_errors
 
 ROOT = Path(__file__).resolve().parents[3]
 PROFILES = yaml.safe_load((ROOT / "server/criteria/profiles.yaml").read_text())
@@ -352,6 +361,98 @@ def test_views_merge_overlapping_spans():
     assert "opening_clearance" in views[0]["criteria"]
     assert views[0]["id"] == "vn1"
     assert "view_angle_deg" not in views[0]
+
+
+def test_region_view_without_a_wall_omits_null_station():
+    views = build_views(
+        [
+            {
+                "kind": "region",
+                "wall_id": None,
+                "s_m": None,
+                "target": "photo of the eave from 2-4 m, head-on, with the wall around it",
+                "criteria": ["placement"],
+                "why": "location_unsure",
+            },
+            {
+                "kind": "region",
+                "wall_id": None,
+                "s_m": None,
+                "target": "photo of the eave from 2-4 m, head-on, with the wall around it",
+                "criteria": ["placement"],
+                "why": "location_unsure",
+            },
+        ],
+        8,
+    )
+    assert len(views) == 1
+    assert views[0]["kind"] == "region"
+    assert views[0]["why"] == "location_unsure"
+    assert views[0]["criteria"] == ["placement"]
+    assert "wall_id" not in views[0]
+    assert "s_m" not in views[0]
+    document = json.loads((ROOT / "server/contracts/tests/data/minimal-verdict.json").read_text())
+    document["views_needed"] = views
+    assert schema_errors(document) == []
+
+
+def test_past_end_outranks_an_off_wall_region():
+    fillers = [
+        {
+            "kind": "band",
+            "band": "wall",
+            "wall_id": "w2",
+            "s_m": [float(i), float(i) + 0.2],
+            "criteria": ["wall_backing"],
+            "why": "unobserved",
+        }
+        for i in range(7)
+    ]
+    views = build_views(
+        [
+            {
+                "kind": "region",
+                "wall_id": None,
+                "s_m": None,
+                "target": "photo of the eave from 2-4 m, head-on, with the wall around it",
+                "criteria": ["headroom", "placement"],
+                "why": "location_unsure",
+            },
+            {
+                "kind": "past_end",
+                "wall_id": "w1",
+                "side": "right",
+                "s_m": [2.0, 2.5],
+                "criteria": ["placement"],
+                "why": "unobserved",
+            },
+            *fillers,
+        ],
+        8,
+        meter_wall_id="w1",
+        chain_wall_ids=["w1", "w2"],
+    )
+    assert len(views) == 8
+    assert any(view["kind"] == "past_end" and view["wall_id"] == "w1" for view in views)
+    assert all(view.get("kind") != "region" for view in views)
+
+
+def test_require_verdict_checks_the_json_schema():
+    document = json.loads((ROOT / "server/contracts/tests/data/minimal-verdict.json").read_text())
+    _require_verdict(document)
+    document["views_needed"] = [
+        {
+            "id": "vn5",
+            "kind": "region",
+            "why": "location_unsure",
+            "criteria": ["placement"],
+            "target": "photo of the eave from 2-4 m, head-on, with the wall around it",
+            "wall_id": None,
+            "s_m": None,
+        }
+    ]
+    with pytest.raises(CriteriaInputError, match="verdict_invalid"):
+        _require_verdict(document)
 
 
 def test_null_span_is_omitted_and_past_end_has_a_span():

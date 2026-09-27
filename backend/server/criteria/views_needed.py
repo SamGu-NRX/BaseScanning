@@ -2,7 +2,9 @@
 
 Ranking follows the reconciled brief (A10): more criteria first, then at equal count
 head-on shots of a non-meter chain wall, past-end shots, and downward ground shots,
-then distance from the meter. ``view_angle_deg`` is omitted until the verdict schema
+then distance from the meter. An off-wall region request ranks after every past_end
+view, so an eave photo does not take the last cap slot from "walk past the end".
+``view_angle_deg`` is omitted until the verdict schema
 carries it (SD-57).
 """
 
@@ -130,8 +132,11 @@ def build(
     merged: list[dict] = []
     for item in items:
         item = {k: v for k, v in dict(item).items() if k in _KEEP}
+        # A region off any wall has no station. Omit the nulls; other kinds still must not publish them.
         if item.get("s_m") is None:
             item.pop("s_m", None)
+        if item.get("wall_id") is None:
+            item.pop("wall_id", None)
         item.setdefault("target", _target(item.get("kind", "band"), item.get("band")))
         item.setdefault("criteria", [])
         item.setdefault("why", item.get("why") or "unobserved")
@@ -145,7 +150,11 @@ def build(
             ):
                 continue
             if _near(have.get("s_m"), item.get("s_m")):
-                have["s_m"] = _union(have.get("s_m"), item.get("s_m"))
+                union = _union(have.get("s_m"), item.get("s_m"))
+                if union is None:
+                    have.pop("s_m", None)
+                else:
+                    have["s_m"] = union
                 have["criteria"] = sorted(set(have["criteria"]) | set(item["criteria"]))
                 incoming_why = item.get("why")
                 if incoming_why == "grazing" and have.get("why") == "unobserved":
@@ -185,7 +194,9 @@ def _rank(view: dict, meter_wall_id: str | None, chain: set[str]) -> tuple:
         and view.get("wall_id") in chain
     ):
         priority = 0
-    return (-len(view.get("criteria") or []), priority, abs(_mid(view.get("s_m"))))
+    # A region with no wall must not take a cap slot from a past_end view.
+    after_past_end = view.get("kind") == "region" and not view.get("wall_id")
+    return (after_past_end, -len(view.get("criteria") or []), priority, abs(_mid(view.get("s_m"))))
 
 
 def _mid(span) -> float:
