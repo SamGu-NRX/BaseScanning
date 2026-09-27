@@ -232,7 +232,7 @@
         "pdf_sha256": "bbccf2701b88fbc802a98161645386aa8254a54028f4bc59b98505708a907fce"
       },
       "licence_note": "manufacturer document; numbers cited as facts, PDF not redistributed",
-      "notes": "Page 4 drawing, same side-view type as the CENTRON C1S sheet. Letter G is printed 6.30 in (16 cm) and spans the cover at its widest, next to the flange (stored 0.1600 m). Letter A is printed 6.95 in and is the base flange (stored as base_od_m). Letter B is printed 5.27 in and is the overall depth (stored as depth_overall_m). Letter F is printed 5.68 in across the cover front face and is not stored as the cover OD. Letter C is printed 4.37 in. Letters D and E are printed 3.97 in and 3.47 in. Those three are not stored. Class 200 on 1S, 2S and 12S/25S, and class 320 on 2S."
+      "notes": "Page 4 drawing, same side-view type as the CENTRON C1S sheet. Letter G is printed 6.30 in (16 cm) and spans the cover at its widest, next to the flange (stored 0.1600 m). Letter A is printed 6.95 in and 17.66 cm and is the base flange. base_od_m is 0.1765 from the inches (6.95 x 0.0254 = 0.17653), not 0.1766 from the printed 17.66 cm. The two prints differ by 0.1 mm. Letter B is printed 5.27 in and is the overall depth (stored as depth_overall_m). Letter F is printed 5.68 in across the cover front face and is not stored as the cover OD. Letter C is printed 4.37 in. Letters D and E are printed 3.97 in and 3.47 in. Those three are not stored. Class 200 on 1S, 2S and 12S/25S, and class 320 on 2S."
     },
     {
       "model_id": "itron-gen5-riva",
@@ -262,7 +262,7 @@
         "pdf_sha256": "d45b6980f04759346501eecc51fdbe3566b121d72e9e4ab1aae09cd2c9aedfa1"
       },
       "licence_note": "manufacturer document; numbers cited as facts, PDF not redistributed",
-      "notes": "Page 4 is the same drawing as OpenWay Riva CENTRON 101441SP-06, including letter G printed 6.30 in across the cover (stored 0.1600 m). Letter A is printed 6.95 in (base flange) and letter B is printed 5.27 in (overall depth). Letter C is printed 4.34 in on this sheet, not 4.37 in. Letters C, D, E and F are not stored. Class 200 on 1S, 2S, 12S and 25S, and class 320 on 2S, 12S and 25S."
+      "notes": "Page 4 is the same drawing as OpenWay Riva CENTRON 101441SP-06, including letter G printed 6.30 in across the cover (stored 0.1600 m). Letter A is printed 6.95 in and 17.66 cm (base flange). base_od_m is 0.1765 from the inches, not 0.1766 from 17.66 cm. Letter B is printed 5.27 in (overall depth). Letter C is printed 4.34 in on this sheet, not 4.37 in. Letters C, D, E and F are not stored. Class 200 on 1S, 2S, 12S and 25S, and class 320 on 2S, 12S and 25S."
     },
     {
       "model_id": "landis-gyr-focus-axe",

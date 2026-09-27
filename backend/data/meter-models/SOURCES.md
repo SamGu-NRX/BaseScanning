@@ -1,6 +1,6 @@
 # Meter table sources
 
-`table_version` 1.2.0. Metres are inches times 0.0254, then half-up to four decimal places, except where the sheet also prints centimetres or millimetres and those are exact at four decimal metres. PDFs stay out of git. Each `pdf_sha256` is the SHA-256 of the bytes downloaded on 2026-09-26.
+`table_version` 1.2.0. Metres are inches times 0.0254, then half-up to four decimal places. Where the stored figure is the sheet's centimetre or millimetre, and that figure is already exact at four decimal metres, the metric print is stored instead. Riva and Gen5 letter A are the exception: the drawing prints both 6.95 in and 17.66 cm, and `base_od_m` stays 0.1765 from the inches (6.95 × 0.0254 = 0.17653), not 0.1766 from 17.66 cm. The two prints differ by 0.1 mm. PDFs stay out of git. Each `pdf_sha256` is the SHA-256 of the bytes downloaded on 2026-09-26.
 
 An entry is `usable_for_scale` only when the document states the cover or glass diameter. A line that says only "diameter" is not that statement.
 
@@ -12,6 +12,7 @@ An entry is `usable_for_scale` only when the document states the cover or glass 
 - A3 ALPHA figure 2-6, page 2-19, stores the cover as 0.1620 m from 162 mm, and the flange as `base_od_m` 0.1770 from 177 mm.
 - CENTRON letter C runs from the flange's front face to the cover front. Letter E is the overall depth. C stays null.
 - I-210+ depth 5.25 in MAX stays on `aclara-i-210-plus`. Brochure pages 7-8 are headed I-210+c. The same depth is on the I-210+c FlexNet row.
+- Wording only, no number changed: OpenWay Riva and Gen5 letter A print 6.95 in and 17.66 cm. `base_od_m` stays 0.1765 from the inches. 17.66 cm would be 0.1766 m. The inch conversion matches the CENTRON S-base 6.95 in.
 
 ### 1.1.0
 
@@ -45,10 +46,10 @@ An entry is `usable_for_scale` only when the document states the cover or glass 
 | `sensus-stratus-iq` | 12.86 cm | `depth_overall_m` 0.1286 | sheet label "depth" |
 | `sensus-stratus-iq-plus` | 12.86 cm | `depth_overall_m` 0.1286 | sheet label "depth" |
 | `itron-openway-riva-centron` | 6.30 in | `cover_od_m` 0.1600 | page 4, letter G across the cover |
-| `itron-openway-riva-centron` | 6.95 in | `base_od_m` 0.1765 | page 4, letter A, base flange |
+| `itron-openway-riva-centron` | 6.95 in (drawing also prints 17.66 cm) | `base_od_m` 0.1765 from the inches, not 0.1766 from 17.66 cm | page 4, letter A, base flange |
 | `itron-openway-riva-centron` | 5.27 in | `depth_overall_m` 0.1339 | page 4, letter B, overall depth |
 | `itron-gen5-riva` | 6.30 in | `cover_od_m` 0.1600 | page 4, letter G across the cover |
-| `itron-gen5-riva` | 6.95 in | `base_od_m` 0.1765 | page 4, letter A, base flange |
+| `itron-gen5-riva` | 6.95 in (drawing also prints 17.66 cm) | `base_od_m` 0.1765 from the inches, not 0.1766 from 17.66 cm | page 4, letter A, base flange |
 | `itron-gen5-riva` | 5.27 in | `depth_overall_m` 0.1339 | page 4, letter B, overall depth |
 | `elster-a3-alpha` | 162 mm | `cover_od_m` 0.1620 | figure 2-6, page 2-19, across the cover |
 | `elster-a3-alpha` | 177 mm | `base_od_m` 0.1770 | figure 2-6, page 2-19, flange |

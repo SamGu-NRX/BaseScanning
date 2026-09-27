@@ -46,7 +46,7 @@ WS-00's contracts commit (`66ee387`) is on `main`: CI runs `ruff`, `pytest`, and
 
 ## Rebuild from scratch
 
-1. Open each PDF in `SOURCES.md`, read the dimension that the drawing labels, convert inches with `× 0.0254` and half-up to 4 decimal places (centimetre labels that are already exact at 4 decimals stay as printed). Leave a field null when the sheet does not name that axis.
+1. Open each PDF in `SOURCES.md`, read the dimension that the drawing labels, convert inches with `× 0.0254` and half-up to 4 decimal places. A centimetre or millimetre print is stored when that is the figure being cited and it is already exact at 4 decimals. Riva and Gen5 letter A print both 6.95 in and 17.66 cm; `base_od_m` stays 0.1765 from the inches, not 0.1766. Leave a field null when the sheet does not name that axis.
 2. Run `validate_table.py`. It rejects `assumed` provenance, a cover outside 0.150–0.185 m, a ring that is not larger than the cover, and an S-base outside 0.1765 ± 0.002 m.
 3. Point `fetch_lamar.sh` at `~/lamar`. Do not commit the download.
 
