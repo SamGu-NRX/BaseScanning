@@ -5,14 +5,17 @@ description = "Server-side processing for Base Power battery site surveys: captu
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
+    "fastapi>=0.141.1",
     "jsonschema==4.26.0",
     "matplotlib==3.11.2",
+    "modal>=1.5.5",
     "numpy==2.5.3",
     "opencv-python-headless==5.0.0.93",
     "pillow==12.3.0",
     "py7zr>=1.1.3",
     "pycolmap==4.2.0",
     "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
     "pyyaml>=6.0.3",
     "requests>=2.34.2",
     "scipy==1.18.1",
@@ -24,13 +27,13 @@ package = false
 
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"
-testpaths = ["packet/tests", "tests", "server/contracts/tests"]
+testpaths = ["packet/tests", "tests", "server/contracts/tests", "server/common/tests", "server/eval/tests", "server/tests"]
 pythonpath = [".", "packet", "eval", "eval/vendor/hs11_server"]
 
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-extend-exclude = ["eval/vendor", "private"]
+extend-exclude = ["eval/vendor", "server/eval/vendor", "private"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
@@ -42,15 +45,120 @@ ignore = ["E501"]
 # Tighten these once upstream is clean.
 [tool.ruff.lint.per-file-ignores]
 "{packet,eval,criteria/spec,data}/**" = ["B", "UP", "I001", "F401", "F841"]
+"server/eval/**" = ["B", "UP", "I001", "F401", "F841", "E402"]
+"server/{common/geometry,poses/colmap_prior,dense/dense,dense/models,scale/lidar,coverage/occlusion,packet/validate_legacy,orchestrator/legacy_run_packet}.py" = ["B", "UP", "I001", "F401", "F841"]
 "{recon,scene,criteria}/[abc][1-9]-*/**" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
 "{recon,scene,criteria}/a1[0-9]-*/**" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
 "{recon,scene,criteria}/e2e-*/**" = ["B", "UP", "I001", "F401", "F841", "F403", "F405", "E4", "E7", "W"]
 
 [tool.ruff.format]
-exclude = ["packet/**", "eval/**", "criteria/spec/**", "data/**", "recon/**", "scene/**", "criteria/c[1-3]-*/**", "criteria/e2e-*/**", "docs/**"]
+exclude = ["packet/**", "eval/**", "server/eval/**", "criteria/spec/**", "data/**", "recon/**", "scene/**", "criteria/c[1-3]-*/**", "criteria/e2e-*/**", "docs/**", "server/common/geometry.py", "server/poses/colmap_prior.py", "server/dense/dense.py", "server/dense/models.py", "server/scale/lidar.py", "server/coverage/occlusion.py", "server/packet/validate_legacy.py", "server/orchestrator/legacy_run_packet.py"]
 
 [dependency-groups]
 dev = [
+    "import-linter>=2.15",
     "pytest==9.1.1",
     "ruff>=0.16.9",
 ]
+
+[tool.importlinter]
+root_packages = ["server"]
+include_external_packages = false
+
+[[tool.importlinter.contracts]]
+name = "Contracts import only themselves"
+type = "forbidden"
+source_modules = ["server.contracts"]
+forbidden_modules = [
+    "server.common",
+    "server.eval",
+    "server.api",
+    "server.orchestrator",
+    "server.packet",
+    "server.poses",
+    "server.objects",
+    "server.reads",
+    "server.scale",
+    "server.dense",
+    "server.coverage",
+    "server.scene",
+    "server.criteria",
+    "server.result",
+]
+ignore_imports = ["server.contracts.cli -> server.eval.sceneio"]
+
+[[tool.importlinter.contracts]]
+name = "Common imports only contracts"
+type = "forbidden"
+source_modules = ["server.common"]
+forbidden_modules = [
+    "server.eval",
+    "server.api",
+    "server.orchestrator",
+    "server.packet",
+    "server.poses",
+    "server.objects",
+    "server.reads",
+    "server.scale",
+    "server.dense",
+    "server.coverage",
+    "server.scene",
+    "server.criteria",
+    "server.result",
+]
+
+[[tool.importlinter.contracts]]
+name = "Eval imports only contracts and common"
+type = "forbidden"
+source_modules = ["server.eval"]
+forbidden_modules = [
+    "server.api",
+    "server.orchestrator",
+    "server.packet",
+    "server.poses",
+    "server.objects",
+    "server.reads",
+    "server.scale",
+    "server.dense",
+    "server.coverage",
+    "server.scene",
+    "server.criteria",
+    "server.result",
+]
+
+[[tool.importlinter.contracts]]
+name = "Stages do not import each other"
+type = "independence"
+modules = [
+    "server.packet",
+    "server.poses",
+    "server.scale",
+    "server.dense",
+    "server.coverage",
+    "server.scene",
+    "server.objects",
+    "server.reads",
+    "server.criteria",
+    "server.result",
+]
+# housepipe's model loader calls MoGe, which the move places in coverage.
+ignore_imports = ["server.dense.models -> server.coverage.occlusion"]
+
+[[tool.importlinter.contracts]]
+name = "API does not import stages or eval directly"
+type = "forbidden"
+source_modules = ["server.api"]
+forbidden_modules = [
+    "server.eval",
+    "server.packet",
+    "server.poses",
+    "server.objects",
+    "server.reads",
+    "server.scale",
+    "server.dense",
+    "server.coverage",
+    "server.scene",
+    "server.criteria",
+    "server.result",
+]
+allow_indirect_imports = true

@@ -19,13 +19,9 @@ from server.contracts.verdict import Verdict, verdict_contract_errors
 # server.eval is vendored by the skeleton PR. Until that import exists, checks
 # use the contract validators above. Not a circular import: the package is optional.
 try:
-    from server.eval.sceneio import scene_consistency_errors as _sceneio_scene_errors
-    from server.eval.sceneio import schema_errors as _sceneio_schema_errors
-    from server.eval.sceneio import verdict_contract_errors as _sceneio_verdict_errors
-except ImportError:  # pragma: no cover - skeleton PR adds server.eval
-    _sceneio_schema_errors = None
-    _sceneio_scene_errors = None
-    _sceneio_verdict_errors = None
+    from server.eval.sceneio import validate as _sceneio_validate
+except ImportError:  # pragma: no cover - kept so the contracts package still imports if eval is absent
+    _sceneio_validate = None
 
 _FORMATS = {
     "house-capture-packet": Packet,
@@ -91,14 +87,15 @@ def _document_errors(document: dict) -> list[str]:
 
 
 def _sceneio_errors(document: dict) -> list[str]:
-    if _sceneio_schema_errors is None or _sceneio_scene_errors is None or _sceneio_verdict_errors is None:
+    if _sceneio_validate is None:
         return []
-    errors = _sceneio_schema_errors(document)
-    if document.get("format") == "base-scene/v0":
-        errors.extend(_sceneio_scene_errors(document))
-    if document.get("format") == "base-verdict/v0":
-        errors.extend(_sceneio_verdict_errors(document))
-    return errors
+    if document.get("format") not in {"base-scene/v0", "base-verdict/v0", "base-labels/v0"}:
+        return []
+    try:
+        _sceneio_validate(document)
+    except ValueError as exc:
+        return [line for line in str(exc).splitlines() if line.strip()]
+    return []
 
 
 def _check_packets(paths: list[Path], *, with_files: bool) -> int:

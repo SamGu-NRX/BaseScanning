@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: hygiene
+        name: repo hygiene
+        entry: uv run --frozen python scripts/check_repo_hygiene.py
+        language: system
+        pass_filenames: false
