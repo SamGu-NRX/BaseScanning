@@ -61,12 +61,29 @@ def _gave_nothing(payload: dict) -> bool:
     return "meter_identity" not in payload
 
 
+def _identity_record(payload: dict) -> tuple[dict, dict] | None:
+    """Wrapped ``reads.json``, or WS-08's bare early ``MeterIdentity`` dump.
+
+    The reads artifact nests the record under ``meter_identity``. The early
+    blob is ``MeterIdentity.model_dump()`` itself: ``model_family`` at the top.
+    """
+
+    wrapped = payload.get("meter_identity")
+    if isinstance(wrapped, dict):
+        meter = payload.get("meter") or {}
+        return wrapped, meter if isinstance(meter, dict) else {}
+    if "model_family" in payload:
+        return payload, {}
+    return None
+
+
 def _from_reads(payload: dict, min_confidence: float) -> MeterIdentity | IdentityMiss | None:
     if payload.get("status") == "disabled":
         return IdentityMiss("meter_model_unread")
-    record = payload.get("meter_identity")
-    if not isinstance(record, dict):
+    found = _identity_record(payload)
+    if found is None:
         return None
+    record, meter = found
     if not record.get("model_family"):
         return IdentityMiss("meter_model_unread")
     confidence = float(record.get("model_confidence") or 0.0)
@@ -74,7 +91,6 @@ def _from_reads(payload: dict, min_confidence: float) -> MeterIdentity | Identit
     agree = bool(record.get("agree", False))
     if confidence < min_confidence or (not agree and evidence != "printed"):
         return IdentityMiss("meter_identity_low_confidence")
-    meter = payload.get("meter") or {}
     images = [str(item) for item in (record.get("images") or [])]
     return MeterIdentity(
         manufacturer=record.get("manufacturer"),

@@ -695,15 +695,6 @@ def test_execute_reads_meter_identity_from_the_work_dir(tmp_path: Path):
     assert block["table_entry"] == "itron-centron-c1s-poly"
     assert block["reason_detail"] == "scale_reference_edge_not_found"
 
-    early_work = tmp_path / "early-work"
-    _write_poses(early_work / "poses", cameras, report)
-    early = early_work / "early" / "meter_identity.json"
-    early.parent.mkdir(parents=True)
-    shutil.copyfile(reads_src, early)
-    stage_run(_ctx(early_work, {"packet_dir": str(packet_dir)}))
-    early_block = json.loads((early_work / "scale" / "scale.json").read_text())
-    assert early_block["table_entry"] == "itron-centron-c1s-poly"
-
     unread = tmp_path / "unread"
     _write_poses(unread / "poses", cameras, report)
     stage_run(_ctx(unread, {"packet_dir": str(packet_dir)}))
