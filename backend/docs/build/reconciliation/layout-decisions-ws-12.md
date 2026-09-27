@@ -64,3 +64,23 @@ Sources actually read for the values: SMP module sources as copied into `huntert
 18. **WS-01 §12 expects "WS-12's `deploy.yml` redeploys `dev`/`prod` at least daily"** for the static Modal identity token; the brief provides `rollover.yml` (`modal app rollover`, daily) instead of a daily redeploy, which needs no code change and keeps the pinned SHA.
 19. **WS-11 §4.12 `e2e.yml` runs `make fixtures ONLY=all` from a `gs://` mirror without GCP auth;** the mirror is private, so the workflow needs `permissions: id-token: write` and WS-12's `auth-gcp-oidc` step (ask recorded in the brief §4.5/§12 Q6). WS-01's interim replay uses `--token-env`, WS-11's final CLI `--token`.
 20. **WS-03 §4.1 `Pipeline.timeout` 1200 s vs app.py `50*60`;** the brief adopts WS-03's 1200 (its coordinator runs 1560 s, the plan's hard stop is 20 min). WS-03's `Pipeline` decorator hard-codes `gpu="L4"` and containers; the brief asks WS-03 to read `server.modal_app.KNOBS` (§12 Q6).
+
+## C. Builder additions (WS-12, 2026-09-26)
+
+Recorded by the builder. Sections A and B above were not rewritten.
+
+| # | Decision | Where | Rationale |
+|---|---|---|---|
+| B1 | One draft PR on `ws-12/infra-terraform` holds both the Modal composition and the Terraform stack, plus the SMP diff | Mac rule: one worktree `~/hss-wt/ws-12` | The card lists `ws-12/deploy-modal` and `ws-12/infra-terraform`. The Mac rule allows one worktree and one draft. Split later if the integrator wants the card's two PRs. |
+| B2 | `module.capture_bucket` and `module.modal_wif` are not called | `main.tf` `TODO(ws-01)` | Those modules are not on `main`. Outputs that would come from them are null. |
+| B3 | Runtime SA `objectViewer` bindings on `hss-fixtures` are comments, not resources | `fixtures.tf` | The service accounts do not exist until WS-01. Binding a missing member fails the first apply. `hss-gha` can read the bucket through `roles/storage.admin`. |
+| B4 | `github_wif_pool_name` cross-check is a `check` block, not a `validation` block | `locals.tf` | Terraform 1.8 allows a variable validation to read only that variable. `~> 7.28` allows 7.46, so the provider constraint is `~> 7.28.0` and the lock is 7.28.0. |
+| B5 | `modal` is a dev dependency (`modal==1.5.5`) | `pyproject.toml` | Mac rule. The GPU image uses `--no-dev`; Modal injects its client. `modal-check` syncs the dev group. |
+| B6 | GPU extra does not downgrade numpy, opencv, pillow, or scipy | lock | Those pins are already on `main` (numpy 2.5.3, opencv 5.0.0.93, pillow 12.3.0, scipy 1.18.1, pycolmap 4.2.0). Torch 2.5.1 and torchvision 0.20.1 come from the cu124 index. |
+| B7 | Model tarballs are `uv pip install` lines in the Dockerfile, not lock entries | `Dockerfile` | Unnamed sdists. Torch is re-pinned from cu124 after those installs. |
+| B8 | `CPU_IMAGE` calls `uv_sync()` with no `extras=["api"]` | `server/modal_app.py` | The `api` extra is WS-01's and is not in `pyproject.toml`. |
+| B9 | `api_app` and `server.orchestrator.modal_functions` are imported only if present | `server/modal_app.py` | WS-01 and WS-03 are not on `main`. The app is `smoke_cpu` until they land. |
+| B10 | COLMAP git tag `4.2.0` | `Dockerfile` | GitHub release `4.2.0` exists and matches `pycolmap==4.2.0`. The image was not built: the Docker daemon was down. |
+| B11 | SMP auth action copied verbatim (no `setup-gcloud`) | `.github/actions/auth-gcp-oidc` | `38b696f` has only `google-github-actions/auth@v2`. `deploy.yml` adds `setup-gcloud` as the next step. |
+| B12 | Fixtures bucket IAM for runtime SAs waits | see B3 | Same as B3. |
+

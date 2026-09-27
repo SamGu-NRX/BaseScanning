@@ -66,3 +66,22 @@ Unmarked interpretations (not defaults, listed for completeness): `real-house-tr
 - WS-11 names: `server.eval.replay` flags (`--packet --api --token --finalize-at --timeout --out`), `server/eval/gates.yaml` `lamar` block, `make e2e|e2e-local|lamar`, `pass_recall` (SKIP until WS-13 pass labels).
 - WS-08 names: `READS_AUTOFILL_NO_BARCODE` stays off for gate 10; reads are confirmed through WS-10's reviewer path.
 - WS-04: the real capture is the only place σ sweeps may run (`scripts/score_poses.py`, WS-04 §12 Q10); the recalibrated profile goes to packetgen and WS-02.
+
+## 5. Builder additions (PR-A, 2026-09-26)
+
+Appended by the WS-13 builder. D1–D19 above are unchanged.
+
+| # | Decision | Why |
+|---|---|---|
+| D20 | Fold-ins live in repo `docs/data/fold-ins/`. Registry status is `docs/data/real-house.md`. Consent template is `scripts/real_house/consent-template.md` | This branch may write only this file and `internal/build/progress/ws-13.md` in the store |
+| D21 | No `generic-prior` row. `validate_table.py` rejects every `assumed` value | GB-17 plus the assignment: refuse assumed entries |
+| D22 | CENTRON letter C is not `rim_offset_m`. Unlabeled DIA / H callouts and the FOCUS 5.5 in note are not stored | The sheet does not name those axes. 5.5 in is also under the 0.150 m cover floor |
+| D23 | Store `internal/data/**` and `internal/criteria/**` were not edited | Same store-write limit. YouTube packet hashes were not invented |
+| D24 | Fold-in GitHub issues were not opened | This branch opens one draft PR only |
+| D25 | PR stays draft until WS-00 contracts are on `main` | `origin/main` was still `f9ac5c1` at push. Capture-day gates stay pending either way |
+| D26 | Report 6 entries and 2 usable covers. Do not pad to the brief's ≥ 20 / ≥ 3 | Only CENTRON poly and glass have a labeled cover diameter |
+| D27 | `fetch_lamar.sh` runs `build_laser.py` only when the data directory is `~/lamar` | A6 `lamar_io.py` hardcodes that path |
+| D28 | Optional dusk session S1b is cancelled | A7 is a no-go for SfM poses at dusk. Brief §4-C4 still lists it |
+| D29 | Photo count stays 60–70, dense on the meter side | A10: 40 frames about 1 m apart registered 2–7 of 40. Do not thin the walk to 40 around the house |
+
+Draft PR: https://github.com/huntertcarver/house-scanning-server/pull/25 (`ws-13/meter-models-and-registry`). Gate table and misses: `internal/build/progress/ws-13.md`.
