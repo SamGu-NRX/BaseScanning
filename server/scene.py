@@ -312,11 +312,11 @@ class Scene:
         lo, hi = self.pieces[0].s0, self.pieces[-1].s1
         # Behind a scanned wall is the house: at an inside corner one wall's strip reaches back
         # across the other's line, and that ground no view in front of a wall can show.
-        outdoor = self.band_polygon(lo, hi, self.reach_ft).difference(self.house())
+        outdoor = _minus(self.band_polygon(lo, hi, self.reach_ft), self.house())
         seen = unary_union([self.band_polygon(a, b, out or 0.0) for a, b, out in ground])
         # Growing what was seen (SEEN_GROWTH_FT) closes gaps between observed spans narrower
         # than the tolerance, as missing() ignores them for the 1D bands.
-        unseen = outdoor.difference(seen.buffer(SEEN_GROWTH_FT))
+        unseen = _minus(outdoor, seen.buffer(SEEN_GROWTH_FT))
         # Remove floating-point seams where the strips and corner wedges of two polygons meet,
         # even when they spur off a larger unseen area: no view can be requested for them, so
         # they would leave a check nothing settles. Only seams this thin go, so the growth above
@@ -454,7 +454,7 @@ class Scene:
         if key not in self._cache:
             lo, hi = self.coverable_span()
             if band == "ground":
-                self._cache[key] = self.band_polygon(lo, hi, self.reach_ft).difference(self.house())
+                self._cache[key] = _minus(self.band_polygon(lo, hi, self.reach_ft), self.house())
             else:
                 self._cache[key] = self.wall_line(lo, hi).buffer(1e-6, cap_style="flat")
         return self._cache[key]
@@ -648,6 +648,19 @@ def _geometry(points: list[Point2], path: str) -> Geometry:
 
 def _error(item: dict[str, Any], default: float) -> float:
     return float(item["plus_minus_ft"]) if "plus_minus_ft" in item else default
+
+
+# Grid the ground overlays snap to, far below any measurement. Unsnapped, subtracting the house
+# from the band in front of two exact walls meeting at a 51 degree corner gave a polygon with a
+# hole outside its shell, and the next overlay raised "side location conflict"
+# (test_within_errors).
+OVERLAY_GRID_FT = 1e-9
+
+
+def _minus(a: Geometry, b: Geometry) -> Geometry:
+    """a less b, snapped. Only their areas: a snapped overlay refuses the line left where two
+    walls' strips meet at a corner they don't quite share."""
+    return shapely.difference(polygonal(a), polygonal(b), grid_size=OVERLAY_GRID_FT)
 
 
 # Unseen ground thinner than twice this is a seam between polygons (float noise), not a gap.
