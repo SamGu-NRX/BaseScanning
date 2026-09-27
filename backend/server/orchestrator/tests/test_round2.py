@@ -10,17 +10,20 @@ from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 import server.orchestrator.executor as executor
 from server.contracts.api import HintData
-from server.contracts.jobs import CommittedFile, StageContext
+from server.contracts.jobs import CommittedFile, RunRecord, StageContext, StageRecord, StageResult
 from server.coverage.run import run as coverage_stage
 from server.eval.geomscore import load_cameras
 from server.orchestrator.api import dispatch_early, prewarm, start_run
 from server.orchestrator.cli import main
 from server.orchestrator.clock import Clock
+from server.orchestrator.coordinator import RunCoordinator
 from server.orchestrator.early.capture_check import _axes, _in_frame, _publish
 from server.orchestrator.heartbeat import Heartbeat
+from server.orchestrator.modal_spawn import ModalPending, collect_modal
 from server.orchestrator.services import bind, packet_sha256
 from server.orchestrator.stateio import get_json
 from server.orchestrator.stubs import coverage as coverage_stub
@@ -342,12 +345,12 @@ def test_prewarm_spawns_pipeline_and_early_qa(tmp_path, monkeypatch) -> None:
 
 def test_run_modal_reports_available_when_the_sdk_is_present(monkeypatch, capsys) -> None:
     monkeypatch.setattr("server.orchestrator.cli.modal_available", lambda: True)
-    assert main(["run-modal", "--env", "dev"]) == 0
+    assert main(["run-modal", "--env", "dev"]) == 2
     body = json.loads(capsys.readouterr().out)
     assert body["modal"] == "available"
-    assert body["remote"] == "not_supported"
-    assert body["reason"] == "remote execution isn't supported yet"
-    assert "spawn" not in body
+    assert body["remote"] == "supported"
+    assert body["spawned"] is False
+    assert body["reason"] == "a packet tar is required"
     assert body["env"] == "dev"
 
 
@@ -524,16 +527,80 @@ def test_pipeline_exposes_modal_methods() -> None:
     assert "modal.method()" in found[("EarlyQa", "warm")]
 
 
-def test_coordinator_spawns_through_modal_when_configured(tmp_path, monkeypatch) -> None:
-    calls: list[tuple[str, str | None]] = []
+def test_collect_modal_treats_a_poll_timeout_as_still_running(monkeypatch) -> None:
+    class _Call:
+        def get(self, timeout: float = 0) -> object:
+            del timeout
+            raise TimeoutError()
 
-    def remote(ctx, gpu) -> None:
-        calls.append((ctx.stage, gpu))
+    monkeypatch.setattr("modal.FunctionCall.from_id", lambda call_id: _Call())
+    with pytest.raises(ModalPending):
+        collect_modal("fc-poll")
+
+
+def test_coordinator_records_the_modal_call_and_collects_it(tmp_path, monkeypatch) -> None:
+    calls: list[tuple[str, str | None]] = []
+    collected: list[str] = []
+
+    def remote(run_id: str, stage: str, attempt: int, gpu: str | None) -> str:
+        del run_id
+        calls.append((stage, gpu))
+        return f"fc-{stage}-{attempt}"
+
+    def pending(call_id: str) -> object:
+        collected.append(call_id)
+        raise ModalPending(call_id)
 
     monkeypatch.setattr("server.orchestrator.modal_functions.modal_available", lambda: True)
     monkeypatch.setattr("server.orchestrator.modal_spawn._remote_spawn", remote)
-    services, uri, digest = build_services(tmp_path, "memory", stage_stubs=False)
+    monkeypatch.setattr("server.orchestrator.coordinator.collect_modal", pending)
+    services, uri, digest = build_services(
+        tmp_path, "memory", stage_stubs=True, modal_remote=True, coordinator_loop_s=0
+    )
     with bind(services):
         run = start_run("cap_test", digest, uri)
+    record = services.state.get_stage(run.run_id, "validate")
     assert calls[0] == ("validate", None)
-    assert services.state.get_stage(run.run_id, "validate").status == "running"
+    assert record.worker_call_id == "fc-validate-1"
+    assert record.status == "running"
+    assert "fc-validate-1" in collected
+
+    def finished(call_id: str) -> StageResult:
+        collected.append(call_id)
+        return StageResult(artifacts={"packet/validation.json": "kept"}, metrics={"duration_s": 0.01}, warnings=[])
+
+    monkeypatch.setattr("server.orchestrator.coordinator.collect_modal", finished)
+    with bind(services):
+        RunCoordinator(services).tick(run.run_id)
+    done = services.state.get_stage(run.run_id, "validate")
+    assert done.status == "done"
+    assert done.worker_call_id == "fc-validate-1"
+    assert "fc-validate-1" in collected
+
+
+def test_remote_stage_marks_itself_done(tmp_path) -> None:
+    services, _uri, digest = build_services(tmp_path, "memory")
+    now = services.clock.iso()
+    run = RunRecord(
+        run_id="run_remote",
+        capture_id="cap_test",
+        packet_sha256=digest,
+        status="running",
+        branch="image",
+        flow="guided",
+        tier="arkit",
+        profile_default="C",
+        created_at=now,
+        deadline_at=now,
+        artifacts={},
+        spend_usd={},
+    )
+    services.state.put_run(run)
+    services.state.upsert_stage(
+        StageRecord(run_id=run.run_id, stage="validate", status="pending", attempt=1, heartbeat=now)
+    )
+    with bind(services):
+        artifacts = RunCoordinator(services).execute_named_stage(run.run_id, "validate", 1, gpu="")
+    record = services.state.get_stage(run.run_id, "validate")
+    assert record.status == "done"
+    assert "packet/validation.json" in artifacts

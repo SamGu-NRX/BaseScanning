@@ -7,7 +7,12 @@ import os
 
 from server.contracts.result import ResultResponse
 from server.orchestrator.api import purge_capture, start_run
-from server.orchestrator.modal_functions import coordinate_run_impl, pipeline_resources, run_stage_impl
+from server.orchestrator.modal_functions import (
+    coordinate_run_impl,
+    pipeline_resources,
+    run_stage_impl,
+    use_shared_dev_backends,
+)
 from server.orchestrator.privacy import apply_deployed_privacy, photo_egress_allowed
 from server.orchestrator.services import bind
 from server.orchestrator.stateio import get_json, put_json
@@ -41,6 +46,30 @@ def test_pipeline_knobs_ignore_legacy_names() -> None:
     )
     assert resources == {"gpu": "A10G", "min_containers": 1, "max_containers": 4}
     assert pipeline_resources({})["gpu"] == "L4"
+
+
+def test_shared_backends_stay_off_outside_a_container(monkeypatch) -> None:
+    monkeypatch.delenv("MODAL_TASK_ID", raising=False)
+    monkeypatch.delenv("VOLUME_ROOT", raising=False)
+    monkeypatch.delenv("STORAGE_BACKEND", raising=False)
+    monkeypatch.delenv("STATE_BACKEND", raising=False)
+    use_shared_dev_backends()
+    assert "VOLUME_ROOT" not in os.environ
+    assert "STORAGE_BACKEND" not in os.environ
+    assert "STATE_BACKEND" not in os.environ
+
+
+def test_shared_backends_point_at_the_volume_in_a_container(monkeypatch) -> None:
+    monkeypatch.setenv("MODAL_TASK_ID", "ta-test")
+    monkeypatch.setenv("SMP_ENVIRONMENT", "dev")
+    keys = ("VOLUME_ROOT", "STORAGE_BACKEND", "STATE_BACKEND", "STATE_DICT_NAME")
+    # setitem records a missing key (delenv on an absent name does not).
+    for key in keys:
+        monkeypatch.setitem(os.environ, key, os.environ.get(key, ""))
+    use_shared_dev_backends()
+    assert os.environ["VOLUME_ROOT"] == "/vol"
+    assert os.environ["STORAGE_BACKEND"] == "local"
+    assert os.environ["STATE_BACKEND"] == "modal_dict"
 
 
 def test_modal_bodies_call_the_coordinator(tmp_path, monkeypatch) -> None:

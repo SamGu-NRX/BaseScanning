@@ -1,14 +1,18 @@
-"""``python -m server.orchestrator.cli``. Remote Modal execution is not supported yet."""
+"""``python -m server.orchestrator.cli``. ``run-modal`` drives a small run on Modal dev."""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import os
 import sys
 import tarfile
+import tempfile
 import time
 from pathlib import Path
+
+import modal
 
 from server.common.backends.state_memory import MemoryState
 from server.common.backends.storage_local import LocalFsStorage
@@ -58,7 +62,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "dump-run":
         return dump_run(Path(args.out))
     if args.cmd == "run-modal":
-        return run_modal(args.env)
+        return run_modal(
+            args.env,
+            tar=args.tar,
+            variant=args.variant,
+            stubs=bool(args.stubs),
+            hang_stage=args.hang_stage,
+            kill_coordinator_after=args.kill_coordinator_after,
+            fail_stage=args.fail_stage,
+            allow_escalation=bool(args.allow_escalation),
+        )
     if args.cmd == "spend":
         return print_spend()
     if args.cmd == "stop-apps":
@@ -179,23 +192,73 @@ def print_spend() -> int:
     return 0
 
 
-def run_modal(env: str) -> int:
-    """Remote execution is not supported yet. No GPU is spawned and no token is used."""
+def run_modal(
+    env: str,
+    *,
+    tar: str = "",
+    variant: str = "",
+    stubs: bool = False,
+    hang_stage: str = "",
+    kill_coordinator_after: str = "",
+    fail_stage: str = "",
+    allow_escalation: bool = False,
+) -> int:
+    """Drive one run on the deployed Modal app. No call is spawned without a real tar."""
 
     available = modal_available()
-    print(
-        json.dumps(
-            {
-                "cmd": "run-modal",
-                "modal": "available" if available else "unavailable",
-                "env": env,
-                "remote": "not_supported",
-                "reason": "remote execution isn't supported yet",
-            }
-        ),
-        file=sys.stdout if available else sys.stderr,
-    )
-    return 0 if available else 2
+    if not available:
+        return _modal_unavailable("run-modal")
+    if not tar:
+        print(
+            json.dumps(
+                {
+                    "cmd": "run-modal",
+                    "modal": "available",
+                    "env": env,
+                    "remote": "supported",
+                    "spawned": False,
+                    "reason": "a packet tar is required",
+                }
+            )
+        )
+        return 2
+    tar_path = Path(tar)
+    if not tar_path.is_file():
+        print(
+            json.dumps(
+                {
+                    "cmd": "run-modal",
+                    "modal": "available",
+                    "env": env,
+                    "remote": "supported",
+                    "spawned": False,
+                    "reason": f"fixture tar not on disk: {tar}",
+                }
+            ),
+            file=sys.stderr,
+        )
+        return 2
+    packet = _packet_text(tar_path, variant)
+    digest = hashlib.sha256(packet.encode()).hexdigest()[:12]
+    capture_id = f"cap_modal_{digest}"
+    hook = f"{hang_stage}|{kill_coordinator_after}|{fail_stage}"
+    if hang_stage or kill_coordinator_after or fail_stage:
+        capture_id = f"{capture_id}_{hashlib.sha256(hook.encode()).hexdigest()[:6]}"
+    spec = {
+        "packet": packet,
+        "capture_id": capture_id,
+        "stubs": stubs,
+        "hang_stage": hang_stage,
+        "kill_coordinator_after": kill_coordinator_after,
+        "fail_stage": fail_stage,
+        "allow_escalation": allow_escalation,
+        "hard_stop_min": os.environ.get("HARD_STOP_MIN") or "",
+    }
+    app_name = os.environ.get("MODAL_APP_NAME", "house-scanning")
+    function = modal.Function.from_name(app_name, "run_capture", environment_name=env)
+    result = function.remote(spec)
+    print(json.dumps({"cmd": "run-modal", "modal": "available", "env": env, "remote": "spawned", **result}))
+    return 0
 
 
 def _modal_unavailable(cmd: str) -> int:
@@ -231,6 +294,14 @@ def _services(out: Path) -> Services:
         executor=InlineExecutor(config=orch, stubs=True),
         work_root=out / "work",
     )
+
+
+def _packet_text(tar_path: Path, variant: str) -> str:
+    with tempfile.TemporaryDirectory(prefix="hss-modal-") as tmp:
+        root = Path(tmp)
+        with tarfile.open(tar_path) as archive:
+            archive.extractall(root, filter="data")
+        return _find_packet(root, variant).read_text()
 
 
 def _find_packet(root: Path, variant: str = "") -> Path:

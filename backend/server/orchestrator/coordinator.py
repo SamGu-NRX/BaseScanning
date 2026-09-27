@@ -9,12 +9,14 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from server.common.logging import log_event
 from server.contracts.api import StageData
 from server.contracts.jobs import (
     OPTIONAL_STAGES,
     RunRecord,
     StageName,
     StageRecord,
+    StageResult,
     StageStatus,
 )
 from server.eval.sceneio import validate as validate_document
@@ -22,7 +24,14 @@ from server.orchestrator.clock import parse_iso
 from server.orchestrator.events import emit_failed, emit_stage
 from server.orchestrator.executor import CoordinatorDied, InlineExecutor
 from server.orchestrator.graph import STAGE_NAMES, STAGES, gpu_for_attempt, ready_stages
-from server.orchestrator.modal_spawn import launch_modal
+from server.orchestrator.modal_spawn import (
+    ModalPending,
+    cancel_modal,
+    collect_modal,
+    current_call_id,
+    launch_modal,
+    sync_volume,
+)
 from server.orchestrator.outcomes import Decision, Facts, decide
 from server.orchestrator.runner import error_parts, is_retryable
 from server.orchestrator.runner import run_stage as execute_stage
@@ -37,6 +46,11 @@ _VLM_BUCKET = {
     "objects_3d": "vlm_objects",
     "criteria": "vlm_c3",
 }
+
+
+def _log_handoff(run_id: str, stage: str, msg: str, started: float) -> None:
+    elapsed_ms = (time.perf_counter() - started) * 1000.0
+    log_event("handoff", msg=msg, run_id=run_id, stage=stage, duration_ms=round(elapsed_ms, 1))
 
 
 class RunControl(BaseModel):
@@ -59,20 +73,67 @@ class RunCoordinator:
         self.s = services
 
     def execute_named_stage(self, run_id: str, stage: str, attempt: int, *, gpu: str) -> dict[str, str]:
-        """Run one stage attempt on this process. Modal's ``Pipeline.run_stage`` calls this."""
+        """Run one stage attempt and mark it done. Modal's ``Pipeline.run_stage`` calls this."""
 
+        self._apply_hooks(run_id)
         run = self._run(run_id)
         record = self.s.state.get_stage(run_id, stage)  # type: ignore[attr-defined]
         if record is None:
             raise KeyError(stage)
-        call_id = f"modal-{stage}-{attempt}"
-        record = record.model_copy(update={"attempt": attempt, "gpu": gpu, "worker_call_id": call_id})
+        call_id = current_call_id() or record.worker_call_id or f"modal-{stage}-{attempt}"
+        chosen_gpu = record.gpu or (gpu if STAGES[stage].where == "gpu" else None)  # type: ignore[index]
+        record = record.model_copy(
+            update={
+                "attempt": attempt,
+                "gpu": chosen_gpu,
+                "worker_call_id": call_id,
+                "status": "running",
+            }
+        )
         self.s.state.upsert_stage(record)  # type: ignore[attr-defined]
+        started = time.perf_counter()
+        sync_volume("reload")
+        reload_ms = (time.perf_counter() - started) * 1000.0
+        _log_handoff(run_id, stage, f"worker_start reload_ms={reload_ms:.0f}", started)
+        if self.s.orch.test_kill_coordinator_after == stage:
+            self._hold_for_new_coordinator(run_id, record)
+        code = _injected_failure(self.s.orch.test_fail_stage, stage, attempt)
+        if code:
+            raise RuntimeError(f"{code}: injected failure")
+        if _hangs(self.s.orch.test_hang_stage, stage, attempt):
+            time.sleep(400)
+            return {}
+        hydrated = time.perf_counter()
         context = self.s.stage_context(run, record, call_id)
-        result = execute_stage(context, stubs=self.s.orch.stage_stubs, call_id=call_id)
+        hydrate_ms = (time.perf_counter() - hydrated) * 1000.0
+        ran = time.perf_counter()
+        result = execute_stage(
+            context,
+            stubs=self.s.orch.stage_stubs,
+            call_id=call_id,
+            heartbeat_s=self.s.orch.heartbeat_s,
+        )
+        stage_ms = (time.perf_counter() - ran) * 1000.0
+        committed = time.perf_counter()
+        sync_volume("commit")
+        commit_ms = (time.perf_counter() - committed) * 1000.0
+        _log_handoff(
+            run_id,
+            stage,
+            (
+                f"worker_done reload_ms={reload_ms:.0f} hydrate_ms={hydrate_ms:.0f} "
+                f"stage_ms={stage_ms:.0f} commit_ms={commit_ms:.0f}"
+            ),
+            started,
+        )
+        fresh = self.s.state.get_stage(run_id, stage) or record
+        self._mark_done(run, fresh, result)
         return result.artifacts
 
-    def drive(self, run_id: str, *, max_ticks: int = 40) -> StageStatus:
+    def drive(self, run_id: str, *, max_ticks: int | None = None) -> StageStatus:
+        self._apply_hooks(run_id)
+        if max_ticks is None:
+            max_ticks = 400 if self.s.orch.modal_remote else 40
         last = ""
         status = "running"
         for _ in range(max_ticks):
@@ -81,7 +142,12 @@ class RunCoordinator:
                 return status
             snapshot = self._snapshot(run_id)
             if snapshot == last:
-                return status
+                if not self._modal_inflight(run_id) or self.s.orch.coordinator_loop_s <= 0:
+                    return status
+                # Near the stale bound, a 1s sleep plus a slow poll can step over 180–185s.
+                pause = 0.2 if self._near_stale(run_id) else self.s.orch.coordinator_loop_s
+                time.sleep(pause)
+                continue
             last = snapshot
         return status
 
@@ -108,7 +174,9 @@ class RunCoordinator:
             self._close(run, decide(Facts(hard_stop=True)), "hard stop")
             return run.status
 
+        polled = time.perf_counter()
         self._poll(run)
+        poll_ms = (time.perf_counter() - polled) * 1000.0
         run = self._run(run_id)
         if run.status not in {"pending", "running"}:
             return run.status
@@ -119,13 +187,30 @@ class RunCoordinator:
             return run.status
 
         control = self._control(run_id)
+        merged = time.perf_counter()
         self._merge_if_ready(run, control)
+        merge_ms = (time.perf_counter() - merged) * 1000.0
+        spawned_at = time.perf_counter()
         spawned = self._spawn_ready(run, control)
+        spawn_ms = (time.perf_counter() - spawned_at) * 1000.0
         kill = self.s.orch.test_kill_coordinator_after
         if kill and kill in spawned:
             self.s.state.put_run(run)
             raise CoordinatorDied(kill)
+        poll2 = time.perf_counter()
         self._poll(run)
+        poll2_ms = (time.perf_counter() - poll2) * 1000.0
+        if self.s.orch.modal_remote and (spawned or poll_ms + merge_ms + spawn_ms + poll2_ms >= 1000):
+            _log_handoff(
+                run_id,
+                spawned[0] if spawned else "-",
+                (
+                    f"tick poll_ms={poll_ms:.0f} merge_ms={merge_ms:.0f} "
+                    f"spawn_ms={spawn_ms:.0f} poll2_ms={poll2_ms:.0f} "
+                    f"spawned={','.join(spawned) or '-'}"
+                ),
+                polled,
+            )
         run = self._run(run_id)
         if run.status in {"pending", "running"}:
             self._maybe_finish(run)
@@ -140,9 +225,13 @@ class RunCoordinator:
         if "criteria" in names and not control.merge_done:
             names = [name for name in names if name != "criteria"]
         for name in names:
-            if self._run(run.run_id).status not in {"pending", "running"}:
+            fresh = self._run(run.run_id)
+            if fresh.status not in {"pending", "running"}:
                 break
-            if self._spawn_one(run, name):
+            if self._past_deadline(fresh):
+                self._close(fresh, decide(Facts(hard_stop=True)), "hard stop")
+                break
+            if self._spawn_one(fresh, name):
                 spawned.append(name)
         return spawned
 
@@ -172,30 +261,68 @@ class RunCoordinator:
             StageData(stage=name, status="running", attempt=attempt, runId=run.run_id, gpu=gpu),
             clock=self.s.clock,
         )
+        # State writes can outlast the deadline. Check again immediately before launch.
+        if self._past_deadline(self._run(run.run_id)):
+            self._close(self._run(run.run_id), decide(Facts(hard_stop=True)), "hard stop")
+            return False
+        remote_id = launch_modal(self.s, run.run_id, name, attempt, gpu)
+        if remote_id:
+            fresh = self.s.state.get_stage(run.run_id, name)
+            if fresh is not None and fresh.status == "running":
+                fresh.worker_call_id = remote_id
+                self.s.state.upsert_stage(fresh)
+            return True
         ctx = self.s.stage_context(run, rec, call_id)
-        if not launch_modal(self.s, ctx, gpu):
-            self._executor().spawn(call_id, ctx)
+        if self._past_deadline(self._run(run.run_id)):
+            self._close(self._run(run.run_id), decide(Facts(hard_stop=True)), "hard stop")
+            return False
+        self._executor().spawn(call_id, ctx)
         return True
 
     def _poll(self, run: RunRecord) -> None:
         executor = self._executor()
-        for rec in self.s.state.stages(run.run_id):
+        for rec in self._rows(run.run_id, refresh=True):
             if rec.status != "running" or not rec.worker_call_id:
                 continue
-            if rec.worker_call_id not in executor.calls:
-                continue
-            call = executor.poll(rec.worker_call_id)
             fresh = self.s.state.get_stage(run.run_id, rec.stage)
-            if fresh is None or fresh.worker_call_id != rec.worker_call_id:
+            if fresh is None or fresh.worker_call_id != rec.worker_call_id or fresh.status != "running":
                 continue
-            if call.outcome == "running":
+            if rec.worker_call_id in executor.calls:
+                call = executor.poll(rec.worker_call_id)
+                if call.outcome == "running":
+                    continue
+                if call.outcome == "done" and call.result is not None:
+                    self._mark_done(run, fresh, call.result)
+                elif call.error is not None:
+                    self._mark_error(run, fresh, call.error)
                 continue
-            if call.outcome == "done" and call.result is not None:
-                self._mark_done(run, fresh, call.result)
-            elif call.error is not None:
-                self._mark_error(run, fresh, call.error)
+            if not self.s.orch.modal_remote:
+                continue
+            try:
+                payload = collect_modal(rec.worker_call_id)
+            except ModalPending:
+                continue
+            except Exception as exc:
+                latest = self.s.state.get_stage(run.run_id, rec.stage) or fresh
+                if latest.status == "running":
+                    self._mark_error(run, latest, exc)
+                continue
+            latest = self.s.state.get_stage(run.run_id, rec.stage) or fresh
+            if latest.status != "running":
+                continue
+            result = _coerce_result(payload)
+            if result is not None:
+                self._mark_done(run, latest, result)
 
     def _mark_done(self, run: RunRecord, rec: StageRecord, result: Any) -> None:
+        fresh = self.s.state.get_stage(run.run_id, rec.stage)
+        if fresh is None or fresh.status != "running":
+            return
+        if fresh.worker_call_id and rec.worker_call_id and fresh.worker_call_id != rec.worker_call_id:
+            return
+        rec = fresh
+        rec.error = None
+        rec.error_code = None
         if rec.stage == "criteria":
             try:
                 _validate_verdicts(self.s, result)
@@ -211,6 +338,10 @@ class RunCoordinator:
         rec.metrics = metrics
         rec.artifact_uri = next(iter(result.artifacts.values()), None)
         self.s.state.upsert_stage(rec)
+        self._remember_stage(rec)
+        # Per-stage blob. Two workers finishing together each put_run the whole
+        # artifact map, and the later write drops the earlier stage's keys.
+        put_json(self.s.state, f"stage_artifacts:{run.run_id}:{rec.stage}", dict(result.artifacts))
         run.artifacts.update(result.artifacts)
         duration = float(metrics.get("duration_s", 0.0))
         usd = attempt_usd(duration, rec.gpu)
@@ -264,10 +395,12 @@ class RunCoordinator:
             rec.status = "pending"
             rec.worker_call_id = None
             self.s.state.upsert_stage(rec)
+            self._remember_stage(rec)
             return
         rec.status = "failed"
         rec.finished_at = self.s.clock.iso()
         self.s.state.upsert_stage(rec)
+        self._remember_stage(rec)
         emit_stage(
             self.s.state,
             run.capture_id,
@@ -313,14 +446,14 @@ class RunCoordinator:
 
     def _sweep_stale(self, run: RunRecord) -> None:
         now = self.s.clock.now()
-        for rec in self.s.state.stages(run.run_id):
+        for rec in self._rows(run.run_id):
             if rec.status != "running" or not rec.heartbeat:
                 continue
             age = (now - parse_iso(rec.heartbeat)).total_seconds()
             if age <= self.s.orch.stale_s:
                 continue
             if rec.worker_call_id:
-                self._executor().cancel(rec.worker_call_id)
+                self._cancel_call(rec.worker_call_id)
             rec.respawns += 1
             rec.status = "stale"
             self.s.state.upsert_stage(rec)
@@ -339,7 +472,7 @@ class RunCoordinator:
 
     def _sweep_timeouts(self, run: RunRecord) -> None:
         now = self.s.clock.now()
-        for rec in list(self.s.state.stages(run.run_id)):
+        for rec in list(self._rows(run.run_id)):
             if rec.status != "running" or not rec.started_at:
                 continue
             spec = STAGES[rec.stage]
@@ -347,8 +480,16 @@ class RunCoordinator:
             if elapsed <= spec.timeout_s:
                 continue
             if rec.worker_call_id:
-                self._executor().cancel(rec.worker_call_id)
+                self._cancel_call(rec.worker_call_id)
             self._mark_error(run, rec, TimeoutError(f"timeout: {rec.stage} exceeded {spec.timeout_s}s"))
+
+    def _overlay_artifacts(self, run: RunRecord) -> RunRecord:
+        artifacts = dict(run.artifacts)
+        for name in STAGE_NAMES:
+            extra = get_json(self.s.state, f"stage_artifacts:{run.run_id}:{name}")
+            if isinstance(extra, dict):
+                artifacts.update({str(key): str(value) for key, value in extra.items()})
+        return run.model_copy(update={"artifacts": artifacts})
 
     def _merge_if_ready(self, run: RunRecord, control: RunControl) -> None:
         if control.merge_done:
@@ -363,7 +504,11 @@ class RunCoordinator:
             "skipped",
         }:
             return
+        # Overlay only once both sides are finished. Doing it every tick is
+        # eleven blob reads and pushes the stale cancel past 185s.
+        run = self._overlay_artifacts(self._run(run.run_id))
         if objects_3d.status == "done":
+            sync_volume("reload")
             started = time.perf_counter()
             try:
                 _merge_objects(self.s, run)
@@ -378,7 +523,7 @@ class RunCoordinator:
         self._save_control(run.run_id, control)
 
     def _maybe_finish(self, run: RunRecord) -> None:
-        stages = self.s.state.stages(run.run_id)
+        stages = self._rows(run.run_id)
         if any(rec.status == "running" for rec in stages):
             return
         control = self._control(run.run_id)
@@ -408,7 +553,7 @@ class RunCoordinator:
             decision = decide(Facts(degraded=tuple(stage for stage in run.degraded)))
             self._apply_decision(run, decision, "degraded optional stage", emit=False)
             return
-        verdict = _read_json(self.s, run, "verdicts/verdict.C.json")
+        verdict = _read_json(self.s, self._overlay_artifacts(run), "verdicts/verdict.C.json")
         site = (verdict or {}).get("site") or {}
         decision_name = str(site.get("decision") or "manual_review")
         views = list((verdict or {}).get("views_needed") or [])
@@ -486,10 +631,9 @@ class RunCoordinator:
         self.s.state.put_run(run)
 
     def _cancel_running(self, run_id: str) -> None:
-        executor = self._executor()
         for rec in self.s.state.stages(run_id):
             if rec.status == "running" and rec.worker_call_id:
-                executor.cancel(rec.worker_call_id)
+                self._cancel_call(rec.worker_call_id)
                 rec.status = "skipped"
                 rec.finished_at = self.s.clock.iso()
                 self.s.state.upsert_stage(rec)
@@ -519,6 +663,7 @@ class RunCoordinator:
         run.artifacts["run/cost.json"] = f"{prefix}/cost.json"
         run.artifacts["run/stages.json"] = f"{prefix}/stages.json"
         self.s.state.put_run(run)
+        sync_volume("commit")
 
     def _put_json(self, key: str, body: Any) -> None:
         self.s.storage.put_bytes(key, json.dumps(body).encode(), "application/json")
@@ -526,15 +671,30 @@ class RunCoordinator:
     def _past_deadline(self, run: RunRecord) -> bool:
         return self.s.clock.now() >= parse_iso(run.deadline_at)
 
+    def _rows(self, run_id: str, *, refresh: bool = False) -> list[StageRecord]:
+        """Stage rows for this tick. A refresh is one point-read of the eleven keys."""
+
+        cache = getattr(self, "_rows_cache", None)
+        if refresh or cache is None or cache[0] != run_id:
+            rows = list(self.s.state.stages(run_id))
+            self._rows_cache = (run_id, rows)
+            return rows
+        return cache[1]
+
+    def _remember_stage(self, rec: StageRecord) -> None:
+        rows = self._rows(rec.run_id)
+        for index, row in enumerate(rows):
+            if row.stage == rec.stage:
+                rows[index] = rec
+                return
+        rows.append(rec)
+
     def _status_map(self, run_id: str) -> dict[StageName, StageStatus]:
-        found = {rec.stage: rec.status for rec in self.s.state.stages(run_id)}
+        found = {rec.stage: rec.status for rec in self._rows(run_id)}
         return {name: found.get(name, "pending") for name in STAGE_NAMES}
 
     def _snapshot(self, run_id: str) -> str:
-        parts = [
-            f"{rec.stage}:{rec.status}:{rec.attempt}:{rec.failures}:{rec.respawns}"
-            for rec in self.s.state.stages(run_id)
-        ]
+        parts = [f"{rec.stage}:{rec.status}:{rec.attempt}:{rec.failures}:{rec.respawns}" for rec in self._rows(run_id)]
         run = self._run(run_id)
         return run.status + "|" + ",".join(parts)
 
@@ -555,6 +715,56 @@ class RunCoordinator:
 
     def _executor(self) -> InlineExecutor:
         return self.s.executor
+
+    def _cancel_call(self, call_id: str) -> None:
+        executor = self._executor()
+        executor.cancel(call_id)
+        if call_id in executor.calls or not self.s.orch.modal_remote:
+            return
+        cancel_modal(call_id)
+
+    def _near_stale(self, run_id: str) -> bool:
+        now = self.s.clock.now()
+        for rec in self._rows(run_id):
+            if rec.status != "running" or not rec.heartbeat:
+                continue
+            age = (now - parse_iso(rec.heartbeat)).total_seconds()
+            if age >= self.s.orch.stale_s - 10:
+                return True
+        return False
+
+    def _modal_inflight(self, run_id: str) -> bool:
+        if not self.s.orch.modal_remote:
+            return False
+        executor = self._executor()
+        for rec in self._rows(run_id):
+            if rec.status == "running" and rec.worker_call_id and rec.worker_call_id not in executor.calls:
+                return True
+        return False
+
+    def _apply_hooks(self, run_id: str) -> None:
+        raw = get_json(self.s.state, f"run_hooks:{run_id}") or {}
+        if not raw:
+            return
+        if "modal_remote" in raw:
+            self.s.orch.modal_remote = bool(raw["modal_remote"])
+        if "stage_stubs" in raw:
+            self.s.orch.stage_stubs = bool(raw["stage_stubs"])
+        for name in ("test_hang_stage", "test_fail_stage", "test_kill_coordinator_after"):
+            if name in raw:
+                setattr(self.s.orch, name, str(raw[name] or ""))
+
+    def _hold_for_new_coordinator(self, run_id: str, record: StageRecord) -> None:
+        """Stay in the call until a sweeper has re-spawned the coordinator."""
+
+        deadline = time.monotonic() + 500
+        while time.monotonic() < deadline:
+            raw = get_json(self.s.state, f"run_control:{run_id}") or {}
+            if int(raw.get("coordinator_respawns") or 0) >= 1:
+                return
+            record.heartbeat = self.s.clock.iso()
+            self.s.state.upsert_stage(record)
+            time.sleep(2)
 
     def _fail_artifact(self, run: RunRecord, rec: StageRecord, kind: str, exc: BaseException) -> None:
         rec.status = "failed"
@@ -591,6 +801,8 @@ def _vlm_spent(run: RunRecord) -> float:
 
 
 def _read_json(services: Services, run: RunRecord, artifact: str) -> dict[str, Any] | None:
+    if services.orch.modal_remote:
+        sync_volume("reload")
     key = run.artifacts.get(artifact)
     if not key or not services.storage.exists(key):
         return None
@@ -634,6 +846,43 @@ def _validate_verdicts(services: Services, result: Any) -> None:
         if not services.storage.exists(key):  # type: ignore[attr-defined]
             raise ValueError(f"artifact_invalid:criteria missing {name}")
         validate_document(json.loads(services.storage.get_bytes(key)))  # type: ignore[attr-defined]
+
+
+def _coerce_result(payload: object) -> StageResult | None:
+    if isinstance(payload, StageResult):
+        return payload
+    if isinstance(payload, dict) and isinstance(payload.get("artifacts"), dict):
+        metrics = payload.get("metrics") if isinstance(payload.get("metrics"), dict) else {}
+        warnings = payload.get("warnings") if isinstance(payload.get("warnings"), list) else []
+        return StageResult(artifacts=payload["artifacts"], metrics=metrics, warnings=warnings)
+    return None
+
+
+def _hangs(spec: str, stage: str, attempt: int) -> bool:
+    if not spec or ":" not in spec:
+        return False
+    name, rest = spec.split(":", 1)
+    try:
+        attempts = {int(part) for part in rest.split(",") if part}
+    except ValueError:
+        return False
+    return name == stage and attempt in attempts
+
+
+def _injected_failure(spec: str, stage: str, attempt: int) -> str | None:
+    if not spec:
+        return None
+    parts = spec.split(":")
+    if len(parts) != 3:
+        return None
+    name, code, count = parts
+    try:
+        limit = int(count)
+    except ValueError:
+        return None
+    if name == stage and attempt <= limit:
+        return code
+    return None
 
 
 def _images_usable(services: Services, run: RunRecord) -> bool:

@@ -31,7 +31,10 @@ class OrchConfig(BaseModel):
     test_hang_stage: str = ""
     test_fail_stage: str = ""
     test_kill_coordinator_after: str = ""
-    coordinator_loop_s: float = 5
+    # One second, so a stale cancel lands inside 180–185s and a hard stop
+    # cancels a live worker within 15s of the deadline.
+    coordinator_loop_s: float = 1
+    modal_remote: bool = False
 
 
 def load_orch(environ: dict[str, str] | None = None) -> OrchConfig:
@@ -58,4 +61,6 @@ def load_orch(environ: dict[str, str] | None = None) -> OrchConfig:
         test_hang_stage=pick("HSS_ORCH_TEST_HANG_STAGE", ""),
         test_fail_stage=pick("HSS_ORCH_TEST_FAIL_STAGE", ""),
         test_kill_coordinator_after=pick("HSS_ORCH_TEST_KILL_COORDINATOR_AFTER", ""),
+        coordinator_loop_s=float(pick("HSS_ORCH_COORDINATOR_LOOP_S", "1")),
+        modal_remote=_flag(pick("HSS_ORCH_MODAL_REMOTE", "0")),
     )

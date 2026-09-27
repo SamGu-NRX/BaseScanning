@@ -10,10 +10,17 @@ The callable bodies always run the coordinator. Deployed wrappers add WS-12's
 
 from __future__ import annotations
 
+import json
+import os
+
+from server.contracts.jobs import CaptureRecord
+from server.orchestrator.api import start_run
 from server.orchestrator.api import sweep as sweep_runs
 from server.orchestrator.coordinator import RunCoordinator
+from server.orchestrator.executor import CoordinatorDied
+from server.orchestrator.modal_spawn import sync_volume
 from server.orchestrator.privacy import apply_deployed_privacy
-from server.orchestrator.services import current
+from server.orchestrator.services import bind, current, packet_sha256
 
 try:
     import modal
@@ -66,17 +73,42 @@ def _secret_kwargs(service: str) -> dict[str, object]:
     return {"secrets": secrets_for(service)}
 
 
+def use_shared_dev_backends() -> None:
+    """Orchestrator containers share one Modal Dict. Prod keeps its own settings.
+
+    In-process callers (unit tests) must not rewrite process env. ``Settings()``
+    reads ``VOLUME_ROOT`` and would try to create ``/vol``.
+    """
+
+    if not os.environ.get("MODAL_TASK_ID"):
+        return
+    if os.environ.get("SMP_ENVIRONMENT", "dev") == "prod":
+        return
+    os.environ["STATE_BACKEND"] = "modal_dict"
+    os.environ.setdefault("STATE_DICT_NAME", "hss-dev-state")
+    os.environ.setdefault("SMP_ENVIRONMENT", "dev")
+    # Artifacts stay on the mounted volume. The CUDA image has no GCS client.
+    # Stage scratch is a local temp dir, so a commit does not upload the packet again.
+    os.environ["VOLUME_ROOT"] = "/vol"
+    os.environ["STORAGE_BACKEND"] = "local"
+
+
 def coordinate_run_impl(run_id: str) -> str:
     """One container drives the run to a terminal status."""
 
+    use_shared_dev_backends()
     apply_deployed_privacy()
-    RunCoordinator(current()).drive(run_id)
+    try:
+        RunCoordinator(current()).drive(run_id)
+    except CoordinatorDied:
+        pass
     return run_id
 
 
 def run_stage_impl(run_id: str, stage: str, attempt: int) -> dict[str, object]:
     """One pipeline container executes the stage the coordinator named."""
 
+    use_shared_dev_backends()
     apply_deployed_privacy()
     resources = pipeline_resources()
     artifacts = RunCoordinator(current()).execute_named_stage(
@@ -91,6 +123,51 @@ def run_stage_impl(run_id: str, stage: str, attempt: int) -> dict[str, object]:
         "attempt": attempt,
         "gpu": resources["gpu"],
         "artifacts": artifacts,
+    }
+
+
+def run_capture_impl(spec: dict[str, object]) -> dict[str, object]:
+    """Create one capture in the shared dict and drive it. The caller is the coordinator."""
+
+    use_shared_dev_backends()
+    os.environ["HSS_ORCH_MODAL_REMOTE"] = "1"
+    os.environ["HSS_ORCH_STAGE_STUBS"] = "1" if spec.get("stubs", True) else "0"
+    os.environ["HSS_ORCH_TEST_HANG_STAGE"] = str(spec.get("hang_stage") or "")
+    os.environ["HSS_ORCH_TEST_FAIL_STAGE"] = str(spec.get("fail_stage") or "")
+    os.environ["HSS_ORCH_TEST_KILL_COORDINATOR_AFTER"] = str(spec.get("kill_coordinator_after") or "")
+    if spec.get("hard_stop_min"):
+        os.environ["HARD_STOP_MIN"] = str(spec["hard_stop_min"])
+    apply_deployed_privacy()
+    packet_text = spec.get("packet")
+    if not isinstance(packet_text, str) or not packet_text:
+        raise ValueError("packet json is required")
+    data = packet_text.encode()
+    packet = json.loads(data)
+    capture_id = str(spec.get("capture_id") or packet.get("captureId") or "cap_modal")
+    services = current()
+    with bind(services):
+        services.state.put_capture(  # type: ignore[attr-defined]
+            CaptureRecord(
+                capture_id=capture_id,
+                packet_id=str(packet.get("packetId") or "packet-modal"),
+                status="awaiting_files",
+                tier="arkit",
+                flow=str(packet.get("flow") or "guided"),  # type: ignore[arg-type]
+                device_model="modal",
+                owner_principal="modal",
+                created_at=services.clock.iso(),
+                finalize_by=services.clock.iso(),
+            )
+        )
+        uri = f"captures/{capture_id}/packet.json"
+        services.storage.put_bytes(uri, data, "application/json")  # type: ignore[attr-defined]
+        sync_volume("commit")
+        run = start_run(capture_id, packet_sha256(data), uri)
+    return {
+        "capture_id": capture_id,
+        "run_id": run.run_id,
+        "status": run.status,
+        "failure_code": run.failure_code,
     }
 
 
@@ -135,6 +212,7 @@ if modal is not None and app is not None:
         cpu=2,
         timeout=COORDINATOR_TIMEOUT_S,
         retries=0,
+        volumes={"/vol": volume} if volume is not None else {},
         **_cpu_secrets,
     )
     def coordinate_run(run_id: str) -> str:
@@ -189,17 +267,35 @@ if modal is not None and app is not None:
         apply_deployed_privacy()
         return capture_id
 
-    @app.function(  # type: ignore[union-attr]
-        image=CPU_IMAGE,
-        cpu=1,
-        timeout=SWEEPER_TIMEOUT_S,
-        retries=0,
-        schedule=modal.Period(minutes=5),
+    _sweep_kwargs: dict[str, object] = {
+        "image": CPU_IMAGE,
+        "cpu": 1,
+        "timeout": SWEEPER_TIMEOUT_S,
+        "retries": 0,
+        "volumes": {"/vol": volume} if volume is not None else {},
         **_secret_kwargs("sweeper"),
-    )
+    }
+    # The shared app owns the five-minute sweep. A throwaway probe must not
+    # schedule a second sweeper against the same dev dict.
+    if os.environ.get("HSS_MODAL_SCHEDULE", "on") != "off":
+        _sweep_kwargs["schedule"] = modal.Period(minutes=5)
+
+    @app.function(**_sweep_kwargs)  # type: ignore[union-attr]
     def sweep() -> int:
+        use_shared_dev_backends()
         apply_deployed_privacy()
         return sweep_runs()
+
+    @app.function(  # type: ignore[union-attr]
+        image=CPU_IMAGE,
+        cpu=2,
+        timeout=COORDINATOR_TIMEOUT_S,
+        retries=0,
+        volumes={"/vol": volume} if volume is not None else {},
+        **_pipeline_secrets,
+    )
+    def run_capture(spec: dict) -> dict:
+        return run_capture_impl(spec)
 
 else:
     Pipeline = _Missing("Pipeline")  # type: ignore[misc,assignment]
@@ -209,3 +305,4 @@ else:
     EarlyQa = _Missing("EarlyQa")  # type: ignore[misc,assignment]
     capture_check = _Missing("capture_check")  # type: ignore[misc,assignment]
     sweep = _Missing("sweep")  # type: ignore[misc,assignment]
+    run_capture = _Missing("run_capture")  # type: ignore[misc,assignment]

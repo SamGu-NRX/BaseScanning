@@ -6,6 +6,7 @@ import contextlib
 import contextvars
 import hashlib
 import json
+import tempfile
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import timedelta
@@ -80,11 +81,12 @@ def current() -> Services:
     settings = load()
     orch = load_orch()
     if settings.VOLUME_ROOT:
-        root = Path(settings.VOLUME_ROOT)
-        storage = LocalFsStorage(root)
+        storage = LocalFsStorage(Path(settings.VOLUME_ROOT))
     else:
         storage = resolve_storage(settings)
-        root = storage.root  # type: ignore[attr-defined]
+    # Stage scratch stays off the volume. A remote worker hydrates from storage
+    # into this directory, then publishes the artifacts back. Commit then uploads
+    # only those artifacts, not a second copy of the packet.
     return Services(
         settings=settings,
         orch=orch,
@@ -92,7 +94,7 @@ def current() -> Services:
         storage=storage,
         clock=Clock(),
         executor=InlineExecutor(config=orch, stubs=orch.stage_stubs),
-        work_root=root / "work",
+        work_root=Path(tempfile.mkdtemp(prefix="hss-work-")),
     )
 
 

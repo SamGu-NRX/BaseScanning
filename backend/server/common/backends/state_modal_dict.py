@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 from datetime import UTC, datetime
+from typing import get_args
 
 from server.common.backends.state_memory import MemoryState
 from server.contracts.jobs import (
@@ -366,11 +367,13 @@ class ModalDictState(MemoryState):
         return self._model(f"stage:{run_id}:{stage}", StageRecord)
 
     def stages(self, run_id: str) -> list[StageRecord]:
+        """Point-read the eleven stage keys. A full Dict scan is a multi-second RPC per tick."""
+
         records: list[StageRecord] = []
-        for key, value in self._items():
-            if not str(key).startswith(f"stage:{run_id}:") or not isinstance(value, dict):
-                continue
-            records.append(StageRecord.model_validate(value).model_copy(deep=True))
+        for name in get_args(StageName):
+            rec = self.get_stage(run_id, name)
+            if rec is not None:
+                records.append(rec)
         return sorted(records, key=lambda rec: rec.stage)
 
     def heartbeat(self, run_id: str, stage: StageName, call_id: str, substep: str, at: str) -> bool:

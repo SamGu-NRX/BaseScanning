@@ -80,6 +80,34 @@ def test_prefix_isolates_two_states() -> None:
     assert "left/capture:cap_1" in shared.kv
 
 
+def test_stages_point_reads_and_skips_a_full_dict_scan() -> None:
+    class Counting(dict):
+        def __init__(self) -> None:
+            super().__init__()
+            self.scans = 0
+
+        def keys(self):
+            self.scans += 1
+            return super().keys()
+
+        def items(self):
+            self.scans += 1
+            return super().items()
+
+    mapping = Counting()
+    for index in range(40):
+        mapping[f"event:cap_1:{index}"] = {"seq": index}
+    state = ModalDictState(mapping)
+    state.put_run(_run())
+    state.upsert_stage(
+        StageRecord(run_id="run_abc", stage="poses", status="running", attempt=1, heartbeat="2026-09-26T00:00:00Z")
+    )
+    before = mapping.scans
+    found = state.stages("run_abc")
+    assert mapping.scans == before
+    assert [rec.stage for rec in found] == ["poses"]
+
+
 def test_delete_capture_drops_keyed_records() -> None:
     state = ModalDictState()
     state.put_capture(_capture())

@@ -19,7 +19,9 @@ import modal
 from server.modal_images import CPU_IMAGE as CPU_IMAGE
 from server.modal_images import gpu_image
 
-APP_NAME = "house-scanning"
+# Default stays the shared app. A live probe sets MODAL_APP_NAME to a throwaway
+# name so it does not replace the house-scanning deploy teammates use.
+APP_NAME = os.environ.get("MODAL_APP_NAME", "house-scanning")
 VOL_NAME = "house-capture-pipeline"
 GPU_PRICES_USD_PER_S = {
     "L4": 0.000222,

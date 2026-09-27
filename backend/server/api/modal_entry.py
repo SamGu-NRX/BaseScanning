@@ -86,16 +86,25 @@ if modal is not None:
         timeout=600,
     )
     @modal.concurrent(max_inputs=200)
-    @modal.asgi_app(label="capture-api")
+    # SD-32. The shared app keeps this label. A throwaway deploy sets another so
+    # it does not take the webhook the live house-scanning app already owns.
+    @modal.asgi_app(label=os.environ.get("HSS_CAPTURE_API_LABEL", "capture-api"))
     def capture_api():
         apply_capture_env()
         from server.api.app import create_app
 
         return create_app()
 
-    @api_app.function(
-        image=api_image, secrets=_secrets, volumes=_volumes, schedule=modal.Period(minutes=5), timeout=240
-    )
+    _ingest_kwargs: dict[str, object] = {
+        "image": api_image,
+        "secrets": _secrets,
+        "volumes": _volumes,
+        "timeout": 240,
+    }
+    if os.environ.get("HSS_MODAL_SCHEDULE", "on") != "off":
+        _ingest_kwargs["schedule"] = modal.Period(minutes=5)
+
+    @api_app.function(**_ingest_kwargs)
     def ingest_sweep():
         apply_capture_env()
         from server.api.sweeper import ingest_sweep as sweep

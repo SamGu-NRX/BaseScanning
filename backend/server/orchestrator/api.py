@@ -73,6 +73,17 @@ def start_run(
         f"run_control:{run_id}",
         {"coordinator_respawns": 0, "cancel_requested": False, "merge_done": False},
     )  # type: ignore[attr-defined]
+    put_json(
+        services.state,
+        f"run_hooks:{run_id}",
+        {
+            "modal_remote": services.orch.modal_remote,
+            "stage_stubs": services.orch.stage_stubs,
+            "test_hang_stage": services.orch.test_hang_stage,
+            "test_fail_stage": services.orch.test_fail_stage,
+            "test_kill_coordinator_after": services.orch.test_kill_coordinator_after,
+        },
+    )  # type: ignore[attr-defined]
     for name in STAGE_NAMES:
         services.state.upsert_stage(  # type: ignore[attr-defined]
             StageRecord(run_id=run_id, stage=name, status="pending", attempt=1, heartbeat=now)
