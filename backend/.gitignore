@@ -3,6 +3,11 @@ private/
 
 .venv/
 __pycache__/
+.env
+.env.*
+.terraform/
+*.tfstate
+*.tfstate.*
 *.egg-info/
 .pytest_cache/
 .ruff_cache/

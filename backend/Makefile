@@ -1,5 +1,5 @@
 # `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
-.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci criteria-golden e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra
+.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci criteria-golden e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra weights
 
 ONLY ?= small
 
@@ -11,8 +11,10 @@ lint:
 	uv run --frozen ruff format --check .
 	uv run --frozen lint-imports
 
+# api extra only. `--all-extras` installs the gpu torch pin, and the OWLv2
+# parity test then runs on agent-store B1 images and misses by one box.
 test:
-	uv run --frozen --all-extras pytest -q
+	uv run --frozen --extra api pytest -q
 
 schemas:
 	uv run --frozen python -m server.contracts.export_schemas --check
@@ -22,6 +24,11 @@ hygiene:
 
 fixtures:
 	uv run --frozen python scripts/fetch_fixtures.py --only $(ONLY) $(if $(ITEM),--item $(ITEM),)
+
+# Public Hugging Face weights onto house-capture-pipeline:/vol/hf.
+# Local-dir <org>--<repo> and hub/models--<org>--<repo> (see server/weights/fetch.py).
+weights:
+	SMP_ENVIRONMENT=dev uv run modal run -e dev -m server.weights.fetch
 
 gt:
 	bash scripts/rebuild_gt.sh
@@ -108,3 +115,5 @@ reads-gate:
 reads-extra:
 	uv sync --frozen --extra reads
 	uv run --frozen --extra reads python -c "import openai, zxingcpp"
+
+include infra/deploy.mk

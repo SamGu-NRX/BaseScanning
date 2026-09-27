@@ -30,25 +30,17 @@ resource "google_storage_bucket" "captures" {
     retention_duration_seconds = 0
   }
 
-  lifecycle_rule {
-    action {
-      type = "Delete"
-    }
-    condition {
-      age            = var.upload_ttl_days
-      matches_prefix = ["uploads/"]
-    }
-  }
-
-  lifecycle_rule {
-    action {
-      type          = "SetStorageClass"
-      storage_class = "NEARLINE"
-    }
-    condition {
-      age                   = var.nearline_after_days
-      matches_prefix        = ["captures/"]
-      matches_storage_class = ["STANDARD"]
+  # SD-77. One environment. Delete these prefixes after 30 days.
+  dynamic "lifecycle_rule" {
+    for_each = toset(["captures/", "work/", "uploads/"])
+    content {
+      action {
+        type = "Delete"
+      }
+      condition {
+        age            = 30
+        matches_prefix = [lifecycle_rule.value]
+      }
     }
   }
 
@@ -57,7 +49,7 @@ resource "google_storage_bucket" "captures" {
       type = "AbortIncompleteMultipartUpload"
     }
     condition {
-      age = var.abort_multipart_after_days
+      age = 2
     }
   }
 

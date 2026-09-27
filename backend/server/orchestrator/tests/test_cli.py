@@ -1,4 +1,4 @@
-"""CLI: local tar run, dump, and Modal reported unavailable."""
+"""CLI: local tar run, dump, and the Modal app wiring."""
 
 from __future__ import annotations
 
@@ -9,9 +9,10 @@ from server.orchestrator.cli import main
 from server.orchestrator.modal_functions import modal_available
 
 
-def test_modal_reported_unavailable() -> None:
-    assert modal_available() is False
-    assert main(["run-modal", "--env", "dev", "--tar", "missing.tar", "--stubs"]) == 2
+def test_modal_app_is_wired_and_does_not_spawn() -> None:
+    """WS-12's app imports, so the CLI reports Modal present. Nothing is spawned."""
+    assert modal_available() is True
+    assert main(["run-modal", "--env", "dev", "--tar", "missing.tar", "--stubs"]) == 0
     assert main(["stop-apps"]) == 2
     assert main(["spend", "--env", "dev"]) == 0
 

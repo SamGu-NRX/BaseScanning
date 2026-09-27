@@ -140,7 +140,14 @@ if modal is not None and app is not None:
     def coordinate_run(run_id: str) -> str:
         return coordinate_run_impl(run_id)
 
-    @app.function(image=CPU_IMAGE, cpu=2, timeout=420, retries=0, **_cpu_secrets)  # type: ignore[union-attr]
+    @app.function(  # type: ignore[union-attr]
+        image=CPU_IMAGE,
+        cpu=2,
+        timeout=420,
+        retries=0,
+        volumes={"/vol": volume} if volume is not None else {},
+        **_cpu_secrets,
+    )
     def run_cpu_stage(run_id: str, stage: str, attempt: int) -> dict[str, object]:
         return run_stage_impl(run_id, stage, attempt)
 
