@@ -114,6 +114,26 @@ def test_a_captured_request_never_comes_back(raw: dict) -> None:
         raw = captured(raw, result)
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="Open finding (listed, not fixed): a ground request past a limit end can't be settled",
+)
+def test_a_request_past_a_limit_end_is_settled_by_capturing_it() -> None:
+    # Found by the property above after 86b2b4d, and the same at 5a4b4f4. The first answer asks
+    # for ground from s = -4.01, past the left limit end at -0.5; after capturing it,
+    # [-0.833, -0.5] 2.85 ft out (pool_clearance) is asked for again on every later round.
+    raw = shared_fixture()
+    raw["walls"][0]["baseline"] = [[-0.5, 0], [12.0, 0]]
+    raw["overheads"][0]["span_ft"] = raw["facing"][0]["span_ft"] = [-0.5, 12.0]
+    raw["coverage"]["ends"] = {"left": {"kind": "limit"}, "right": {"kind": "unexplored"}}
+    for band in ("wall", "ground", "overhead", "facing"):
+        observed_band(raw, band, [(-0.5, 12.0)], 1.0)
+    for _ in range(3):
+        result = answer(raw)
+        assert repeated_requests(raw, result) == [], result["missing_evidence"]
+        raw = captured(raw, result)
+
+
 # --- 2. ground past a limit end is not clear until it is seen ------------------------------------
 
 
