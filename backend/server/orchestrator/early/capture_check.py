@@ -61,8 +61,9 @@ def _store_frames(services: Services, capture_id: str, frames: list[dict[str, An
 
 def _frame_from_file(item: CommittedFile) -> dict[str, Any]:
     meta = item.meta or {}
-    frame = (meta.get("keyframe") or meta.get("meta") or meta) if isinstance(meta, dict) else {}
-    body = dict(frame) if isinstance(frame, dict) else {}
+    frame = meta.get("keyframe") or meta.get("meta")
+    # A still's `keyframe` can be an id, rather than an embedded frame record.
+    body = dict(frame) if isinstance(frame, dict) else dict(meta)
     body.setdefault("path", item.path)
     return body
 
