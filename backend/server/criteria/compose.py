@@ -126,7 +126,7 @@ def build_verdict(
     fact_failed = any(outcome == "fail" for outcome in decision_facts.values())
     site, site_reasons = combine_decision(decision, reasons, site, site_reasons, fact_failed)
     site = judge_join(site, judge, bool(getattr(cfg, "judge_may_reject", False)))
-    if judge_reasons and judge not in {None, "pass"}:
+    if judge_reasons and judge != "pass":
         site_reasons = list(dict.fromkeys([*site_reasons, *judge_reasons]))
     if site in {"pass", "reject"}:
         views = []

@@ -23,15 +23,17 @@ from server.criteria.c1.to_verdict import _span, apply_review_flags, chain_s, gr
 from server.criteria.c2.grid_adapter import c2_rules, chain_offsets_m, from_scene
 from server.criteria.c2.sweep import Sweep
 from server.criteria.c2.veto import join as c2_join
-from server.criteria.c3.facts import apply_reads, disabled_facts
-from server.criteria.c3.judge import resolve_judge
+from server.criteria.c3.client import HouseSpend
+from server.criteria.c3.facts import apply_reads, evaluate_facts
+from server.criteria.c3.judge import judge_if_pass
+from server.criteria.c3.overlay import footprint_corners, judge_photos
 from server.criteria.candidates import choose, placement_doc
 from server.criteria.compose import build_verdict
 from server.criteria.config import CriteriaConfig
 from server.criteria.harness import load
 from server.criteria.occluders import missing_occluder_geometry
 from server.criteria.views_needed import build as build_views
-from server.criteria.views_needed import coverage_requests, view_requests
+from server.criteria.views_needed import coverage_requests, observed_wall_spans, view_requests
 
 log = logging.getLogger("server.criteria")
 HERE = Path(__file__).resolve().parent
@@ -308,7 +310,10 @@ def evaluate_scene(
     rules_sha = hashlib.sha256((HERE / "profiles.yaml").read_bytes()).hexdigest()
     timings = {}
     decidability = {}
-    judge, judge_reasons, judge_record = resolve_judge(cfg)
+    wall_seen = observed_wall_spans(scene)
+    spend = HouseSpend(float(getattr(cfg, "c3_budget_usd", 0.60)))
+    judge_by_profile: list[dict] = []
+    judge_hits: list[str | None] = []
     c2_report = {"status": "off", "agreement_with_c1": None, "vetoes": 0}
     c2_by_profile: dict[str, dict] = {}
     verdicts = {}
@@ -418,6 +423,7 @@ def evaluate_scene(
                 cfg.max_views,
                 meter_wall_id=scene["chain"]["wall_ids"][0],
                 chain_wall_ids=scene["chain"]["wall_ids"],
+                observed_walls=wall_seen,
             ),
         )
         if "no_keyframes" in degraded or "occluders_missing" in degraded:
@@ -438,6 +444,7 @@ def evaluate_scene(
                 cfg.max_views,
                 meter_wall_id=scene["chain"]["wall_ids"][0],
                 chain_wall_ids=scene["chain"]["wall_ids"],
+                observed_walls=wall_seen,
             )
         decision = "manual_review"
         reasons: list[str] = []
@@ -462,6 +469,16 @@ def evaluate_scene(
         if scale and float(scale.get("rel_bound_95") or 0) > 0.12:
             reasons.append("scale_bound_exceeded")
             decision = "manual_review"
+        images = []
+        if decision == "pass" and cfg.external_vision and cfg.judge_stub is None:
+            placed = placement_doc(name, profile, chosen, sc, sm)
+            images = judge_photos(scene, scene_dir, footprint_corners(placed))
+        judge, judge_reasons, judge_rec = judge_if_pass(decision, cfg, images, spend=spend)
+        if judge_rec is not None:
+            judge_rec = dict(judge_rec)
+            judge_rec["profile"] = name
+            judge_by_profile.append(judge_rec)
+        judge_hits.append(judge)
         verdict = build_verdict(
             scene=scene,
             scene_path=scene_path,
@@ -485,13 +502,6 @@ def evaluate_scene(
             judge=judge,
             judge_reasons=judge_reasons,
         )
-        if not cfg.c3 or not cfg.external_vision:
-            for fact in disabled_facts():
-                if fact["id"] not in {c["id"] for c in verdict["criteria"]}:
-                    verdict["criteria"].append(fact)
-        # Contract: pass/reject clear views. Re-apply after fact review.
-        if verdict["site"]["decision"] in {"pass", "reject"}:
-            verdict["views_needed"] = []
         _require_verdict(verdict)
         (out_dir / f"verdict.{name}.json").write_text(json.dumps(verdict, indent=1) + "\n")
         (out_dir / f"c1.{name}.raw.json").write_text(json.dumps(_raw(decided), indent=1) + "\n")
@@ -503,12 +513,26 @@ def evaluate_scene(
     sweep = c2_sweep_document(c2_by_profile, cfg.default_profile)
     if cfg.default_profile in c2_by_profile:
         c2_report = {**c2_report, "status": sweep["status"]}
-    live_c3 = bool(cfg.c3 and cfg.external_vision)
-    fact_rows = [] if live_c3 else disabled_facts()
+    fact_rows, fact_record = evaluate_facts(scene, cfg, scene_dir=scene_dir, spend=spend)
+    for name, verdict in verdicts.items():
+        have = {row["id"] for row in verdict["criteria"]}
+        for fact in fact_rows:
+            if fact["id"] not in have:
+                verdict["criteria"].append(fact)
+                have.add(fact["id"])
+        if verdict["site"]["decision"] in {"pass", "reject"}:
+            verdict["views_needed"] = []
+        _require_verdict(verdict)
+        (out_dir / f"verdict.{name}.json").write_text(json.dumps(verdict, indent=1) + "\n")
+    calls = [call for rec in judge_by_profile for call in rec.get("calls") or []]
+    judge_record = {
+        "status": (judge_by_profile[-1].get("status") if judge_by_profile else "idle"),
+        "calls": calls,
+        "cost_usd": sum(float(rec.get("cost_usd") or 0.0) for rec in judge_by_profile),
+        "by_profile": judge_by_profile,
+    }
     (out_dir / "c2.sweep.json").write_text(json.dumps(sweep, indent=1) + "\n")
-    (out_dir / "c3.facts.json").write_text(
-        json.dumps({"status": "disabled" if not live_c3 else "off", "facts": fact_rows}) + "\n"
-    )
+    (out_dir / "c3.facts.json").write_text(json.dumps({**fact_record, "facts": fact_rows}) + "\n")
     (out_dir / "c3.judge.json").write_text(json.dumps(judge_record) + "\n")
     report = {
         "profiles": list(cfg.profiles),
@@ -517,15 +541,15 @@ def evaluate_scene(
         "decidability": decidability,
         "c2": c2_report,
         "c3": {
-            "facts_calls": 0,
+            "facts_calls": len(fact_record.get("calls") or []),
             "judge_calls": len(judge_record.get("calls") or []),
-            "cost_usd": float(judge_record.get("cost_usd") or 0.0),
-            "status": judge_record.get("status") or ("disabled" if not live_c3 else "idle"),
+            "cost_usd": float(fact_record.get("cost_usd") or 0.0) + float(judge_record.get("cost_usd") or 0.0),
+            "status": fact_record.get("status") if not judge_by_profile else judge_record.get("status"),
         },
         "downgrades": {
             "coverage": 0,
             "c2": c2_report.get("vetoes") or 0,
-            "judge": 1 if judge not in {None, "pass"} else 0,
+            "judge": sum(1 for hit in judge_hits if hit not in {None, "pass"}),
             "attrs": 0,
         },
         "ground_rule": cfg.ground_rule,

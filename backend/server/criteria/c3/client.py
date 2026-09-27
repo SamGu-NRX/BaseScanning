@@ -36,6 +36,57 @@ def extract_json(text: str) -> dict | None:
     return None
 
 
+class HouseSpend:
+    """Running C3 spend for one house. A call at the cap is refused; one that lands over it is kept."""
+
+    def __init__(self, limit_usd: float):
+        self.limit_usd = float(limit_usd)
+        self.spent = 0.0
+
+    def blocked(self) -> bool:
+        return self.spent >= self.limit_usd - 1e-9
+
+    def charge(self, cost) -> float:
+        try:
+            amount = float(cost or 0.0)
+        except (TypeError, ValueError):
+            amount = 0.0
+        if amount < 0:
+            amount = 0.0
+        self.spent += amount
+        return amount
+
+
+def parsed_answer(answer) -> tuple[dict | None, bool]:
+    """Model JSON and whether the client envelope failed to parse.
+
+    `chat` returns `{text, json, usage, cost_usd, model}`. A bare flag or fact dict,
+    which the tests pass, is the model JSON itself.
+    """
+    if not isinstance(answer, dict):
+        return None, False
+    if any(key in answer for key in ("json", "cost_usd", "usage", "text")):
+        payload = answer.get("json")
+        return (payload if isinstance(payload, dict) else None), not isinstance(payload, dict)
+    return answer, False
+
+
+def answer_cost(answer) -> float:
+    if not isinstance(answer, dict) or "cost_usd" not in answer:
+        return 0.0
+    try:
+        amount = float(answer.get("cost_usd") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+    return amount if amount > 0 else 0.0
+
+
+def answer_usage(answer) -> dict:
+    if isinstance(answer, dict) and isinstance(answer.get("usage"), dict):
+        return dict(answer["usage"])
+    return {}
+
+
 def cost_usd(model: str, usage: dict) -> float:
     p = PRICES.get(model, PRICES["gpt-5.5"])
     cached = usage.get("cached_tokens", 0)

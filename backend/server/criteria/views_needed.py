@@ -67,12 +67,63 @@ def view_requests(path: Path | None) -> list[dict]:
     return out
 
 
+def observed_wall_spans(scene: dict) -> dict[str, list[list[float]]]:
+    """Wall-face intervals coverage already recorded. A view must not ask for these again."""
+    out: dict[str, list[list[float]]] = {}
+    for band in (scene.get("coverage") or {}).get("bands") or []:
+        if band.get("band") != "wall" or not band.get("wall_id") or not band.get("s_m"):
+            continue
+        span = band["s_m"]
+        if len(span) != 2:
+            continue
+        out.setdefault(band["wall_id"], []).append([float(span[0]), float(span[1])])
+    return out
+
+
+def _subtract_span(span: list[float], blocks: list[list[float]]) -> list[list[float]]:
+    pieces = [(float(span[0]), float(span[1]))]
+    for block in blocks:
+        b0, b1 = float(block[0]), float(block[1])
+        nxt: list[tuple[float, float]] = []
+        for a0, a1 in pieces:
+            if b1 <= a0 or b0 >= a1:
+                nxt.append((a0, a1))
+                continue
+            if b0 > a0:
+                nxt.append((a0, min(b0, a1)))
+            if b1 < a1:
+                nxt.append((max(b1, a0), a1))
+        pieces = nxt
+    # Gaps of half a metre or less are slivers. A float just over 0.5 still counts.
+    # Keeping them fills the 8-view cap and crowds out the walk-past-the-end requests.
+    return [[round(a, 4), round(b, 4)] for a, b in pieces if round(b - a, 4) > 0.5]
+
+
+def _clip_observed_walls(views: list[dict], observed: dict[str, list[list[float]]]) -> list[dict]:
+    out = []
+    for view in views:
+        if view.get("band") != "wall" or view.get("kind") not in {None, "band"}:
+            out.append(view)
+            continue
+        span = view.get("s_m")
+        blocks = observed.get(view.get("wall_id") or "")
+        if not span or not blocks:
+            out.append(view)
+            continue
+        for piece in _subtract_span(span, blocks):
+            row = dict(view)
+            row["s_m"] = piece
+            out.append(row)
+    return out
+
+
 def build(
     items: list[dict],
     max_views: int,
     *,
     meter_wall_id: str | None = None,
     chain_wall_ids: list[str] | None = None,
+    observed_walls: dict[str, list[list[float]]] | None = None,
 ) -> list[dict]:
     """Merge equal (kind, band, wall_id) whose spans overlap or sit within 0.25 m."""
     chain = set(chain_wall_ids or [])
@@ -106,6 +157,9 @@ def build(
         if not placed:
             merged.append(item)
     merged.sort(key=lambda v: _rank(v, meter_wall_id, chain))
+    if observed_walls:
+        merged = _clip_observed_walls(merged, observed_walls)
+        merged.sort(key=lambda v: _rank(v, meter_wall_id, chain))
     kept = merged[:max_views]
     out = []
     fresh = 1

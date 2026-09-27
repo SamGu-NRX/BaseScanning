@@ -35,9 +35,10 @@ from server.criteria.c2.sweep import (
     opening_face_cells,
     rear_standoff,
 )
-from server.criteria.c3.client import api_key_for
-from server.criteria.c3.facts import disabled_facts
-from server.criteria.c3.judge import flags_from
+from server.criteria.c3.client import HouseSpend, api_key_for
+from server.criteria.c3.facts import disabled_facts, evaluate_facts
+from server.criteria.c3.judge import flags_from, judge_if_pass, resolve_judge
+from server.criteria.c3.overlay import judge_photos
 from server.criteria.compose import both_ends_ok
 from server.criteria.config import CriteriaConfig
 from server.criteria.lattice import c2_veto, judge_join, margin_outcome, site_decision
@@ -46,6 +47,7 @@ from server.criteria.run import CriteriaInputError, _query, _run_c2, _views_from
 from server.criteria.tests.data.facade_gravel import write as write_gravel
 from server.criteria.tests.data.synthetic_flatwall.make import write
 from server.criteria.views_needed import build as build_views
+from server.criteria.views_needed import observed_wall_spans
 
 ROOT = Path(__file__).resolve().parents[3]
 PROFILES = yaml.safe_load((ROOT / "server/criteria/profiles.yaml").read_text())
@@ -544,6 +546,267 @@ def test_c3_disabled_facts_are_not_evaluated():
     rows = disabled_facts()
     assert rows
     assert all(row["outcome"] == "unsure" and row["unsure_cause"] == "not_evaluated" for row in rows)
+
+
+def test_c3_facts_stay_off_without_external_vision(monkeypatch):
+    def boom(*_args, **_kwargs):
+        raise AssertionError("live chat")
+
+    monkeypatch.setattr("server.criteria.c3.facts.default_chat", boom)
+    rows, record = evaluate_facts({}, _cfg(c3=True, c3_facts=True, external_vision=False))
+    assert record["status"] == "disabled"
+    assert record["calls"] == []
+    assert all(row["unsure_cause"] == "not_evaluated" for row in rows)
+
+
+def test_c3_facts_send_photos_and_never_pass():
+    seen = {}
+
+    def fake(model, prompt, images=None, timeout_s=90.0):
+        seen["model"] = model
+        seen["n"] = len(images or [])
+        return {
+            "meter_type": {"value": "cl320", "clean": True},
+            "meter_not_accessible": {"value": "yes", "clean": True},
+        }
+
+    rows, record = evaluate_facts(
+        {"stills": [{"id": "s1", "purpose": "meter_surround"}], "keyframes": []},
+        _cfg(c3=True, c3_facts=True, external_vision=True, c3_autopass=False),
+        chat_fn=fake,
+        images=[{"url": "data:image/jpeg;base64,aa"}],
+    )
+    assert seen["model"] == "gpt-5.5"
+    assert seen["n"] == 1
+    assert record["calls"][0]["n_images"] == 1
+    assert "s1" in record["photos"]
+    by_id = {row["id"]: row for row in rows}
+    assert by_id["meter_type"]["outcome"] == "unsure"
+    assert by_id["meter_type"]["unsure_cause"] == "rule_requires_review"
+    assert by_id["meter_not_accessible"]["outcome"] == "unsure"
+    assert all(row["outcome"] != "pass" and row["outcome"] != "fail" for row in rows)
+
+
+def test_judge_runs_only_for_a_passing_profile_and_receives_photos(monkeypatch):
+    calls = []
+
+    def fake(model, prompt, images=None, timeout_s=90.0):
+        calls.append(list(images or []))
+        return {"missed_object": {"flag": False, "note": ""}}
+
+    monkeypatch.setattr("server.criteria.c3.judge.chat", fake)
+    cfg = _cfg(c3=True, external_vision=True)
+    photos = [{"url": "data:image/jpeg;base64,aa"}]
+    skipped, _reasons, record = judge_if_pass("manual_review", cfg, photos)
+    assert skipped is None and record is None and calls == []
+    decision, reasons, live = judge_if_pass("pass", cfg, photos)
+    assert decision == "pass"
+    assert reasons == []
+    assert calls == [photos]
+    assert live["calls"][0]["n_images"] == 1
+
+
+def test_judge_photo_is_a_data_url(tmp_path):
+    from PIL import Image
+
+    Image.new("RGB", (32, 16), (8, 16, 32)).save(tmp_path / "frame.jpg")
+    photos = judge_photos({"keyframes": [{"id": "k1", "image": "frame.jpg"}]}, tmp_path, [])
+    assert photos[0]["id"] == "k1"
+    assert photos[0]["url"].startswith("data:image/jpeg;base64,")
+
+
+def test_observed_facade_wall_is_not_requested_whole():
+    scene = json.loads((ROOT / "data/fixtures/scenes/eth3d-facade/gt-laser/scene.json").read_text())
+    wall = next(item for item in scene["walls"] if item["id"] == "w1")
+    span = wall["s_range_m"]
+    views = build_views(
+        [
+            {
+                "kind": "band",
+                "band": "wall",
+                "wall_id": "w1",
+                "s_m": [span[0], span[1]],
+                "criteria": ["wall_backing", "opening_clearance", "under_window", "wall_equipment_above"],
+                "why": "unobserved",
+            },
+            {
+                "kind": "band",
+                "band": "ground",
+                "wall_id": "w2",
+                "s_m": [0.0, 2.0],
+                "criteria": ["ground_surface"],
+                "why": "grazing",
+            },
+        ],
+        8,
+        observed_walls=observed_wall_spans(scene),
+    )
+    wall_views = [view for view in views if view.get("band") == "wall" and view.get("wall_id") == "w1"]
+    assert wall_views == []
+    assert any(view.get("band") == "ground" and view.get("wall_id") == "w2" for view in views)
+
+
+def test_w3_slivers_do_not_crowd_out_past_end():
+    """Clipping w3 against its observed bands used to emit five short pieces and drop both past_end views."""
+    scene = json.loads((ROOT / "data/fixtures/scenes/eth3d-facade/gt-laser/scene.json").read_text())
+    items = [
+        {
+            "kind": "band",
+            "band": "wall",
+            "wall_id": "w3",
+            "s_m": [6.5605, 10.7215],
+            "criteria": [f"c{i}" for i in range(9)],
+            "why": "unobserved",
+        },
+        {
+            "kind": "band",
+            "band": "wall",
+            "wall_id": "w2",
+            "s_m": [3.0179, 5.7731],
+            "criteria": [f"c{i}" for i in range(7)],
+            "why": "unobserved",
+        },
+        {
+            "kind": "band",
+            "band": "ground",
+            "wall_id": "w2",
+            "s_m": [3.0179, 5.7731],
+            "criteria": ["drive_clearance", "gas_clearance", "ground_surface", "pool_clearance"],
+            "why": "grazing",
+        },
+        {
+            "kind": "band",
+            "band": "ground",
+            "wall_id": "w1",
+            "s_m": [-12.8321, 2.2305],
+            "criteria": ["drive_clearance", "gas_clearance", "ground_surface", "pool_clearance"],
+            "why": "grazing",
+        },
+        {
+            "kind": "band",
+            "band": "ground",
+            "wall_id": "w3",
+            "s_m": [6.5605, 10.7215],
+            "criteria": ["drive_clearance", "gas_clearance", "ground_surface", "pool_clearance"],
+            "why": "grazing",
+        },
+        {"kind": "past_end", "wall_id": "w3", "s_m": [11.509, 12.009], "criteria": ["placement"], "why": "unobserved"},
+        {
+            "kind": "past_end",
+            "wall_id": "w1",
+            "s_m": [-13.3321, -12.8321],
+            "criteria": ["placement"],
+            "why": "unobserved",
+        },
+    ]
+    views = build_views(
+        items,
+        8,
+        meter_wall_id="w1",
+        chain_wall_ids=["w1", "w2", "w3"],
+        observed_walls=observed_wall_spans(scene),
+    )
+    assert len(views) <= 8
+    assert sum(view.get("kind") == "past_end" for view in views) == 2
+    w3 = [view for view in views if view.get("band") == "wall" and view.get("wall_id") == "w3"]
+    assert w3
+    assert all(view["s_m"][1] - view["s_m"][0] > 0.5 for view in w3)
+
+
+def test_judge_reads_the_client_envelope_and_honours_the_budget():
+    photos = [{"url": "data:image/jpeg;base64,aa"}]
+
+    def flagged(model, prompt, images=None, timeout_s=90.0):
+        assert images == photos
+        return {
+            "text": '{"missed_object":{"flag":true}}',
+            "json": {"missed_object": {"flag": True, "note": "riser"}},
+            "usage": {"input_tokens": 12, "output_tokens": 4},
+            "cost_usd": 0.40,
+            "model": model,
+        }
+
+    spend = HouseSpend(0.60)
+    decision, reasons, record = resolve_judge(
+        _cfg(c3=True, external_vision=True), chat_fn=flagged, images=photos, spend=spend
+    )
+    assert decision == "manual_review"
+    assert reasons == ["judge:missed_object"]
+    assert record["cost_usd"] == 0.40
+    assert record["calls"][0]["usage"]["input_tokens"] == 12
+    assert spend.spent == 0.40
+
+    def blank(model, prompt, images=None, timeout_s=90.0):
+        return {"text": "not json", "json": None, "usage": {}, "cost_usd": 0.05, "model": model}
+
+    missed, missed_reasons, missed_record = resolve_judge(
+        _cfg(c3=True, external_vision=True), chat_fn=blank, images=photos, spend=HouseSpend(0.60)
+    )
+    assert missed is None
+    assert missed_reasons == ["judge_unavailable"]
+    assert missed_record["status"] == "unavailable"
+    assert missed_record["cost_usd"] == 0.05
+    required, required_reasons, _required_record = resolve_judge(
+        _cfg(c3=True, external_vision=True, judge_required=True), chat_fn=blank, images=photos
+    )
+    assert required == "manual_review"
+    assert required_reasons == ["judge_unavailable"]
+
+    full = HouseSpend(0.60)
+    full.charge(0.60)
+    called = []
+
+    def should_not_run(model, prompt, images=None, timeout_s=90.0):
+        called.append(model)
+        return {"json": {}}
+
+    blocked, blocked_reasons, blocked_record = resolve_judge(
+        _cfg(c3=True, external_vision=True), chat_fn=should_not_run, images=photos, spend=full
+    )
+    assert called == []
+    assert blocked is None
+    assert blocked_reasons == ["judge_unavailable"]
+    assert blocked_record["status"] == "budget"
+
+
+def test_c3_facts_load_scene_photos_and_read_client_json(tmp_path):
+    from PIL import Image
+
+    Image.new("RGB", (8, 8), (20, 30, 40)).save(tmp_path / "meter.jpg")
+    scene = {"stills": [{"id": "s1", "purpose": "meter_surround", "image": "meter.jpg"}], "keyframes": []}
+    seen = {}
+
+    def fake(model, prompt, images=None, timeout_s=90.0):
+        seen["n"] = len(images or [])
+        seen["url"] = (images or [{}])[0].get("url")
+        return {
+            "text": "{}",
+            "json": {"meter_type": {"value": "cl320", "clean": True}},
+            "usage": {"input_tokens": 3, "output_tokens": 2},
+            "cost_usd": 0.04,
+            "model": model,
+        }
+
+    spend = HouseSpend(0.60)
+    rows, record = evaluate_facts(
+        scene, _cfg(c3=True, c3_facts=True, external_vision=True), chat_fn=fake, scene_dir=tmp_path, spend=spend
+    )
+    assert seen["n"] == 1
+    assert str(seen["url"]).startswith("data:image/jpeg;base64,")
+    assert record["cost_usd"] == 0.04
+    assert record["photos"] == ["s1"]
+    assert {row["id"]: row["unsure_cause"] for row in rows}["meter_type"] == "rule_requires_review"
+    assert spend.spent == 0.04
+    blocked_rows, blocked = evaluate_facts(
+        scene,
+        _cfg(c3=True, c3_facts=True, external_vision=True),
+        chat_fn=fake,
+        images=[],
+        spend=HouseSpend(0.0),
+    )
+    assert blocked["status"] == "budget"
+    assert blocked["calls"] == []
+    assert all(row["unsure_cause"] == "not_evaluated" for row in blocked_rows)
 
 
 def test_judge_unavailable_leaves_flags_empty():
