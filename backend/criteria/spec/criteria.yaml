@@ -14,13 +14,13 @@ outcomes:
 
 # Base photo-type ids that appear in the prompts.
 photo_types: [electric_meter_close_up, electric_meter_surroundings, main_breaker_box_wall, main_breaker_box_open, main_disconnect_switch_photo]
-placement_views: [close_up, surroundings, left, right, around_the_corner, behind_the_fence]   # "some may be missing, not in order"
+placement_views: [behind_the_fence, around_the_corner, right, left, surroundings, close_up]   # a view can be absent; sequence does not matter
 
 # Exact output schemas from the source. Key spelling is verbatim (note the hyphen in clean-decision).
 output_schemas:
   multiple_mains:            # P1; the source gives fields, not a strict JSON literal
     hasTrueMultipleMainPanels: bool
-    multipleMainPanelLabel: [true_multiple_main_panels, single_main_plus_disconnect_or_subpanel, unclear_or_insufficient_evidence]
+    multipleMainPanelLabel: [unclear_or_insufficient_evidence, true_multiple_main_panels, single_main_plus_disconnect_or_subpanel]
     insufficientEvidence: bool
     also: [evidence, notes]
   oversized_can:             # P2
@@ -35,14 +35,14 @@ output_schemas:
     also: [evidence, notes]
   meter_number:              # P4
     keys: [reasoning, meter_number, clean-decision]
-  meter_panel_relationship:  # P5, strict JSON
-    mainPanelLocation: [garage_interior, exterior_service_equipment, non_garage_interior, not_visible, unknown]
-    meterGaragePosition: [wall_immediately_adjacent_to_garage_opening, garage_exterior_wall_other, not_garage_wall, not_visible, unknown]
-    meterPanelRelationship: [back_to_back, not_back_to_back, co_located_exterior, not_applicable, insufficient_evidence]
-    relationshipSubtype: [90_degree_garage_return_wall, same_wall, exterior_service_equipment, non_garage_meter_wall, unknown]
-    evidenceSufficiency: [sufficient, insufficient]
-    confidence: float_0_1
+  meter_panel_relationship:  # P5, strict JSON. Listed values are a set; order is not significant.
     rationale: string
+    confidence: float_0_1
+    evidenceSufficiency: [insufficient, sufficient]
+    relationshipSubtype: [unknown, non_garage_meter_wall, exterior_service_equipment, same_wall, 90_degree_garage_return_wall]
+    meterPanelRelationship: [insufficient_evidence, not_applicable, co_located_exterior, not_back_to_back, back_to_back]
+    meterGaragePosition: [unknown, not_visible, not_garage_wall, garage_exterior_wall_other, wall_immediately_adjacent_to_garage_opening]
+    mainPanelLocation: [unknown, not_visible, non_garage_interior, exterior_service_equipment, garage_interior]
   placement_A:               # P6: the source gives no output block, only pass / manual_review
     decision: [pass, manual_review]
   placement_B:               # P7

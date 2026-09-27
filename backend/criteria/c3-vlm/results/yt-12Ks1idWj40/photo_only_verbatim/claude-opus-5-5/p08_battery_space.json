@@ -1,16 +1,16 @@
 {
  "model": "claude-opus-5-5",
- "text": "{\"justification\": \"The meter sits on a long, open brick wall at the back of the house, facing a wide lawn. Just right of the meter, past the gray panel, there is a clear stretch of flat dirt and grass about 10+ ft wide against the wall. Nothing faces it, no gas meter or driveway is visible, and the window above is raised well off the ground, so the harness can run a few feet straight along the wall to it.\", \"reference_object\": \"electric meter base (~14 in tall) and brick courses\", \"distance_ft\": 5, \"front_clearance_ft\": 99, \"drive_path_ft\": null, \"requires_member_action\": false, \"decision\": \"pass\", \"needs_more_photos\": false, \"missing_views\": []}",
+ "text": "{\"requires_member_action\": false, \"justification\": \"The meter sits on a long, open brick wall at the back of the house, facing a wide lawn. Just right of the meter, past the gray panel, there is a clear stretch of flat dirt and grass about 10+ ft wide against the wall. Nothing faces it, no gas meter or driveway is visible, and the window above is raised well off the ground, so the harness can run a few feet straight along the wall to it.\", \"decision\": \"pass\", \"reference_object\": \"electric meter base (~14 in tall) and brick courses\", \"needs_more_photos\": false, \"distance_ft\": 5, \"missing_views\": [], \"front_clearance_ft\": 99, \"drive_path_ft\": null}",
  "json": {
-  "justification": "The meter sits on a long, open brick wall at the back of the house, facing a wide lawn. Just right of the meter, past the gray panel, there is a clear stretch of flat dirt and grass about 10+ ft wide against the wall. Nothing faces it, no gas meter or driveway is visible, and the window above is raised well off the ground, so the harness can run a few feet straight along the wall to it.",
-  "reference_object": "electric meter base (~14 in tall) and brick courses",
-  "distance_ft": 5,
-  "front_clearance_ft": 99,
-  "drive_path_ft": null,
   "requires_member_action": false,
+  "justification": "The meter sits on a long, open brick wall at the back of the house, facing a wide lawn. Just right of the meter, past the gray panel, there is a clear stretch of flat dirt and grass about 10+ ft wide against the wall. Nothing faces it, no gas meter or driveway is visible, and the window above is raised well off the ground, so the harness can run a few feet straight along the wall to it.",
   "decision": "pass",
+  "reference_object": "electric meter base (~14 in tall) and brick courses",
   "needs_more_photos": false,
-  "missing_views": []
+  "distance_ft": 5,
+  "missing_views": [],
+  "front_clearance_ft": 99,
+  "drive_path_ft": null
  },
  "usage": {
   "input_tokens": 34551,

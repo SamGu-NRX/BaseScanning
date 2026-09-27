@@ -1,16 +1,16 @@
 {
  "model": "gpt-5.5",
- "text": "{\"justification\":\"A clear spot immediately to the right of the marked electric meter, between the two ground-floor windows, can hold the battery on the gravel against the brick wall without blocking the windows or the nearby door. The harness route is a short same-wall run from the meter to that spot, and the front of the spot opens into the courtyard with no facing obstruction or visible drivable path.\",\"reference_object\":\"laser-scan measurement, checked against brick courses at about 8 in each\",\"distance_ft\":5.6,\"front_clearance_ft\":146.3,\"drive_path_ft\":null,\"requires_member_action\":false,\"decision\":\"pass\",\"needs_more_photos\":false,\"missing_views\":[]}",
+ "text": "{\"requires_member_action\": false, \"justification\": \"A clear spot immediately to the right of the marked electric meter, between the two ground-floor windows, can hold the battery on the gravel against the brick wall without blocking the windows or the nearby door. The harness route is a short same-wall run from the meter to that spot, and the front of the spot opens into the courtyard with no facing obstruction or visible drivable path.\", \"decision\": \"pass\", \"reference_object\": \"laser-scan measurement, checked against brick courses at about 8 in each\", \"needs_more_photos\": false, \"distance_ft\": 5.6, \"missing_views\": [], \"front_clearance_ft\": 146.3, \"drive_path_ft\": null}",
  "json": {
-  "justification": "A clear spot immediately to the right of the marked electric meter, between the two ground-floor windows, can hold the battery on the gravel against the brick wall without blocking the windows or the nearby door. The harness route is a short same-wall run from the meter to that spot, and the front of the spot opens into the courtyard with no facing obstruction or visible drivable path.",
-  "reference_object": "laser-scan measurement, checked against brick courses at about 8 in each",
-  "distance_ft": 5.6,
-  "front_clearance_ft": 146.3,
-  "drive_path_ft": null,
   "requires_member_action": false,
+  "justification": "A clear spot immediately to the right of the marked electric meter, between the two ground-floor windows, can hold the battery on the gravel against the brick wall without blocking the windows or the nearby door. The harness route is a short same-wall run from the meter to that spot, and the front of the spot opens into the courtyard with no facing obstruction or visible drivable path.",
   "decision": "pass",
+  "reference_object": "laser-scan measurement, checked against brick courses at about 8 in each",
   "needs_more_photos": false,
-  "missing_views": []
+  "distance_ft": 5.6,
+  "missing_views": [],
+  "front_clearance_ft": 146.3,
+  "drive_path_ft": null
  },
  "usage": {
   "input_tokens": 320656,

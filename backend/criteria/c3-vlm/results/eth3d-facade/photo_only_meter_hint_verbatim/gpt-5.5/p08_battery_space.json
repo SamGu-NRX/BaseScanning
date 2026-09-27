@@ -1,16 +1,16 @@
 {
  "model": "gpt-5.5",
- "text": "{\"justification\":\"The marked meter is on an open exterior courtyard wall, and a clear solid brick pier one window bay to the left provides a battery spot between ground-floor windows rather than under them. The harness can run along the same continuous wall from the meter to that spot without crossing a door or garage, and the gravel courtyard in front is wide open with no facing obstruction, gas meter, pool equipment, or visible drive path.\",\"reference_object\":\"brick courses (~8 in including mortar) and ground-floor window bay spacing\",\"distance_ft\":8,\"front_clearance_ft\":99,\"drive_path_ft\":null,\"requires_member_action\":false,\"decision\":\"pass\",\"needs_more_photos\":false,\"missing_views\":[]}",
+ "text": "{\"requires_member_action\": false, \"justification\": \"The marked meter is on an open exterior courtyard wall, and a clear solid brick pier one window bay to the left provides a battery spot between ground-floor windows rather than under them. The harness can run along the same continuous wall from the meter to that spot without crossing a door or garage, and the gravel courtyard in front is wide open with no facing obstruction, gas meter, pool equipment, or visible drive path.\", \"decision\": \"pass\", \"reference_object\": \"brick courses (~8 in including mortar) and ground-floor window bay spacing\", \"needs_more_photos\": false, \"distance_ft\": 8, \"missing_views\": [], \"front_clearance_ft\": 99, \"drive_path_ft\": null}",
  "json": {
-  "justification": "The marked meter is on an open exterior courtyard wall, and a clear solid brick pier one window bay to the left provides a battery spot between ground-floor windows rather than under them. The harness can run along the same continuous wall from the meter to that spot without crossing a door or garage, and the gravel courtyard in front is wide open with no facing obstruction, gas meter, pool equipment, or visible drive path.",
-  "reference_object": "brick courses (~8 in including mortar) and ground-floor window bay spacing",
-  "distance_ft": 8,
-  "front_clearance_ft": 99,
-  "drive_path_ft": null,
   "requires_member_action": false,
+  "justification": "The marked meter is on an open exterior courtyard wall, and a clear solid brick pier one window bay to the left provides a battery spot between ground-floor windows rather than under them. The harness can run along the same continuous wall from the meter to that spot without crossing a door or garage, and the gravel courtyard in front is wide open with no facing obstruction, gas meter, pool equipment, or visible drive path.",
   "decision": "pass",
+  "reference_object": "brick courses (~8 in including mortar) and ground-floor window bay spacing",
   "needs_more_photos": false,
-  "missing_views": []
+  "distance_ft": 8,
+  "missing_views": [],
+  "front_clearance_ft": 99,
+  "drive_path_ft": null
  },
  "usage": {
   "input_tokens": 35590,

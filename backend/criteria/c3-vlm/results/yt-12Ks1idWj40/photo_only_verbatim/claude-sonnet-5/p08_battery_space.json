@@ -1,16 +1,16 @@
 {
  "model": "claude-sonnet-5",
- "text": "{\"justification\": \"The photos document an actual completed Base install: a white battery unit sits floor-standing against the exterior brick wall, with a round gray harness conduit running along the wall directly from the meter/disconnect panel to the battery (clearly visible in photos 9-14). The ground is solid dirt/grass, the AC condenser sits further left with a fence well beyond 5ft clearance, and there's no gas meter, pool, driveway, door-crossing, or low overhang affecting this spot.\", \"reference_object\": \"electric meter (~14 in tall) used to gauge scale\", \"distance_ft\": 3, \"front_clearance_ft\": 7, \"drive_path_ft\": null, \"requires_member_action\": false, \"decision\": \"pass\", \"needs_more_photos\": false, \"missing_views\": []}",
+ "text": "{\"requires_member_action\": false, \"justification\": \"The photos document an actual completed Base install: a white battery unit sits floor-standing against the exterior brick wall, with a round gray harness conduit running along the wall directly from the meter/disconnect panel to the battery (clearly visible in photos 9-14). The ground is solid dirt/grass, the AC condenser sits further left with a fence well beyond 5ft clearance, and there's no gas meter, pool, driveway, door-crossing, or low overhang affecting this spot.\", \"decision\": \"pass\", \"reference_object\": \"electric meter (~14 in tall) used to gauge scale\", \"needs_more_photos\": false, \"distance_ft\": 3, \"missing_views\": [], \"front_clearance_ft\": 7, \"drive_path_ft\": null}",
  "json": {
-  "justification": "The photos document an actual completed Base install: a white battery unit sits floor-standing against the exterior brick wall, with a round gray harness conduit running along the wall directly from the meter/disconnect panel to the battery (clearly visible in photos 9-14). The ground is solid dirt/grass, the AC condenser sits further left with a fence well beyond 5ft clearance, and there's no gas meter, pool, driveway, door-crossing, or low overhang affecting this spot.",
-  "reference_object": "electric meter (~14 in tall) used to gauge scale",
-  "distance_ft": 3,
-  "front_clearance_ft": 7,
-  "drive_path_ft": null,
   "requires_member_action": false,
+  "justification": "The photos document an actual completed Base install: a white battery unit sits floor-standing against the exterior brick wall, with a round gray harness conduit running along the wall directly from the meter/disconnect panel to the battery (clearly visible in photos 9-14). The ground is solid dirt/grass, the AC condenser sits further left with a fence well beyond 5ft clearance, and there's no gas meter, pool, driveway, door-crossing, or low overhang affecting this spot.",
   "decision": "pass",
+  "reference_object": "electric meter (~14 in tall) used to gauge scale",
   "needs_more_photos": false,
-  "missing_views": []
+  "distance_ft": 3,
+  "missing_views": [],
+  "front_clearance_ft": 7,
+  "drive_path_ft": null
  },
  "usage": {
   "input_tokens": 34549,

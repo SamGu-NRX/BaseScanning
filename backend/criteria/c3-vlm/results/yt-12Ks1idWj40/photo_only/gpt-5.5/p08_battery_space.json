@@ -1,15 +1,15 @@
 {
  "model": "gpt-5.5",
- "text": "{\"reference_object\":\"visible installed battery, assumed 31 in wide\",\"distance_ft\":6,\"front_clearance_ft\":99,\"drive_path_ft\":null,\"requires_member_action\":false,\"decision\":\"pass\",\"needs_more_photos\":false,\"missing_views\":[],\"justification\":\"A clearly workable battery location is shown on the exterior brick wall to the left of the meter/electrical equipment. The spot has sufficient wall width, sits on levelable dirt/grass, has open working clearance in front, and is not under a window, door, vent, or gas equipment. The meter is accessible, and the harness route can be supported along the same wall with an estimated routed length of about 6 ft, under the 16 ft review threshold.\"}",
+ "text": "{\"requires_member_action\": false, \"reference_object\": \"visible installed battery, assumed 31 in wide\", \"decision\": \"pass\", \"distance_ft\": 6, \"needs_more_photos\": false, \"front_clearance_ft\": 99, \"missing_views\": [], \"drive_path_ft\": null, \"justification\": \"A clearly workable battery location is shown on the exterior brick wall to the left of the meter/electrical equipment. The spot has sufficient wall width, sits on levelable dirt/grass, has open working clearance in front, and is not under a window, door, vent, or gas equipment. The meter is accessible, and the harness route can be supported along the same wall with an estimated routed length of about 6 ft, under the 16 ft review threshold.\"}",
  "json": {
-  "reference_object": "visible installed battery, assumed 31 in wide",
-  "distance_ft": 6,
-  "front_clearance_ft": 99,
-  "drive_path_ft": null,
   "requires_member_action": false,
+  "reference_object": "visible installed battery, assumed 31 in wide",
   "decision": "pass",
+  "distance_ft": 6,
   "needs_more_photos": false,
+  "front_clearance_ft": 99,
   "missing_views": [],
+  "drive_path_ft": null,
   "justification": "A clearly workable battery location is shown on the exterior brick wall to the left of the meter/electrical equipment. The spot has sufficient wall width, sits on levelable dirt/grass, has open working clearance in front, and is not under a window, door, vent, or gas equipment. The meter is accessible, and the harness route can be supported along the same wall with an estimated routed length of about 6 ft, under the 16 ft review threshold."
  },
  "usage": {

@@ -8,7 +8,7 @@ v0.1 was built from Hunter's Notion digest. v0.2 checks it line by line against 
 
 **Corrections that change behaviour**
 1. **A P12 `yes` is a reject.** The source says: "`yes` means the problem is present (a reject)". v0.1 treated `yes` as review-level. §1 and the site rule are updated, so P12 now joins C, Main Panel Type and Recall as a prompt that can reject.
-2. **P5 has two separate enums.** v0.1 mixed them into one "subtype". `meterPanelRelationship` takes `back_to_back`, `not_back_to_back`, `co_located_exterior`, `not_applicable` or `insufficient_evidence`. `relationshipSubtype` takes `90_degree_garage_return_wall`, `same_wall`, `exterior_service_equipment`, `non_garage_meter_wall` or `unknown`. The prompt also returns `mainPanelLocation`, `meterGaragePosition`, `evidenceSufficiency`, a numeric `confidence` (0–1) and `rationale` (§6).
+2. **P5 has two separate enums.** v0.1 mixed them into one "subtype". `meterPanelRelationship` may be `insufficient_evidence`, or `not_applicable`, or `co_located_exterior`, or `not_back_to_back`, or `back_to_back`. `relationshipSubtype` may be `unknown`, or `non_garage_meter_wall`, or `exterior_service_equipment`, or `same_wall`, or `90_degree_garage_return_wall`. The prompt also returns `mainPanelLocation`, `meterGaragePosition`, `evidenceSufficiency`, a numeric `confidence` (0–1) and `rationale` (§6).
 3. **`needs_more_photos` and `missing_views` exist only in Battery Space (C).** v0.1 applied them to every prompt. The `missing_views` bullets are shown to the member, so they must be written as plain-language instructions (§1, §4.3).
 4. **C's own reference photo shows a harness ending at a disconnect box** ("you don't need to worry about that distinction"). So the disconnect Base installed at the Houston house is *not* evidence against "C = Texas". That retracts the previous worker's handoff inference (§7.1).
 
@@ -109,7 +109,7 @@ Placement prompts say the photos "may be missing, are not in any particular orde
 
 | # | Source prompt | Our id | Manifest group | Question | Output | Modality |
 |---|---|---|---|---|---|---|
-| 1 | True Multiple Main Panels | `multiple_mains` | panel_count | Two or more independent service mains? | `hasTrueMultipleMainPanels` + `multipleMainPanelLabel` (`true_multiple_main_panels` / `single_main_plus_disconnect_or_subpanel` / `unclear_or_insufficient_evidence`) + `insufficientEvidence` | P+R |
+| 1 | True Multiple Main Panels | `multiple_mains` | panel_count | Two or more independent service mains? | `hasTrueMultipleMainPanels` + `multipleMainPanelLabel` (`unclear_or_insufficient_evidence` or `true_multiple_main_panels` or `single_main_plus_disconnect_or_subpanel`) + `insufficientEvidence` | P+R |
 | 2 | Large or Oversized Meter Can | `oversized_can` | meter_enclosure | Is the meter-holding can oversized? | `hasLargeOrOversizedMeterCan` + `meterCanLabel` (`large_or_oversized_meter_can` / `normal_meter_can` / `meter_can_unclear`) + `insufficientEvidence` | P |
 | 3 | CL320 Meter | `cl320` | cl320 | Does readable text say CL320? | `hasCl320Meter` + `cl320Label` (`cl320_meter` / `not_cl320_meter` / `cl320_unclear`) + `insufficientEvidence` | R |
 | 4 | Meter Number | `meter_number` | meter_identity | Utility meter number, and is the read clean? | `reasoning`, `meter_number`, `clean-decision` | R |
@@ -195,7 +195,7 @@ Accuracy context (real data, `internal/house-scanning-context.md`): learned dept
 
 ### P3 CL320 Meter (`cl320`) · R
 - **`cl320_meter` only if** readable meter-face or meter-label text explicitly says CL320. CL200 / Class 200 / FORM 2S CL200 is `not_cl320_meter`. Can size, service equipment, breaker amperage or panel labels never substitute unless they say CL320.
-- **Unreadable:** `cl320_unclear`; `insufficientEvidence` = true when no readable meter face or service-equipment label is available.
+- **Unreadable:** `cl320_unclear`. Set `insufficientEvidence` true if neither a meter face nor a service-equipment label can be read.
 - Role in the site outcome is not stated (open question).
 
 ### P2 Large or Oversized Meter Can (`oversized_can`) · P
@@ -203,7 +203,7 @@ Accuracy context (real data, `internal/house-scanning-context.md`): learned dept
 - **`large_or_oversized_meter_can`:** visibly much larger than a compact socket, or a large 320A-style can. **`normal_meter_can`:** roughly just the enclosure around the round meter. Size unknown → `meter_can_unclear`.
 
 ### P11 Meter Type (`meter_type`) · P
-- **`distance_ratio`** = (`meter_can_y_max` − `meter_can_y_min`) ÷ (`meter_head_y_max` − `meter_head_y_min`), from **one photo** in 0–1000 normalised vertical coordinates (head = glass/dome only). Both can edges must be visible (a close-up needs a strip of wall above and below), and the head must be ≥ ~10 units. The ratio is invalid if `meter_can_y_min` = 0 or `meter_can_y_max` = 1000. With no usable view, all four coordinates and the ratio are 0, not clean. It is an image heuristic, not feet, and a supporting signal rather than a hard rule.
+- **`distance_ratio`** divides can height by head height: (`meter_can_y_max` minus `meter_can_y_min`) over (`meter_head_y_max` minus `meter_head_y_min`), from **one photo** in 0–1000 normalised vertical coordinates (head = glass/dome only). Both can edges must be visible (a close-up needs a strip of wall above and below), and the head must be ≥ ~10 units. The ratio is invalid if `meter_can_y_min` = 0 or `meter_can_y_max` = 1000. With no usable view, all four coordinates and the ratio are 0, not clean. It is an image heuristic, not feet, and a supporting signal rather than a hard rule.
 - **`standardMeter`** ≈ 2 heads; **`oversizedMeter`** ≈ 3–4 heads (two more heads fit above and below); **`undersizedMeter`** ≈ 1–1.5 heads, usually narrower too; **`combinedMeter`** = meter and main breaker in one unit. A borderline between standard and oversized (~3) or between standard and undersized is not clean. The prose and the formula disagree on whether the head is counted (conflict #29).
 - **`clean-decision` = false:** multiple meters; poor visibility; no single photo with both can edges and the head; standard-sized but unlike the examples; not on a can; any doubt. Still give a best-guess `type`; `unknown` only if genuinely indeterminable (no meter).
 - 3D could supply a metric can height, but the prompt defines the check as the single-view ratio.
@@ -224,12 +224,12 @@ Accuracy context (real data, `internal/house-scanning-context.md`): learned dept
 - **Reject** only when each of ≥ 2 separate service enclosures shows its own independent main breaker/disconnect. **Pass:** a single main, optionally with sub-panels or disconnects. **Review:** two similar panels without an observable main in each; candidate mains in different locations; unsure whether it's a sub-panel or a main; insufficient photos. A wrong pass and a wrong reject are both costly. See conflict #30 on closed enclosures.
 
 ### P5 Meter–Panel Relationship (`meter_panel_relationship`) · G+P
-- Facts, not a decision ("do not decide whether to reject"; no business policy). Strict JSON:
-  - `mainPanelLocation`: `garage_interior` / `exterior_service_equipment` / `non_garage_interior` / `not_visible` / `unknown`
-  - `meterGaragePosition`: `wall_immediately_adjacent_to_garage_opening` / `garage_exterior_wall_other` / `not_garage_wall` / `not_visible` / `unknown`
-  - `meterPanelRelationship`: `back_to_back` (panel on the inside face of the meter's wall) / `not_back_to_back` ("same garage" is not enough) / `co_located_exterior` / `not_applicable` / `insufficient_evidence`
-  - `relationshipSubtype`: `90_degree_garage_return_wall` / `same_wall` / `exterior_service_equipment` / `non_garage_meter_wall` / `unknown`
-  - `evidenceSufficiency`: `sufficient` / `insufficient`; `confidence`: 0.0–1.0; `rationale`
+- Facts, not a decision ("do not decide whether to reject"; no business policy). Strict JSON, and each list below is a set:
+  - `mainPanelLocation`: `unknown` or `not_visible` or `non_garage_interior` or `exterior_service_equipment` or `garage_interior`
+  - `meterGaragePosition`: `unknown` or `not_visible` or `not_garage_wall` or `garage_exterior_wall_other` or `wall_immediately_adjacent_to_garage_opening`
+  - `meterPanelRelationship`: `insufficient_evidence` or `not_applicable` or `co_located_exterior` or `not_back_to_back` (being in the "same garage" does not qualify) or `back_to_back` (the panel is on the inside face of the meter's wall)
+  - `relationshipSubtype`: `unknown` or `non_garage_meter_wall` or `exterior_service_equipment` or `same_wall` or `90_degree_garage_return_wall`
+  - `evidenceSufficiency`: `insufficient` or `sufficient`; `confidence`: 0.0–1.0; `rationale`
 - Exterior panel near the meter → `co_located_exterior` (don't force a wall relationship). Panel not visible → `insufficient_evidence`. For a garage panel with the meter beside the garage opening, actively check for a perpendicular return wall.
 - Anchors: windows, garage-door edges, corners, interior wall returns, conduit.
 - **Geometric by nature:** it asks which wall face the panel sits on. An exterior-only reconstruction cannot settle it. If the iOS capture keeps **one AR session** from the meter to the panel, the relative pose settles it directly; otherwise only visual anchors can.
@@ -241,7 +241,7 @@ Working envelope per device: ≥ ~3 ft out from the face × ≥ 2.5 ft wide cent
 |---|---|---|---|
 | `meter_not_accessible` | clear envelope; trivial movable items and building structure ignored | substantial storage, fixed shelf, low headroom, nearby gas, frontage unseen | fixed obstruction in envelope: bush/overgrowth, AC condenser, water heater |
 | `panel_not_accessible` | same | same | fixed obstruction, or panel walled/boxed off |
-| `panel_in_house` | clearly in garage (cues: bare studs, garage door, concrete floor, water heater/HVAC, parked car) or outside | garage vs living space unclear; cropped/dark | clearly in living space (closet, hallway, room, laundry, finished basement, attic) |
+| `panel_in_house` | clearly in the garage (cues include a garage door, a parked car, a concrete floor, exposed studs, or water heater/HVAC) or outside | garage vs living space unclear; cropped/dark | clearly in living space (closet, hallway, room, laundry, finished basement, attic) |
 | `not_same_wall` | both plainly outside on the same exterior wall | inside, different walls, or not proven | never |
 
 A shared object across photos does not prove the same wall.
@@ -278,7 +278,7 @@ Compared: Base profiles A/B/C (above, now checked against the original prompts),
 | 10 | Reject possible | no | no | yes |
 | 11 | Adjacent wall | no | yes | yes |
 
-All eleven rows are **[confirmed]** in the original. B states outright that "this home is served by ComEd (Commonwealth Edison, Illinois), which has a stricter window rule", so B applies to ComEd territory. Base operates mainly in Texas, so C (or A) is the likely non-ComEd profile (inference; confirm).
+All eleven rows are **[confirmed]** in the original. B states that the house is on ComEd (Commonwealth Edison, Illinois) and that this utility uses a tighter window clearance, so B applies to ComEd territory. Base operates mainly in Texas, so C (or A) is the likely non-ComEd profile (inference; confirm).
 
 **Real-install evidence (`yt-12Ks1idWj40`, Houston, CenterPoint).** Base installed a white BASE disconnect beside the existing grey enclosure, plus two batteries, one partly under a window. The disconnect does **not** argue against C: C's own reference photo shows a harness ending at a small disconnect box, and C says "you don't need to worry about that distinction". So C treats the disconnect as installed hardware that placement ignores. The battery under the window is the real tension (#32).
 
@@ -288,15 +288,15 @@ All eleven rows are **[confirmed]** in the original. B states outright that "thi
 13. **[confirmed] Missing panel brand:** Recall's review list says "brand label unreadable, missing, or ambiguous → manual_review", but its pass text allows "a legible non-recalled brand (or no visible recalled brand)". We follow review.
 14. **[confirmed] Headroom** is a range (~6–7 ft), not a threshold. We use: < 6 ft fail, ≥ 7 ft pass, between → review unless measured with confidence.
 15. **[confirmed] Slope** has no number ("mild" vs "extreme/steep").
-16. **[resolved] Drive distance origin:** C says "in addition to the battery's ~2 ft depth, and it is about where the battery sits — the meter and harness may be closer". So it's ≥ 3 ft from the battery's outer edge (≈ 4.8 ft from the wall), as the server measures.
+16. **[resolved] Drive distance origin:** C counts drive clearance from roughly where the battery itself sits, so the battery's ~2 ft depth is included, while the meter and the harness can sit closer than the battery. So it's ≥ 3 ft from the battery's outer edge (≈ 4.8 ft from the wall), as the server measures.
 17. **[confirmed] Meter Type** ~3-head borderline: the source settles it as unclean with a best-guess type.
-18. **[confirmed] Pole meter:** P10 classifies it; only B addresses eligibility ("fine — the Disco and battery go against a nearby wall the conduit reaches"). Under C a harness may not run loose over ground, so a pole meter may be infeasible; unstated.
+18. **[confirmed] Pole meter:** P10 classifies it; only B addresses eligibility (allowed: place the Disco and the battery on a nearby wall that the conduit can reach). Under C a harness may not run loose over ground, so a pole meter may be infeasible; unstated.
 19. **[confirmed] Role of CL320, oversized can and meter number** in eligibility is never stated; the prompts are extractors only.
 20. **[resolved] "Models over-read gaps ~2×"** is in the original, in both B and C: for tight between-openings gaps, count ~8 in brick courses. C adds that models under-estimate large distances.
 28. **[new v0.2] P12 `yes` is a reject.** The source says "`yes` means the problem is present (a reject)". v0.1's site rule mapped `yes` to review. Fixed in §1. So an AC condenser, water heater, bush or boxing-in in front of the meter or panel rejects the site even when placement passes.
 29. **[new v0.2] Meter Type prose vs formula.** The prose says a standard can is "about 2 meter-heads tall … this does not include meter-head itself" and an oversized one 3–4 heads "not including meter-head itself". But `distance_ratio` divides full can height (head included) by head height, with guide values of 2 / 3–4 / 1–1.5. Read literally, the prose puts a standard can at ~3 heads including the head, which collides with the oversized band. We follow the formula; ask Base.
 30. **[new v0.2] Main Panel Type, closed enclosures.** One sentence says "a candidate enclosure [that] is closed or too distant … treat it as a single main plus a subpanel/disconnect" (pass-leaning). The review list says "two similar/identical panels, but no observable main breaker … the box is closed → manual_review". P1 says "return false or unclear". We use: two comparable enclosures without visible mains → review; an obviously smaller or different closed box beside one visible main → single main.
-31. **[new v0.2] C comms boxes.** "Comms / cable boxes" and "small utility boxes" are movable or non-blocking in C, yet C says "never place the battery directly under a wall-mounted electrical or comms box". We use: a wall-mounted comms box above the spot blocks it; a loose or ground-standing box doesn't.
+31. **[new v0.2] C comms boxes.** "Comms / cable boxes" and "small utility boxes" are movable or non-blocking in C, yet C forbids siting the battery immediately beneath a wall-mounted electrical box or a comms box. We use: a wall-mounted comms box above the spot blocks it; a loose or ground-standing box doesn't.
 32. **[new v0.2] "Ground-level window" is undefined, and a real install conflicts with it.** B and C exempt "second-story / upper-floor" windows, which implies ground-level means ground floor. Houston's right-hand battery sits partly under a ground-floor window with a ~4.5–5 ft sill. Under C that is prohibited unless the window is fixed, or unless Base means at-grade (basement-level) windows only. Field practice may be more lenient than the prompt. Ask Base; until then label per the prompt text.
 33. **[new v0.2] Profile A is underspecified.** The source has no output block, no headroom, ground or facing rule, and no door or garage rule (only "clear, continuous wall; windows, columns, and electrical equipment break the wall"). It also says "a pool" with no kiddie exemption and omits gas pipes. A reads as an earlier version of B without the ComEd window rule.
 
