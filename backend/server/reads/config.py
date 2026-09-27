@@ -24,18 +24,21 @@ def _int(name: str, default: int) -> int:
 
 
 def vision_external_calls(settings: object | None = None) -> bool:
-    """WS-00 `Settings.VISION_EXTERNAL_CALLS`, else the env var (default on)."""
+    """True only for an explicit ``VISION_EXTERNAL_CALLS=on`` (SD-67, SD-77)."""
     if settings is not None and hasattr(settings, "VISION_EXTERNAL_CALLS"):
         value = settings.VISION_EXTERNAL_CALLS
         if isinstance(value, bool):
             return value
-        return str(value).strip().lower() in {"1", "on", "true", "yes"}
-    return _flag("VISION_EXTERNAL_CALLS", True)
+        return str(value).strip().lower() == "on"
+    raw = os.environ.get("VISION_EXTERNAL_CALLS")
+    if raw is None:
+        return False
+    return raw.strip().lower() == "on"
 
 
 @dataclass(frozen=True)
 class ReadsConfig:
-    external_vision: bool = True
+    external_vision: bool = False
     autofill_without_barcode: bool = False
     panel_autopass: bool = False
     read_oblique: bool = True

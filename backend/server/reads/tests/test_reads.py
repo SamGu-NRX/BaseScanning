@@ -15,7 +15,7 @@ from server.reads.aggregate import build_reads, merge_meter, merge_panels
 from server.reads.barcode import read_barcodes
 from server.reads.cache import MemoryStorage, cache_key, get_json, identity_key, put_json, still_key
 from server.reads.candidates import core, normalize
-from server.reads.config import ReadsConfig
+from server.reads.config import ReadsConfig, vision_external_calls
 from server.reads.facts import coverage_contract_errors, to_criteria
 from server.reads.hints import hints_for
 from server.reads.panel_policy import decide_panel, needs_escalation, should_escalate
@@ -541,7 +541,7 @@ def test_cache_hit_costs_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
     storage = MemoryStorage()
     still = _still("meter_oblique")
     _store_image(storage, still)
-    cfg = _cfg()
+    cfg = _cfg(external_vision=True)
     for model in ("gpt-5.5", "grok-4.7"):
         put_json(
             storage,
@@ -570,9 +570,9 @@ def test_budget_stops_new_calls(monkeypatch: pytest.MonkeyPatch) -> None:
     still = _still("meter_oblique", "s2")
     still = still.model_copy(update={"path": "uploads/cap_test/s2.jpg"})
     _store_image(storage, still)
-    result, _hints = read_still(still, storage, _cfg(budget_usd_per_house=0.40))
+    result, _hints = read_still(still, storage, _cfg(budget_usd_per_house=0.40, external_vision=True))
     assert all(item.error == "not_evaluated" for item in result.answers)
-    reads = build_reads("cap_test", storage, _cfg(budget_usd_per_house=0.40))
+    reads = build_reads("cap_test", storage, _cfg(budget_usd_per_house=0.40, external_vision=True))
     assert "budget_exhausted" in reads.warnings
 
 
@@ -588,8 +588,8 @@ def test_read_still_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
     storage = MemoryStorage()
     still = _still("meter_oblique")
     _store_image(storage, still)
-    first, _hints = read_still(still, storage, _cfg())
-    second, _hints = read_still(still, storage, _cfg())
+    first, _hints = read_still(still, storage, _cfg(external_vision=True))
+    second, _hints = read_still(still, storage, _cfg(external_vision=True))
     assert first.meter is not None and second.meter is not None
     assert second.meter.status == first.meter.status
     assert calls["n"] == 2
@@ -822,6 +822,20 @@ def test_packet_uses_img_and_file_digest() -> None:
     assert storage.exists(still_key("cap_test", "s1"))
     assert storage.exists(still_key("cap_test", "k1"))
     assert reads.meter is not None and reads.meter.status == "disabled"
+
+
+def test_vision_switch_defaults_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("VISION_EXTERNAL_CALLS", raising=False)
+    monkeypatch.setenv("SMP_ENVIRONMENT", "dev")
+    assert vision_external_calls() is False
+    assert ReadsConfig.from_env().external_vision is False
+    assert ReadsConfig().external_vision is False
+    for raw in ("off", "yes", "true", "1", ""):
+        monkeypatch.setenv("VISION_EXTERNAL_CALLS", raw)
+        assert vision_external_calls() is False
+    monkeypatch.setenv("VISION_EXTERNAL_CALLS", "on")
+    assert vision_external_calls() is True
+    assert ReadsConfig.from_env().external_vision is True
 
 
 def test_sample_verdict_ids() -> None:

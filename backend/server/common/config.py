@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from server.common.backends.state_memory import MemoryState
@@ -72,17 +72,10 @@ class Settings(BaseSettings):
     GROUND_RULE_DEFAULT: str = "angle80"
     HARD_STOP_MIN: int = 20
     CAPTURE_CHECK_TARGET_S: int = 30
-    VISION_EXTERNAL_CALLS: Literal["on", "off"] | None = None
+    # Off in every environment unless the process sets VISION_EXTERNAL_CALLS=on (SD-67, SD-77).
+    VISION_EXTERNAL_CALLS: Literal["on", "off"] = "off"
     FIXTURE_SOURCE: str = Field(default_factory=default_fixture_source)
     FIXTURE_CACHE: str = ".fixtures"
-
-    @model_validator(mode="after")
-    def vision_required_in_prod(self) -> Settings:
-        if self.VISION_EXTERNAL_CALLS is None:
-            if self.SMP_ENVIRONMENT == "prod":
-                raise ValueError("VISION_EXTERNAL_CALLS is required when SMP_ENVIRONMENT=prod")
-            self.VISION_EXTERNAL_CALLS = "on"
-        return self
 
 
 def load() -> Settings:

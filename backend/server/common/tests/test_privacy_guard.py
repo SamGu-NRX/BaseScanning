@@ -1,4 +1,4 @@
-"""A missing or unknown SMP_ENVIRONMENT fails closed, the same as prod."""
+"""Environment and vision-call defaults fail closed."""
 
 from __future__ import annotations
 
@@ -8,33 +8,30 @@ from pydantic import ValidationError
 from server.common.config import Settings
 
 
-def test_missing_environment_requires_an_explicit_vision_decision(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_missing_or_unknown_environment_behaves_as_prod(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SMP_ENVIRONMENT", raising=False)
     monkeypatch.delenv("VISION_EXTERNAL_CALLS", raising=False)
-    with pytest.raises(ValidationError, match="VISION_EXTERNAL_CALLS"):
-        Settings()
+    missing = Settings()
+    assert missing.SMP_ENVIRONMENT == "prod"
+    blank = Settings(SMP_ENVIRONMENT="")
+    unknown = Settings(SMP_ENVIRONMENT="staging")
+    assert blank.SMP_ENVIRONMENT == "prod"
+    assert unknown.SMP_ENVIRONMENT == "prod"
 
 
-def test_unknown_environment_behaves_as_prod() -> None:
-    with pytest.raises(ValidationError, match="VISION_EXTERNAL_CALLS"):
-        Settings(SMP_ENVIRONMENT="staging")
-    settings = Settings(SMP_ENVIRONMENT="", VISION_EXTERNAL_CALLS="off")
-    assert settings.SMP_ENVIRONMENT == "prod"
-    assert settings.VISION_EXTERNAL_CALLS == "off"
-    allowed = Settings(SMP_ENVIRONMENT="nope", VISION_EXTERNAL_CALLS="on")
-    assert allowed.SMP_ENVIRONMENT == "prod"
-    assert allowed.VISION_EXTERNAL_CALLS == "on"
-
-
-def test_explicit_dev_still_defaults_vision_on(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_vision_defaults_off_unless_explicitly_on(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("VISION_EXTERNAL_CALLS", raising=False)
-    settings = Settings(SMP_ENVIRONMENT="dev")
-    assert settings.SMP_ENVIRONMENT == "dev"
-    assert settings.VISION_EXTERNAL_CALLS == "on"
-
-
-def test_explicit_prod_requires_the_vision_decision() -> None:
-    with pytest.raises(ValidationError, match="VISION_EXTERNAL_CALLS"):
-        Settings(SMP_ENVIRONMENT="prod")
-    settings = Settings(SMP_ENVIRONMENT="prod", VISION_EXTERNAL_CALLS="off")
-    assert settings.VISION_EXTERNAL_CALLS == "off"
+    monkeypatch.delenv("SMP_ENVIRONMENT", raising=False)
+    assert Settings().VISION_EXTERNAL_CALLS == "off"
+    for environment in ("dev", "prod", "staging", ""):
+        settings = Settings(SMP_ENVIRONMENT=environment)
+        assert settings.VISION_EXTERNAL_CALLS == "off"
+        enabled = Settings(SMP_ENVIRONMENT=environment, VISION_EXTERNAL_CALLS="on")
+        assert enabled.VISION_EXTERNAL_CALLS == "on"
+    monkeypatch.setenv("SMP_ENVIRONMENT", "dev")
+    assert Settings().VISION_EXTERNAL_CALLS == "off"
+    monkeypatch.setenv("VISION_EXTERNAL_CALLS", "on")
+    assert Settings().VISION_EXTERNAL_CALLS == "on"
+    monkeypatch.setenv("VISION_EXTERNAL_CALLS", "yes")
+    with pytest.raises(ValidationError):
+        Settings()

@@ -48,8 +48,8 @@ package = false
 default-groups = ["dev", "data"]
 
 [tool.pytest.ini_options]
-addopts = "-p no:cacheprovider"
-testpaths = ["packet/tests", "tests", "server/contracts/tests", "server/common/tests", "server/eval/tests", "server/tests", "server/result/tests", "server/reads/tests"]
+addopts = "-p no:cacheprovider --import-mode=importlib"
+testpaths = ["packet/tests", "tests", "server"]
 pythonpath = [".", "packet", "eval", "eval/vendor/hs11_server"]
 
 [tool.ruff]
