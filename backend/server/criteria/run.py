@@ -28,7 +28,7 @@ from server.criteria.c3.facts import apply_reads, evaluate_facts
 from server.criteria.c3.judge import judge_if_pass
 from server.criteria.c3.overlay import footprint_corners, judge_photos
 from server.criteria.candidates import choose, placement_doc
-from server.criteria.compose import build_verdict
+from server.criteria.compose import attach_c3_facts, build_verdict
 from server.criteria.config import CriteriaConfig
 from server.criteria.harness import load
 from server.criteria.occluders import missing_occluder_geometry
@@ -515,11 +515,7 @@ def evaluate_scene(
         c2_report = {**c2_report, "status": sweep["status"]}
     fact_rows, fact_record = evaluate_facts(scene, cfg, scene_dir=scene_dir, spend=spend)
     for name, verdict in verdicts.items():
-        have = {row["id"] for row in verdict["criteria"]}
-        for fact in fact_rows:
-            if fact["id"] not in have:
-                verdict["criteria"].append(fact)
-                have.add(fact["id"])
+        attach_c3_facts(verdict, fact_rows)
         if verdict["site"]["decision"] in {"pass", "reject"}:
             verdict["views_needed"] = []
         _require_verdict(verdict)

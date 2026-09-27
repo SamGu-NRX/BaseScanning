@@ -39,7 +39,7 @@ from server.criteria.c3.client import HouseSpend, api_key_for
 from server.criteria.c3.facts import disabled_facts, evaluate_facts
 from server.criteria.c3.judge import flags_from, judge_if_pass, resolve_judge
 from server.criteria.c3.overlay import judge_photos
-from server.criteria.compose import both_ends_ok
+from server.criteria.compose import attach_c3_facts, both_ends_ok
 from server.criteria.config import CriteriaConfig
 from server.criteria.lattice import c2_veto, judge_join, margin_outcome, site_decision
 from server.criteria.occluders import assert_not_provisional, missing_occluder_geometry, ply_vertex_count
@@ -540,6 +540,69 @@ def test_reversed_opening_span_is_sorted():
 
 
 # --- C3, C2, hybrid ----------------------------------------------------------
+
+
+def _passing_verdict() -> dict:
+    return {
+        "site": {"decision": "pass", "reasons": [], "chosen_candidate": "run1"},
+        "criteria": [
+            {
+                "id": "placement",
+                "scope": "site",
+                "outcome": "pass",
+                "reason": "pass",
+                "measured": None,
+                "threshold": None,
+                "fact": {"value": "C", "clean": True, "coverage": []},
+            }
+        ],
+        "views_needed": [],
+    }
+
+
+def _c3_fact(fid: str, outcome: str, cause: str | None = None) -> dict:
+    row = {
+        "id": fid,
+        "scope": "site",
+        "outcome": outcome,
+        "reason": "photo fact",
+        "measured": None,
+        "threshold": None,
+    }
+    if cause:
+        row["unsure_cause"] = cause
+    return row
+
+
+def test_c3_decision_fact_downgrades_a_pass_in_every_config():
+    """Dev leaves absent facts alone. An unsure or failing C3 decision fact still reviews."""
+    unsure = _passing_verdict()
+    attach_c3_facts(unsure, [_c3_fact("main_panel_type", "unsure", "unknown_attribute")])
+    assert unsure["site"]["decision"] == "manual_review"
+    assert unsure["site"]["reasons"] == ["fact_unsure:main_panel_type"]
+    placement = next(row for row in unsure["criteria"] if row["id"] == "placement")
+    assert placement["outcome"] == "unsure"
+    assert placement["unsure_cause"] == "rule_requires_review"
+    assert any(row["id"] == "main_panel_type" and row["outcome"] == "unsure" for row in unsure["criteria"])
+
+    failed = _passing_verdict()
+    attach_c3_facts(failed, [_c3_fact("panel_in_house", "fail")])
+    assert failed["site"]["decision"] == "manual_review"
+    assert failed["site"]["reasons"] == ["fact_unsure:panel_in_house"]
+
+    ignored = _passing_verdict()
+    attach_c3_facts(ignored, disabled_facts())
+    assert ignored["site"]["decision"] == "pass"
+    other = _passing_verdict()
+    attach_c3_facts(other, [_c3_fact("not_same_wall", "fail"), _c3_fact("meter_type", "unsure", "unknown_attribute")])
+    assert other["site"]["decision"] == "pass"
+
+    held = _passing_verdict()
+    held["site"]["decision"] = "reject"
+    held["site"]["reasons"] = ["all_spots_fail"]
+    attach_c3_facts(held, [_c3_fact("meter_not_accessible", "unsure", "rule_requires_review")])
+    assert held["site"]["decision"] == "reject"
+    assert "fact_unsure:meter_not_accessible" in held["site"]["reasons"]
 
 
 def test_c3_disabled_facts_are_not_evaluated():

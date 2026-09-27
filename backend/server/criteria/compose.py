@@ -40,6 +40,58 @@ def decision_fact_map(fact_rows: list[dict]) -> dict:
     return out
 
 
+def attach_c3_facts(verdict: dict, fact_rows: list[dict]) -> None:
+    """Append C3 facts, then let an unsure or failing decision fact pull a pass to review.
+
+    ``not_evaluated`` rows stay on the verdict and do not move the decision. This does
+    not read ``absent_facts``: a decided C3 fact counts in every config, including dev.
+    A reject stays a reject. ``not_same_wall`` never moves the site.
+    """
+    criteria = verdict.setdefault("criteria", [])
+    have = {row.get("id") for row in criteria}
+    added: list[dict] = []
+    for fact in fact_rows:
+        fid = fact.get("id")
+        if not fid or fid in have:
+            continue
+        criteria.append(fact)
+        have.add(fid)
+        added.append(fact)
+    hits = [
+        row["id"]
+        for row in added
+        if row.get("id") in DECISION
+        and row.get("id") != "not_same_wall"
+        and row.get("unsure_cause") != "not_evaluated"
+        and row.get("outcome") in {"unsure", "fail"}
+    ]
+    if not hits:
+        return
+    site = verdict.setdefault("site", {})
+    if site.get("decision") == "pass":
+        site["decision"] = "manual_review"
+        for row in criteria:
+            if row.get("id") == "placement" and row.get("scope") == "site":
+                row["outcome"] = "unsure"
+                row["unsure_cause"] = "rule_requires_review"
+                host = row.get("fact")
+                if isinstance(host, dict):
+                    host["clean"] = False
+                break
+    reasons = list(site.get("reasons") or [])
+    for fid in hits:
+        code = f"fact_unsure:{fid}"
+        if code not in reasons:
+            reasons.append(code)
+    site["reasons"] = reasons
+    if site.get("decision") != "manual_review":
+        return
+    for row in criteria:
+        if row.get("id") == "placement" and row.get("scope") == "site" and row.get("outcome") == "unsure":
+            row["reason"] = "; ".join(reasons) or row.get("reason") or "manual_review"
+            break
+
+
 def combine_decision(
     geometry: str, geometry_reasons: list[str], lattice: str, lattice_reasons: list[str], fact_failed: bool
 ) -> tuple[str, list[str]]:
