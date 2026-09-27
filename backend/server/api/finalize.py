@@ -273,6 +273,10 @@ def accept_packet(
     }
     if amendment_id is not None:
         extra["amendment_id"] = amendment_id
+        # Completion belongs to the accepted packet, not the whole capture. A
+        # child must validate and promote its own files before starting its run.
+        for flag in ("run_started", "manifest_ok", "promoted_at"):
+            extra.pop(flag, None)
     extra["missing"] = missing
     extra.pop("last_422", None)
     if amendment_id is None:
