@@ -282,9 +282,12 @@ public actor CaptureUploader {
     /// dropped when they arrive.
     public func abandon(_ reason: String) {
         stopSending()
-        // An end the app asks for, a withdrawal included, replaces a save failure.
-        guard state.end == nil || state.end == Self.unsavedEnd else { return }
-        state.end = .abandoned(reason)
+        // An end the app asks for replaces a save failure. A withdrawal also replaces an end this
+        // process reached but couldn't save, such as a result or a refusal. Otherwise an end
+        // stays: Start over doesn't rewrite a finished upload.
+        let unsavedWithdrawal = saveFailed && isWithdrawn
+        guard state.end == nil || state.end == Self.unsavedEnd || unsavedWithdrawal else { return }
+        state.end = .abandoned(unsavedWithdrawal ? Self.withdrawnReason : reason)
         state.attemptID = UUID().uuidString
         loop?.cancel()
         persist()
@@ -727,8 +730,14 @@ public actor CaptureUploader {
             }
         } catch {
             saveFailed = true
-            Self.folders.withLock { entries in
-                if entries[folderKey]?.owner === self { entries[folderKey]?.unsaved = true }
+            // Admission closes before any suspended request resumes, as `stopSending` closes it:
+            // a credential fetch that returns after this sends nothing. One already handed to the
+            // transport may finish.
+            let running = Self.folders.withLock { entries -> Task<Void, Never>? in
+                guard entries[folderKey]?.owner === self else { return nil }
+                entries[folderKey]?.unsaved = true
+                entries[folderKey]?.stopped = true
+                return entries[folderKey]?.running
             }
             // The saved state is now behind this one, so the upload ends in memory only: nothing
             // claims it was saved, and nothing more is sent. An end already set stays: a
@@ -737,6 +746,8 @@ public actor CaptureUploader {
             if state.end == nil { state.end = Self.unsavedEnd }
             state.attemptID = UUID().uuidString
             log?("capture-upload stopped: the upload state could not be saved (\(Self.describe(error)))")
+            // Outside the lock: cancellation handlers belong to the transport.
+            running?.cancel()
         }
         publish()
     }
