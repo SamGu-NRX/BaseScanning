@@ -110,6 +110,7 @@ jobs:
           fi
           echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
           nohup xcrun simctl bootstatus "$udid" -b > "$RUNNER_TEMP/simulator-boot.log" 2>&1 &
+          echo "SIM_BOOT_PID=$!" >> "$GITHUB_ENV"
 
       # The package's drift test compares the vendored server schemas with the server's own copies:
       # the checkout's files once that branch merges, else the t3/server branch, which the shallow
@@ -185,10 +186,18 @@ jobs:
           xcodebuild -project ios/HouseScan.xcodeproj -scheme HouseScan -configuration Release
           -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO build
 
+      # The background boot first: screenStates reaches this step 3 s after starting it, and a
+      # second `bootstatus -b` while that boot was under way exited 149 (run 37228728303). Once it
+      # has finished, `-b` returns at once on a booted device, and boots it if the first try failed.
       - name: Wait for the Simulator
         timeout-minutes: 10
         run: |
-          xcrun simctl bootstatus "$SIM_UDID" -b
+          while kill -0 "$SIM_BOOT_PID" 2>/dev/null; do sleep 2; done
+          if ! xcrun simctl bootstatus "$SIM_UDID" -b; then
+            echo "::error::$SIM_NAME on iOS $SIM_OS did not boot. The background boot's log follows."
+            cat "$RUNNER_TEMP/simulator-boot.log"
+            exit 1
+          fi
           echo "Booted $SIM_NAME on iOS $SIM_OS ($SIM_UDID)."
 
       - name: UI test the group in the Simulator
