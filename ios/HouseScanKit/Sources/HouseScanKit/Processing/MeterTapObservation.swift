@@ -3,7 +3,7 @@ import simd
 
 /// Why the homeowner's accepted meter mark gave the capture packet no tap. Each ends the packet as
 /// not prepared rather than letting it go out without its tap (`PhotoProcessingController.meterTapFailed`).
-public enum MeterTapFailure: String, Sendable, Equatable, CaseIterable {
+public enum MeterTapFailure: String, Error, Sendable, Equatable, CaseIterable {
     /// ARKit had no current frame to take.
     case noFrame
     /// The frame's tracking wasn't normal, so its pose can't place the tap.
