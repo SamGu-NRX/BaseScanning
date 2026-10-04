@@ -230,9 +230,10 @@ extension ScanEngine {
     // MARK: Setup
 
     /// What photo processing can do in this build. Sending a capture off the phone is off in this
-    /// slice: the 0.4 clock and privacy contract, a scoped credential, the live meter tap, and
-    /// the deployment aren't settled; per-frame intrinsics are recorded but unchecked on a phone. The one way to run it is DEBUG's fixture on a
-    /// replay, which answers on the phone (`CaptureFixtureLaunch`); a release build can't, since
+    /// slice: the 0.4 clock and privacy contract, a scoped credential and the deployment aren't
+    /// settled. Per-frame intrinsics and the meter tap from the accepted mark's own frame are
+    /// recorded but unchecked on a phone. The one way to run it is DEBUG's fixture on a replay,
+    /// which answers on the phone (`CaptureFixtureLaunch`); a release build can't, since
     /// `debugBuild` is decided at compile time and the launch options aren't even parsed there.
     static func photoProcessingSetup(_ options: LaunchOptions) -> (setup: PhotoProcessingController.Setup, synthetic: SyntheticCapture?) {
         #if DEBUG
