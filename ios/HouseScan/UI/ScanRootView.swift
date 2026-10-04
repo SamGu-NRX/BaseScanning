@@ -28,11 +28,9 @@ struct ScanRootView: View {
         ZStack {
             if Self.showsCamera(state.phase) {
                 CameraBackdrop(feed: state.feed, actions: actions)
-                    .accessibilityHidden(asksForPhotoConsent)
                     .transition(.opacity)
                 if state.isPracticeScan {
                     PracticeMeterOverlay(state: state)
-                        .accessibilityHidden(asksForPhotoConsent)
                 }
                 CameraEdgeShade()
             }
@@ -42,8 +40,11 @@ struct ScanRootView: View {
             screen
                 .id(state.phase)
                 .transition(Self.showsCamera(state.phase) ? .opacity : .identity)
-                // The question is modal: what it covers isn't there for VoiceOver until it's answered.
-                .accessibilityHidden(asksForPhotoConsent)
+            // The question is modal for VoiceOver through its own `.isModal` trait
+            // (`PhotoConsentCard`). Its siblings aren't hidden here: `.accessibilityHidden(false)`,
+            // as that was whenever no question showed, overrode the hiding the camera feed and
+            // other decoration set on themselves, and the audit found an element with no
+            // description on every camera screen (#216, run 37213636011).
             if asksForPhotoConsent {
                 PhotoConsentCard(standIn: state.photoProcessing?.standIn == true, synthetic: state.photoCaptureIsSynthetic, actions: actions)
                     .transition(.opacity)
