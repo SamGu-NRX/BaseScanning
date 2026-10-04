@@ -82,7 +82,7 @@ final class GapFollowUpFoldUITests: XCTestCase {
         let window = app.windows.firstMatch.frame
         let card = element(app, "instruction")
         XCTAssertTrue(card.waitForExistence(timeout: 5))
-        XCTAssertTrue(card.label.contains("Show the ground to the right"), card.label)
+        XCTAssertTrue(card.label.contains("Show the ground right of your meter"), card.label)
         XCTAssertFalse(card.label.contains("One more view to finish"), "the follow-up should be under Details: \(card.label)")
         XCTAssertFalse(card.label.contains("4 ft to 7 ft"), "the stretch should be under Details: \(card.label)")
         let details = element(app, "instruction.details")

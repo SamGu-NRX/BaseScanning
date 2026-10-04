@@ -504,19 +504,19 @@ enum ScanCopy {
 
     // MARK: Gap
 
-    /// The card for a gap request. A server request can run along much of the wall, so its
-    /// stretch is named by its two ends, all of it (issue #75, `Distance.range`); the phone's own
-    /// requests are short and named by their middle.
     /// A server request's lead when folded: the band and which side of the meter, in a few words
     /// that stay a short block at AX5. The stretch's two ends are under Details, and the camera and
-    /// the map mark the stretch itself.
+    /// the map mark the stretch itself. Named against the meter, as the full card names it.
     static func serverLead(_ gap: GapRequest) -> String {
         let band = gap.band == .ground ? "ground" : "wall"
-        if gap.span.lowerBound >= 0 { return "Show the \(band) to the right" }
-        if gap.span.upperBound <= 0 { return "Show the \(band) to the left" }
+        if gap.span.lowerBound >= 0 { return "Show the \(band) right of your meter" }
+        if gap.span.upperBound <= 0 { return "Show the \(band) left of your meter" }
         return "Show the \(band) by your meter"
     }
 
+    /// The card for a gap request. A server request can run along much of the wall, so its
+    /// stretch is named by its two ends, all of it (issue #75, `Distance.range`); the phone's own
+    /// requests are short and named by their middle.
     static func gap(_ gap: GapRequest) -> Instruction {
         let place = Distance.aroundFromMeter(gap.span)
         let stretch = Distance.range(gap.span)
