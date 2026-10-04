@@ -40,11 +40,13 @@ struct ScanRootView: View {
             screen
                 .id(state.phase)
                 .transition(Self.showsCamera(state.phase) ? .opacity : .identity)
-            // The question is modal for VoiceOver through its own `.isModal` trait
-            // (`PhotoConsentCard`). Its siblings aren't hidden here: `.accessibilityHidden(false)`,
-            // as that was whenever no question showed, overrode the hiding the camera feed and
-            // other decoration set on themselves, and the audit found an element with no
-            // description on every camera screen (#216, run 37213636011).
+                // While the photo question shows, the screen under it is out of the accessibility
+                // tree: its words show dimmed through the card's scrim, and the audit failed them
+                // on contrast (#216, run 37219668935). Only ever set to hidden, never to
+                // `.accessibilityHidden(false)`, which overrode the hiding the camera's decoration
+                // sets on itself and left an element with no description on every camera screen
+                // (run 37213636011). The camera feed and practice overlay hide themselves already.
+                .hiddenFromAccessibility(while: asksForPhotoConsent)
             if asksForPhotoConsent {
                 PhotoConsentCard(standIn: state.photoProcessing?.standIn == true, synthetic: state.photoCaptureIsSynthetic, actions: actions)
                     .transition(.opacity)
@@ -153,5 +155,18 @@ private extension View {
     func screenIdentifier(_ phase: ScanPhase) -> some View {
         accessibilityElement(children: .contain)
             .accessibilityIdentifier("screen.\(phase.rawValue)")
+    }
+}
+
+private extension View {
+    /// `.accessibilityHidden(true)` while `hidden`, and no accessibility modifier at all otherwise,
+    /// so the hiding a subview sets on itself still holds. The view is rebuilt when `hidden`
+    /// changes; here that happens once, when the photo question is answered.
+    @ViewBuilder func hiddenFromAccessibility(while hidden: Bool) -> some View {
+        if hidden {
+            accessibilityHidden(true)
+        } else {
+            self
+        }
     }
 }
