@@ -35,6 +35,11 @@ final class CaptureRecorder: Sendable {
         case deviceMotion
         /// t, pressure in kPa, relative altitude in m.
         case barometer
+        /// t, then that ARFrame's own fx, fy, cx, cy and image width and height in pixels of the
+        /// unrotated sensor image (`FrameCalibrationRow`), written with its trajectory row at the
+        /// same t. Read by photo processing's 0.4 pose stream only; the 1.1 packet has no column
+        /// for it (`motionPacketStream`).
+        case frameIntrinsics
 
         var width: Int {
             switch self {
@@ -42,6 +47,20 @@ final class CaptureRecorder: Sendable {
             case .accelerometer, .gyroscope, .magnetometer: 4
             case .deviceMotion: 15
             case .barometer: 3
+            case .frameIntrinsics: 7
+            }
+        }
+
+        /// The 1.1 packet's stream a motion row goes to; nil for the camera's own streams, which
+        /// the 1.1 packet writes elsewhere (the trajectory) or not at all (frame intrinsics).
+        var motionPacketStream: PacketStream? {
+            switch self {
+            case .accelerometer: .accelerometer
+            case .gyroscope: .gyroscope
+            case .magnetometer: .magnetometer
+            case .deviceMotion: .deviceMotion
+            case .barometer: .barometer
+            case .trajectory, .frameIntrinsics: nil
             }
         }
 
@@ -124,34 +143,42 @@ final class CaptureRecorder: Sendable {
         }
     }
 
-    func recordPose(t: Double, tracking: TrackingCode, cameraToWorld m: simd_float4x4) {
+    /// One ARFrame's pose and its own calibration (`ARCamera.intrinsics`, `imageResolution`), under
+    /// one lock, so recording turned off or on between them can't keep one without the other.
+    func recordPose(t: Double, tracking: TrackingCode, cameraToWorld m: simd_float4x4, intrinsics: simd_float3x3, imageWidth: Double, imageHeight: Double) {
         let columns = [m.columns.0, m.columns.1, m.columns.2, m.columns.3]
         let pose = columns.flatMap { [Double($0.x), Double($0.y), Double($0.z), Double($0.w)] }
-        append(.trajectory, [t, Double(tracking.state), Double(tracking.reason)] + pose)
+        let calibration = FrameCalibrationRow.row(t: t, intrinsics: intrinsics, imageWidth: imageWidth, imageHeight: imageHeight)
+        state.withLock { state in
+            append(.trajectory, [t, Double(tracking.state), Double(tracking.reason)] + pose, &state)
+            append(.frameIntrinsics, calibration, &state)
+        }
     }
 
     /// Appends one row. A row not later than the stream's last one is dropped: every stream's `t`
     /// strictly increases.
     func append(_ stream: Stream, _ row: [Double]) {
+        state.withLock { append(stream, row, &$0) }
+    }
+
+    private func append(_ stream: Stream, _ row: [Double], _ state: inout State) {
         precondition(row.count == stream.width, "\(stream) row has \(row.count) values, expected \(stream.width)")
         let t = row[0]
-        state.withLock { state in
-            guard state.recording, !state.failed, t >= state.since, t > state.lastT[stream.rawValue] else { return }
-            state.lastT[stream.rawValue] = t
-            if stream == .trajectory {
-                if state.firstUptime == nil {
-                    state.firstUptime = t
-                    // The same instant on the wall clock: the frame is `now - t` seconds old.
-                    state.startedAt = Date(timeIntervalSinceNow: t - ProcessInfo.processInfo.systemUptime)
-                }
-                state.lastUptime = t
+        guard state.recording, !state.failed, t >= state.since, t > state.lastT[stream.rawValue] else { return }
+        state.lastT[stream.rawValue] = t
+        if stream == .trajectory {
+            if state.firstUptime == nil {
+                state.firstUptime = t
+                // The same instant on the wall clock: the frame is `now - t` seconds old.
+                state.startedAt = Date(timeIntervalSinceNow: t - ProcessInfo.processInfo.systemUptime)
             }
-            row.withUnsafeBufferPointer { values in
-                for value in values { withUnsafeBytes(of: value.bitPattern.littleEndian) { state.buffers[stream.rawValue].append(contentsOf: $0) } }
-            }
-            if state.buffers[stream.rawValue].count >= Self.flushBytes {
-                write(stream, &state)
-            }
+            state.lastUptime = t
+        }
+        var bytes = Data(capacity: row.count * 8)
+        for value in row { withUnsafeBytes(of: value.bitPattern.littleEndian) { bytes.append(contentsOf: $0) } }
+        state.buffers[stream.rawValue].append(bytes)
+        if state.buffers[stream.rawValue].count >= Self.flushBytes {
+            write(stream, &state)
         }
     }
 
