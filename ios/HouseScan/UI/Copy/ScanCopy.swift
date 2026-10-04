@@ -627,10 +627,11 @@ enum ScanCopy {
 
     // MARK: Result
 
-    /// The answer in the homeowner's words (`ResultPresentation.answer`).
+    /// The answer in the homeowner's words (`ResultPresentation.answer`). A passing spot is a
+    /// possible one, never "fits": see `candidateNote`.
     static func headline(_ answer: ResultReading.Answer) -> String {
         switch answer {
-        case .fits: "A battery fits here"
+        case .candidate: "A possible battery spot"
         case .oneMoreLook: "One more look"
         case .installer: "Needs an installer's review"
         case .notHere: "Not on this wall"
@@ -690,7 +691,18 @@ enum ScanCopy {
         return "Settles: \(titles.joined(separator: ", "))"
     }
 
-    static let seeOnWall = "See it on your wall"
+    /// Under a possible spot's headline and placement. The server's checks pass on space the scan
+    /// recorded, some of it beyond what the homeowner confirmed in the spot check, so the app
+    /// can't say all the space a battery needs is clear (`ResultReading`, B17). It says what the
+    /// fit still needs, never that a review was sent: the app contacts nobody.
+    static let candidateNote = "The scan suggests this spot, but it couldn't confirm all the space a battery needs. An installer needs to check the fit on site."
+
+    /// The AR title over a possible spot, and the words for what the AR view draws there.
+    static let proposedSpotOverlay = "A proposed battery spot, drawn on your wall"
+    static let proposedSpotThisWay = "The proposed spot is this way"
+    static let proposedSpotOffScreen = "The proposed spot is off screen. Turn the phone toward the arrow."
+
+    static let seeOnWall = "See this spot on your wall"
     /// For a spot an installer still has to confirm against the meter's working space.
     static let seeClosest = "See the closest spot"
     static let showMe = "Show me"
@@ -703,12 +715,12 @@ enum ScanCopy {
     static let wallNotMeasuredDetail = "The scan stopped before you walked along the wall on either side of your meter, so we can't tell where a battery would fit. Scan again and walk a few steps each way."
     static let scanAgain = "Scan again"
 
-    /// Shown on every result, with or without a spot ("Not on this wall" has none), so it names
-    /// no spot.
+    /// Shown on every result but a possible spot, whose `candidateNote` says it already, with or
+    /// without a spot ("Not on this wall" has none), so it names no spot.
     static let installerConfirms = "Before any battery goes in, an installer has to confirm where it goes on site."
     static let rulesNotFinal = "The placement rules aren't final yet, so every result needs an installer's review for now."
     // The server's result covers where the battery goes, not the panel itself.
-    static let panelReview = "Your electrical panel still needs an electrician's review. This scan only covers where the battery can go."
+    static let panelReview = "Your electrical panel still needs an electrician's review. This scan only suggests where the battery could go."
 
     /// Which rules answered, for a reviewer: "Rules 2f52ec35".
     static func rulesHash(_ hash: String) -> String {
@@ -807,9 +819,14 @@ enum ScanCopy {
         }
     }
 
+    /// The heading over every check in Details, and what a passing one means there: the server's
+    /// calculation on the scan's measurements, not space anyone confirmed clear.
+    static let calculatedTitle = "What the server calculated"
+    static let calculatedNote = "From what your scan recorded. A passing check means those measurements meet the rule, not that the space is confirmed clear."
+
     static func outcomeWord(_ outcome: CheckOutcome) -> String {
         switch outcome {
-        case .pass: "Looks good"
+        case .pass: "Passes on recorded data"
         case .unsure: "Not sure yet"
         case .fail: "Doesn't work"
         }

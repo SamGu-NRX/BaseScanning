@@ -76,10 +76,7 @@ extension ResultPresentation {
         checks.map { row in
             ResultReading.Check(
                 id: row.id, outcome: row.outcome.placementOutcome, needsPerson: row.needsPerson,
-                viewCapturable: viewToTake(for: row) != nil,
-                margin: ResultReading.margin(
-                    measured: row.measured.map(Double.init), threshold: row.threshold.map(Double.init),
-                    plusMinus: row.plusMinus.map(Double.init), comparison: row.comparison?.placementComparison)
+                viewCapturable: viewToTake(for: row) != nil
             )
         }
     }
@@ -99,15 +96,6 @@ private extension CheckOutcome {
         case .pass: .pass
         case .fail: .fail
         case .unsure: .unsure
-        }
-    }
-}
-
-private extension RuleComparison {
-    var placementComparison: PlacementComparison {
-        switch self {
-        case .atLeast: .atLeast
-        case .atMost: .atMost
         }
     }
 }

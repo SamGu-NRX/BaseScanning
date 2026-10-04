@@ -93,15 +93,20 @@ struct ScanRootView: View {
 /// Haptics for the moments that matter, fired on the same state change the screen animates:
 /// a deliberate photo, the meter pinned, a mark placed or refused, a requested view done, the
 /// result.
+///
+/// The result arrives with a light tap, whatever it says. `.success` there celebrated every
+/// answer alike, a rejected wall included, and on a possible spot it said "done, it fits" when
+/// the scan couldn't confirm the space (B17, B26). Coming back from the AR view taps nothing.
 private struct ScanHaptics: ViewModifier {
     let state: ScanViewState
 
-    // Two steps: the five-modifier chain took 215 ms to type-check on Swift 6.4, and CI's
-    // Swift 6.2 has failed on slower expressions before.
+    // Steps of at most three: the five-modifier chain took 215 ms to type-check on Swift 6.4, and
+    // CI's Swift 6.2 has failed on slower expressions before.
     func body(content: Content) -> some View {
         let captures = content
             .sensoryFeedback(.impact(weight: .light, intensity: 0.7), trigger: deliberateCaptureID) { _, new in new != nil }
-            .sensoryFeedback(.success, trigger: state.phase, condition: Self.isMilestone)
+            .sensoryFeedback(.success, trigger: state.phase, condition: Self.meterPinned)
+            .sensoryFeedback(.impact(weight: .light), trigger: state.phase, condition: Self.resultArrived)
         return captures
             .sensoryFeedback(.success, trigger: state.gap?.isSatisfied ?? false) { _, new in new }
             .sensoryFeedback(.impact(weight: .medium), trigger: state.features.count) { old, new in new > old }
@@ -116,8 +121,12 @@ private struct ScanHaptics: ViewModifier {
         return capture.id
     }
 
-    private static func isMilestone(_ old: ScanPhase, _ new: ScanPhase) -> Bool {
-        (old == .findMeter && new == .meterCloseUp) || (old != .resultAR && new == .result)
+    private static func meterPinned(_ old: ScanPhase, _ new: ScanPhase) -> Bool {
+        old == .findMeter && new == .meterCloseUp
+    }
+
+    private static func resultArrived(_ old: ScanPhase, _ new: ScanPhase) -> Bool {
+        old != .resultAR && new == .result
     }
 }
 

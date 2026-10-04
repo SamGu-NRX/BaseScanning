@@ -41,7 +41,8 @@ struct ResultARScreen: View {
             CameraChrome(
                 instruction: instruction,
                 isReplay: state.isReplay,
-                isAutopilot: state.isAutopilot
+                isAutopilot: state.isAutopilot,
+                aims: showsSpot
             ) {
                 Button("Done") { actions.closeAR() }
                     .buttonStyle(.primary)
@@ -53,10 +54,20 @@ struct ResultARScreen: View {
         }
     }
 
+    /// Whether the spot is on the wall in view: the phone tracks and the result has a spot. Then
+    /// the homeowner is looking at the spot, so at the accessibility text sizes the card folds
+    /// its detail (the placement, and what the fit still needs) under Details and leaves the
+    /// camera open (`CameraChrome.aims`). At AX-XXXL the full card covered nearly the whole
+    /// camera (run 37162669527, resultAR-candidate-settled-AX5). "Point at your meter" while
+    /// tracking is lost keeps every word in view: it is what to do, and nothing is drawn yet.
+    private var showsSpot: Bool {
+        state.tracking == .normal && state.result?.spot != nil
+    }
+
     private static func overlayLabel(_ result: ResultPresentation) -> String {
         guard result.spot != nil else { return "The cable run and clearances, drawn on your wall" }
         return result.spotIsClean
-            ? "The battery, drawn on your wall at its spot"
+            ? ScanCopy.proposedSpotOverlay
             : "An outline of the spot an installer needs to check, drawn on your wall"
     }
 
@@ -67,17 +78,17 @@ struct ResultARScreen: View {
         guard let result = state.result, result.spot != nil else {
             return Instruction(title: "Point at your meter", detail: nil)
         }
-        // Only a pass under approved rules may sound settled; a spot an installer still has to
-        // check says so, as the result screen does.
-        let title = result.decision == .pass && result.policyApproved && result.spotIsClean
-            ? "Your battery could go here"
-            : "The spot an installer needs to check"
+        // The same answer as the result screen: a possible spot says it's possible and what it
+        // still needs; any other spot an installer still has to check says so.
+        let candidate = result.answer == .candidate
+        let title = candidate ? ScanCopy.headline(.candidate) : "The spot an installer needs to check"
         let placement = ScanCopy.placement(result)
         guard !result.isSample else {
             // A sample spot drawn on the homeowner's real wall must not pass for their result.
             return Instruction(title: "Example spot, not your result", detail: ["No server checked this scan.", placement].compactMap { $0 }.joined(separator: " "))
         }
-        return Instruction(title: title, detail: placement)
+        let onSite = candidate ? "An installer needs to check the fit on site." : nil
+        return Instruction(title: title, detail: [placement.map { "\($0)." }, onSite].compactMap { $0 }.joined(separator: " "))
     }
 }
 
@@ -107,7 +118,7 @@ private struct SpotDirection: View {
             if let chevron = chevronPlacement(in: size) {
                 ZStack {
                     TargetMarker(placement: .offScreen(chevron.point, angle: chevron.angle))
-                    Text("Your battery spot is this way")
+                    Text(ScanCopy.proposedSpotThisWay)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Palette.chalk)
                         .multilineTextAlignment(.center)
@@ -122,7 +133,7 @@ private struct SpotDirection: View {
                 }
                 .frame(width: size.width, height: size.height)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Your battery spot is off screen. Turn the phone toward the arrow.")
+                .accessibilityLabel(ScanCopy.proposedSpotOffScreen)
                 .accessibilityIdentifier("ar.spotDirection")
             }
         }
@@ -187,7 +198,7 @@ struct BatteryOverlay: View, Animatable {
     private func drawClearances(in context: inout GraphicsContext, _ geometry: WallProjection) {
         for zone in result.clearances {
             guard let quad = geometry.groundQuad(s: zone.span, out: 0...zone.depth, height: 0.01) else { continue }
-            let color = Palette.outcome(zone.outcome)
+            let color = Palette.zone(zone.outcome)
             context.fill(quad, with: .color(color.opacity(0.28 * rise)))
             context.stroke(quad, with: .color(color.opacity(0.9 * rise)), style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
         }

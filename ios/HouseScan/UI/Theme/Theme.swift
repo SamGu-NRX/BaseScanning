@@ -68,6 +68,13 @@ enum Palette {
         }
     }
 
+    /// A result's clearance zone in AR. Where the server's sweep passes, the proposal's blue
+    /// rather than `covered` green, which read as ground confirmed clear: the checks pass there
+    /// on recorded space, not on space anyone confirmed (B17).
+    static func zone(_ outcome: CheckOutcome) -> Color {
+        outcome == .pass ? signal : self.outcome(outcome)
+    }
+
     static func outcomeInk(_ outcome: CheckOutcome) -> Color {
         switch outcome {
         case .pass: passInk
