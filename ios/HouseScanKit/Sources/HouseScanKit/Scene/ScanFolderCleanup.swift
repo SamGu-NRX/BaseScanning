@@ -26,6 +26,13 @@ import Foundation
 /// can exist, and only those are deleted, whenever the deletion gets to run. Listing at deletion
 /// time instead let a cleanup that ran late delete a scan started after it: store A is made,
 /// Start over makes B, and A's cleanup then found B in the listing and deleted the scan in use.
+///
+/// A folder whose bundle is still being built has no `scan.zip` yet, so it is listed as never
+/// packaged. The packet is assembled in the folder first and zipped last, and Start over doesn't
+/// wait for that write, so deleting on the listing alone took the folder from under it and the
+/// scan never reached Saved scans. The app therefore deletes with `run(after:)`, waiting for the
+/// bundle writes that were started before the listing; the recheck in `run` then keeps a folder
+/// whose bundle landed meanwhile.
 public struct ScanFolderCleanup: Sendable {
     /// The bundle Share scan offers. A scan is completed when this file is a whole capture packet
     /// (`PacketArchiveCheck`); the file being there is not enough.
@@ -132,7 +139,8 @@ public struct ScanFolderCleanup: Sendable {
     /// The deletion runs later than the listing, off the main actor, and a folder can change in
     /// between: a bundle write can start in a folder listed as never packaged, or finish in one.
     /// Each entry is read again and deleted only if it is still what it was when listed; one that
-    /// changed is left for the next cleanup. A change after this second read is not caught.
+    /// changed is left for the next cleanup. A change after this second read is not caught, so a
+    /// write still going when this runs can lose its folder: `run(after:)` waits for known writers.
     public func run() -> [(url: URL, error: any Error)] {
         let files = FileManager.default
         return obsolete.compactMap { url in
@@ -145,5 +153,15 @@ public struct ScanFolderCleanup: Sendable {
                 return (url, error)
             }
         }
+    }
+
+    /// `run()`, once `wait` returns. The app's `wait` is the scan bundle writes started before
+    /// this cleanup was listed (one chain: each write waits for the one before it), so a folder
+    /// listed while its packet was still being assembled is judged again only after that write
+    /// ends: a bundle that landed keeps the folder, and a write that failed before zipping leaves
+    /// it to be deleted. A `wait` that returns at once, as at launch with no write, is `run()`.
+    public func run(after wait: () async -> Void) async -> [(url: URL, error: any Error)] {
+        await wait()
+        return run()
     }
 }

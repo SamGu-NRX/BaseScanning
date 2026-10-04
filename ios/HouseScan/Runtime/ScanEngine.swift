@@ -2220,7 +2220,18 @@ final class ScanEngine {
     /// place, so it is not offered while a write is under way, and writes run one after another:
     /// a retry's write waits for the last one, and a write already superseded is skipped.
     /// `inputs` were captured with the upload's scene (`captureUpload`); this rereads nothing.
+    ///
+    /// Inputs read from an earlier store write into that store's folder, which the current
+    /// store's cleanup may delete; they are refused before they change what this scan offers.
+    /// The callers already drop a capture from before Start over; this keeps that true here.
+    ///
+    /// Start over doesn't wait for a write in flight: the next store's cleanup waits for
+    /// `bundleTask` before deleting the folder, so the write's bundle lands and is kept.
     func saveBundle(_ inputs: PacketInputs?) {
+        if let inputs, inputs.storeDirectory != store.directory {
+            RuntimeLog.engine.error("scan bundle not written: its capture belongs to a scan already started over")
+            return
+        }
         state.shareableScan = nil
         bundleSerial += 1
         let serial = bundleSerial
@@ -2271,7 +2282,11 @@ final class ScanEngine {
         meterTracking = nil
         meterAnchorPresence = MeterAnchorPresence()
         meterPlaneSource = .detectedPlane
-        store = KeyframeStore()
+        // The old scan's bundle may still be packing in the folder the new store's cleanup lists
+        // as never packaged. Start over doesn't wait for it; the cleanup's deletion does, for this
+        // chain head (every write waits for the one before it). `generation` was raised above,
+        // so a queued write for the old scan still skips, and a finished one isn't offered here.
+        store = KeyframeStore(deletingAfter: bundleTask)
         recorder = Self.makeRecorder(store)
         live?.setRecorder(recorder)
         motion.stop()
