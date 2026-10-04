@@ -567,6 +567,10 @@ enum EndMarkRefusal: Error, Equatable, Sendable {
     case otherSide(WallSide)
     /// Tracking isn't normal, as for a feature mark (`MarkRefusal.trackingNotReady`).
     case trackingNotReady
+    /// During a past_end request: an end there would leave less wall than the walk's minimum
+    /// (`CoverageMap.endWouldLeaveTooLittle`, `WallFrame.minWallLength`), which the app can't use.
+    /// Decided in `aimedEnd`, so the preview and the button agree.
+    case tooLittleWall
 }
 
 enum MarkRefusal: Equatable, Sendable {
@@ -631,6 +635,10 @@ struct GapRequest: Identifiable, Equatable, Sendable {
     /// Set while a walk-out request's line lies past where the space ends
     /// (`GapPlanner.walkOutBlock`): no walk can meet it, and the card says so.
     var spaceEnds: SpaceEnds? = nil
+    /// A server past_end request's side: the walk stopped there, and the request asks to walk on
+    /// past it. The screen also offers "Wall ends here" for that end, with its question, as the
+    /// walk does (B-12). Nil for every other request.
+    var pastEndSide: WallSide? = nil
 }
 
 // MARK: - Upload and result

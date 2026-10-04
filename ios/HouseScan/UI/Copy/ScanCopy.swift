@@ -397,6 +397,12 @@ enum ScanCopy {
             Instruction(title: "That's the \(landed.rawValue) side of your meter", detail: "Turn to the \(side.rawValue) end, then tap Wall ends here.")
         case .trackingNotReady:
             Instruction(title: "One moment, your phone is still finding its place", detail: "Then aim at the \(side.rawValue) end.")
+        case .tooLittleWall:
+            // Says what the app can't do, not where to aim: the homeowner must not be nudged to
+            // mark an end farther than the wall really goes. "I can't get there" stays the way on.
+            // The app's own minimum (`WallFrame.minWallLength`), not a measured installation rule:
+            // no reason is given for it, and rule distances belong to the server.
+            Instruction(title: "House Scan can't use a wall that short", detail: "If this is where the wall ends, tap I can't get there to continue.")
         }
     }
 
@@ -453,7 +459,11 @@ enum ScanCopy {
         case .wallAboveCandidate:
             return Instruction(title: "Show the wall \(place)", detail: "Tilt up so the wall above this spot is in view.")
         case .server(let detail):
-            return Instruction(title: gap.band == .ground ? "Show the ground \(stretch)" : "Show the wall \(stretch)", detail: detail)
+            let title = gap.band == .ground ? "Show the ground \(stretch)" : "Show the wall \(stretch)"
+            // A past_end request asks to walk on past an end; the wall may really stop before
+            // that, and the screen offers the walk's own "Wall ends here" for it (B-12).
+            guard gap.pastEndSide != nil else { return Instruction(title: title, detail: detail) }
+            return Instruction(title: title, detail: "\(detail) \(pastEndAlternative)")
         case .groundOut(let out):
             return Instruction(
                 title: "Show the ground out to about \(Distance.feetAtLeast(out)) from the wall",
@@ -489,6 +499,9 @@ enum ScanCopy {
     /// The request a gap card asks for, without the walk-out's reading from where the phone is
     /// now: what the card's reply answers (`InstructionCard.Reply.task`) and what the guidance log
     /// keeps. The reading changes as the phone moves, and each change would lock the reply again.
+    /// After a past_end request's own words: the other true answer, in the walk's vocabulary.
+    static let pastEndAlternative = "If the wall stops sooner, aim where it stops and tap Wall ends here."
+
     static func gapTask(_ gap: GapRequest) -> Instruction {
         var steady = gap
         steady.walkOut = nil

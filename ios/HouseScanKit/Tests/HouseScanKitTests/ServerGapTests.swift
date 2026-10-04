@@ -243,6 +243,40 @@ import Testing
         #expect(left.band == .ground && left.span == -5 ... -3)
         let right = try #require(GapPlanner().plan(for: item(#"{"kind":"past_end","side":"right","message":"m"}"#), leftEnd: -3, rightEnd: 4))
         #expect(right.span == 4...6)
+        // One owner of the 2 m: the item's request is the planner's past-end request from that end.
+        #expect(left == GapPlanner().pastEndPlan(side: .left, end: -3))
+        #expect(right == GapPlanner().pastEndPlan(side: .right, end: 4))
+    }
+
+    /// "It turns a corner" on a past_end request: the request can't follow the corner, so it is
+    /// skipped, and the request planned from the homeowner's corner is recorded with it
+    /// (`ScanEngine.skipCurrentGap(deferring:)`). The next answer's repeat of that side is not
+    /// raised; a past_end from a different end on that side, or another request, still is. Ends
+    /// at -3 and 4 m; the corner nearer or farther than the cleared end, on either side.
+    @Test(arguments: [
+        (WalkSide.left, Float(-2), Float(-1)), (.left, -4, -5),
+        (.right, 3, 2), (.right, 5, 6),
+    ])
+    func aCornerIsNotAskedForAgainFromThatEnd(side: WalkSide, corner: Float, laterEnd: Float) throws {
+        let planner = GapPlanner()
+        let pastEnd = try item(#"{"kind":"past_end","side":"\#(side.rawValue)","message":"m"}"#)
+        let ground = try item(#"{"kind":"band","band":"ground","span_ft":[3.0,5.5],"message":"m"}"#)
+        func ends(_ s: Float) -> (left: Float, right: Float) { side == .left ? (s, 4) : (-3, s) }
+        let cleared = ends(side == .left ? -3 : 4)
+        let raised = try #require(planner.plan(for: pastEnd, leftEnd: cleared.left, rightEnd: cleared.right))
+        let deferred = planner.pastEndPlan(side: side, end: corner)
+        func next(at end: (left: Float, right: Float), skipped: [GapPlan]) -> [PlacementMissingEvidence] {
+            planner.serverRequests(
+                in: [pastEnd, ground], leftEnd: end.left, rightEnd: end.right, limitEnds: [],
+                asked: [raised], skipped: skipped, limit: 5
+            ).map(\.item)
+        }
+        // The skipped request alone misses the repeat: the corner moved the end.
+        #expect(next(at: ends(corner), skipped: [raised]) == [pastEnd, ground])
+        // With the corner's request recorded, the repeat is not raised; the ground request is.
+        #expect(next(at: ends(corner), skipped: [raised, deferred]) == [ground])
+        // The end moved on from the corner later: walking past it is a new view.
+        #expect(next(at: ends(laterEnd), skipped: [raised, deferred]) == [pastEnd, ground])
     }
 
     /// Issue #39: the answer asks for two views and the homeowner can't get to the first. The

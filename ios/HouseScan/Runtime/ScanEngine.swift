@@ -128,14 +128,16 @@ final class ScanEngine {
     /// new one (`keepOverheadView`); counting keyframes would not do, since the walk keeps them too.
     private var overheadViewsAtGapStart = 0
     /// Requests the homeowner skipped or answered with something overhead: they go to installer
-    /// review, and the result doesn't offer them as captures again.
+    /// review, and the result doesn't offer them as captures again. With them, the past_end
+    /// request from a corner a request couldn't follow (`skipCurrentGap(deferring:)`).
     private(set) var skippedGaps: [GapPlan] = []
     /// The side of a server past_end request being captured: that end was cleared, and marking
-    /// it again settles the request (see `markWallEnd`).
+    /// it again as where the wall stops settles the request (see `markWallEnd`, `answerWallEnd`).
     var pastEndSide: WallSide?
-    /// The end the past_end request cleared: where it was, its kind and when it was marked, put
-    /// back or moved on when the request ends without it marked again (`settleClearedEnd`).
-    private var clearedEnd: (s: Float, kind: EndKind, t: Double?)?
+    /// The end the past_end request cleared: where it was, its kind and its stamp (marked, with
+    /// when, or inferred), put back or moved on when the request ends without it marked again
+    /// (`settleClearedEnd`).
+    private var clearedEnd: (s: Float, kind: EndKind, stamp: WallEndStamp)?
     /// Server requests raised without a tap since the review was confirmed (`automaticGapQueue`),
     /// oldest first. Each is raised once, whether its view was taken or the homeowner couldn't
     /// get there; the result still offers it as a capture.
@@ -232,8 +234,12 @@ final class ScanEngine {
             }
         }
     }
-    /// When each mark was made, on the capture clock (`MarkKey`).
+    /// When each mark was made, on the capture clock (`MarkKey`). Wall ends keep theirs in
+    /// `endStamps`, with whether the homeowner marked them at all.
     var markTimes: [String: Double] = [:]
+    /// Whether each wall end was marked by the homeowner, with when, or inferred from the walk
+    /// (`WallEndStamp`, B-12). Written by every `setEnd`, so it never outlives its end's source.
+    var endStamps: [WallSide: WallEndStamp] = [:]
     /// The packet's clock for guidance and marks: the latest frame's time, ARFrame.timestamp
     /// live. A replay plays parts of its recording more than once, so its clock is the latest
     /// frame time seen and never runs back. Nil until the first frame.
@@ -558,6 +564,10 @@ final class ScanEngine {
             if state.tracking == .normal { breakWalkedPath(because: "tracking left normal") }
             state.tracking = frame.tracking
             live?.setResultVisible(frame.tracking == .normal)
+            // The circle's end checks this tracking (`aimedEnd`), and a pose-only frame returns
+            // below before guidance republishes the preview, so the tape would keep an end that
+            // "Wall ends here" now refuses (review of #213).
+            publishEndPreview()
         }
         noteMeterAnchor(frame)
         // A frame made before the meter was anchored again carries the old anchor's pose. First,
@@ -1383,7 +1393,9 @@ final class ScanEngine {
         } else {
             store.keyframes.count > keyframesAtGapStart
         }
-        let satisfied = gapPlanner.isSatisfied(plan, map) && fresh
+        // Not while the end question is up: the homeowner marked the end and is saying what is
+        // there, and that answer closes the request (`answerWallEnd`).
+        let satisfied = gapPlanner.isSatisfied(plan, map) && fresh && state.endQuestion == nil
         state.guidance = .gap
         let center = (plan.span.lowerBound + plan.span.upperBound) / 2
         let cue = gapCue(plan, map, center: center)
@@ -1675,6 +1687,7 @@ final class ScanEngine {
         coverage?.heightError = groundMeasured ? 0 : Self.estimatedGroundError
         self.groundMeasured = groundMeasured
         endKinds = [:]
+        endStamps = [:]
         state.endQuestion = nil
         state.wallTooShort = false
         nextWallSide = nil
@@ -1867,9 +1880,16 @@ final class ScanEngine {
         )
     }
 
-    func setEnd(_ side: WallSide, at s: Float, kind: EndKind) {
+    /// Sets the end on `side`. `source` says who put it there: the homeowner's mark is stamped
+    /// with the capture clock; an end inferred from the walk has no mark time (B-12).
+    func setEnd(_ side: WallSide, at s: Float, kind: EndKind, source: WallEndSource) {
+        setEnd(side, at: s, kind: kind, stamp: source == .homeowner ? .marked(at: captureClock) : .inferred)
+    }
+
+    /// Sets the end on `side` with a given stamp: a restored end keeps the one it had.
+    func setEnd(_ side: WallSide, at s: Float, kind: EndKind, stamp: WallEndStamp) {
         guard var map = coverage else { return }
-        markTimes[MarkKey.end(side)] = captureClock
+        endStamps[side] = stamp
         map.setEnd(side == .left ? .left : .right, at: s)
         // Ground past a limit end still counts toward clearances (server contract, "Ends and
         // corners"); past an unexplored end it doesn't.
@@ -1880,7 +1900,7 @@ final class ScanEngine {
         state.endMarkRefusal = nil
         publishWall()
         publishCoverage()
-        RuntimeLog.engine.info("end \(side.rawValue, privacy: .public) at s=\(s) (\(kind == .limit ? "limit" : "unexplored", privacy: .public))")
+        RuntimeLog.engine.info("end \(side.rawValue, privacy: .public) at s=\(s) (\(kind == .limit ? "limit" : "unexplored", privacy: .public), \(stamp.isInferred ? "inferred" : "marked", privacy: .public))")
         if let camera = lastFrame?.camera, state.phase == .wallWalk {
             updateGuidance(camera: camera, time: lastFrame?.timestamp ?? 0)
         }
@@ -1894,7 +1914,7 @@ final class ScanEngine {
     }
 
     func clearEnd(_ side: WallSide) {
-        markTimes[MarkKey.end(side)] = nil
+        endStamps[side] = nil
         updateCoverage { $0.clearEnd(side == .left ? .left : .right) }
         endKinds[side] = nil
         if state.endQuestion == side { state.endQuestion = nil }
@@ -1939,7 +1959,9 @@ final class ScanEngine {
         keyframesAtGapStart = store.keyframes.count
         overheadViewsAtGapStart = coverage?.overheadCameras.count ?? 0
         let progress = coverage.map { gapPlanner.progress(of: plan, $0) } ?? 0
-        state.gap = GapRequest(id: gapCounter, origin: origin, reason: reason, band: plan.band == .ground ? .ground : .wall, span: plan.span, progress: progress, isSatisfied: false)
+        state.gap = GapRequest(
+            id: gapCounter, origin: origin, reason: reason, band: plan.band == .ground ? .ground : .wall, span: plan.span,
+            progress: progress, isSatisfied: false, pastEndSide: pastEndSide)
         state.guidance = .gap
         go(.gapRequest)
         updateGap(camera: lastFrame?.camera)
@@ -1949,6 +1971,15 @@ final class ScanEngine {
     /// with the new evidence (the closed loop: gap, instruction, capture, updated result). The
     /// answer then leads to the next capturable request or to the result (`upload`).
     private func afterGapResolved() {
+        // A request left with its end question unanswered (the phone lost its place, say): the
+        // end stays the homeowner's mark, unexplored as for any unanswered end, and the question
+        // must not outlive the request and hold the next one.
+        if let side = state.endQuestion, side == pastEndSide {
+            state.endQuestion = nil
+            state.endQuestionLeavesOut = nil
+            state.endQuestionLeavesOutSeen = false
+        }
+        state.endMarkRefusal = nil
         settleClearedEnd()
         gapPlan = nil
         pastEndSide = nil
@@ -1958,8 +1989,9 @@ final class ScanEngine {
         startUpload()
     }
 
-    /// The past_end request's end was marked again and its question answered: the request is
-    /// settled, so the scan goes to the upload like a closed gap.
+    /// The past_end request's end was marked again and the homeowner said the wall stops there:
+    /// the request is settled, so the scan goes to the upload like a closed gap. A corner doesn't
+    /// settle it (`answerWallEnd`).
     func settlePastEnd() {
         guard state.phase == .gapRequest, var request = state.gap, !request.isSatisfied else { return }
         resolveGuidance(.met)
@@ -2007,7 +2039,14 @@ final class ScanEngine {
     /// overhead, or "Show my result"): recorded for installer review, then on to the upload. The
     /// answer that follows raises the next item it lists, never this one again
     /// (`automaticGapQueue`); only "Show my result" (`stopGapRequests`) ends the requests.
-    func skipCurrentGap(because reason: String = "the homeowner can't get there", refused: Bool = true) {
+    ///
+    /// `deferring` is a request this one stands for that nobody was shown: the past_end request
+    /// from the corner the homeowner just marked (`answerWallEnd`), which this request can't
+    /// follow. Recorded with the skipped requests only, so the next answer doesn't raise it again
+    /// (`GapPlan.asksForSameView`); it logs no guidance and marks no cells, since no view was
+    /// asked for or taken there. A past_end from a different end later, and other requests, can
+    /// still be raised.
+    func skipCurrentGap(because reason: String = "the homeowner can't get there", refused: Bool = true, deferring: GapPlan? = nil) {
         guard let plan = gapPlan else { return }
         // Something overhead is an answer: the request goes to review without its view.
         resolveGuidance(refused ? .cannotReach : .skipped)
@@ -2015,6 +2054,7 @@ final class ScanEngine {
         // nothing about the band the strip draws.
         if plan.need == .cells { coverage?.markSkipped(plan.band, plan.span) }
         skippedGaps.append(plan)
+        if let deferring { skippedGaps.append(deferring) }
         publishCoverage()
         RuntimeLog.engine.info("gap \(self.gapCounter) left for installer review: \(reason, privacy: .public)")
         afterGapResolved()
@@ -2187,7 +2227,8 @@ final class ScanEngine {
             let wallSide: WallSide = side == .left ? .left : .right
             pastEnd = wallSide
             let old = wallSide == .left ? coverage?.leftEnd : coverage?.rightEnd
-            clearedEnd = old.map { (s: $0, kind: endKinds[wallSide] ?? EndKind.unexplored, t: markTimes[MarkKey.end(wallSide)]) }
+            // An end without a stamp comes back as inferred: no source is ever made up for it.
+            clearedEnd = old.map { (s: $0, kind: endKinds[wallSide] ?? EndKind.unexplored, stamp: endStamps[wallSide] ?? .inferred) }
             clearEnd(wallSide)
         }
         // Set first, so the guidance log records the request as a past-end one.
@@ -2195,21 +2236,24 @@ final class ScanEngine {
         beginGap(plan, origin: .server, reason: .server(detail: item.message))
     }
 
-    /// A past_end request ending without its end marked again (the gap screen offers only "I
-    /// can't get there") must not leave that side without an end: the export would run the wall
-    /// out to whatever the fog saw, and the next past_end request would be planned from the
-    /// meter (issue #35). Met, the end moves on past the ground the request showed, still
-    /// unexplored (`GapPlanner.endAfterPastEnd`); skipped, the end it cleared comes back with its
-    /// kind and mark time.
+    /// A past_end request leaving the screen settles the end it cleared (`PastEndSettlement`).
+    /// Marked again during the request ("Wall ends here"), the homeowner's end stands, nearer or
+    /// farther than the cleared one, which only said how far the walk had seen. Met by views,
+    /// the end moves on past the ground the request showed, unexplored and inferred
+    /// (`GapPlanner.endAfterPastEnd`). Skipped, the cleared end comes back with its kind, source
+    /// and mark time. Left without an end, the export would run the wall out to whatever the fog
+    /// saw, and the next past_end request would be planned from the meter (issue #35).
     private func settleClearedEnd() {
         guard let side = pastEndSide, let old = clearedEnd, let plan = gapPlan else { return }
         clearedEnd = nil
-        guard (side == .left ? coverage?.leftEnd : coverage?.rightEnd) == nil else { return }
-        if state.gap?.isSatisfied == true {
-            setEnd(side, at: gapPlanner.endAfterPastEnd(plan, side: side == .left ? .left : .right, clearedAt: old.s), kind: .unexplored)
-        } else {
-            setEnd(side, at: old.s, kind: old.kind)
-            markTimes[MarkKey.end(side)] = old.t
+        let marked = (side == .left ? coverage?.leftEnd : coverage?.rightEnd) != nil
+        switch PastEndSettlement.when(endMarkedDuringRequest: marked, met: state.gap?.isSatisfied == true) {
+        case .keepMarked:
+            return
+        case .moveOn:
+            setEnd(side, at: gapPlanner.endAfterPastEnd(plan, side: side == .left ? .left : .right, clearedAt: old.s), kind: .unexplored, source: .inferred)
+        case .restore:
+            setEnd(side, at: old.s, kind: old.kind, stamp: old.stamp)
         }
     }
 
@@ -2403,6 +2447,7 @@ final class ScanEngine {
     private func resetPacketLog() {
         guidanceLog = GuidanceLog()
         markTimes = [:]
+        endStamps = [:]
         captureClock = nil
     }
 

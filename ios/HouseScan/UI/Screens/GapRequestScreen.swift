@@ -8,6 +8,11 @@ import SwiftUI
 /// review) carries "One more view to finish" above the instruction, the words the upload screen
 /// just said. "I can't get there" skips only this view and goes on to the check's next one;
 /// "Show my result", on every such request, stops asking and leads to the result.
+///
+/// A past_end request (the walk stopped at an end, and the check asks to walk on past it) also
+/// offers the walk's own "Wall ends here" for that end, with the circle, the end's preview on the
+/// tape, the refusal when the circle isn't on that end, and the end question (B-12). Walking on
+/// stays the request; marking the end is the other true answer.
 struct GapRequestScreen: View {
     let state: ScanViewState
     let actions: any ScanActions
@@ -27,6 +32,17 @@ struct GapRequestScreen: View {
                 SavedMeterPhoto(image: meterPhoto)
                     .transition(.opacity)
             }
+            // The end lands under the circle, as on the walk's "Is this the right end?". It fades
+            // with "Wall ends here" on the same spring, so the pair comes and goes together;
+            // scoped to the circle, so nothing else on the camera animates with it. Under Reduce
+            // Motion only its opacity changes, briefly: nothing moves.
+            if state.gap?.pastEndSide != nil {
+                Reticle(diameter: 56)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
+                    .opacity(offersEndMark ? 1 : 0)
+                    .animation(reduceMotion ? .easeOut(duration: 0.15) : Motion.settle, value: offersEndMark)
+            }
             if state.gap?.isSatisfied == true {
                 SuccessBadge()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -35,8 +51,8 @@ struct GapRequestScreen: View {
             }
             CameraChrome(
                 instruction: instruction,
-                tone: asking ? .normal : coaching.map { .coaching(symbol: ScanCopy.coachingSymbol($0)) } ?? .normal,
-                reply: state.gap?.isSatisfied == true || asking ? nil : InstructionCard.Reply(
+                tone: tone,
+                reply: state.gap?.isSatisfied == true || asking || askingEnd ? nil : InstructionCard.Reply(
                     title: "I can't get there",
                     identifier: "action.skipGap",
                     hint: skipHint,
@@ -58,6 +74,20 @@ struct GapRequestScreen: View {
                         OverheadAnswers(actions: actions)
                             .transition(.opacity)
                     }
+                    // The end's controls fade on their own: the rows below them move into place at
+                    // once rather than sliding with the stack, and under Reduce Motion nothing
+                    // animates.
+                    VStack(spacing: 10) {
+                        if askingEnd {
+                            EndQuestionAnswers(actions: actions)
+                                .transition(.opacity)
+                        }
+                        if offersEndMark {
+                            markEndButton
+                        }
+                    }
+                    .animation(reduceMotion ? nil : Motion.settle, value: askingEnd)
+                    .animation(reduceMotion ? nil : Motion.settle, value: offersEndMark)
                     if !typeSize.isAccessibilitySize {
                         showResult
                     }
@@ -71,7 +101,8 @@ struct GapRequestScreen: View {
                             features: state.features,
                             cameraS: state.projection.map { WallProjection(projection: $0, wall: wall, size: cameraSize).cameraS },
                             highlight: state.gap,
-                            depthChecked: state.depthAvailable
+                            depthChecked: state.depthAvailable,
+                            endPreview: offersEndMark ? state.endPreview : nil
                         )
                     }
                     if typeSize.isAccessibilitySize {
@@ -79,6 +110,7 @@ struct GapRequestScreen: View {
                     }
                 }
                 .animation(reduceMotion ? .easeOut(duration: 0.15) : Motion.settle, value: asking)
+
             }
         }
         .animation(reduceMotion ? .easeOut(duration: 0.15) : Motion.pin, value: state.gap?.isSatisfied)
@@ -96,7 +128,7 @@ struct GapRequestScreen: View {
     /// sizes it goes below the tape, the last thing on the screen, reached by scrolling like
     /// everything else below the card at that size.
     @ViewBuilder private var showResult: some View {
-        if followUps > 0, state.gap?.isSatisfied != true, !asking {
+        if followUps > 0, state.gap?.isSatisfied != true, !asking, !askingEnd {
             Button {
                 actions.showResultNow()
             } label: {
@@ -112,6 +144,48 @@ struct GapRequestScreen: View {
     /// The overhead question is up: it replaces the instruction, coaching and "I can't get there"
     /// until answered, as on the walk.
     private var asking: Bool { state.overheadQuestion && state.gap?.isSatisfied != true }
+
+    /// The end question after "Wall ends here" on a past_end request: it replaces the request,
+    /// "I can't get there" and "Show my result" until answered. An end the wall stops at settles the
+    /// request; a corner, which the request can't follow, moves on without settling it.
+    private var askingEnd: Bool {
+        guard let side = state.endQuestion, let gap = state.gap else { return false }
+        return gap.pastEndSide == side && !gap.isSatisfied
+    }
+
+    /// "Wall ends here" with the circle, on a past_end request not yet settled or answered.
+    private var offersEndMark: Bool {
+        guard let gap = state.gap, gap.pastEndSide != nil, !gap.isSatisfied else { return false }
+        return !asking && !askingEnd
+    }
+
+    /// The walk's "Wall ends here" at the circle, the same words and flag. Beside walking on, which
+    /// stays the request, it is the other answer, so it is not the screen's primary button.
+    private var markEndButton: some View {
+        Button {
+            actions.markWallEnd(at: nil, viewSize: cameraSize)
+        } label: {
+            Label("Wall ends here", systemImage: "flag.fill")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.secondaryProminent)
+        .accessibilityHint("Marks the end of the wall at the circle in the middle of the screen")
+        .accessibilityIdentifier("action.markEnd")
+        .transition(.opacity)
+    }
+
+    /// A refusal on "Wall ends here" keeps its red triangle, as on the walk; otherwise coaching
+    /// marks the card.
+    private var tone: InstructionCard.Tone {
+        if asking || askingEnd { return .normal }
+        if refusal != nil, !(coaching.map(ScanCopy.coachingReplacesTask) ?? false) { return .refusal }
+        return coaching.map { .coaching(symbol: ScanCopy.coachingSymbol($0)) } ?? .normal
+    }
+
+    /// Why the last "Wall ends here" marked nothing, while the request still asks for that end.
+    private var refusal: EndMarkRefusal? {
+        offersEndMark ? state.endMarkRefusal : nil
+    }
 
     /// Views the finished check still wants, counting this one, when this request is one of
     /// them: a server request while the check's answer is in. Zero otherwise.
@@ -139,7 +213,7 @@ struct GapRequestScreen: View {
     /// own words, which this screen can't judge. Nor the overhead question, a request already
     /// seen, or coaching that replaces the request.
     private var aims: Bool {
-        guard let gap = state.gap, !asking, !gap.isSatisfied else { return false }
+        guard let gap = state.gap, !asking, !askingEnd, refusal == nil, !gap.isSatisfied else { return false }
         if let coaching, ScanCopy.coachingReplacesTask(coaching) { return false }
         if case .groundNearCandidate = gap.reason { return true }
         return false
@@ -151,10 +225,15 @@ struct GapRequestScreen: View {
     /// thanks" for as long as it did (field test 4.1, run 3).
     private var instruction: Instruction {
         if asking { return ScanCopy.overheadQuestion }
+        if askingEnd, let side = state.endQuestion { return ScanCopy.endQuestion(side) }
         if let coaching, ScanCopy.coachingReplacesTask(coaching) { return ScanCopy.coaching(coaching, meterPhoto: meterPhoto != nil) }
         guard let gap = state.gap else { return ScanCopy.withCoaching(ScanCopy.guidance(.gap), coaching) }
         if gap.isSatisfied {
             return Instruction(title: "Got it, thanks", detail: followUps > 0 ? "Updating your result." : "That's the view we needed.")
+        }
+        // "Wall ends here" marked nothing: why, and what to do (B-06, B-12).
+        if let refusal, let side = gap.pastEndSide {
+            return ScanCopy.withCoaching(ScanCopy.endMarkRefusal(refusal, asked: side), coaching)
         }
         return ScanCopy.withCoaching(ScanCopy.gap(gap), coaching)
     }

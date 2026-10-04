@@ -6,13 +6,15 @@ import ImageIO
 import simd
 import Testing
 
-/// The capture packet's manifest schema, version 1.1, byte for byte from t3/packet at d5439cf
-/// (packet/manifest.schema.json). `vendoredManifestSchemaIsTheRecordedRevision` fails if the copy
-/// is edited by hand. There is no live copy to compare with: t3/packet retired 1.1 at 6a12700 in
-/// favour of the server team's packet 0.4, which the writer moves to next.
+/// The capture packet's manifest schema, version 1.1: t3/packet at d5439cf
+/// (packet/manifest.schema.json, sha256 44c9c9be…), plus one additive change made here, the
+/// optional `attrs.inferred` on a wall end and `t`'s description (B-12, packet/README.md).
+/// `vendoredManifestSchemaIsTheRecordedRevision` fails if the copy changes without this record.
+/// There is no live copy to compare with: t3/packet retired 1.1 at 6a12700 in favour of the server
+/// team's packet 0.4, which the writer moves to next.
 enum PacketSchema {
     static let name = "manifest.schema.json"
-    static let sha256 = "44c9c9beb1a95b85d069d9abc52c193008a50aa75e1dff52f5d47431f10c5c75"
+    static let sha256 = "54d2a0d104162801a35599c5300acff09b2c2061aa8e88291f2621c04398bc27"
 
     static func validator() throws -> JSONSchemaValidator { try JSONSchemaValidator(schema: SceneSchemas.data(name)) }
 }
@@ -167,8 +169,9 @@ struct SyntheticPacket {
             id: "ground", alignment: .horizontal, classification: nil, pose: frame.pose(matrix_identity_float4x4), extent: SIMD2(6, 3)))
         try writer.setMarks([
             .meter(id: "m1", t: 100.1, photoIDs: ["p00001"]),
-            .wallEnd(id: "m2", side: .left, endKind: .unexplored, s: -3, wall: wall, frame: frame, t: 100.2),
-            .wallEnd(id: "m3", side: .right, endKind: .limit, s: 3, wall: wall, frame: frame, t: 101.9),
+            // Placed from the walk ("Can't get there"): no mark time, attrs.inferred.
+            .wallEnd(id: "m2", side: .left, endKind: .unexplored, s: -3, wall: wall, frame: frame, stamp: .inferred),
+            .wallEnd(id: "m3", side: .right, endKind: .limit, s: 3, wall: wall, frame: frame, stamp: .marked(at: 101.9)),
             try .from(.opening(kind: .window, span: -2 ... -1.25, bottom: 1, top: 2, operable: true), id: "m4", wall: wall, frame: frame, t: 100.4),
             try .from(.pointObject(kind: .gasMeter, tap: SIMD3(1.5, 1, 0.1), bottom: nil, top: nil), id: "m5", wall: wall, frame: frame),
             try .from(.driveway(edge: [SIMD3(2, 0, 0.5), SIMD3(2, 0, 4)]), id: "m6", wall: wall, frame: frame, t: 101.5),
@@ -320,6 +323,8 @@ struct SyntheticPacket {
         // Marks and guidance come back as written.
         let marks = try #require(manifest.marks)
         #expect(marks.map(\.kind) == [.meter, .wallEnd, .wallEnd, .window, .gasMeter, .driveEdge])
+        #expect(marks[1].inferred && marks[1].t == nil, "the inferred left end")
+        #expect(!marks[2].inferred && marks[2].t == 101.9, "the marked right end")
         let window: [SIMD3<Float>] = [SIMD3(-2, -0.5, 0), SIMD3(-1.25, 0.5, 0)]
         let drive: [SIMD3<Float>] = [SIMD3(2, -1.5, 0.5), SIMD3(2, -1.5, 4)]
         #expect(marks[3].points == window)
@@ -362,7 +367,9 @@ struct SyntheticPacket {
         #expect(Set(planes[1].keys) == ["id", "alignment", "pose", "extent_m"])
         let marks = try #require(json["marks"] as? [[String: Any]])
         #expect(Set(marks[0].keys) == ["id", "kind", "points", "t", "photo_ids"])
-        #expect(Set(marks[1].keys) == ["id", "kind", "points", "t", "side", "end_kind"])
+        // The left end is inferred: the flag, no mark time. The right end is the homeowner's.
+        #expect(Set(marks[1].keys) == ["id", "kind", "points", "side", "end_kind", "attrs"])
+        #expect(Set(marks[2].keys) == ["id", "kind", "points", "t", "side", "end_kind"])
         #expect((marks[3]["attrs"] as? [String: Bool]) == ["operable": true])
         let guidance = try #require(json["guidance"] as? [[String: Any]])
         #expect(Set(guidance[1].keys) == ["id", "kind", "origin", "message", "band", "span_m", "t_shown", "t_resolved", "outcome"])
@@ -767,7 +774,7 @@ private func photoJPEG() throws -> URL {
         let fence = try PacketMark.from(.fence(foot: [SIMD3(-1, 0, 3), SIMD3(1, 0, 3)]), id: "f", wall: wall, frame: frame)
         #expect(fence.kind == .fence && fence.points == [SIMD3(-1, -1.5, 3), SIMD3(1, -1.5, 3)])
         #expect(throws: PacketError.self) { try PacketMark.from(.driveway(edge: [SIMD3(0, 0, 1)]), id: "x", wall: wall, frame: frame) }
-        let end = PacketMark.wallEnd(id: "e", side: .right, endKind: .limit, s: 2.5, wall: wall, frame: frame)
+        let end = PacketMark.wallEnd(id: "e", side: .right, endKind: .limit, s: 2.5, wall: wall, frame: frame, stamp: .marked(at: nil))
         #expect(end.points == [SIMD3(2.5, 0, 0)] && end.side == .right && end.endKind == .limit)
         #expect(PacketMark.meter(id: "m").points == [.zero])
     }
@@ -796,7 +803,7 @@ private func photoJPEG() throws -> URL {
 @Suite struct PacketSchemaTests {
     @Test func vendoredManifestSchemaIsTheRecordedRevision() throws {
         let digest = SHA256.hash(data: try SceneSchemas.data(PacketSchema.name)).map { String(format: "%02x", $0) }.joined()
-        #expect(digest == PacketSchema.sha256, "Schemas/\(PacketSchema.name) is not the copy taken from t3/packet d5439cf")
+        #expect(digest == PacketSchema.sha256, "Schemas/\(PacketSchema.name) is not t3/packet d5439cf plus attrs.inferred")
     }
 
     /// The schema is not a rubber stamp: a manifest missing required fields or breaking a pattern

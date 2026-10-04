@@ -114,6 +114,23 @@ extension ScanEngine {
         return inputs
     }
 
+    /// The marks and guidance log of the last upload's packet, as `writePacket` writes them into
+    /// manifest.json (`{"marks": [...], "guidance": [...]}`): `withCurrentGuidance` of the inputs
+    /// the upload captured, the same projection `saveBundle` is given. Only the autopilot's UI-test
+    /// gate reads it (`Autopilot.writeSceneForTest`); nil before an upload. Debug builds only.
+    #if DEBUG
+    func packetMarksAndGuidance() -> Data? {
+        guard let inputs = spotConfirm.lastPacket.map(withCurrentGuidance) else { return nil }
+        struct Projection: Encodable {
+            var marks: [PacketMark]
+            var guidance: [PacketGuidanceEntry]
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        return try? encoder.encode(Projection(marks: inputs.marks, guidance: inputs.guidance))
+    }
+    #endif
+
     /// `utsname.machine`, such as "iPhone16,1": the hardware, never the phone's name. "arm64" in
     /// the Simulator.
     nonisolated static func hardwareModel() -> String {
@@ -137,7 +154,9 @@ extension ScanEngine {
             guard let s else { continue }
             marks.append(.wallEnd(
                 id: "wall_end_\(side.rawValue)", side: side == .left ? .left : .right,
-                endKind: wallEndKinds[side] == .limit ? .limit : .unexplored, s: s, wall: wall, frame: frame, t: markTimes[MarkKey.end(side)]
+                endKind: wallEndKinds[side] == .limit ? .limit : .unexplored, s: s, wall: wall, frame: frame,
+                // No stamp is never read as the homeowner's mark (B-12).
+                stamp: endStamps[side] ?? .inferred
             ))
         }
         for feature in state.features {
@@ -170,7 +189,6 @@ extension ScanEngine {
     /// Keys of `markTimes`.
     enum MarkKey {
         static let meter = "meter"
-        static func end(_ side: WallSide) -> String { "end.\(side.rawValue)" }
         static func feature(_ id: UUID) -> String { id.uuidString }
     }
 

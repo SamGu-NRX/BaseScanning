@@ -54,17 +54,20 @@ public struct PacketMark: Codable, Sendable, Equatable {
     public var kind: Kind
     /// Meter frame, meters.
     public var points: [SIMD3<Float>]
-    /// Uptime when it was marked.
+    /// Uptime when the homeowner marked it. An inferred wall end has none (`inferred`).
     public var t: Double?
     public var photoIDs: [String]?
     public var side: Side?
     public var endKind: EndKind?
     /// `attrs.operable` of an opening; nil when the homeowner was not asked.
     public var operable: Bool?
+    /// `attrs.inferred` of a wall end the app placed from the walk rather than one the homeowner
+    /// marked (`WallEndSource`). Written only when true.
+    public var inferred: Bool
 
     private init(
         id: String, kind: Kind, points: [SIMD3<Float>], t: Double?, photoIDs: [String]?,
-        side: Side? = nil, endKind: EndKind? = nil, operable: Bool? = nil
+        side: Side? = nil, endKind: EndKind? = nil, operable: Bool? = nil, inferred: Bool = false
     ) {
         self.id = id
         self.kind = kind
@@ -74,6 +77,7 @@ public struct PacketMark: Codable, Sendable, Equatable {
         self.side = side
         self.endKind = endKind
         self.operable = operable
+        self.inferred = inferred
     }
 
     /// The meter itself: the meter frame's origin.
@@ -81,13 +85,16 @@ public struct PacketMark: Codable, Sendable, Equatable {
         PacketMark(id: id, kind: .meter, points: [.zero], t: t, photoIDs: photoIDs)
     }
 
-    /// Where the wall was marked as ending, at `s` meters along `wall`'s chain. The point is on
-    /// the wall face at the meter's height, as S4's synthetic fixture places wall ends.
+    /// Where the wall ends, at `s` meters along `wall`'s chain. The point is on the wall face at
+    /// the meter's height, as S4's synthetic fixture places wall ends. `stamp` says whether the
+    /// homeowner marked it, with the time, or the app inferred it from the walk, with no time.
     public static func wallEnd(
-        id: String, side: Side, endKind: EndKind, s: Float, wall: SceneWall, frame: MeterFrame, t: Double? = nil
+        id: String, side: Side, endKind: EndKind, s: Float, wall: SceneWall, frame: MeterFrame, stamp: WallEndStamp
     ) -> PacketMark {
         let point = frame.point(on: wall, s: s, height: wall.meter.y - wall.groundY, out: 0)
-        return PacketMark(id: id, kind: .wallEnd, points: [point], t: t, photoIDs: nil, side: side, endKind: endKind)
+        return PacketMark(
+            id: id, kind: .wallEnd, points: [point], t: stamp.markedAt, photoIDs: nil, side: side, endKind: endKind,
+            inferred: stamp.isInferred)
     }
 
     /// A door, window or garage door: the bottom-left and top-right corners on the wall face,
@@ -147,6 +154,8 @@ public struct PacketMark: Codable, Sendable, Equatable {
         if points.count != kind.pointCount { return "\(points.count) points, a \(kind.rawValue) has \(kind.pointCount)" }
         if !points.allSatisfy(PacketNumber.isFinite) { return "points must be finite" }
         if kind == .wallEnd, side == nil || endKind == nil { return "a wall end needs side and end_kind" }
+        if inferred, kind != .wallEnd { return "only a wall end can be inferred" }
+        if inferred, t != nil { return "an inferred wall end has no mark time: nobody marked it" }
         return nil
     }
 
@@ -158,6 +167,7 @@ public struct PacketMark: Codable, Sendable, Equatable {
 
     private struct Attrs: Codable {
         var operable: Bool?
+        var inferred: Bool?
     }
 
     public init(from decoder: any Decoder) throws {
@@ -174,7 +184,9 @@ public struct PacketMark: Codable, Sendable, Equatable {
         photoIDs = try c.decodeIfPresent([String].self, forKey: .photoIDs)
         side = try c.decodeIfPresent(Side.self, forKey: .side)
         endKind = try c.decodeIfPresent(EndKind.self, forKey: .endKind)
-        operable = try c.decodeIfPresent(Attrs.self, forKey: .attrs)?.operable
+        let attrs = try c.decodeIfPresent(Attrs.self, forKey: .attrs)
+        operable = attrs?.operable
+        inferred = attrs?.inferred ?? false
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -186,7 +198,9 @@ public struct PacketMark: Codable, Sendable, Equatable {
         try c.encodeIfPresent(photoIDs, forKey: .photoIDs)
         try c.encodeIfPresent(side, forKey: .side)
         try c.encodeIfPresent(endKind, forKey: .endKind)
-        try c.encodeIfPresent(operable.map { Attrs(operable: $0) }, forKey: .attrs)
+        if operable != nil || inferred {
+            try c.encode(Attrs(operable: operable, inferred: inferred ? true : nil), forKey: .attrs)
+        }
     }
 }
 
