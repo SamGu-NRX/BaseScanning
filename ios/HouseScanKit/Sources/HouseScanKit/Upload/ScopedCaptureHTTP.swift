@@ -90,6 +90,17 @@ public enum ScopedCaptureHTTPError: Error, Equatable, CustomStringConvertible {
     /// A storage upload already carries an `Authorization` header.
     case storageRequestHasAuthorization
 
+    /// The stable code an upload that hit this refusal ends with (`CaptureUploadState.End.failed`).
+    /// It names the kind of setup or credential problem, never a value.
+    public var code: String {
+        switch self {
+        case .destinationNotAllowed: "auth_destination_refused"
+        case .credentialUnavailable: "auth_credential_unavailable"
+        case .credentialMalformed: "auth_credential_malformed"
+        case .storageRequestHasAuthorization: "auth_storage_authorization"
+        }
+    }
+
     public var description: String {
         switch self {
         case .destinationNotAllowed(let reason): "the request is outside the capture API's scope (\(reason))"
