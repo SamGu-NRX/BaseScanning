@@ -451,17 +451,12 @@ extension ScanEngine {
     /// Core Motion's streams, rows inside the capture only. Returns how many rows were refused.
     private nonisolated static func writeMotion(_ inputs: PacketInputs, window: ClosedRange<Double>, into writer: inout PacketWriter) -> Int {
         var refused = 0
-        for stream in CaptureRecorder.Stream.allCases where stream != .trajectory && inputs.motionStreams.contains(stream) {
+        // Motion streams only: the trajectory is written elsewhere, and frame intrinsics have no
+        // column in the 1.1 packet (`CaptureRecorder.Stream.motionPacketStream`).
+        for stream in CaptureRecorder.Stream.allCases where inputs.motionStreams.contains(stream) {
+            guard let packetStream = stream.motionPacketStream else { continue }
             let rows = inputs.recorder.rows(stream).filter { window.contains($0[0]) }
             guard !rows.isEmpty else { continue }
-            let packetStream: PacketStream = switch stream {
-            case .trajectory: .trajectory
-            case .accelerometer: .accelerometer
-            case .gyroscope: .gyroscope
-            case .magnetometer: .magnetometer
-            case .deviceMotion: .deviceMotion
-            case .barometer: .barometer
-            }
             // CMAltimeter sets its own rate (about 1 Hz), so the barometer claims none.
             if stream != .barometer { try? writer.setNominalRate(MotionSource.rate, for: packetStream) }
             for r in rows {
@@ -476,7 +471,7 @@ extension ScanEngine {
                             userAcceleration: SIMD3(r[8], r[9], r[10]), rotationRate: SIMD3(r[11], r[12], r[13]), headingDegrees: r[14]
                         ))
                     case .barometer: try writer.appendBarometer(t: r[0], pressureKPa: r[1], relativeAltitudeM: r[2])
-                    case .trajectory: break
+                    case .trajectory, .frameIntrinsics: break
                     }
                 } catch {
                     refused += 1

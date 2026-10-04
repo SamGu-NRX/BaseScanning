@@ -182,9 +182,10 @@ extension ScanEngine {
         syntheticCapture?.recording ?? recordingSource
     }
 
-    /// The current world's recording as the capture packet reads it. A replay records no poses or
-    /// motion, and this recorder writes no per-frame intrinsics, so the packet can't pass its
-    /// checks and the phone refuses it; nothing is made up to fill the gap.
+    /// The current world's recording as the capture packet reads it: live, each ARFrame's pose with
+    /// its own intrinsics at the same t, which the packet joins by exact time
+    /// (`Packet04Streams.poseRows`). A replay records no poses, intrinsics or motion, so its packet
+    /// can't pass its checks and the phone refuses it; nothing is made up to fill the gap.
     var recordingSource: RecordingSource {
         let recorder = recorder
         return RecordingSource(
@@ -196,7 +197,7 @@ extension ScanEngine {
             rows: {
                 _ = recorder.flush()
                 return RecorderRows(
-                    trajectory: recorder.rows(.trajectory), intrinsics: [],
+                    trajectory: recorder.rows(.trajectory), intrinsics: recorder.rows(.frameIntrinsics),
                     accelerometer: recorder.rows(.accelerometer), gyroscope: recorder.rows(.gyroscope))
             })
     }
@@ -229,8 +230,8 @@ extension ScanEngine {
     // MARK: Setup
 
     /// What photo processing can do in this build. Sending a capture off the phone is off in this
-    /// slice: the 0.4 clock and privacy contract, a scoped credential, the live intrinsics and
-    /// meter tap, and the deployment aren't settled. The one way to run it is DEBUG's fixture on a
+    /// slice: the 0.4 clock and privacy contract, a scoped credential, the live meter tap, and
+    /// the deployment aren't settled; per-frame intrinsics are recorded but unchecked on a phone. The one way to run it is DEBUG's fixture on a
     /// replay, which answers on the phone (`CaptureFixtureLaunch`); a release build can't, since
     /// `debugBuild` is decided at compile time and the launch options aren't even parsed there.
     static func photoProcessingSetup(_ options: LaunchOptions) -> (setup: PhotoProcessingController.Setup, synthetic: SyntheticCapture?) {
