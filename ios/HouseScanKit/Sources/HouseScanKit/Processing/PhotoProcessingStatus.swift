@@ -230,6 +230,10 @@ extension PhotoProcessingStatus.Stage {
     public static func refusal(step: String, codes: [String], status: Int) -> Self {
         // Only the uploader's own end (`CaptureUploader.unsavedEnd`): step `save`, status 0, its code.
         if step == "save", status == 0, codes.contains(CaptureUploader.unsavedStateCode) { return .ended(.uploadStateUnsaved) }
+        // The coordinator's own end when the phone lost a photo or tap the scan accepted
+        // (`CaptureSessionCoordinator.inputLostCode`): the capture can't be prepared, so it is
+        // never sealed and the scan ends the way a capture that couldn't be prepared does.
+        if step == "prepare", status == 0, codes.contains(CaptureSessionCoordinator.inputLostCode) { return .ended(.notPrepared) }
         if let problem = PhotoSetupProblem(codes: codes, status: status) { return .ended(.setupRefused(step: step, problem)) }
         guard step == "result" else { return .ended(.refused(step: step)) }
         if codes.contains("result_not_ready") { return .ended(.answerNotReady) }

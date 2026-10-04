@@ -100,6 +100,11 @@ import Testing
         #expect(Stage.refusal(step: "save", codes: [CaptureUploader.unsavedStateCode], status: 500) == .ended(.refused(step: "save")))
         // Status 0 alone doesn't make it this failure: the code at another step isn't the uploader's own end.
         #expect(Stage.refusal(step: "put", codes: [CaptureUploader.unsavedStateCode], status: 0) == .ended(.refused(step: "put")))
+        // The coordinator's end for a photo or tap the phone lost: not prepared, never the service's
+        // refusal. With a server status, or at another step, the code isn't that end.
+        #expect(Stage.refusal(step: "prepare", codes: [CaptureSessionCoordinator.inputLostCode], status: 0) == .ended(.notPrepared))
+        #expect(Stage.refusal(step: "prepare", codes: [CaptureSessionCoordinator.inputLostCode], status: 500) == .ended(.refused(step: "prepare")))
+        #expect(Stage.refusal(step: "put", codes: [CaptureSessionCoordinator.inputLostCode], status: 0) == .ended(.refused(step: "put")))
     }
 }
 
@@ -285,6 +290,34 @@ final class HeldResultHTTP: CaptureHTTP, Sendable {
         #expect(!inner.routes.contains("POST captures/finalize"))
         #expect(controller.status?.stage == .ended(.notPrepared))
         controller.endScan(recording: fixture.recording)
+    }
+
+    /// A photo the scan accepted is lost before the phone could stage it, while the upload runs:
+    /// the coordinator stops the upload with its lost-input end, and the scan ends as not prepared,
+    /// not as the service refusing it. The capture is never sealed or finalized.
+    @Test func aPhotoThePhoneLostWhileSendingEndsTheScanNotPrepared() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let http = FixtureCaptureHTTP(answer: .candidate)
+        let controller = controller(http)
+        defer { controller.endScan(recording: fixture.recording) }
+        controller.beginScan(context(controller), recording: fixture.recording)
+        controller.answerConsent(true)
+        let (tap, hit) = try fixture.tap(at: fixture.start + 1)
+        controller.meterTapped(tap, hit: hit)
+        controller.kept(try fixture.photo(at: fixture.start + 2.5, purpose: "meter_close"))
+        await controller.settle()
+        // A photo the scan accepted whose JPEG is gone before the coordinator could stage it.
+        var lost = try fixture.photo(at: fixture.start + 4)
+        lost.jpeg = root.appending(path: "missing.jpg")
+        controller.kept(lost)
+        try #require(try await until { controller.status?.isFinal == true }, "no final stage: \(String(describing: controller.status))")
+        #expect(controller.status?.stage == .ended(.notPrepared))
+        #expect(controller.status?.consent == .granted)
+        // Ended before the send: the capture is never sealed or finalized.
+        controller.captureEnded(acceptedCloseUpAt: fixture.start + 2.5)
+        await controller.settle()
+        #expect(controller.status?.stage == .ended(.notPrepared))
+        #expect(!http.routes.contains("POST captures/finalize"))
     }
 
     /// While the service processes, the phone can no longer save the upload's state (its folder

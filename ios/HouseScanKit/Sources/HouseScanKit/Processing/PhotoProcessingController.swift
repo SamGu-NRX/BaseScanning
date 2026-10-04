@@ -271,6 +271,8 @@ public final class PhotoProcessingController {
                 self.log("photo processing: refused at the credential boundary, \(problem.code) (step \(step))")
             } else if case .ended(.uploadStateUnsaved) = state.stage {
                 self.log("photo processing: this phone couldn't save the upload's progress; sending stopped")
+            } else if case .ended(.notPrepared) = state.stage {
+                self.log("photo processing: the phone lost a photo or tap the scan accepted (step \(step)); the capture can't be prepared")
             }
             state.retrying = false
             self.status = state
