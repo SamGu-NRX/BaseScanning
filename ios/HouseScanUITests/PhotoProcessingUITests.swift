@@ -261,6 +261,12 @@ final class PhotoProcessingUITests: XCTestCase {
         stop.tap()
         let confirm = app.buttons["Stop sending"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5), "stopping didn't ask first")
+        // The question says only what House Scan stops doing: photos already sent may still be
+        // processed, since the app can't cancel the service's job.
+        let detail = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Photos already sent may still be processed by the service.")).firstMatch
+        XCTAssertTrue(detail.waitForExistence(timeout: 5), "the stop question must say photos already sent may still be processed")
+        XCTAssertTrue(detail.label.contains("House Scan will stop sending from this scan and won't resume it."), detail.label)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "won't be processed")).firstMatch.exists, "the stop question must not promise the scan won't be processed")
         attach(app, "processing-stopQuestion")
         confirm.tap()
         XCTAssertTrue(app.descendants(matching: .any)["photo.state.withdrawn"].waitForExistence(timeout: 5))

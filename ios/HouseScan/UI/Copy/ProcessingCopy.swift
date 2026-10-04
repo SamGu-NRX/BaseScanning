@@ -62,7 +62,9 @@ enum ProcessingCopy {
     static let serviceSaid = "The service says"
     static let stopSending = "Stop sending photos"
     static let stopQuestion = "Stop sending this scan's photos?"
-    static let stopDetail = "This scan won't be processed, and House Scan can't start it again. Photos already sent stay with the processing service."
+    /// Stopping can come after the photos reached the service and its processing began, and the app
+    /// can't cancel the service's job, so this says only what House Scan stops doing.
+    static let stopDetail = "House Scan will stop sending from this scan and won't resume it. Photos already sent may still be processed by the service."
     static let confirmStop = "Stop sending"
     static let keepSending = "Keep sending"
     static let setupRefusedDetail = "House Scan couldn't complete its connection to the processing service. This is a setup problem, not a problem with your photos or marks."
