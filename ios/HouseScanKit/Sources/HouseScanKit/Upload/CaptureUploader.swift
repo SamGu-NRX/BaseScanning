@@ -86,6 +86,8 @@ public actor CaptureUploader {
         /// A save failed here: the saved state is older than what this process sent, so this
         /// process never resumes it. A relaunch may, under the consent it records.
         var unsaved = false
+        /// Its world ended (`retire`): this process never resumes it, whatever reached the disk.
+        var retired = false
         var stopped = false
         var running: Task<Void, Never>?
     }
@@ -142,7 +144,7 @@ public actor CaptureUploader {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let folder = try canonicalFolder(folder)
         return try folders.withLock { entries in
-            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn || $0.value.unsaved }
+            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn || $0.value.unsaved || $0.value.retired }
             guard entries[folder.path]?.withdrawn != true,
                   !FileManager.default.fileExists(atPath: CaptureUploadState.withdrawnURL(in: folder).path)
             else { throw OwnershipError.consentWithdrawn }
@@ -172,11 +174,12 @@ public actor CaptureUploader {
         guard FileManager.default.fileExists(atPath: folder.path) else { return nil }
         let folder = try canonicalFolder(folder)
         return try folders.withLock { entries in
-            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn || $0.value.unsaved }
+            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn || $0.value.unsaved || $0.value.retired }
             let url = stateURL(in: folder)
-            guard entries[folder.path]?.withdrawn != true, entries[folder.path]?.unsaved != true,
+            guard entries[folder.path]?.withdrawn != true, entries[folder.path]?.unsaved != true, entries[folder.path]?.retired != true,
                   FileManager.default.fileExists(atPath: url.path),
-                  !FileManager.default.fileExists(atPath: CaptureUploadState.withdrawnURL(in: folder).path)
+                  !FileManager.default.fileExists(atPath: CaptureUploadState.withdrawnURL(in: folder).path),
+                  !FileManager.default.fileExists(atPath: CaptureUploadState.endedURL(in: folder).path)
             else { return nil }
             guard entries[folder.path]?.owner == nil else { throw OwnershipError.alreadyOwned }
             var state = try CaptureUploadState.load(from: url)
@@ -239,6 +242,12 @@ public actor CaptureUploader {
     /// the upload's state. It is a local storage problem: it says nothing about the photos or
     /// the server, and no server answered.
     public static let unsavedStateCode = "local_state_unsaved"
+
+    /// The local end `failPreparation` writes: step `prepare`, status 0, no server answer.
+    static func isPreparationEnd(_ end: CaptureUploadState.End?) -> Bool {
+        guard case .failed(step: "prepare", _, status: 0)? = end else { return false }
+        return true
+    }
     static let unsavedEnd = CaptureUploadState.End.failed(step: "save", codes: [unsavedStateCode], status: 0)
 
     /// How a withdrawal was recorded on disk.
@@ -268,6 +277,37 @@ public actor CaptureUploader {
         return record
     }
 
+    /// How a world's end was recorded on disk (`retire`).
+    public enum RetirementRecord: Sendable, Equatable {
+        /// The ended marker `resume` refuses was written.
+        case marked
+        /// It couldn't be written: this process won't resume the capture, but a relaunch could
+        /// still find its saved yes until a later save records the upload as abandoned.
+        case notRecorded(String)
+    }
+
+    /// Ends this capture's world before returning: admission closes, this process never resumes
+    /// the folder, and the ended marker (`CaptureUploadState.endedURL`) is written, synchronously
+    /// and under the folder registry's lock, as `withdrawConsent` writes its own. The running task
+    /// is cancelled. The upload's saved end still comes from `abandon`, on the uploader's turn.
+    @discardableResult
+    public nonisolated func retire(_ reason: String) -> RetirementRecord {
+        let (record, task) = Self.folders.withLock { entries -> (RetirementRecord, Task<Void, Never>?) in
+            entries[folderKey, default: FolderEntry()].stopped = true
+            entries[folderKey]?.retired = true
+            let record: RetirementRecord
+            do {
+                try Data(reason.utf8).write(to: CaptureUploadState.endedURL(in: folder), options: .atomic)
+                record = .marked
+            } catch {
+                record = .notRecorded(Self.describe(error))
+            }
+            return (record, entries[folderKey]?.running)
+        }
+        task?.cancel()
+        return record
+    }
+
     /// Closes admission synchronously when a coordinator ends a world, before its queued actor
     /// work can kick the upload. Ownership stays until the old uploader and its requests die.
     nonisolated func stopSending() {
@@ -283,11 +323,27 @@ public actor CaptureUploader {
     public func abandon(_ reason: String) {
         stopSending()
         // An end the app asks for replaces a save failure. A withdrawal also replaces an end this
-        // process reached but couldn't save, such as a result or a refusal. Otherwise an end
-        // stays: Start over doesn't rewrite a finished upload.
-        let unsavedWithdrawal = saveFailed && isWithdrawn
-        guard state.end == nil || state.end == Self.unsavedEnd || unsavedWithdrawal else { return }
-        state.end = .abandoned(unsavedWithdrawal ? Self.withdrawnReason : reason)
+        // process reached but couldn't save, such as a result or a refusal, and the local end of
+        // a capture that lost an input (`failPreparation`): the homeowner's no is the reason it
+        // stopped. Otherwise an end stays: Start over doesn't rewrite a finished upload, and a
+        // reset after a loss keeps the loss.
+        let withdrawn = isWithdrawn
+        let replacedByWithdrawal = withdrawn && (saveFailed || Self.isPreparationEnd(state.end))
+        guard state.end == nil || state.end == Self.unsavedEnd || replacedByWithdrawal else { return }
+        state.end = .abandoned(replacedByWithdrawal ? Self.withdrawnReason : reason)
+        state.attemptID = UUID().uuidString
+        loop?.cancel()
+        persist()
+    }
+
+    /// Ends the upload because the phone lost a photo or tap the packet needs: step `prepare`,
+    /// status 0, `code`. Admission closes first, so nothing more is sent; a request already
+    /// admitted may finish, and its reply is dropped. A withdrawal still outranks it (`persist`),
+    /// and an end already reached stays.
+    public func failPreparation(_ code: String) {
+        stopSending()
+        guard state.end == nil else { return }
+        state.end = .failed(step: "prepare", codes: [code], status: 0)
         state.attemptID = UUID().uuidString
         loop?.cancel()
         persist()
@@ -439,8 +495,9 @@ public actor CaptureUploader {
         guard let url = URL(string: text), let scheme = url.scheme?.lowercased(), let host = url.host(), !host.isEmpty else {
             return "upload_url_invalid"
         }
-        let local = host == "127.0.0.1" || host == "localhost"
-        return scheme == "https" || (scheme == "http" && local) ? nil : "upload_url_insecure"
+        // The same rule as the API's own scope under `.loopbackHTTP`: https anywhere, plain http only
+        // to 127.0.0.1, ::1 or localhost, so the two lists can't drift apart.
+        return CaptureAPIScope.allows(scheme: scheme, host: host.lowercased(), transport: .loopbackHTTP) ? nil : "upload_url_insecure"
     }
 
     private func put(_ files: [CaptureUploadState.File]) async throws {

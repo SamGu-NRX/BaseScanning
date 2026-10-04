@@ -165,6 +165,13 @@ public final class CaptureSessionCoordinator {
     /// Checklist purposes the packet's `stills` take; any other still stays a keyframe only.
     public static let stillPurposes: Set<String> = ["meter_close", "meter_oblique"]
 
+    /// The local code a capture ends with when the phone lost a photo or tap the scan accepted:
+    /// the packet can't be prepared complete. The upload, if one is running, ends
+    /// `.failed(step: "prepare", codes: [inputLostCode], status: 0)`; the session's
+    /// `preparationFailure` holds it either way.
+    /// Nonisolated, so status mapping outside the main actor can match it.
+    nonisolated public static let inputLostCode = "capture_input_lost"
+
     @MainActor
     public final class Session {
         /// This app's id for this session, new for every session even when two packets both call
@@ -186,6 +193,9 @@ public final class CaptureSessionCoordinator {
         var frozen: Data?
         /// The server's result for this session's capture, decoded and bound to it.
         public fileprivate(set) var result: CaptureResult.Record?
+        /// Set once a photo or tap the scan accepted couldn't be kept (`inputLostCode`). This
+        /// session then never seals, and never starts an upload.
+        public fileprivate(set) var preparationFailure: String?
 
         init(packetID: String, folder: URL, recording: RecordingSource) {
             self.packetID = packetID
@@ -238,6 +248,12 @@ public final class CaptureSessionCoordinator {
         environment?.sends == true && consent == nil && session != nil
     }
 
+    public enum SessionEndError: Error, Sendable, Equatable {
+        /// Sending stopped and this process won't resume the capture, but its ended marker
+        /// couldn't be written, so a relaunch could still find the saved yes.
+        case notRecorded(String)
+    }
+
     public enum ConsentWithdrawalError: Error, Sendable, Equatable {
         /// Sending stopped in this process, but a relaunch may still find the old saved yes.
         case notRecorded(String)
@@ -282,14 +298,18 @@ public final class CaptureSessionCoordinator {
 
     /// The ARKit world was thrown away, or (`newScan`) the scan started over: this packet can't
     /// be finished, and the next one belongs to `recording`'s new world. A new scan asks again.
-    public func newWorld(_ reason: String, recording: RecordingSource, newScan: Bool) {
-        endSession(reason)
+    /// Before this returns the old capture is ended in this process and its ended marker is
+    /// written; failure means the marker couldn't be, so only this process is sure not to resume it.
+    @discardableResult
+    public func newWorld(_ reason: String, recording: RecordingSource, newScan: Bool) -> Result<Void, SessionEndError> {
+        let ended = endSession(reason)
         if newScan {
             consent = nil
             consentedAt = nil
         }
         self.recording = recording
         if environment != nil { startSession() }
+        return ended
     }
 
     public func kept(_ photo: KeptPhoto) {
@@ -302,7 +322,7 @@ public final class CaptureSessionCoordinator {
             try FileManager.default.createDirectory(at: staged.deletingLastPathComponent(), withIntermediateDirectories: true)
             try FileManager.default.copyItem(at: photo.jpeg, to: staged)
         } catch {
-            environment.log("capture packet: a kept photo could not be copied: \(error)")
+            inputLost(session, "a kept photo could not be copied: \(error)")
             return
         }
         // The copy is deleted even when a reset ends the session before this work runs.
@@ -320,7 +340,7 @@ public final class CaptureSessionCoordinator {
                 }
                 await session.uploader?.add(files)
             } catch {
-                environment.log("capture packet: a kept photo was not sealed: \(error)")
+                self.inputLost(session, "a kept photo was not sealed: \(error)")
             }
         }, cleanup: { try? FileManager.default.removeItem(at: staged) })
     }
@@ -332,7 +352,7 @@ public final class CaptureSessionCoordinator {
             do {
                 let producer = try session.producer(first: (tap.t, SIMD2(Float(tap.width), Float(tap.height))), info: environment.sessionInfo)
                 guard let jpeg = await Task.detached(priority: .userInitiated, operation: { tap.jpeg() }).value else {
-                    environment.log("capture packet: the meter tap's frame could not be encoded; no tap")
+                    self.inputLost(session, "the meter tap's frame could not be encoded")
                     return
                 }
                 let observation = Packet04Observation(
@@ -340,7 +360,7 @@ public final class CaptureSessionCoordinator {
                 let files = try await producer.sealTap(id: "meter", label: "meter", jpeg: jpeg, observation: observation, pixel: tap.pixel, hit: hit)
                 await session.uploader?.add(files)
             } catch {
-                environment.log("capture packet: the meter tap was not recorded: \(error)")
+                self.inputLost(session, "the meter tap was not recorded: \(error)")
             }
         }
     }
@@ -351,7 +371,11 @@ public final class CaptureSessionCoordinator {
     public func captureEnded(acceptedCloseUpAt: Double?) {
         guard let session, !session.sealing, let environment else { return }
         session.sealing = true
+        // A packet missing an accepted photo or tap is never frozen; its upload already ended.
+        guard session.preparationFailure == nil else { return }
         session.enqueue { session in
+            // A photo or tap queued before this one may have been lost since: never freeze then.
+            guard session.preparationFailure == nil else { return }
             guard let producer = session.producer else {
                 await session.uploader?.abandon("no photos were kept")
                 return
@@ -415,7 +439,7 @@ public final class CaptureSessionCoordinator {
     /// packet if the scan was already sent. Photos kept later go up as they are sealed.
     private func startUploading(_ session: Session) {
         guard let environment, environment.sends, consent == true, let consentedAt, session.uploader == nil, !session.ended,
-              !session.consentWithdrawn else { return }
+              !session.consentWithdrawn, session.preparationFailure == nil else { return }
         do {
             let uploader = try CaptureUploader.start(
                 folder: session.folder, base: environment.endpoint, http: environment.http,
@@ -470,15 +494,37 @@ public final class CaptureSessionCoordinator {
         }
     }
 
-    private func endSession(_ reason: String) {
-        guard let session else { return }
+    /// A photo or tap the scan accepted couldn't be kept, so `session`'s packet can't be complete.
+    /// Admission closes now, before the uploader's own turn, so its loop sends nothing more; the
+    /// upload then ends with `inputLostCode`. A session that already ended (a reset world's late
+    /// work) is left alone: its upload was abandoned, and the next world isn't this one.
+    private func inputLost(_ session: Session, _ detail: String) {
+        environment?.log("capture packet: \(detail); this capture can't be prepared")
+        guard !session.ended, session.preparationFailure == nil else { return }
+        session.preparationFailure = Self.inputLostCode
+        guard let uploader = session.uploader else { return }
+        uploader.stopSending()
+        Task { await uploader.failPreparation(Self.inputLostCode) }
+    }
+
+    private func endSession(_ reason: String) -> Result<Void, SessionEndError> {
+        guard let session else { return .success(()) }
         self.session = nil
         session.ended = true
         onStatus?(nil)
-        if let uploader = session.uploader {
-            uploader.stopSending()
-            Task { await uploader.abandon(reason) }
+        guard let uploader = session.uploader else {
+            // A no that couldn't be recorded took the uploader away and left the old yes on disk;
+            // this end can't record anything either, so it says so.
+            if case .notRecorded(let error)? = session.withdrawalFailure { return .failure(.notRecorded(error)) }
+            return .success(())
         }
+        // Synchronous: closes admission, bars this process from resuming it, writes the marker a
+        // relaunch reads. The abandonment saved in the upload's own state follows on its turn.
+        let record = uploader.retire(reason)
+        Task { await uploader.abandon(reason) }
+        guard case .notRecorded(let error) = record else { return .success(()) }
+        environment?.log("capture upload: the end of this world's capture could not be recorded (\(error)); it won't resume in this process")
+        return .failure(.notRecorded(error))
     }
 }
 
