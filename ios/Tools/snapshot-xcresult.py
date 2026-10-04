@@ -11,8 +11,9 @@ its whole journey artifact that way: upload-artifact stopped at the first vanish
 What it does: copies every file of `<bundle>` into `<out-folder>/<bundle name>`, then writes
 `<out-folder>/SNAPSHOT.txt` saying "complete" or "incomplete" and listing each path that vanished.
 Only a file or folder under the bundle's top-level `Staging/` may vanish; that is the transient
-state of a cancelled run. Any other error stops with exit 1 and names the path, so a broken bundle
-is never passed off as a partial one. A missing bundle (the UI step never started) writes nothing
+state of a cancelled run. Any other error stops with exit 1 and names the path; SNAPSHOT.txt then
+says "failed" and that the copy beside it is partial, since the upload after this step keeps
+whatever was copied. A broken bundle is never passed off as a complete or merely incomplete one. A missing bundle (the UI step never started) writes nothing
 and exits 0, as the upload's `if-no-files-found: ignore` did. The job's own result, a cancellation
 included, is not changed by this step.
 """
@@ -71,6 +72,10 @@ def main(argv):
         copied, vanished = snapshot(bundle, folder / bundle.name)
     except OSError as error:
         print(f"::error::copying {bundle} failed outside its transient {EPHEMERAL}/ folder: {error}")
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "SNAPSHOT.txt").write_text(
+            f"failed: copying stopped at an error outside {EPHEMERAL}/; the copy beside this file is partial\n{error}\n",
+            encoding="utf-8")
         return 1
     if vanished:
         report = [f"incomplete: copied {copied} files; {len(vanished)} entries under {EPHEMERAL}/ vanished while copying"]

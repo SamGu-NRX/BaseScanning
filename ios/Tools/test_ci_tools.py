@@ -136,7 +136,10 @@ class SnapshotTests(unittest.TestCase):
             snap.snapshot = original
         self.assertEqual(result, 1)
         self.assertIn("::error::", out)
-        self.assertFalse((self.out / "SNAPSHOT.txt").exists())
+        # The upload keeps whatever was copied, so the partial copy is marked as failed.
+        report = (self.out / "SNAPSHOT.txt").read_text()
+        self.assertTrue(report.startswith("failed: copying stopped at an error outside Staging/; the copy beside this file is partial"))
+        self.assertIn("data.0", report)
 
     def test_no_bundle_keeps_nothing(self):
         result, out = quiet(snap.main, ["snapshot", str(self.root / "missing.xcresult"), str(self.out)])
