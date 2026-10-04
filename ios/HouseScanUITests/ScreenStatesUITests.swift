@@ -108,6 +108,8 @@ final class ScreenStatesUITests: XCTestCase {
         // At AX5 the meter's description folds under Details, and the camera stays open.
         "findMeter-AX5": [("instruction", "Find your electric meter"), ("instruction.details", "Details")],
         "gapRequest-followUp": [("instruction", "One more view to finish")],
+        // At AX5 the side to aim at leads, and the follow-up and the stretch fold under Details.
+        "gapRequest-followUp-AX5": [("instruction", "Show the ground to the right"), ("instruction.details", "Details")],
         // #75: a server request's stretch by its two ends, not its middle.
         "gapRequest-groundOut": [("instruction", "From 4 ft to 7 ft right of your meter.")],
         "uploading-followUp": [(nil, "One more view to finish")],

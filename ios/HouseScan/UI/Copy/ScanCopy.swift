@@ -507,6 +507,16 @@ enum ScanCopy {
     /// The card for a gap request. A server request can run along much of the wall, so its
     /// stretch is named by its two ends, all of it (issue #75, `Distance.range`); the phone's own
     /// requests are short and named by their middle.
+    /// A server request's lead when folded: the band and which side of the meter, in a few words
+    /// that stay a short block at AX5. The stretch's two ends are under Details, and the camera and
+    /// the map mark the stretch itself.
+    static func serverLead(_ gap: GapRequest) -> String {
+        let band = gap.band == .ground ? "ground" : "wall"
+        if gap.span.lowerBound >= 0 { return "Show the \(band) to the right" }
+        if gap.span.upperBound <= 0 { return "Show the \(band) to the left" }
+        return "Show the \(band) by your meter"
+    }
+
     static func gap(_ gap: GapRequest) -> Instruction {
         let place = Distance.aroundFromMeter(gap.span)
         let stretch = Distance.range(gap.span)
@@ -519,7 +529,11 @@ enum ScanCopy {
             let title = gap.band == .ground ? "Show the ground \(stretch)" : "Show the wall \(stretch)"
             // A past_end request asks to walk on past an end; the wall may really stop before
             // that, and the screen offers the walk's own "Wall ends here" for it (B-12).
-            guard let side = gap.pastEndSide else { return Instruction(title: title, detail: detail) }
+            // Folded at the largest text sizes on a follow-up (`GapRequestScreen.followUpFolds`):
+            // where to aim leads, and the whole request goes under Details.
+            guard let side = gap.pastEndSide else {
+                return Instruction(title: title, detail: detail, folded: Instruction.Folded(title: serverLead(gap), detail: "\(title). \(detail)"))
+            }
             // Folded, walking on leads, as the request asks; marking the end is under Details,
             // with the circle and "Wall ends here" in view.
             return Instruction(
