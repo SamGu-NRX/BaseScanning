@@ -344,7 +344,12 @@ import Testing
     /// A storage URL that is not https (or http to this machine) is refused when it is
     /// registered, before any bytes go to it; one that doesn't parse is refused the same way
     /// instead of leaving the file registered and the loop spinning.
-    @Test(arguments: [("http://storage.example.com/upload/x", "upload_url_insecure"), ("", "upload_url_invalid")])
+    @Test(arguments: [
+        ("http://storage.example.com/upload/x", "upload_url_insecure"), ("", "upload_url_invalid"),
+        // Near matches of a loopback name are public hosts.
+        ("http://[::2]:9/upload/x", "upload_url_insecure"), ("http://localhost.example.com/upload/x", "upload_url_insecure"),
+        ("http://127.0.0.1.example.com/upload/x", "upload_url_insecure"),
+    ])
     func aStorageURLThatIsNotSafeIsRefusedBeforeAnyPut(url: String, code: String) async throws {
         let rig = try Rig()
         defer { rig.cleanUp() }
@@ -355,6 +360,28 @@ import Testing
         #expect(await rig.uploader.snapshot.end == .failed(step: "register", codes: [code], status: 200))
         #expect(rig.server.requests("POST captures/files").count == 1)
         #expect(rig.server.requests("PUT upload").isEmpty)
+    }
+
+    /// Plain http to this machine over IPv6 is allowed, as ScopedCaptureHTTP's `.loopbackHTTP`
+    /// allows it: the file is registered for its PUT instead of refused. Nothing listens on `::1`
+    /// here, so the PUT itself fails as a network error and the upload waits to retry.
+    @Test func aLoopbackStorageURLOverIPv6IsNotRefused() async throws {
+        let rig = try Rig()
+        defer { rig.cleanUp() }
+        let url = "http://[::1]:\(rig.server.port)/v1/uploads/x"
+        rig.server.state.withLock { $0.uploadURLOverride = url }
+        await rig.uploader.add(try await rig.capture.sealImages(count: 1))
+        let registered = { () async -> Bool in
+            await rig.uploader.snapshot.files.values.contains { if case .registered(url, _, _) = $0.phase { true } else { false } }
+        }
+        for _ in 0..<500 {
+            if await rig.uploader.snapshot.end != nil { break }
+            if await registered() { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(await rig.uploader.snapshot.end == nil)
+        #expect(await registered())
+        await rig.uploader.abandon("test done")
     }
 
     /// Storage that answers a PUT with a redirect doesn't get the photo sent on: the real
