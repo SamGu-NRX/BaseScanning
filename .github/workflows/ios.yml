@@ -28,7 +28,17 @@ concurrency:
 
 jobs:
   ios-build:
-    name: iOS build
+    # Two groups of the UI tests, one job each (ios/Tools/ui-test-groups.py holds their selectors
+    # and checks that together they run every test once). One job no longer fits the cap below:
+    # #214's UI step alone took 72.3 min, and photo processing's tests add about 7.7 min measured
+    # locally (BRIEF-19), before setup and the build. journey runs the package tests and the Debug
+    # device build; photoProcessing runs the unsigned Release build. fail-fast is off so a failure
+    # in one group still leaves the other's results.
+    name: iOS build (${{ matrix.group }})
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [journey, photoProcessing]
     # A free account runs 5 macOS jobs at once, shared by every open pull request, so drafts and
     # labels other than full-ui don't take a slot.
     if: >-
@@ -42,7 +52,8 @@ jobs:
     # freshness UI tests add about 161 s more (run 36744881974), so 60 would cut the
     # every-state audit short. 75 left room until the 2026-10-03 candidate's 86 UI cases:
     # run 37121918073 attempt 2 spent 10 min 34 s before the UI step and 64 min 39 s in it,
-    # and the cap stopped it after 76 cases with 0 failures. 90 runs all of them.
+    # and the cap stopped it after 76 cases with 0 failures. 90 ran all of them; since photo
+    # processing's tests moved to their own job, 90 is the cap for each group.
     timeout-minutes: 90
     env:
       # Newest stable Xcode on macos-26 per images/macos/macos-26-arm64-Readme.md (image 20260907).
@@ -55,7 +66,9 @@ jobs:
       XCODEGEN_VERSION: 2.46.0
       XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
       # The every-state accessibility audit relaunches the app 65 times (about 10 min). Pull
-      # requests skip it unless labelled full-ui; pushes and manual runs always include it.
+      # requests skip it unless labelled full-ui; pushes and manual runs always include it. It is
+      # in the journey group; photoProcessing always runs its own audits.
+      GROUP: ${{ matrix.group }}
       FULL_UI: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ui') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -70,6 +83,10 @@ jobs:
           fi
           xcodebuild -version
           swift --version
+
+      # Before anything slow: the two groups' selectors must cover every UI test exactly once.
+      - name: Check the UI test groups
+        run: python3 ios/Tools/ui-test-groups.py check
 
       # Booting takes 2 to 3 minutes and needs nothing from the build, so it runs alongside the
       # steps below; the UI test step waits for it.
@@ -94,6 +111,7 @@ jobs:
       # than skip, so CI can't go green without comparing. The checkout counts only when it holds
       # every compared file: a folder alone isn't enough (main has a server/ without schemas).
       - name: Fetch the server contract
+        if: matrix.group == 'journey'
         run: |
           fetch_unless_present() {
             local branch="$1"; shift
@@ -111,6 +129,7 @@ jobs:
           fetch_unless_present t3/server server/schemas/scene.schema.json server/schemas/result.schema.json server/tests/fixtures/example-scene.json
 
       - name: Install XcodeGen
+        if: matrix.group == 'journey'
         run: |
           curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
             "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
@@ -119,9 +138,11 @@ jobs:
           echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
 
       - name: Generate project
+        if: matrix.group == 'journey'
         run: xcodegen generate --spec ios/project.yml
 
       - name: Check committed project matches project.yml
+        if: matrix.group == 'journey'
         run: |
           if ! git diff --exit-code -- ios; then
             echo "::error::HouseScan.xcodeproj differs from project.yml. Run 'make ios-project' (XcodeGen ${XCODEGEN_VERSION}) and commit the result."
@@ -136,14 +157,25 @@ jobs:
 
       - name: Test HouseScanKit
         # The capture logic is a plain Swift package; its tests run on macOS without a Simulator.
+        # Once per run: photoProcessing builds the same package sources into its Release build.
+        if: matrix.group == 'journey'
         env:
           HOUSESCAN_REQUIRE_UPSTREAM: "1"
         run: swift test --package-path ios/HouseScanKit -Xswiftc -warnings-as-errors
 
       # CI builds once from clean, so the index Xcode keeps for editing is wasted work.
       - name: Build
+        if: matrix.group == 'journey'
         run: >-
           xcodebuild -project ios/HouseScan.xcodeproj -scheme HouseScan -configuration Debug
+          -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO build
+
+      # Proves the Release configuration compiles, the photo-processing setup gate included, whose
+      # fixture switches exist only in Debug. It doesn't show what Release does at run time.
+      - name: Build Release, unsigned
+        if: matrix.group == 'photoProcessing'
+        run: >-
+          xcodebuild -project ios/HouseScan.xcodeproj -scheme HouseScan -configuration Release
           -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO build
 
       - name: Wait for the Simulator
@@ -152,26 +184,29 @@ jobs:
           xcrun simctl bootstatus "$SIM_UDID" -b
           echo "Booted $SIM_NAME on iOS $SIM_OS ($SIM_UDID)."
 
-      - name: UI test the whole flow in the Simulator
+      - name: UI test the group in the Simulator
         # Replays the committed synthetic wall (ios/HouseScanUITests/Fixtures/synthetic-wall) with
-        # -autopilot and the bundled sample result.
+        # -autopilot and the bundled sample result; photoProcessing adds its in-app fixture.
         run: |
-          skip=()
-          if [ "$FULL_UI" != "true" ]; then
-            skip=(-skip-testing:HouseScanUITests/ScreenStatesUITests/testEveryStatePassesTheAccessibilityAudit)
+          if [ "$GROUP" = journey ] && [ "$FULL_UI" != "true" ]; then
             echo "::notice::Skipped the every-state accessibility audit (about 10 min). Add the full-ui label to run it on this pull request."
           fi
+          # Read without mapfile: the runner's /bin/bash is 3.2.
+          list="$(python3 ios/Tools/ui-test-groups.py args "$GROUP" --full-ui "$FULL_UI")"
+          selectors=()
+          while IFS= read -r line; do selectors+=("$line"); done <<< "$list"
+          echo "Selectors: ${selectors[*]}"
           xcodebuild -project ios/HouseScan.xcodeproj -scheme HouseScan -configuration Debug \
             -destination "id=$SIM_UDID" \
             -resultBundlePath "$RUNNER_TEMP/HouseScanUITests.xcresult" \
-            -only-testing:HouseScanUITests "${skip[@]}" \
+            "${selectors[@]}" \
             COMPILER_INDEX_STORE_ENABLE=NO test
 
       - name: Keep UI test screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: ui-test-results
+          name: ui-test-results-${{ matrix.group }}
           path: ${{ runner.temp }}/HouseScanUITests.xcresult
           if-no-files-found: ignore
           retention-days: 7

@@ -38,6 +38,8 @@ Greptile reviews new commits through [`.greptile/config.json`](.greptile/config.
 
 The iOS UI tests skip the every-state accessibility audit on pull requests, because it adds about 10 minutes and macOS runners are scarce. Add the `full-ui` label when a pull request changes screens or copy; pushes to `t3/ios-mvf` and `main` always run it.
 
+The iOS check runs as two jobs, each under its own 90-minute cap: `journey` runs the package tests, the Debug build and every UI test class but `PhotoProcessingUITests`, and `photoProcessing` runs an unsigned Release build and that class with its own audits. `ios/Tools/ui-test-groups.py` holds both groups' test selectors; `python3 ios/Tools/ui-test-groups.py check` lists the UI tests from source and fails unless the two groups run each exactly once. Run it after adding or renaming a UI test class.
+
 `make check` runs the server, web and iOS suites, then `make scoring`, `make measure-lab`, `make evals`, `make recon` and `make meter-closeup` for each of those folders the branch has. They need uv, Node 24 with pnpm, and Xcode 26 or newer; each directory's README has details. No check is required by branch rules yet. Don't call one required until the rules require its status.
 
 Keep workflows that run pull-request code away from production credentials and destructive external systems. A green CI run is evidence for the checks it ran, not proof that a capture works on a real house.
