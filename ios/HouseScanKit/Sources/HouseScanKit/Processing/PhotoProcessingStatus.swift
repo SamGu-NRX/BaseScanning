@@ -121,12 +121,47 @@ public enum PhotoProcessingEnd: Sendable, Equatable {
     case expired
     /// The service refused a request at `step`, which sending the same thing again won't change.
     case refused(step: String)
+    /// The phone refused to send a request at `step` because this build's connection to the
+    /// service isn't set up right (`ScopedCaptureHTTPError`): nothing about the scan caused it, and
+    /// sending again won't change it.
+    case setupRefused(step: String, PhotoSetupProblem)
     /// The service answered with something this build can't read as a result.
     case answerUnreadable
     /// The run finished, but its answer wasn't readable before the upload stopped asking.
     case answerNotReady
     /// The answer belongs to another capture than this scan's, so it isn't shown.
     case answerMismatch(PhotoBindingMismatch)
+}
+
+/// The credential boundary's refusals (`ScopedCaptureHTTPError`), read back from the stable code
+/// the uploader ends with at status 0, since no server answered.
+public enum PhotoSetupProblem: Sendable, Equatable, CaseIterable {
+    /// A request's URL is outside the capture API's configured scope.
+    case destinationRefused
+    /// The credential provider couldn't supply a credential.
+    case credentialUnavailable
+    /// The credential isn't a well-formed bearer token.
+    case credentialMalformed
+    /// The service signed a storage upload that carries an Authorization header: a service or
+    /// contract setup failure, not the phone's credential.
+    case storageAuthorization
+
+    /// The code the uploader ends with, taken from `ScopedCaptureHTTPError.code` so the two can't
+    /// drift apart.
+    public var code: String {
+        switch self {
+        case .destinationRefused: ScopedCaptureHTTPError.destinationNotAllowed("").code
+        case .credentialUnavailable: ScopedCaptureHTTPError.credentialUnavailable("").code
+        case .credentialMalformed: ScopedCaptureHTTPError.credentialMalformed.code
+        case .storageAuthorization: ScopedCaptureHTTPError.storageRequestHasAuthorization.code
+        }
+    }
+
+    /// The problem an upload refusal names: one of the boundary's codes at status 0.
+    public init?(codes: [String], status: Int) {
+        guard status == 0, let problem = Self.allCases.first(where: { codes.contains($0.code) }) else { return nil }
+        self = problem
+    }
 }
 
 /// What a follow-up capture would carry from the capture it adds views to: plain values only.
@@ -188,7 +223,8 @@ extension PhotoProcessingStatus.Stage {
     }
 
     /// The stage for an upload that stopped on a refusal (`CaptureUploadState.End.failed`).
-    public static func refusal(step: String, codes: [String]) -> Self {
+    public static func refusal(step: String, codes: [String], status: Int) -> Self {
+        if let problem = PhotoSetupProblem(codes: codes, status: status) { return .ended(.setupRefused(step: step, problem)) }
         guard step == "result" else { return .ended(.refused(step: step)) }
         if codes.contains("result_not_ready") { return .ended(.answerNotReady) }
         if codes.contains("result_for_another_run") { return .ended(.answerMismatch(.run)) }

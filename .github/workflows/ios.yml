@@ -29,9 +29,9 @@ concurrency:
 jobs:
   ios-build:
     # Two groups of the UI tests, one job each (ios/Tools/ui-test-groups.py holds their selectors
-    # and checks that together they run every test once). One job no longer fits the cap below:
-    # #214's UI step alone took 72.3 min, and photo processing's tests add about 7.7 min measured
-    # locally (BRIEF-19), before setup and the build. journey runs the package tests and the Debug
+    # and checks that together they run every test once). One job risks exceeding the cap below:
+    # #214's hosted UI step took 72.3 min, and photo processing's tests add about 7.7 min measured
+    # locally (BRIEF-19), before setup and the build. No combined run has been seen to fail. journey runs the package tests and the Debug
     # device build; photoProcessing runs the unsigned Release build. fail-fast is off so a failure
     # in one group still leaves the other's results.
     name: iOS build (${{ matrix.group }})

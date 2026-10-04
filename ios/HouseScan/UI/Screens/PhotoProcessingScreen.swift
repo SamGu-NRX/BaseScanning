@@ -60,6 +60,10 @@ struct PhotoProcessingScreen: View {
                             .buttonStyle(.quiet)
                             .accessibilityIdentifier("action.stopSendingPhotos")
                     }
+                    // The scan is kept: shared from here only when its archive exists.
+                    if copy.id == "setupRefused", let scan = state.shareableScan {
+                        ShareScanButton(url: scan)
+                    }
                     if copy.id == "notSetUp" {
                         Button(ProcessingCopy.scanWithLegacy) { actions.scanWithLegacyInstead() }
                             .buttonStyle(.primary)

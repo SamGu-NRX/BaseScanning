@@ -83,12 +83,17 @@ import Testing
 
     @Test func aRefusalReadsAsTheStageItEndsIn() {
         typealias Stage = PhotoProcessingStatus.Stage
-        #expect(Stage.refusal(step: "create", codes: ["schema"]) == .ended(.refused(step: "create")))
-        #expect(Stage.refusal(step: "put", codes: ["storage_refused"]) == .ended(.refused(step: "put")))
-        #expect(Stage.refusal(step: "result", codes: ["result_not_ready"]) == .ended(.answerNotReady))
-        #expect(Stage.refusal(step: "result", codes: ["result_unreadable"]) == .ended(.answerUnreadable))
-        #expect(Stage.refusal(step: "result", codes: ["result_for_another_run"]) == .ended(.answerMismatch(.run)))
-        #expect(Stage.refusal(step: "result", codes: []) == .ended(.refused(step: "result")))
+        #expect(Stage.refusal(step: "create", codes: ["schema"], status: 422) == .ended(.refused(step: "create")))
+        #expect(Stage.refusal(step: "put", codes: ["storage_refused"], status: 403) == .ended(.refused(step: "put")))
+        #expect(Stage.refusal(step: "result", codes: ["result_not_ready"], status: 404) == .ended(.answerNotReady))
+        #expect(Stage.refusal(step: "result", codes: ["result_unreadable"], status: 200) == .ended(.answerUnreadable))
+        #expect(Stage.refusal(step: "result", codes: ["result_for_another_run"], status: 200) == .ended(.answerMismatch(.run)))
+        #expect(Stage.refusal(step: "result", codes: [], status: 500) == .ended(.refused(step: "result")))
+        // The boundary's codes at status 0, where no server answered; the same text from a server isn't the phone's setup.
+        for problem in PhotoSetupProblem.allCases {
+            #expect(Stage.refusal(step: "create", codes: [problem.code], status: 0) == .ended(.setupRefused(step: "create", problem)))
+            #expect(Stage.refusal(step: "create", codes: [problem.code], status: 401) == .ended(.refused(step: "create")))
+        }
     }
 }
 

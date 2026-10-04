@@ -65,6 +65,7 @@ enum ProcessingCopy {
     static let stopDetail = "This scan won't be processed, and House Scan can't start it again. Photos already sent stay with the processing service."
     static let confirmStop = "Stop sending"
     static let keepSending = "Keep sending"
+    static let setupRefusedDetail = "House Scan couldn't complete its connection to the processing service. This is a setup problem, not a problem with your photos or marks."
     static let scanWithLegacy = "Scan with Legacy instead"
     static let scanWithLegacyHint = "Chooses Legacy in Developer options and starts a new scan with it."
     static let closedAppLimit = "House Scan can't come back to this scan after you close the app."
@@ -192,6 +193,15 @@ enum ProcessingCopy {
             return Screen(
                 id: "refused", title: "The processing service refused this scan", detail: "Sending it again wouldn't change that.",
                 tone: .attention, symbol: "exclamationmark.triangle")
+        case .setupRefused:
+            // The boundary's four codes read the same to the homeowner: this build's connection
+            // isn't right, nothing they did. The code itself goes to the log. It can come at the
+            // events or result step, after the service already has the scan, so the words don't
+            // say whether it was processed, and an unavailable credential can be temporary.
+            return Screen(
+                id: "setupRefused", title: "Photo processing isn't connected correctly",
+                detail: setupRefusedDetail, tone: .attention, symbol: "wrench.and.screwdriver",
+                notes: ["The connection needs to be fixed before you try again. Start over to scan again, or choose \(name(.legacy)) in Developer options first."])
         case .answerUnreadable:
             return Screen(
                 id: "answerUnreadable", title: "House Scan couldn't read the answer",

@@ -27,6 +27,7 @@ public final class PhotoProcessingController {
 
     private let setup: Setup
     private let coordinator: CaptureSessionCoordinator?
+    private let log: @Sendable (String) -> Void
     private var begun = false
     /// The photo-processing scan under way; nil when there is none.
     public private(set) var context: ScanContext?
@@ -48,8 +49,10 @@ public final class PhotoProcessingController {
         }
         if case .ready(let environment, _) = self.setup {
             coordinator = CaptureSessionCoordinator(environment: environment)
+            log = environment.log
         } else {
             coordinator = nil
+            log = { _ in }
         }
         coordinator?.onStatus = { [weak self] in self?.uploadChanged($0) }
         coordinator?.onResult = { [weak self] in self?.answered($0) }
@@ -232,9 +235,15 @@ public final class PhotoProcessingController {
         guard let session = coordinator?.session, let uploader = session.uploader else { return }
         Task { [weak self] in
             let end = await uploader.snapshot.end
+            // A withdrawal already set its own end, which a refusal read afterwards never replaces.
             guard let self, self.coordinator?.session === session, var state = self.status, !state.isFinal,
-                  case .failed(let step, let codes, _)? = end else { return }
-            state.stage = .refusal(step: step, codes: codes)
+                  case .failed(let step, let codes, let status)? = end else { return }
+            state.stage = .refusal(step: step, codes: codes, status: status)
+            if case .ended(.setupRefused(_, .storageAuthorization)) = state.stage {
+                self.log("photo processing: a service or contract setup failure: the service signed a storage upload carrying Authorization (step \(step))")
+            } else if case .ended(.setupRefused(_, let problem)) = state.stage {
+                self.log("photo processing: refused at the credential boundary, \(problem.code) (step \(step))")
+            }
             state.retrying = false
             self.status = state
         }
