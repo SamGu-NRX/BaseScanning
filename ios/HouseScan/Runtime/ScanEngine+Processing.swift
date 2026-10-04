@@ -24,11 +24,29 @@ extension ScanEngine {
         state.scanBackend = backend
         RuntimeLog.engine.info("scan \(context.scanID, privacy: .public) uses \(backend.rawValue, privacy: .public) processing")
         guard backend == .photoProcessing else { return }
-        attachKeptPhotos()
-        photoProcessing.beginScan(context, recording: recordingSource)
+        // A synthetic capture is sent in place of the scan's photos, never mixed with them.
+        if syntheticCapture == nil { attachKeptPhotos() }
+        photoProcessing.beginScan(context, recording: photoRecording)
         if case .ended(.notSetUp(let reason))? = state.photoProcessing?.stage {
             RuntimeLog.engine.info("photo processing not set up: \(reason, privacy: .public)")
         }
+    }
+
+    /// The scan uses photo processing and this build can't send it.
+    var photoScanCantRun: Bool {
+        guard let profile = scanContext?.profile, profile.backend == .photoProcessing, case .notSetUp = profile.answers else { return false }
+        return true
+    }
+
+    /// The homeowner's way out of a photo-processing scan this build can't run, before anything
+    /// was captured: Legacy becomes the choice in Developer options, and a new scan starts with
+    /// it. The old scan isn't rerouted; it ends.
+    func scanWithLegacyInstead() {
+        guard state.phase == .processing, photoScanCantRun else { return }
+        RuntimeLog.engine.info("photo processing isn't set up: the homeowner chose a Legacy scan instead")
+        ProcessingBackendSetting.shared.choose(.legacy)
+        startOver()
+        finishOnboarding()
     }
 
     /// Start over: the scan ends, and whatever photo processing it had ends with it. `recorder`
@@ -36,7 +54,7 @@ extension ScanEngine {
     func endScan() {
         scanContext = nil
         state.scanBackend = nil
-        photoProcessing.endScan(recording: recordingSource)
+        photoProcessing.endScan(recording: photoRecording)
     }
 
     /// A world reset: the same scan, backend and consent in a new spatial session. `recorder` has
@@ -46,19 +64,30 @@ extension ScanEngine {
         let next = context.inNewWorld(recordingSessionID: recorder.sessionID)
         scanContext = next
         if next.profile.backend == .photoProcessing {
-            photoProcessing.worldReset(next, recording: recordingSource)
+            photoProcessing.worldReset(next, recording: photoRecording)
         }
     }
 
     /// The photo-processing scan was sent: once the photos still being written are kept, its
-    /// packet is frozen, and the screen follows the upload to the answer.
+    /// packet is frozen, and the screen follows the upload to the answer. With DEBUG's synthetic
+    /// capture, its photos are kept now instead, and its own close-up is the accepted one.
     func startPhotoProcessing() {
         go(.processing)
         let context = scanContext
+        let synthetic = syntheticCapture
         Task {
             guard await drainPendingSaves(), scanContext == context, state.phase == .processing else { return }
-            let closeUp = state.closeUp == .skipped ? nil : store.stillFrames["meter_close"]?.t
-            photoProcessing.captureEnded(acceptedCloseUpAt: closeUp)
+            guard let synthetic else {
+                let closeUp = state.closeUp == .skipped ? nil : store.stillFrames["meter_close"]?.t
+                photoProcessing.captureEnded(acceptedCloseUpAt: closeUp)
+                return
+            }
+            let folder = FileManager.default.temporaryDirectory.appending(path: "PhotoProcessingFixture/synthetic-photos", directoryHint: .isDirectory)
+            let photos = (try? await Task.detached(priority: .userInitiated) { try synthetic.photos(in: folder) }.value) ?? []
+            guard scanContext == context, state.phase == .processing else { return }
+            if photos.isEmpty { RuntimeLog.engine.error("photo processing: the synthetic capture's photos couldn't be written") }
+            for photo in photos { photoProcessing.kept(photo) }
+            photoProcessing.captureEnded(acceptedCloseUpAt: synthetic.acceptedCloseUpAt)
         }
     }
 
@@ -70,6 +99,11 @@ extension ScanEngine {
 
     func stopSendingPhotos() {
         guard state.phase == .processing else { return }
+        #if DEBUG
+        if options.photoProcessingFixtureReadOnlyCapture, photoProcessing.profile.answers == .standIn, let folder = photoProcessing.captureFolder {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
+        }
+        #endif
         photoProcessing.stopSending()
         if case .withdrawn(let recorded)? = state.photoProcessing?.consent {
             RuntimeLog.engine.info("photo processing: sending stopped; the phone \(recorded ? "saved" : "could not save", privacy: .public) the withdrawal")
@@ -83,6 +117,12 @@ extension ScanEngine {
             return ProcessingProfile(backend: .legacy, answers: .service, origin: client.serverURL)
         }
         return ProcessingProfile(backend: .legacy, answers: .standIn, origin: nil)
+    }
+
+    /// What photo processing records from: the synthetic capture's recording when there is one,
+    /// otherwise the current world's.
+    var photoRecording: RecordingSource {
+        syntheticCapture?.recording ?? recordingSource
     }
 
     /// The current world's recording as the capture packet reads it. A replay records no poses or
@@ -132,22 +172,35 @@ extension ScanEngine {
     // MARK: Setup
 
     /// What photo processing can do in this build. Sending a capture off the phone is off in this
-    /// slice: the 0.4 clock and privacy contract, the credential and the deployment aren't
-    /// settled. The one way to run it is DEBUG's fixture on a replay, which answers on the phone.
-    static func photoProcessingSetup(_ options: LaunchOptions) -> PhotoProcessingController.Setup {
+    /// slice: the 0.4 clock and privacy contract, a scoped credential, the live intrinsics and
+    /// meter tap, and the deployment aren't settled. The one way to run it is DEBUG's fixture on a
+    /// replay, which answers on the phone (`CaptureFixtureLaunch`); a release build can't, since
+    /// `debugBuild` is decided at compile time and the launch options aren't even parsed there.
+    static func photoProcessingSetup(_ options: LaunchOptions) -> (setup: PhotoProcessingController.Setup, synthetic: SyntheticCapture?) {
         #if DEBUG
-        if let answer = options.photoProcessingFixture {
-            guard options.replayFolder != nil else { return .notSetUp("the capture fixture runs only on a replay") }
-            return .ready(fixtureEnvironment(answer, gate: options.autopilotGate), standIn: true)
-        }
+        let debugBuild = true
+        #else
+        let debugBuild = false
         #endif
-        return .notSetUp("sending captures is off in this build")
+        let launch = CaptureFixtureLaunch.resolve(
+            debugBuild: debugBuild, onReplay: options.replayFolder != nil, answer: options.photoProcessingFixture,
+            syntheticCapture: options.photoProcessingSyntheticCapture)
+        switch launch {
+        case .off(let reason):
+            return (.notSetUp(reason), nil)
+        case .on(let answer, let synthetic):
+            #if DEBUG
+            return (.ready(fixtureEnvironment(answer, synthetic: synthetic, gate: options.autopilotGate), standIn: true), synthetic ? SyntheticCapture.standard : nil)
+            #else
+            return (.notSetUp("a release build has no capture fixture"), nil)
+            #endif
+        }
     }
 
     #if DEBUG
     /// The capture fixture: every request answered in this process (`FixtureCaptureHTTP`), its
     /// routes listed one per line in `<gate>/photo-transport.log` for the UI tests.
-    private static func fixtureEnvironment(_ answer: FixtureCaptureHTTP.Answer, gate: URL?) -> CaptureSessionCoordinator.Environment {
+    private static func fixtureEnvironment(_ answer: FixtureCaptureHTTP.Answer, synthetic: Bool, gate: URL?) -> CaptureSessionCoordinator.Environment {
         let log = gate?.appending(path: "photo-transport.log")
         let http = FixtureCaptureHTTP(answer: answer) { routes in
             guard let log else { return }
@@ -163,7 +216,9 @@ extension ScanEngine {
         return .init(
             endpoint: FixtureCaptureHTTP.base, sends: true, http: http, capturesFolder: folder,
             sessionInfo: { packetID, video in
-                Packet04SessionInfo(
+                // The synthetic capture says so in its packet; a replay's photos say replay.
+                if synthetic { return SyntheticCapture.sessionInfo(packetID: packetID, video: video, appVersion: device.appVersion) }
+                return Packet04SessionInfo(
                     packetID: packetID, sessionID: packetID, source: .replay, appVersion: device.appVersion, deviceModel: device.model,
                     systemVersion: device.systemVersion, lidarAvailable: false, sceneDepthEnabled: false, meshReconstructionSupported: nil,
                     sceneReconstruction: nil, planeDetection: nil, videoWidth: Int(video.x), videoHeight: Int(video.y), framesPerSecond: nil,

@@ -974,6 +974,9 @@ final class ScanViewState {
     /// Photo processing's side of this scan: its consent, progress and answer. Nil on a Legacy
     /// scan, and before a scan starts.
     var photoProcessing: PhotoProcessingStatus?
+    /// Photo processing sends a synthetic test capture in place of this scan's photos (DEBUG's
+    /// `-photoProcessingSyntheticCapture`), so its answer says nothing about the wall on screen.
+    var photoCaptureIsSynthetic = false
 
     init() {}
 }
@@ -1064,6 +1067,9 @@ protocol ScanActions: AnyObject {
     func answerPhotoConsent(_ yes: Bool)
     /// A no after a yes: this scan's photos stop going to photo processing.
     func stopSendingPhotos()
+    /// A photo-processing scan this build can't send, stopped before capture: choose Legacy and
+    /// start a new scan with it.
+    func scanWithLegacyInstead()
     /// The app came back to the foreground on the camera-access failure: if access is now on,
     /// the scan goes on without Start over. Does nothing otherwise.
     func recheckCameraAccess()

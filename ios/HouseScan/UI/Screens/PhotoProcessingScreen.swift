@@ -51,7 +51,7 @@ struct PhotoProcessingScreen: View {
                 if case .answered(.needsMorePhotos(let more))? = status?.stage, !more.prompts.isEmpty {
                     RequestedViews(prompts: more.prompts)
                 }
-                if !copy.notes.isEmpty || copy.working {
+                if !copy.notes.isEmpty || copy.working || state.photoCaptureIsSynthetic {
                     ProcessingNotes(lines: notes(copy, retrying: status?.retrying == true))
                 }
                 VStack(spacing: 16) {
@@ -60,8 +60,14 @@ struct PhotoProcessingScreen: View {
                             .buttonStyle(.quiet)
                             .accessibilityIdentifier("action.stopSendingPhotos")
                     }
+                    if copy.id == "notSetUp" {
+                        Button(ProcessingCopy.scanWithLegacy) { actions.scanWithLegacyInstead() }
+                            .buttonStyle(.primary)
+                            .accessibilityHint(ProcessingCopy.scanWithLegacyHint)
+                            .accessibilityIdentifier("action.scanWithLegacy")
+                    }
                     Group {
-                        if copy.working {
+                        if copy.working || copy.id == "notSetUp" {
                             Button("Start over") { actions.startOver() }.buttonStyle(.quiet)
                         } else {
                             Button("Start over") { actions.startOver() }.buttonStyle(.primary)
@@ -75,10 +81,12 @@ struct PhotoProcessingScreen: View {
             .frame(maxWidth: 520)
         }
         .safeAreaInset(edge: .top) {
-            HStack(alignment: .top) {
+            // Stacked, each on its own full-width row, so the options chip's words can wrap rather
+            // than be squeezed beside the badge (the audit found them clipped there).
+            VStack(alignment: .leading, spacing: 4) {
                 ModeBadge(isReplay: state.isReplay, isAutopilot: state.isAutopilot)
-                Spacer(minLength: 12)
                 DeveloperOptionsButton(scanBackend: state.scanBackend)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 24)
         }
@@ -95,6 +103,11 @@ struct PhotoProcessingScreen: View {
     private func notes(_ copy: ProcessingCopy.Screen, retrying: Bool) -> [String] {
         var lines = copy.notes
         if retrying { lines.insert(ProcessingCopy.retrying, at: 0) }
+        let sent = switch state.photoProcessing?.consent {
+        case .granted?, .withdrawn(_)?: true
+        default: false
+        }
+        if state.photoCaptureIsSynthetic, sent { lines.insert(ProcessingCopy.syntheticCapture, at: 0) }
         if copy.working { lines.append(ProcessingCopy.closedAppLimit) }
         return lines
     }
@@ -158,12 +171,12 @@ private struct ServiceWords: View {
                 .font(Typeface.hint)
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("photo.serviceMessage")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(Palette.surface, in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("photo.serviceMessage")
     }
 }
 

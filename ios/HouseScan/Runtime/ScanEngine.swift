@@ -195,6 +195,8 @@ final class ScanEngine {
     var scanContext: ScanContext?
     /// Photo processing's capture and answer, for scans that use it (`ScanEngine+Processing`).
     let photoProcessing: PhotoProcessingController
+    /// DEBUG's synthetic capture, sent in place of the scan's photos; nil otherwise.
+    let syntheticCapture: SyntheticCapture?
     let resultClient: any ResultClient
     private var uploadTask: Task<Void, Never>?
     /// The current upload's scene has fixed its ground; keep this true through answer pacing.
@@ -273,13 +275,16 @@ final class ScanEngine {
         } else {
             resultClient = SampleResultClient(pace: options.autopilot ? options.autopilotHold : 1.2)
         }
-        photoProcessing = PhotoProcessingController(setup: Self.photoProcessingSetup(options))
+        let photoSetup = Self.photoProcessingSetup(options)
+        photoProcessing = PhotoProcessingController(setup: photoSetup.setup)
+        syntheticCapture = photoSetup.synthetic
         ProcessingBackendSetting.shared.photoProcessingAnswers = photoProcessing.profile.answers
         photoProcessing.onChange = { [weak self] status in self?.state.photoProcessing = status }
         photoProcessing.meterAnchor = { [weak self] in self?.meterTracking?.pose }
         state.isAutopilot = options.autopilot
         state.isReplay = options.replayFolder != nil
         state.usesSampleResult = resultClient.isSample
+        state.photoCaptureIsSynthetic = syntheticCapture != nil
     }
 
     // MARK: Start

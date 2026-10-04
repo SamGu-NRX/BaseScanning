@@ -6,6 +6,7 @@ import SwiftUI
 /// is a real answer: the scan goes on and ends saying it wasn't processed.
 struct PhotoConsentCard: View {
     var standIn: Bool
+    var synthetic: Bool
     let actions: any ScanActions
 
     var body: some View {
@@ -26,7 +27,7 @@ struct PhotoConsentCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("photoConsent.title")
-                    Text(ProcessingCopy.consentBody(standIn: standIn))
+                    Text(ProcessingCopy.consentBody(standIn: standIn, synthetic: synthetic))
                         .font(Typeface.hint)
                         .foregroundStyle(Palette.chalk)
                         .fixedSize(horizontal: false, vertical: true)

@@ -28,9 +28,11 @@ struct ScanRootView: View {
         ZStack {
             if Self.showsCamera(state.phase) {
                 CameraBackdrop(feed: state.feed, actions: actions)
+                    .accessibilityHidden(asksForPhotoConsent)
                     .transition(.opacity)
                 if state.isPracticeScan {
                     PracticeMeterOverlay(state: state)
+                        .accessibilityHidden(asksForPhotoConsent)
                 }
                 CameraEdgeShade()
             }
@@ -40,8 +42,10 @@ struct ScanRootView: View {
             screen
                 .id(state.phase)
                 .transition(Self.showsCamera(state.phase) ? .opacity : .identity)
+                // The question is modal: what it covers isn't there for VoiceOver until it's answered.
+                .accessibilityHidden(asksForPhotoConsent)
             if asksForPhotoConsent {
-                PhotoConsentCard(standIn: state.photoProcessing?.standIn == true, actions: actions)
+                PhotoConsentCard(standIn: state.photoProcessing?.standIn == true, synthetic: state.photoCaptureIsSynthetic, actions: actions)
                     .transition(.opacity)
             }
         }

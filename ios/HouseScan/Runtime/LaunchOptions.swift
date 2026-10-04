@@ -57,7 +57,15 @@ import OSLog
 /// - `-photoProcessingFixture <answer>` (debug builds only, with `-replay`): photo processing sends
 ///   to a capture API answered inside the app (`FixtureCaptureHTTP`), which ends every capture
 ///   with this answer (`FixtureCaptureHTTP.Answer`). Nothing leaves the phone. Without it, photo
-///   processing isn't set up in any build.
+///   processing isn't set up in any build. A replay's own packet always fails the phone's checks,
+///   since a replay has no motion.
+/// - `-photoProcessingSyntheticCapture` (debug builds only, with `-photoProcessingFixture`): the
+///   capture sent is HouseScanKit's `SyntheticCapture`, labelled synthetic in its packet, in place
+///   of the replay's photos, so the fixture's answer comes back through the real upload. It is a
+///   test of the app's path against the fixture, never a result about the wall on screen.
+/// - `-photoProcessingFixtureReadOnlyCapture` (debug builds only): just before "Stop sending
+///   photos" takes effect, the capture's folder is made read-only, so the phone can't save the
+///   withdrawal and says so (`PhotoProcessingEnd.withdrawn(recorded: false)`).
 struct LaunchOptions: Equatable {
     var replayFolder: URL?
     var autopilot = false
@@ -77,6 +85,8 @@ struct LaunchOptions: Equatable {
     var failCloseUpSave = false
     var processingBackend: ProcessingBackend?
     var photoProcessingFixture: FixtureCaptureHTTP.Answer?
+    var photoProcessingSyntheticCapture = false
+    var photoProcessingFixtureReadOnlyCapture = false
 
     init(
         arguments: [String] = ProcessInfo.processInfo.arguments,
@@ -111,6 +121,8 @@ struct LaunchOptions: Equatable {
             }
             photoProcessingFixture = answer
         }
+        photoProcessingSyntheticCapture = arguments.contains("-photoProcessingSyntheticCapture")
+        photoProcessingFixtureReadOnlyCapture = arguments.contains("-photoProcessingFixtureReadOnlyCapture")
         #endif
         simulateAppStore = arguments.contains("-simulateAppStore")
         failCloseUpSave = arguments.contains("-failCloseUpSave")

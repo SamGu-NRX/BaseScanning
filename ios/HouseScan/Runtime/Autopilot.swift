@@ -39,6 +39,11 @@ final class Autopilot {
         await engine.waitForGate(.onboarding)
         engine.finishOnboarding()
         await prepared
+        // A photo-processing scan this build can't send stops before the camera: nothing to drive.
+        if engine.state.phase == .processing {
+            log("done: photo processing isn't set up, so the scan stopped before capture")
+            return
+        }
         if let window = replay.heldBack {
             log("holding back frames \(window.frames.lowerBound)..<\(window.frames.upperBound) for the gap loop; gap \(window.gap.band.rawValue) \(format(window.gap.span))")
         } else {

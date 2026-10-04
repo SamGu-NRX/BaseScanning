@@ -108,10 +108,11 @@ final class PhotoProcessingUITests: XCTestCase {
         XCTAssertEqual(run.routes(), sent, "the next scan revived the old capture or sent without a yes")
     }
 
-    /// Photo processing chosen in a build without its setup: Developer options say so, nothing is
-    /// asked, and the scan ends saying it wasn't sent. It never falls back to the Legacy checker.
+    /// Photo processing chosen in a build without its setup: Developer options say so, and the
+    /// scan stops before the camera starts, says why, and offers a Legacy scan, which starts as a
+    /// new scan. No photo question, no capture and nothing sent.
     @MainActor
-    func testWithoutSetupItSaysSoAndNeverFallsBack() throws {
+    func testWithoutSetupTheScanStopsBeforeCaptureAndOffersLegacy() throws {
         let run = try Run.launch(backend: "photoProcessing", fixture: nil, holding: ["onboarding"])
         defer { run.finish() }
         run.waitFor("onboarding")
@@ -121,12 +122,85 @@ final class PhotoProcessingUITests: XCTestCase {
         run.attach("selection-notSetUp")
         run.closeOptions()
         try run.open("onboarding")
+        run.waitFor("processing", timeout: 30)
+        XCTAssertTrue(run.state("notSetUp", timeout: 5).exists)
+        let any = run.app.descendants(matching: .any)
+        XCTAssertFalse(any["screen.findMeter"].exists, "the camera started for a scan that can't be sent")
+        XCTAssertFalse(run.send.exists, "asked to send photos with nothing to send them to")
+        XCTAssertEqual(run.routes(), [], "a capture request was made")
+        run.attach("processing-notSetUp-beforeCapture")
+
+        run.tap("action.scanWithLegacy")
+        run.waitFor("findMeter", timeout: 20)
+        XCTAssertFalse(run.send.waitForExistence(timeout: 3), "the Legacy scan asked to send photos")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: run.gate.appending(path: "uploading.held").path))
+    }
+
+    // MARK: The real engine with the synthetic capture
+
+    /// The real coordinator and uploader carry `SyntheticCapture` (labelled synthetic in its
+    /// packet) to the fixture's answer, which the processing screen shows as the scan's main
+    /// result: provisional, quoted, and marked as a test answer about a synthetic capture.
+    @MainActor
+    func testTheSyntheticCaptureReachesATypedAnswerAsTheMainResult() throws {
+        let run = try Run.launch(backend: "photoProcessing", fixture: "candidate", extra: ["-photoProcessingSyntheticCapture"])
+        defer { run.finish() }
         run.waitFor("findMeter")
-        XCTAssertFalse(run.send.waitForExistence(timeout: 5), "asked to send photos with nothing to send them to")
+        XCTAssertTrue(run.send.waitForExistence(timeout: 20))
+        run.app.buttons["photoConsent.send"].tap()
         run.waitFor("processing", timeout: 300)
-        XCTAssertTrue(run.state("notSetUp", timeout: 10).exists)
+        XCTAssertTrue(run.state("candidate", timeout: 60).exists, "no answer reached the screen")
+        let any = run.app.descendants(matching: .any)
+        let message = any["photo.serviceMessage"].firstMatch
+        XCTAssertTrue(message.label.contains("Fixture answer: a possible spot to the left of the meter."), "the service's words aren't shown as written: \(message.label)")
+        XCTAssertTrue(any["photo.standIn"].firstMatch.exists, "the fixture's answer isn't marked as a test one")
+        XCTAssertTrue(run.app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'synthetic capture'")).firstMatch.exists, "no word that the capture was synthetic")
+        run.attach("processing-candidate-engine")
+        let routes = run.routes()
+        XCTAssertTrue(routes.contains("POST captures/finalize"), "\(routes)")
+        XCTAssertTrue(routes.contains("GET captures/result"), "\(routes)")
         XCTAssertFalse(FileManager.default.fileExists(atPath: run.gate.appending(path: "uploading.held").path), "the Legacy upload ran")
-        run.attach("processing-notSetUp")
+    }
+
+    /// An answer naming another run than the capture started is refused, and the scan says so
+    /// instead of showing it.
+    @MainActor
+    func testAnAnswerForAnotherRunIsRefused() throws {
+        let run = try Run.launch(backend: "photoProcessing", fixture: "wrongRun", extra: ["-photoProcessingSyntheticCapture"])
+        defer { run.finish() }
+        run.waitFor("findMeter")
+        XCTAssertTrue(run.send.waitForExistence(timeout: 20))
+        run.app.buttons["photoConsent.send"].tap()
+        run.waitFor("processing", timeout: 300)
+        XCTAssertTrue(run.state("answerMismatch", timeout: 60).exists)
+        XCTAssertFalse(run.app.descendants(matching: .any)["photo.serviceMessage"].firstMatch.exists, "the refused answer's words were shown")
+        run.attach("processing-answerMismatch-engine")
+    }
+
+    /// "Stop sending photos" while the service works, with a capture folder the phone can't write
+    /// (`-photoProcessingFixtureReadOnlyCapture`): sending stops and the screen says the phone
+    /// couldn't save the choice.
+    @MainActor
+    func testStoppingWhenThePhoneCantSaveItSaysSo() throws {
+        let run = try Run.launch(
+            backend: "photoProcessing", fixture: "hold", extra: ["-photoProcessingSyntheticCapture", "-photoProcessingFixtureReadOnlyCapture"])
+        defer { run.finish() }
+        run.waitFor("findMeter")
+        XCTAssertTrue(run.send.waitForExistence(timeout: 20))
+        run.app.buttons["photoConsent.send"].tap()
+        run.waitFor("processing", timeout: 300)
+        XCTAssertTrue(run.state("processing", timeout: 60).exists, "the capture never reached processing")
+        run.attach("processing-engine")
+        run.tap("action.stopSendingPhotos")
+        let confirm = run.app.buttons["Stop sending"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "stopping didn't ask first")
+        confirm.tap()
+        XCTAssertTrue(run.state("withdrawalNotRecorded", timeout: 10).exists)
+        run.attach("processing-withdrawalNotRecorded-engine")
+        let sent = run.routes()
+        // Longer than the uploader waits between polls of a capture still processing.
+        Thread.sleep(forTimeInterval: 3)
+        XCTAssertEqual(run.routes(), sent, "requests went on after the homeowner stopped sending")
     }
 
     // MARK: Every state, from demo mode
@@ -176,7 +250,7 @@ final class PhotoProcessingUITests: XCTestCase {
         let stop = app.buttons["action.stopSendingPhotos"]
         XCTAssertTrue(stop.waitForExistence(timeout: 15), "no way to stop sending while processing")
         stop.tap()
-        let confirm = app.buttons["Stop sending"]
+        let confirm = app.buttons["Stop sending"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5), "stopping didn't ask first")
         attach(app, "processing-stopQuestion")
         confirm.tap()
@@ -237,7 +311,7 @@ final class PhotoProcessingUITests: XCTestCase {
         let gate: URL
 
         @MainActor
-        static func launch(backend: String, fixture: String?, holding: Set<String> = []) throws -> Run {
+        static func launch(backend: String, fixture: String?, holding: Set<String> = [], extra: [String] = []) throws -> Run {
             let gate = URL(fileURLWithPath: NSTemporaryDirectory()).appending(path: "housescan-gate-\(UUID().uuidString)", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(at: gate, withIntermediateDirectories: true)
             for phase in ["onboarding", "findMeter", "meterCloseUp", "wallWalk", "markFeatures", "gapRequest"] where !holding.contains(phase) {
@@ -248,6 +322,7 @@ final class PhotoProcessingUITests: XCTestCase {
                 "-practiceMeter", "NO", "-processingBackend", backend,
             ]
             if let fixture { arguments += ["-photoProcessingFixture", fixture] }
+            arguments += extra
             let app = XCUIApplication()
             app.launchArguments = arguments
             app.launch()

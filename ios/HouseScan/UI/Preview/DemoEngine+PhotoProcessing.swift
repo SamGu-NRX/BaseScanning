@@ -31,6 +31,12 @@ extension DemoEngine {
         state.photoProcessing = status
     }
 
+    func scanWithLegacyInstead() {
+        startOver()
+        finishOnboarding()
+        state.scanBackend = .legacy
+    }
+
     func stopSendingPhotos() {
         guard var status = state.photoProcessing, status.consent == .granted, !status.isFinal else { return }
         status.consent = .withdrawn(recorded: true)

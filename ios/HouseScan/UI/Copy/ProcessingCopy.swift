@@ -26,7 +26,7 @@ enum ProcessingCopy {
         switch answers {
         case .service: nil
         case .standIn: "Test build: answers come from a stand-in on this phone, and nothing leaves it."
-        case .notSetUp: "Not set up in this build. A scan that uses it can't be sent, and says so at the end."
+        case .notSetUp: "Not set up in this build. A scan with it stops before the camera starts and offers a Legacy scan instead."
         }
     }
 
@@ -39,12 +39,17 @@ enum ProcessingCopy {
 
     static let consentTitle = "Send this scan's photos?"
 
-    static func consentBody(standIn: Bool) -> String {
+    static func consentBody(standIn: Bool, synthetic: Bool) -> String {
         let destination = standIn
             ? "In this test build, a stand-in on this phone receives them, so nothing leaves it."
             : "They go to House Scan's processing service while you scan."
-        return "Photo processing uses the photos you take of the wall around your meter, and how the phone moved, to suggest a battery spot. \(destination)"
+        let body = "Photo processing uses the photos you take of the wall around your meter, and how the phone moved, to suggest a battery spot. \(destination)"
+        return synthetic ? body + " " + syntheticCapture : body
     }
+
+    /// Said wherever a synthetic capture stands in for the scan's photos.
+    static let syntheticCapture = "This test sends a synthetic capture made on the phone instead of this scan's photos, so its answer says nothing about your wall."
+
 
     static let consentDeclineNote = "If you don't send them, nothing leaves this phone and this scan won't get an answer."
     static let consentSend = "Send photos"
@@ -60,6 +65,8 @@ enum ProcessingCopy {
     static let stopDetail = "This scan won't be processed, and House Scan can't start it again. Photos already sent stay with the processing service."
     static let confirmStop = "Stop sending"
     static let keepSending = "Keep sending"
+    static let scanWithLegacy = "Scan with Legacy instead"
+    static let scanWithLegacyHint = "Chooses Legacy in Developer options and starts a new scan with it."
     static let closedAppLimit = "House Scan can't come back to this scan after you close the app."
     static let retrying = "Connection trouble. Trying again."
 
@@ -149,7 +156,7 @@ enum ProcessingCopy {
         case .notSetUp:
             return Screen(
                 id: "notSetUp", title: "Photo processing isn't set up in this build",
-                detail: "Nothing was sent. To check a scan, choose \(name(.legacy)) in Developer options, then start over.",
+                detail: "Nothing has been captured or sent. Scan with \(name(.legacy)) instead, or choose another method in Developer options.",
                 tone: .attention, symbol: "wrench.and.screwdriver")
         case .consentNotGiven:
             return Screen(
