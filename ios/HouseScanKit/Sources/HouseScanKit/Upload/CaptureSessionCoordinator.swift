@@ -169,7 +169,8 @@ public final class CaptureSessionCoordinator {
     /// the packet can't be prepared complete. The upload, if one is running, ends
     /// `.failed(step: "prepare", codes: [inputLostCode], status: 0)`; the session's
     /// `preparationFailure` holds it either way.
-    public static let inputLostCode = "capture_input_lost"
+    /// Nonisolated, so status mapping outside the main actor can match it.
+    nonisolated public static let inputLostCode = "capture_input_lost"
 
     @MainActor
     public final class Session {

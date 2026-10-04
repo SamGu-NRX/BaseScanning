@@ -193,3 +193,13 @@ import Testing
         #expect(statuses.withLock { $0.dropFirst(seen) }.allSatisfy { status in status?.phase != .failed })
     }
 }
+
+/// The code is readable where the app maps an upload's end to a stage, outside the main actor.
+struct InputLostCodeIsNonisolated {
+    static func matches(_ codes: [String]) -> Bool { codes.contains(CaptureSessionCoordinator.inputLostCode) }
+
+    @Test func aNonisolatedMappingCanMatchTheCode() {
+        #expect(Self.matches(["capture_input_lost"]))
+        #expect(!Self.matches(["local_state_unsaved"]))
+    }
+}
