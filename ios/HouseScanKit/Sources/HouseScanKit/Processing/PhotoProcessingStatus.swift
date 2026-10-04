@@ -125,6 +125,10 @@ public enum PhotoProcessingEnd: Sendable, Equatable {
     /// service isn't set up right (`ScopedCaptureHTTPError`): nothing about the scan caused it, and
     /// sending again won't change it.
     case setupRefused(step: String, PhotoSetupProblem)
+    /// This phone couldn't save the upload's progress (`CaptureUploader.unsavedStateCode`, step
+    /// `save`, status 0), so the uploader stopped sending from this scan. A local problem: no
+    /// server refused anything, and what the service already has may still be processed.
+    case uploadStateUnsaved
     /// The service answered with something this build can't read as a result.
     case answerUnreadable
     /// The run finished, but its answer wasn't readable before the upload stopped asking.
@@ -224,6 +228,8 @@ extension PhotoProcessingStatus.Stage {
 
     /// The stage for an upload that stopped on a refusal (`CaptureUploadState.End.failed`).
     public static func refusal(step: String, codes: [String], status: Int) -> Self {
+        // Only the uploader's own end (`CaptureUploader.unsavedEnd`): step `save`, status 0, its code.
+        if step == "save", status == 0, codes.contains(CaptureUploader.unsavedStateCode) { return .ended(.uploadStateUnsaved) }
         if let problem = PhotoSetupProblem(codes: codes, status: status) { return .ended(.setupRefused(step: step, problem)) }
         guard step == "result" else { return .ended(.refused(step: step)) }
         if codes.contains("result_not_ready") { return .ended(.answerNotReady) }

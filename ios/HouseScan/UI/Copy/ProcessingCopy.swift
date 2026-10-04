@@ -207,6 +207,15 @@ enum ProcessingCopy {
                 id: "setupRefused", title: "Photo processing isn't connected correctly",
                 detail: setupRefusedDetail, tone: .attention, symbol: "wrench.and.screwdriver",
                 notes: ["The connection needs to be fixed before you try again. Start over to scan again, or choose \(name(.legacy)) in Developer options first."])
+        case .uploadStateUnsaved:
+            // The phone, not the service: it couldn't save how far the upload had got, so it
+            // stopped sending. That stops nothing on the service, and this app doesn't reopen a
+            // saved capture after it closes, so the way on is a new scan.
+            return Screen(
+                id: "uploadStateUnsaved", title: "This phone stopped sending this scan",
+                detail: "House Scan couldn't save how far this scan's upload had got, so it stopped sending from this scan. Photos already sent may still be processed by the service.",
+                tone: .attention, symbol: "exclamationmark.triangle",
+                notes: ["Start over to scan again. If your phone's storage is nearly full, freeing some space may help."])
         case .answerUnreadable:
             return Screen(
                 id: "answerUnreadable", title: "House Scan couldn't read the answer",

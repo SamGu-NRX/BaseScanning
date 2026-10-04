@@ -94,6 +94,12 @@ import Testing
             #expect(Stage.refusal(step: "create", codes: [problem.code], status: 0) == .ended(.setupRefused(step: "create", problem)))
             #expect(Stage.refusal(step: "create", codes: [problem.code], status: 401) == .ended(.refused(step: "create")))
         }
+        // The uploader's own end when this phone couldn't save its state: status 0, no server. The
+        // same code with a server status isn't the phone's failure.
+        #expect(Stage.refusal(step: "save", codes: [CaptureUploader.unsavedStateCode], status: 0) == .ended(.uploadStateUnsaved))
+        #expect(Stage.refusal(step: "save", codes: [CaptureUploader.unsavedStateCode], status: 500) == .ended(.refused(step: "save")))
+        // Status 0 alone doesn't make it this failure: the code at another step isn't the uploader's own end.
+        #expect(Stage.refusal(step: "put", codes: [CaptureUploader.unsavedStateCode], status: 0) == .ended(.refused(step: "put")))
     }
 }
 
@@ -279,6 +285,34 @@ final class HeldResultHTTP: CaptureHTTP, Sendable {
         #expect(!inner.routes.contains("POST captures/finalize"))
         #expect(controller.status?.stage == .ended(.notPrepared))
         controller.endScan(recording: fixture.recording)
+    }
+
+    /// While the service processes, the phone can no longer save the upload's state (its folder
+    /// turned read-only): the real uploader ends and the scan says sending stopped on this phone,
+    /// not that the service refused it, and nothing more is sent. A withdrawal that couldn't be
+    /// saved keeps its own stage instead (`stoppingPartWayStopsSendingAndSaysWhetherThePhoneSavedIt`).
+    @Test func anUploadStateThePhoneCantSaveEndsTheScanAsALocalFailure() async throws {
+        let http = FixtureCaptureHTTP(answer: .hold)
+        let controller = controller(http)
+        // Before anything can throw: the session ends and the folders go even if a wait times out.
+        var lockedFolder: URL?
+        defer {
+            if let lockedFolder { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: lockedFolder.path) }
+            controller.endScan(recording: fixture.recording)
+            try? FileManager.default.removeItem(at: root)
+        }
+        controller.beginScan(context(controller), recording: fixture.recording)
+        try await capture(controller, consent: true)
+        try #require(try await until { controller.status?.stage == .processing })
+        let folder = try #require(controller.captureFolder)
+        lockedFolder = folder
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
+        try #require(try await until { controller.status?.isFinal == true }, "no final stage: \(String(describing: controller.status))")
+        #expect(controller.status?.stage == .ended(.uploadStateUnsaved))
+        #expect(controller.status?.consent == .granted)
+        let sent = http.routes.count
+        try await Task.sleep(for: .seconds(2.5))
+        #expect(http.routes.count == sent)
     }
 
     @Test(arguments: [false, nil] as [Bool?])

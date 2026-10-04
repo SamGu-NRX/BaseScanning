@@ -269,6 +269,8 @@ public final class PhotoProcessingController {
                 self.log("photo processing: a service or contract setup failure: the service signed a storage upload carrying Authorization (step \(step))")
             } else if case .ended(.setupRefused(_, let problem)) = state.stage {
                 self.log("photo processing: refused at the credential boundary, \(problem.code) (step \(step))")
+            } else if case .ended(.uploadStateUnsaved) = state.stage {
+                self.log("photo processing: this phone couldn't save the upload's progress; sending stopped")
             }
             state.retrying = false
             self.status = state

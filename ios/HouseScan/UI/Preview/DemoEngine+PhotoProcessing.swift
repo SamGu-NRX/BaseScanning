@@ -74,6 +74,7 @@ extension DemoEngine {
             "refused": sent(.ended(.refused(step: "create"))),
             // At the result step: the service may already have processed the scan.
             "setupRefused": sent(.ended(.setupRefused(step: "result", .credentialUnavailable))),
+            "uploadStateUnsaved": sent(.ended(.uploadStateUnsaved)),
             "answerUnreadable": sent(.ended(.answerUnreadable)),
             "answerNotReady": sent(.ended(.answerNotReady)),
             "answerMismatch": sent(.ended(.answerMismatch(.run))),

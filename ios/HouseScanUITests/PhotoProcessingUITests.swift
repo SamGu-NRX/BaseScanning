@@ -222,11 +222,11 @@ final class PhotoProcessingUITests: XCTestCase {
         attach(consentLarge, "consent-AX5")
         consentLarge.terminate()
 
-        let large: Set<String> = ["uploading", "processing", "candidate", "needsMorePhotos", "installerReview", "withdrawalNotRecorded", "notSetUp", "setupRefused"]
+        let large: Set<String> = ["uploading", "processing", "candidate", "needsMorePhotos", "installerReview", "withdrawalNotRecorded", "notSetUp", "setupRefused", "uploadStateUnsaved"]
         for state in [
             "queued", "uploading", "processing", "candidate", "needsMorePhotos", "installerReview", "noCandidate", "unrecognized",
             "notSetUp", "consentNotGiven", "withdrawn", "withdrawalNotRecorded", "notPrepared", "processingFailed", "expired", "refused", "setupRefused",
-            "answerUnreadable", "answerNotReady", "answerMismatch",
+            "uploadStateUnsaved", "answerUnreadable", "answerNotReady", "answerMismatch",
         ] {
             for big in large.contains(state) ? [false, true] : [false] {
                 let app = Self.demo(["-uiDemoPhase", "processing", "-uiDemoPhotoState", state] + (big ? Self.largestText : []))
@@ -242,8 +242,17 @@ final class PhotoProcessingUITests: XCTestCase {
                     XCTAssertFalse(words.contains("wasn't processed"), words)
                     XCTAssertFalse(words.contains("won't help"), words)
                 }
+                if state == "uploadStateUnsaved", !big {
+                    // The phone's own failure: it says sending stopped here, and promises nothing
+                    // about what the service does with photos it already has.
+                    let words = app.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator: " ")
+                    XCTAssertTrue(words.contains("so it stopped sending from this scan."), words)
+                    XCTAssertTrue(words.contains("Photos already sent may still be processed by the service."), words)
+                    XCTAssertFalse(words.contains("refused"), words)
+                    XCTAssertFalse(words.contains("cancel"), words)
+                }
                 attach(app, "processing-\(state)\(big ? "-AX5" : "")")
-                if !big, ["uploading", "candidate", "needsMorePhotos", "withdrawalNotRecorded", "setupRefused"].contains(state) { try audit(app, "processing-\(state)") }
+                if !big, ["uploading", "candidate", "needsMorePhotos", "withdrawalNotRecorded", "setupRefused", "uploadStateUnsaved"].contains(state) { try audit(app, "processing-\(state)") }
                 app.terminate()
             }
         }
