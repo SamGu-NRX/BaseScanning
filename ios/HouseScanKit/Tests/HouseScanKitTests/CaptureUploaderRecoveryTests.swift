@@ -238,4 +238,130 @@ import Testing
         #expect(Self.routes(rig.server) == ["POST captures"])
         #expect(sleeps.isEmpty)
     }
+
+    /// Counts what reaches the network under `ScopedCaptureHTTP`.
+    final class CountingHTTP: CaptureHTTP {
+        let inner: any CaptureHTTP
+        let sends = Mutex(0)
+        init(_ inner: any CaptureHTTP) { self.inner = inner }
+        func send(_ request: URLRequest) async throws -> HTTPReply {
+            sends.withLock { $0 += 1 }
+            return try await inner.send(request)
+        }
+        func upload(_ request: URLRequest, file: URL) async throws -> HTTPReply {
+            sends.withLock { $0 += 1 }
+            return try await inner.upload(request, file: file)
+        }
+    }
+
+    /// A save that fails while a request waits for its credential stops that request. The create
+    /// waits on a provider that ignores cancellation. Meanwhile `add` saves into an unwritable
+    /// folder and fails. When the provider then returns a good token, nothing reaches the
+    /// network, nothing is retried, and the upload ends as the local save failure, not as a
+    /// withdrawal.
+    @Test func aFailedSaveStopsARequestWaitingForItsCredential() async throws {
+        let sleeps = ScopedCaptureUploadTests.Sleeps()
+        let gate = ScopedCaptureHTTPTests.Gate()
+        let server = try LoopbackCaptureAPI()
+        server.state.withLock { $0.expectedBearer = ScopedCaptureUploadTests.token }
+        let network = CountingHTTP(URLSessionCaptureHTTP.ephemeral(timeout: 10))
+        let http = ScopedCaptureHTTP(
+            scope: try CaptureAPIScope(base: server.base, transport: .loopbackHTTP),
+            credential: {
+                await gate.wait()
+                return ScopedCaptureUploadTests.token
+            },
+            inner: network)
+        let rig = try Rig(server: server, http: http, sleep: sleeps.record)
+        defer { rig.cleanUp() }
+        let folder = rig.capture.folder
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path) }
+        let images = try await rig.capture.sealImages(count: 1)
+        await rig.uploader.kick()
+        await gate.entered()
+
+        let url = CaptureUploader.stateURL(in: folder)
+        let before = try Data(contentsOf: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
+        await rig.uploader.add(images)
+        gate.release()
+        try #require(await CaptureUploaderTests.settles(rig.uploader))
+
+        #expect(network.sends.withLock { $0 } == 0)
+        #expect(server.state.withLock { $0.log.isEmpty })
+        #expect(await rig.uploader.snapshot.end == .failed(step: "save", codes: ["local_state_unsaved"], status: 0))
+        #expect(await rig.uploader.status.phase == .failed)
+        #expect(await rig.uploader.status.retryingAt == nil)
+        #expect(sleeps.isEmpty)
+        #expect(try Data(contentsOf: url) == before)
+        await rig.uploader.kick()
+        try #require(await CaptureUploaderTests.settles(rig.uploader))
+        #expect(network.sends.withLock { $0 } == 0)
+    }
+
+    enum UnsavedEnd: String, CaseIterable, Sendable {
+        /// The result arrives and ends the upload, and that save fails.
+        case finished
+        /// The server's answer ends the upload as refused, and that save fails.
+        case refused
+    }
+
+    /// A withdrawal outranks an end this process reached but couldn't save. The end stays when
+    /// its save fails; the folder is unwritable, so the withdrawal goes unrecorded too. The
+    /// coordinator's `abandon(withdrawnReason)` must still end the upload as withdrawn.
+    ///
+    /// This holds at the library and coordinator boundary. The app doesn't offer Stop sending
+    /// once its screen shows a final state, so no button reaches this path today.
+    @Test(arguments: UnsavedEnd.allCases)
+    func aWithdrawalOutranksAnEndWhoseSaveFailed(end: UnsavedEnd) async throws {
+        let sleeps = ScopedCaptureUploadTests.Sleeps()
+        let rig = try Rig(sleep: sleeps.record)
+        defer { rig.cleanUp() }
+        let folder = rig.capture.folder
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path) }
+        let route: String
+        switch end {
+        case .finished:
+            route = "GET captures/result"
+            rig.server.state.withLock { $0.held = [route] }
+            await rig.uploader.add(try await rig.capture.sealImages(count: 1))
+            try #require(await CaptureUploaderTests.settles(rig.uploader))
+            try await rig.finishAndSeal()
+        case .refused:
+            route = "POST captures/files"
+            // A register answer with a plain-http storage URL to another host, which ends the upload.
+            rig.server.state.withLock {
+                $0.held = [route]
+                $0.uploadURLOverride = "http://example.com/upload/x"
+            }
+            await rig.uploader.add(try await rig.capture.sealImages(count: 1))
+        }
+        try #require(await Self.parked(rig.server, route))
+
+        let url = CaptureUploader.stateURL(in: folder)
+        let before = try Data(contentsOf: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
+        rig.server.release(route)
+        try #require(await CaptureUploaderTests.settles(rig.uploader))
+        let reached = await rig.uploader.snapshot.end
+        switch end {
+        case .finished: #expect(reached == .finished(status: "manual_review"))
+        case .refused: #expect(reached == .failed(step: "register", codes: ["upload_url_insecure"], status: 200))
+        }
+        #expect(try Data(contentsOf: url) == before)
+        let sent = Self.routes(rig.server)
+
+        let record = rig.uploader.withdrawConsent()
+        guard case .notRecorded = record else {
+            Issue.record("expected the withdrawal to go unrecorded in an unwritable folder, got \(record)")
+            return
+        }
+        await rig.uploader.abandon(CaptureUploader.withdrawnReason)
+        #expect(await rig.uploader.snapshot.end == .abandoned(CaptureUploader.withdrawnReason))
+        #expect(await rig.uploader.status.phase == .abandoned)
+        #expect(try Data(contentsOf: url) == before)
+        await rig.uploader.kick()
+        try #require(await CaptureUploaderTests.settles(rig.uploader))
+        #expect(Self.routes(rig.server) == sent)
+    }
 }
