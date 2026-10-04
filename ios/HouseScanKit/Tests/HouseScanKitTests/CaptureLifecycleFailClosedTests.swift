@@ -134,6 +134,61 @@ import Testing
         #expect(await uploader.snapshot.end == .abandoned(CaptureUploader.withdrawnReason))
     }
 
+    /// The other order: the loss ends the upload first, then the homeowner says no. The recorded
+    /// withdrawal replaces the local end. A reset after a loss doesn't: it's not a withdrawal.
+    @Test func aWithdrawalAfterALossStillEndsTheUploadAsWithdrawn() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let server = try LoopbackCaptureAPI()
+        let coordinator = coordinator(server)
+        try await startScan(coordinator, consent: true)
+        let uploader = try #require(coordinator.session?.uploader)
+        try lose(.queuedSeal, in: coordinator)
+        await coordinator.settle()
+        try #require(await uploader.snapshot.end == Self.preparationFailed)
+        guard case .success = coordinator.answerConsent(false) else {
+            Issue.record("the withdrawal wasn't recorded")
+            return
+        }
+        await uploader.settled()
+        for _ in 0..<500 {
+            if await uploader.snapshot.end != Self.preparationFailed { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(await uploader.snapshot.end == .abandoned(CaptureUploader.withdrawnReason))
+        #expect(try CaptureUploadState.load(from: CaptureUploader.stateURL(in: uploader.folder)).end == .abandoned(CaptureUploader.withdrawnReason))
+    }
+
+    @Test func aResetAfterALossKeepsTheLossAsTheEnd() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let server = try LoopbackCaptureAPI()
+        let coordinator = coordinator(server)
+        try await startScan(coordinator, consent: true)
+        let uploader = try #require(coordinator.session?.uploader)
+        try lose(.queuedSeal, in: coordinator)
+        await coordinator.settle()
+        coordinator.newWorld("world reset", recording: fixture.recording, newScan: false)
+        await uploader.settled()
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(await uploader.snapshot.end == Self.preparationFailed)
+    }
+
+    /// A loss still queued when the scan is sent: the packet is never frozen, even with no upload
+    /// to refuse it. Nothing is settled between the lost input and the end of the capture.
+    @Test(arguments: [Loss.queuedSeal, Loss.tapSeal, Loss.tapFrame])
+    func aLossQueuedBeforeTheEndKeepsThePacketUnfrozen(loss: Loss) async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let server = try LoopbackCaptureAPI()
+        let coordinator = coordinator(server)
+        try await startScan(coordinator, consent: nil)
+        let folder = try #require(coordinator.session?.folder)
+        try lose(loss, in: coordinator)
+        coordinator.captureEnded(acceptedCloseUpAt: fixture.start + 2.5)
+        await coordinator.settle()
+        #expect(coordinator.session?.preparationFailure == CaptureSessionCoordinator.inputLostCode)
+        #expect(!FileManager.default.fileExists(atPath: folder.appending(path: "packet.json").path))
+        #expect(server.state.withLock { $0.log.isEmpty })
+    }
+
     /// What the producer leaves out on purpose isn't a loss: the close-up's frame kept again, a
     /// photo for a purpose that isn't a still, and photos after the scan was sent.
     @Test func framesLeftOutOnPurposeStillFinish() async throws {

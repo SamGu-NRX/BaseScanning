@@ -72,6 +72,32 @@ import Testing
         #expect(try CaptureUploader.resume(folder: folder, base: server.base, http: URLSessionCaptureHTTP.ephemeral(timeout: 10)) == nil)
     }
 
+    /// A no that couldn't be recorded (unwritable folder) leaves the old yes on disk. The reset
+    /// that follows has no uploader left to retire, and must report that failure, not success.
+    @Test func aResetAfterAnUnrecordedWithdrawalReportsTheFailure() async throws {
+        let server = try LoopbackCaptureAPI()
+        let coordinator = coordinator(server)
+        let folder = try await scan(coordinator)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path)
+            try? FileManager.default.removeItem(at: root)
+        }
+        let saved = try Data(contentsOf: CaptureUploader.stateURL(in: folder))
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
+        guard case .failure(.notRecorded) = coordinator.answerConsent(false) else {
+            Issue.record("expected the withdrawal to go unrecorded in an unwritable folder")
+            return
+        }
+        let ended = coordinator.newWorld("world reset", recording: fixture.recording, newScan: false)
+        guard case .failure(.notRecorded) = ended else {
+            Issue.record("the reset reported \(ended) with the old yes still on disk")
+            return
+        }
+        await coordinator.settle()
+        #expect(try Data(contentsOf: CaptureUploader.stateURL(in: folder)) == saved)
+        #expect(try CaptureUploadState.load(from: CaptureUploader.stateURL(in: folder)).end == nil)
+    }
+
     /// The record is what a relaunch reads: a folder carrying it isn't resumed, even with its
     /// saved state still unended and nothing in this process remembering it.
     @Test func aFolderWithTheEndedRecordIsNotResumed() async throws {
