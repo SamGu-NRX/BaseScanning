@@ -734,7 +734,10 @@ public actor CaptureUploader {
     /// request carrying Authorization. It ends the upload with the boundary's code and status 0,
     /// since no server answered. Any other error, a network one included, is retried as before.
     private func failure(_ step: String, _ error: any Error) -> any Error {
-        if !canSend || Task.isCancelled { return Withdrawn() }
+        if !canSend || Task.isCancelled {
+            log?("capture-upload withdrawn step=\(step) detail=\(Self.describe(error))")
+            return Withdrawn()
+        }
         guard let refusal = error as? ScopedCaptureHTTPError else {
             return Transient(step: step, detail: Self.describe(error), retryAfter: nil)
         }
