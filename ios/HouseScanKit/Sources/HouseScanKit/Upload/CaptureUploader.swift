@@ -86,6 +86,8 @@ public actor CaptureUploader {
         /// A save failed here: the saved state is older than what this process sent, so this
         /// process never resumes it. A relaunch may, under the consent it records.
         var unsaved = false
+        /// Its world ended (`retire`): this process never resumes it, whatever reached the disk.
+        var retired = false
         var stopped = false
         var running: Task<Void, Never>?
     }
@@ -142,7 +144,7 @@ public actor CaptureUploader {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let folder = try canonicalFolder(folder)
         return try folders.withLock { entries in
-            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn || $0.value.unsaved }
+            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn || $0.value.unsaved || $0.value.retired }
             guard entries[folder.path]?.withdrawn != true,
                   !FileManager.default.fileExists(atPath: CaptureUploadState.withdrawnURL(in: folder).path)
             else { throw OwnershipError.consentWithdrawn }
@@ -172,11 +174,12 @@ public actor CaptureUploader {
         guard FileManager.default.fileExists(atPath: folder.path) else { return nil }
         let folder = try canonicalFolder(folder)
         return try folders.withLock { entries in
-            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn || $0.value.unsaved }
+            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn || $0.value.unsaved || $0.value.retired }
             let url = stateURL(in: folder)
-            guard entries[folder.path]?.withdrawn != true, entries[folder.path]?.unsaved != true,
+            guard entries[folder.path]?.withdrawn != true, entries[folder.path]?.unsaved != true, entries[folder.path]?.retired != true,
                   FileManager.default.fileExists(atPath: url.path),
-                  !FileManager.default.fileExists(atPath: CaptureUploadState.withdrawnURL(in: folder).path)
+                  !FileManager.default.fileExists(atPath: CaptureUploadState.withdrawnURL(in: folder).path),
+                  !FileManager.default.fileExists(atPath: CaptureUploadState.endedURL(in: folder).path)
             else { return nil }
             guard entries[folder.path]?.owner == nil else { throw OwnershipError.alreadyOwned }
             var state = try CaptureUploadState.load(from: url)
@@ -264,6 +267,37 @@ public actor CaptureUploader {
             return (record, entries[folderKey]?.running)
         }
         // Cancellation handlers belong to the transport; never call them while holding our lock.
+        task?.cancel()
+        return record
+    }
+
+    /// How a world's end was recorded on disk (`retire`).
+    public enum RetirementRecord: Sendable, Equatable {
+        /// The ended marker `resume` refuses was written.
+        case marked
+        /// It couldn't be written: this process won't resume the capture, but a relaunch could
+        /// still find its saved yes until a later save records the upload as abandoned.
+        case notRecorded(String)
+    }
+
+    /// Ends this capture's world before returning: admission closes, this process never resumes
+    /// the folder, and the ended marker (`CaptureUploadState.endedURL`) is written, synchronously
+    /// and under the folder registry's lock, as `withdrawConsent` writes its own. The running task
+    /// is cancelled. The upload's saved end still comes from `abandon`, on the uploader's turn.
+    @discardableResult
+    public nonisolated func retire(_ reason: String) -> RetirementRecord {
+        let (record, task) = Self.folders.withLock { entries -> (RetirementRecord, Task<Void, Never>?) in
+            entries[folderKey, default: FolderEntry()].stopped = true
+            entries[folderKey]?.retired = true
+            let record: RetirementRecord
+            do {
+                try Data(reason.utf8).write(to: CaptureUploadState.endedURL(in: folder), options: .atomic)
+                record = .marked
+            } catch {
+                record = .notRecorded(Self.describe(error))
+            }
+            return (record, entries[folderKey]?.running)
+        }
         task?.cancel()
         return record
     }

@@ -34,11 +34,42 @@ import Testing
         let coordinator = coordinator(server)
         let folder = try await scan(coordinator)
 
-        coordinator.newWorld("world reset", recording: fixture.recording, newScan: false)
+        let ended = coordinator.newWorld("world reset", recording: fixture.recording, newScan: false)
         // No suspension point since newWorld: only what it did synchronously is on disk.
+        guard case .success = ended else {
+            Issue.record("the reset's end wasn't recorded: \(ended)")
+            return
+        }
         #expect(FileManager.default.fileExists(atPath: folder.appending(path: Self.endedFile).path))
         #expect(!FileManager.default.fileExists(atPath: CaptureUploadState.withdrawnURL(in: folder).path))
         await coordinator.settle()
+    }
+
+    /// When the marker can't be written, newWorld says so, and this process still never resumes
+    /// the capture, even after its uploader is gone and with its saved state unended.
+    @Test func aResetThatCantBeRecordedSaysSoAndStillNeverResumesHere() async throws {
+        let server = try LoopbackCaptureAPI()
+        let coordinator = coordinator(server)
+        let folder = try await scan(coordinator)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path)
+            try? FileManager.default.removeItem(at: root)
+        }
+        weak let old = coordinator.session?.uploader
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
+
+        let ended = coordinator.newWorld("world reset", recording: fixture.recording, newScan: false)
+        guard case .failure(.notRecorded) = ended else {
+            Issue.record("expected the unwritable folder to leave the end unrecorded, got \(ended)")
+            return
+        }
+        #expect(!FileManager.default.fileExists(atPath: folder.appending(path: Self.endedFile).path))
+        await coordinator.settle()
+        for _ in 0..<500 where old != nil { try await Task.sleep(for: .milliseconds(10)) }
+        try #require(old == nil)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path)
+        #expect(try CaptureUploadState.load(from: CaptureUploader.stateURL(in: folder)).end == nil)
+        #expect(try CaptureUploader.resume(folder: folder, base: server.base, http: URLSessionCaptureHTTP.ephemeral(timeout: 10)) == nil)
     }
 
     /// The record is what a relaunch reads: a folder carrying it isn't resumed, even with its

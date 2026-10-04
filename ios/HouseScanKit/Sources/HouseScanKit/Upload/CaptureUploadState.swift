@@ -11,6 +11,13 @@ public struct CaptureUploadState: Codable, Sendable, Equatable {
 
     public static func withdrawnURL(in folder: URL) -> URL { folder.appending(path: withdrawnFileName) }
 
+    /// Written into a capture's folder when its world ends before the capture was finished (a
+    /// reset, or starting over). It holds the reason. `CaptureUploader.resume` never resumes a folder
+    /// that has it. Not a withdrawal: the homeowner's yes wasn't taken back.
+    public static let endedFileName = "capture-ended"
+
+    public static func endedURL(in folder: URL) -> URL { folder.appending(path: endedFileName) }
+
     /// Called with the uploader's folder registry locked so no initial save or reply can restore
     /// a yes between these writes. Neither failing proves anything durable after a process exit.
     static func recordWithdrawal(in folder: URL) -> CaptureUploader.WithdrawalRecord {

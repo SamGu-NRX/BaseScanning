@@ -247,6 +247,12 @@ public final class CaptureSessionCoordinator {
         environment?.sends == true && consent == nil && session != nil
     }
 
+    public enum SessionEndError: Error, Sendable, Equatable {
+        /// Sending stopped and this process won't resume the capture, but its ended marker
+        /// couldn't be written, so a relaunch could still find the saved yes.
+        case notRecorded(String)
+    }
+
     public enum ConsentWithdrawalError: Error, Sendable, Equatable {
         /// Sending stopped in this process, but a relaunch may still find the old saved yes.
         case notRecorded(String)
@@ -291,14 +297,18 @@ public final class CaptureSessionCoordinator {
 
     /// The ARKit world was thrown away, or (`newScan`) the scan started over: this packet can't
     /// be finished, and the next one belongs to `recording`'s new world. A new scan asks again.
-    public func newWorld(_ reason: String, recording: RecordingSource, newScan: Bool) {
-        endSession(reason)
+    /// Before this returns the old capture is ended in this process and its ended marker is
+    /// written; failure means the marker couldn't be, so only this process is sure not to resume it.
+    @discardableResult
+    public func newWorld(_ reason: String, recording: RecordingSource, newScan: Bool) -> Result<Void, SessionEndError> {
+        let ended = endSession(reason)
         if newScan {
             consent = nil
             consentedAt = nil
         }
         self.recording = recording
         if environment != nil { startSession() }
+        return ended
     }
 
     public func kept(_ photo: KeptPhoto) {
@@ -494,15 +504,19 @@ public final class CaptureSessionCoordinator {
         Task { await uploader.failPreparation(Self.inputLostCode) }
     }
 
-    private func endSession(_ reason: String) {
-        guard let session else { return }
+    private func endSession(_ reason: String) -> Result<Void, SessionEndError> {
+        guard let session else { return .success(()) }
         self.session = nil
         session.ended = true
         onStatus?(nil)
-        if let uploader = session.uploader {
-            uploader.stopSending()
-            Task { await uploader.abandon(reason) }
-        }
+        guard let uploader = session.uploader else { return .success(()) }
+        // Synchronous: closes admission, bars this process from resuming it, writes the marker a
+        // relaunch reads. The abandonment saved in the upload's own state follows on its turn.
+        let record = uploader.retire(reason)
+        Task { await uploader.abandon(reason) }
+        guard case .notRecorded(let error) = record else { return .success(()) }
+        environment?.log("capture upload: the end of this world's capture could not be recorded (\(error)); it won't resume in this process")
+        return .failure(.notRecorded(error))
     }
 }
 
