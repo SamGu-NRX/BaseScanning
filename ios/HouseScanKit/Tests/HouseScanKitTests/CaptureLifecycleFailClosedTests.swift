@@ -89,6 +89,7 @@ import Testing
         // Ended by the loss itself, before the scan was sent.
         #expect(await uploader.snapshot.end == Self.preparationFailed)
         #expect(await uploader.status.retryingAt == nil)
+        #expect(coordinator.session?.preparationFailure == CaptureSessionCoordinator.inputLostCode)
 
         coordinator.kept(try fixture.photo(at: fixture.start + 10))
         coordinator.captureEnded(acceptedCloseUpAt: fixture.start + 2.5)
@@ -112,6 +113,7 @@ import Testing
         coordinator.captureEnded(acceptedCloseUpAt: fixture.start + 2.5)
         await coordinator.settle()
         #expect(coordinator.session?.uploader == nil)
+        #expect(coordinator.session?.preparationFailure == CaptureSessionCoordinator.inputLostCode)
         #expect(server.state.withLock { $0.log.isEmpty })
     }
 
@@ -186,6 +188,7 @@ import Testing
         await nextUploader.settled()
 
         #expect(coordinator.session === next)
+        #expect(next.preparationFailure == nil)
         #expect(await nextUploader.snapshot.end == nil)
         #expect(statuses.withLock { $0.dropFirst(seen) }.allSatisfy { status in status?.phase != .failed })
     }

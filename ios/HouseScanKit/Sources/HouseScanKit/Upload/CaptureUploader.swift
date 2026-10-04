@@ -293,6 +293,19 @@ public actor CaptureUploader {
         persist()
     }
 
+    /// Ends the upload because the phone lost a photo or tap the packet needs: step `prepare`,
+    /// status 0, `code`. Admission closes first, so nothing more is sent; a request already
+    /// admitted may finish, and its reply is dropped. A withdrawal still outranks it (`persist`),
+    /// and an end already reached stays.
+    public func failPreparation(_ code: String) {
+        stopSending()
+        guard state.end == nil else { return }
+        state.end = .failed(step: "prepare", codes: [code], status: 0)
+        state.attemptID = UUID().uuidString
+        loop?.cancel()
+        persist()
+    }
+
     /// Starts the loop if it is idle: after a relaunch, or when the network is back.
     public func kick() {
         guard loop == nil, state.end == nil, !saveFailed else { return }

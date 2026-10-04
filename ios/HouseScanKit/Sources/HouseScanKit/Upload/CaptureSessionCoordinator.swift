@@ -165,6 +165,12 @@ public final class CaptureSessionCoordinator {
     /// Checklist purposes the packet's `stills` take; any other still stays a keyframe only.
     public static let stillPurposes: Set<String> = ["meter_close", "meter_oblique"]
 
+    /// The local code a capture ends with when the phone lost a photo or tap the scan accepted:
+    /// the packet can't be prepared complete. The upload, if one is running, ends
+    /// `.failed(step: "prepare", codes: [inputLostCode], status: 0)`; the session's
+    /// `preparationFailure` holds it either way.
+    public static let inputLostCode = "capture_input_lost"
+
     @MainActor
     public final class Session {
         /// This app's id for this session, new for every session even when two packets both call
@@ -186,6 +192,9 @@ public final class CaptureSessionCoordinator {
         var frozen: Data?
         /// The server's result for this session's capture, decoded and bound to it.
         public fileprivate(set) var result: CaptureResult.Record?
+        /// Set once a photo or tap the scan accepted couldn't be kept (`inputLostCode`). This
+        /// session then never seals, and never starts an upload.
+        public fileprivate(set) var preparationFailure: String?
 
         init(packetID: String, folder: URL, recording: RecordingSource) {
             self.packetID = packetID
@@ -302,7 +311,7 @@ public final class CaptureSessionCoordinator {
             try FileManager.default.createDirectory(at: staged.deletingLastPathComponent(), withIntermediateDirectories: true)
             try FileManager.default.copyItem(at: photo.jpeg, to: staged)
         } catch {
-            environment.log("capture packet: a kept photo could not be copied: \(error)")
+            inputLost(session, "a kept photo could not be copied: \(error)")
             return
         }
         // The copy is deleted even when a reset ends the session before this work runs.
@@ -320,7 +329,7 @@ public final class CaptureSessionCoordinator {
                 }
                 await session.uploader?.add(files)
             } catch {
-                environment.log("capture packet: a kept photo was not sealed: \(error)")
+                self.inputLost(session, "a kept photo was not sealed: \(error)")
             }
         }, cleanup: { try? FileManager.default.removeItem(at: staged) })
     }
@@ -332,7 +341,7 @@ public final class CaptureSessionCoordinator {
             do {
                 let producer = try session.producer(first: (tap.t, SIMD2(Float(tap.width), Float(tap.height))), info: environment.sessionInfo)
                 guard let jpeg = await Task.detached(priority: .userInitiated, operation: { tap.jpeg() }).value else {
-                    environment.log("capture packet: the meter tap's frame could not be encoded; no tap")
+                    self.inputLost(session, "the meter tap's frame could not be encoded")
                     return
                 }
                 let observation = Packet04Observation(
@@ -340,7 +349,7 @@ public final class CaptureSessionCoordinator {
                 let files = try await producer.sealTap(id: "meter", label: "meter", jpeg: jpeg, observation: observation, pixel: tap.pixel, hit: hit)
                 await session.uploader?.add(files)
             } catch {
-                environment.log("capture packet: the meter tap was not recorded: \(error)")
+                self.inputLost(session, "the meter tap was not recorded: \(error)")
             }
         }
     }
@@ -351,6 +360,8 @@ public final class CaptureSessionCoordinator {
     public func captureEnded(acceptedCloseUpAt: Double?) {
         guard let session, !session.sealing, let environment else { return }
         session.sealing = true
+        // A packet missing an accepted photo or tap is never frozen; its upload already ended.
+        guard session.preparationFailure == nil else { return }
         session.enqueue { session in
             guard let producer = session.producer else {
                 await session.uploader?.abandon("no photos were kept")
@@ -415,7 +426,7 @@ public final class CaptureSessionCoordinator {
     /// packet if the scan was already sent. Photos kept later go up as they are sealed.
     private func startUploading(_ session: Session) {
         guard let environment, environment.sends, consent == true, let consentedAt, session.uploader == nil, !session.ended,
-              !session.consentWithdrawn else { return }
+              !session.consentWithdrawn, session.preparationFailure == nil else { return }
         do {
             let uploader = try CaptureUploader.start(
                 folder: session.folder, base: environment.endpoint, http: environment.http,
@@ -468,6 +479,19 @@ public final class CaptureSessionCoordinator {
         } catch {
             environment?.log("capture result could not be read: \(error)")
         }
+    }
+
+    /// A photo or tap the scan accepted couldn't be kept, so `session`'s packet can't be complete.
+    /// Admission closes now, before the uploader's own turn, so its loop sends nothing more; the
+    /// upload then ends with `inputLostCode`. A session that already ended (a reset world's late
+    /// work) is left alone: its upload was abandoned, and the next world isn't this one.
+    private func inputLost(_ session: Session, _ detail: String) {
+        environment?.log("capture packet: \(detail); this capture can't be prepared")
+        guard !session.ended, session.preparationFailure == nil else { return }
+        session.preparationFailure = Self.inputLostCode
+        guard let uploader = session.uploader else { return }
+        uploader.stopSending()
+        Task { await uploader.failPreparation(Self.inputLostCode) }
     }
 
     private func endSession(_ reason: String) {
