@@ -112,8 +112,9 @@ import simd
         #expect(result.answer { _ in true } == .oneMoreLook)
     }
 
-    /// A manual_review held back only by unapproved rules, with every check passing, fits.
-    @Test func allPassUnderUnapprovedRulesFits() throws {
+    /// A manual_review held back only by unapproved rules, with every check passing, is a
+    /// candidate like a pass: the rules' approval was never what made a spot a confirmed fit.
+    @Test func allPassUnderUnapprovedRulesIsACandidate() throws {
         var object = try Self.sampleObject()
         object["checks"] = [
             Self.check("wall_backing", "pass"),
@@ -123,7 +124,7 @@ import simd
         let result = try Self.decode(object)
         #expect(result.decision == .manualReview && !result.policy.autoApprove && result.spot != nil)
         #expect(result.spotIsClean)
-        #expect(result.answer { _ in true } == .fits)
+        #expect(result.answer { _ in true } == .candidate)
     }
 
     /// The same answer with `checks: []`, which the schema allows: no evidence is not a fit.
@@ -208,7 +209,7 @@ import simd
     /// ios/HouseScanUITests/Fixtures/results, the answers the screenshots and UI tests show
     /// through `-uiDemoResultFile`. Each must stay in the schema and read as its name says.
     @Test(arguments: [
-        ("pass", ResultReading.Answer.fits), ("reject-nearest", .notHere),
+        ("pass", ResultReading.Answer.candidate), ("reject-nearest", .notHere),
         ("unsure-view", .oneMoreLook), ("no-clean-spot", .installer),
         ("no-spot-no-nearest", .notHere), ("review-band", .installer), ("view-not-offered", .oneMoreLook),
     ])
@@ -236,9 +237,9 @@ import simd
             ResultReading.answer(decision: decision, policyApproved: approved, hasSpot: spot, checks: checks)
         }
 
-        #expect(answer(.pass, true, true, [pass]) == .fits)
+        #expect(answer(.pass, true, true, [pass]) == .candidate)
         // Only the rules' approval holds it back.
-        #expect(answer(.manualReview, false, true, [pass]) == .fits)
+        #expect(answer(.manualReview, false, true, [pass]) == .candidate)
         #expect(answer(.manualReview, false, false, [pass]) == .installer)
         #expect(answer(.manualReview, true, true, [pass, byView, byPerson]) == .oneMoreLook)
         #expect(answer(.manualReview, true, true, [pass, byPerson]) == .installer)
@@ -255,28 +256,107 @@ import simd
         #expect(unexplained.needsPerson)
     }
 
-    // MARK: The card's check lines
+    // MARK: No confirmed fit (B17)
 
-    @Test func cardLinesPutFailuresFirstThenUnsureThenTheClosestPasses() {
+    /// The reading has no answer that says a battery fits: a passing spot rests on space the scan
+    /// can't show was confirmed, so the most it can be is a candidate.
+    @Test func noAnswerSaysABatteryFits() {
+        #expect(ResultReading.Answer(rawValue: "fits") == nil)
         typealias Check = ResultReading.Check
-        let checks = [
-            Check(id: "wide", outcome: .pass, margin: 9),
-            Check(id: "unsure", outcome: .unsure),
-            Check(id: "close", outcome: .pass, margin: 0.5),
-            Check(id: "fail", outcome: .fail),
-            Check(id: "unmeasured", outcome: .pass),
-            Check(id: "closer", outcome: .pass, margin: 0.2),
-        ]
-        #expect(ResultReading.cardLines(checks) == [3, 1, 5])
-        let passes = checks.filter { $0.outcome == .pass }
-        #expect(ResultReading.cardLines(passes) == [3, 1])  // closer, close: two passes at most
+        let outcomes: [PlacementOutcome] = [.pass, .unsure, .fail]
+        // Each check set once with a check this app doesn't know, so a new server check can't
+        // open a shortcut to a stronger answer.
+        var sets: [[Check]] = [[]]
+        for id in ["wall_backing", "a_check_this_app_does_not_know", ResultReading.meterWorkingSpaceCheckID] {
+            sets = sets.flatMap { set in [set] + outcomes.map { set + [Check(id: id, outcome: $0, viewCapturable: true)] } }
+        }
+        for decision in [PlacementDecision.pass, .manualReview, .reject] {
+            for approved in [true, false] {
+                for hasSpot in [true, false] {
+                    for checks in sets {
+                        let answer = ResultReading.answer(decision: decision, policyApproved: approved, hasSpot: hasSpot, checks: checks)
+                        let described = "\(decision) approved=\(approved) spot=\(hasSpot) checks=\(checks.map { "\($0.id)=\($0.outcome)" })"
+                        // A reject without a spot stays negative whatever its checks say.
+                        if decision == .reject, !hasSpot { #expect(answer == .notHere, "\(described)") }
+                        guard answer == .candidate else { continue }
+                        // A candidate has a spot and at least one check, every one passing.
+                        #expect(hasSpot && !checks.isEmpty && checks.allSatisfy { $0.outcome == .pass } && decision != .reject,
+                                "\(described)")
+                    }
+                }
+            }
+        }
     }
 
-    @Test func marginIsInUnitsOfTheErrorWhenThereIsOne() throws {
-        #expect(abs(try #require(ResultReading.margin(measured: 3.6, threshold: 3, plusMinus: 0.3, comparison: .atLeast)) - 2) < 1e-9)
-        #expect(ResultReading.margin(measured: 18, threshold: 20, plusMinus: nil, comparison: .atMost) == 2)
-        #expect(ResultReading.margin(measured: 2.5, threshold: 3, plusMinus: 0, comparison: .atLeast) == -0.5)
-        #expect(ResultReading.margin(measured: 2.5, threshold: 3, plusMinus: nil, comparison: nil) == 0.5)
-        #expect(ResultReading.margin(measured: nil, threshold: 3, plusMinus: 0.3, comparison: .atLeast) == nil)
+    /// A pass that contradicts itself (no spot, no checks, or a check that didn't pass) goes to a
+    /// person rather than reading as a candidate, and its checks stay as sent.
+    @Test func anInconsistentPassGoesToAnInstaller() {
+        typealias Check = ResultReading.Check
+        let answer = { (spot: Bool, checks: [Check]) in
+            ResultReading.answer(decision: .pass, policyApproved: true, hasSpot: spot, checks: checks)
+        }
+        #expect(answer(false, []) == .installer)
+        #expect(answer(true, []) == .installer)
+        #expect(answer(false, [Check(id: "a", outcome: .pass)]) == .installer)
+        #expect(answer(true, [Check(id: "a", outcome: .pass), Check(id: "b", outcome: .unsure, viewCapturable: true)]) == .installer)
+        #expect(answer(true, [Check(id: "a", outcome: .pass), Check(id: "b", outcome: .fail)]) == .installer)
+        #expect(answer(true, [Check(id: "a", outcome: .pass)]) == .candidate)
+    }
+
+    /// An installer's review can still carry a spot, and the reading keeps it: only the words
+    /// over it change.
+    @Test func anInstallerReviewKeepsItsSpot() throws {
+        let result = try Self.sample(adding: Self.check(ResultReading.meterWorkingSpaceCheckID, "unsure", measured: -0.5, threshold: 0))
+        #expect(result.answer { _ in true } == .installer)
+        #expect(result.spot != nil)
+    }
+
+    /// Reading an answer changes nothing in it. A passing answer bound to the scene sent stays
+    /// bound, decodes to the same result before and after it is read, and keeps the server's
+    /// decision and every check's outcome: the candidate is how the app words it, not a new
+    /// answer.
+    @Test func readingAPassLeavesTheAnswerAsTheServerSentIt() throws {
+        let scene = Data(#"{"note":"the bytes this phone sent"}"#.utf8)
+        var object = try #require(try JSONSerialization.jsonObject(with: ResultBindingTests.answer(declaring: PacketFiles.sha256(scene))) as? [String: Any])
+        object["decision"] = "pass"
+        object["checks"] = try #require(object["checks"] as? [[String: Any]]).map { check in
+            var check = check
+            check["outcome"] = "pass"
+            check.removeValue(forKey: "unsure_cause")
+            return check
+        }
+        object["missing_evidence"] = [Any]()
+        let data = try JSONSerialization.data(withJSONObject: object)
+        #expect(try SceneSchemas.result().validate(data) == [])
+        try ResultBinding.check(answer: data, submittedScene: scene)
+
+        let result = try PlacementResult.decode(data)
+        let sent = data
+        #expect(result.answer { _ in true } == .candidate)
+        #expect(ResultReading.cardLines(result.readingChecks { _ in true }).isEmpty)
+        #expect(data == sent)
+        #expect(try PlacementResult.decode(data) == result)
+        #expect(result.decision == .pass)
+        #expect(result.checks.allSatisfy { $0.outcome == .pass })
+        try ResultBinding.check(answer: data, submittedScene: scene)
+    }
+
+    // MARK: The card's check lines
+
+    /// The card leads with what failed and what is unsure. A passing check is never on it: the
+    /// card read a pass as space confirmed clear, which a candidate can't claim (B17). Every check
+    /// stays in Details.
+    @Test func cardLinesPutFailuresFirstThenUnsureAndNoPasses() {
+        typealias Check = ResultReading.Check
+        let checks = [
+            Check(id: "pass", outcome: .pass),
+            Check(id: "unsure", outcome: .unsure),
+            Check(id: "fail", outcome: .fail),
+            Check(id: "unsure2", outcome: .unsure),
+            Check(id: "fail2", outcome: .fail),
+        ]
+        #expect(ResultReading.cardLines(checks) == [2, 4, 1])
+        #expect(ResultReading.cardLines(checks, limit: 5) == [2, 4, 1, 3])
+        #expect(ResultReading.cardLines(checks.filter { $0.outcome == .pass }).isEmpty)
     }
 }

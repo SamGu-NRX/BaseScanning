@@ -1,4 +1,5 @@
 import Foundation
+import HouseScanKit
 import OSLog
 
 /// Verification hooks from the launch arguments (contract C4).
@@ -22,6 +23,12 @@ import OSLog
 ///   marking the ends (`Autopilot.endWalkByCantGetThere`).
 /// - `-autopilotSomethingThere`: the autopilot answers the first spot check "Something's there"
 ///   instead of "It's clear", so the scan is checked again without that area.
+/// - `-autopilotMarkPastEnd`: on a server past_end request the autopilot marks that end again,
+///   nearer than the end the request cleared, with a tap where the replay shows that place, and
+///   answers "Something blocks it" (`Autopilot.markPastEnd`). Without it the autopilot plays the
+///   request's frames and says "I can't get there" when they don't settle it.
+/// - `-autopilotPastEndCorner`: with `-autopilotMarkPastEnd`, the autopilot answers "It turns a
+///   corner" instead, which a request can't follow (`ScanEngine.answerWallEnd`).
 /// - `-autopilotCannotCheck`: the autopilot answers the first spot check "I can't check this
 ///   area" instead of "It's clear". It can't be combined with `-autopilotSomethingThere`.
 /// - `-sampleResultAfterSpotAnswer <path>` (debug builds only): with the bundled sample, the
@@ -44,6 +51,21 @@ import OSLog
 /// - `-simulateAppStore`: run as an App Store install would, so the developer options and practice
 ///   meter are unavailable whatever the stored switch says (`DeveloperSettings`). It can only take
 ///   the switch away, never offer it.
+/// - `-processingBackend <legacy|photoProcessing>` (debug builds only): the backend choice in
+///   Developer options starts at this value and stays in memory for the run, so a UI test's choice
+///   never reaches the stored setting the other tests run with (`ProcessingBackendSetting`).
+/// - `-photoProcessingFixture <answer>` (debug builds only, with `-replay`): photo processing sends
+///   to a capture API answered inside the app (`FixtureCaptureHTTP`), which ends every capture
+///   with this answer (`FixtureCaptureHTTP.Answer`). Nothing leaves the phone. Without it, photo
+///   processing isn't set up in any build. A replay's own packet always fails the phone's checks,
+///   since a replay has no motion.
+/// - `-photoProcessingSyntheticCapture` (debug builds only, with `-photoProcessingFixture`): the
+///   capture sent is HouseScanKit's `SyntheticCapture`, labelled synthetic in its packet, in place
+///   of the replay's photos, so the fixture's answer comes back through the real upload. It is a
+///   test of the app's path against the fixture, never a result about the wall on screen.
+/// - `-photoProcessingFixtureReadOnlyCapture` (debug builds only): just before "Stop sending
+///   photos" takes effect, the capture's folder is made read-only, so the phone can't save the
+///   withdrawal and says so (`PhotoProcessingEnd.withdrawn(recorded: false)`).
 struct LaunchOptions: Equatable {
     var replayFolder: URL?
     var autopilot = false
@@ -54,11 +76,17 @@ struct LaunchOptions: Equatable {
     var autopilotCantGetThere = false
     var autopilotSomethingThere = false
     var autopilotCannotCheck = false
+    var autopilotMarkPastEnd = false
+    var autopilotPastEndCorner = false
     var sampleResultAfterSpotAnswer: URL?
     var simulateAppStore = false
     var injectGroundRise: Float?
     var answersFromGate = false
     var failCloseUpSave = false
+    var processingBackend: ProcessingBackend?
+    var photoProcessingFixture: FixtureCaptureHTTP.Answer?
+    var photoProcessingSyntheticCapture = false
+    var photoProcessingFixtureReadOnlyCapture = false
 
     init(
         arguments: [String] = ProcessInfo.processInfo.arguments,
@@ -75,9 +103,26 @@ struct LaunchOptions: Equatable {
         autopilotCantGetThere = arguments.contains("-autopilotCantGetThere")
         autopilotSomethingThere = arguments.contains("-autopilotSomethingThere")
         autopilotCannotCheck = arguments.contains("-autopilotCannotCheck")
+        autopilotMarkPastEnd = arguments.contains("-autopilotMarkPastEnd")
+        autopilotPastEndCorner = arguments.contains("-autopilotPastEndCorner")
+        precondition(!autopilotPastEndCorner || autopilotMarkPastEnd, "-autopilotPastEndCorner answers the end -autopilotMarkPastEnd marks; pass both")
         precondition(!(autopilotSomethingThere && autopilotCannotCheck), "-autopilotSomethingThere and -autopilotCannotCheck each choose the first spot answer; pass one")
         #if DEBUG
         sampleResultAfterSpotAnswer = value(after: "-sampleResultAfterSpotAnswer").map { URL(fileURLWithPath: $0) }
+        if let text = value(after: "-processingBackend") {
+            guard let backend = ProcessingBackend(rawValue: text) else {
+                preconditionFailure("-processingBackend takes legacy or photoProcessing, got \(text)")
+            }
+            processingBackend = backend
+        }
+        if let text = value(after: "-photoProcessingFixture") {
+            guard let answer = FixtureCaptureHTTP.Answer(rawValue: text) else {
+                preconditionFailure("-photoProcessingFixture takes one of \(FixtureCaptureHTTP.Answer.allCases.map(\.rawValue)), got \(text)")
+            }
+            photoProcessingFixture = answer
+        }
+        photoProcessingSyntheticCapture = arguments.contains("-photoProcessingSyntheticCapture")
+        photoProcessingFixtureReadOnlyCapture = arguments.contains("-photoProcessingFixtureReadOnlyCapture")
         #endif
         simulateAppStore = arguments.contains("-simulateAppStore")
         failCloseUpSave = arguments.contains("-failCloseUpSave")

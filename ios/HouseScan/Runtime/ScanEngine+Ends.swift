@@ -4,13 +4,35 @@ import OSLog
 import simd
 
 /// Ending the wall during the walk without pointing at the end ("Can't get there", "Wall ends
-/// here"), and the preview of where an end would land.
+/// here"), marking it at the circle, during the walk or a past-end request, and the preview of
+/// where an end would land.
 extension ScanEngine {
+    /// The end a card asks the homeowner to mark at the circle: the walk's "Is this the right end
+    /// of the wall?", or a past_end request's side while it is unsettled (B-12). "Wall ends here"
+    /// marks only this side, through the same aim check either way (`circleEnd`).
+    var askedEndSide: WallSide? {
+        switch state.phase {
+        case .wallWalk:
+            if case .markEnd(let side) = state.guidance { return side }
+            return nil
+        case .gapRequest:
+            guard let side = pastEndSide, state.gap?.isSatisfied == false else { return nil }
+            return side
+        default:
+            return nil
+        }
+    }
+
     /// The side ending the wall applies to now, and whether the end lands at the reticle. The
     /// walk's own side while it asks to walk or to mark the end; during a request about the wall
     /// in front of the homeowner (tilt down, tilt up, step back), the side of the meter the phone
-    /// is on (`WalkedEnd.side`). Nil when both ends are marked or the walk is doing something else.
+    /// is on (`WalkedEnd.side`). During a past_end request its side, at the reticle. Nil when both
+    /// ends are marked or the walk is doing something else.
     private var endOnOffer: (side: WallSide, atReticle: Bool)? {
+        if state.phase == .gapRequest {
+            guard let side = askedEndSide, state.endQuestion == nil, !state.overheadQuestion, coverage != nil else { return nil }
+            return (side, true)
+        }
         guard state.phase == .wallWalk, state.marking == nil, state.endQuestion == nil, !state.overheadQuestion,
               nextWallSide == nil, let map = coverage else { return nil }
         switch state.guidance {
@@ -103,12 +125,28 @@ extension ScanEngine {
     /// middle whatever the view's size. Shared by the button and its preview, so the tape never
     /// shows an end the button would refuse. Only normal tracking counts, as for feature marks.
     func circleEnd(asked: WallSide, frame: SourceFrame, map: CoverageMap) -> Result<WallPoint, EndMarkRefusal> {
-        let hit = map.wall.intersectWall(frame.camera.ray(throughPixel: frame.camera.imageSize / 2))
+        aimedEnd(asked: asked, pixel: frame.camera.imageSize / 2, frame: frame, map: map)
+    }
+
+    /// `circleEnd` for the ray through `pixel` of the sensor image. A tap at a point (the
+    /// autopilot's) during a past_end request goes through the same check as the circle.
+    ///
+    /// During a past_end request only, an end that would leave less wall than the walk's minimum
+    /// (`WallFrame.minWallLength`, `CoverageMap.endWouldLeaveTooLittle`) is refused here, so the
+    /// button, its refusal and the tape's preview agree. The walk applies that minimum when it
+    /// finishes ("Done with this wall") and keeps doing so; a request settles without that step.
+    /// Whether 0.79 m is the right minimum is an open product question, not settled here.
+    func aimedEnd(asked: WallSide, pixel: SIMD2<Float>, frame: SourceFrame, map: CoverageMap) -> Result<WallPoint, EndMarkRefusal> {
+        let hit = map.wall.intersectWall(frame.camera.ray(throughPixel: pixel))
         switch EndAim.verdict(
             hit: hit, camera: frame.camera.position, wall: map.wall, reach: map.config.maxDistance,
-            groundError: map.heightError, askedLeft: asked == .left, trackingNormal: frame.tracking == .normal
+            // The frame and the phone now: a pose-only frame after it can report tracking lost
+            // without replacing the sampled frame whose ray this is.
+            groundError: map.heightError, askedLeft: asked == .left, trackingNormal: frame.tracking == .normal && state.tracking == .normal
         ) {
-        case .end(let point): return .success(point)
+        case .end(let point):
+            if state.phase == .gapRequest, map.endWouldLeaveTooLittle(asked.walk, at: point.s) { return .failure(.tooLittleWall) }
+            return .success(point)
         case .trackingLimited: return .failure(.trackingNotReady)
         case .offWall: return .failure(.noWall)
         case .otherSide: return .failure(.otherSide(asked == .left ? .right : .left))
@@ -122,7 +160,7 @@ extension ScanEngine {
         // A refusal stands until the circle is on the end the card asks for, or the card moves on.
         if state.endMarkRefusal != nil {
             var fixed = true
-            if case .markEnd(let side) = state.guidance { fixed = preview?.atReticle == true && preview?.side == side }
+            if let side = askedEndSide { fixed = preview?.atReticle == true && preview?.side == side }
             if fixed { state.endMarkRefusal = nil }
         }
     }
@@ -141,7 +179,8 @@ extension ScanEngine {
         state.endQuestionLeavesOut = leavesOut
         state.endQuestionLeavesOutSeen = leavesOut != nil
             && WalkedEnd.leftOutIsSeen(preview.side.walk, s: preview.s, walked: map.walkedPositions, wall: map.wall, seen: seen)
-        setEnd(preview.side, at: preview.s, kind: .unexplored)
+        // The homeowner said the wall ends where they stand: their mark.
+        setEnd(preview.side, at: preview.s, kind: .unexplored, source: .homeowner)
     }
 
     /// "Can't get there" while the walk asks to walk `side` or to mark its end: the end goes where
@@ -151,7 +190,8 @@ extension ScanEngine {
         guard let s = walkedEnd(side), let map = coverage else { return }
         logEnd(refused ? "can't get there" : "the wall keeps going", side: side, at: s)
         let walked = map.walkedFarthest(side.walk)
-        setEnd(side, at: s, kind: .unexplored)
+        // Where the walk reached, not a place the homeowner marked: inferred (B-12).
+        setEnd(side, at: s, kind: .unexplored, source: .inferred)
         guard refused else { return }
         walkRefusals.ended(side.walk, at: s, walked: walked, time: ScanEngine.refusalClock)
         if walkRefusals.wasRefused(side.walk, end: s) {

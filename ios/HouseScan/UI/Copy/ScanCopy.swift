@@ -71,7 +71,8 @@ enum ScanCopy {
         case .markEnd(let side):
             Instruction(
                 title: "Is this the \(side.rawValue) end of the wall?",
-                detail: "Aim where it stops or turns a corner and tap Wall ends here. If it goes on, tap The wall keeps going."
+                detail: "Aim where it stops or turns a corner and tap Wall ends here. If it goes on, tap The wall keeps going.",
+                folded: endAimFold("Aim at the \(side.rawValue) end", "Is this the \(side.rawValue) end of the wall? Aim where it stops or turns a corner and tap Wall ends here. If it goes on, tap The wall keeps going.")
             )
         case .aimAtGround(let s):
             // A cell counts once seen from two places at least 0.25 m apart (`coveringBaseline`),
@@ -251,6 +252,9 @@ enum ScanCopy {
     /// Over the walk's own prompt after "Done with this wall" was refused and the ends cleared
     /// (`ScanViewState.wallTooShort`).
     static let wallTooShort = "The ends were too close. Walk along the wall first."
+    /// `wallTooShort` on a card folded around the circle, as the walk's end can be when both ends
+    /// were cleared: two lines beside the refusal triangle, the rest under Details.
+    static let wallTooShortLead = "Walk the wall first"
 
     // MARK: Close-up
 
@@ -389,14 +393,73 @@ enum ScanCopy {
     static let wallKeepsGoing = "The wall keeps going"
 
     /// Why "Wall ends here" marked nothing, and what to do instead (`EndMarkRefusal`).
+    /// Folded at the largest text sizes, each refusal leads with what to do about it, and its
+    /// reason and the full words go under Details (`endAimFold`).
     static func endMarkRefusal(_ refusal: EndMarkRefusal, asked side: WallSide) -> Instruction {
         switch refusal {
         case .noWall:
-            Instruction(title: "The circle isn't on the wall", detail: "Aim it at the wall where it stops or turns, then tap Wall ends here.")
+            Instruction(
+                title: "The circle isn't on the wall", detail: "Aim it at the wall where it stops or turns, then tap Wall ends here.",
+                folded: endAimFold("Aim at the wall", "The circle isn't on the wall. Aim it at the wall where it stops or turns, then tap Wall ends here."))
         case .otherSide(let landed):
-            Instruction(title: "That's the \(landed.rawValue) side of your meter", detail: "Turn to the \(side.rawValue) end, then tap Wall ends here.")
+            Instruction(
+                title: "That's the \(landed.rawValue) side of your meter", detail: "Turn to the \(side.rawValue) end, then tap Wall ends here.",
+                folded: endAimFold("Face the \(side.rawValue) end", "That's the \(landed.rawValue) side of your meter. Turn to the \(side.rawValue) end, then tap Wall ends here."))
         case .trackingNotReady:
-            Instruction(title: "One moment, your phone is still finding its place", detail: "Then aim at the \(side.rawValue) end.")
+            Instruction(
+                title: "One moment, your phone is still finding its place", detail: "Then aim at the \(side.rawValue) end.",
+                folded: endAimFold("Wait a moment", "Your phone is still finding its place. Then aim at the \(side.rawValue) end."))
+        case .tooLittleWall:
+            // Says what the app can't do, not where to aim: the homeowner must not be nudged to
+            // mark an end farther than the wall really goes. "I can't get there" stays the way on.
+            // The app's own minimum (`WallFrame.minWallLength`), not a measured installation rule:
+            // no reason is given for it, and rule distances belong to the server. Folded, the lead
+            // says only that; aiming elsewhere is right only if the circle was off the real end,
+            // so it doesn't lead.
+            Instruction(
+                title: "House Scan can't use a wall that short", detail: "If this is where the wall ends, tap I can't get there to continue.",
+                folded: endAimFold("Too short to use", "House Scan can't use a wall that short. If this is where the wall ends, tap I can't get there to continue."))
+        }
+    }
+
+    /// The words of a step that marks the wall's end at the circle, folded at the largest text
+    /// sizes (`InstructionCard.foldsDetail`): a lead short enough to stay two lines, even beside
+    /// the refusal triangle, and every word of the unfolded card under Details. Unfolded, the
+    /// card covered the circle in the middle of the camera at AX5 (CI run 37165788075, iPhone
+    /// 17): the circle's top is 28 pt above the middle, and a two-line card without its reply
+    /// ends above it, where one with a third line or the reply doesn't (`GapRequestScreen`,
+    /// `WallWalkScreen` move the reply to their actions at those sizes).
+    static func endAimFold(_ lead: String, _ everything: String) -> Instruction.Folded {
+        Instruction.Folded(title: lead, detail: everything)
+    }
+
+    /// A folded end-aim card with coaching riding along (`withCoaching`). Its note under the lead
+    /// would reach the circle again: the long dark note is several lines at AX5, and even one
+    /// line uses the room above the circle. So the coaching leads instead, in a few words beside
+    /// its symbol, and its whole note opens Details. With a refusal, the refusal's correction
+    /// keeps the lead and the coaching opens Details. Only for a card that folds; coaching that
+    /// replaces the task isn't folded at all.
+    static func foldedAroundCircle(_ card: Instruction, coaching: Coaching?, refused: Bool) -> Instruction {
+        guard let coaching, !coachingReplacesTask(coaching), var folded = card.folded else { return card }
+        var out = card
+        out.note = nil
+        folded.detail = "\(coachingNote(coaching)) \(folded.detail)"
+        if !refused { folded.title = coachingLead(coaching) }
+        out.folded = folded
+        return out
+    }
+
+    /// Coaching in a few words, for a lead that must stay two lines beside its symbol at AX5: what
+    /// to do, since the symbol already says what is wrong and darkness can last a whole walk.
+    static func coachingLead(_ coaching: Coaching) -> String {
+        switch coaching {
+        case .slowDown: "Slow down"
+        case .needsTexture: "Find more texture"
+        case .tooDark: "Try your flashlight"
+        case .tooDarkToMeasure: "Try in daylight"
+        case .holdSteady: "Hold steady"
+        case .turnSlowly: "Turn more slowly"
+        case .initializing, .relocalizing, .trackingLost, .pastWallEnd: ScanCopy.coaching(coaching).title
         }
     }
 
@@ -441,6 +504,16 @@ enum ScanCopy {
 
     // MARK: Gap
 
+    /// A server request's lead when folded: the band and which side of the meter, in a few words
+    /// that stay a short block at AX5. The stretch's two ends are under Details, and the camera and
+    /// the map mark the stretch itself. Named against the meter, as the full card names it.
+    static func serverLead(_ gap: GapRequest) -> String {
+        let band = gap.band == .ground ? "ground" : "wall"
+        if gap.span.lowerBound >= 0 { return "Show the \(band) right of your meter" }
+        if gap.span.upperBound <= 0 { return "Show the \(band) left of your meter" }
+        return "Show the \(band) by your meter"
+    }
+
     /// The card for a gap request. A server request can run along much of the wall, so its
     /// stretch is named by its two ends, all of it (issue #75, `Distance.range`); the phone's own
     /// requests are short and named by their middle.
@@ -453,7 +526,19 @@ enum ScanCopy {
         case .wallAboveCandidate:
             return Instruction(title: "Show the wall \(place)", detail: "Tilt up so the wall above this spot is in view.")
         case .server(let detail):
-            return Instruction(title: gap.band == .ground ? "Show the ground \(stretch)" : "Show the wall \(stretch)", detail: detail)
+            let title = gap.band == .ground ? "Show the ground \(stretch)" : "Show the wall \(stretch)"
+            // A past_end request asks to walk on past an end; the wall may really stop before
+            // that, and the screen offers the walk's own "Wall ends here" for it (B-12).
+            // Folded at the largest text sizes on a follow-up (`GapRequestScreen.followUpFolds`):
+            // where to aim leads, and the whole request goes under Details.
+            guard let side = gap.pastEndSide else {
+                return Instruction(title: title, detail: detail, folded: Instruction.Folded(title: serverLead(gap), detail: "\(title). \(detail)"))
+            }
+            // Folded, walking on leads, as the request asks; marking the end is under Details,
+            // with the circle and "Wall ends here" in view.
+            return Instruction(
+                title: title, detail: "\(detail) \(pastEndAlternative)",
+                folded: endAimFold("Keep walking \(side.rawValue)", "\(title). \(detail) \(pastEndAlternative)"))
         case .groundOut(let out):
             return Instruction(
                 title: "Show the ground out to about \(Distance.feetAtLeast(out)) from the wall",
@@ -489,6 +574,9 @@ enum ScanCopy {
     /// The request a gap card asks for, without the walk-out's reading from where the phone is
     /// now: what the card's reply answers (`InstructionCard.Reply.task`) and what the guidance log
     /// keeps. The reading changes as the phone moves, and each change would lock the reply again.
+    /// After a past_end request's own words: the other true answer, in the walk's vocabulary.
+    static let pastEndAlternative = "If the wall stops sooner, aim where it stops and tap Wall ends here."
+
     static func gapTask(_ gap: GapRequest) -> Instruction {
         var steady = gap
         steady.walkOut = nil
@@ -627,10 +715,11 @@ enum ScanCopy {
 
     // MARK: Result
 
-    /// The answer in the homeowner's words (`ResultPresentation.answer`).
+    /// The answer in the homeowner's words (`ResultPresentation.answer`). A passing spot is a
+    /// possible one, never "fits": see `candidateNote`.
     static func headline(_ answer: ResultReading.Answer) -> String {
         switch answer {
-        case .fits: "A battery fits here"
+        case .candidate: "A possible battery spot"
         case .oneMoreLook: "One more look"
         case .installer: "Needs an installer's review"
         case .notHere: "Not on this wall"
@@ -690,7 +779,18 @@ enum ScanCopy {
         return "Settles: \(titles.joined(separator: ", "))"
     }
 
-    static let seeOnWall = "See it on your wall"
+    /// Under a possible spot's headline and placement. The server's checks pass on space the scan
+    /// recorded, some of it beyond what the homeowner confirmed in the spot check, so the app
+    /// can't say all the space a battery needs is clear (`ResultReading`, B17). It says what the
+    /// fit still needs, never that a review was sent: the app contacts nobody.
+    static let candidateNote = "The scan suggests this spot, but it couldn't confirm all the space a battery needs. An installer needs to check the fit on site."
+
+    /// The AR title over a possible spot, and the words for what the AR view draws there.
+    static let proposedSpotOverlay = "A proposed battery spot, drawn on your wall"
+    static let proposedSpotThisWay = "The proposed spot is this way"
+    static let proposedSpotOffScreen = "The proposed spot is off screen. Turn the phone toward the arrow."
+
+    static let seeOnWall = "See this spot on your wall"
     /// For a spot an installer still has to confirm against the meter's working space.
     static let seeClosest = "See the closest spot"
     static let showMe = "Show me"
@@ -703,12 +803,12 @@ enum ScanCopy {
     static let wallNotMeasuredDetail = "The scan stopped before you walked along the wall on either side of your meter, so we can't tell where a battery would fit. Scan again and walk a few steps each way."
     static let scanAgain = "Scan again"
 
-    /// Shown on every result, with or without a spot ("Not on this wall" has none), so it names
-    /// no spot.
+    /// Shown on every result but a possible spot, whose `candidateNote` says it already, with or
+    /// without a spot ("Not on this wall" has none), so it names no spot.
     static let installerConfirms = "Before any battery goes in, an installer has to confirm where it goes on site."
     static let rulesNotFinal = "The placement rules aren't final yet, so every result needs an installer's review for now."
     // The server's result covers where the battery goes, not the panel itself.
-    static let panelReview = "Your electrical panel still needs an electrician's review. This scan only covers where the battery can go."
+    static let panelReview = "Your electrical panel still needs an electrician's review. This scan only suggests where the battery could go."
 
     /// Which rules answered, for a reviewer: "Rules 2f52ec35".
     static func rulesHash(_ hash: String) -> String {
@@ -807,9 +907,14 @@ enum ScanCopy {
         }
     }
 
+    /// The heading over every check in Details, and what a passing one means there: the server's
+    /// calculation on the scan's measurements, not space anyone confirmed clear.
+    static let calculatedTitle = "What the server calculated"
+    static let calculatedNote = "From what your scan recorded. A passing check means those measurements meet the rule, not that the space is confirmed clear."
+
     static func outcomeWord(_ outcome: CheckOutcome) -> String {
         switch outcome {
-        case .pass: "Looks good"
+        case .pass: "Passes on recorded data"
         case .unsure: "Not sure yet"
         case .fail: "Doesn't work"
         }

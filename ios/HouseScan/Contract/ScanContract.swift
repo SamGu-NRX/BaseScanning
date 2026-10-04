@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import HouseScanKit
 import Observation
 import simd
 import SwiftUI
@@ -33,6 +34,9 @@ enum ScanPhase: String, Sendable, CaseIterable {
     case spotConfirm
     case result
     case resultAR
+    /// A photo-processing scan after it was sent: its progress, then its answer
+    /// (`ScanViewState.photoProcessing`). Legacy scans never come here.
+    case processing
     case unsupported
 }
 
@@ -567,6 +571,10 @@ enum EndMarkRefusal: Error, Equatable, Sendable {
     case otherSide(WallSide)
     /// Tracking isn't normal, as for a feature mark (`MarkRefusal.trackingNotReady`).
     case trackingNotReady
+    /// During a past_end request: an end there would leave less wall than the walk's minimum
+    /// (`CoverageMap.endWouldLeaveTooLittle`, `WallFrame.minWallLength`), which the app can't use.
+    /// Decided in `aimedEnd`, so the preview and the button agree.
+    case tooLittleWall
 }
 
 enum MarkRefusal: Equatable, Sendable {
@@ -631,6 +639,10 @@ struct GapRequest: Identifiable, Equatable, Sendable {
     /// Set while a walk-out request's line lies past where the space ends
     /// (`GapPlanner.walkOutBlock`): no walk can meet it, and the card says so.
     var spaceEnds: SpaceEnds? = nil
+    /// A server past_end request's side: the walk stopped there, and the request asks to walk on
+    /// past it. The screen also offers "Wall ends here" for that end, with its question, as the
+    /// walk does (B-12). Nil for every other request.
+    var pastEndSide: WallSide? = nil
 }
 
 // MARK: - Upload and result
@@ -957,6 +969,14 @@ final class ScanViewState {
     var shareableScan: URL?
     /// A camera permission or session failure the homeowner can act on.
     var failure: ScanFailure?
+    /// The backend this scan uses, fixed when it started; nil before a scan starts.
+    var scanBackend: ProcessingBackend?
+    /// Photo processing's side of this scan: its consent, progress and answer. Nil on a Legacy
+    /// scan, and before a scan starts.
+    var photoProcessing: PhotoProcessingStatus?
+    /// Photo processing sends a synthetic test capture in place of this scan's photos (DEBUG's
+    /// `-photoProcessingSyntheticCapture`), so its answer says nothing about the wall on screen.
+    var photoCaptureIsSynthetic = false
 
     init() {}
 }
@@ -1042,6 +1062,14 @@ protocol ScanActions: AnyObject {
     func showAR()
     func closeAR()
     func startOver()
+    /// The homeowner's answer to sending this scan's photos for processing
+    /// (`PhotoProcessingStatus.Consent.asking`).
+    func answerPhotoConsent(_ yes: Bool)
+    /// A no after a yes: this scan's photos stop going to photo processing.
+    func stopSendingPhotos()
+    /// A photo-processing scan this build can't send, stopped before capture: choose Legacy and
+    /// start a new scan with it.
+    func scanWithLegacyInstead()
     /// The app came back to the foreground on the camera-access failure: if access is now on,
     /// the scan goes on without Start over. Does nothing otherwise.
     func recheckCameraAccess()

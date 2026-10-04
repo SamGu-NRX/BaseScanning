@@ -50,17 +50,25 @@ final class KeyframeStore {
     private var nextIndex = 1
     /// Bumped by `discardKeyframes`, so a write that started before it doesn't land in the list.
     private var epoch = 0
+    /// Hears each photo kept, once its JPEG is on disk: the photo, the still's purpose (nil for a
+    /// keyframe) and the JPEG. Photo processing seals it into its capture from here.
+    var onKept: (@MainActor (_ photo: StoredKeyframe, _ purpose: String?, _ jpeg: URL) -> Void)?
 
-    /// Makes a new, empty scan folder and deletes every other one: only the current scan is kept
-    /// on the phone. Covers both a start over (the previous scan's folder) and launch (folders a
-    /// quit or crashed run left behind), since both make a new store. The folders to delete are
-    /// listed here, before a newer store can exist, and deleted later off the main actor
-    /// (`ScanFolderCleanup`), so a deletion that runs late can't take a newer scan's folder.
-    init() {
+    /// Makes a new, empty scan folder and deletes the old ones `ScanFolderCleanup` lists: it keeps
+    /// the two most recent completed scans (Saved scans offers them) and any folder whose bundle
+    /// is there but not whole. Covers both a start over (the previous scan's folder) and launch
+    /// (folders a quit or crashed run left behind), since both make a new store.
+    ///
+    /// The folders are listed here, before a newer store can exist, so a deletion that runs late
+    /// can't take a newer scan's folder. They are deleted later off the main actor, once
+    /// `bundleWrites` ends: the scan bundle writes started before this store, of which the
+    /// previous scan's may still be assembling its packet in a folder listed as never packaged.
+    /// Start over doesn't wait for it; only the deletion does. Nil, as at launch, waits for none.
+    init(deletingAfter bundleWrites: Task<Void, Never>? = nil) {
         let scans = Self.scansRoot
         directory = scans.appending(path: UUID().uuidString, directoryHint: .isDirectory)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        Self.delete(ScanFolderCleanup(root: scans, keeping: directory.lastPathComponent))
+        Self.delete(ScanFolderCleanup(root: scans, keeping: directory.lastPathComponent), after: bundleWrites)
     }
 
     /// Caches/Scans: one folder per scan. Saved scans lists the completed ones here.
@@ -113,6 +121,7 @@ final class KeyframeStore {
         }
         keyframes.append(stored)
         keyframes.sort { $0.id < $1.id }
+        onKept?(stored, nil, directory.appending(path: stored.fileName))
         return (true, thumbnail)
     }
 
@@ -211,6 +220,7 @@ final class KeyframeStore {
             return .worldDiscarded
         }
         stillCatalog.save(stored, purpose: id, fileName: name)
+        onKept?(stored, id, directory.appending(path: name))
         return .saved
     }
 
@@ -246,7 +256,8 @@ final class KeyframeStore {
 
     /// Zips the packet folder into `scan.zip`, manifest.json at the zip's root, and removes the
     /// folder. The zip is what "Share scan" offers; the upload sends scene.json alone. It stays on
-    /// the phone until the next scan unless the homeowner shares it.
+    /// the phone, listed in Saved scans, until two newer completed scans push it out
+    /// (`ScanFolderCleanup`).
     ///
     /// Streamed to disk one file at a time: a long walk's JPEGs held in memory twice (the entries
     /// and the archive) is what an in-memory build cost.
@@ -267,11 +278,12 @@ final class KeyframeStore {
         try? files.removeItem(at: folder)
     }
 
-    /// Off the main actor. A write still in flight for a deleted folder fails, because its
-    /// directory is gone, and is dropped like any failed write.
-    nonisolated private static func delete(_ cleanup: ScanFolderCleanup) {
+    /// Off the main actor, after `bundleWrites`. A keyframe write still in flight for a deleted
+    /// folder fails, because its directory is gone, and is dropped like any failed write; the
+    /// bundle lists only keyframes already written.
+    nonisolated private static func delete(_ cleanup: ScanFolderCleanup, after bundleWrites: Task<Void, Never>?) {
         Task.detached(priority: .utility) {
-            for (url, error) in cleanup.run() {
+            for (url, error) in await cleanup.run(after: { await bundleWrites?.value }) {
                 RuntimeLog.engine.error("could not delete old scan \(url.lastPathComponent, privacy: .public): \(String(describing: error), privacy: .public)")
             }
         }

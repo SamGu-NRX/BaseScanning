@@ -374,15 +374,22 @@ extension GapPlanner {
         case .pastEnd:
             guard let side = item.side else { return nil }
             switch side {
-            case .left:
-                let end = leftEnd ?? 0
-                return GapPlan(band: .ground, span: (end - 2)...end, reason: .server)
-            case .right:
-                let end = rightEnd ?? 0
-                return GapPlan(band: .ground, span: end...(end + 2), reason: .server)
+            case .left: return pastEndPlan(side: .left, end: leftEnd ?? 0)
+            case .right: return pastEndPlan(side: .right, end: rightEnd ?? 0)
             }
         case .unknown:
             return nil
+        }
+    }
+
+    /// The request a past_end item makes from the end at `end` on `side`: the ground 2 m beyond
+    /// it (`plan(for:leftEnd:rightEnd:limitEnds:)`). The one place that extent is decided, so a
+    /// request recorded against an end the homeowner marked (`ScanEngine.skipCurrentGap`) is the
+    /// same view the next answer's past_end item plans from that end.
+    public func pastEndPlan(side: WalkSide, end: Float) -> GapPlan {
+        switch side {
+        case .left: GapPlan(band: .ground, span: (end - 2)...end, reason: .server)
+        case .right: GapPlan(band: .ground, span: end...(end + 2), reason: .server)
         }
     }
 

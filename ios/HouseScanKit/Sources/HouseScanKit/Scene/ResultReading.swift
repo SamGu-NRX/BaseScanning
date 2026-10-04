@@ -3,8 +3,14 @@ import Foundation
 // What the result screen leads with, read from the server's answer. The app's screen turns these
 // into words; the rules that pick them live here so each one has a test against a decoded answer
 // (ResultReadingTests). They read the checks as well as `decision`: a manual_review held back
-// only by rules that aren't approved yet still fits, and a spot that might stand in the meter's
-// working space goes to an installer whatever the decision says.
+// only by rules that aren't approved yet is still a candidate, and a spot that might stand in the
+// meter's working space goes to an installer whatever the decision says.
+//
+// No answer says a battery fits. A spot whose checks all pass is a candidate: the server's checks
+// read observed space beyond the area the homeowner confirms in the spot check, some of it
+// inferred rather than seen (a walked path, a photo's view; `CoverageMap`, "Bounded
+// exceptions"), and the answer doesn't say which. Until it does, the app can't tell that all the
+// space a battery needs was confirmed (B17). The answer itself is unchanged: this reads it.
 
 public enum ResultReading {
     /// The server's check for the NEC 110.26 working space in front of the meter
@@ -14,8 +20,9 @@ public enum ResultReading {
 
     /// What the screen says first.
     public enum Answer: String, Equatable, Sendable {
-        /// The spot passes every check; at most the rules' approval holds it back.
-        case fits
+        /// A proposed spot: every check passes on what the scan recorded, and at most the rules'
+        /// approval holds it back. Not a confirmed fit: an installer checks the space on site.
+        case candidate
         /// An unsure check that a view the camera can take now would settle.
         case oneMoreLook
         /// A person has to decide: a borderline measurement, an unknown attribute, a spot that
@@ -33,16 +40,12 @@ public enum ResultReading {
         public var needsPerson: Bool
         /// True when a view the camera can take now would settle it.
         public var viewCapturable: Bool
-        /// How far the measurement clears its limit (`margin(measured:threshold:plusMinus:comparison:)`);
-        /// nil without both a measurement and a limit.
-        public var margin: Double?
 
-        public init(id: String, outcome: PlacementOutcome, needsPerson: Bool = false, viewCapturable: Bool = false, margin: Double? = nil) {
+        public init(id: String, outcome: PlacementOutcome, needsPerson: Bool = false, viewCapturable: Bool = false) {
             self.id = id
             self.outcome = outcome
             self.needsPerson = needsPerson
             self.viewCapturable = viewCapturable
-            self.margin = margin
         }
     }
 
@@ -58,29 +61,34 @@ public enum ResultReading {
         if hasSpot, !spotIsClean(hasSpot: hasSpot, checks: checks) { return .installer }
         switch decision {
         case .pass:
-            return .fits
+            // A candidate needs what makes one: a spot, and checks that all pass. A pass without a
+            // spot, with no checks, or with a check that didn't pass contradicts itself, and a
+            // person reads it; its checks stay as the server sent them.
+            return hasSpot && allPass(checks) ? .candidate : .installer
         case .reject:
             return .notHere
         case .manualReview:
-            // Needs at least one check: over none, "every check passes" is vacuously true.
-            if hasSpot, !policyApproved, !checks.isEmpty, checks.allSatisfy({ $0.outcome == .pass }) { return .fits }
+            if hasSpot, !policyApproved, allPass(checks) { return .candidate }
             if checks.contains(where: { $0.outcome == .unsure && !$0.needsPerson && $0.viewCapturable }) { return .oneMoreLook }
             return .installer
         }
     }
 
-    /// Indices of the checks the result card shows, in order: every FAIL, then every UNSURE, then
-    /// the two PASSes closest to their limits (smallest `margin`; a pass without one sorts last).
-    /// At most `limit`.
+    /// At least one check, and every one passed. Over none, "every check passes" is vacuously
+    /// true and says nothing.
+    private static func allPass(_ checks: [Check]) -> Bool {
+        !checks.isEmpty && checks.allSatisfy { $0.outcome == .pass }
+    }
+
+    /// Indices of the checks the result card shows, in order: every FAIL, then every UNSURE, at
+    /// most `limit`. No PASS: on the card a passing line read as space confirmed clear, which the
+    /// scan can't show (see the top of this file). Every check, passing ones included, stays in
+    /// the result's Details.
     public static func cardLines(_ checks: [Check], limit: Int = 3) -> [Int] {
         let indices = checks.indices
         let fails = indices.filter { checks[$0].outcome == .fail }
         let unsure = indices.filter { checks[$0].outcome == .unsure }
-        // Ties keep the server's order.
-        let passes = indices.filter { checks[$0].outcome == .pass }
-            .sorted { (checks[$0].margin ?? .infinity, $0) < (checks[$1].margin ?? .infinity, $1) }
-            .prefix(2)
-        return Array((fails + unsure + passes).prefix(limit))
+        return Array((fails + unsure).prefix(limit))
     }
 
     /// Whether a check's review line (`PlacementCheck.reviewThresholdFt`) explains its outcome, so
@@ -103,20 +111,6 @@ public enum ResultReading {
         case .atMost: return reviewThreshold < threshold && !(measured + error < reviewThreshold)
         case .atLeast: return reviewThreshold > threshold && !(measured - error > reviewThreshold)
         }
-    }
-
-    /// How far `measured` clears `threshold` on the passing side, in units of `plusMinus` when it
-    /// is positive, else in the measurement's own units. Negative when it misses. Without a
-    /// comparison the side is unknown, so the distance to the limit either way.
-    public static func margin(measured: Double?, threshold: Double?, plusMinus: Double?, comparison: PlacementComparison?) -> Double? {
-        guard let measured, let threshold else { return nil }
-        let clearance = switch comparison {
-        case .atLeast: measured - threshold
-        case .atMost: threshold - measured
-        case nil: abs(measured - threshold)
-        }
-        guard let plusMinus, plusMinus > 0 else { return clearance }
-        return clearance / plusMinus
     }
 }
 
@@ -175,9 +169,7 @@ extension PlacementResult {
         checks.map { check in
             ResultReading.Check(
                 id: check.id, outcome: check.outcome, needsPerson: check.needsPerson,
-                viewCapturable: evidenceIndex(settling: check.id).map(capturable) ?? false,
-                margin: ResultReading.margin(measured: check.measuredFt, threshold: check.thresholdFt,
-                                             plusMinus: check.plusMinusFt, comparison: check.comparison)
+                viewCapturable: evidenceIndex(settling: check.id).map(capturable) ?? false
             )
         }
     }

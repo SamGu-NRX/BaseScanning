@@ -12,7 +12,7 @@ import Testing
     }
 
     @Test func withTheCameraUpEachAnswerKeepsItsButton() {
-        #expect(Self.primary(.fits) == .showAR(clean: true))
+        #expect(Self.primary(.candidate) == .showAR(clean: true))
         #expect(Self.primary(.oneMoreLook, hasViewToTake: true) == .takeView)
         #expect(Self.primary(.installer, spotIsClean: false) == .showAR(clean: false))
         #expect(Self.primary(.installer) == .showAR(clean: true))
@@ -21,7 +21,7 @@ import Testing
 
     /// No spot, nothing to show in AR; no view to take, no "Show me".
     @Test func nothingToShowMeansNoButton() {
-        #expect(Self.primary(.fits, hasSpot: false) == nil)
+        #expect(Self.primary(.candidate, hasSpot: false) == nil)
         #expect(Self.primary(.installer, hasSpot: false) == nil)
         #expect(Self.primary(.oneMoreLook, hasViewToTake: false) == nil)
     }
@@ -31,7 +31,7 @@ import Testing
     /// button already was. Starting over starts a new camera, so it stays.
     @Test func aFailedCameraOffersNothingThatNeedsIt() {
         #expect(Self.primary(.oneMoreLook, hasViewToTake: true, sourceAvailable: false) == nil)
-        #expect(Self.primary(.fits, sourceAvailable: false) == nil)
+        #expect(Self.primary(.candidate, sourceAvailable: false) == nil)
         #expect(Self.primary(.installer, spotIsClean: false, sourceAvailable: false) == nil)
         #expect(Self.primary(.notHere, hasSpot: false, sourceAvailable: false) == .startOver)
     }

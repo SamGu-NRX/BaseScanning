@@ -174,6 +174,16 @@ extension CoverageMap {
         return rightEnd - leftEnd < WallFrame.minWallLength
     }
 
+    /// True when an end on `side` at `s` would leave the wall shorter than
+    /// `WallFrame.minWallLength` from the other end, or from the meter while the other side has
+    /// none: the same policy as `endsTooClose`, asked before the end is set (B-12, a past-end
+    /// request's end marked again nearer). The other end is never moved.
+    public func endWouldLeaveTooLittle(_ side: WalkSide, at s: Float) -> Bool {
+        let other: Float = side == .left ? (rightEnd ?? 0) : (leftEnd ?? 0)
+        let length = side == .left ? other - s : s - other
+        return length < WallFrame.minWallLength
+    }
+
     /// The unexplored end the camera stands beyond while its view shows nothing between the marked
     /// ends, or nil. A photo taken there adds nothing: cells past an end are never observed
     /// (`isWithinEnds`). Past a limit end it is nil, since the ground seen there still counts

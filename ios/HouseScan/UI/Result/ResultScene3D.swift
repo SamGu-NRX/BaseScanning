@@ -220,7 +220,7 @@ struct ResultScene3D: View {
         }
 
         for (index, zone) in result.clearances.enumerated() {
-            var material = UnlitMaterial(color: SceneColor.outcome(zone.outcome))
+            var material = UnlitMaterial(color: SceneColor.zone(zone.outcome))
             material.blending = .transparent(opacity: .init(floatLiteral: 0.35))
             // Stacked zones sit a few millimeters apart so overlapping ones don't flicker.
             let lift = ResultMarkLayout.zoneLift(index: index, base: Self.zoneBase)
@@ -467,11 +467,11 @@ struct ResultScene3D: View {
         }
         var parts: [String]
         if spot.span.lowerBound > 0 {
-            parts = ["Battery \(Distance.spoken(spot.span.lowerBound)) right of your meter"]
+            parts = ["Proposed battery spot \(Distance.spoken(spot.span.lowerBound)) right of your meter"]
         } else if spot.span.upperBound < 0 {
-            parts = ["Battery \(Distance.spoken(-spot.span.upperBound)) left of your meter"]
+            parts = ["Proposed battery spot \(Distance.spoken(-spot.span.upperBound)) left of your meter"]
         } else {
-            parts = ["Battery below your meter"]
+            parts = ["Proposed battery spot below your meter"]
         }
         if let cable = result.cableLength {
             parts.append("cable \(Distance.spoken(cable))")
@@ -549,7 +549,7 @@ enum ResultARModel {
             wall.world(s: s, height: height, out: out) - wall.meter
         }
         for (index, zone) in result.clearances.enumerated() {
-            var material = UnlitMaterial(color: SceneColor.outcome(zone.outcome))
+            var material = UnlitMaterial(color: SceneColor.zone(zone.outcome))
             material.blending = .transparent(opacity: .init(floatLiteral: 0.35))
             let width = zone.span.upperBound - zone.span.lowerBound
             let middle = zone.span.lowerBound + width / 2
@@ -659,9 +659,11 @@ private enum SceneColor {
         }
     }
 
-    static func outcome(_ outcome: CheckOutcome) -> UIColor {
+    /// A clearance zone's tint, as `Palette.zone`: where the server's sweep passes, the
+    /// proposal's blue, not a green that reads as ground confirmed clear.
+    static func zone(_ outcome: CheckOutcome) -> UIColor {
         switch outcome {
-        case .pass: rgb(0x2FC273)
+        case .pass: signal
         case .unsure: rgb(0xF5B53D)
         case .fail: rgb(0xFF5A4E)
         }

@@ -16,6 +16,7 @@ final class WalkRecoveryUITests: XCTestCase {
     func testTheEndCardAnswersThatTheWallKeepsGoing() throws {
         let app = launch(["-uiDemoPhase", "wallWalk", "-uiDemoMarkEnd"])
         XCTAssertTrue(label(app, "instruction").contains("Is this the right end of the wall?"))
+        assertEndCircleOpen(app, folded: false, reply: "action.cannotAccess", covers: Self.endCovers, "walk mark-end")
         snap(app, "wallWalk-markEnd-keepsGoing")
         XCTAssertTrue(element(app, "action.markEnd").exists, "Wall ends here must stay on offer")
         let keepsGoing = reply(app, "The wall keeps going")
@@ -39,6 +40,105 @@ final class WalkRecoveryUITests: XCTestCase {
         XCTAssertTrue(card.contains("Aim it at the wall where it stops or turns"), "card reads: \(card)")
         XCTAssertTrue(element(app, "action.markEnd").exists)
         XCTAssertTrue(reply(app, "The wall keeps going").waitForExistence(timeout: 5))
+        assertEndCircleOpen(app, folded: false, reply: "action.cannotAccess", covers: Self.endCovers, "walk mark-end refused")
+    }
+
+    /// At AX5 the card covered the circle "Wall ends here" marks at (CI run 37165788075,
+    /// `wallWalk-markEnd-AX5-stacked`). Folded, it leads with where to aim, every word is under
+    /// Details, and "The wall keeps going" moves to the actions under "Wall ends here", so with
+    /// "Wall ends here" in reach the circle is in view.
+    @MainActor
+    func testTheEndCircleStaysOpenAtLargestTextSize() throws {
+        let app = launch(["-uiDemoPhase", "wallWalk", "-uiDemoMarkEnd"] + Self.largestText)
+        let card = label(app, "instruction")
+        XCTAssertTrue(card.contains("Aim at the right end"), "card reads: \(card)")
+        XCTAssertFalse(card.contains("Is this the right end of the wall?"), "the question folds under Details: \(card)")
+        let mark = element(app, "action.markEnd")
+        scrollIntoView(mark, in: app)
+        XCTAssertTrue(mark.isHittable, "Wall ends here can't be reached")
+        assertEndCircleOpen(app, folded: true, reply: "action.cannotAccess", covers: Self.endCovers, "walk mark-end, AX5")
+        snap(app, "wallWalk-markEnd-AX5")
+
+        scrollToTop(app)
+        let details = element(app, "instruction.details")
+        tapWhenReady(details)
+        let detail = element(app, "instruction.detail")
+        XCTAssertTrue(detail.waitForExistence(timeout: 5), "Details must open the folded words")
+        XCTAssertTrue(
+            detail.label.contains("Is this the right end of the wall? Aim where it stops or turns a corner and tap Wall ends here. If it goes on, tap The wall keeps going."),
+            "Details reads: \(detail.label)")
+        snap(app, "wallWalk-markEnd-AX5-details")
+        tapWhenReady(details)
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: detail)
+        XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 5), .completed, "Details must close again")
+        scrollIntoView(mark, in: app)
+        assertEndCircleOpen(app, folded: true, reply: "action.cannotAccess", covers: Self.endCovers, "walk mark-end, AX5, Details closed")
+
+        let keepsGoing = reply(app, "The wall keeps going")
+        XCTAssertTrue(keepsGoing.waitForExistence(timeout: 5), "the wall that goes on still needs its answer")
+        scrollIntoView(keepsGoing, in: app)
+        XCTAssertTrue(keepsGoing.isHittable, "The wall keeps going can't be reached")
+        XCTAssertGreaterThan(keepsGoing.frame.minY, mark.frame.maxY - 0.5, "the answer sits under Wall ends here")
+    }
+
+    /// Folded, a refusal leads with what to do, and keeps the circle in view.
+    @MainActor
+    func testARefusedWallEndKeepsTheCircleOpenAtLargestTextSize() throws {
+        let app = launch(["-uiDemoPhase", "wallWalk", "-uiDemoMarkEnd", "-uiDemoEndMarkRefusal"] + Self.largestText)
+        let card = label(app, "instruction")
+        XCTAssertTrue(card.contains("Aim at the wall"), "card reads: \(card)")
+        let mark = element(app, "action.markEnd")
+        scrollIntoView(mark, in: app)
+        XCTAssertTrue(mark.isHittable)
+        assertEndCircleOpen(app, folded: true, reply: "action.cannotAccess", covers: Self.endCovers, "walk mark-end refused, AX5")
+        snap(app, "wallWalk-markEnd-refused-AX5")
+    }
+
+    /// The walk's end with coaching riding along: the coaching leads in a few words, its note
+    /// opens Details, and the circle stays open.
+    @MainActor
+    func testCoachingOnTheFoldedEndCardKeepsTheCircleOpen() throws {
+        let app = launch(["-uiDemoPhase", "wallWalk", "-uiDemoMarkEnd", "-uiDemoCoaching", "tooDark"] + Self.largestText)
+        let card = label(app, "instruction")
+        XCTAssertTrue(card.contains("Try your flashlight"), "card reads: \(card)")
+        XCTAssertFalse(card.contains("Try your phone's flashlight"), "the coaching's note must fold under Details: \(card)")
+        let mark = element(app, "action.markEnd")
+        scrollIntoView(mark, in: app)
+        XCTAssertTrue(mark.isHittable)
+        assertEndCircleOpen(app, folded: true, reply: "action.cannotAccess", covers: Self.endCovers, "coached walk mark-end, AX5")
+        snap(app, "wallWalk-markEnd-tooDark-AX5")
+    }
+
+    private static let largestText = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+    /// What may cover the circle on the walk's end: its actions and the card's reply.
+    private static let endCovers = ["action.markEnd", "action.markSomething", "action.cannotAccess"]
+
+    /// Scrolls in measured steps until the whole element is in the window: at the largest text
+    /// sizes the actions sit below the card, reached by scrolling.
+    @MainActor
+    private func scrollIntoView(_ target: XCUIElement, in app: XCUIApplication) {
+        let window = app.windows.firstMatch.frame
+        let scroll = app.scrollViews.firstMatch
+        guard scroll.exists else { return }
+        let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+        for _ in 0..<12 where !window.contains(target.frame) {
+            let frame = target.frame
+            let shift: CGFloat = frame.maxY > window.maxY
+                ? -min(frame.maxY - window.maxY + 24, window.height / 3)
+                : min(window.minY - frame.minY + 24, window.height / 3)
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: shift)))
+        }
+    }
+
+    /// Drags the screen down until its top shows.
+    @MainActor
+    private func scrollToTop(_ app: XCUIApplication) {
+        let scroll = app.scrollViews.firstMatch
+        guard scroll.exists else { return }
+        let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+        for _ in 0..<4 {
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: app.windows.firstMatch.frame.height * 0.4)))
+        }
     }
 
     /// B-23: "Point at the meter like this." needs the photo it points to. The follow-up view

@@ -8,6 +8,11 @@ import SwiftUI
 /// review) carries "One more view to finish" above the instruction, the words the upload screen
 /// just said. "I can't get there" skips only this view and goes on to the check's next one;
 /// "Show my result", on every such request, stops asking and leads to the result.
+///
+/// A past_end request (the walk stopped at an end, and the check asks to walk on past it) also
+/// offers the walk's own "Wall ends here" for that end, with the circle, the end's preview on the
+/// tape, the refusal when the circle isn't on that end, and the end question (B-12). Walking on
+/// stays the request; marking the end is the other true answer.
 struct GapRequestScreen: View {
     let state: ScanViewState
     let actions: any ScanActions
@@ -27,6 +32,24 @@ struct GapRequestScreen: View {
                 SavedMeterPhoto(image: meterPhoto)
                     .transition(.opacity)
             }
+            // The end lands under the circle, as on the walk's "Is this the right end?". It fades
+            // with "Wall ends here" on the same spring, so the pair comes and goes together;
+            // scoped to the circle, so nothing else on the camera animates with it. Under Reduce
+            // Motion only its opacity changes, briefly: nothing moves. It is there only while
+            // offered, rather than kept at zero opacity: kept, its "Aiming circle" stayed in the
+            // accessibility tree under the end question, hidden or not (CI run 37171342665).
+            if state.gap?.pastEndSide != nil {
+                ZStack {
+                    if offersEndMark {
+                        Reticle(diameter: 56)
+                            .endAimCircle()
+                            .transition(.opacity)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea()
+                .animation(reduceMotion ? .easeOut(duration: 0.15) : Motion.settle, value: offersEndMark)
+            }
             if state.gap?.isSatisfied == true {
                 SuccessBadge()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -35,8 +58,8 @@ struct GapRequestScreen: View {
             }
             CameraChrome(
                 instruction: instruction,
-                tone: asking ? .normal : coaching.map { .coaching(symbol: ScanCopy.coachingSymbol($0)) } ?? .normal,
-                reply: state.gap?.isSatisfied == true || asking ? nil : InstructionCard.Reply(
+                tone: tone,
+                reply: state.gap?.isSatisfied == true || asking || askingEnd || folds ? nil : InstructionCard.Reply(
                     title: "I can't get there",
                     identifier: "action.skipGap",
                     hint: skipHint,
@@ -45,7 +68,7 @@ struct GapRequestScreen: View {
                     // as the phone moves: neither locks the reply again (InstructionCard.replyLock).
                     task: state.gap.map { ScanCopy.gapTask($0) }
                 ),
-                eyebrow: followUps > 0 && state.gap?.isSatisfied != true ? ScanCopy.followUp(remaining: followUps) : nil,
+                eyebrow: followUps > 0 && state.gap?.isSatisfied != true && !folds ? ScanCopy.followUp(remaining: followUps) : nil,
                 photoCount: state.captureCount,
                 lastCaptureID: state.lastCapture?.id,
                 isReplay: state.isReplay,
@@ -58,6 +81,23 @@ struct GapRequestScreen: View {
                         OverheadAnswers(actions: actions)
                             .transition(.opacity)
                     }
+                    // The end's controls fade on their own: the rows below them move into place at
+                    // once rather than sliding with the stack, and under Reduce Motion nothing
+                    // animates.
+                    VStack(spacing: 10) {
+                        if askingEnd {
+                            EndQuestionAnswers(actions: actions)
+                                .transition(.opacity)
+                        }
+                        if offersEndMark {
+                            markEndButton
+                        }
+                        if folds {
+                            declineButton
+                        }
+                    }
+                    .animation(reduceMotion ? nil : Motion.settle, value: askingEnd)
+                    .animation(reduceMotion ? nil : Motion.settle, value: offersEndMark)
                     if !typeSize.isAccessibilitySize {
                         showResult
                     }
@@ -71,7 +111,8 @@ struct GapRequestScreen: View {
                             features: state.features,
                             cameraS: state.projection.map { WallProjection(projection: $0, wall: wall, size: cameraSize).cameraS },
                             highlight: state.gap,
-                            depthChecked: state.depthAvailable
+                            depthChecked: state.depthAvailable,
+                            endPreview: offersEndMark ? state.endPreview : nil
                         )
                     }
                     if typeSize.isAccessibilitySize {
@@ -79,6 +120,7 @@ struct GapRequestScreen: View {
                     }
                 }
                 .animation(reduceMotion ? .easeOut(duration: 0.15) : Motion.settle, value: asking)
+
             }
         }
         .animation(reduceMotion ? .easeOut(duration: 0.15) : Motion.pin, value: state.gap?.isSatisfied)
@@ -96,7 +138,7 @@ struct GapRequestScreen: View {
     /// sizes it goes below the tape, the last thing on the screen, reached by scrolling like
     /// everything else below the card at that size.
     @ViewBuilder private var showResult: some View {
-        if followUps > 0, state.gap?.isSatisfied != true, !asking {
+        if followUps > 0, state.gap?.isSatisfied != true, !asking, !askingEnd {
             Button {
                 actions.showResultNow()
             } label: {
@@ -112,6 +154,86 @@ struct GapRequestScreen: View {
     /// The overhead question is up: it replaces the instruction, coaching and "I can't get there"
     /// until answered, as on the walk.
     private var asking: Bool { state.overheadQuestion && state.gap?.isSatisfied != true }
+
+    /// The end question after "Wall ends here" on a past_end request: it replaces the request,
+    /// "I can't get there" and "Show my result" until answered. An end the wall stops at settles the
+    /// request; a corner, which the request can't follow, moves on without settling it.
+    private var askingEnd: Bool {
+        guard let side = state.endQuestion, let gap = state.gap else { return false }
+        return gap.pastEndSide == side && !gap.isSatisfied
+    }
+
+    /// "Wall ends here" with the circle, on a past_end request not yet settled or answered.
+    private var offersEndMark: Bool {
+        guard let gap = state.gap, gap.pastEndSide != nil, !gap.isSatisfied else { return false }
+        return !asking && !askingEnd
+    }
+
+    /// The walk's "Wall ends here" at the circle, the same words and flag. Beside walking on, which
+    /// stays the request, it is the other answer, so it is not the screen's primary button.
+    private var markEndButton: some View {
+        Button {
+            actions.markWallEnd(at: nil, viewSize: cameraSize)
+        } label: {
+            Label("Wall ends here", systemImage: "flag.fill")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.secondaryProminent)
+        .accessibilityHint("Marks the end of the wall at the circle in the middle of the screen")
+        .accessibilityIdentifier("action.markEnd")
+        .transition(.opacity)
+    }
+
+    /// "I can't get there" among the actions, first, or under "Wall ends here", while the card is
+    /// folded (`folds`): the same words, hint and action as the card's reply.
+    @ViewBuilder private var declineButton: some View {
+        if let gap = state.gap {
+            MovedReplyButton(
+                title: "I can't get there", hint: skipHint, identifier: "action.skipGap",
+                task: ScanCopy.gapTask(gap), perform: { actions.skipGap() })
+            .transition(.opacity)
+        }
+    }
+
+    /// At the largest text sizes while "Wall ends here" is offered, the card folds to a two-line
+    /// lead, as on the walk's end, so the circle in the middle of the camera stays open: the
+    /// request's words and its "One more view to finish" go under Details, and "I can't get
+    /// there" moves from the card to the actions. With either still on the card it reached past
+    /// the circle (`ScanCopy.endAimFold`). Not while coaching replaces the request: then the card
+    /// says why nothing can be aimed yet.
+    private var endAimFolds: Bool {
+        guard offersEndMark, typeSize.isAccessibilitySize else { return false }
+        return !(coaching.map(ScanCopy.coachingReplacesTask) ?? false)
+    }
+
+    /// At the largest text sizes, a request the finished check sent back folds the same way: its
+    /// "One more view to finish", the stretch's two ends and the check's own words filled the
+    /// camera, with "I can't get there" cut off at the bottom edge (CI runs 37221532164 and
+    /// 37231825488). Folded, the side to aim at leads (`ScanCopy.serverLead`), everything else is
+    /// under Details, "I can't get there" moves to the actions, and the camera keeps
+    /// `CameraChromeLayout.minCameraWindow`. Only a server request in its own words: a past_end
+    /// one folds around the circle instead, and coaching that replaces the request keeps the card.
+    private var followUpFolds: Bool {
+        guard typeSize.isAccessibilitySize, followUps > 0, let gap = state.gap, !gap.isSatisfied, gap.pastEndSide == nil,
+              !asking, !askingEnd, case .server = gap.reason else { return false }
+        return !(coaching.map(ScanCopy.coachingReplacesTask) ?? false)
+    }
+
+    /// Whether the card is folded and its reply among the actions.
+    private var folds: Bool { endAimFolds || followUpFolds }
+
+    /// A refusal on "Wall ends here" keeps its red triangle, as on the walk; otherwise coaching
+    /// marks the card.
+    private var tone: InstructionCard.Tone {
+        if asking || askingEnd { return .normal }
+        if refusal != nil, !(coaching.map(ScanCopy.coachingReplacesTask) ?? false) { return .refusal }
+        return coaching.map { .coaching(symbol: ScanCopy.coachingSymbol($0)) } ?? .normal
+    }
+
+    /// Why the last "Wall ends here" marked nothing, while the request still asks for that end.
+    private var refusal: EndMarkRefusal? {
+        offersEndMark ? state.endMarkRefusal : nil
+    }
 
     /// Views the finished check still wants, counting this one, when this request is one of
     /// them: a server request while the check's answer is in. Zero otherwise.
@@ -138,9 +260,13 @@ struct GapRequestScreen: View {
     /// needs" reading or "tap I can't get there", tilting up to the roof or sky, and a server's
     /// own words, which this screen can't judge. Nor the overhead question, a request already
     /// seen, or coaching that replaces the request.
+    ///
+    /// A past_end request offering "Wall ends here" aims too, refusal or not (`endAimFolds`).
     private var aims: Bool {
-        guard let gap = state.gap, !asking, !gap.isSatisfied else { return false }
+        guard let gap = state.gap, !asking, !askingEnd, !gap.isSatisfied else { return false }
         if let coaching, ScanCopy.coachingReplacesTask(coaching) { return false }
+        if offersEndMark || followUpFolds { return true }
+        guard refusal == nil else { return false }
         if case .groundNearCandidate = gap.reason { return true }
         return false
     }
@@ -150,11 +276,29 @@ struct GapRequestScreen: View {
     /// can stay up for a whole night request, and replacing the card hid the request and "Got it,
     /// thanks" for as long as it did (field test 4.1, run 3).
     private var instruction: Instruction {
+        var card = requestCard
+        guard folds else { return card }
+        // Folded, ride-along coaching leads or opens Details (`ScanCopy.foldedAroundCircle`), and
+        // "One more view to finish" leaves the card's top and leads the words under Details.
+        card = ScanCopy.foldedAroundCircle(card, coaching: coaching, refused: refusal != nil)
+        if followUps > 0, let folded = card.folded {
+            card.folded?.detail = "\(ScanCopy.followUp(remaining: followUps)). \(folded.detail)"
+        }
+        return card
+    }
+
+    /// The card's words before folding around the circle moves the eyebrow (`instruction`).
+    private var requestCard: Instruction {
         if asking { return ScanCopy.overheadQuestion }
+        if askingEnd, let side = state.endQuestion { return ScanCopy.endQuestion(side) }
         if let coaching, ScanCopy.coachingReplacesTask(coaching) { return ScanCopy.coaching(coaching, meterPhoto: meterPhoto != nil) }
         guard let gap = state.gap else { return ScanCopy.withCoaching(ScanCopy.guidance(.gap), coaching) }
         if gap.isSatisfied {
             return Instruction(title: "Got it, thanks", detail: followUps > 0 ? "Updating your result." : "That's the view we needed.")
+        }
+        // "Wall ends here" marked nothing: why, and what to do (B-06, B-12).
+        if let refusal, let side = gap.pastEndSide {
+            return ScanCopy.withCoaching(ScanCopy.endMarkRefusal(refusal, asked: side), coaching)
         }
         return ScanCopy.withCoaching(ScanCopy.gap(gap), coaching)
     }

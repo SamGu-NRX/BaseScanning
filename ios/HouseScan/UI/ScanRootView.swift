@@ -40,7 +40,25 @@ struct ScanRootView: View {
             screen
                 .id(state.phase)
                 .transition(Self.showsCamera(state.phase) ? .opacity : .identity)
+                // While the photo question shows, the screen under it is out of the accessibility
+                // tree: its words show dimmed through the card's scrim, and the audit failed them
+                // on contrast (#216, run 37219668935). Only ever set to hidden, never to
+                // `.accessibilityHidden(false)`, which overrode the hiding the camera's decoration
+                // sets on itself and left an element with no description on every camera screen
+                // (run 37213636011). The camera feed and practice overlay hide themselves already.
+                .hiddenFromAccessibility(while: asksForPhotoConsent)
+            if asksForPhotoConsent {
+                PhotoConsentCard(standIn: state.photoProcessing?.standIn == true, synthetic: state.photoCaptureIsSynthetic, actions: actions)
+                    .transition(.opacity)
+            }
         }
+        .animation(Motion.screen, value: asksForPhotoConsent)
+    }
+
+    /// The photo-processing question covers the camera until it is answered, on every capture
+    /// screen, so no photo is kept without an answer in view.
+    private var asksForPhotoConsent: Bool {
+        state.photoProcessing?.consent == .asking && Self.showsCamera(state.phase) && state.phase != .resultAR
     }
 
     @ViewBuilder
@@ -76,6 +94,9 @@ struct ScanRootView: View {
         case .resultAR:
             ResultARScreen(state: state, actions: actions)
                 .screenIdentifier(.resultAR)
+        case .processing:
+            PhotoProcessingScreen(state: state, actions: actions)
+                .screenIdentifier(.processing)
         case .unsupported:
             UnsupportedScreen(state: state, actions: actions)
                 .screenIdentifier(.unsupported)
@@ -85,7 +106,7 @@ struct ScanRootView: View {
     static func showsCamera(_ phase: ScanPhase) -> Bool {
         switch phase {
         case .findMeter, .meterCloseUp, .wallWalk, .gapRequest, .resultAR, .markFeatures: true
-        case .onboarding, .uploading, .spotConfirm, .result, .unsupported: false
+        case .onboarding, .uploading, .spotConfirm, .result, .processing, .unsupported: false
         }
     }
 }
@@ -93,15 +114,20 @@ struct ScanRootView: View {
 /// Haptics for the moments that matter, fired on the same state change the screen animates:
 /// a deliberate photo, the meter pinned, a mark placed or refused, a requested view done, the
 /// result.
+///
+/// The result arrives with a light tap, whatever it says. `.success` there celebrated every
+/// answer alike, a rejected wall included, and on a possible spot it said "done, it fits" when
+/// the scan couldn't confirm the space (B17, B26). Coming back from the AR view taps nothing.
 private struct ScanHaptics: ViewModifier {
     let state: ScanViewState
 
-    // Two steps: the five-modifier chain took 215 ms to type-check on Swift 6.4, and CI's
-    // Swift 6.2 has failed on slower expressions before.
+    // Steps of at most three: the five-modifier chain took 215 ms to type-check on Swift 6.4, and
+    // CI's Swift 6.2 has failed on slower expressions before.
     func body(content: Content) -> some View {
         let captures = content
             .sensoryFeedback(.impact(weight: .light, intensity: 0.7), trigger: deliberateCaptureID) { _, new in new != nil }
-            .sensoryFeedback(.success, trigger: state.phase, condition: Self.isMilestone)
+            .sensoryFeedback(.success, trigger: state.phase, condition: Self.meterPinned)
+            .sensoryFeedback(.impact(weight: .light), trigger: state.phase, condition: Self.resultArrived)
         return captures
             .sensoryFeedback(.success, trigger: state.gap?.isSatisfied ?? false) { _, new in new }
             .sensoryFeedback(.impact(weight: .medium), trigger: state.features.count) { old, new in new > old }
@@ -116,8 +142,12 @@ private struct ScanHaptics: ViewModifier {
         return capture.id
     }
 
-    private static func isMilestone(_ old: ScanPhase, _ new: ScanPhase) -> Bool {
-        (old == .findMeter && new == .meterCloseUp) || (old != .resultAR && new == .result)
+    private static func meterPinned(_ old: ScanPhase, _ new: ScanPhase) -> Bool {
+        old == .findMeter && new == .meterCloseUp
+    }
+
+    private static func resultArrived(_ old: ScanPhase, _ new: ScanPhase) -> Bool {
+        old != .resultAR && new == .result
     }
 }
 
@@ -125,5 +155,18 @@ private extension View {
     func screenIdentifier(_ phase: ScanPhase) -> some View {
         accessibilityElement(children: .contain)
             .accessibilityIdentifier("screen.\(phase.rawValue)")
+    }
+}
+
+private extension View {
+    /// `.accessibilityHidden(true)` while `hidden`, and no accessibility modifier at all otherwise,
+    /// so the hiding a subview sets on itself still holds. The view is rebuilt when `hidden`
+    /// changes; here that happens once, when the photo question is answered.
+    @ViewBuilder func hiddenFromAccessibility(while hidden: Bool) -> some View {
+        if hidden {
+            accessibilityHidden(true)
+        } else {
+            self
+        }
     }
 }

@@ -57,6 +57,10 @@ import SwiftUI
 ///   answered "I can't check this area", so the result says so beside its spot's notice.
 /// - `-uiDemoFollowUp`: with `-uiDemoPhase uploading` or `gapRequest`, the check has answered
 ///   and asked for one more view: the upload screen as it hands over, or the view itself.
+/// - `-uiDemoPhase processing -uiDemoPhotoState <id>`: a photo-processing scan after it was sent,
+///   in one of its states (`ProcessingCopy.Screen.id`, such as `uploading`, `candidate` or
+///   `withdrawalNotRecorded`; `processing` by default), with the capture fixture's words.
+/// - `-uiDemoPhotoConsent`: on a camera phase, the question whether to send the scan's photos.
 ///
 /// Unfrozen, the demo goes back to the camera once after the first answer, as the engine does
 /// when the answer lists a view the camera can take.

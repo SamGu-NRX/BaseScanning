@@ -535,6 +535,7 @@
           }
         },
         "t": {
+          "description": "When the homeowner made the mark. Absent on a wall end the app inferred (attrs.inferred); an absent t never means the homeowner marked it.",
           "$ref": "#/$defs/time"
         },
         "photo_ids": {
@@ -560,6 +561,10 @@
           "type": "object",
           "properties": {
             "operable": {
+              "type": "boolean"
+            },
+            "inferred": {
+              "description": "On a wall end only, and only true: the app placed this end from the walk (where it reached, or past what a past_end request showed), not the homeowner. Such an end has no t. Its point and end_kind are as for a marked end.",
               "type": "boolean"
             }
           }

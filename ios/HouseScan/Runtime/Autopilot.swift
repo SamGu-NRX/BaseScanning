@@ -39,6 +39,11 @@ final class Autopilot {
         await engine.waitForGate(.onboarding)
         engine.finishOnboarding()
         await prepared
+        // A photo-processing scan this build can't send stops before the camera: nothing to drive.
+        if engine.state.phase == .processing {
+            log("done: photo processing isn't set up, so the scan stopped before capture")
+            return
+        }
         if let window = replay.heldBack {
             log("holding back frames \(window.frames.lowerBound)..<\(window.frames.upperBound) for the gap loop; gap \(window.gap.band.rawValue) \(format(window.gap.span))")
         } else {
@@ -47,6 +52,12 @@ final class Autopilot {
         await pause(hold)
 
         await engine.waitForGate(.findMeter)
+        // Sending photos is the homeowner's answer, never the autopilot's: a UI test taps it.
+        if engine.state.photoProcessing?.consent == .asking {
+            guard await waitUntil(timeout: 120, { self.engine.state.photoProcessing?.consent != .asking }) else {
+                return fail("nobody answered whether to send the scan's photos")
+            }
+        }
         engine.markMeter(at: nil, viewSize: viewSize)
         guard await waitFor(.meterCloseUp, timeout: 10) else { return fail("meter was not marked") }
         await takeCloseUp()
@@ -90,7 +101,10 @@ final class Autopilot {
                 await playGapFrames(replay)
             }
         }
-        guard await waitFor(.uploading, timeout: 150) else { return fail("upload did not start") }
+        guard await waitUntil(timeout: 150, { [.uploading, .processing].contains(self.engine.state.phase) }) else {
+            return fail("upload did not start")
+        }
+        if engine.state.phase == .processing { return await finishPhotoProcessing() }
         guard await driveToResult(replay) else { return }
         writeSceneForTest()
         await pause(hold)
@@ -192,8 +206,9 @@ final class Autopilot {
         let intervals = map.wallSeenSpans().map(\.span) + map.coveredIntervals(.ground)
         guard let low = intervals.map(\.lowerBound).min(), let high = intervals.map(\.upperBound).max() else {
             log("nothing covered; marking ends 1 m either side of the meter")
-            engine.setEnd(.left, at: -1, kind: .limit)
-            engine.setEnd(.right, at: 1, kind: .limit)
+            // These stand in for the homeowner's marks, as the taps below do.
+            engine.setEnd(.left, at: -1, kind: .limit, source: .homeowner)
+            engine.setEnd(.right, at: 1, kind: .limit, source: .homeowner)
             return
         }
         for (side, s) in [(WallSide.left, min(low, -0.2)), (.right, max(high, 0.2))] {
@@ -204,7 +219,7 @@ final class Autopilot {
             let marked = side == .left ? engine.coverage?.leftEnd : engine.coverage?.rightEnd
             if !tapped || marked == nil {
                 log("no replay frame shows the \(side.rawValue) end; setting it directly at s=\(s)")
-                engine.setEnd(side, at: s, kind: .limit)
+                engine.setEnd(side, at: s, kind: .limit, source: .homeowner)
             }
             if let asked = engine.state.endQuestion {
                 // Every end counts as a corner here: a replay has no fence or gate to report.
@@ -305,6 +320,14 @@ final class Autopilot {
         do {
             try engine.sceneJSON().write(to: gate.appending(path: "scene.json"))
             try engine.spotConfirm.lastScene?.write(to: gate.appending(path: "uploaded-scene.json"))
+            // The last upload's packet marks and guidance log, from the inputs its packet is
+            // written from (`ScanEngine.packetMarksAndGuidance`), for the UI test to check ends'
+            // provenance on the real path.
+            #if DEBUG
+            if let packet = engine.packetMarksAndGuidance() {
+                try packet.write(to: gate.appending(path: "packet-marks-guidance.json"))
+            }
+            #endif
             log("wrote scene.json to the gate folder")
         } catch {
             log("could not write scene.json to the gate folder: \(error)")
@@ -362,6 +385,17 @@ final class Autopilot {
         await pause(hold)
         await answerOpenSky()
         log("answered the overhead request: open sky; \(overheadSummary)")
+    }
+
+    /// A photo-processing scan has no Legacy steps after the send: wait for its answer or its end,
+    /// then hold the screen for the UI test.
+    private func finishPhotoProcessing() async {
+        guard await waitUntil(timeout: 240, { self.engine.state.photoProcessing?.isFinal == true }) else {
+            return fail("photo processing never ended")
+        }
+        await pause(hold)
+        await engine.waitForGate(.processing)
+        log("done")
     }
 
     /// After an upload the engine raises the answer's capturable requests one at a time, uploading
@@ -449,13 +483,61 @@ final class Autopilot {
     private func driveServerRequest(_ replay: ReplayPlayer) async {
         guard let request = engine.state.gap else { return }
         log("server request \(request.id) over \(format(request.span))")
+        #if DEBUG
+        if request.pastEndSide != nil, let gate = engine.options.autopilotGate, let packet = engine.packetMarksAndGuidance() {
+            // The packet of the upload that raised the request, with the end it then cleared, for
+            // the UI test to compare the end that comes back with.
+            try? packet.write(to: gate.appending(path: "packet-first.json"))
+        }
+        #endif
         if request.reason == .overhead {
             await answerOverheadGap()
+        } else if request.pastEndSide != nil, engine.options.autopilotMarkPastEnd {
+            await markPastEnd(request, replay: replay)
         } else {
             await playGapFrames(replay)
         }
         // A settled request stays on screen for a moment before the next upload.
         _ = await waitUntil(timeout: 10) { self.engine.state.phase != .gapRequest || self.engine.state.gap?.id != request.id }
+    }
+
+    /// `-autopilotMarkPastEnd`: marks a past_end request's end again, 60% of the way from the meter
+    /// to the end the request cleared, and answers "Something blocks it", so the wall comes out
+    /// shorter and its end a limit; with `-autopilotPastEndCorner`, "It turns a corner", which
+    /// leaves that end unexplored and the request cannot_reach. The mark is a tap where the replay shows that place on the
+    /// wall, not the circle in the middle of the view: it goes through the same `EndAim` check
+    /// from that point (`ScanEngine.markWallEnd`), but no camera was aimed. Where it marked goes
+    /// to the gate folder as `past-end-mark.json` (side, s in meters), for the UI test.
+    private func markPastEnd(_ request: GapRequest, replay: ReplayPlayer) async {
+        guard let side = request.pastEndSide, let wall = engine.coverage?.wall else { return }
+        let cleared = side == .left ? request.span.upperBound : request.span.lowerBound
+        let s = side == .left ? min(cleared * 0.6, -0.5) : max(cleared * 0.6, 0.5)
+        // The engine plays the request's frames first; showing another frame meanwhile would
+        // race it. A replay that settled the request by itself leaves nothing to mark.
+        _ = await waitUntil(timeout: 60) { !replay.isPlaying || self.engine.state.gap?.id != request.id }
+        await pause(hold)
+        guard engine.state.phase == .gapRequest, let gap = engine.state.gap, gap.id == request.id, !gap.isSatisfied else {
+            fail("past_end request \(request.id) settled before its end could be marked again")
+            return
+        }
+        let tapped = await tap(wall.world(s: s, height: 0.5), replay: replay) { viewPoint in
+            self.engine.markWallEnd(at: viewPoint, viewSize: self.viewSize)
+        }
+        guard tapped, engine.state.endQuestion == side else {
+            let why = engine.state.endMarkRefusal.map { String(describing: $0) } ?? (tapped ? "no question" : "no frame shows it")
+            fail("could not mark the \(side.rawValue) end again at s=\(s): \(why)")
+            return
+        }
+        let marked = side == .left ? engine.coverage?.leftEnd : engine.coverage?.rightEnd
+        log("marked the \(side.rawValue) end again at s=\(marked ?? .nan) (cleared at s=\(cleared))")
+        if let gate = engine.options.autopilotGate, let marked {
+            let record: [String: Any] = ["side": side.rawValue, "s": Double(marked), "cleared_s": Double(cleared)]
+            try? JSONSerialization.data(withJSONObject: record).write(to: gate.appending(path: "past-end-mark.json"))
+        }
+        await pause(hold)
+        let corner = engine.options.autopilotPastEndCorner
+        engine.answerWallEnd(turnsCorner: corner)
+        log("answered the \(side.rawValue) end: \(corner ? "it turns a corner" : "something blocks it")")
     }
 
     /// Waits while the engine plays the replay's frames for the current request. A replay shows

@@ -22,6 +22,8 @@ State what the old code did before describing the new behavior. Link the reviewe
 
 The `size:*` label describes the effective diff. It is a review signal, not a merge gate. Do not set it by hand.
 
+Greptile reviews new commits through [`.greptile/config.json`](.greptile/config.json). The dashboard's open-only trigger left follow-up commits unreviewed. This repository override adds push reviews without changing other repositories' settings. Greptile reads this setting from the PR's source branch, so older branches need the config too. For a branch without it, request a current review with `@greptileai review` after pushing. Use `@greptileai review this draft` for drafts.
+
 ## Checks
 
 | Check | Runs on GitHub when | Local command |
@@ -35,6 +37,8 @@ The `size:*` label describes the effective diff. It is a review signal, not a me
 | TestFlight | someone runs it from the Actions tab | none |
 
 The iOS UI tests skip the every-state accessibility audit on pull requests, because it adds about 10 minutes and macOS runners are scarce. Add the `full-ui` label when a pull request changes screens or copy; pushes to `t3/ios-mvf` and `main` always run it.
+
+The iOS check runs as three jobs, each under its own 90-minute cap: `screenStates` runs `ScreenStatesUITests`, the every-state audit included under `full-ui`; `photoProcessing` runs an unsigned Release build and `PhotoProcessingUITests` with its own audits; and `journey` runs the package tests, the Debug build and every other UI test class. `ios/Tools/ui-test-groups.py` holds the groups' test selectors; `python3 ios/Tools/ui-test-groups.py check` lists the UI tests from source and fails unless the groups run each exactly once. Run it after adding or renaming a UI test class. Each job keeps its result bundle as the artifact `ui-test-results-<group>`, with `SNAPSHOT.txt` saying whether the copy is complete; a job the cap cancelled can leave it incomplete.
 
 `make check` runs the server, web and iOS suites, then `make scoring`, `make measure-lab`, `make evals`, `make recon` and `make meter-closeup` for each of those folders the branch has. They need uv, Node 24 with pnpm, and Xcode 26 or newer; each directory's README has details. No check is required by branch rules yet. Don't call one required until the rules require its status.
 

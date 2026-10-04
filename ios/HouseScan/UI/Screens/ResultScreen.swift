@@ -127,7 +127,9 @@ struct ResultScreen: View {
     /// Plain small print, never boxes: none of it changes what the homeowner does next.
     private func footnotes(_ result: ResultPresentation) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            footnote(ScanCopy.installerConfirms, id: "result.installerConfirms")
+            if result.answer != .candidate {
+                footnote(ScanCopy.installerConfirms, id: "result.installerConfirms")
+            }
             if let notice = result.rulesNotice {
                 footnote(notice, id: "result.rulesNotice")
             }
@@ -160,7 +162,12 @@ struct ResultScreen: View {
     private func details(_ result: ResultPresentation) -> some View {
         DisclosureGroup(isExpanded: $detailsExpanded) {
             VStack(alignment: .leading, spacing: 22) {
-                if !result.summary.isEmpty {
+                // A pass's summary, and a possible spot's under manual review, is the server's own
+                // pass ("fits every check"), which the card's candidate note contradicts on
+                // purpose; a pass the reading sends to an installer contradicts itself and says the
+                // same. Manual review and reject summaries explain what failed or is unsure, so
+                // they stay.
+                if !result.summary.isEmpty, result.decision != .pass, result.answer != .candidate {
                     Text(result.summary)
                         .font(Typeface.hint)
                         .foregroundStyle(Palette.muted)
@@ -300,6 +307,12 @@ private struct AnswerCard: View {
                         .foregroundStyle(Palette.signalText)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("result.placement")
+                    if answer == .candidate {
+                        Text(ScanCopy.candidateNote)
+                            .font(Typeface.hint)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("result.candidateNote")
+                    }
                 } else if let nearest = ScanCopy.nearest(result) {
                     Text(nearest)
                         .font(Typeface.hint)
@@ -420,7 +433,7 @@ private struct CardCheckLine: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Image(systemName: CheckSymbol.name(row.outcome))
                 .font(.body.weight(.semibold))
-                .foregroundStyle(Palette.outcomeInk(row.outcome))
+                .foregroundStyle(CheckSymbol.ink(row.outcome))
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 3) {
                 Text(row.title)
@@ -469,12 +482,18 @@ private struct Reveal: ViewModifier {
 }
 
 private enum CheckSymbol {
+    /// A pass is a muted outline: it met the rule on what the scan recorded, and a filled green
+    /// badge read as space confirmed clear.
     static func name(_ outcome: CheckOutcome) -> String {
         switch outcome {
-        case .pass: "checkmark.circle.fill"
+        case .pass: "checkmark.circle"
         case .unsure: "questionmark.circle.fill"
         case .fail: "xmark.circle.fill"
         }
+    }
+
+    static func ink(_ outcome: CheckOutcome) -> Color {
+        outcome == .pass ? Palette.muted : Palette.outcomeInk(outcome)
     }
 }
 
@@ -487,9 +506,16 @@ private struct ChecksList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("What we checked")
-                .font(Typeface.sectionTitle)
-                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(ScanCopy.calculatedTitle)
+                    .font(Typeface.sectionTitle)
+                    .accessibilityAddTraits(.isHeader)
+                Text(ScanCopy.calculatedNote)
+                    .font(.subheadline)
+                    .foregroundStyle(Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("result.calculatedNote")
+            }
             VStack(spacing: 0) {
                 ForEach(Array(checks.enumerated()), id: \.element.id) { index, row in
                     CheckRowView(row: row, photoOffered: photoOffered.contains(row.id))
@@ -507,20 +533,29 @@ private struct CheckRowView: View {
     var row: CheckRow
     var photoOffered: Bool
 
+    /// The server's reason, except for a pass: its reasons ("Nothing limits the clear space…")
+    /// state as fact what is only a calculation on recorded space. A pass keeps its measurement
+    /// against the rule.
+    private var reason: String? {
+        row.outcome == .pass ? nil : row.reason
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: CheckSymbol.name(row.outcome))
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(Palette.outcomeInk(row.outcome))
+                .foregroundStyle(CheckSymbol.ink(row.outcome))
                 .frame(width: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(row.title)
                     .font(Typeface.hint.weight(.semibold))
-                Text(row.reason)
-                    .font(.subheadline)
-                    .foregroundStyle(Palette.muted)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let reason {
+                    Text(reason)
+                        .font(.subheadline)
+                        .foregroundStyle(Palette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if let measurement = ScanCopy.measurement(row) {
                     Text(measurement)
                         .font(.subheadline.weight(.medium))
@@ -537,7 +572,7 @@ private struct CheckRowView: View {
         .padding(14)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(row.title): \(ScanCopy.outcomeWord(row.outcome))")
-        .accessibilityValue([row.reason, ScanCopy.measurement(row, spoken: true), row.outcome == .unsure ? ScanCopy.unsureNote(photoOffered: photoOffered) : nil]
+        .accessibilityValue([reason, ScanCopy.measurement(row, spoken: true), row.outcome == .unsure ? ScanCopy.unsureNote(photoOffered: photoOffered) : nil]
             .compactMap(\.self).joined(separator: ". "))
         // The card shows the deciding checks as `check.<id>`; this is the full list.
         .accessibilityIdentifier("detail.check.\(row.id)")

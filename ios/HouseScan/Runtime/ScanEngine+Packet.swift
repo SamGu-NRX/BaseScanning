@@ -114,6 +114,23 @@ extension ScanEngine {
         return inputs
     }
 
+    /// The marks and guidance log of the last upload's packet, as `writePacket` writes them into
+    /// manifest.json (`{"marks": [...], "guidance": [...]}`): `withCurrentGuidance` of the inputs
+    /// the upload captured, the same projection `saveBundle` is given. Only the autopilot's UI-test
+    /// gate reads it (`Autopilot.writeSceneForTest`); nil before an upload. Debug builds only.
+    #if DEBUG
+    func packetMarksAndGuidance() -> Data? {
+        guard let inputs = spotConfirm.lastPacket.map(withCurrentGuidance) else { return nil }
+        struct Projection: Encodable {
+            var marks: [PacketMark]
+            var guidance: [PacketGuidanceEntry]
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        return try? encoder.encode(Projection(marks: inputs.marks, guidance: inputs.guidance))
+    }
+    #endif
+
     /// `utsname.machine`, such as "iPhone16,1": the hardware, never the phone's name. "arm64" in
     /// the Simulator.
     nonisolated static func hardwareModel() -> String {
@@ -137,7 +154,9 @@ extension ScanEngine {
             guard let s else { continue }
             marks.append(.wallEnd(
                 id: "wall_end_\(side.rawValue)", side: side == .left ? .left : .right,
-                endKind: wallEndKinds[side] == .limit ? .limit : .unexplored, s: s, wall: wall, frame: frame, t: markTimes[MarkKey.end(side)]
+                endKind: wallEndKinds[side] == .limit ? .limit : .unexplored, s: s, wall: wall, frame: frame,
+                // No stamp is never read as the homeowner's mark (B-12).
+                stamp: endStamps[side] ?? .inferred
             ))
         }
         for feature in state.features {
@@ -170,7 +189,6 @@ extension ScanEngine {
     /// Keys of `markTimes`.
     enum MarkKey {
         static let meter = "meter"
-        static func end(_ side: WallSide) -> String { "end.\(side.rawValue)" }
         static func feature(_ id: UUID) -> String { id.uuidString }
     }
 
@@ -433,17 +451,12 @@ extension ScanEngine {
     /// Core Motion's streams, rows inside the capture only. Returns how many rows were refused.
     private nonisolated static func writeMotion(_ inputs: PacketInputs, window: ClosedRange<Double>, into writer: inout PacketWriter) -> Int {
         var refused = 0
-        for stream in CaptureRecorder.Stream.allCases where stream != .trajectory && inputs.motionStreams.contains(stream) {
+        // Motion streams only: the trajectory is written elsewhere, and frame intrinsics have no
+        // column in the 1.1 packet (`CaptureRecorder.Stream.motionPacketStream`).
+        for stream in CaptureRecorder.Stream.allCases where inputs.motionStreams.contains(stream) {
+            guard let packetStream = stream.motionPacketStream else { continue }
             let rows = inputs.recorder.rows(stream).filter { window.contains($0[0]) }
             guard !rows.isEmpty else { continue }
-            let packetStream: PacketStream = switch stream {
-            case .trajectory: .trajectory
-            case .accelerometer: .accelerometer
-            case .gyroscope: .gyroscope
-            case .magnetometer: .magnetometer
-            case .deviceMotion: .deviceMotion
-            case .barometer: .barometer
-            }
             // CMAltimeter sets its own rate (about 1 Hz), so the barometer claims none.
             if stream != .barometer { try? writer.setNominalRate(MotionSource.rate, for: packetStream) }
             for r in rows {
@@ -458,7 +471,7 @@ extension ScanEngine {
                             userAcceleration: SIMD3(r[8], r[9], r[10]), rotationRate: SIMD3(r[11], r[12], r[13]), headingDegrees: r[14]
                         ))
                     case .barometer: try writer.appendBarometer(t: r[0], pressureKPa: r[1], relativeAltitudeM: r[2])
-                    case .trajectory: break
+                    case .trajectory, .frameIntrinsics: break
                     }
                 } catch {
                     refused += 1

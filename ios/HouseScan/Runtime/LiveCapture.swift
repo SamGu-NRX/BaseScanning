@@ -40,7 +40,7 @@ struct VerticalPlaneHit {
 @MainActor
 final class LiveCapture {
     let arView: ARView
-    private let delegate: LiveSessionDelegate
+    let delegate: LiveSessionDelegate
 
     /// True when this phone gives per-frame LiDAR depth.
     static var supportsDepth: Bool { ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) }
@@ -393,8 +393,9 @@ final class LiveSessionDelegate: NSObject, ARSessionDelegate, Sendable {
     }
 
     /// The camera image handed to the encode queue. CVPixelBuffer is not Sendable; ARKit doesn't
-    /// write to a delivered frame's image, and only the encode queue reads it.
-    private struct PixelBufferBox: @unchecked Sendable {
+    /// write to a delivered frame's image, and only the encode queue reads it. The meter tap's
+    /// snapshot hands its one image off the main actor the same way.
+    struct PixelBufferBox: @unchecked Sendable {
         let buffer: CVPixelBuffer
     }
 
@@ -426,8 +427,11 @@ final class LiveSessionDelegate: NSObject, ARSessionDelegate, Sendable {
         }
         let shared = shared.withLock { $0 }
         let tracking = Self.tracking(frame.camera.trackingState)
-        // Every frame's pose goes to the packet's trajectory, before any sampling.
-        shared.recorder?.recordPose(t: frame.timestamp, tracking: TrackingCode(tracking), cameraToWorld: frame.camera.transform)
+        // Every frame's pose goes to the packet's trajectory, before any sampling, with that frame's
+        // own calibration at the same t.
+        shared.recorder?.recordPose(
+            t: frame.timestamp, tracking: TrackingCode(tracking), cameraToWorld: frame.camera.transform, intrinsics: frame.camera.intrinsics,
+            imageWidth: Double(frame.camera.imageResolution.width), imageHeight: Double(frame.camera.imageResolution.height))
         let intrinsics = frame.camera.intrinsics
         let resolution = frame.camera.imageResolution
         let camera = CameraFrame(
@@ -533,8 +537,9 @@ final class LiveSessionDelegate: NSObject, ARSessionDelegate, Sendable {
         }
     }
 
-    /// JPEG of the sensor image as captured: landscape, unrotated, matching the intrinsics.
-    private func encode(_ buffer: CVPixelBuffer) -> Data? {
+    /// JPEG of the sensor image as captured: landscape, unrotated, matching the intrinsics. The
+    /// walk's keyframes and the meter tap's snapshot both use it.
+    func encode(_ buffer: CVPixelBuffer) -> Data? {
         let image = CIImage(cvPixelBuffer: buffer)
         let space = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
         let options = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): 0.8]

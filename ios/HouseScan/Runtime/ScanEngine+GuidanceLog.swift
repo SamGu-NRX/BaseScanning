@@ -44,7 +44,7 @@ extension ScanEngine {
             )
         case .spotConfirm:
             return spotCheckGuidance
-        case .onboarding, .findMeter, .markFeatures, .uploading, .result, .resultAR, .unsupported:
+        case .onboarding, .findMeter, .markFeatures, .uploading, .result, .resultAR, .processing, .unsupported:
             return nil
         }
     }
@@ -112,7 +112,10 @@ extension ScanEngine {
             // before it leaves.
             return nextWallSide == nil ? .met : .superseded
         case .markEnd(let side):
-            return wallEndKinds[side] != nil ? .met : .superseded
+            // Met only by the homeowner's mark: an end the walk inferred answered another request
+            // ("Can't get there", or "The wall keeps going", closed as cannot_reach) (B-12).
+            guard wallEndKinds[side] != nil, let stamp = endStamps[side] else { return .superseded }
+            return stamp.markEndOutcome
         case .stepBack:
             guard let camera = currentFrame?.camera, let wall = coverage?.wall else { return .superseded }
             return wall.wallPoint(camera.position).out > GuidancePlanner().config.tooClose ? .met : .superseded

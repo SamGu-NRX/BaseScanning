@@ -23,7 +23,7 @@ public enum ResultCardActions {
     public static func primary(answer: ResultReading.Answer, hasSpot: Bool, spotIsClean: Bool,
                                hasViewToTake: Bool, sourceAvailable: Bool) -> Primary? {
         switch answer {
-        case .fits:
+        case .candidate:
             return hasSpot && sourceAvailable ? .showAR(clean: true) : nil
         case .oneMoreLook:
             return offersView(capturable: hasViewToTake, sourceAvailable: sourceAvailable) ? .takeView : nil
