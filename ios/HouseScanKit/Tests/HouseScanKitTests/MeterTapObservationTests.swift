@@ -183,6 +183,11 @@ extension Result {
         #expect(yes.status?.stage == .capturing(sent: 0))
         yes.answerConsent(true)
         #expect(yes.status?.stage == .ended(.notPrepared))
+        // The yes never reached the coordinator: no upload started, so no consented upload state
+        // was saved for a packet that can't be sent (a relaunch could otherwise find it).
+        let saved = FileManager.default.enumerator(at: root.appending(path: "Captures"), includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.lastPathComponent == CaptureUploader.stateURL(in: root).lastPathComponent } ?? []
+        #expect(saved.isEmpty, "upload state saved after a yes on a packet without its tap: \(saved)")
         yes.endScan(recording: fixture.recording)
 
         let no = controller(FixtureCaptureHTTP(answer: .candidate))

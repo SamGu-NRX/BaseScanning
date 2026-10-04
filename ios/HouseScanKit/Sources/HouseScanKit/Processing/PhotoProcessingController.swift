@@ -133,12 +133,18 @@ public final class PhotoProcessingController {
 
     public func answerConsent(_ yes: Bool) {
         guard context != nil, let coordinator, var state = status, state.consent == .asking else { return }
+        // A yes after this packet lost its tap: the packet can't be sent, so it ends now as not
+        // prepared, and the coordinator never hears the yes, so no upload starts for it.
+        if yes, case .failed = meterTap {
+            state.consent = .granted
+            status = state
+            capturePreparationFailed()
+            return
+        }
         // Before any yes there is no upload to withdraw, so a no can't fail here.
         coordinator.answerConsent(yes)
         state.consent = yes ? .granted : .declined
         status = state
-        // A yes after this packet lost its tap: the packet can't be sent, so it ends now.
-        if yes, case .failed = meterTap { capturePreparationFailed() }
     }
 
     /// A no after a yes: nothing more from this scan is sent, and the scan can't be processed
