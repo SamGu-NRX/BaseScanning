@@ -28,9 +28,11 @@ struct ScanRootView: View {
         ZStack {
             if Self.showsCamera(state.phase) {
                 CameraBackdrop(feed: state.feed, actions: actions)
+                    .accessibilityHidden(asksForPhotoConsent)
                     .transition(.opacity)
                 if state.isPracticeScan {
                     PracticeMeterOverlay(state: state)
+                        .accessibilityHidden(asksForPhotoConsent)
                 }
                 CameraEdgeShade()
             }
@@ -40,7 +42,20 @@ struct ScanRootView: View {
             screen
                 .id(state.phase)
                 .transition(Self.showsCamera(state.phase) ? .opacity : .identity)
+                // The question is modal: what it covers isn't there for VoiceOver until it's answered.
+                .accessibilityHidden(asksForPhotoConsent)
+            if asksForPhotoConsent {
+                PhotoConsentCard(standIn: state.photoProcessing?.standIn == true, synthetic: state.photoCaptureIsSynthetic, actions: actions)
+                    .transition(.opacity)
+            }
         }
+        .animation(Motion.screen, value: asksForPhotoConsent)
+    }
+
+    /// The photo-processing question covers the camera until it is answered, on every capture
+    /// screen, so no photo is kept without an answer in view.
+    private var asksForPhotoConsent: Bool {
+        state.photoProcessing?.consent == .asking && Self.showsCamera(state.phase) && state.phase != .resultAR
     }
 
     @ViewBuilder
@@ -76,6 +91,9 @@ struct ScanRootView: View {
         case .resultAR:
             ResultARScreen(state: state, actions: actions)
                 .screenIdentifier(.resultAR)
+        case .processing:
+            PhotoProcessingScreen(state: state, actions: actions)
+                .screenIdentifier(.processing)
         case .unsupported:
             UnsupportedScreen(state: state, actions: actions)
                 .screenIdentifier(.unsupported)
@@ -85,7 +103,7 @@ struct ScanRootView: View {
     static func showsCamera(_ phase: ScanPhase) -> Bool {
         switch phase {
         case .findMeter, .meterCloseUp, .wallWalk, .gapRequest, .resultAR, .markFeatures: true
-        case .onboarding, .uploading, .spotConfirm, .result, .unsupported: false
+        case .onboarding, .uploading, .spotConfirm, .result, .processing, .unsupported: false
         }
     }
 }

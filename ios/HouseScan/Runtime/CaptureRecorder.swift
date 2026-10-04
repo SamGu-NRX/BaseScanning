@@ -210,6 +210,11 @@ final class CaptureRecorder: Sendable {
         )
     }
 
+    /// The id of the session recording now, which `restart` makes new for every world.
+    var sessionID: String {
+        state.withLock { $0.sessionID }
+    }
+
     /// Writes every buffered row and returns the session as it stands.
     func flush() -> Snapshot {
         state.withLock { state in

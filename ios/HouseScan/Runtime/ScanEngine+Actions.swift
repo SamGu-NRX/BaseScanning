@@ -9,6 +9,13 @@ extension ScanEngine: ScanActions {
     func finishOnboarding() {
         guard state.phase == .onboarding else { return }
         startPracticeIfOn()
+        beginScan()
+        // A photo-processing scan this build can't send stops here, before the camera or any
+        // request, and says so with a way to a Legacy scan.
+        guard !photoScanCantRun else {
+            go(.processing)
+            return
+        }
         leaveOnboarding()
     }
 
