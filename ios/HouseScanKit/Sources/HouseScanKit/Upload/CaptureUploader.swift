@@ -486,8 +486,9 @@ public actor CaptureUploader {
         guard let url = URL(string: text), let scheme = url.scheme?.lowercased(), let host = url.host(), !host.isEmpty else {
             return "upload_url_invalid"
         }
-        let local = host == "127.0.0.1" || host == "localhost"
-        return scheme == "https" || (scheme == "http" && local) ? nil : "upload_url_insecure"
+        // The same rule as the API's own scope under `.loopbackHTTP`: https anywhere, plain http only
+        // to 127.0.0.1, ::1 or localhost, so the two lists can't drift apart.
+        return CaptureAPIScope.allows(scheme: scheme, host: host.lowercased(), transport: .loopbackHTTP) ? nil : "upload_url_insecure"
     }
 
     private func put(_ files: [CaptureUploadState.File]) async throws {
