@@ -13,14 +13,15 @@ import Testing
 @Suite struct CaptureUploaderRecoveryTests {
     typealias Rig = CaptureUploaderTests.Rig
 
-    /// Waits until at least `count` requests on `route` are parked.
+    /// Waits until at least `count` requests on `route` are parked. Like `settles`, the budget is
+    /// this waiter's own turns, not wall time, and the answer is read after the last wait.
     static func parked(_ server: LoopbackCaptureAPI, _ route: String, count: Int = 1, within seconds: Int = 20) async -> Bool {
-        let deadline = ContinuousClock.now + .seconds(seconds)
-        while ContinuousClock.now < deadline {
-            if server.state.withLock({ ($0.parked[route] ?? []).count >= count }) { return true }
+        let ready = { server.state.withLock { ($0.parked[route] ?? []).count >= count } }
+        for _ in 0..<(seconds * 100) {
+            if ready() { return true }
             try? await Task.sleep(for: .milliseconds(10))
         }
-        return false
+        return ready()
     }
 
     /// Sends the answers parked on `route` and keeps holding it.

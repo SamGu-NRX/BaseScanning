@@ -43,3 +43,19 @@ struct CaptureUploaderSettlesTests {
         #expect(sleeps.isEmpty)
     }
 }
+
+/// The safeguard still ends: an uploader held at its first request never settles, and `settles`
+/// says so after at least its budget, every turn being a wait of 20 ms or more.
+@Suite struct CaptureUploaderSettlesBoundTests {
+    @Test func aHeldUploaderDoesNotSettle() async throws {
+        let rig = try CaptureUploaderTests.Rig()
+        defer { rig.cleanUp() }
+        rig.server.state.withLock { $0.held = ["POST captures"] }
+        await rig.uploader.kick()
+        let started = ContinuousClock.now
+        #expect(await !CaptureUploaderTests.settles(rig.uploader, within: 1))
+        #expect(ContinuousClock.now - started >= .seconds(1))
+        rig.server.release("POST captures")
+        #expect(await CaptureUploaderTests.settles(rig.uploader))
+    }
+}
