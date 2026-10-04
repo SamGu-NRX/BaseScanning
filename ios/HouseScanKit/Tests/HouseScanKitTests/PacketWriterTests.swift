@@ -21,7 +21,7 @@ enum PacketSchema {
 
 /// A JPEG of `width` x `height` with a colour pattern, written by ImageIO. `orientation` sets the
 /// EXIF orientation tag.
-func makeJPEG(width: Int, height: Int, at url: URL, orientation: Int? = nil) throws {
+func makeJPEG(width: Int, height: Int, at url: URL, orientation: Int? = nil, shift: Int = 0) throws {
     let space = CGColorSpaceCreateDeviceRGB()
     let context = try #require(CGContext(
         data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 4 * width, space: space,
@@ -30,7 +30,7 @@ func makeJPEG(width: Int, height: Int, at url: URL, orientation: Int? = nil) thr
     for y in 0..<height {
         for x in 0..<width {
             let p = 4 * (y * width + x)
-            pixels[p] = UInt8((x * 9 + y * 3) % 256)
+            pixels[p] = UInt8((x * 9 + y * 3 + shift) % 256)
             pixels[p + 1] = UInt8((x * y) % 256)
             pixels[p + 2] = UInt8((y * 11) % 256)
             pixels[p + 3] = 255
