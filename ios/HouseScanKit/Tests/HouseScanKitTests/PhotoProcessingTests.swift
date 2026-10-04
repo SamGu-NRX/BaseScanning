@@ -146,11 +146,12 @@ final class HeldResultHTTP: CaptureHTTP, Sendable {
     let root = FileManager.default.temporaryDirectory.appending(path: "photo-processing-\(UUID().uuidString)")
     var fixture: NativeCaptureFixture { NativeCaptureFixture(folder: root.appending(path: "store")) }
 
-    func controller(_ http: any CaptureHTTP) -> PhotoProcessingController {
+    func controller(_ http: any CaptureHTTP, maxConcurrentPuts: Int? = nil) -> PhotoProcessingController {
         var environment = NativeCaptureFixture.environment(endpoint: FixtureCaptureHTTP.base, http: http, captures: root.appending(path: "Captures"))
         // Retries and unreadable answers come round in milliseconds, not the app's seconds.
         environment.policy.firstDelay = 0.01
         environment.policy.maxDelay = 0.02
+        if let maxConcurrentPuts { environment.policy.maxConcurrentPuts = maxConcurrentPuts }
         return PhotoProcessingController(setup: .ready(environment, standIn: true))
     }
 
@@ -240,6 +241,43 @@ final class HeldResultHTTP: CaptureHTTP, Sendable {
         try #require(try await until { controller.status?.isFinal == true })
         #expect(controller.status?.stage == .ended(.refused(step: "create")))
         #expect(!http.routes.contains("POST captures/files"))
+        controller.endScan(recording: fixture.recording)
+    }
+
+    /// The phone couldn't finish saving a photo kept before the send. This drives the controller
+    /// directly: it proves what happens once the engine's wait gives up, not the engine's 10 s wait.
+    /// A storage upload is held in flight when the capture is marked unprepared. The scan ends as
+    /// not prepared; the held request, already admitted, may finish; after it the uploader starts
+    /// no new request and retries nothing, a photo kept later isn't forwarded, and the capture is
+    /// never sealed or finalized, nor does any later report change the stage.
+    @Test func aCaptureMissingAPhotoIsNeverSealedAndItsUploaderStops() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let inner = FixtureCaptureHTTP(answer: .candidate)
+        let http = HoldFirstPut(inner)
+        // Released even if an expectation below fails, so the held upload can't strand the test.
+        defer { http.release() }
+        // One storage upload at a time, so the held one is the only request admitted when the
+        // capture ends; with the default of three, others could land after the snapshot below.
+        let controller = controller(http, maxConcurrentPuts: 1)
+        controller.beginScan(context(controller), recording: fixture.recording)
+        controller.answerConsent(true)
+        let (tap, hit) = try fixture.tap(at: fixture.start + 1)
+        controller.meterTapped(tap, hit: hit)
+        controller.kept(try fixture.photo(at: fixture.start + 2.5, purpose: "meter_close"))
+        controller.kept(try fixture.photo(at: fixture.start + 3))
+        try #require(try await until(10) { http.isHolding }, "no storage upload was held")
+        let before = inner.routes
+        controller.capturePreparationFailed()
+        #expect(controller.status?.stage == .ended(.notPrepared))
+        http.release()
+        controller.kept(try fixture.photo(at: fixture.start + 4))
+        controller.captureEnded(acceptedCloseUpAt: fixture.start + 2.5)
+        // Longer than the uploader waits between retries and polls with this test's policy.
+        try await Task.sleep(for: .seconds(2.5))
+        let after = Array(inner.routes.dropFirst(before.count))
+        #expect(after.count <= 1 && after.allSatisfy { $0 == "PUT upload" }, "requests after the capture ended: \(after)")
+        #expect(!inner.routes.contains("POST captures/finalize"))
+        #expect(controller.status?.stage == .ended(.notPrepared))
         controller.endScan(recording: fixture.recording)
     }
 
@@ -383,5 +421,49 @@ final class HeldResultHTTP: CaptureHTTP, Sendable {
         try await Task.sleep(for: .milliseconds(300))
         #expect(http.routes.isEmpty)
         controller.endScan(recording: fixture.recording)
+    }
+}
+
+/// The capture fixture with its first storage upload held until `release()`: a request already
+/// admitted, still waiting for its answer.
+private final class HoldFirstPut: CaptureHTTP, @unchecked Sendable {
+    private let inner: FixtureCaptureHTTP
+    private let lock = NSLock()
+    private var held = false
+    private var released = false
+    private var waiting: CheckedContinuation<Void, Never>?
+
+    init(_ inner: FixtureCaptureHTTP) { self.inner = inner }
+
+    var isHolding: Bool { lock.withLock { waiting != nil } }
+
+    func release() {
+        let next = lock.withLock { () -> CheckedContinuation<Void, Never>? in
+            released = true
+            defer { waiting = nil }
+            return waiting
+        }
+        next?.resume()
+    }
+
+    func send(_ request: URLRequest) async throws -> HTTPReply { try await inner.send(request) }
+
+    func upload(_ request: URLRequest, file: URL) async throws -> HTTPReply {
+        let hold = lock.withLock { () -> Bool in
+            guard !held, !released else { return false }
+            held = true
+            return true
+        }
+        if hold {
+            await withCheckedContinuation { continuation in
+                let resumeNow = lock.withLock { () -> Bool in
+                    if released { return true }
+                    waiting = continuation
+                    return false
+                }
+                if resumeNow { continuation.resume() }
+            }
+        }
+        return try await inner.upload(request, file: file)
     }
 }

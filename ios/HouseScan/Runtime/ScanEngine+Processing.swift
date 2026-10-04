@@ -76,7 +76,13 @@ extension ScanEngine {
         let context = scanContext
         let synthetic = syntheticCapture
         Task {
-            guard await drainPendingSaves(), scanContext == context, state.phase == .processing else { return }
+            let saves = await drainPendingSaves()
+            guard saves != .scanChanged, scanContext == context, state.phase == .processing else { return }
+            if saves == .stillWriting {
+                RuntimeLog.engine.error("photo processing: photos were still being saved after 10 s; the capture isn't sealed")
+                photoProcessing.capturePreparationFailed()
+                return
+            }
             guard let synthetic else {
                 let closeUp = state.closeUp == .skipped ? nil : store.stillFrames["meter_close"]?.t
                 photoProcessing.captureEnded(acceptedCloseUpAt: closeUp)

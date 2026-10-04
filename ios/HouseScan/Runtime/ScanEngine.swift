@@ -2089,14 +2089,18 @@ final class ScanEngine {
 
     // MARK: Upload
 
+    enum PendingSaves { case done, scanChanged, stillWriting }
+
     /// Waits, for at most 10 s, for the keyframe writes this world started, so the capture holds
-    /// every photo kept before the send. False when the world or the scan changed meanwhile.
-    func drainPendingSaves() async -> Bool {
+    /// every photo kept before the send. `stillWriting` when some are still being written then: a
+    /// capture sealed now would leave them out, and their late `onKept` would be refused.
+    func drainPendingSaves() async -> PendingSaves {
         let scan = generation
         for _ in 0..<200 where (pendingSaves[scan] ?? 0) > 0 {
             try? await Task.sleep(for: .milliseconds(50))
         }
-        return scan == generation
+        guard scan == generation else { return .scanChanged }
+        return (pendingSaves[scan] ?? 0) > 0 ? .stillWriting : .done
     }
 
     func startUpload() {

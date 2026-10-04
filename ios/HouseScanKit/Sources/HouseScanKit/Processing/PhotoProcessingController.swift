@@ -29,6 +29,9 @@ public final class PhotoProcessingController {
     private let coordinator: CaptureSessionCoordinator?
     private let log: @Sendable (String) -> Void
     private var begun = false
+    /// The world the current session records, so the session can be ended in place
+    /// (`capturePreparationFailed`).
+    private var recording: RecordingSource?
     /// The photo-processing scan under way; nil when there is none.
     public private(set) var context: ScanContext?
     public private(set) var status: PhotoProcessingStatus? {
@@ -177,6 +180,28 @@ public final class PhotoProcessingController {
         status = state
     }
 
+    /// The scan was sent, but the phone couldn't finish saving every photo it kept before the send,
+    /// so the capture would leave one out: it is never sealed, and the scan ends as not prepared.
+    ///
+    /// The capture's coordinator session ends too, the way Start over ends one (`newWorld` with a
+    /// new scan): its uploader stops sending and is abandoned, so it starts no new request and
+    /// retries nothing, and anything it reports later never reaches the screen. A request already
+    /// on its way may still be answered by the service; photos already uploaded stay there. The
+    /// empty session that replaces it has no consent, so it sends nothing.
+    public func capturePreparationFailed() {
+        guard context != nil, var state = status, !captureEnded, case .capturing = state.stage else { return }
+        captureEnded = true
+        switch state.consent {
+        case .granted: state.stage = .ended(.notPrepared)
+        case .asking, .declined: state.stage = .ended(.consentNotGiven)
+        case .withdrawn(let recorded): state.stage = .ended(.withdrawn(recorded: recorded))
+        case .notNeeded: return
+        }
+        state.retrying = false
+        status = state
+        if begun, let recording { coordinator?.newWorld("capture not prepared", recording: recording, newScan: true) }
+    }
+
     /// Waits until the current session's queued work and uploads are idle. For tests.
     public func settle() async {
         await coordinator?.settle()
@@ -191,6 +216,7 @@ public final class PhotoProcessingController {
 
     private func startSession(_ reason: String, recording: RecordingSource, newScan: Bool) {
         guard let coordinator else { return }
+        self.recording = recording
         if begun {
             coordinator.newWorld(reason, recording: recording, newScan: newScan)
         } else {
