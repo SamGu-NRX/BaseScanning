@@ -2,6 +2,14 @@ import Foundation
 
 /// What a photo-processing answer has to match before the app shows it, taken when the scan's
 /// capture ended.
+///
+/// This is a local association, not a binding the service declares. The answer
+/// (`CaptureResult.Response`) names only its run; the session, packet and capture it is held
+/// against are this phone's own record of what it sent, and the service returns no digest of the
+/// input it processed and no attestation. So a match means "the answer the uploader fetched for
+/// the capture this scan sent, for the run that capture started", not "the service says it read
+/// these bytes". Until the capture API states its input, photo processing can't be called
+/// accepted for live use.
 public struct PhotoCaptureBinding: Sendable, Equatable {
     public var spatial: SpatialSession
     public var origin: URL
@@ -42,7 +50,8 @@ public struct PhotoCaptureObservation: Sendable, Equatable {
     }
 }
 
-/// The first identity an answer and the scan on screen disagree on.
+/// The first identity an answer and the scan on screen disagree on. All but `run` are compared
+/// with the phone's own records (`PhotoCaptureBinding`).
 public enum PhotoBindingMismatch: Sendable, Equatable, CaseIterable {
     /// Another ARKit world, or none: an answer for a world that is gone.
     case world

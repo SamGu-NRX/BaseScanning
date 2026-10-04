@@ -51,7 +51,7 @@ import Testing
         #expect(binding.mismatch(try record(), observed: matching) == nil)
     }
 
-    @Test func anAnswerFromAnotherWorldIsRefusedWhateverElseMatches() throws {
+    @Test func anAnswerAssociatedWithAnotherWorldIsRefusedWhateverElseMatches() throws {
         var observed = matching
         observed.spatial = SpatialSession(recordingSessionID: "rec-2", worldEpoch: 1)
         #expect(binding.mismatch(try record(), observed: observed) == .world)
@@ -61,7 +61,7 @@ import Testing
         #expect(binding.mismatch(try record(), observed: observed) == .world)
     }
 
-    @Test func anAnswerForAnotherDestinationSessionPacketCaptureRunOrEpochIsRefused() throws {
+    @Test func anAnswerWhoseRunOrLocalAssociationDiffersIsRefused() throws {
         var observed = matching
         observed.origin = URL(string: "https://elsewhere.invalid/v1")
         #expect(binding.mismatch(try record(), observed: observed) == .origin)
@@ -175,7 +175,7 @@ final class HeldResultHTTP: CaptureHTTP, Sendable {
     }
 
     @Test(arguments: [
-        FixtureCaptureHTTP.Answer.candidate, .needsViews, .manualReview, .notEligible, .failed, .expired, .notReady, .unreadable,
+        FixtureCaptureHTTP.Answer.candidate, .needsViews, .manualReview, .notEligible, .failed, .expired, .notReady, .unreadable, .wrongRun,
     ])
     func eachAnswerReachesTheScanAsItsTypedStage(answer: FixtureCaptureHTTP.Answer) async throws {
         defer { try? FileManager.default.removeItem(at: root) }
@@ -215,6 +215,8 @@ final class HeldResultHTTP: CaptureHTTP, Sendable {
             #expect(stage == .ended(.answerNotReady))
         case .unreadable:
             #expect(stage == .ended(.answerUnreadable))
+        case .wrongRun:
+            #expect(stage == .ended(.answerMismatch(.run)))
         case .refuseCreate, .hold:
             Issue.record("not an argument of this test")
         }

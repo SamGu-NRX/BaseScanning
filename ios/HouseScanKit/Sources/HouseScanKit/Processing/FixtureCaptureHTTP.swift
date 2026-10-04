@@ -8,7 +8,10 @@ import Synchronization
 /// and ends every capture with the answer it was made with. Each answer's words say they come
 /// from a fixture.
 ///
-/// Written from the public API types in `CaptureAPI` and `CaptureResult`; it is not the service.
+/// Written from the public API types in `CaptureAPI` and `CaptureResult`; it is not the service,
+/// and an answer from it says nothing about any wall. The type is compiled into every build of
+/// HouseScanKit; only the app's activation of it is limited to debug builds on a replay
+/// (`CaptureFixtureLaunch`).
 public final class FixtureCaptureHTTP: CaptureHTTP, Sendable {
     public enum Answer: String, Sendable, CaseIterable {
         case candidate, needsViews, manualReview, notEligible, failed, expired
@@ -20,6 +23,8 @@ public final class FixtureCaptureHTTP: CaptureHTTP, Sendable {
         case refuseCreate
         /// The run never finishes, so the capture stays in processing.
         case hold
+        /// The result names another run than the one finalize started, which the uploader refuses.
+        case wrongRun
 
         /// The homeowner message the answer carries, when it has an outcome.
         public var message: String? {
@@ -28,6 +33,7 @@ public final class FixtureCaptureHTTP: CaptureHTTP, Sendable {
             case .needsViews: "Fixture answer: one more view of the wall, please."
             case .manualReview: "Fixture answer: an installer needs to look at this wall."
             case .notEligible: "Fixture answer: no spot on this wall."
+            case .wrongRun: "Fixture answer: this answer is for another run."
             case .failed, .expired, .notReady, .unreadable, .refuseCreate, .hold: nil
             }
         }
@@ -35,7 +41,7 @@ public final class FixtureCaptureHTTP: CaptureHTTP, Sendable {
         /// The capture's status once every listed file is committed.
         var endStatus: String {
             switch self {
-            case .candidate, .notEligible, .notReady, .unreadable: "complete"
+            case .candidate, .notEligible, .notReady, .unreadable, .wrongRun: "complete"
             case .needsViews: "needs_views"
             case .manualReview: "manual_review"
             case .failed: "failed"
@@ -248,7 +254,7 @@ public final class FixtureCaptureHTTP: CaptureHTTP, Sendable {
             outcome = decided
         }
         return json(200, [
-            "runId": runID, "status": answer.endStatus, "viewsNeeded": views, "memberActions": [Any](), "outcome": outcome,
+            "runId": answer == .wrongRun ? "run_fixture_other" : runID, "status": answer.endStatus, "viewsNeeded": views, "memberActions": [Any](), "outcome": outcome,
         ])
     }
 

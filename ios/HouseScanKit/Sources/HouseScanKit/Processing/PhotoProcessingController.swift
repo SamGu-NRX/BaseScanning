@@ -8,8 +8,10 @@ import simd
 /// Each photo-processing scan starts a new coordinator session (`beginScan`), which asks for
 /// consent again. Start over, or a Legacy scan starting, ends it (`endScan`); a world reset starts
 /// the scan's next packet with the same answer (`worldReset`). The coordinator drops status and
-/// answers from a session that ended, and the binding check (`PhotoCaptureBinding`) refuses any
-/// answer that isn't for the recording's session, world, packet, capture and run.
+/// answers from a session that ended, and `PhotoCaptureBinding` refuses an answer whose run, or
+/// whose local association (the recording's world, the coordinator session, packet and capture
+/// the phone sent), isn't this scan's. The service declares no input digest, so this is the
+/// phone's association, not proof of what the service read.
 ///
 /// A capture saved on disk is never resumed from here. Folder ownership lasts only this process,
 /// so a relaunch asks for consent again rather than act on a yes it can't prove.
