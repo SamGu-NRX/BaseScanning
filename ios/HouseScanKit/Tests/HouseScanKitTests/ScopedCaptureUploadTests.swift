@@ -162,6 +162,39 @@ import Testing
         #expect(sleeps.isEmpty)
     }
 
+    /// A withdrawal that lands while a provider is waiting, one that ignores cancellation and
+    /// then returns a good token, ends the upload as withdrawn: nothing is sent, no retry is
+    /// scheduled, and the end is saved. The wrapper throws CancellationError there, which the
+    /// uploader must not read as a network failure to retry.
+    @Test func aWithdrawalWhileTheProviderWaitsEndsTheUploadAsWithdrawn() async throws {
+        let sleeps = Sleeps()
+        let gate = ScopedCaptureHTTPTests.Gate()
+        let server = try LoopbackCaptureAPI()
+        server.state.withLock { $0.expectedBearer = Self.token }
+        let http = ScopedCaptureHTTP(
+            scope: try CaptureAPIScope(base: server.base, transport: .loopbackHTTP),
+            credential: {
+                await gate.wait()
+                return Self.token
+            },
+            inner: URLSessionCaptureHTTP.ephemeral(timeout: 10))
+        let rig = try Rig(server: server, http: http, sleep: sleeps.record)
+        defer { rig.cleanUp() }
+        await rig.uploader.kick()
+        await gate.entered()
+        #expect(rig.uploader.withdrawConsent() == .marked)
+        gate.release()
+        try #require(await CaptureUploaderTests.settles(rig.uploader))
+
+        let snapshot = await rig.uploader.snapshot
+        #expect(snapshot.end == .abandoned(CaptureUploader.withdrawnReason))
+        #expect(await rig.uploader.status.retryingAt == nil)
+        #expect(server.state.withLock { $0.log.isEmpty })
+        #expect(sleeps.isEmpty)
+        let saved = try CaptureUploadState.load(from: CaptureUploader.stateURL(in: rig.capture.folder))
+        #expect(saved.end == .abandoned(CaptureUploader.withdrawnReason))
+    }
+
     /// With the default loopback (no expected bearer), the old assertion stands: an API request
     /// that carries Authorization is refused.
     @Test func theDefaultLoopbackStillRefusesAnyAPIAuthorization() async throws {
