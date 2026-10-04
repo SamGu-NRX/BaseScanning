@@ -59,10 +59,9 @@ final class AuthorizingStorageHTTP: CaptureHTTP, Sendable {
         ScopedCaptureHTTP(scope: try CaptureAPIScope(base: base), credential: credential, inner: inner)
     }
 
+    /// A hang safeguard counted in the waiter's own turns (`countedWait`), not wall time.
     func until(_ seconds: Double = 30, _ condition: () -> Bool) async throws -> Bool {
-        let deadline = ContinuousClock.now + .seconds(seconds)
-        while !condition(), ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
-        return condition()
+        try await countedWait(seconds, condition)
     }
 
     func run(_ controller: PhotoProcessingController) async throws {

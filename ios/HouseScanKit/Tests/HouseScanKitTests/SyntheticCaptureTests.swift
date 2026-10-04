@@ -73,10 +73,9 @@ import Testing
         return PhotoProcessingController(setup: .ready(environment, standIn: true))
     }
 
+    /// A hang safeguard counted in the waiter's own turns (`countedWait`), not wall time.
     func until(_ condition: () -> Bool) async throws -> Bool {
-        let deadline = ContinuousClock.now + .seconds(30)
-        while !condition(), ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
-        return condition()
+        try await countedWait(30, condition)
     }
 
     /// The capture through the real coordinator and uploader: a packet the phone's checks pass,

@@ -181,10 +181,9 @@ final class HeldResultHTTP: CaptureHTTP, Sendable {
         controller.captureEnded(acceptedCloseUpAt: fixture.start + 2.5)
     }
 
+    /// A hang safeguard counted in the waiter's own turns (`countedWait`), not wall time.
     func until(_ seconds: Double = 30, _ condition: () -> Bool) async throws -> Bool {
-        let deadline = ContinuousClock.now + .seconds(seconds)
-        while !condition(), ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
-        return condition()
+        try await countedWait(seconds, condition)
     }
 
     @Test func theFixtureWritesTheCoordinatorsEpoch() {

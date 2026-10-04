@@ -118,10 +118,9 @@ extension Result {
         return (try frame.observation(hit: NativeCaptureFixture.meter, jpeg: { jpeg }).get(), frame.tapHit(NativeCaptureFixture.meter, estimatedPlane: true))
     }
 
+    /// A hang safeguard counted in the waiter's own turns (`countedWait`), not wall time.
     func until(_ seconds: Double = 30, _ condition: () -> Bool) async throws -> Bool {
-        let deadline = ContinuousClock.now + .seconds(seconds)
-        while !condition(), ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
-        return condition()
+        try await countedWait(seconds, condition)
     }
 
     /// The forwarded tap is sealed with a ray, rebuilt from its keyframe's pose and intrinsics,
