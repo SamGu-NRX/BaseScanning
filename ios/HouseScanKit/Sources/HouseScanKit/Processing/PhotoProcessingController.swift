@@ -44,6 +44,20 @@ public final class PhotoProcessingController {
     private var upload: CaptureUploadStatus?
     private var captureEnded = false
 
+    /// What became of the current packet's meter tap. Every packet needs its own: a world reset
+    /// starts a packet with none.
+    public enum MeterTap: Sendable, Equatable {
+        case none
+        case forwarded
+        case failed(MeterTapFailure)
+    }
+
+    public private(set) var meterTap: MeterTap = .none
+
+    /// Whether the current packet still wants its meter tap: it is being captured, the homeowner
+    /// hasn't said no, and no tap result came yet.
+    public var wantsMeterTap: Bool { acceptsCapture && meterTap == .none }
+
     public init(setup: Setup) {
         if case .ready(let environment, _) = setup, !environment.sends {
             self.setup = .notSetUp("the capture endpoint may not receive this scan")
@@ -123,6 +137,8 @@ public final class PhotoProcessingController {
         coordinator.answerConsent(yes)
         state.consent = yes ? .granted : .declined
         status = state
+        // A yes after this packet lost its tap: the packet can't be sent, so it ends now.
+        if yes, case .failed = meterTap { capturePreparationFailed() }
     }
 
     /// A no after a yes: nothing more from this scan is sent, and the scan can't be processed
@@ -144,15 +160,42 @@ public final class PhotoProcessingController {
         coordinator?.kept(photo)
     }
 
-    public func meterTapped(_ tap: TapObservation, hit: Packet04.TapHit?) {
-        guard acceptsCapture else { return }
+    /// The homeowner's accepted meter mark, as the frame it was taken on saw it, for the scan in
+    /// `scan` as it stood at the mark. Nothing is forwarded when that scan or its world is gone:
+    /// a tap from an old world belongs to a packet that no longer exists. `tap`'s image is already
+    /// encoded, so the coordinator's own read of it can't come back empty.
+    public func meterTapped(_ tap: TapObservation, hit: Packet04.TapHit?, scan: ScanContext) {
+        guard scan == context, meterTap == .none, acceptsCapture else {
+            log("photo processing: a meter tap for another scan, world or packet was dropped")
+            return
+        }
+        meterTap = .forwarded
         coordinator?.meterTapped(tap, hit: hit)
+    }
+
+    /// The accepted mark gave no tap, for the scan in `scan` as it stood at the mark. The packet
+    /// can't be sent without it: with a yes it ends as not prepared now, so photos of a packet that
+    /// can't be finished stop going up; before an answer the failure is kept and a later yes ends
+    /// it the same way; a no or a withdrawal keeps its own end. Dropped when that scan or world is
+    /// gone, so it never ends a newer packet.
+    public func meterTapFailed(_ reason: MeterTapFailure, scan: ScanContext) {
+        guard scan == context, meterTap == .none, acceptsCapture else {
+            log("photo processing: a meter tap failure for another scan, world or packet was dropped")
+            return
+        }
+        meterTap = .failed(reason)
+        log("photo processing: the meter mark gave no tap (\(reason.rawValue)); the capture can't be prepared")
+        if status?.consent == .granted { capturePreparationFailed() }
     }
 
     /// The scan was sent: the packet is frozen and processing starts, if the homeowner said yes.
     /// `acceptedCloseUpAt` is the frame time of the close-up the scan accepted, nil after a skip.
     public func captureEnded(acceptedCloseUpAt: Double?) {
         guard let context, var state = status, !captureEnded, case .capturing = state.stage else { return }
+        if state.consent == .granted, case .failed = meterTap {
+            capturePreparationFailed()
+            return
+        }
         captureEnded = true
         switch state.consent {
         case .granted:
@@ -229,6 +272,7 @@ public final class PhotoProcessingController {
         binding = nil
         upload = nil
         captureEnded = false
+        meterTap = .none
     }
 
     /// The coordinator reports only its current session; nil means that session ended, and

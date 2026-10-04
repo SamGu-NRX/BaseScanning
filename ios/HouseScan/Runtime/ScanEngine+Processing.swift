@@ -53,6 +53,7 @@ extension ScanEngine {
     /// is already the next scan's.
     func endScan() {
         scanContext = nil
+        meterTapTask = nil
         state.scanBackend = nil
         photoProcessing.endScan(recording: photoRecording)
     }
@@ -63,6 +64,8 @@ extension ScanEngine {
         guard let context = scanContext else { return }
         let next = context.inNewWorld(recordingSessionID: recorder.sessionID)
         scanContext = next
+        // The old world's tap, if still encoding, is dropped when it finishes (`takeMeterTap`).
+        meterTapTask = nil
         if next.profile.backend == .photoProcessing {
             photoProcessing.worldReset(next, recording: photoRecording)
         }
@@ -84,6 +87,16 @@ extension ScanEngine {
                 return
             }
             guard let synthetic else {
+                // A live capture is sealed only with its meter tap; a replay has none to give.
+                if replay == nil {
+                    await meterTapTask?.value
+                    guard scanContext == context, state.phase == .processing else { return }
+                    guard photoProcessing.meterTap == .forwarded else {
+                        RuntimeLog.engine.error("photo processing: the capture has no meter tap, so it isn't sealed")
+                        photoProcessing.capturePreparationFailed()
+                        return
+                    }
+                }
                 let closeUp = state.closeUp == .skipped ? nil : store.stillFrames["meter_close"]?.t
                 photoProcessing.captureEnded(acceptedCloseUpAt: closeUp)
                 return
@@ -94,6 +107,44 @@ extension ScanEngine {
             if photos.isEmpty { RuntimeLog.engine.error("photo processing: the synthetic capture's photos couldn't be written") }
             for photo in photos { photoProcessing.kept(photo) }
             photoProcessing.captureEnded(acceptedCloseUpAt: synthetic.acceptedCloseUpAt)
+        }
+    }
+
+    /// Photo processing's meter tap for an accepted mark: one snapshot of ARKit's current frame,
+    /// taken now, then its image encoded off the main actor and the tap forwarded. Legacy scans,
+    /// the synthetic capture and a packet that wants no tap take none. A snapshot that can't give
+    /// a tap ends the packet as not prepared (`PhotoProcessingController.meterTapFailed`). The
+    /// result is used only while the scan and its world are the ones the mark was made in.
+    func takeMeterTap(_ live: LiveCapture, hit: VerticalPlaneHit) {
+        guard let context = scanContext, context.profile.backend == .photoProcessing, syntheticCapture == nil,
+              photoProcessing.context == context, photoProcessing.wantsMeterTap else { return }
+        let position = hit.position
+        let estimated = hit.source == .estimatedPlane
+        switch live.meterTapSnapshot() {
+        case .failed(let reason):
+            photoProcessing.meterTapFailed(reason, scan: context)
+        case .captured(let frame, let image):
+            // The geometry is checked before anything is encoded.
+            if case .failure(let reason) = frame.observation(hit: position, jpeg: { nil }) {
+                photoProcessing.meterTapFailed(reason, scan: context)
+                return
+            }
+            meterTapTask = Task { [weak self, live] in
+                let jpeg = await live.encodeMeterTapImage(image)
+                guard let self else { return }
+                guard self.scanContext == context, self.photoProcessing.context == context else {
+                    RuntimeLog.engine.info("photo processing: a meter tap from a scan or world that is gone was dropped")
+                    return
+                }
+                guard let jpeg else {
+                    self.photoProcessing.meterTapFailed(.encodeFailed, scan: context)
+                    return
+                }
+                switch frame.observation(hit: position, jpeg: { jpeg }) {
+                case .success(let tap): self.photoProcessing.meterTapped(tap, hit: frame.tapHit(position, estimatedPlane: estimated), scan: context)
+                case .failure(let reason): self.photoProcessing.meterTapFailed(reason, scan: context)
+                }
+            }
         }
     }
 
