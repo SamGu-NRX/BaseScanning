@@ -36,6 +36,11 @@ public struct ScopedCaptureHTTP: CaptureHTTP {
         // The destination is checked before the credential is asked for.
         guard let url = request.url else { throw ScopedCaptureHTTPError.destinationNotAllowed("no_url") }
         if let reason = scope.problem(with: url) { throw ScopedCaptureHTTPError.destinationNotAllowed(reason) }
+        // A request cancelled before or during the credential fetch is never sent. A provider may
+        // wait without watching for cancellation and then return a token anyway; checking again
+        // after it returns keeps that token off a request the caller has given up on. This stops
+        // only new requests from this side: it doesn't withdraw anything the server already has.
+        try Task.checkCancellation()
         let token: String
         do {
             token = try await credential()
@@ -45,6 +50,7 @@ public struct ScopedCaptureHTTP: CaptureHTTP {
             // Only the error's type: a provider's message may quote what it tried.
             throw ScopedCaptureHTTPError.credentialUnavailable(String(describing: type(of: error)))
         }
+        try Task.checkCancellation()
         guard Self.isBearerToken(token) else { throw ScopedCaptureHTTPError.credentialMalformed }
         var authorized = request
         authorized.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

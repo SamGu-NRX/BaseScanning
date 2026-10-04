@@ -165,6 +165,75 @@ import Testing
         #expect(recorder.sent.withLock { $0.isEmpty })
     }
 
+    /// Holds the credential provider until the test releases it, ignoring cancellation while it
+    /// waits, as a provider that doesn't watch for it would.
+    final class Gate: Sendable {
+        private let waiting = Mutex<CheckedContinuation<Void, Never>?>(nil)
+        private let enteredStream: AsyncStream<Void>
+        private let enteredContinuation: AsyncStream<Void>.Continuation
+
+        init() {
+            (enteredStream, enteredContinuation) = AsyncStream<Void>.makeStream()
+        }
+
+        /// Waits for `release`; reports to `entered` once it is waiting.
+        func wait() async {
+            await withCheckedContinuation { continuation in
+                waiting.withLock { $0 = continuation }
+                enteredContinuation.yield()
+            }
+        }
+
+        func entered() async {
+            for await _ in enteredStream { return }
+        }
+
+        func release() {
+            waiting.withLock {
+                $0?.resume()
+                $0 = nil
+            }
+        }
+    }
+
+    /// Cancelled while the provider is waiting, the request isn't sent, even though the
+    /// provider then returns a well-formed token.
+    @Test func aRequestCancelledDuringTheCredentialFetchIsNeverSent() async throws {
+        let recorder = Recorder()
+        let gate = Gate()
+        let http = ScopedCaptureHTTP(
+            scope: try CaptureAPIScope(base: Self.base),
+            credential: {
+                await gate.wait()
+                return ScopedCaptureHTTPTests.token
+            },
+            inner: recorder)
+        let request = Self.request("https://api.example.com/v1/captures")
+        let task = Task { try await http.send(request) }
+        await gate.entered()
+        task.cancel()
+        gate.release()
+        let result = await task.result
+        #expect(throws: CancellationError.self) { try result.get() }
+        #expect(recorder.sent.withLock { $0.isEmpty })
+    }
+
+    /// A request already cancelled doesn't reach the provider at all.
+    @Test func aRequestCancelledBeforeTheCredentialFetchNeverReachesTheProvider() async throws {
+        let recorder = Recorder()
+        let provider = Provider()
+        let http = try Self.scoped(provider, inner: recorder)
+        let request = Self.request("https://api.example.com/v1/captures")
+        let task = Task { () async throws -> HTTPReply in
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await http.send(request)
+        }
+        let result = await task.result
+        #expect(throws: CancellationError.self) { try result.get() }
+        #expect(provider.calls.withLock { $0 } == 0)
+        #expect(recorder.sent.withLock { $0.isEmpty })
+    }
+
     /// An Authorization the caller already set is replaced, never sent alongside or instead.
     @Test func anAPIRequestCarriesOnlyTheIssuedCredential() async throws {
         let recorder = Recorder()
