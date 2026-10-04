@@ -20,9 +20,10 @@ public actor CaptureUploader {
         public var eventsWait = 20
         /// A signed URL this close to expiry is fetched again before the PUT.
         public var expiryMargin = 60.0
-        /// PUTs of one file the storage refuses (not transient) before the upload stops.
+        /// PUTs of one file the storage refuses (not transient) before the upload stops, counted per
+        /// server capture.
         public var maxRefusedPuts = 6
-        /// `retry_finalize` answers followed before the upload stops.
+        /// `retry_finalize` answers followed before the upload stops, counted per server capture.
         public var maxFinalizeRetries = 3
         /// Result reads that find the run's answer not readable yet before the upload stops. Each
         /// waits the retry delay first, so the default allows about three minutes. No measurement
@@ -82,6 +83,9 @@ public actor CaptureUploader {
     private struct FolderEntry {
         weak var owner: CaptureUploader?
         var withdrawn = false
+        /// A save failed here: the saved state is older than what this process sent, so this
+        /// process never resumes it. A relaunch may, under the consent it records.
+        var unsaved = false
         var stopped = false
         var running: Task<Void, Never>?
     }
@@ -95,8 +99,8 @@ public actor CaptureUploader {
         case savedUploadExists
         case folderIdentityUnavailable
     }
-    /// Set when a state change could not be saved: the loop stops rather than send a request the
-    /// saved state doesn't know about.
+    /// Set when a state change could not be saved. The upload ends here (`unsavedStateCode`)
+    /// rather than send a request the saved state doesn't know about.
     private var saveFailed = false
     private var observer: (@Sendable (CaptureUploadStatus) -> Void)?
     private var log: (@Sendable (String) -> Void)?
@@ -138,7 +142,7 @@ public actor CaptureUploader {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let folder = try canonicalFolder(folder)
         return try folders.withLock { entries in
-            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn }
+            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn || $0.value.unsaved }
             guard entries[folder.path]?.withdrawn != true,
                   !FileManager.default.fileExists(atPath: CaptureUploadState.withdrawnURL(in: folder).path)
             else { throw OwnershipError.consentWithdrawn }
@@ -168,9 +172,9 @@ public actor CaptureUploader {
         guard FileManager.default.fileExists(atPath: folder.path) else { return nil }
         let folder = try canonicalFolder(folder)
         return try folders.withLock { entries in
-            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn }
+            entries = entries.filter { $0.value.owner != nil || $0.value.withdrawn || $0.value.unsaved }
             let url = stateURL(in: folder)
-            guard entries[folder.path]?.withdrawn != true,
+            guard entries[folder.path]?.withdrawn != true, entries[folder.path]?.unsaved != true,
                   FileManager.default.fileExists(atPath: url.path),
                   !FileManager.default.fileExists(atPath: CaptureUploadState.withdrawnURL(in: folder).path)
             else { return nil }
@@ -231,6 +235,12 @@ public actor CaptureUploader {
 
     public static let withdrawnReason = "consent withdrawn"
 
+    /// The code an upload ends with, at step `save` and status 0, when this phone couldn't save
+    /// the upload's state. It is a local storage problem: it says nothing about the photos or
+    /// the server, and no server answered.
+    public static let unsavedStateCode = "local_state_unsaved"
+    static let unsavedEnd = CaptureUploadState.End.failed(step: "save", codes: [unsavedStateCode], status: 0)
+
     /// How a withdrawal was recorded on disk.
     public enum WithdrawalRecord: Sendable, Equatable {
         /// The marker `resume` refuses was written.
@@ -272,7 +282,8 @@ public actor CaptureUploader {
     /// dropped when they arrive.
     public func abandon(_ reason: String) {
         stopSending()
-        guard state.end == nil else { return }
+        // An end the app asks for, a withdrawal included, replaces a save failure.
+        guard state.end == nil || state.end == Self.unsavedEnd else { return }
         state.end = .abandoned(reason)
         state.attemptID = UUID().uuidString
         loop?.cancel()
@@ -633,10 +644,14 @@ public actor CaptureUploader {
         state.captureID = nil
         state.finalized = nil
         state.eventCursor = 0
-        // A new server capture is a new run: the old one's limits don't carry over.
+        // A new server capture is a new run: none of the old one's retry limits carry over.
+        // Each still bounds the new run on its own.
         state.notReadyReads = nil
+        state.finalizeRetries = 0
+        digestRetried.removeAll()
         for path in state.files.keys {
             state.files[path]?.phase = .queued
+            state.files[path]?.attempts = 0
             state.files[path]?.unacknowledged = nil
         }
         persist()
@@ -712,6 +727,15 @@ public actor CaptureUploader {
             }
         } catch {
             saveFailed = true
+            Self.folders.withLock { entries in
+                if entries[folderKey]?.owner === self { entries[folderKey]?.unsaved = true }
+            }
+            // The saved state is now behind this one, so the upload ends in memory only: nothing
+            // claims it was saved, and nothing more is sent. An end already set stays: a
+            // withdrawal's, set before the write was tried, or a result or refusal.
+            // Replies in flight belong to the old attempt and are dropped.
+            if state.end == nil { state.end = Self.unsavedEnd }
+            state.attemptID = UUID().uuidString
             log?("capture-upload stopped: the upload state could not be saved (\(Self.describe(error)))")
         }
         publish()
