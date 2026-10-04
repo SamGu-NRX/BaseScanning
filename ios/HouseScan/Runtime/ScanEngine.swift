@@ -193,6 +193,9 @@ final class ScanEngine {
     /// The scan under way: its id, backend profile and world, fixed when it starts
     /// (`beginScan`); nil before a scan starts.
     var scanContext: ScanContext?
+    /// The meter tap's encode and forward, from an accepted mark on a live photo-processing scan
+    /// (`takeMeterTap`); the send waits for it.
+    var meterTapTask: Task<Void, Never>?
     /// Photo processing's capture and answer, for scans that use it (`ScanEngine+Processing`).
     let photoProcessing: PhotoProcessingController
     /// DEBUG's synthetic capture, sent in place of the scan's photos; nil otherwise.

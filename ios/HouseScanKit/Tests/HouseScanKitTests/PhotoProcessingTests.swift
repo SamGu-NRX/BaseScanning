@@ -174,7 +174,7 @@ final class HeldResultHTTP: CaptureHTTP, Sendable {
     func capture(_ controller: PhotoProcessingController, consent: Bool?) async throws {
         if let consent { controller.answerConsent(consent) }
         let (tap, hit) = try fixture.tap(at: fixture.start + 1)
-        controller.meterTapped(tap, hit: hit)
+        if let scan = controller.context { controller.meterTapped(tap, hit: hit, scan: scan) }
         controller.kept(try fixture.photo(at: fixture.start + 2.5, purpose: "meter_close"))
         for i in 0..<5 { controller.kept(try fixture.photo(at: fixture.start + 3 + Double(i) * 1.5)) }
         await controller.settle()
@@ -273,7 +273,7 @@ final class HeldResultHTTP: CaptureHTTP, Sendable {
         controller.beginScan(context(controller), recording: fixture.recording)
         controller.answerConsent(true)
         let (tap, hit) = try fixture.tap(at: fixture.start + 1)
-        controller.meterTapped(tap, hit: hit)
+        if let scan = controller.context { controller.meterTapped(tap, hit: hit, scan: scan) }
         controller.kept(try fixture.photo(at: fixture.start + 2.5, purpose: "meter_close"))
         controller.kept(try fixture.photo(at: fixture.start + 3))
         try #require(try await until(10) { http.isHolding }, "no storage upload was held")
@@ -300,10 +300,11 @@ final class HeldResultHTTP: CaptureHTTP, Sendable {
         let http = FixtureCaptureHTTP(answer: .candidate)
         let controller = controller(http)
         defer { controller.endScan(recording: fixture.recording) }
-        controller.beginScan(context(controller), recording: fixture.recording)
+        let scan = context(controller)
+        controller.beginScan(scan, recording: fixture.recording)
         controller.answerConsent(true)
         let (tap, hit) = try fixture.tap(at: fixture.start + 1)
-        controller.meterTapped(tap, hit: hit)
+        controller.meterTapped(tap, hit: hit, scan: scan)
         controller.kept(try fixture.photo(at: fixture.start + 2.5, purpose: "meter_close"))
         await controller.settle()
         // A photo the scan accepted whose JPEG is gone before the coordinator could stage it.
