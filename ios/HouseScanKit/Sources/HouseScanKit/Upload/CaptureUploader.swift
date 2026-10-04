@@ -432,6 +432,7 @@ public actor CaptureUploader {
     private func put(_ files: [CaptureUploadState.File]) async throws {
         let attempt = state.attemptID
         var transient: Transient?
+        var refused: Refused?
         var index = 0
         while index < files.count {
             // Each batch of PUTs is admitted only while the homeowner's yes stands.
@@ -482,10 +483,15 @@ public actor CaptureUploader {
                     }
                     setPhase(path, .queued)
                 case .failure(let error):
-                    transient = Transient(step: "put", detail: Self.describe(error), retryAfter: nil)
+                    switch failure("put", error) {
+                    case let error as Refused: refused = refused ?? error
+                    case let error as Transient: transient = error
+                    case let error: throw error
+                    }
                 }
             }
             persist()
+            if let refused { throw refused }
         }
         if let transient { throw transient }
     }
@@ -657,7 +663,7 @@ public actor CaptureUploader {
         do {
             reply = try await http.send(request)
         } catch {
-            throw Transient(step: step, detail: Self.describe(error), retryAfter: nil)
+            throw failure(step, error)
         }
         if Self.isTransient(reply.status), attempt == state.attemptID {
             throw Transient(step: step, detail: "status \(reply.status)", retryAfter: reply.retryAfter)
@@ -719,6 +725,25 @@ public actor CaptureUploader {
     static func isTransient(_ status: Int) -> Bool { status == 0 || status == 408 || status == 429 || ((500..<600).contains(status) && status != 501) }
 
     /// The error's domain and code only: a URLError's description can carry the signed URL.
+    /// What a transport error means for the upload. A withdrawal or cancellation that happened
+    /// meanwhile outranks the error, whatever it is: the request may have been cut short by that
+    /// very withdrawal (`ScopedCaptureHTTP` throws CancellationError once a credential wait is
+    /// cancelled), and retrying it would leave the upload waiting to retry instead of saved as
+    /// withdrawn. A refusal by the credential boundary won't change on retry: a URL outside the
+    /// API's scope, a malformed credential, one the provider couldn't supply, or a storage
+    /// request carrying Authorization. It ends the upload with the boundary's code and status 0,
+    /// since no server answered. Any other error, a network one included, is retried as before.
+    private func failure(_ step: String, _ error: any Error) -> any Error {
+        if !canSend || Task.isCancelled {
+            log?("capture-upload withdrawn step=\(step) detail=\(Self.describe(error))")
+            return Withdrawn()
+        }
+        guard let refusal = error as? ScopedCaptureHTTPError else {
+            return Transient(step: step, detail: Self.describe(error), retryAfter: nil)
+        }
+        return Refused(step: step, status: 0, codes: [refusal.code])
+    }
+
     static func describe(_ error: any Error) -> String {
         let ns = error as NSError
         return "\(ns.domain) \(ns.code)"

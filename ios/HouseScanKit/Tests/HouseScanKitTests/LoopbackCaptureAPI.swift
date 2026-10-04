@@ -87,6 +87,13 @@ final class LoopbackCaptureAPI: Sendable {
         var redirects: [String: String] = [:]
         /// Answer the next commit with this split instead of the truth.
         var commitOverride: ((committed: [String], notFound: [String], mismatch: [String]))?
+        /// Opt-in: every API request must carry `Authorization: Bearer <this>`, or it gets 401
+        /// `unauthorized`. Nil keeps the default, which refuses any Authorization on an API request.
+        /// A signed PUT is refused with any Authorization either way.
+        var expectedBearer: String?
+        /// Extra headers every register answer adds to a file's signed headers, as a server that
+        /// signs one more header would.
+        var extraSignedHeaders: [String: String] = [:]
         /// Routes whose answers wait until `release` is called.
         var held: Set<String> = []
         var parked: [String: [@Sendable () -> Void]] = [:]
@@ -197,7 +204,11 @@ final class LoopbackCaptureAPI: Sendable {
         state.withLock { s in
             let parts = r.path.split(separator: "/").map(String.init)
             if parts.first == "upload" { return put(r, token: parts.last ?? "", &s) }
-            if r.headers["authorization"] != nil { return error(400, "unexpected_authorization") }
+            if let bearer = s.expectedBearer {
+                if r.headers["authorization"] != "Bearer \(bearer)" { return error(401, "unauthorized") }
+            } else if r.headers["authorization"] != nil {
+                return error(400, "unexpected_authorization")
+            }
             if r.method == "POST", parts == ["captures"] { return create(r, &s) }
             guard parts.count >= 2, var capture = s.captures[parts[1]] else { return error(404, "capture_not_found") }
             defer { s.captures[capture.id] = capture }
@@ -280,7 +291,8 @@ final class LoopbackCaptureAPI: Sendable {
             s.tokens[token] = (c.id, path)
             out.append(["path": path, "state": "pending", "upload": [
                 "method": "PUT", "url": s.uploadURLOverride ?? "http://127.0.0.1:\(port)/upload/\(token)",
-                "headers": ["Content-Type": type, "Content-MD5": md5], "expiresAt": "2099-01-01T00:00:00Z",
+                "headers": ["Content-Type": type, "Content-MD5": md5].merging(s.extraSignedHeaders) { _, extra in extra },
+                "expiresAt": "2099-01-01T00:00:00Z",
             ]])
         }
         return (200, json(["files": out]))

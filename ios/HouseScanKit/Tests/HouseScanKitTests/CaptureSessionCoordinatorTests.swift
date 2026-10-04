@@ -684,7 +684,8 @@ struct NativeCaptureFixture: Sendable {
         coordinator.answerConsent(false)
         // The main actor stays busy, so only the withdrawal itself can end the wait.
         let deadline = Date().addingTimeInterval(5)
-        func gaveUp() -> Bool { logs.withLock { $0.contains { $0.contains("capture-upload retry step=register") } } }
+        // The cut-short request ends as a withdrawal, not as a network failure to retry.
+        func gaveUp() -> Bool { logs.withLock { $0.contains { $0.contains("capture-upload withdrawn step=register") } } }
         while Date() < deadline, !gaveUp() { usleep(10_000) }
         #expect(gaveUp())
 
