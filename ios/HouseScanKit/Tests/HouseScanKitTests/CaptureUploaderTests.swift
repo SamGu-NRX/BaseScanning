@@ -323,17 +323,22 @@ import Testing
         #expect(rig.server.requests("GET captures/result").count == 1)
     }
 
-    /// Whether `uploader` goes idle within `seconds`. A loop that never goes idle fails the test
-    /// here instead of hanging the run; the process ending stops it.
+    /// Whether `uploader` goes idle within about `seconds`. A loop that never goes idle fails the
+    /// test here instead of hanging the run; the process ending stops it.
+    ///
+    /// A hang safeguard, not a timing requirement, so the budget is this waiter's own turns, 20 ms
+    /// apart, like the suite's `for _ in 0..<500 where` waits, not wall time. A stalled test process
+    /// holds the uploader and this waiter up together, and a wall-clock deadline expired on time
+    /// neither got to run (CaptureUploaderSettlesTests). The answer is read once more after the
+    /// last wait, which the old loop skipped.
     static func settles(_ uploader: CaptureUploader, within seconds: Int = 20) async -> Bool {
         let done = Mutex(false)
         Task.detached { await uploader.settled(); done.withLock { $0 = true } }
-        let deadline = ContinuousClock.now + .seconds(seconds)
-        while ContinuousClock.now < deadline {
+        for _ in 0..<(seconds * 50) {
             if done.withLock({ $0 }) { return true }
             try? await Task.sleep(for: .milliseconds(20))
         }
-        return false
+        return done.withLock { $0 }
     }
 
     /// A storage URL that is not https (or http to this machine) is refused when it is
