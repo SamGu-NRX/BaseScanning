@@ -374,6 +374,8 @@ public final class CaptureSessionCoordinator {
         // A packet missing an accepted photo or tap is never frozen; its upload already ended.
         guard session.preparationFailure == nil else { return }
         session.enqueue { session in
+            // A photo or tap queued before this one may have been lost since: never freeze then.
+            guard session.preparationFailure == nil else { return }
             guard let producer = session.producer else {
                 await session.uploader?.abandon("no photos were kept")
                 return
@@ -510,7 +512,12 @@ public final class CaptureSessionCoordinator {
         self.session = nil
         session.ended = true
         onStatus?(nil)
-        guard let uploader = session.uploader else { return .success(()) }
+        guard let uploader = session.uploader else {
+            // A no that couldn't be recorded took the uploader away and left the old yes on disk;
+            // this end can't record anything either, so it says so.
+            if case .notRecorded(let error)? = session.withdrawalFailure { return .failure(.notRecorded(error)) }
+            return .success(())
+        }
         // Synchronous: closes admission, bars this process from resuming it, writes the marker a
         // relaunch reads. The abandonment saved in the upload's own state follows on its turn.
         let record = uploader.retire(reason)

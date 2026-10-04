@@ -242,6 +242,12 @@ public actor CaptureUploader {
     /// the upload's state. It is a local storage problem: it says nothing about the photos or
     /// the server, and no server answered.
     public static let unsavedStateCode = "local_state_unsaved"
+
+    /// The local end `failPreparation` writes: step `prepare`, status 0, no server answer.
+    static func isPreparationEnd(_ end: CaptureUploadState.End?) -> Bool {
+        guard case .failed(step: "prepare", _, status: 0)? = end else { return false }
+        return true
+    }
     static let unsavedEnd = CaptureUploadState.End.failed(step: "save", codes: [unsavedStateCode], status: 0)
 
     /// How a withdrawal was recorded on disk.
@@ -317,11 +323,14 @@ public actor CaptureUploader {
     public func abandon(_ reason: String) {
         stopSending()
         // An end the app asks for replaces a save failure. A withdrawal also replaces an end this
-        // process reached but couldn't save, such as a result or a refusal. Otherwise an end
-        // stays: Start over doesn't rewrite a finished upload.
-        let unsavedWithdrawal = saveFailed && isWithdrawn
-        guard state.end == nil || state.end == Self.unsavedEnd || unsavedWithdrawal else { return }
-        state.end = .abandoned(unsavedWithdrawal ? Self.withdrawnReason : reason)
+        // process reached but couldn't save, such as a result or a refusal, and the local end of
+        // a capture that lost an input (`failPreparation`): the homeowner's no is the reason it
+        // stopped. Otherwise an end stays: Start over doesn't rewrite a finished upload, and a
+        // reset after a loss keeps the loss.
+        let withdrawn = isWithdrawn
+        let replacedByWithdrawal = withdrawn && (saveFailed || Self.isPreparationEnd(state.end))
+        guard state.end == nil || state.end == Self.unsavedEnd || replacedByWithdrawal else { return }
+        state.end = .abandoned(replacedByWithdrawal ? Self.withdrawnReason : reason)
         state.attemptID = UUID().uuidString
         loop?.cancel()
         persist()
