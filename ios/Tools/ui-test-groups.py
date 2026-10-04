@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""The two hosted UI test groups, and a check that together they run every UI test once.
+"""The three hosted UI test groups, and a check that together they run every UI test once.
 
-CI splits HouseScanUITests across two jobs so neither passes the 90-minute cap: `journey`, every
-class but PhotoProcessingUITests, and `photoProcessing`, that class alone. The workflow takes each
-group's xcodebuild selectors from here, so the check below reads the same selectors CI passes.
+CI splits HouseScanUITests across three jobs so none passes the 90-minute cap: `screenStates`,
+ScreenStatesUITests alone; `photoProcessing`, PhotoProcessingUITests alone; and `journey`, every
+other class. With ScreenStatesUITests in `journey`, run 37221532164 (#216 at 6fa43b9b) hit the
+cap: 12 min of package tests and build before the UI step, which ran 75.3 min and stopped with
+107 of 109 tests run. That run's per-class test times put ScreenStatesUITests at 1892 s (its
+every-state audit 905 s) and the remaining journey classes at about 2475 s. The workflow takes
+each group's xcodebuild selectors from here, so the check below reads the same selectors CI
+passes.
 
   ui-test-groups.py args <group> [--full-ui true|false]   print the group's selectors, one per line
   ui-test-groups.py check                                 list the tests from source and check them
@@ -12,7 +17,8 @@ group's xcodebuild selectors from here, so the check below reads the same select
 which tests each group's selectors select as xcodebuild does (an -only-testing prefix includes, a
 -skip-testing prefix excludes), and fails unless, with the full audit on, each test is in exactly
 one group; with it off, the only test left out must be the every-state audit, the existing
-pull-request policy. It also fails on a selector that names no class or test. It reads source
+pull-request policy. `screenStates` and `photoProcessing` must each hold their one class and
+nothing else. It also fails on a selector that names no class or test. It reads source
 only, so a test hidden behind `#if` would be listed although the build leaves it out; there is none
 today.
 """
@@ -22,14 +28,19 @@ import sys
 
 TARGET = "HouseScanUITests"
 PHOTO_CLASS = "PhotoProcessingUITests"
+SCREEN_CLASS = "ScreenStatesUITests"
 # Pull requests skip this without the full-ui label (CONTRIBUTING.md, "Checks").
-FULL_UI_ONLY = f"{TARGET}/ScreenStatesUITests/testEveryStatePassesTheAccessibilityAudit"
-GROUPS = ("journey", "photoProcessing")
+FULL_UI_ONLY = f"{TARGET}/{SCREEN_CLASS}/testEveryStatePassesTheAccessibilityAudit"
+GROUPS = ("screenStates", "journey", "photoProcessing")
+# The groups that hold exactly one class, and that class.
+SINGLE_CLASS = {"screenStates": SCREEN_CLASS, "photoProcessing": PHOTO_CLASS}
 
 
 def selectors(group, full_ui):
     if group == "journey":
-        args = [f"-only-testing:{TARGET}", f"-skip-testing:{TARGET}/{PHOTO_CLASS}"]
+        return [f"-only-testing:{TARGET}", f"-skip-testing:{TARGET}/{PHOTO_CLASS}", f"-skip-testing:{TARGET}/{SCREEN_CLASS}"]
+    if group == "screenStates":
+        args = [f"-only-testing:{TARGET}/{SCREEN_CLASS}"]
         if not full_ui:
             args.append(f"-skip-testing:{FULL_UI_ONLY}")
         return args
@@ -83,22 +94,26 @@ def check():
                 if prefix != TARGET and not any(t == prefix or t.startswith(prefix + "/") for t in names):
                     problems.append(f"{group}: {arg} names no test")
     full = {g: selected(names, selectors(g, True)) for g in GROUPS}
-    overlap = full["journey"] & full["photoProcessing"]
-    missing = names - full["journey"] - full["photoProcessing"]
     pr = {g: selected(names, selectors(g, False)) for g in GROUPS}
-    left_out = names - pr["journey"] - pr["photoProcessing"]
+    overlap = {t for t in names if sum(t in full[g] for g in GROUPS) > 1}
+    missing = names - set().union(*full.values())
+    left_out = names - set().union(*pr.values())
     print(f"tests in source: {len(names)}")
-    print(f"journey: {len(full['journey'])} (pull request without full-ui: {len(pr['journey'])})")
-    print(f"photoProcessing: {len(full['photoProcessing'])} (pull request without full-ui: {len(pr['photoProcessing'])})")
+    for group in GROUPS:
+        print(f"{group}: {len(full[group])} (pull request without full-ui: {len(pr[group])})")
     print(f"overlap: {len(overlap)}")
     print(f"missing: {len(missing)}")
     print(f"left out without full-ui: {sorted(left_out)}")
-    problems += [f"in both groups: {t}" for t in sorted(overlap)]
+    problems += [f"in more than one group: {t}" for t in sorted(overlap)]
     problems += [f"in no group: {t}" for t in sorted(missing)]
     if left_out != {FULL_UI_ONLY}:
         problems.append(f"without full-ui exactly {FULL_UI_ONLY} should be left out, not {sorted(left_out)}")
-    if not full["photoProcessing"] or any(not t.startswith(f"{TARGET}/{PHOTO_CLASS}/") for t in full["photoProcessing"]):
-        problems.append("photoProcessing must hold PhotoProcessingUITests and nothing else")
+    for group, cls in SINGLE_CLASS.items():
+        if not full[group] or any(not t.startswith(f"{TARGET}/{cls}/") for t in full[group]):
+            problems.append(f"{group} must hold {cls} and nothing else")
+    for group in GROUPS:
+        if not pr[group]:
+            problems.append(f"{group} runs no test on a pull request without full-ui")
     for problem in problems:
         print(f"error: {problem}")
     return 1 if problems else 0

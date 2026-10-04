@@ -28,17 +28,20 @@ concurrency:
 
 jobs:
   ios-build:
-    # Two groups of the UI tests, one job each (ios/Tools/ui-test-groups.py holds their selectors
-    # and checks that together they run every test once). One job risks exceeding the cap below:
-    # #214's hosted UI step took 72.3 min, and photo processing's tests add about 7.7 min measured
-    # locally (BRIEF-19), before setup and the build. No combined run has been seen to fail. journey runs the package tests and the Debug
-    # device build; photoProcessing runs the unsigned Release build. fail-fast is off so a failure
-    # in one group still leaves the other's results.
+    # Three groups of the UI tests, one job each (ios/Tools/ui-test-groups.py holds their selectors
+    # and checks that together they run every test once). With two groups, journey hit the cap
+    # below in run 37221532164 (#216 at 6fa43b9b): 12 min of package tests and build, then a
+    # 75.3 min UI step that stopped after 107 of its 109 tests. That run's per-class times put
+    # ScreenStatesUITests at 1892 s (its every-state audit 905 s) and the other journey classes at
+    # about 2475 s, so ScreenStatesUITests has its own job. journey runs the package tests, the
+    # project check and the Debug device build; photoProcessing runs the unsigned Release build;
+    # screenStates runs only its UI tests. fail-fast is off so a failure in one group still leaves
+    # the others' results.
     name: iOS build (${{ matrix.group }})
     strategy:
       fail-fast: false
       matrix:
-        group: [journey, photoProcessing]
+        group: [screenStates, journey, photoProcessing]
     # A free account runs 5 macOS jobs at once, shared by every open pull request, so drafts and
     # labels other than full-ui don't take a slot.
     if: >-
@@ -53,7 +56,8 @@ jobs:
     # every-state audit short. 75 left room until the 2026-10-03 candidate's 86 UI cases:
     # run 37121918073 attempt 2 spent 10 min 34 s before the UI step and 64 min 39 s in it,
     # and the cap stopped it after 76 cases with 0 failures. 90 ran all of them; since photo
-    # processing's tests moved to their own job, 90 is the cap for each group.
+    # processing's tests moved to their own job, 90 is the cap for each group, and the groups are
+    # split so that each fits it rather than raising it.
     timeout-minutes: 90
     env:
       # Newest stable Xcode on macos-26 per images/macos/macos-26-arm64-Readme.md (image 20260907).
@@ -67,7 +71,7 @@ jobs:
       XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
       # The every-state accessibility audit relaunches the app 65 times (about 10 min). Pull
       # requests skip it unless labelled full-ui; pushes and manual runs always include it. It is
-      # in the journey group; photoProcessing always runs its own audits.
+      # in the screenStates group; photoProcessing always runs its own audits.
       GROUP: ${{ matrix.group }}
       FULL_UI: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ui') }}
     steps:
@@ -84,9 +88,12 @@ jobs:
           xcodebuild -version
           swift --version
 
-      # Before anything slow: the two groups' selectors must cover every UI test exactly once.
+      # Before anything slow: the groups' selectors must cover every UI test exactly once, and the
+      # CI tools' own tests (the groups' check and the result snapshot) must pass.
       - name: Check the UI test groups
-        run: python3 ios/Tools/ui-test-groups.py check
+        run: |
+          python3 -m unittest discover -s ios/Tools -p 'test_*.py'
+          python3 ios/Tools/ui-test-groups.py check
 
       # Booting takes 2 to 3 minutes and needs nothing from the build, so it runs alongside the
       # steps below; the UI test step waits for it.
@@ -188,7 +195,7 @@ jobs:
         # Replays the committed synthetic wall (ios/HouseScanUITests/Fixtures/synthetic-wall) with
         # -autopilot and the bundled sample result; photoProcessing adds its in-app fixture.
         run: |
-          if [ "$GROUP" = journey ] && [ "$FULL_UI" != "true" ]; then
+          if [ "$GROUP" = screenStates ] && [ "$FULL_UI" != "true" ]; then
             echo "::notice::Skipped the every-state accessibility audit (about 10 min). Add the full-ui label to run it on this pull request."
           fi
           # Read without mapfile: the runner's /bin/bash is 3.2.
@@ -202,11 +209,20 @@ jobs:
             "${selectors[@]}" \
             COMPILER_INDEX_STORE_ENABLE=NO test
 
+      # A run the cap cancels leaves the bundle half-written, and its Staging/ files vanish while
+      # they are read: run 37221532164's journey upload stopped at the first one (ENOENT) and kept
+      # nothing. This copies the bundle first, lets only Staging/ entries vanish, and lists them in
+      # SNAPSHOT.txt beside it ("complete" or "incomplete"); any other error fails this step. The
+      # job's own result, a cancellation included, stays as it was.
+      - name: Snapshot the UI test results
+        if: always()
+        run: python3 ios/Tools/snapshot-xcresult.py "$RUNNER_TEMP/HouseScanUITests.xcresult" "$RUNNER_TEMP/ui-test-results"
+
       - name: Keep UI test screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ui-test-results-${{ matrix.group }}
-          path: ${{ runner.temp }}/HouseScanUITests.xcresult
+          path: ${{ runner.temp }}/ui-test-results
           if-no-files-found: ignore
           retention-days: 7
