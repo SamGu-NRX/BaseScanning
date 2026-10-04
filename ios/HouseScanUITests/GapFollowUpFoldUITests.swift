@@ -118,9 +118,12 @@ final class GapFollowUpFoldUITests: XCTestCase {
         attach(app, "gapRequest-followUp-AX5-details")
         let reply = app.buttons["action.skipGap"]
         XCTAssertTrue(reply.exists)
-        for _ in 0..<6 where !reply.isHittable { app.swipeUp(velocity: .slow) }
+        // Scroll until the whole button is in view, not just until it is hittable: a sliver at the
+        // bottom edge is already hittable (local run ax5-fold-07be16e4-ui stopped there).
+        let window = app.windows.firstMatch.frame
+        for _ in 0..<6 where !(reply.isHittable && window.contains(reply.frame)) { app.swipeUp(velocity: .slow) }
         XCTAssertTrue(reply.isHittable, "I can't get there can't be reached with Details open")
-        XCTAssertTrue(app.windows.firstMatch.frame.contains(reply.frame))
+        XCTAssertTrue(window.contains(reply.frame), "I can't get there \(reply.frame) isn't wholly on screen with Details open")
         XCTAssertGreaterThanOrEqual(reply.frame.minY, words.frame.maxY, "I can't get there is under the open card")
         attach(app, "gapRequest-followUp-AX5-details-reply")
     }
