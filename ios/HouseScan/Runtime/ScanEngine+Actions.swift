@@ -9,6 +9,7 @@ extension ScanEngine: ScanActions {
     func finishOnboarding() {
         guard state.phase == .onboarding else { return }
         startPracticeIfOn()
+        beginScan()
         leaveOnboarding()
     }
 

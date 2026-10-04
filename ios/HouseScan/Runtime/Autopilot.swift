@@ -47,6 +47,12 @@ final class Autopilot {
         await pause(hold)
 
         await engine.waitForGate(.findMeter)
+        // Sending photos is the homeowner's answer, never the autopilot's: a UI test taps it.
+        if engine.state.photoProcessing?.consent == .asking {
+            guard await waitUntil(timeout: 120, { self.engine.state.photoProcessing?.consent != .asking }) else {
+                return fail("nobody answered whether to send the scan's photos")
+            }
+        }
         engine.markMeter(at: nil, viewSize: viewSize)
         guard await waitFor(.meterCloseUp, timeout: 10) else { return fail("meter was not marked") }
         await takeCloseUp()
@@ -90,7 +96,10 @@ final class Autopilot {
                 await playGapFrames(replay)
             }
         }
-        guard await waitFor(.uploading, timeout: 150) else { return fail("upload did not start") }
+        guard await waitUntil(timeout: 150, { [.uploading, .processing].contains(self.engine.state.phase) }) else {
+            return fail("upload did not start")
+        }
+        if engine.state.phase == .processing { return await finishPhotoProcessing() }
         guard await driveToResult(replay) else { return }
         writeSceneForTest()
         await pause(hold)
@@ -371,6 +380,17 @@ final class Autopilot {
         await pause(hold)
         await answerOpenSky()
         log("answered the overhead request: open sky; \(overheadSummary)")
+    }
+
+    /// A photo-processing scan has no Legacy steps after the send: wait for its answer or its end,
+    /// then hold the screen for the UI test.
+    private func finishPhotoProcessing() async {
+        guard await waitUntil(timeout: 240, { self.engine.state.photoProcessing?.isFinal == true }) else {
+            return fail("photo processing never ended")
+        }
+        await pause(hold)
+        await engine.waitForGate(.processing)
+        log("done")
     }
 
     /// After an upload the engine raises the answer's capturable requests one at a time, uploading

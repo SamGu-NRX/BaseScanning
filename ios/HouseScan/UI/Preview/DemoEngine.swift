@@ -108,6 +108,7 @@ final class DemoEngine: ScanActions {
         let opensReview = arguments.contains("-uiDemoGroundQuestion") || groundAnswer != nil
         let phase: ScanPhase = opensReview ? .markFeatures : value("-uiDemoPhase").flatMap(ScanPhase.init(rawValue:)) ?? .onboarding
         jump(to: phase)
+        showPhotoProcessing(photoState: value("-uiDemoPhotoState"), consent: arguments.contains("-uiDemoPhotoConsent"))
         state.groundAnswer = groundAnswer
         if let raw = value("-uiDemoMarking"), let kind = FeatureKind(rawValue: raw) {
             state.marking = MarkingState(kind: kind, step: 0, refusal: arguments.contains("-uiDemoRefusal") ? .noSurface : nil)
@@ -298,6 +299,10 @@ final class DemoEngine: ScanActions {
             finishedWalkState()
             showResult()
             state.phase = .resultAR
+        case .processing:
+            placeMeter()
+            finishedWalkState()
+            state.phase = .processing
         case .unsupported:
             state.failure = .arUnsupported
             state.phase = .unsupported
@@ -454,6 +459,11 @@ final class DemoEngine: ScanActions {
     }
 
     private func enterUpload() {
+        // A photo-processing scan never takes the Legacy upload, in the demo as in the engine.
+        if state.scanBackend == .photoProcessing {
+            finishPhotoProcessing()
+            return
+        }
         state.phase = .uploading
         state.gap = nil
         state.path = []
@@ -1187,6 +1197,8 @@ final class DemoEngine: ScanActions {
         state.endScanQuestion = false
         state.endScanTooShort = false
         state.groundAnswer = nil
+        state.scanBackend = nil
+        state.photoProcessing = nil
     }
 
     func liveCameraView() -> AnyView {

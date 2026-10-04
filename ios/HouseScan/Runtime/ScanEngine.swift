@@ -190,6 +190,11 @@ final class ScanEngine {
     private var resultBuiltFor: WallGeometry?
 
     // Upload
+    /// The scan under way: its id, backend profile and world, fixed when it starts
+    /// (`beginScan`); nil before a scan starts.
+    var scanContext: ScanContext?
+    /// Photo processing's capture and answer, for scans that use it (`ScanEngine+Processing`).
+    let photoProcessing: PhotoProcessingController
     let resultClient: any ResultClient
     private var uploadTask: Task<Void, Never>?
     /// The current upload's scene has fixed its ground; keep this true through answer pacing.
@@ -268,6 +273,10 @@ final class ScanEngine {
         } else {
             resultClient = SampleResultClient(pace: options.autopilot ? options.autopilotHold : 1.2)
         }
+        photoProcessing = PhotoProcessingController(setup: Self.photoProcessingSetup(options))
+        ProcessingBackendSetting.shared.photoProcessingAnswers = photoProcessing.profile.answers
+        photoProcessing.onChange = { [weak self] status in self?.state.photoProcessing = status }
+        photoProcessing.meterAnchor = { [weak self] in self?.meterTracking?.pose }
         state.isAutopilot = options.autopilot
         state.isReplay = options.replayFolder != nil
         state.usesSampleResult = resultClient.isSample
@@ -368,7 +377,7 @@ final class ScanEngine {
                     replay.play(range: range, speed: replaySpeed)
                 }
             }
-        case .markFeatures, .uploading, .spotConfirm, .result:
+        case .markFeatures, .uploading, .spotConfirm, .result, .processing:
             live?.setMode(.idle)
             replay?.stop()
         case .resultAR:
@@ -538,11 +547,11 @@ final class ScanEngine {
             case .failed, .rejected, .unusableAnswer: false
             case .idle, .packaging, .uploading, .analyzing, .done: true
             }
-        case .onboarding, .spotConfirm, .result, .resultAR, .unsupported: false
+        case .onboarding, .spotConfirm, .result, .resultAR, .processing, .unsupported: false
         }
         let depthFrames = switch state.phase {
         case .meterCloseUp, .wallWalk, .gapRequest: true
-        case .onboarding, .findMeter, .markFeatures, .uploading, .spotConfirm, .result, .resultAR, .unsupported: false
+        case .onboarding, .findMeter, .markFeatures, .uploading, .spotConfirm, .result, .resultAR, .processing, .unsupported: false
         }
         recorder.setRecording(capturing, depthFrames: depthFrames)
         guard live != nil else { return }
@@ -1557,7 +1566,7 @@ final class ScanEngine {
             // "Add something", which taps into the world frame, waits for tracking to return
             // (`beginMarking`). Nothing is thrown away.
             break
-        case .uploading, .spotConfirm, .result, .resultAR, .onboarding, .unsupported:
+        case .uploading, .spotConfirm, .result, .resultAR, .processing, .onboarding, .unsupported:
             // The bundle is already packed and the server's answer does not depend on the live
             // world frame, so the scan and the result stay. The AR result hides its overlay while
             // tracking is not normal and shows it again if ARKit does relocalize.
@@ -1579,7 +1588,7 @@ final class ScanEngine {
         case .cameraDenied:
             // As for a failed session: once the scan is sent, the answer stays on screen.
             switch state.phase {
-            case .uploading, .spotConfirm, .result, .resultAR:
+            case .uploading, .spotConfirm, .result, .resultAR, .processing:
                 RuntimeLog.engine.error("camera access lost after capture")
                 _ = sourceState.sourceFailed(.recoverable, afterCapture: true)
                 loseSpatialResult()
@@ -1591,7 +1600,7 @@ final class ScanEngine {
             // longer need the camera: keep them on screen. Only the AR view needs it, and it
             // already hides the battery while the camera isn't tracking.
             switch state.phase {
-            case .uploading, .spotConfirm, .result, .resultAR:
+            case .uploading, .spotConfirm, .result, .resultAR, .processing:
                 RuntimeLog.engine.error("camera session failed after capture: \(message, privacy: .public)")
                 _ = sourceState.sourceFailed(.recoverable, afterCapture: true)
                 loseSpatialResult()
@@ -1612,6 +1621,7 @@ final class ScanEngine {
         generation += 1
         // A new world frame is a new packet session: what was recorded is in the old frame.
         recorder.restart()
+        scanWorldReset()
         resetPacketLog()
         relocalizingSince = nil
         planes = PlaneSnapshot()
@@ -1717,6 +1727,9 @@ final class ScanEngine {
     /// Takes the answer down when a ground change leaves it describing a ground the phone no
     /// longer has (`GroundFreshness`), before `publishWall` can draw it again on the new one.
     private func answerAfter(_ change: GroundFreshness.Change) {
+        // A photo-processing packet doesn't follow the phone's ground after it is sent, and
+        // nothing here may send that scan to the Legacy checker.
+        guard scanContext?.profile.backend != .photoProcessing else { return }
         let screen: GroundFreshness.Screen = switch state.phase {
         case .uploading:
             switch state.upload {
@@ -2071,7 +2084,22 @@ final class ScanEngine {
 
     // MARK: Upload
 
+    /// Waits, for at most 10 s, for the keyframe writes this world started, so the capture holds
+    /// every photo kept before the send. False when the world or the scan changed meanwhile.
+    func drainPendingSaves() async -> Bool {
+        let scan = generation
+        for _ in 0..<200 where (pendingSaves[scan] ?? 0) > 0 {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        return scan == generation
+    }
+
     func startUpload() {
+        // The scan's own backend only: a photo-processing scan never reaches the Legacy checker.
+        if scanContext?.profile.backend == .photoProcessing {
+            startPhotoProcessing()
+            return
+        }
         scenePackaged = false
         // "Try again" sends from the upload screen; anything else is a new send of this scan.
         if state.phase != .uploading { unusableAnswers = 0 }
@@ -2333,6 +2361,7 @@ final class ScanEngine {
         store = KeyframeStore(deletingAfter: bundleTask)
         recorder = Self.makeRecorder(store)
         live?.setRecorder(recorder)
+        endScan()
         motion.stop()
         resetPacketLog()
         keptSourceIDs = []

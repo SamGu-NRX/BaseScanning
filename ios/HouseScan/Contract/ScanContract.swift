@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import HouseScanKit
 import Observation
 import simd
 import SwiftUI
@@ -33,6 +34,9 @@ enum ScanPhase: String, Sendable, CaseIterable {
     case spotConfirm
     case result
     case resultAR
+    /// A photo-processing scan after it was sent: its progress, then its answer
+    /// (`ScanViewState.photoProcessing`). Legacy scans never come here.
+    case processing
     case unsupported
 }
 
@@ -965,6 +969,11 @@ final class ScanViewState {
     var shareableScan: URL?
     /// A camera permission or session failure the homeowner can act on.
     var failure: ScanFailure?
+    /// The backend this scan uses, fixed when it started; nil before a scan starts.
+    var scanBackend: ProcessingBackend?
+    /// Photo processing's side of this scan: its consent, progress and answer. Nil on a Legacy
+    /// scan, and before a scan starts.
+    var photoProcessing: PhotoProcessingStatus?
 
     init() {}
 }
@@ -1050,6 +1059,11 @@ protocol ScanActions: AnyObject {
     func showAR()
     func closeAR()
     func startOver()
+    /// The homeowner's answer to sending this scan's photos for processing
+    /// (`PhotoProcessingStatus.Consent.asking`).
+    func answerPhotoConsent(_ yes: Bool)
+    /// A no after a yes: this scan's photos stop going to photo processing.
+    func stopSendingPhotos()
     /// The app came back to the foreground on the camera-access failure: if access is now on,
     /// the scan goes on without Start over. Does nothing otherwise.
     func recheckCameraAccess()

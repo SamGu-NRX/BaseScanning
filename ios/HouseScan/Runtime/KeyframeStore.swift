@@ -50,6 +50,9 @@ final class KeyframeStore {
     private var nextIndex = 1
     /// Bumped by `discardKeyframes`, so a write that started before it doesn't land in the list.
     private var epoch = 0
+    /// Hears each photo kept, once its JPEG is on disk: the photo, the still's purpose (nil for a
+    /// keyframe) and the JPEG. Photo processing seals it into its capture from here.
+    var onKept: (@MainActor (_ photo: StoredKeyframe, _ purpose: String?, _ jpeg: URL) -> Void)?
 
     /// Makes a new, empty scan folder and deletes the old ones `ScanFolderCleanup` lists: it keeps
     /// the two most recent completed scans (Saved scans offers them) and any folder whose bundle
@@ -118,6 +121,7 @@ final class KeyframeStore {
         }
         keyframes.append(stored)
         keyframes.sort { $0.id < $1.id }
+        onKept?(stored, nil, directory.appending(path: stored.fileName))
         return (true, thumbnail)
     }
 
@@ -216,6 +220,7 @@ final class KeyframeStore {
             return .worldDiscarded
         }
         stillCatalog.save(stored, purpose: id, fileName: name)
+        onKept?(stored, id, directory.appending(path: name))
         return .saved
     }
 

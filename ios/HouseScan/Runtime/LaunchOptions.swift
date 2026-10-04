@@ -1,4 +1,5 @@
 import Foundation
+import HouseScanKit
 import OSLog
 
 /// Verification hooks from the launch arguments (contract C4).
@@ -50,6 +51,13 @@ import OSLog
 /// - `-simulateAppStore`: run as an App Store install would, so the developer options and practice
 ///   meter are unavailable whatever the stored switch says (`DeveloperSettings`). It can only take
 ///   the switch away, never offer it.
+/// - `-processingBackend <legacy|photoProcessing>` (debug builds only): the backend choice in
+///   Developer options starts at this value and stays in memory for the run, so a UI test's choice
+///   never reaches the stored setting the other tests run with (`ProcessingBackendSetting`).
+/// - `-photoProcessingFixture <answer>` (debug builds only, with `-replay`): photo processing sends
+///   to a capture API answered inside the app (`FixtureCaptureHTTP`), which ends every capture
+///   with this answer (`FixtureCaptureHTTP.Answer`). Nothing leaves the phone. Without it, photo
+///   processing isn't set up in any build.
 struct LaunchOptions: Equatable {
     var replayFolder: URL?
     var autopilot = false
@@ -67,6 +75,8 @@ struct LaunchOptions: Equatable {
     var injectGroundRise: Float?
     var answersFromGate = false
     var failCloseUpSave = false
+    var processingBackend: ProcessingBackend?
+    var photoProcessingFixture: FixtureCaptureHTTP.Answer?
 
     init(
         arguments: [String] = ProcessInfo.processInfo.arguments,
@@ -89,6 +99,18 @@ struct LaunchOptions: Equatable {
         precondition(!(autopilotSomethingThere && autopilotCannotCheck), "-autopilotSomethingThere and -autopilotCannotCheck each choose the first spot answer; pass one")
         #if DEBUG
         sampleResultAfterSpotAnswer = value(after: "-sampleResultAfterSpotAnswer").map { URL(fileURLWithPath: $0) }
+        if let text = value(after: "-processingBackend") {
+            guard let backend = ProcessingBackend(rawValue: text) else {
+                preconditionFailure("-processingBackend takes legacy or photoProcessing, got \(text)")
+            }
+            processingBackend = backend
+        }
+        if let text = value(after: "-photoProcessingFixture") {
+            guard let answer = FixtureCaptureHTTP.Answer(rawValue: text) else {
+                preconditionFailure("-photoProcessingFixture takes one of \(FixtureCaptureHTTP.Answer.allCases.map(\.rawValue)), got \(text)")
+            }
+            photoProcessingFixture = answer
+        }
         #endif
         simulateAppStore = arguments.contains("-simulateAppStore")
         failCloseUpSave = arguments.contains("-failCloseUpSave")

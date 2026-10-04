@@ -44,7 +44,7 @@ extension ScanEngine {
             )
         case .spotConfirm:
             return spotCheckGuidance
-        case .onboarding, .findMeter, .markFeatures, .uploading, .result, .resultAR, .unsupported:
+        case .onboarding, .findMeter, .markFeatures, .uploading, .result, .resultAR, .processing, .unsupported:
             return nil
         }
     }
