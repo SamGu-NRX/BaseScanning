@@ -35,13 +35,20 @@ struct GapRequestScreen: View {
             // The end lands under the circle, as on the walk's "Is this the right end?". It fades
             // with "Wall ends here" on the same spring, so the pair comes and goes together;
             // scoped to the circle, so nothing else on the camera animates with it. Under Reduce
-            // Motion only its opacity changes, briefly: nothing moves.
+            // Motion only its opacity changes, briefly: nothing moves. It is there only while
+            // offered, rather than kept at zero opacity: kept, its "Aiming circle" stayed in the
+            // accessibility tree under the end question, hidden or not (CI run 37171342665).
             if state.gap?.pastEndSide != nil {
-                Reticle(diameter: 56)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .ignoresSafeArea()
-                    .opacity(offersEndMark ? 1 : 0)
-                    .animation(reduceMotion ? .easeOut(duration: 0.15) : Motion.settle, value: offersEndMark)
+                ZStack {
+                    if offersEndMark {
+                        Reticle(diameter: 56)
+                            .endAimCircle()
+                            .transition(.opacity)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea()
+                .animation(reduceMotion ? .easeOut(duration: 0.15) : Motion.settle, value: offersEndMark)
             }
             if state.gap?.isSatisfied == true {
                 SuccessBadge()
@@ -52,7 +59,7 @@ struct GapRequestScreen: View {
             CameraChrome(
                 instruction: instruction,
                 tone: tone,
-                reply: state.gap?.isSatisfied == true || asking || askingEnd ? nil : InstructionCard.Reply(
+                reply: state.gap?.isSatisfied == true || asking || askingEnd || endAimFolds ? nil : InstructionCard.Reply(
                     title: "I can't get there",
                     identifier: "action.skipGap",
                     hint: skipHint,
@@ -61,7 +68,7 @@ struct GapRequestScreen: View {
                     // as the phone moves: neither locks the reply again (InstructionCard.replyLock).
                     task: state.gap.map { ScanCopy.gapTask($0) }
                 ),
-                eyebrow: followUps > 0 && state.gap?.isSatisfied != true ? ScanCopy.followUp(remaining: followUps) : nil,
+                eyebrow: followUps > 0 && state.gap?.isSatisfied != true && !endAimFolds ? ScanCopy.followUp(remaining: followUps) : nil,
                 photoCount: state.captureCount,
                 lastCaptureID: state.lastCapture?.id,
                 isReplay: state.isReplay,
@@ -84,6 +91,9 @@ struct GapRequestScreen: View {
                         }
                         if offersEndMark {
                             markEndButton
+                        }
+                        if endAimFolds {
+                            declineButton
                         }
                     }
                     .animation(reduceMotion ? nil : Motion.settle, value: askingEnd)
@@ -174,6 +184,28 @@ struct GapRequestScreen: View {
         .transition(.opacity)
     }
 
+    /// "I can't get there" among the actions, under "Wall ends here", while the card folds around
+    /// the circle (`endAimFolds`): the same words, hint and action as the card's reply.
+    @ViewBuilder private var declineButton: some View {
+        if let gap = state.gap {
+            MovedReplyButton(
+                title: "I can't get there", hint: skipHint, identifier: "action.skipGap",
+                task: ScanCopy.gapTask(gap), perform: { actions.skipGap() })
+            .transition(.opacity)
+        }
+    }
+
+    /// At the largest text sizes while "Wall ends here" is offered, the card folds to a two-line
+    /// lead, as on the walk's end, so the circle in the middle of the camera stays open: the
+    /// request's words and its "One more view to finish" go under Details, and "I can't get
+    /// there" moves from the card to the actions. With either still on the card it reached past
+    /// the circle (`ScanCopy.endAimFold`). Not while coaching replaces the request: then the card
+    /// says why nothing can be aimed yet.
+    private var endAimFolds: Bool {
+        guard offersEndMark, typeSize.isAccessibilitySize else { return false }
+        return !(coaching.map(ScanCopy.coachingReplacesTask) ?? false)
+    }
+
     /// A refusal on "Wall ends here" keeps its red triangle, as on the walk; otherwise coaching
     /// marks the card.
     private var tone: InstructionCard.Tone {
@@ -212,9 +244,13 @@ struct GapRequestScreen: View {
     /// needs" reading or "tap I can't get there", tilting up to the roof or sky, and a server's
     /// own words, which this screen can't judge. Nor the overhead question, a request already
     /// seen, or coaching that replaces the request.
+    ///
+    /// A past_end request offering "Wall ends here" aims too, refusal or not (`endAimFolds`).
     private var aims: Bool {
-        guard let gap = state.gap, !asking, !askingEnd, refusal == nil, !gap.isSatisfied else { return false }
+        guard let gap = state.gap, !asking, !askingEnd, !gap.isSatisfied else { return false }
         if let coaching, ScanCopy.coachingReplacesTask(coaching) { return false }
+        if offersEndMark { return true }
+        guard refusal == nil else { return false }
         if case .groundNearCandidate = gap.reason { return true }
         return false
     }
@@ -224,6 +260,20 @@ struct GapRequestScreen: View {
     /// can stay up for a whole night request, and replacing the card hid the request and "Got it,
     /// thanks" for as long as it did (field test 4.1, run 3).
     private var instruction: Instruction {
+        var card = requestCard
+        guard endAimFolds else { return card }
+        // Folded around the circle, ride-along coaching leads or opens Details
+        // (`ScanCopy.foldedAroundCircle`), and "One more view to finish" leaves the card's top
+        // and leads the words under Details.
+        card = ScanCopy.foldedAroundCircle(card, coaching: coaching, refused: refusal != nil)
+        if followUps > 0, let folded = card.folded {
+            card.folded?.detail = "\(ScanCopy.followUp(remaining: followUps)). \(folded.detail)"
+        }
+        return card
+    }
+
+    /// The card's words before folding around the circle moves the eyebrow (`instruction`).
+    private var requestCard: Instruction {
         if asking { return ScanCopy.overheadQuestion }
         if askingEnd, let side = state.endQuestion { return ScanCopy.endQuestion(side) }
         if let coaching, ScanCopy.coachingReplacesTask(coaching) { return ScanCopy.coaching(coaching, meterPhoto: meterPhoto != nil) }
