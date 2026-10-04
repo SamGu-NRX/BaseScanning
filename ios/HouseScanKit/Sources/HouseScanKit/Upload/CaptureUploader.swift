@@ -725,17 +725,19 @@ public actor CaptureUploader {
     static func isTransient(_ status: Int) -> Bool { status == 0 || status == 408 || status == 429 || ((500..<600).contains(status) && status != 501) }
 
     /// The error's domain and code only: a URLError's description can carry the signed URL.
-    /// What a transport error means for the upload. A refusal by the credential boundary
-    /// (`ScopedCaptureHTTP`) won't change on retry: a URL outside the API's scope, a malformed
-    /// credential, one the provider couldn't supply, or a storage request carrying
-    /// Authorization. It ends the upload with the boundary's code and status 0, since no server
-    /// answered. Any other error, a network one included, is retried as before. A withdrawal or
-    /// cancellation that happened meanwhile outranks the refusal.
+    /// What a transport error means for the upload. A withdrawal or cancellation that happened
+    /// meanwhile outranks the error, whatever it is: the request may have been cut short by that
+    /// very withdrawal (`ScopedCaptureHTTP` throws CancellationError once a credential wait is
+    /// cancelled), and retrying it would leave the upload waiting to retry instead of saved as
+    /// withdrawn. A refusal by the credential boundary won't change on retry: a URL outside the
+    /// API's scope, a malformed credential, one the provider couldn't supply, or a storage
+    /// request carrying Authorization. It ends the upload with the boundary's code and status 0,
+    /// since no server answered. Any other error, a network one included, is retried as before.
     private func failure(_ step: String, _ error: any Error) -> any Error {
+        if !canSend || Task.isCancelled { return Withdrawn() }
         guard let refusal = error as? ScopedCaptureHTTPError else {
             return Transient(step: step, detail: Self.describe(error), retryAfter: nil)
         }
-        if !canSend || Task.isCancelled { return Withdrawn() }
         return Refused(step: step, status: 0, codes: [refusal.code])
     }
 
