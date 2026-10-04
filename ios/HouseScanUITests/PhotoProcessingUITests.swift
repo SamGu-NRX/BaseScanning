@@ -270,6 +270,10 @@ final class PhotoProcessingUITests: XCTestCase {
         attach(app, "processing-stopQuestion")
         confirm.tap()
         XCTAssertTrue(app.descendants(matching: .any)["photo.state.withdrawn"].waitForExistence(timeout: 5))
+        let ended = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "House Scan won't send anything more from this scan.")).firstMatch
+        XCTAssertTrue(ended.waitForExistence(timeout: 5), "the stopped screen must say only what House Scan stops doing")
+        XCTAssertTrue(ended.label.contains("Photos already sent may still be processed by the service."), ended.label)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "won't be processed")).firstMatch.exists, "the stopped screen must not promise the scan won't be processed")
         XCTAssertFalse(app.buttons["action.stopSendingPhotos"].exists)
     }
 

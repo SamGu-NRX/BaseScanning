@@ -170,7 +170,9 @@ enum ProcessingCopy {
             guard !recorded else {
                 return Screen(
                     id: "withdrawn", title: "You stopped sending photos",
-                    detail: "Nothing more from this scan will be sent, and it won't be processed.", symbol: "hand.raised", notes: [kept])
+                    // Stopping can follow sending, and the app can't cancel the service's job.
+                    detail: "House Scan won't send anything more from this scan. Photos already sent may still be processed by the service.",
+                    symbol: "hand.raised", notes: [kept])
             }
             return Screen(
                 id: "withdrawalNotRecorded", title: "You stopped sending photos",
@@ -181,7 +183,8 @@ enum ProcessingCopy {
             if isReplay { notes.insert("Replays carry no motion data, which photo processing needs.", at: 0) }
             return Screen(
                 id: "notPrepared", title: "This scan couldn't be prepared",
-                detail: "House Scan couldn't put this scan together for photo processing on this phone, so it wasn't processed.",
+                // Some photos may already have been sent; the phone knows only that it couldn't send the scan.
+                detail: "House Scan couldn't put this scan together for photo processing on this phone, so it couldn't be sent for processing.",
                 tone: .attention, symbol: "exclamationmark.triangle", notes: notes)
         case .processingFailed:
             return Screen(

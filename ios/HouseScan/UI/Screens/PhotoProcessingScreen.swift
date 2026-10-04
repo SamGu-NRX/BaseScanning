@@ -77,7 +77,8 @@ struct PhotoProcessingScreen: View {
                             Button("Start over") { actions.startOver() }.buttonStyle(.primary)
                         }
                     }
-                    .accessibilityHint("Starts a new scan. This scan isn't processed any further.")
+                    // Start over can come while the service is processing, and the app can't cancel that.
+                    .accessibilityHint("Starts a new scan. House Scan stops sending from this one and won't show its answer. Photos already sent may still be processed by the service.")
                     .accessibilityIdentifier("action.startOver")
                 }
             }
