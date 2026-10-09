@@ -8,17 +8,30 @@ import Foundation
 public struct PacketManifest: Codable, Sendable, Equatable {
     public static let version = "1.1"
 
+    /// The packet format version this manifest claims, `PacketManifest.version` when the app
+    /// wrote it. A reader takes it before anything else: 1.0 keeps planes inside `lidar`, and
+    /// only 1.1 has `depth_frames` and top-level `planes`.
     public var packetVersion: String
+    /// Who wrote the packet, on what device, when, and in what frame of reference (`Session`).
     public var session: Session
+    /// The kept stills. Each names its JPEG in the packet and carries the camera that took it:
+    /// pose, intrinsics, tracking, and the depth taken with it when the phone had depth.
     public var photos: [Photo]
     /// Depth recorded between photos, without an image (1.1).
     public var depthFrames: [DepthFrame]?
+    /// The sensor streams' CSVs (`PacketStream`), with row counts and each sensor's nominal
+    /// rate. Absent when no stream was recorded.
     public var streams: Streams?
     /// `ARPlaneAnchor`s, at the top level from 1.1.
     public var planes: [PacketPlane]?
+    /// The LiDAR mesh, when the session captured one (`PacketWriter.setMesh`).
     public var lidar: Lidar?
+    /// What the homeowner marked: the meter, the wall's ends, openings, gas meter, AC unit,
+    /// fence and drive edge (`PacketMark`).
     public var marks: [PacketMark]?
+    /// The guidance requests the homeowner was shown and how each ended (`PacketGuidanceEntry`).
     public var guidance: [PacketGuidanceEntry]?
+    /// scene.json, the survey's result, carried as a packet file (`PacketWriter.setScene`).
     public var scene: SceneFile?
     /// Where a converted sample came from. The app never writes it.
     public var provenance: Provenance?
@@ -42,6 +55,11 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         }
     }
 
+    /// The manifest's session section: who produced the packet, on what device, when the capture
+    /// ran, and where the meter frame sits in the world.
+    ///
+    /// `worldAlignment` is always "gravity", and that is what the rest of the packet leans on:
+    /// the world ARKit's poses come in has +y up, which is the y the meter frame keeps.
     public struct Session: Codable, Sendable, Equatable {
         public var id: String
         public var producer: Producer
@@ -60,6 +78,8 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         }
     }
 
+    /// The program that wrote the packet: the capture app, or a converter that packaged a
+    /// capture from outside the app (`kind`).
     public struct Producer: Codable, Sendable, Equatable {
         public enum Kind: String, Codable, Sendable {
             case app
@@ -79,6 +99,9 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         }
     }
 
+    /// The phone the capture was made on, named by hardware model, with the capabilities that
+    /// decide what the packet may hold: no `lidar`, no ARKit scene depth; and a mesh needs
+    /// `meshClassificationEnabled` to say whether ARKit classified it.
     public struct Device: Codable, Sendable, Equatable {
         /// Hardware identifier such as "iPhone16,1" (`utsname.machine`), never the phone's name.
         public var model: String
@@ -114,6 +137,9 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         }
     }
 
+    /// When the capture ran. The uptime times are the packet's clock — every other time in the
+    /// packet is a device uptime too; the wall-clock start and the walked distance are
+    /// conveniences for readers.
     public struct Capture: Codable, Sendable, Equatable {
         /// ISO 8601 UTC wall clock at `startedAtUptime`.
         public var startedAt: String?
@@ -129,6 +155,8 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         }
     }
 
+    /// Where the meter frame sits in the world: the transform every pose in the packet is
+    /// measured against, and the ground height at the meter when it was measured.
     public struct MeterAnchor: Codable, Sendable, Equatable {
         /// Meter frame to world, 16 numbers column by column.
         public var poseInWorld: [Double]
@@ -141,10 +169,18 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         }
     }
 
+    /// What the homeowner consented to record. Only recording location and heading needs it,
+    /// and the app records neither this round, so the app writes no consent at all.
     public struct Consent: Codable, Sendable, Equatable {
         public var location: Bool?
     }
 
+    /// One kept photo: the JPEG stored in the packet, the camera that took it, and its depth
+    /// when the phone had depth.
+    ///
+    /// `t` is device uptime, the frame clock every time in the packet is on; `pose` is camera to
+    /// meter frame; `intrinsics` are in the stored JPEG's pixels, which the writer checks are
+    /// the unrotated sensor image of the size given (`PacketWriter.addPhoto`).
     public struct Photo: Codable, Sendable, Equatable {
         public var id: String
         public var image: File
@@ -162,6 +198,7 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         public var depth: Depth?
     }
 
+    /// ARKit's tracking state at one moment, as the packet names the states (`PacketTracking`).
     public struct Tracking: Codable, Sendable, Equatable {
         /// "normal", "limited" or "not_available".
         public var state: String
@@ -169,11 +206,14 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         public var reason: String?
     }
 
+    /// A photo's sharpness score and the method that scored it, `PacketSharpness.method`.
     public struct Sharpness: Codable, Sendable, Equatable {
         public var method: String
         public var value: Double
     }
 
+    /// A photo's depth map: the photo's field of view at lower resolution and the photo's aspect
+    /// to 1% (`DepthPacket`).
     public struct Depth: Codable, Sendable, Equatable {
         public var map: File
         public var confidence: File?
@@ -216,6 +256,8 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         }
     }
 
+    /// The packet's stream files, one per sensor that recorded (`PacketStream`). A sensor with
+    /// no rows is absent, not an empty file.
     public struct Streams: Codable, Sendable, Equatable {
         public var trajectory: Stream?
         public var accelerometer: Stream?
@@ -256,6 +298,8 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         }
     }
 
+    /// The LiDAR mesh. Planes lived here in 1.0; from 1.1 they go at the manifest's top level,
+    /// and a packet uses one place or the other, not both (`PacketManifest.planes`).
     public struct Lidar: Codable, Sendable, Equatable {
         public var mesh: File?
         /// Where 1.0 put planes. Decoded so a 1.0 packet reads; the writer puts planes at the top
@@ -263,6 +307,8 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         public var planes: [PacketPlane]?
     }
 
+    /// scene.json as a packet file, with the schema version the scene claims when the producer
+    /// noted it (`PacketWriter.setScene`).
     public struct SceneFile: Codable, Sendable, Equatable {
         public var path: String
         public var bytes: Int
@@ -275,6 +321,8 @@ public struct PacketManifest: Codable, Sendable, Equatable {
         }
     }
 
+    /// Where a converted packet's capture came from: the dataset or file it was cut from, its
+    /// licence, and the converter's notes. The app writes none of it.
     public struct Provenance: Codable, Sendable, Equatable {
         public var dataset: String?
         public var license: String?
@@ -286,10 +334,14 @@ public struct PacketManifest: Codable, Sendable, Equatable {
 /// `ARCamera.exposureDuration` and `exposureOffset`, and ISO from a still's metadata. Each is
 /// optional; `durationS` and `iso` must be positive.
 public struct PacketExposure: Codable, Sendable, Equatable {
+    /// `ARCamera.exposureDuration`, seconds.
     public var durationS: Double?
+    /// ISO, from the still's metadata.
     public var iso: Double?
+    /// `ARCamera.exposureOffset`, EV.
     public var offsetEV: Double?
 
+    /// All fields default to nil; pass what the session reported.
     public init(durationS: Double? = nil, iso: Double? = nil, offsetEV: Double? = nil) {
         self.durationS = durationS
         self.iso = iso
@@ -305,10 +357,14 @@ public struct PacketExposure: Codable, Sendable, Equatable {
 
 /// From a still's EXIF. `camera` is "wide", "ultra_wide" or "telephoto".
 public struct PacketLens: Codable, Sendable, Equatable {
+    /// The still's EXIF focal length, millimetres.
     public var focalLengthMM: Double?
+    /// The still's EXIF f-number.
     public var fNumber: Double?
+    /// Which lens took the still: "wide", "ultra_wide" or "telephoto".
     public var camera: String?
 
+    /// All fields default to nil; pass what the still's EXIF carried.
     public init(focalLengthMM: Double? = nil, fNumber: Double? = nil, camera: String? = nil) {
         self.focalLengthMM = focalLengthMM
         self.fNumber = fNumber

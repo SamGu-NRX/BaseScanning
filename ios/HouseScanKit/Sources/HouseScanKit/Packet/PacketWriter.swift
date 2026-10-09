@@ -6,17 +6,23 @@ import simd
 public struct PacketSessionInfo: Sendable {
     /// Unique per scan; letters, digits, '_' or '-' keep it usable as a folder name.
     public var id: String
+    /// Names the writer of the packet in the manifest (`PacketManifest.Producer`).
     public var producer: PacketManifest.Producer
+    /// The phone and its capabilities; `meshClassificationEnabled` must say whether a mesh was
+    /// classified before `PacketWriter.setMesh` will take one.
     public var device: PacketManifest.Device
     /// Wall clock at `startedAtUptime`; written as ISO 8601 UTC.
     public var startedAt: Date?
     /// Device uptime (`ARFrame.timestamp`'s clock) at the first frame.
     public var startedAtUptime: Double
+    /// The frame every pose and point in the packet is measured against (`MeterFrame`).
     public var meterFrame: MeterFrame
     /// World y of the ground in front of the wall at the meter, meters (`SceneWall.groundY`).
     /// Written as `ground_y_m`, the ground on the meter frame's y.
     public var groundWorldY: Float?
 
+    /// Read once at the capture's start and held (`PacketWriter.session`); the writer validates
+    /// the id, the start time and the ground height here.
     public init(
         id: String, producer: PacketManifest.Producer, device: PacketManifest.Device, startedAt: Date?,
         startedAtUptime: Double, meterFrame: MeterFrame, groundWorldY: Float?
@@ -37,8 +43,13 @@ public struct PacketSessionInfo: Sendable {
 public struct PacketPhoto: Sendable {
     /// The manifest id and file stem; `PacketPhoto.id(number:)` gives the spec's p00001 form.
     public var id: String
+    /// The JPEG on disk, copied into the packet unchanged (`PacketWriter.addPhoto`): the
+    /// unrotated sensor image, whose pixels `intrinsics` describe.
     public var jpeg: URL
+    /// Pixel width of the stored JPEG; the writer checks the file agrees
+    /// (`PacketWriter.jpegProblem`).
     public var width: Int
+    /// Pixel height of the stored JPEG.
     public var height: Int
     /// `ARFrame.timestamp`.
     public var t: Double
@@ -46,13 +57,20 @@ public struct PacketPhoto: Sendable {
     public var pose: simd_float4x4
     /// [fx, fy, cx, cy] in pixels of the stored JPEG.
     public var intrinsics: SIMD4<Float>
+    /// Tracking at the shutter, as the manifest's `tracking.state` names it (`PacketTracking`).
     public var tracking: PacketTracking
+    /// Exposure as ARKit reported it, when it did (`PacketExposure`).
     public var exposure: PacketExposure?
+    /// The lens, from the still's EXIF (`PacketLens`).
     public var lens: PacketLens?
     /// `PacketSharpness.laplacianVarianceLuma640` of the JPEG's luma.
     public var sharpness: Double
+    /// Depth taken with the photo, when the phone had depth: the photo's aspect to 1% and never
+    /// larger than the photo (`DepthPacket`).
     public var depth: DepthPacket?
 
+    /// Exposure, lens and depth are optional; the writer checks everything else, and any of the
+    /// optionals that is present, when the photo is added (`PacketWriter.addPhoto`).
     public init(
         id: String, jpeg: URL, width: Int, height: Int, t: Double, pose: simd_float4x4, intrinsics: SIMD4<Float>,
         tracking: PacketTracking, exposure: PacketExposure? = nil, lens: PacketLens? = nil, sharpness: Double,
@@ -87,6 +105,10 @@ public struct PacketPhoto: Sendable {
 /// depth carries ARKit's `confidence` (required from packet 1.1); `estimated` depth carries
 /// `sigma` and no confidence (`estimated(meters:sigma:width:height:)`).
 public struct DepthPacket: Sendable {
+    /// Where a depth map came from, as the manifest's `depth.source` names it. The writer asks
+    /// each source for its companion map: ARKit's two for confidence, `estimated` for sigma, and
+    /// the others — a laser scan render, or no claim at all — for neither
+    /// (`PacketWriter.cleanedDepth`).
     public enum Source: String, Codable, Sendable {
         case arkitSceneDepth = "arkit_scene_depth"
         case arkitSmoothedSceneDepth = "arkit_smoothed_scene_depth"
@@ -100,7 +122,9 @@ public struct DepthPacket: Sendable {
     /// A value that is not finite or is negative is written as 0, the packet's "no measurement",
     /// as `DepthImage.init(meters:)` treats them.
     public var meters: [Float]
+    /// Grid width; `meters` is exactly `width` × `height` values, row by row from the top.
     public var width: Int
+    /// Grid height.
     public var height: Int
     /// ARConfidenceLevel per pixel: 0 low, 1 medium, 2 high.
     public var confidence: [UInt8]?
@@ -111,6 +135,8 @@ public struct DepthPacket: Sendable {
     /// neither which ARKit depth it saved nor whether it was rendered, so the packet claims none.
     public var source: Source?
 
+    /// Pass the map as read; the writer cleans it as it is written — readings that are not
+    /// finite or not positive become 0, "no measurement" (`PacketWriter.cleanedDepth`).
     public init(meters: [Float], width: Int, height: Int, confidence: [UInt8]?, sigma: [Float]? = nil, source: Source?) {
         self.meters = meters
         self.width = width
@@ -139,7 +165,12 @@ public struct DepthPacket: Sendable {
 /// `PacketError` naming the field, so a finished packet validates. Nothing here sends the packet
 /// anywhere: photos leave the phone only when the homeowner shares the folder.
 public struct PacketWriter: Sendable {
+    /// The packet folder given to `init`; photos, depth, streams and manifest.json are written
+    /// under it.
     public let folder: URL
+    /// The session's inputs, held as passed and folded into the manifest
+    /// (`PacketWriter.manifest`, which writes `groundWorldY` as the ground on the meter frame's
+    /// y).
     public let session: PacketSessionInfo
     private var photos: [PacketManifest.Photo] = []
     private var depthFrames: [PacketManifest.DepthFrame] = []

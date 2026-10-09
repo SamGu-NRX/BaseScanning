@@ -15,9 +15,13 @@ public struct PacketDepthFrame: Sendable {
     /// [fx, fy, cx, cy] in pixels of the depth map itself, not of the camera image: the camera's
     /// intrinsics scaled by the depth map's size (`DepthImage.intrinsics(scaling:...)`).
     public var intrinsics: SIMD4<Float>
+    /// Tracking at the frame, when it was recorded; nil leaves the field out of the manifest.
     public var tracking: PacketTracking?
+    /// The depth map and the companion map its source asks for (`DepthPacket`).
     public var depth: DepthPacket
 
+    /// `intrinsics` are in the depth map's own grid, not the camera image's
+    /// (`PacketWriter.addDepthFrame` refuses the camera's).
     public init(id: String, t: Double, pose: simd_float4x4, intrinsics: SIMD4<Float>, tracking: PacketTracking?, depth: DepthPacket) {
         self.id = id
         self.t = t
@@ -59,17 +63,21 @@ public struct DepthFrameBudget: Sendable, Equatable {
     /// such a stream from losing every other frame to rounding.
     static let slack = 1.0 / 120
 
+    /// Seconds between admitted frames: `1 / rateHz`, with a half-frame of slack (`wants(t:)`).
     public let interval: Double
+    /// The most frames admitted in all; past it nothing more is kept.
     public let limit: Int
     public private(set) var admitted = 0
     private var lastT: Double?
 
+    /// Defaults to the constants above; refuses a rate that is not positive or a negative limit.
     public init(rateHz: Double = DepthFrameBudget.rateHz, limit: Int = DepthFrameBudget.maxFrames) {
         precondition(rateHz > 0 && rateHz.isFinite && limit >= 0, "a depth-frame budget needs a positive rate and a limit >= 0")
         interval = 1 / rateHz
         self.limit = limit
     }
 
+    /// Whether the limit is spent: nothing more is admitted (`admit(t:)` returns false).
     public var isFull: Bool { admitted >= limit }
 
     /// Whether a frame at `t` would be admitted, without admitting it: lets a caller skip copying

@@ -12,6 +12,8 @@ public enum PacketStream: String, CaseIterable, Sendable {
     case deviceMotion = "device_motion"
     case barometer
 
+    /// The stream's header row and column order, `STREAM_COLUMNS` in packet/validate.py; every
+    /// row follows it.
     public var columns: [String] {
         switch self {
         case .trajectory: ["t", "tracking", "px", "py", "pz", "qx", "qy", "qz", "qw"]
@@ -26,6 +28,7 @@ public enum PacketStream: String, CaseIterable, Sendable {
         }
     }
 
+    /// The CSV's place in the packet folder: `streams/<rawValue>.csv`.
     public var path: String { "streams/\(rawValue).csv" }
 
     /// Standard gravity, m/s² per g: the packet's accelerometer is in m/s² and Core Motion
@@ -40,6 +43,8 @@ public enum PacketTracking: Sendable, Equatable {
     case limited(Reason?)
     case notAvailable
 
+    /// The limited-tracking reasons the packet format names. A reason ARKit added later has no
+    /// case here and is written with no reason at all (`PacketTracking.limited`).
     public enum Reason: String, Sendable {
         case initializing
         case relocalizing
@@ -65,14 +70,21 @@ public enum PacketTracking: Sendable, Equatable {
 /// One `CMDeviceMotion` sample, in Core Motion's units: gravity and user acceleration in g,
 /// rotation rate in rad/s, heading in degrees (Core Motion reports -1 without a north reference).
 public struct DeviceMotionSample: Sendable, Equatable {
+    /// Device uptime when the sample was taken.
     public var t: Double
     /// `CMAttitude.quaternion` (x, y, z, w).
     public var attitude: SIMD4<Double>
+    /// Gravity in g, as Core Motion reports it.
     public var gravity: SIMD3<Double>
+    /// User acceleration in g, as Core Motion reports it.
     public var userAcceleration: SIMD3<Double>
+    /// Rotation rate in rad/s, as Core Motion reports it.
     public var rotationRate: SIMD3<Double>
+    /// Heading in degrees; Core Motion reports -1 without a north reference.
     public var headingDegrees: Double
 
+    /// One sample's fields as Core Motion reported them; `PacketWriter.appendDeviceMotion`
+    /// writes them to the device_motion stream.
     public init(
         t: Double, attitude: SIMD4<Double>, gravity: SIMD3<Double>, userAcceleration: SIMD3<Double>,
         rotationRate: SIMD3<Double>, headingDegrees: Double

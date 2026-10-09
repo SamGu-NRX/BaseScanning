@@ -8,6 +8,8 @@ import simd
 /// anchorToMeter:center:rotationOnYAxis:extent:boundaryVertices:)` builds both from what ARKit
 /// reports.
 public struct PacketPlane: Codable, Sendable, Equatable {
+    /// Whether the plane lies flat or stands up, as ARKit names them
+    /// (`ARPlaneAnchor.alignment`).
     public enum Alignment: String, Codable, Sendable {
         case horizontal
         case vertical
@@ -18,8 +20,11 @@ public struct PacketPlane: Codable, Sendable, Equatable {
         case none, wall, floor, ceiling, table, seat, window, door
     }
 
+    /// Unique among the packet's planes (`PacketWriter.addPlane` refuses a duplicate).
     public var id: String
+    /// Whether the plane lies flat or stands up (`Alignment`).
     public var alignment: Alignment
+    /// What ARKit took the surface for (`Classification`), when it said.
     public var classification: Classification?
     /// Plane to meter frame, at the extent's centre and turned by its rotation.
     public var pose: simd_float4x4
@@ -34,6 +39,10 @@ public struct PacketPlane: Codable, Sendable, Equatable {
     /// validator's `BOUNDARY_TOL_M`.
     public static let boundaryTolerance: Float = 0.01
 
+    /// The direct form: `pose` already sits at the extent's centre, turned by the extent's
+    /// rotation, and `boundary` is already in the pose's frame. ARKit's anchor-shaped input goes
+    /// through `init(id:alignment:classification:anchorToMeter:center:rotationOnYAxis:
+    /// extent:boundaryVertices:)`.
     public init(
         id: String, alignment: Alignment, classification: Classification?, pose: simd_float4x4, extent: SIMD2<Float>,
         boundary: [SIMD2<Float>]? = nil

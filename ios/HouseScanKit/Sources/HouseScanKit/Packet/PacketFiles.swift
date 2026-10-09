@@ -24,6 +24,7 @@ public enum PacketError: Error, Equatable, CustomStringConvertible {
     case invalidSession(String)
     case noPhotos
 
+    /// The refusal as a sentence: which input, and why.
     public var description: String {
         switch self {
         case .folderNotEmpty(let path): "packet folder \(path) already holds files; remove it first"

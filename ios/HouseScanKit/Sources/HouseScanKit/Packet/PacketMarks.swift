@@ -5,6 +5,9 @@ import simd
 /// scene"). The factories fix each kind's point count: one for the meter, a wall end, a gas meter
 /// or an AC unit; two for an opening (bottom-left, top-right), a drive edge or a fence.
 public struct PacketMark: Codable, Sendable, Equatable {
+    /// What was marked, named as the manifest writes it. Each kind fixes how many points a mark
+    /// of it carries (`pointCount`): one tap for the meter, a wall end, a gas meter or an AC
+    /// unit; two for an opening, a drive edge or a fence.
     public enum Kind: String, Codable, Sendable, CaseIterable {
         case meter
         case wallEnd = "wall_end"
@@ -24,6 +27,8 @@ public struct PacketMark: Codable, Sendable, Equatable {
         }
     }
 
+    /// Which side of the meter along the wall: left is the -s side, right +s, the same split the
+    /// coverage map's `WalkSide` makes.
     public enum Side: String, Codable, Sendable {
         case left
         case right
@@ -36,6 +41,8 @@ public struct PacketMark: Codable, Sendable, Equatable {
         case unexplored
     }
 
+    /// The openings a mark can be: door, window or garage door. Scene features only ever become
+    /// door or window marks (`PacketMark.from`); `kind` maps each to its manifest `Kind`.
     public enum OpeningKind: Sendable {
         case door
         case window
@@ -50,14 +57,21 @@ public struct PacketMark: Codable, Sendable, Equatable {
         }
     }
 
+    /// Unique among the packet's marks (`PacketWriter.setMarks` refuses a duplicate).
     public var id: String
+    /// What was marked (`Kind`).
     public var kind: Kind
     /// Meter frame, meters.
     public var points: [SIMD3<Float>]
     /// Uptime when it was marked.
     public var t: Double?
+    /// The photos the mark was taken against, by manifest id. The writer lets any names through
+    /// `setMarks` but refuses at `finish()` a mark naming a photo the packet does not hold
+    /// (`PacketWriter.manifest`).
     public var photoIDs: [String]?
+    /// For a wall end, which end (`Side`); absent for every other kind.
     public var side: Side?
+    /// For a wall end, whether it is a `limit` or `unexplored` (`EndKind`).
     public var endKind: EndKind?
     /// `attrs.operable` of an opening; nil when the homeowner was not asked.
     public var operable: Bool?
@@ -193,6 +207,9 @@ public struct PacketMark: Codable, Sendable, Equatable {
 /// One request the homeowner was shown and whether it was met (packet/README.md, "Marks, guidance
 /// and the scene"). The log tells the server what the homeowner could not reach.
 public struct PacketGuidanceEntry: Codable, Sendable, Equatable {
+    /// The request that was shown, named as the manifest writes it: the walk, the tilt to the
+    /// ground, the step back, marking the wall's end, the meter close-up, or a gap request for
+    /// a band or the ground past an end.
     public enum Kind: String, Codable, Sendable, CaseIterable {
         case walk
         case tiltToGround = "tilt_to_ground"
@@ -203,11 +220,14 @@ public struct PacketGuidanceEntry: Codable, Sendable, Equatable {
         case gapPastEnd = "gap_past_end"
     }
 
+    /// Who asked for it: the phone's own guidance, or the server's.
     public enum Origin: String, Codable, Sendable {
         case phone
         case server
     }
 
+    /// Which band of the strip the request was about, when it had one: wall, ground, overhead or
+    /// facing.
     public enum Band: String, Codable, Sendable {
         case wall
         case ground
@@ -215,6 +235,8 @@ public struct PacketGuidanceEntry: Codable, Sendable, Equatable {
         case facing
     }
 
+    /// How the request ended: met, skipped, unreachable, superseded by a later request, or never
+    /// resolved.
     public enum Outcome: String, Codable, Sendable, CaseIterable {
         case met
         case skipped
@@ -223,19 +245,29 @@ public struct PacketGuidanceEntry: Codable, Sendable, Equatable {
         case unresolved
     }
 
+    /// Unique among the packet's guidance entries (`PacketWriter.setGuidance` refuses a
+    /// duplicate).
     public var id: String
+    /// The request that was shown (`Kind`).
     public var kind: Kind
+    /// Who asked for it (`Origin`).
     public var origin: Origin
     /// What the homeowner read.
     public var message: String?
+    /// The band the request was about, when it had one (`Band`).
     public var band: Band?
     /// The stretch along the wall, meter frame x (scene s), meters.
     public var span: ClosedRange<Float>?
+    /// Device uptime when the request was shown.
     public var tShown: Double
     /// Nil while unresolved; every other outcome needs it.
     public var tResolved: Double?
+    /// How it ended (`Outcome`); `tResolved` says when, and must be there for every outcome but
+    /// `unresolved` (`PacketGuidanceEntry.problem`).
     public var outcome: Outcome
 
+    /// `tResolved` is nil while the entry is unresolved; the writer checks it is present and not
+    /// before `tShown` for every other outcome (`PacketWriter.setGuidance`).
     public init(
         id: String, kind: Kind, origin: Origin, message: String?, band: Band? = nil, span: ClosedRange<Float>? = nil,
         tShown: Double, tResolved: Double?, outcome: Outcome
