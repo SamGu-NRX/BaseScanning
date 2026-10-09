@@ -188,6 +188,8 @@ def rules(found: list[dict], barcodes: list[dict]) -> dict[str, dict | None]:
 
 def scan(rows: list[dict]) -> dict[str, dict]:
     raw_path = DATA_DIR / "ocr" / "scan.jsonl"
+    # q45 runs on a fresh data directory too, where ocr/ does not exist yet.
+    raw_path.parent.mkdir(parents=True, exist_ok=True)
     results = {}
     with Reader() as reader, raw_path.open("w") as raw:
         for row in rows:

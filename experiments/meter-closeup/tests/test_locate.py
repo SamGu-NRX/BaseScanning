@@ -126,3 +126,28 @@ def test_a_single_closest_payload_is_still_promoted():
     }
     [only] = candidates(result)
     assert only["core"] == "12345678" and only["barcode_confirmed"]
+
+
+def test_scan_creates_the_ocr_folder_on_a_fresh_data_dir(tmp_path, monkeypatch):
+    import json
+
+    from meter_eval import locate
+
+    data = tmp_path / "meter"  # a fresh data directory: no ocr/ yet
+    monkeypatch.setattr(locate, "DATA_DIR", data)
+
+    class FakeReader:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return None
+
+        def read(self, path, barcodes=False):
+            return {"lines": [], "barcodes": []}
+
+    monkeypatch.setattr(locate, "Reader", FakeReader)
+    locate.scan([{"id": "p01"}])
+    lines = (data / "ocr" / "scan.jsonl").read_text().splitlines()
+    assert len(lines) == 1
+    assert json.loads(lines[0]) == {"lines": [], "barcodes": []}
