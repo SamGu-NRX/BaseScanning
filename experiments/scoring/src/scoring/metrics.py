@@ -45,6 +45,13 @@ AT_THRESHOLD: AtThreshold = "at_threshold"
 
 @dataclass(frozen=True)
 class MeasurementScore:
+    """One survey measurement paired with the run's entry for the same id.
+
+    `status` sorts the pair into one of the buckets METRICS.md scores under "Distances". Only
+    a `scored` pair carries an error or a truth_within_reported verdict, so the distance figures
+    in the summary and measurements.csv come from the scored pairs.
+    """
+
     survey: SurveyMeasurement
     reported: PipelineMeasurement | None
     status: MeasurementStatus
@@ -55,16 +62,25 @@ class MeasurementScore:
 
     @property
     def signed_error_in(self) -> Decimal | None:
+        """The error in inches, sign kept. None when the pair was not scored."""
         return None if self.error_ft is None else self.error_ft * INCHES_PER_FOOT
 
     @property
     def abs_error_in(self) -> Decimal | None:
+        """The error's size in inches, sign dropped. None when the pair was not scored."""
         return None if self.error_ft is None else abs(self.error_ft) * INCHES_PER_FOOT
 
 
 def score_measurement(
     survey: SurveyMeasurement, reported: PipelineMeasurement | None, *, scale_reference: bool
 ) -> MeasurementScore:
+    """Pair a survey measurement with the run's entry for it and classify the pair.
+
+    `scale_reference` marks the house's scale distance, which is never scored: a run told to use
+    it can match it exactly, so its error says nothing about accuracy (METRICS.md, "Distances").
+    Raises ValueError when the survey has a definite result, measured or absent, and the run has
+    no entry for it.
+    """
     status = _measurement_status(survey, reported, scale_reference=scale_reference)
     if status != "scored":
         return MeasurementScore(survey, reported, status, None, None)
@@ -184,6 +200,14 @@ def could_flip(ratio: Decimal | AtThreshold, abs_error_ft: Decimal) -> bool:
 
 @dataclass(frozen=True)
 class CheckScore:
+    """One check judged: what the survey supports, what the run reported, and how they differ.
+
+    `truth` is truth_outcome's verdict for the survey value and `expected` the answer a correct
+    run would give: `agrees` compares the run with `expected`, and the wrong-answer flags below
+    are METRICS.md's "Decisions" categories. error_to_margin and could_flip carry that page's
+    error-ratio warning sign, filled only when the measurement was scored.
+    """
+
     check: Check
     threshold: Threshold
     review: Threshold | None
@@ -230,6 +254,15 @@ def score_check(
     reported: Outcome | None,
     review: Threshold | None = None,
 ) -> CheckScore:
+    """Judge one check: survey truth, run answer, agreement, and the wrong-answer categories.
+
+    `threshold` is the fail line and `review` the second line when the check has a review band.
+    `reported` is the run's outcome for this check, or None for a run that makes no decisions.
+    The wrong-answer categories need a known survey outcome, while decided_without_measurement
+    is set for any reported pass or fail. An unsure is a justified abstention when the survey is
+    itself unsure or the deciding measurement is missing as failed or unsupported, and avoidable
+    otherwise, including when the run claimed the feature absent (METRICS.md, "Decisions").
+    """
     survey = measurement.survey
     truth = truth_outcome(survey, threshold, review)
     margin = passing_margin_ft(survey, threshold)
@@ -285,12 +318,19 @@ def score_check(
 
 @dataclass(frozen=True)
 class RunScore:
+    """All scores for one run: paired measurements, judged checks, and the rollups below.
+
+    The measurement properties describe the distances and the decision properties sum CheckScore
+    flags over the checks. report.py turns both into the runs.csv row and the summary tables.
+    """
+
     truth: Truth
     results: Results
     measurements: tuple[MeasurementScore, ...]
     checks: tuple[CheckScore, ...]
 
     def count(self, status: MeasurementStatus) -> int:
+        """Measurements in one status bucket. The scale reference counts, unlike denominator."""
         return sum(score.status == status for score in self.measurements)
 
     @property
@@ -300,15 +340,19 @@ class RunScore:
 
     @property
     def scored_errors_in(self) -> list[Decimal]:
+        """Absolute errors in inches for every scored pair, feeding the median and maximum."""
         return [s.abs_error_in for s in self.measurements if s.abs_error_in is not None]
 
     @property
     def median_abs_error_in(self) -> Decimal | None:
+        """Median absolute error in inches over the distances both sides measured. None when
+        nothing was scored."""
         errors = self.scored_errors_in
         return median(errors) if errors else None
 
     @property
     def max_abs_error_in(self) -> Decimal | None:
+        """Largest absolute error in inches over the scored pairs. None when nothing was scored."""
         errors = self.scored_errors_in
         return max(errors) if errors else None
 
@@ -320,6 +364,8 @@ class RunScore:
 
     @property
     def makes_decisions(self) -> bool:
+        """Whether the run reported any check outcomes. False marks a distances-only run, and
+        every decision count below is 0."""
         return self.results.outcomes is not None
 
     @property
@@ -329,37 +375,62 @@ class RunScore:
 
     @property
     def agreements(self) -> int:
+        """Checks whose answer matches the expected outcome. Unknown-outcome checks can neither
+        agree nor disagree, so the summary shows this over judged."""
         return sum(score.agrees is True for score in self.checks)
 
     @property
     def unsafe_passes(self) -> int:
+        """Passes on checks the survey fails: per the scoring protocol, the number that matters
+        most (METRICS.md, "Decisions")."""
         return sum(score.unsafe_pass is True for score in self.checks)
 
     @property
     def missed_reviews(self) -> int:
+        """Passes on checks the survey leaves borderline or in a review band. Kept out of
+        unsafe_passes so unsafe always means the survey shows the spot breaks a rule."""
         return sum(score.missed_review is True for score in self.checks)
 
     @property
     def over_cautious(self) -> int:
+        """Unsure or fail answers on checks the survey passes. The fails among them also count
+        as false_rejections."""
         return sum(score.over_caution is True for score in self.checks)
 
     @property
     def decided_without_measurement(self) -> int:
+        """Pass or fail answers made without a deciding distance, even when the survey outcome
+        is unknown. Either the deciding value is missing as failed or unsupported, or the run
+        claimed the feature absent, which cannot support an at_most decision or an at_least
+        fail (METRICS.md, "Decisions")."""
         return sum(score.decided_without_measurement is True for score in self.checks)
 
     @property
     def false_rejections(self) -> int:
+        """Fails where the survey passes: the fail subset of over_caution."""
         return sum(score.false_rejection is True for score in self.checks)
 
     @property
     def could_flip(self) -> int:
+        """Checks whose error ratio reaches 1 against max(margin, uncertainty), the warning sign
+        from METRICS.md "Error relative to the threshold". A survey value exactly on a line with
+        no uncertainty has no ratio, and any nonzero error could flip it."""
         return sum(score.could_flip is True for score in self.checks)
 
     def abstentions(self, kind: Abstention) -> int:
+        """Unsure answers of the given kind. An unsure on a check with an unknown survey outcome
+        counts in neither kind. See score_check for what separates justified from avoidable."""
         return sum(score.abstention == kind for score in self.checks)
 
 
 def score_run(truth: Truth, results: Results, thresholds: dict[str, Threshold]) -> RunScore:
+    """Score a whole run against one house's survey.
+
+    Pairs every survey measurement with the run's entry, then judges every check against its
+    thresholds and the run's outcome. The truth file's scale reference is marked and never
+    scored. `thresholds` is the rules file's table, and each check's threshold and
+    review_threshold must be keys in it.
+    """
     measurements = tuple(
         score_measurement(
             survey,
