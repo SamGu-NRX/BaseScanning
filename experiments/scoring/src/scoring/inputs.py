@@ -44,6 +44,12 @@ class InputError(ValueError):
 
 @dataclass(frozen=True)
 class Threshold:
+    """One named threshold from the rules file, in feet.
+
+    `pass_when` says how a measurement passes: `at_least` for a clearance, `at_most` for a limit
+    such as a route length. `source` records where the value came from.
+    """
+
     name: str
     value_ft: Decimal
     pass_when: PassWhen
@@ -52,6 +58,12 @@ class Threshold:
 
 @dataclass(frozen=True)
 class Rules:
+    """The parsed rules file: a name and the thresholds every check is scored against.
+
+    `sha256` is the hash of the file's exact bytes. A results file must carry the same hash in
+    `rules_sha256`; `load_study` rejects a run made under different rules.
+    """
+
     path: Path
     sha256: str
     name: str
@@ -60,6 +72,12 @@ class Rules:
 
 @dataclass(frozen=True)
 class Candidate:
+    """One spot on the house that the survey covers.
+
+    `marker` is the physical mark a surveyor left, and `location` says where it is, as tape
+    offsets from a permanent corner.
+    """
+
     id: str
     marker: str
     location: str
@@ -67,6 +85,13 @@ class Candidate:
 
 @dataclass(frozen=True)
 class SurveyMeasurement:
+    """One distance the survey describes, between the endpoints `start` and `end`.
+
+    The JSON fields are `from` and `to`; Python renames them because `from` is a keyword. Only a
+    `measured` entry carries `value_ft` and `plus_minus_ft`. `candidate` is null for a house-level
+    distance such as a wall length, and `measured_by` names every surveyor who took it.
+    """
+
     id: str
     candidate: str | None
     start: str
@@ -80,6 +105,10 @@ class SurveyMeasurement:
 
 @dataclass(frozen=True)
 class Check:
+    """One question the survey answers about a candidate, decided by one measurement against one
+    threshold from the rules file.
+    """
+
     candidate: str
     check: str
     measurement: str
@@ -90,6 +119,12 @@ class Check:
 
 @dataclass(frozen=True)
 class Truth:
+    """The parsed survey of one house.
+
+    `captures` names the recordings the survey applies to, and `scale_reference` names the one
+    measurement a pipeline may use to set scale, which is never scored.
+    """
+
     path: Path
     house: str
     captures: tuple[str, ...]
@@ -101,6 +136,12 @@ class Truth:
 
 @dataclass(frozen=True)
 class PipelineMeasurement:
+    """One distance as a pipeline run reported it.
+
+    Either `value_ft` holds the run's value with `plus_minus_ft` as its uncertainty, or the value
+    is null and `missing` says why the run has none.
+    """
+
     id: str
     value_ft: Decimal | None
     plus_minus_ft: Decimal | None
@@ -109,6 +150,12 @@ class PipelineMeasurement:
 
 @dataclass(frozen=True)
 class Results:
+    """One pipeline run on one recording, as its results file reports it.
+
+    `rules_sha256` is the hash of the rules file the run says it used; `load_study` rejects a run
+    that does not match the study's rules.
+    """
+
     path: Path
     pipeline: str
     capture: str
@@ -123,12 +170,19 @@ class Results:
 
 @dataclass(frozen=True)
 class House:
+    """One house's survey with every run captured from one of its recordings.
+
+    A run pairs with the survey that lists its capture id.
+    """
+
     truth: Truth
     runs: tuple[Results, ...]
 
 
 @dataclass(frozen=True)
 class Study:
+    """The rules and every house's survey with its runs, all loaded and validated."""
+
     rules: Rules
     houses: tuple[House, ...]
 
@@ -165,25 +219,36 @@ class Fields:
         self.data: dict[str, Any] = data
 
     def error(self, message: str, key: str | None = None) -> InputError:
+        """Build an InputError that names the file and this object's location in it.
+
+        The caller raises it. `key` extends the location with the field's name.
+        """
         where = ".".join(part for part in (self.path, key) if part)
         prefix = f"{self.file}: {where}" if where else str(self.file)
         return InputError(f"{prefix}: {message}")
 
     def has(self, key: str) -> bool:
+        """True when the key is present, even if its value is null."""
         return key in self.data
 
     def raw(self, key: str) -> Any:
+        """The value at `key`. The key must be present even when its value is null.
+
+        A field that may be null is read with `optional_text` or `optional_length`.
+        """
         if key not in self.data:
             raise self.error(f"missing required field {key!r}")
         return self.data[key]
 
     def text(self, key: str) -> str:
+        """A non-empty string; a whitespace-only value is rejected."""
         value = self.raw(key)
         if not isinstance(value, str) or not value.strip():
             raise self.error(f"expected a non-empty string, got {_describe(value)}", key)
         return value
 
     def optional_text(self, key: str) -> str | None:
+        """Like `text`, but an explicit null is allowed. The key itself is still required."""
         return None if self.raw(key) is None else self.text(key)
 
     def length(self, key: str) -> Decimal:
@@ -205,21 +270,31 @@ class Fields:
         return None if self.raw(key) is None else self.length(key)
 
     def choice[T: str](self, key: str, choices: tuple[T, ...]) -> T:
+        """The value at `key`, which must be one of `choices`; the error names every valid one."""
         value = self.raw(key)
         if value not in choices:
             raise self.error(f"expected one of {', '.join(choices)}, got {_describe(value)}", key)
         return value
 
     def items(self, key: str) -> list[Any]:
+        """A non-empty list whose entries go unchecked.
+
+        The caller validates each one, usually by wrapping it with `child`.
+        """
         value = self.raw(key)
         if not isinstance(value, list) or not value:
             raise self.error(f"expected a non-empty list, got {_describe(value)}", key)
         return value
 
     def child(self, value: Any, path: str, allowed: Iterable[str]) -> "Fields":
+        """A new `Fields` for a nested value, such as one entry of a list.
+
+        Errors from the child name the same file and the deeper path.
+        """
         return Fields(value, self.file, path, allowed)
 
     def text_list(self, key: str) -> tuple[str, ...]:
+        """A non-empty list of non-empty strings, with no value listed twice, as a tuple."""
         values = self.items(key)
         for index, value in enumerate(values):
             if not isinstance(value, str) or not value.strip():
@@ -262,6 +337,11 @@ def refuse_output_over_inputs(outputs: Iterable[Path], inputs: Iterable[tuple[st
 
 
 def read_json(path: Path) -> tuple[Any, bytes]:
+    """Read and parse a JSON file, returning its parsed value and its exact bytes.
+
+    `load_rules` hashes the bytes for `Rules.sha256`. An unreadable or invalid file raises
+    InputError.
+    """
     try:
         raw = path.read_bytes()
     except OSError as error:
@@ -312,6 +392,12 @@ def _unique_id(fields: Fields, seen: Container[str], kind: str) -> str:
 
 
 def load_rules(path: Path) -> Rules:
+    """Load and validate the rules file.
+
+    A threshold's key is its rules.yaml parameter name: lower_snake_case, ending in _ft because
+    every value is in feet. `Rules.sha256` hashes the exact bytes read, so `load_study` can
+    reject a run made under different rules.
+    """
     data, raw = read_json(path)
     top = Fields(data, path, "", {"format", "unit", "name", "thresholds"})
     top.header()
@@ -378,6 +464,13 @@ def _load_survey_measurement(fields: Fields, seen: Container[str]) -> SurveyMeas
 
 
 def load_truth(path: Path, rules: Rules) -> Truth:
+    """Load and validate the survey of one house.
+
+    Cross-references must hold: a measurement's candidate, a check's measurement and a check's
+    threshold all have to exist. The scale reference must be measured and can decide no check,
+    every spot needs the same checks with the same thresholds, and a review threshold must sit
+    strictly on the passing side of its fail line.
+    """
     data, _ = read_json(path)
     top = Fields(
         data,
@@ -571,6 +664,12 @@ def _load_pipeline_measurement(fields: Fields, seen: Container[str]) -> Pipeline
 
 
 def load_results(path: Path) -> Results:
+    """Load and validate one pipeline run's results file.
+
+    Every measurement either reports a value or reports null with the reason it is missing.
+    `outcomes` may be null: a run that makes no pass/unsure/fail decisions records none. Matching
+    the run to a survey happens in `load_study`.
+    """
     data, _ = read_json(path)
     top = Fields(
         data,
