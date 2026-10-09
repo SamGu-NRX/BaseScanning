@@ -1,4 +1,4 @@
-"""Draw ground truth (green window, blue door, dashed = group-of) and a model's detections at or
+"""Draw ground truth (green window, blue door, 1 px = group-of) and a model's detections at or
 above a threshold (red) on one image, for checking coordinates by eye. Writes to DATA/preview.
 
 Usage: python -m autodetect.show <set> <image_id> [model] [threshold]
@@ -15,6 +15,16 @@ from .sets import ground_truth, image_path, load_preds
 
 
 def draw(name: str, image_id: str, model: str | None = None, threshold: float = 0.0) -> str:
+    """Overlay ground truth and a model's cached detections on one image, for eyeballing boxes.
+
+    Reads the photo and the boxes from the DATA cache (sets.image_path, sets.ground_truth,
+    sets.load_preds), so nothing here runs a model. Boxes are [x0, y0, x1, y1] as fractions of
+    the image size. Ground truth outlines: green for window, blue for any other label, 3 px for
+    single boxes and 1 px for group-of. With a model, detections at or above threshold get a red
+    2 px outline plus a tag like "d0.87" (first letter of the label, the score) at the box's
+    top-left corner. A missing image_id raises KeyError. Writes
+    DATA/preview/<name>_<image_id>_<model or 'gt'>.jpg, overwriting, and returns the path.
+    """
     im = Image.open(image_path(name, image_id)).convert("RGB")
     w, h = im.size
     d = ImageDraw.Draw(im)
