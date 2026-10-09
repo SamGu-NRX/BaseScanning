@@ -1,21 +1,30 @@
 """Choices fixed before any scored run. Changing one after scoring means rerunning every candidate.
 
 Committed together with the pass criteria in README.md, before the first scored run.
+
+The two prompt tables must list the same objects in the same order, because owl.py and gdino.py
+both turn dict order into class indices:
+
+>>> list(OWL_QUERIES) == list(GDINO_PHRASES)
+True
 """
 
 # Operating threshold: chosen per model and class on the OI tune set (150 images, disjoint from
 # eval), then applied unchanged to OI eval and CMP. Rule: the lowest score at which precision is
 # at least MIN_PRECISION, which gives the most recall that still meets the precision bar; when no
 # score reaches it, the score with the best F1. See oieval.choose_threshold.
+# A candidate passes a set when, at that threshold, recall is at least MIN_RECALL and precision at
+# least MIN_PRECISION. Matches are counted at IoU 0.5. oieval.py defines its own IOU = 0.5 as the
+# default iou_thr and is the value the code uses; this constant is kept for the README contract.
 MIN_PRECISION = 0.60
 MIN_RECALL = 0.80
 IOU = 0.5
 
-# Diagnostic only, not a pass criterion: at 1 to 3 m an iPhone frame holds a window or door at
-# roughly 15% or more of the frame's width. Boxes smaller than this fraction of the image in
-# either dimension are treated as "difficult" (detections on them ignored, not counted as missed)
-# in the "near-sized" tables, and detections that small are dropped there (added after the first
-# scored run; see results/proposals.md).
+# Diagnostic only, not a pass criterion. At 1 to 3 m a window or door fills roughly 15% or more of
+# an iPhone frame's width, so the cut sits below that, at 0.10. A ground-truth box whose smaller
+# side is under this fraction of the image is treated as "difficult" (detections on it ignored,
+# not counted as missed) in the "near-sized" tables, and detections that small are dropped there
+# (added after the first scored run; see results/proposals.md).
 NEAR_MIN_SIDE = 0.10
 
 # OWLv2 text queries, one per wall object. Scored classes are window and door; the others are in
@@ -65,7 +74,9 @@ VISION_RECTS = {
 STUDENT_CONFIDENCE_FLOOR = 0.01
 STUDENT_NMS_IOU = 0.45
 
-# Speed classes from Mac timings (M4 Pro); an iPhone is slower, so these are optimistic.
+# Speed classes from Mac timings (M4 Pro); an iPhone is slower, so these are optimistic. At most
+# LIVE_MS is "live", at most KEYFRAME_MS is "keyframe", anything slower is "offline"; the
+# boundaries are inclusive. See score.speed_class.
 LIVE_MS = 100
 KEYFRAME_MS = 1000
 
