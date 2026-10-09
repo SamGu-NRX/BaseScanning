@@ -203,7 +203,9 @@ def build(out: Path) -> None:
     for m in survey["measurements"]:
         if m["value_ft"] == "FILL ft in":
             m["value_ft"] = tape[m["id"]]
-    survey["candidates"][0]["location"] = "16 ft 5 in along the wall from mark A"
+    # Mark F's distance along the wall from mark A, derived from the scene.
+    feet, inches = tape_text(value(POINTS["P15"][0], POINTS["P11"][0], "alongWall")).split(" ", 1)
+    survey["candidates"][0]["location"] = f"{feet} ft {inches} in along the wall from mark A"
     (out / "survey.json").write_text(json.dumps(survey, indent=2) + "\n")
     (out / "map.json").write_text((FIELD_KIT / "map.template.json").read_text())
     print(f"{archive} sha256 {hashlib.sha256(archive.read_bytes()).hexdigest()}")

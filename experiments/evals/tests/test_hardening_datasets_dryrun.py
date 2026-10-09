@@ -561,6 +561,14 @@ def test_build_writes_the_zip_survey_and_map(tmp_path: Path):
     ).read_text()
 
 
+def test_the_candidate_location_matches_the_scene(tmp_path: Path):
+    """Mark A sits at the wall origin and mark F 5.0 m along it, taping to 16 ft 4 7/8 in;
+    the location note must be derived from the scene, not a hand-copied constant."""
+    field_dryrun.build(tmp_path)
+    survey = json.loads((tmp_path / "survey.json").read_text())
+    assert survey["candidates"][0]["location"] == "16 ft 4 7/8 in along the wall from mark A"
+
+
 def test_the_dryrun_session_passes_the_field_kit_reader(tmp_path: Path):
     field_dryrun.build(tmp_path)
     doc = load_session(tmp_path / "dryrun-session")
