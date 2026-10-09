@@ -11,6 +11,16 @@ from scoring.report import csv_paths, markdown, write_csvs
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run one score command and return the exit code.
+
+    argv defaults to sys.argv[1:]. A first argument of import-measure-lab hands the remaining
+    arguments to the Measure Lab importer and passes its return value through. Otherwise the
+    parser takes --rules, one or more survey files for --truth, one or more result files for
+    --results, and --out for the CSV directory (default data). An --out that would overwrite any
+    input is refused before anything is loaded. The markdown summary goes to stdout, and each CSV
+    write prints its path to stderr. Returns 0 on success and 2 on InputError, whose message is
+    already on stderr.
+    """
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["import-measure-lab"]:
         return measure_lab.main(argv[1:])
