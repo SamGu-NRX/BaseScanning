@@ -31,16 +31,29 @@ from .owl import upcast_fp16
 from .paths import WEIGHTS
 from .sets import SETS, ground_truth, image_path, save_preds
 
-DIR = WEIGHTS / "gdino"
+DIR = WEIGHTS / "gdino"  # ONNX weights and tokenizer.json, outside git
 MODEL = DIR / "model_fp16.onnx"
-URL = "https://huggingface.co/onnx-community/grounding-dino-tiny-ONNX/resolve/main/onnx/model_fp16.onnx"
-SIZE = 800
-MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+URL = "https://huggingface.co/onnx-community/grounding-dino-tiny-ONNX/resolve/main/onnx/model_fp16.onnx"  # fetch MODEL from here
+SIZE = 800  # fixed graph input; the long side resizes to this, then pads to 800 x 800
+MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)  # ImageNet channel means
+STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)  # ImageNet channel stds
 
 
 class GDino:
+    """Zero-shot Grounding DINO detector over one fixed caption.
+
+    __init__ loads the ONNX graph and tokenizer and builds the caption and its token spans
+    once; every image shares them. detect() runs one image through preprocess, the session
+    and nms.postprocess.
+    """
+
     def __init__(self) -> None:
+        """Load the graph and tokenizer, then build the caption and each phrase's token spans.
+
+        The caption joins config.GDINO_PHRASES values, each ending in " .", and is encoded
+        once for every image. Raises FileNotFoundError when MODEL is missing and ValueError
+        when a phrase ends up with no tokens.
+        """
         import onnxruntime as ort
         from tokenizers import Tokenizer
 
@@ -69,6 +82,27 @@ class GDino:
 
     @staticmethod
     def preprocess(im: Image.Image) -> tuple[np.ndarray, np.ndarray]:
+        """Resize so the long side is SIZE, pad bottom and right to SIZE x SIZE, normalize.
+
+        Returns (pixel_values, pixel_mask): pixel_values is float32, shape (1, 3, SIZE, SIZE),
+        with MEAN and STD applied; pixel_mask is int64, shape (1, SIZE, SIZE), 1 on real
+        pixels and 0 on padding.
+
+        >>> from PIL import Image
+        >>> from autodetect.gdino import GDino
+        >>> im = Image.new("RGB", (200, 100), (127, 127, 127))
+        >>> pixels, mask = GDino.preprocess(im)
+        >>> pixels.shape
+        (1, 3, 800, 800)
+        >>> mask.shape, mask.dtype
+        ((1, 800, 800), dtype('int64'))
+        >>> int(mask.sum())  # an 800 x 400 strip of real pixels
+        320000
+        >>> round(float(pixels[0, 0, 0, 0]), 4)  # (127 / 255 - MEAN[0]) / STD[0]
+        0.0569
+        >>> float(pixels[0, 0, 700, 0])  # padding is exactly 0
+        0.0
+        """
         w, h = im.size
         scale = SIZE / max(w, h)
         nw, nh = round(w * scale), round(h * scale)
@@ -79,6 +113,13 @@ class GDino:
         return x.transpose(2, 0, 1)[None], mask
 
     def detect(self, path: Path) -> tuple[list[dict], float, float]:
+        """Detections for one image; preprocess ms; inference ms.
+
+        A box's score for a phrase is the highest sigmoid logit over that phrase's tokens,
+        and the box takes its best phrase. Boxes come out in [x0, y0, x1, y1] normalized to
+        the real pixels: the graph unpads them through pixel_mask, so no rescale runs here,
+        unlike owl.detect. Returns the nms.postprocess dicts: {"label", "score", "box"}.
+        """
         im = Image.open(path).convert("RGB")
         t0 = time.perf_counter()
         pixels, pmask = self.preprocess(im)
@@ -98,6 +139,10 @@ class GDino:
 
 
 def meta() -> dict:
+    """Description of this candidate for save_preds: model, phrases, license, size, runtime.
+
+    Reads MODEL's size from disk, so the weights file must exist.
+    """
     return {
         "model": "Grounding DINO tiny, ONNX fp16 upcast to fp32",
         "phrases": config.GDINO_PHRASES,
@@ -110,6 +155,10 @@ def meta() -> dict:
 
 
 def run(model: GDino, name: str) -> None:
+    """Detect every image of set name in sorted id order and save PREDS/gdino/<name>.json.
+
+    Prints progress to stderr every 50 images.
+    """
     images = {}
     for k, i in enumerate(sorted(ground_truth(name))):
         dets, pre_ms, ms = model.detect(image_path(name, i))
