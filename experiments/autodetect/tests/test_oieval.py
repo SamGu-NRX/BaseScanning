@@ -148,3 +148,34 @@ def test_near_sized_filter_marks_boxes_below_the_minimum_side():
     # the tiny detection is dropped by size, the near-sized miss stays a false positive
     assert list(e.scores) == [0.7]
     assert list(e.tp) == [False]
+
+
+def test_choose_threshold_on_an_empty_set_reports_no_detections():
+    e = ClassEntries(np.array([]), np.array([], bool), 0, 1)
+    t, rule = choose_threshold(e)
+    assert t == float("inf")
+    assert rule == "no-detections"
+    r = at_threshold(e, t)
+    assert (r["tp"], r["fp"]) == (0, 0)
+    assert math.isnan(r["precision"])
+    assert math.isnan(r["recall"])
+
+
+def test_average_precision_is_zero_when_nothing_is_detected():
+    e = ClassEntries(np.array([]), np.array([], bool), 2, 1)
+    assert average_precision(e) == 0.0
+
+
+def test_difficult_group_is_neither_hit_nor_miss():
+    hard_group = dict(gt(GROUP, group=True), difficult=True)
+    scores, tp, n = image_entries([hard_group], [det([0.1, 0.6, 0.2, 0.7], 0.9)])
+    assert (scores, tp, n) == ([], [], 0)
+
+
+def test_image_missing_from_predictions_counts_all_misses():
+    gts = {"only": {"verified": {"window": 1}, "boxes": [gt(A), gt(GROUP, group=True)]}}
+    e = class_entries(gts, {}, "window")
+    assert e.num_images == 1
+    assert e.num_gt == 2
+    assert len(e.scores) == 0
+    assert average_precision(e) == 0.0

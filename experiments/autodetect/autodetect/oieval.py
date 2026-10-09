@@ -29,14 +29,18 @@ from dataclasses import dataclass
 
 import numpy as np
 
-IOU = 0.5
-MERGED = "window_or_door"
-MERGED_FROM = ("window", "door")
+IOU = 0.5  # match threshold: IoU for single boxes, IoA over the detection for groups
+MERGED = "window_or_door"  # pooled class, scored only where both members were verified
+MERGED_FROM = ("window", "door")  # the two classes MERGED pools
 
 
 @dataclass
 class ClassEntries:
-    """Scored entries for one class over a set: one per counted detection or detected group."""
+    """Scored entries for one class over a set: one per counted detection or detected group.
+
+    scores and tp align by position and are not globally sorted. num_gt counts missable
+    ground truth objects, detected or not.
+    """
 
     scores: np.ndarray  # float
     tp: np.ndarray  # bool
@@ -45,6 +49,7 @@ class ClassEntries:
 
 
 def _iou(d: np.ndarray, g: np.ndarray) -> np.ndarray:
+    """IoU between each box in d (rows) and each box in g (columns)."""
     ix = np.clip(np.minimum(d[:, None, 2], g[None, :, 2]) - np.maximum(d[:, None, 0], g[None, :, 0]), 0, None)
     iy = np.clip(np.minimum(d[:, None, 3], g[None, :, 3]) - np.maximum(d[:, None, 1], g[None, :, 1]), 0, None)
     inter = ix * iy
@@ -62,7 +67,27 @@ def _ioa_det(d: np.ndarray, g: np.ndarray) -> np.ndarray:
 
 
 def image_entries(gt_boxes: list[dict], dets: list[dict], iou_thr: float = IOU) -> tuple[list[float], list[bool], int]:
-    """Entries for one class in one image where it is verified. Inputs are already that class only."""
+    """Score one class in one image where it is verified. Inputs must hold that class only.
+
+    gt_boxes are that class's ground truth boxes, dets its detections. Returns (scores, tp,
+    num_gt): one scores/tp pair per counted detection plus one per detected group, whose
+    score is the max score among its detections and whose tp is True. num_gt counts
+    non-difficult singles plus non-difficult groups, detected or not. Detections matched to
+    difficult boxes or absorbed by groups are dropped. Scores follow detection score order,
+    with group entries last.
+
+    >>> s, tp, n = image_entries(
+    ...     [{"label": "window", "box": [0.0, 0.0, 0.5, 0.5], "group": False}],
+    ...     [{"label": "window", "score": 0.9, "box": [0.0, 0.0, 0.5, 0.5]},
+    ...      {"label": "window", "score": 0.8, "box": [0.0, 0.0, 0.5, 0.5]}],
+    ... )
+    >>> [float(x) for x in s]
+    [0.9, 0.8]
+    >>> [bool(x) for x in tp]
+    [True, False]
+    >>> n
+    1
+    """
     order = sorted(range(len(dets)), key=lambda i: -dets[i]["score"])
     scores = np.array([dets[i]["score"] for i in order], dtype=float)
     d = np.array([dets[i]["box"] for i in order], dtype=float).reshape(-1, 4)
@@ -122,6 +147,7 @@ def _view(gt: dict, dets: list[dict], cls: str) -> tuple[int | None, list[dict],
 
 
 def _mark_small(boxes: list[dict], min_side: float) -> list[dict]:
+    """Copy of boxes with difficult set where the narrower or shorter side is under min_side."""
     return [dict(b, difficult=min(b["box"][2] - b["box"][0], b["box"][3] - b["box"][1]) < min_side) for b in boxes]
 
 
@@ -132,9 +158,15 @@ def class_entries(
     iou_thr: float = IOU,
     near_min_side: float | None = None,
 ) -> ClassEntries:
-    """Entries over a set. With near_min_side, ground-truth boxes narrower or shorter than that
-    fraction of the image are difficult, and detections that small are dropped, as an app that
-    only proposes near objects would drop them."""
+    """Score one class over a set of images.
+
+    gts maps image id to its ground truth record; preds maps image id to that image's
+    detections, and an image absent from preds counts as no detections. Images where the
+    class is not verified are skipped: their detections count nothing and their boxes are
+    not missed. Returns ClassEntries. With near_min_side, ground truth boxes narrower or
+    shorter than that fraction of the image are difficult, and detections that small are
+    dropped, as an app that only proposes near objects would drop them.
+    """
     scores: list[float] = []
     tps: list[bool] = []
     num_gt = 0
@@ -155,7 +187,18 @@ def class_entries(
 
 
 def average_precision(e: ClassEntries) -> float:
-    """Area under the precision envelope over recall (all points), as in the OID challenge."""
+    """Area under the precision envelope over recall (all points), as in the OID challenge.
+
+    Returns nan when there is no ground truth, and 0.0 when ground truth exists but nothing
+    was scored. A trailing false positive adds no area: one true positive out of two objects
+    scores 0.5.
+
+    >>> e = ClassEntries(np.array([0.9, 0.8]), np.array([True, False]), num_gt=2, num_images=1)
+    >>> average_precision(e)
+    0.5
+    >>> average_precision(ClassEntries(np.array([]), np.array([], bool), 0, 1))
+    nan
+    """
     if e.num_gt == 0:
         return float("nan")
     if len(e.scores) == 0:
@@ -173,6 +216,15 @@ def average_precision(e: ClassEntries) -> float:
 
 
 def at_threshold(e: ClassEntries, t: float) -> dict:
+    """Precision and recall when every entry with score >= t is kept.
+
+    Returns threshold, tp, fp, num_gt, precision and recall in one dict. Precision is nan
+    when no entry is kept; recall is nan when there is no ground truth.
+
+    >>> e = ClassEntries(np.array([0.9, 0.8, 0.7, 0.6, 0.5]), np.array([True, True, False, True, False]), 4, 1)
+    >>> at_threshold(e, 0.5)
+    {'threshold': 0.5, 'tp': 3, 'fp': 2, 'num_gt': 4, 'precision': 0.6, 'recall': 0.75}
+    """
     sel = e.scores >= t
     tp = int(e.tp[sel].sum())
     fp = int(sel.sum()) - tp
@@ -189,7 +241,14 @@ def at_threshold(e: ClassEntries, t: float) -> dict:
 def choose_threshold(e: ClassEntries, min_precision: float = 0.6) -> tuple[float, str]:
     """Operating threshold from a tuning set: the lowest score at which precision >= min_precision
     (the most recall that meets the precision bar). If no score reaches it, the score with the best
-    F1. Returns (threshold, rule used)."""
+    F1. Returns (threshold, rule used). With no entries or no ground truth, (inf, "no-detections").
+
+    >>> e = ClassEntries(np.array([0.9, 0.8, 0.7]), np.array([True, False, True]), 2, 1)
+    >>> choose_threshold(e, 0.6)
+    (0.7, 'lowest score with precision >= 0.6')
+    >>> choose_threshold(ClassEntries(np.array([]), np.array([], bool), 0, 1))
+    (inf, 'no-detections')
+    """
     if len(e.scores) == 0 or e.num_gt == 0:
         return float("inf"), "no-detections"
     order = np.argsort(-e.scores, kind="stable")
