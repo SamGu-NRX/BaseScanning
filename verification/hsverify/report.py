@@ -36,6 +36,12 @@ def _yes(value: bool) -> str:
     return '<span class="ok">yes</span>' if value else '<span class="no">no</span>'
 
 
+def _cell(text: object) -> str:
+    """Markdown-safe text, the same rule as scoreboard._cell: problem messages come from
+    exceptions and app logs, so a pipe or newline in them cannot forge rows or bullets."""
+    return str(text).replace("|", "\\|").replace("\n", " ")
+
+
 def write_sim_report(out: Path, data: dict) -> None:
     build = data["build"]
     states = data["states"]
@@ -93,7 +99,7 @@ def write_sim_report(out: Path, data: dict) -> None:
         "<a href=app-stdout.log>app-stdout.log</a> · <a href=app-stderr.log>app-stderr.log</a>"
         "</p>"
     )
-    (out / "index.html").write_text("\n".join(parts) + "\n")
+    (out / "index.html").write_text("\n".join(parts) + "\n", encoding="utf-8")
 
     lines = [
         f"# Simulator run: `{data['ref']}` at `{data['sha'][:12]}`",
@@ -103,11 +109,11 @@ def write_sim_report(out: Path, data: dict) -> None:
         f"- Launch arguments: `{' '.join(data['launch_arguments']) or '(none)'}`",
         f"- States: {len(states)}; ended: {data['end_reason']}",
     ]
-    lines += [f"- Problem: {p}" for p in data["problems"]]
+    lines += [f"- Problem: {_cell(p)}" for p in data["problems"]]
     lines += ["", "| # | State | +s | Screenshot |", "| --- | --- | --- | --- |"]
     lines += [
         f"| {s['index']} | {s['state']}{' (transient)' if s['transient'] else ''} | "
         f"{s['seconds_after_launch']} | {s['screenshot']} |"
         for s in states
     ]
-    (out / "report.md").write_text("\n".join(lines) + "\n")
+    (out / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
