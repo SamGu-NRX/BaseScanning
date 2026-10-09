@@ -110,28 +110,42 @@ def fixed(value: Decimal | None, places: int) -> str:
 
 
 def feet(value: Decimal | None) -> str:
+    """`value` in feet, at 3 decimal places."""
     return fixed(value, 3)
 
 
 def inches(value: Decimal | None) -> str:
+    """`value` in inches, at 2 decimal places."""
     return fixed(value, 2)
 
 
 def ratio(value: Decimal | AtThreshold | None) -> str:
+    """`value` at 2 decimal places, or the `at_threshold` sentinel verbatim. None becomes empty."""
     if value is None:
         return ""
     return value if isinstance(value, str) else fixed(value, 2)
 
 
 def flag(value: bool | None) -> str:
+    """`value` as `true` or `false`. None becomes empty."""
     return "" if value is None else str(value).lower()
 
 
 def seconds(value: Decimal | None) -> str:
+    """`value` in seconds, at 1 decimal place."""
     return fixed(value, 1)
 
 
 def measurement_row(run: RunScore, score: MeasurementScore) -> dict[str, str]:
+    """One `measurements.csv` row: one survey measurement against one run.
+
+    Identifies the house, capture, pipeline and measurement (id, candidate, from, to). Pairs the
+    survey's status, value and ± with the run's value, ± and missing reason, then adds the
+    `MeasurementStatus`, the signed and absolute error in inches (positive means the run
+    overestimated) and `truth_within_reported`, whether the survey value lies within the run's
+    reported ±. The scale reference gets a row with empty error figures. The run's cells are
+    empty when it reported nothing.
+    """
     survey, reported = score.survey, score.reported
     return {
         "house": run.truth.house,
@@ -155,6 +169,17 @@ def measurement_row(run: RunScore, score: MeasurementScore) -> dict[str, str]:
 
 
 def check_row(run: RunScore, score: CheckScore) -> dict[str, str]:
+    """One `checks.csv` row: one survey check against one run.
+
+    Identifies the house, capture, pipeline, candidate, check and deciding measurement, then the
+    threshold (name, value and `pass_when` direction) and the review threshold of a band, the
+    survey's value and ±, its signed margins to the fail line and the pass line, and the survey
+    outcome. The run side holds its value, absolute error in inches, the `error_to_margin` ratio
+    with the `could_flip` flag, the outcome the run reported, the outcome a correct run would
+    report, and the decision columns: `agrees`, `unsafe_pass`, `missed_review`, `over_caution`,
+    `false_rejection`, `decided_without_measurement` and the `abstention` kind. The decision
+    columns are empty when the run makes no decisions or the survey outcome is unknown.
+    """
     reported = score.measurement.reported
     return {
         "house": run.truth.house,
@@ -190,6 +215,15 @@ def check_row(run: RunScore, score: CheckScore) -> dict[str, str]:
 
 
 def run_row(run: RunScore) -> dict[str, str]:
+    """One `runs.csv` row: one run's totals over its measurements and checks.
+
+    Identifies the house, capture, pipeline and scale source. Gives the timing figures, the
+    measurement counts (the denominator, then one column per status except `scale_reference`),
+    the median and maximum absolute error in inches, and the counts of scored distances inside
+    the run's ± and scored distances that reported a ±. The check counts follow, then the
+    decision counts and how many checks the error could flip. The decision counts are empty when
+    the run makes no decisions.
+    """
     within, with_uncertainty = run.within_reported
     decides = run.makes_decisions
 
@@ -241,10 +275,17 @@ CSV_NAMES = ("measurements.csv", "checks.csv", "runs.csv")
 
 
 def csv_paths(out_dir: Path) -> list[Path]:
+    """The three CSV paths under `out_dir`: measurements.csv, checks.csv and runs.csv."""
     return [out_dir / name for name in CSV_NAMES]
 
 
 def write_csvs(runs: list[RunScore], out_dir: Path) -> list[Path]:
+    """Write the three CSV tables into `out_dir` and return their paths.
+
+    Creates `out_dir` when it does not exist. `measurements.csv` takes one row per measurement
+    score of each run, `checks.csv` one per check score, `runs.csv` one per run. Returns the
+    paths `csv_paths` builds.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = csv_paths(out_dir)
     measurement_rows = (measurement_row(r, s) for r in runs for s in r.measurements)
@@ -298,6 +339,17 @@ def _count(number: int, noun: str) -> str:
 
 
 def markdown(study: Study, runs: list[RunScore]) -> str:
+    """Render the whole study as the markdown summary.
+
+    Opens with the rules file's path and display name, its sha256, and the counts of houses,
+    candidate spots and pipeline runs, then the note that every scale reference is left out of the
+    error figures. Each house then gets a section listing its captures, candidates and excluded
+    scale reference, the Distances, Checks and Timing tables, and named lists of every unsafe
+    pass, missed review and decision made without its measurement. A house with no runs says so
+    instead of the tables. The summary closes with the case-series disclaimer. Identifiers are
+    escaped wherever they land, so any id the inputs allow renders without breaking a table,
+    heading or list.
+    """
     rules = study.rules
     houses = study.houses
     spots = sum(len(house.truth.candidates) for house in houses)
