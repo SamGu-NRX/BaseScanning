@@ -196,8 +196,15 @@ def is_complete(archive: Archive) -> bool:
     path = record_path(archive)
     if not path.exists():
         return False
-    record = json.loads(path.read_text())
-    if record.get("sha256") != archive.sha256 or not record.get("files"):
+    try:
+        record = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return False  # a truncated record reads as not complete: the next run redownloads
+    if (
+        not isinstance(record, dict)
+        or record.get("sha256") != archive.sha256
+        or not record.get("files")
+    ):
         return False
     for name, size in record["files"].items():
         f = archive.dest / name

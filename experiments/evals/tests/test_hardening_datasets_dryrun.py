@@ -269,6 +269,21 @@ def test_is_complete_rechecks_the_recorded_files(tmp_path: Path, monkeypatch):
     assert datasets.is_complete(archive) is False  # an empty record is not a complete one
 
 
+def test_is_complete_treats_a_corrupt_record_as_not_complete(tmp_path: Path):
+    """A truncated or non-object record must read as not complete (the next run redownloads),
+    not crash every later run on the recovery path."""
+    archive = _archive(tmp_path, b"unused")
+    record = datasets.record_path(archive)
+    record.parent.mkdir(parents=True)
+
+    record.write_text('{"sha256": "abc')  # truncated mid-write
+    assert datasets.is_complete(archive) is False
+    record.write_text("null")  # valid JSON, but not a record object
+    assert datasets.is_complete(archive) is False
+    record.write_text('{"no": "files"}')  # an object without the pinned fields
+    assert datasets.is_complete(archive) is False
+
+
 def test_sha256_of_matches_hashlib_and_streams_in_chunks(tmp_path: Path):
     p = tmp_path / "blob.bin"
     p.write_bytes(b"")
