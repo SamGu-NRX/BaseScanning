@@ -5,8 +5,12 @@
 For each photo: whether Vision read the number, where the number-finding ranking put it, the
 checks the app would run, and whether they would have asked for a retake. As in the app, the
 checks use the ranking's top candidate, not the true number; --number only scores the
-outcome. The summary counts the two costly outcomes: a retake asked for a photo that read (a
-wasted retake) and a photo accepted that did not read (a re-request later). The meter number
+outcome. The summary counts the exact reads and, separately, the photos where the correct
+number ranked in the top three candidates, which is what the app shows the homeowner. It also
+counts the two costly outcomes: a retake asked for a photo that read (a wasted retake) and a
+photo accepted that did not read (a re-request later). The comparison runs in memory, with
+plain strings against the number from the command line, so the standalone field test needs no
+HMAC key. The keyed digest stays where digests meet the committed manifest. The meter number
 is taken from the command line and is never written to disk.
 """
 
@@ -19,7 +23,7 @@ from PIL import Image, ImageOps
 
 from meter_eval import retake
 from meter_eval.locate import candidates, ranked, top_candidate
-from meter_eval.match import core, digest, normalize, number_boxes
+from meter_eval.match import core, normalize, rows_of_text
 from meter_eval.ocr import Reader
 from meter_eval.quality import gray
 
@@ -54,8 +58,8 @@ def main() -> None:
     parser.add_argument("--number", required=True, help="the meter number as printed")
     args = parser.parse_args()
 
-    target, length = digest(normalize(args.number)), len(normalize(args.number))
-    target_core = digest(core(args.number))
+    target = normalize(args.number)
+    target_core = core(args.number)
     photos = sorted(p for p in args.folder.iterdir() if p.suffix.lower() in SUFFIXES)
     if not photos:
         raise SystemExit(f"no .jpg, .png or .heic photos in {args.folder}")
@@ -65,7 +69,7 @@ def main() -> None:
         "Retake because |"
     )
     print("|---|---|---|---|---|---|---|")
-    wasted = missed = 0
+    reads = top_three = wasted = missed = 0
     # Working copies live in a private temporary folder, never in the photo folder, so no
     # file of the user's is overwritten, deleted or scored twice.
     with tempfile.TemporaryDirectory() as scratch, Reader() as reader:
@@ -77,12 +81,16 @@ def main() -> None:
             image.save(upright)
             g = gray(image)
             result = reader.read(upright, barcodes=True)
-            read = number_boxes(result["lines"], target, length, lenient=False) is not None
+            # Plain strings instead of keyed digests: the number comes from the command line
+            # and candidate cores are normalized, so the digest checks would be equivalent.
+            read = any(target in normalize(text) for text, _ in rows_of_text(result["lines"]))
             order = ranked(candidates(result))
-            rank = next((i + 1 for i, c in enumerate(order) if digest(c) == target_core), None)
+            rank = next((i + 1 for i, c in enumerate(order) if c == target_core), None)
             guess = top_candidate(result)
             box = guess and guess["box"]
             why = retake.reasons(g, box)
+            reads += read
+            top_three += rank is not None and rank <= 3
             wasted += read and bool(why)
             missed += not read and not why
             height_px = f"{retake.line_height_px(box, g.shape[0]):.0f}" if box else "–"
@@ -92,7 +100,9 @@ def main() -> None:
                 f"{retake.whole_photo_sharpness(g):.1f} | {', '.join(why) or '–'} |"
             )
     print(
-        f"\n{len(photos)} photos; {wasted} retakes asked for photos that read; "
+        f"\n{len(photos)} photos; {reads} read the number exactly; "
+        f"{top_three} with the correct number in the top three candidates; "
+        f"{wasted} retakes asked for photos that read; "
         f"{missed} photos accepted that did not read."
     )
 
