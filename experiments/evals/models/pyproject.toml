@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.3", "ruff>=0.8"]
+dev = ["pytest>=8.3", "ruff>=0.8", "mypy>=1.15"]
 
 [tool.uv]
 package = false
@@ -25,6 +25,19 @@ package = false
 # headless build serves all three (two OpenCV wheels in one env overwrite each other's cv2);
 # 4.x because all three were written against it.
 override-dependencies = ["opencv-python-headless>=4.10,<5", "opencv-python; sys_platform == 'never'"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+# The three model packages and their shared dependency have no inline types. Only their import
+# sites are skipped: each runner narrows the objects it loads at its own boundary.
+module = ["moge.*", "mapanything.*", "depth_anything_3.*", "utils3d.*"]
+ignore_missing_imports = true
+
 
 # Each model is pinned to a commit. Their packaging lists demo, export and training extras as hard
 # requirements (gradio, open3d, pycolmap, xformers, evo, moviepy, numpy<2), none of which the
