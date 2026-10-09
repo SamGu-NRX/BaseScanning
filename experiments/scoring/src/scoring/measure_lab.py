@@ -85,6 +85,14 @@ def meters_to_feet(meters: Decimal) -> Decimal:
 
 @dataclass(frozen=True)
 class SessionMeasurement:
+    """One measurement from a session.json measurements array.
+
+    `id` is the app-generated id Measure Lab assigns. `time` is seconds on the device-uptime
+    clock. `values` holds meters, and only the quantities the endpoints allow. `compared` names
+    the quantity the rig validated, the one `accepted` vouches for. A measurement that is not
+    accepted carries warnings. A map entry on it imports as missing failed, not as a value.
+    """
+
     id: str
     time: Decimal
     values: dict[str, Decimal]
@@ -94,6 +102,15 @@ class SessionMeasurement:
 
 @dataclass(frozen=True)
 class Session:
+    """A session zip listed in the survey's captures, parsed.
+
+    `measurements` is keyed by id. `zip_sha256` is the capture id the results file carries.
+    `member` locates session.json in the zip, at its root or in its single session folder.
+    `started_at_uptime` is when the walk began, on the device-uptime clock, and the run's
+    capture_s runs from there to the last measurement. `refusals` holds the ids the operator
+    refused to take, which a FromRefusal entry must name.
+    """
+
     zip_path: Path
     zip_sha256: str
     member: str
@@ -308,6 +325,13 @@ def load_session(path: Path, truth: Truth) -> Session:
 
 @dataclass(frozen=True)
 class FromSession:
+    """A map entry that answers a survey measurement with a session measurement's `values` key.
+
+    `measurement` is the session measurement id and `key` the quantity to import, which must be
+    that measurement's `compared` quantity. `plus_minus_ft` states the uncertainty in feet, from
+    the entry or the map's `plus_minus_ft_by_key`.
+    """
+
     measurement: str
     key: str
     plus_minus_ft: Decimal
@@ -315,11 +339,23 @@ class FromSession:
 
 @dataclass(frozen=True)
 class FromRefusal:
+    """A map entry for a survey measurement the operator refused to take.
+
+    It imports as missing failed. `refusal` must be an id in the session's refusals.
+    """
+
     refusal: str
 
 
 @dataclass(frozen=True)
 class Map:
+    """The map file, written by hand after the walk, that ties session measurements to survey ones.
+
+    `entries` maps a survey measurement id to a FromSession, a FromRefusal, or one of the bare
+    strings "absent" or "unsupported". `pipeline` names the results row. `session` is the session
+    id the map was written for, and must match the zip's. `path` names the file in error messages.
+    """
+
     path: Path
     pipeline: str
     session: str
@@ -327,6 +363,11 @@ class Map:
 
 
 def load_map(path: Path) -> Map:
+    """Read a map file into a Map.
+
+    A FromSession entry needs a stated uncertainty, in its own plus_minus_ft or under its key in
+    plus_minus_ft_by_key. There is no default, so an entry with neither is an error.
+    """
     data, _ = read_json(path)
     top = Fields(
         data,
@@ -499,6 +540,15 @@ def _outcomes(
 def build_results(
     session: Session, mapping: Map, rules: Rules, truth: Truth, *, decide_outcomes: bool
 ) -> dict[str, Any]:
+    """Build the results dict the scorer reads, from a session, a map, the rules and the survey.
+
+    The map must be written for this session's id, leave out no survey measurement except the
+    scale reference, and map each measurement that decides a route check "unsupported", because
+    Measure Lab records no routed cable path. The zip's sha256 must already be in the survey's
+    captures. With decide_outcomes, the pipeline id gains the RULE_SUFFIX and outcomes follow the
+    survey's strict rule on the run's own values. Without decide_outcomes, the row makes no
+    decisions.
+    """
     _check_map(mapping, session, truth)
     if session.zip_sha256 not in truth.captures:
         raise InputError(
@@ -571,6 +621,12 @@ def import_session(
     *,
     decide_outcomes: bool,
 ) -> dict[str, Any]:
+    """Import a session zip, map, rules file and survey into a results file, and return the results.
+
+    An output path that collides with any input, by the same path, another spelling, a symlink or
+    a hard link, is refused before anything is read. The results text is then loaded through the
+    full scorer in a scratch directory, so a file that would not score is never written.
+    """
     refuse_output_over_inputs(
         [out_path],
         [
@@ -598,6 +654,11 @@ def import_session(
 
 
 def main(argv: list[str]) -> int:
+    """Run `score import-measure-lab` with the given argv.
+
+    An InputError prints a `score import-measure-lab:` line on stderr and returns 2, with no
+    output file written. Success writes the results file and returns 0.
+    """
     parser = argparse.ArgumentParser(
         prog="score import-measure-lab",
         description="Convert a Measure Lab session zip (format 2) into a results file, using a "
