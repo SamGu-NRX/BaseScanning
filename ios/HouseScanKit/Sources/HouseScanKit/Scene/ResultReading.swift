@@ -6,6 +6,10 @@ import Foundation
 // only by rules that aren't approved yet still fits, and a spot that might stand in the meter's
 // working space goes to an installer whatever the decision says.
 
+/// What the result screen leads with, read from the server's answer: the headline (`Answer`),
+/// the checks the card shows (`cardLines`), and how far each passed its check (`Check.margin`).
+/// The rules that pick them live here, so each has a test against a decoded answer; the screen
+/// only turns them into words.
 public enum ResultReading {
     /// The server's check for the NEC 110.26 working space in front of the meter
     /// (server/README.md, "Reading a result"). A spot that might stand in that space is never a

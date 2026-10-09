@@ -11,17 +11,23 @@ import Compression
 // Layout per PKWARE APPNOTE 6.3.x: local header + data for each file, then the central directory,
 // then the end-of-central-directory record. No ZIP64: anything that would need it throws.
 
+/// One file of the scan bundle's archive: a path inside it and the bytes to write there.
 public struct ZipEntry: Sendable, Equatable {
     /// Path inside the archive, forward slashes, UTF-8.
     public var name: String
+    /// The entry's bytes, uncompressed. The CRC and the stored size always describe these,
+    /// whichever method the entry is written with.
     public var data: Data
 
+    /// An entry: `name` inside the archive, `data` as it will be read back.
     public init(name: String, data: Data) {
         self.name = name
         self.data = data
     }
 }
 
+/// Why `ZipWriter` refuses an archive: a name it cannot write, a name it has already written, or
+/// a size or date the format holds no room for without ZIP64.
 public enum ZipWriterError: Error, Equatable, CustomStringConvertible {
     case tooManyEntries(Int)
     case entryTooLarge(name: String, bytes: Int)
@@ -30,6 +36,7 @@ public enum ZipWriterError: Error, Equatable, CustomStringConvertible {
     case duplicateName(String)
     case dateOutOfRange(Date)
 
+    /// The error in words, naming the entry and the limit it broke.
     public var description: String {
         switch self {
         case .tooManyEntries(let n): "\(n) entries; a ZIP without ZIP64 holds at most 65535"
@@ -42,6 +49,8 @@ public enum ZipWriterError: Error, Equatable, CustomStringConvertible {
     }
 }
 
+/// The checksum each ZIP entry carries, so a reader can tell the bytes arrived whole
+/// (`ZipCRC32.checksum`).
 public enum ZipCRC32 {
     private static let table: [UInt32] = (0..<256).map { n in
         var c = UInt32(n)
@@ -61,6 +70,11 @@ public enum ZipCRC32 {
     }
 }
 
+/// The scan bundle's ZIP writer, per PKWARE APPNOTE 6.3.x: entries that shrink are deflated
+/// (method 8, Apple's Compression framework), already-compressed image formats are stored as
+/// they are, and everything else is stored when deflating would not make it smaller. No ZIP64:
+/// an archive past the format's limits throws (`ZipWriterError`). Build in memory
+/// (`ZipWriter.archive`) or stream to a file one entry at a time (`ZipWriter.write`).
 public enum ZipWriter {
     /// Builds a ZIP archive in memory, deflating each entry that shrinks and storing the rest.
     /// - Parameters:

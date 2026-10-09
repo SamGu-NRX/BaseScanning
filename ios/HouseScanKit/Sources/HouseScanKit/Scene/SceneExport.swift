@@ -5,6 +5,8 @@ import simd
 // The capture works in ARKit's gravity-aligned world frame in meters; the scene frame is that same
 // frame in feet, so conversion is a uniform scale with no rotation or origin shift.
 
+/// Meters to feet for the scene frame: scene.json is the capture's ARKit world frame written in
+/// feet, so the one conversion between the two is this scale.
 public enum SceneUnits {
     /// Exact by definition: the international foot is 0.3048 m.
     public static let feetPerMeter: Double = 1 / 0.3048
@@ -27,10 +29,15 @@ public struct SceneWall: Sendable, Equatable {
     /// Corners the walk followed, nearest the meter first (`WallFrame.leftCorners`). Each carries
     /// how the line of the piece past it was found.
     public var leftCorners: [WallCorner]
+    /// Corners the walk followed, nearest the meter first (`WallFrame.rightCorners`). Each carries
+    /// how the line of the piece past it was found.
     public var rightCorners: [WallCorner]
     /// How the line of the meter's piece was found.
     public var source: WallLineSource
 
+    /// The chain from the meter's wall out through the corners, in walk order. Nothing is
+    /// re-derived here; `SceneExport` refuses corners that do not run outward from the meter
+    /// (`SceneExportError.cornersOutOfOrder`).
     public init(
         meter: SIMD3<Float>, outward: SIMD3<Float>, groundY: Float,
         leftCorners: [WallCorner] = [], rightCorners: [WallCorner] = [], source: WallLineSource = .tap
@@ -56,6 +63,9 @@ public struct SceneWall: Sendable, Equatable {
         WallSegment.chain(outward: outward, source: source, left: leftCorners, right: rightCorners)
     }
 
+    /// The world point, meters, at coordinates on the chain: `s` picks the piece (past a corner,
+    /// the piece there), `height` rises from `groundY` and `out` runs away from that piece's face.
+    /// `wallCoordinates(of:)` maps such a point back.
     public func world(s: Float, height: Float, out: Float) -> SIMD3<Float> {
         let segments = chain.segments
         let piece = segments[WallSegment.index(in: segments, atS: s)]
@@ -106,16 +116,23 @@ public struct SceneWall: Sendable, Equatable {
     }
 }
 
+/// An opening in the wall the scene records: a door or a window. The rawValue is the object
+/// `type` scene.json carries.
 public enum SceneOpeningKind: String, Sendable, Equatable {
     case door
     case window
 }
 
+/// Something tapped once that stands at the wall: a gas meter or an AC unit. The rawValue is the
+/// object `type` scene.json carries.
 public enum ScenePointObjectKind: String, Sendable, Equatable {
     case gasMeter = "gas_meter"
     case ac
 }
 
+/// Something the scene records beside the wall: an opening in it, an object standing at it, a
+/// fence or hedge in front of it, or a driveway. `SceneExport` writes openings and point objects
+/// as objects, fences as facing entries and driveways as ground entries.
 public enum SceneFeature: Sendable {
     /// A door or window on the wall. `span` is in s meters; `bottom` and `top` are meters above the
     /// ground. `operable` nil means the homeowner was not asked, and it is then left out.
@@ -128,9 +145,13 @@ public enum SceneFeature: Sendable {
     case driveway(edge: [SIMD3<Float>])
 }
 
+/// What the walk saw of the wall and the ground in front of it: stretches of s, each with its
+/// reach, plus what the homeowner said the two ends are. Every span reader of `CoverageMap` has
+/// a band here (`SceneCoverage.init(_:leftEndMarked:rightEndMarked:)`).
 public struct SceneCoverage: Sendable {
     /// True when the homeowner marked the left end as a real limit (fence, property line).
     public var leftEndMarked: Bool
+    /// True when the homeowner marked the right end as a real limit (fence, property line).
     public var rightEndMarked: Bool
     /// Stretches of wall face seen, each with how high up it was seen, meters above the ground
     /// (`CoverageMap.wallSeenSpans()`). Always sent as `out_ft`: scene.json's "no out_ft" means
@@ -147,6 +168,8 @@ public struct SceneCoverage: Sendable {
     /// means seen clear all the way up, which a phone view of the wall's plane can't show.
     public var overhead: [ObservedSpan]
 
+    /// The coverage as its parts, for spans already in hand;
+    /// `init(_:leftEndMarked:rightEndMarked:)` reads them off a `CoverageMap`.
     public init(
         leftEndMarked: Bool, rightEndMarked: Bool, wall: [ObservedSpan], ground: [ObservedSpan],
         facing: [ObservedSpan] = [], overhead: [ObservedSpan] = []
@@ -168,17 +191,26 @@ public struct SceneCoverage: Sendable {
     }
 }
 
+/// One kept keyframe: a photo in the uploaded bundle and the camera pose and intrinsics it was
+/// taken with, in the form scene.json's keyframes carry.
 public struct SceneKeyframe: Sendable {
+    /// The keyframe's identifier; `SceneExport` refuses an empty one.
     public var id: String
     /// ARKit camera transform: column-major, translation in meters.
     public var cameraToWorld: simd_float4x4
     /// [fx, fy, cx, cy] in pixels of the landscape sensor image.
     public var intrinsics: SIMD4<Float>
+    /// The image's width, pixels; below 1 the keyframe is refused
+    /// (`SceneExportError.invalidKeyframe`).
     public var w: Int
+    /// The image's height, pixels; below 1 the keyframe is refused
+    /// (`SceneExportError.invalidKeyframe`).
     public var h: Int
     /// JPEG file name inside the uploaded bundle.
     public var img: String
 
+    /// One keyframe as captured: ARKit's camera transform, the landscape sensor image's
+    /// intrinsics, and the image's size and file name.
     public init(id: String, cameraToWorld: simd_float4x4, intrinsics: SIMD4<Float>, w: Int, h: Int, img: String) {
         self.id = id
         self.cameraToWorld = cameraToWorld
@@ -203,13 +235,20 @@ public enum MeterPlaneSource: Sendable, Equatable {
     public static let estimatedPlaneExtraError: Float = 0.15
 }
 
+/// Everything scene.json is built from: the wall chain around the meter, the wall's ends and
+/// position errors, what was marked on and in front of the wall, what the walk and the LiDAR
+/// mesh saw, the keyframes and stills the bundle carries, and what the homeowner said the ground
+/// is. Feed one to `SceneExport.jsonData`.
 public struct SceneInput: Sendable {
+    /// The wall chain the meter sits on, corners included (`SceneWall`).
     public var wall: SceneWall
     /// Id of the meter's wall. A chain's other walls are named after it, with their side and
     /// count from the meter: "<wallID>-left-1" is the first wall round the left corner.
     public var wallID: String
     /// s meters of the chain's left and right ends. Must contain 0, the meter.
     public var baselineS: ClosedRange<Float>
+    /// The wall's height above the ground, meters, written on every wall of the chain as
+    /// `height_ft`; nil omits it.
     public var wallHeight: Float?
     /// Meter position error, meters. Nil leaves the server's default for AR taps.
     public var meterPlusMinus: Float?
@@ -219,8 +258,12 @@ public struct SceneInput: Sendable {
     /// Position error of every object (openings, gas meter, AC), meters. Nil leaves the server's
     /// default for the object's source.
     public var objectPlusMinus: Float?
+    /// What was marked along the wall: openings, point objects, fences and driveways
+    /// (`SceneFeature`).
     public var features: [SceneFeature]
+    /// What the walk saw (`SceneCoverage`).
     public var coverage: SceneCoverage
+    /// The scan's kept keyframes, each with its photo's file name (`SceneKeyframe`).
     public var keyframes: [SceneKeyframe]
     /// Close-up photo file names keyed by purpose.
     public var stills: [String: String]
@@ -236,6 +279,9 @@ public struct SceneInput: Sendable {
     /// and the server treats the surface as unknown.
     public var groundType: SceneGroundType?
 
+    /// Creates the scene's input. Required are the wall, its ends (`baselineS`) and the coverage;
+    /// defaults carry the fields a scan may have nothing of: a measured wall height, error
+    /// overrides, features, keyframes and stills, mesh measurements, a named ground type.
     public init(
         wall: SceneWall, wallID: String = "wall", baselineS: ClosedRange<Float>, wallHeight: Float? = nil,
         meterPlusMinus: Float? = nil, meterPlane: MeterPlaneSource = .detectedPlane, objectPlusMinus: Float? = nil,
@@ -259,6 +305,7 @@ public struct SceneInput: Sendable {
     }
 }
 
+/// What `SceneExport.jsonData` refuses to export, with the failing value named in `description`.
 public enum SceneExportError: Error, Equatable, CustomStringConvertible {
     case emptyWallID
     case outwardNotUnitHorizontal(SIMD3<Float>)
@@ -274,6 +321,7 @@ public enum SceneExportError: Error, Equatable, CustomStringConvertible {
     /// Left corners must run from the meter leftward (s falling below 0), right corners rightward.
     case cornersOutOfOrder([Float])
 
+    /// The error in words, naming the field and value that failed.
     public var description: String {
         switch self {
         case .emptyWallID: "wallID is empty"
@@ -316,6 +364,9 @@ extension ObservedSpan {
     }
 }
 
+/// The scene.json builder: `jsonData` validates a `SceneInput` (`SceneExportError`), converts the
+/// capture's meters to the scene's feet (`SceneUnits`), and encodes deterministic JSON whose
+/// numbers are rounded to four decimals.
 public enum SceneExport {
     /// Half the plan width of a tapped gas meter. The tap gives one point, not a size, so the
     /// meter is drawn as a 0.3 m square: a hypothesis for a typical residential gas meter or

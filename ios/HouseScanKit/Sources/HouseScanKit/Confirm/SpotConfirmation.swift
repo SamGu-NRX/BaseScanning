@@ -17,12 +17,15 @@ import simd
 public struct SpotArea: Sendable, Equatable {
     /// The footprint along the wall (s) and out from it.
     public var spot: ClosedRange<Float>
+    /// How far out from the wall the footprint itself reaches.
     public var spotOut: ClosedRange<Float>
     /// The whole area along the wall: the footprint and every zone that contains it.
     public var span: ClosedRange<Float>
     /// How far out from the wall the area reaches.
     public var depth: Float
 
+    /// The area as its parts. `init(spot:spotOut:zones:)` is the usual path: it widens the
+    /// footprint over the clearance zones that hold it.
     public init(spot: ClosedRange<Float>, spotOut: ClosedRange<Float>, span: ClosedRange<Float>, depth: Float) {
         self.spot = spot
         self.spotOut = spotOut
@@ -64,10 +67,15 @@ public struct SpotArea: Sendable, Equatable {
 
 /// A kept photo the spot check may show.
 public struct SpotPhotoCandidate: Sendable, Equatable {
+    /// The kept keyframe's id.
     public var id: String
+    /// The camera the photo was taken with (`CameraFrame`).
     public var camera: CameraFrame
+    /// Whether tracking was normal when it was taken: photos taken while tracking was limited
+    /// never show the spot (`SpotPhoto.best`).
     public var trackingNormal: Bool
 
+    /// A candidate from the kept keyframe's id and camera.
     public init(id: String, camera: CameraFrame, trackingNormal: Bool) {
         self.id = id
         self.camera = camera
@@ -77,9 +85,13 @@ public struct SpotPhotoCandidate: Sendable, Equatable {
 
 /// The photo chosen for a spot check and how much of the area it shows.
 public struct SpotPhotoChoice: Sendable, Equatable {
+    /// The chosen candidate's id: the keyframe to show, and what the spot check records as the
+    /// photo shown (`SpotConfirmation.photoID`).
     public var id: String
     /// Fractions of the footprint's and the whole area's ground samples inside the image.
     public var footprintInView: Float
+    /// The same fraction over the whole area — its `SpotArea.span` by `SpotArea.depth` — where
+    /// `footprintInView` covers the footprint alone.
     public var areaInView: Float
     /// Angle between the view from the area's middle to the camera and the wall's outward, in
     /// plan, radians.
@@ -103,9 +115,12 @@ public struct SpotPhotoConfig: Sendable, Equatable {
     /// Ground samples every this many meters along the wall and out from it.
     public var sampleSpacing: Float = 0.15
 
+    /// The defaults above.
     public init() {}
 }
 
+/// Which kept photo a spot check shows: the one that best shows the area asked about
+/// (`SpotPhoto.best`).
 public enum SpotPhoto {
     /// The kept photo that best shows the area, or nil when none shows enough of it.
     ///
@@ -174,14 +189,20 @@ public enum SpotConfirmationAnswer: String, Sendable, Equatable {
 /// One spot check and its answer, tied to what it was about: the area, the answer that named the
 /// spot and the scene that answer was for (each by the sha256 of its bytes), and the photo shown.
 public struct SpotConfirmation: Sendable, Equatable {
+    /// The area the question was about (`SpotArea`).
     public var area: SpotArea
+    /// The sha256 of the placement answer that named this spot.
     public var answerSHA256: String
+    /// The sha256 of the scene.json that answer was for.
     public var sceneSHA256: String
     /// The keyframe shown, nil when no kept photo showed the area and the question was asked
     /// without one.
     public var photoID: String?
+    /// What the homeowner said (`SpotConfirmationAnswer`).
     public var answer: SpotConfirmationAnswer
 
+    /// One check: the area asked about, the digests tying it to the exchange that named the
+    /// spot, the photo shown, and the answer.
     public init(area: SpotArea, answerSHA256: String, sceneSHA256: String, photoID: String?, answer: SpotConfirmationAnswer) {
         self.area = area
         self.answerSHA256 = answerSHA256
@@ -202,6 +223,7 @@ public struct SpotConfirmation: Sendable, Equatable {
 public struct SpotConfirmations: Sendable, Equatable {
     public private(set) var records: [SpotConfirmation] = []
 
+    /// A scan starts with no checks: the first spot is always asked about.
     public init() {}
 
     public mutating func record(_ confirmation: SpotConfirmation) {

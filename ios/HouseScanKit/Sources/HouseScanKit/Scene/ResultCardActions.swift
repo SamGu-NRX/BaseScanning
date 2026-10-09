@@ -5,6 +5,9 @@ import Foundation
 // camera is offered: not the AR view, not "Show me" on the card or on a check line, and not
 // "Capture it now" in Details (#110). Tested in ResultCardActionsTests.
 
+/// Which buttons the result screen offers, from its answer (`ResultReading.Answer`) and whether
+/// the camera is still up: the card's one filled button (`primary`), and whether a view is
+/// offered anywhere (`offersView`).
 public enum ResultCardActions {
     /// The card's one filled button.
     public enum Primary: Equatable, Sendable {

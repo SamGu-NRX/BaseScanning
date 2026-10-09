@@ -21,6 +21,8 @@ public struct ResultOverlayPolicy: Sendable, Equatable {
     /// When the current unbroken run of "drawn" began; nil while the AR scene isn't drawing.
     private var drawnSince: Double?
 
+    /// Starts on the Canvas: the AR scene takes over only once `update` has seen it draw the
+    /// result for `confirmation` seconds.
     public init() {}
 
     /// Takes one look at the AR scene: `drawn` says whether it draws the result now, at `time`

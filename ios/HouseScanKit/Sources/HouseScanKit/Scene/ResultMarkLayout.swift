@@ -5,6 +5,11 @@ import Foundation
 // stack, where a footprint outline sits above them and how it is dashed. Display only; nothing
 // here changes where the server put the spot or what it decided.
 
+/// Where the result's marks sit on the wall, shared by the result card's 3D model
+/// (`ResultScene3D`) and the AR view (`ResultARModel`, `BatteryOverlay`): which mark a spot
+/// gets, where the camera aims, how the clearance zones and the footprint outline stack, and how
+/// the outline's dashes run. Display only: nothing here changes where the server put the spot or
+/// what it decided.
 public enum ResultMarkLayout {
     /// What stands at the spot. Only a clean fit (`ResultReading.spotIsClean`) gets a battery; a
     /// spot that might stand in the meter's working space gets the outline of its footprint, as

@@ -3,6 +3,8 @@ import Foundation
 /// What produced a scan, written beside it as `scan-stamp.json` so a scan pulled off a phone can
 /// be matched to the app build, the server and the rules that judged it.
 public struct ScanStamp: Codable, Sendable, Equatable {
+    /// The app build that made the scan: its version and build numbers and the commit it was
+    /// built from.
     public struct App: Codable, Sendable, Equatable {
         /// CFBundleShortVersionString and CFBundleVersion.
         public var version: String
@@ -17,6 +19,8 @@ public struct ScanStamp: Codable, Sendable, Equatable {
         }
     }
 
+    /// Where the scan's answers come from: the placement server, or nothing when the bundled
+    /// sample answers instead.
     public struct Server: Codable, Sendable, Equatable {
         /// The placement server the scan is sent to; nil when the bundled sample answers.
         public var url: String?
@@ -57,7 +61,9 @@ public struct ScanStamp: Codable, Sendable, Equatable {
         }
     }
 
+    /// The build that made the scan (`App`).
     public var app: App
+    /// The server the scan's answers come from (`Server`).
     public var server: Server
     /// The latest answer for this scan; nil before one arrives.
     public var answer: Answer?
@@ -68,6 +74,8 @@ public struct ScanStamp: Codable, Sendable, Equatable {
 
     public static let fileName = "scan-stamp.json"
 
+    /// Creates the stamp written beside a scan: which build made it and where its answers come
+    /// from, with the answer and the practice flag left to be filled in.
     public init(app: App, server: Server, answer: Answer? = nil, practice: Bool = false) {
         self.app = app
         self.server = server

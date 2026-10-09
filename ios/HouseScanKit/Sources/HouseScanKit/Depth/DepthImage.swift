@@ -8,7 +8,9 @@ import simd
 /// coordinates follow `CameraFrame`: (0, 0) is the image's top-left corner and pixel (i, j)
 /// covers [i, i + 1) x [j, j + 1), so scaling an image scales its intrinsics exactly.
 public struct DepthImage: Sendable, Equatable {
+    /// The image's width, pixels; `millimeters` runs row-major at this width.
     public let width: Int
+    /// The image's height, pixels.
     public let height: Int
     /// Row-major, `width` x `height`, in millimeters; 0 means no reading.
     public let millimeters: [UInt16]
