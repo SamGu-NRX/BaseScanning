@@ -6,6 +6,7 @@ cameras, parallel rays, blank photos, empty inputs), and hand-computed matrices.
 """
 
 import json
+import warnings
 
 import cv2
 import numpy as np
@@ -108,6 +109,17 @@ def test_sample_depth_zero_and_negative_depth_are_holes():
     assert np.isnan(sample_depth(zero, np.array([[0.5, 0.5]]))).all()
     negative = np.array([[-1.0, 2.0], [3.0, 4.0]])
     assert np.isnan(sample_depth(negative, np.array([[0.0, 0.0]]))).all()
+
+
+def test_sample_depth_nonfinite_or_huge_uv_is_nan_without_warning():
+    # NaN, infinity and beyond-2^53 positions have no valid integer pixel index: they must come
+    # back as NaN without casting them to int anyway (an undefined conversion, and it warns).
+    d = np.array([[1.0, 2.0], [3.0, 4.0]])
+    uv = np.array([[np.nan, 0.0], [np.inf, 1.0], [1.0, -np.inf], [1e300, 0.0]])
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        got = sample_depth(d, uv)
+    assert np.isnan(got).all()
 
 
 def test_sample_depth_empty_uv():

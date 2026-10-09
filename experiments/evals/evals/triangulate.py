@@ -44,10 +44,15 @@ def sample_depth(depth: np.ndarray, uv: np.ndarray) -> np.ndarray:
     d = np.where(np.isfinite(depth) & (depth > 0), depth, np.nan).astype(np.float64)
     h, w = d.shape
     x, y = uv[:, 0], uv[:, 1]
-    x0, y0 = np.floor(x).astype(np.int64), np.floor(y).astype(np.int64)
+    # Only coordinates a bilinear stencil could use are cast: NaN, infinity and beyond-2^53
+    # positions have no valid integer pixel index, and converting them anyway is undefined (and
+    # warns). They stay masked out below.
+    ok = np.isfinite(x) & np.isfinite(y) & (np.abs(x) <= 2**53) & (np.abs(y) <= 2**53)
+    x0 = np.floor(np.where(ok, x, 0.0)).astype(np.int64)
+    y0 = np.floor(np.where(ok, y, 0.0)).astype(np.int64)
     fx, fy = x - x0, y - y0
     out = np.full(len(uv), np.nan)
-    ok = (x0 >= 0) & (y0 >= 0) & (x0 + 1 < w) & (y0 + 1 < h)
+    ok &= (x0 >= 0) & (y0 >= 0) & (x0 + 1 < w) & (y0 + 1 < h)
     x0, y0, fx, fy = x0[ok], y0[ok], fx[ok], fy[ok]
     out[ok] = (
         d[y0, x0] * (1 - fx) * (1 - fy)
