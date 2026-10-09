@@ -36,16 +36,40 @@ from .nms import postprocess
 from .paths import DATA, WEIGHTS
 from .sets import SETS, ground_truth, image_path, save_preds
 
+# The COCO-pretrained base checkpoint, ustc-community/dfine-small-coco (Apache-2.0), cached here.
 BASE = WEIGHTS / "dfine-small"
+# Fine-tuned weights and train.json, written by train().
 OUT = DATA / "student" / "dfine_small"
+# Scored classes in class-index order: LABELS.index builds targets, argmax picks predictions.
 LABELS = ["window", "door"]
-SIZE = 640
+SIZE = 640  # square input side in pixels; images are stretched, not letterboxed
+# AdamW settings: base lr, backbone fraction of it, weight decay, warmup steps, grad clip norm.
 LR, BACKBONE_LR_SCALE, WEIGHT_DECAY, WARMUP, CLIP = 2e-4, 0.1, 1e-4, 100, 0.1
 MPS_MEMORY_FRACTION = 0.2  # of the recommended working set, to keep GPU memory near 3 GB
-SEED = 20260926
+SEED = 20260926  # torch seed and _batches rng seed, so a run is reproducible
 
 
 def _integral_forward(self, pred_corners, project):
+    """Weighted sum of projection values under the softmax over corner bins, as multiply-and-sum.
+
+    This replaces DFineIntegral.forward for models built through this module. transformers'
+    original calls F.linear with the one-dimensional `project`, whose backward pass fails on MPS
+    ("mat2 must be a matrix"). The two compute the same numbers; only the backward differs.
+
+    Args:
+        pred_corners: (batch, queries, 4 * (max_num_bins + 1)) logits over corner bins.
+        project: (max_num_bins + 1,) projection values, shared by all four coordinates.
+
+    Returns:
+        (batch, queries, 4) corner coordinates, each inside the projection's range.
+
+    >>> from types import SimpleNamespace
+    >>> import torch
+    >>> layer = SimpleNamespace(max_num_bins=2)
+    >>> corners = torch.zeros(1, 1, 4 * 3)  # uniform softmax over three bins
+    >>> _integral_forward(layer, corners, torch.tensor([0.0, 0.5, 1.0]))
+    tensor([[[0.5000, 0.5000, 0.5000, 0.5000]]])
+    """
     import torch.nn.functional as F
 
     batch_size, num_queries, _ = pred_corners.shape
@@ -55,12 +79,20 @@ def _integral_forward(self, pred_corners, project):
 
 
 def _patch_integral() -> None:
+    """Point DFineIntegral.forward at _integral_forward on the transformers class.
+
+    Every DFineForObjectDetection built after this call gets the MPS-safe integral. Calling it
+    again is harmless."""
     from transformers.models.d_fine import modeling_d_fine
 
     modeling_d_fine.DFineIntegral.forward = _integral_forward
 
 
 def _device():
+    """The MPS device, with the process capped at MPS_MEMORY_FRACTION of the recommended GPU memory.
+
+    Raises RuntimeError when MPS is unavailable, so training and prediction only run on an Apple
+    silicon Mac. Every Linux box fails here."""
     import torch
 
     if not torch.backends.mps.is_available():
@@ -70,11 +102,30 @@ def _device():
 
 
 def pixels(im: Image.Image) -> np.ndarray:
+    """RGB pixels of `im`, prepared as the checkpoint wants them: stretched to SIZE x SIZE, scaled
+    to [0, 1], no normalization, bilinear resize.
+
+    Returns a float32 array in channel-height-width order, shape (3, SIZE, SIZE).
+
+    >>> from PIL import Image
+    >>> p = pixels(Image.new("RGB", (100, 50), (255, 0, 0)))
+    >>> p.shape, p.dtype
+    ((3, 640, 640), dtype('float32'))
+    >>> float(p[0].mean()), float(p[1].mean()), float(p[2].mean())
+    (1.0, 0.0, 0.0)
+    """
     x = np.asarray(im.convert("RGB").resize((SIZE, SIZE), Image.Resampling.BILINEAR), dtype=np.float32) / 255.0
     return x.transpose(2, 0, 1)
 
 
 def _batches(gt: dict, batch: int, rng: random.Random):
+    """Yield (images, targets) training batches from an Open Images ground-truth dict.
+
+    Images are `pixels()` outputs stacked into (batch, 3, SIZE, SIZE). Targets hold one (class
+    indices, cxcywh boxes) pair per image, coordinates relative to the image. Each image flips
+    horizontally with probability 0.5 and its boxes mirror to match. The last partial batch is
+    dropped when the image count is not a multiple of `batch`. `rng` drives the shuffle and the
+    flips; `train()` seeds it with SEED, so a run is reproducible."""
     ids = sorted(gt)
     rng.shuffle(ids)
     for k in range(0, len(ids) - batch + 1, batch):
@@ -93,6 +144,10 @@ def _batches(gt: dict, batch: int, rng: random.Random):
 
 
 def _model(path, device):
+    """A DFineForObjectDetection loaded from the checkpoint directory `path`, patched, on `device`.
+
+    This patches the integral layer first. The base checkpoint at BASE gets a fresh two-class head
+    for LABELS in place of the mismatched COCO head; a fine-tuned checkpoint keeps its own config."""
     from transformers import DFineForObjectDetection
 
     _patch_integral()
@@ -103,6 +158,14 @@ def _model(path, device):
 
 
 def train(epochs: int, batch: int = 4, max_steps: int | None = None) -> None:
+    """Fine-tune the base checkpoint on the OI train subset and save the weights to OUT.
+
+    AdamW at LR with the backbone at LR * BACKBONE_LR_SCALE, weight decay WEIGHT_DECAY, linear
+    warmup over the first WARMUP steps, gradient norms clipped at CLIP. Batches come from
+    _batches, seeded with SEED. Every 20 steps the loop logs epoch, step, mean loss of the last 20
+    steps, elapsed seconds and MPS memory to DATA/student/dfine_small_train.log and stderr.
+    `max_steps` stops early and saves nothing; the `probe` command runs it. A full run keeps the
+    final weights, with no best-epoch selection, and writes train.json next to them. Needs MPS."""
     import torch
 
     torch.manual_seed(SEED)
@@ -145,6 +208,12 @@ def train(epochs: int, batch: int = 4, max_steps: int | None = None) -> None:
 
 
 def detect(model, dev, path) -> tuple[list[dict], float]:
+    """Run one image through the model and return (detections, milliseconds).
+
+    The image goes through `pixels()`. Each query takes its best class: the score is the sigmoid
+    of its logit, boxes convert from cxcywh to xyxy and clip to [0, 1], then nms.postprocess
+    applies the shared score floor, per-class NMS and per-image cap. The time covers the forward
+    pass and the copy to CPU, not reading the image or the post-processing."""
     import torch
 
     x = torch.from_numpy(pixels(Image.open(path))[None]).to(dev)
@@ -161,6 +230,13 @@ def detect(model, dev, path) -> tuple[list[dict], float]:
 
 
 def predict() -> None:
+    """Detect on every scored set plus the electro photos and cache the predictions.
+
+    Writes PREDS/student_dfine/<set>.json for oi_tune, oi_eval, cmp and electro, all on MPS, then
+    moves the model to CPU and writes PREDS/student_dfine_cpu/oi_eval.json from the first 61 OI
+    eval images, one warm-up and 60 timed. The cached meta records provenance, license, size,
+    runtime and the train.json stats, and sets.save_preds adds the load average. Requires the
+    fine-tuned weights train() saves to OUT. score.py reads these caches."""
     import torch
 
     size = sum(p.stat().st_size for p in OUT.glob("*.safetensors"))
