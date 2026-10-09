@@ -16,6 +16,12 @@ import Foundation
 // app can't act on goes to installer review instead of hiding the whole answer. The keys and
 // their types stay required.
 
+/// Why a server answer failed to decode, naming the JSON path it failed at.
+///
+/// `PlacementResult.decode(_:)` throws one for anything outside the result schema the app
+/// still cares about: a missing required key, a wrong type or array length, an unsupported
+/// `schema_version`, or an unknown value of an enum the app presents. What a real answer may
+/// add without failing is the subject of the note at the top of this file.
 public enum PlacementDecodingError: Error, Equatable, CustomStringConvertible {
     case unsupportedSchemaVersion(String)
     case unknownEnumValue(path: String, value: String)
@@ -23,6 +29,7 @@ public enum PlacementDecodingError: Error, Equatable, CustomStringConvertible {
     case missingKey(path: String)
     case malformed(path: String, detail: String)
 
+    /// The failure as one sentence naming the path, for logs and review screens.
     public var description: String {
         switch self {
         case .unsupportedSchemaVersion(let v): "result schema_version \"\(v)\" is not supported; expected \"1.0\""
@@ -34,6 +41,15 @@ public enum PlacementDecodingError: Error, Equatable, CustomStringConvertible {
     }
 }
 
+/// The server's overall call: install the battery, hand the decision to a person, or don't.
+///
+/// `pass` is a fully observed spot passing every check under an approved policy. `manualReview`
+/// means a person must decide: the best spot has an unsure check, the policy is not approved for
+/// automatic decisions (`PlacementPolicy.autoApprove`), or an area that could hold a valid spot
+/// was not seen. `reject` means every spot within reach fails by a clear margin and both ends of
+/// the walk are known. The screen reads the checks alongside the decision
+/// (`ResultReading.answer(decision:policyApproved:hasSpot:checks:)`), so a manual_review held
+/// back only by the rules' approval still shows as a fit.
 public enum PlacementDecision: String, Codable, Sendable, Equatable {
     case pass
     case manualReview = "manual_review"
@@ -41,6 +57,11 @@ public enum PlacementDecision: String, Codable, Sendable, Equatable {
     public init(from decoder: any Decoder) throws { self = try placementEnum(decoder) }
 }
 
+/// How one thing fared — a check, the spot, the cable route, a stretch of the sweep.
+///
+/// `unsure` is not a soft fail: the deciding evidence is missing, and `PlacementUnsureCause`
+/// says what would settle it. A spot the server chose carries no failing check (it is the best
+/// passing spot, or the best with none failing), so it arrives `pass` or `unsure`.
 public enum PlacementOutcome: String, Codable, Sendable, Equatable {
     case pass
     case fail
@@ -48,6 +69,15 @@ public enum PlacementOutcome: String, Codable, Sendable, Equatable {
     public init(from decoder: any Decoder) throws { self = try placementEnum(decoder) }
 }
 
+/// Why a check came out unsure. The cause decides who can settle it.
+///
+/// `margin` is a measurement inside its error band, so only a person can judge it;
+/// `unobserved` is a deciding area nobody saw, and more photos fix it
+/// (`PlacementMissingEvidence` asks for them); `unknownAttribute` is a fact the camera did not
+/// establish, such as whether a window opens; `ruleRequiresReview` is a situation the policy
+/// sends to a person regardless, such as a cable routed over a door.
+/// `PlacementCheck.needsPerson` sorts the first, third and fourth to a person and the second
+/// to the camera.
 public enum PlacementUnsureCause: String, Codable, Sendable, Equatable {
     case margin
     case unobserved
@@ -56,6 +86,12 @@ public enum PlacementUnsureCause: String, Codable, Sendable, Equatable {
     public init(from decoder: any Decoder) throws { self = try placementEnum(decoder) }
 }
 
+/// Which side of the threshold passes: `atLeast` wants the measurement above it, `atMost` below.
+///
+/// The measurement's error is on the passing side's tally: `atLeast` passes when measured less
+/// its error clears the threshold, `atMost` when measured plus its error stays under it.
+/// `ResultReading.margin(measured:threshold:plusMinus:comparison:)` turns this into a signed
+/// clearance for sorting checks.
 public enum PlacementComparison: String, Codable, Sendable, Equatable {
     case atLeast = "at_least"
     case atMost = "at_most"
@@ -70,6 +106,7 @@ public enum PlacementEvidenceKind: Codable, Sendable, Equatable {
     case pastEnd
     case unknown(String)
 
+    /// The server's string for a kind, kept as `.unknown` when this app doesn't know it.
     public init(rawValue: String) {
         self = switch rawValue {
         case "band": .band
@@ -78,6 +115,8 @@ public enum PlacementEvidenceKind: Codable, Sendable, Equatable {
         }
     }
 
+    /// The server's string: a known kind's wire name, or an unknown kind's raw value, so a
+    /// round trip preserves what the server wrote.
     public var rawValue: String {
         switch self {
         case .band: "band"
@@ -105,6 +144,7 @@ public enum PlacementBand: Codable, Sendable, Equatable {
     case facing
     case unknown(String)
 
+    /// The server's string for a band, kept as `.unknown` when this app doesn't know it.
     public init(rawValue: String) {
         self = switch rawValue {
         case "wall": .wall
@@ -115,6 +155,8 @@ public enum PlacementBand: Codable, Sendable, Equatable {
         }
     }
 
+    /// The server's string: a known band's wire name, or an unknown band's raw value, so a
+    /// round trip preserves what the server wrote.
     public var rawValue: String {
         switch self {
         case .wall: "wall"
@@ -135,22 +177,37 @@ public enum PlacementBand: Codable, Sendable, Equatable {
     }
 }
 
+/// Which side of the meter an end or a request is on: left is the negative side of s, right the
+/// positive.
 public enum PlacementSide: String, Codable, Sendable, Equatable {
     case left
     case right
     public init(from decoder: any Decoder) throws { self = try placementEnum(decoder) }
 }
 
+/// Whether a wall end is a real limit or just where the walk stopped.
+///
+/// `limit` is an end with no usable wall past it (a fence, a corner the walk does not follow);
+/// `unexplored` is where the scan stopped, and the wall may continue — a spot just past it could
+/// still be the better answer (`PlacementResult.closerUnseenEnd()`).
 public enum PlacementEndKind: String, Codable, Sendable, Equatable {
     case limit
     case unexplored
     public init(from decoder: any Decoder) throws { self = try placementEnum(decoder) }
 }
 
+/// One reason for the decision, in the server's own words.
+///
+/// A reason speaks for the whole scan — the policy, an unobserved area, an unexplored end — not
+/// for one spot; when no spot was chosen, the failing check at the spot nearest to passing
+/// explains it instead (`PlacementResult.nearestFailure`). The app shows `message` and never
+/// reads `code` (see the top of this file).
 public struct PlacementReason: Codable, Sendable, Equatable {
     /// A server enum the app doesn't read, kept as the raw string (see the top of this file).
     public var code: String
+    /// The sentence to show for this reason.
     public var message: String
+    /// Ids of the checks this reason is about, when it is about specific ones.
     public var checks: [String]?
 
     private enum CodingKeys: String, CodingKey, CaseIterable { case code, message, checks }
@@ -163,12 +220,26 @@ public struct PlacementReason: Codable, Sendable, Equatable {
     }
 }
 
+/// Which rules judged the scan, and whether they allow the server to decide on its own.
+///
+/// The app stamps the rule set's identity beside the scan (`ScanStamp.Answer` keeps `id`,
+/// `version` and `rulesSHA256`) and shows it with the answer, so a result can be traced to the
+/// rules that produced it.
 public struct PlacementPolicy: Codable, Sendable, Equatable {
+    /// The rule set's id, when the server names one; nil for no named policy (the bundled
+    /// sample has none).
     public var id: String?
+    /// The rule set's revision, when the server names one.
     public var version: String?
+    /// Whether the rules allow automatic decisions. False when no policy is selected or the
+    /// rules set it false — the public strict policy does, because some of its values are
+    /// placeholders — and then every would-be pass or reject arrives as `manual_review`. Which
+    /// of a check's values were placeholders is `PlacementRule.placeholder`.
     public var autoApprove: Bool
     /// A server enum the app doesn't read, kept as raw strings (see the top of this file).
     public var sources: [String]
+    /// Hash of the merged rules the decision used; `PlacementPolicy.rulesShortHash` shortens
+    /// it to the part the screen shows.
     public var rulesSHA256: String
     /// Whose rules decided, to show with the answer ("Demo rules: ... not Base's."). The solver
     /// also appends it to `summary`. Optional in the schema and absent from older answers.
@@ -201,22 +272,39 @@ public struct PlacementPolicy: Codable, Sendable, Equatable {
     }
 }
 
+/// One battery position the server evaluated, with its stretch of wall, footprint and cable run.
+///
+/// `PlacementResult.spot` is the chosen one, `PlacementResult.nearestConsidered` the closest to
+/// passing when nothing was chosen. Positions are plan coordinates [x, z] feet in the scene
+/// frame; map them onto the wall with `SceneWall.wallCoordinates(ofPlanPointFeet:)`. The schema
+/// carries no ground height, so the app rests the drawn box on its detected ground plane.
 public struct PlacementSpot: Codable, Sendable, Equatable {
+    /// How the spot fared (`pass`, `unsure` or `fail`). The chosen spot carries no failing
+    /// check, so it arrives `pass` or `unsure`.
     public var outcome: PlacementOutcome
+    /// The wall the battery backs onto; `segment` is the straight piece of it.
     public var wallID: String
+    /// Index of the straight baseline segment of `wallID` the battery backs onto.
     public var segment: Int
     /// Battery's stretch of wall in s feet, left edge first.
     public var spanFt: SIMD2<Double>
+    /// The battery's width along the wall, feet.
     public var widthFt: Double
+    /// The battery's depth out from the wall, feet.
     public var depthFt: Double
+    /// The battery's height above the ground, feet.
     public var heightFt: Double
     /// Plan corners [x, z] feet: back-left, back-right, front-right, front-left.
     public var footprint: [SIMD2<Double>]
+    /// Plan centre of the footprint, [x, z] feet.
     public var center: SIMD2<Double>
+    /// Unit vector along the wall toward +s, [x, z].
     public var along: SIMD2<Double>
+    /// Unit vector out from the wall toward the battery's front, [x, z].
     public var outward: SIMD2<Double>
     /// Footprint centre minus the meter's plan position, [dx, dz] feet.
     public var meterOffsetFt: SIMD2<Double>
+    /// The cable run from the meter to this spot, feet, when the server reports one.
     public var routeLengthFt: Double?
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -265,8 +353,16 @@ public struct PlacementSpot: Codable, Sendable, Equatable {
     }
 }
 
+/// A place the cable route goes over or under something on the wall, and what the round trip
+/// costs.
+///
+/// An object whose crossing effect is `detour` stays where it is and the cable bends: up and
+/// over or down and under, whichever is shorter. The bend's `extraFt` is added to
+/// `PlacementRoute.lengthFt`.
 public struct PlacementDetour: Codable, Sendable, Equatable {
+    /// What the route bends around, with the same naming `PlacementCheck.subject` uses.
     public var subject: String
+    /// The extra feet the bend adds to the route.
     public var extraFt: Double
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -281,8 +377,16 @@ public struct PlacementDetour: Codable, Sendable, Equatable {
     }
 }
 
+/// Something on the stretch of wall the cable route passes, and what the rules make of it.
+///
+/// Two things appear here: a stretch with no wall at all (effect `fail` when the gap is longer
+/// than the walls' errors, `review` when it may not be a gap) and an object whose rule names an
+/// effect for its type. `effect` is kept as the raw string the server wrote — `fail`, `review`,
+/// `detour` or `allow` — because the app never reads it (see the top of this file).
 public struct PlacementCrossing: Codable, Sendable, Equatable {
+    /// What is crossed: an object's name, or "stretch with no wall".
     public var subject: String
+    /// The stretch of wall, in s feet, over which the route meets it.
     public var spanFt: SIMD2<Double>
     /// A server enum the app doesn't read, kept as the raw string (see the top of this file).
     public var effect: String
@@ -307,15 +411,29 @@ public struct PlacementCrossing: Codable, Sendable, Equatable {
     }
 }
 
+/// The cable route from the meter to the chosen battery spot; nil whenever the spot is.
+///
+/// The route runs along the supported wall, bending around the objects the rules let it go over
+/// or under (`detours`), and everything it passes is reported in `crossings`. Its `outcome` is
+/// the route's own verdict, separate from the spot's.
 public struct PlacementRoute: Codable, Sendable, Equatable {
+    /// How the cable run fared: `pass`, `unsure` or `fail`.
     public var outcome: PlacementOutcome
+    /// Length along the wall from the meter to the battery's near edge, feet: the wall stretch
+    /// itself, an allowance per corner it rounds, and every detour's `PlacementDetour.extraFt`.
     public var lengthFt: Double
+    /// How far `lengthFt` may be off, feet: the meter's and wall's own errors, plus the round
+    /// trip past anything the route detours around on uncertain heights.
     public var plusMinusFt: Double
+    /// Height above the ground the cable runs at, feet, from the rules.
     public var heightFt: Double
     /// Plan points [x, z] feet from the meter along the wall to the battery. Map them onto the wall
     /// with `SceneWall.wallCoordinates(ofPlanPointFeet:)`.
     public var polyline: [SIMD2<Double>]
+    /// The bends the route makes around wall objects, each with the feet it costs.
     public var detours: [PlacementDetour]
+    /// Everything on the wall the route passes: gaps with no wall, and objects the rules name
+    /// an effect for.
     public var crossings: [PlacementCrossing]
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -348,9 +466,18 @@ public struct PlacementRoute: Codable, Sendable, Equatable {
     }
 }
 
+/// The rule value a check was judged by, with where the value came from.
+///
+/// Whether a value is a `placeholder` — a demo value with no public source — matters beyond
+/// this one check: the public strict policy refuses automatic decisions while any of its values
+/// is one, which is one way `PlacementPolicy.autoApprove` comes out false. Each check reports
+/// its own value's standing here.
 public struct PlacementRule: Codable, Sendable, Equatable {
+    /// The parameter's name in the server's rules.yaml.
     public var key: String
+    /// Citation for the value, as the rules file gave it.
     public var source: String
+    /// True for a demo value with no public source.
     public var placeholder: Bool
 
     private enum CodingKeys: String, CodingKey, CaseIterable { case key, source, placeholder }
@@ -363,17 +490,41 @@ public struct PlacementRule: Codable, Sendable, Equatable {
     }
 }
 
+/// One rule check at a spot: what was measured, against what, and how it came out.
+///
+/// `PlacementResult.checks` holds the checks at the chosen spot — or, when no spot was chosen,
+/// at `PlacementResult.nearestConsidered`, where they explain why that spot fails. An `unsure`
+/// outcome names its cause, and `PlacementCheck.needsPerson` separates the unsure checks a
+/// person must judge from the ones another view settles.
 public struct PlacementCheck: Codable, Sendable, Equatable {
+    /// Stable identifier, for example `gas_clearance` or `route_length`; requests for more
+    /// evidence name the checks they settle by it.
     public var id: String
+    /// The check's name to show, for example "Distance from the gas meter".
     public var label: String
+    /// How the check came out; an `unsure` one says why in `unsureCause`.
     public var outcome: PlacementOutcome
+    /// Why the check is unsure, present only for an `unsure` outcome. Nil on an unsure check
+    /// is itself unexplained, so a person looks at it (`PlacementCheck.needsPerson`).
     public var unsureCause: PlacementUnsureCause?
+    /// The server's sentence for the outcome, shown under the label.
     public var reason: String
+    /// The deciding measurement, feet — the gap to the nearest gas meter, for one. Nil when
+    /// nothing relevant was found or the area was not observed.
     public var measuredFt: Double?
+    /// The measurement's error, feet.
     public var plusMinusFt: Double?
+    /// The limit the measurement is judged against, feet.
     public var thresholdFt: Double?
+    /// Which side of `thresholdFt` passes (`PlacementComparison`). Nil when the server gives
+    /// no direction, and the distance to the limit counts either way
+    /// (`ResultReading.margin(measured:threshold:plusMinus:comparison:)`).
     public var comparison: PlacementComparison?
+    /// What the measurement is to, for example "objects[2] gas_meter"; nil when the check has
+    /// no such counterpart (the cable-run check measures the route, not a distance to
+    /// something).
     public var subject: String?
+    /// The rule value this check was judged by (`PlacementRule`).
     public var rule: PlacementRule
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -415,16 +566,33 @@ public struct PlacementCheck: Codable, Sendable, Equatable {
     }
 }
 
+/// A view the scan still needs: one that would settle an `unsure` check or an unobserved area.
+///
+/// Only areas nobody observed are asked for — an unsure measurement inside its error band needs
+/// a person, not more photos — and the list is empty for `pass` and `reject` decisions. Filming
+/// exactly what a request names settles it: a coverage entry with the same band and span, seen
+/// out at least to `outFt`. `GapPlanner.plan(for:leftEnd:rightEnd:)` turns the band requests
+/// into the walk's next asks; a kind or band this app doesn't know decodes as `.unknown` and
+/// can only go to installer review.
 public struct PlacementMissingEvidence: Codable, Sendable, Equatable {
+    /// What view is wanted: a band of coverage (`band`), a look past a wall end (`pastEnd`),
+    /// or a kind this app doesn't know (`PlacementEvidenceKind.unknown`).
     public var kind: PlacementEvidenceKind
+    /// Which band the request asks about, nil when it names none (a `pastEnd` request names a
+    /// side instead).
     public var band: PlacementBand?
+    /// The stretch of wall the view must cover, in s feet, when the request names one.
     public var spanFt: SIMD2<Double>?
     /// Ground, facing and overhead requests: how far the view must reach, feet, out from the wall
     /// (ground, facing) or up from the ground (overhead). An observed entry settles the request
     /// when its `out_ft` is at least this.
     public var outFt: Double?
+    /// Which end to look past, for a `pastEnd` request.
     public var side: PlacementSide?
+    /// Ids of the checks answering this request settles, when it settles any;
+    /// `PlacementResult.evidenceIndex(settling:)` finds the request for a check id.
     public var checks: [String]?
+    /// The ask in words, for the screen: "Sample: film the ground in front of the spot."
     public var message: String
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -456,11 +624,20 @@ public struct PlacementMissingEvidence: Codable, Sendable, Equatable {
     }
 }
 
+/// Where the wall chain ends on one side of the meter.
+///
+/// A `limit` end is a real end of usable wall; an `unexplored` one is only where the walk
+/// stopped, and `beyondReach` says whether anything past it could matter anyway.
 public struct PlacementEnd: Codable, Sendable, Equatable {
+    /// Whether this end is a real limit or unexplored (`PlacementEndKind`).
     public var kind: PlacementEndKind
     /// Where the wall chain ends, in s feet.
     public var sFt: Double
+    /// The end's plan position, [x, z] feet.
     public var point: SIMD2<Double>
+    /// True when the end is so far along the wall that no spot past it could pass the
+    /// route-length check: an unexplored end there does not block a `reject`, and
+    /// `PlacementResult.closerUnseenEnd()` never names it.
     public var beyondReach: Bool?
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -486,8 +663,11 @@ public struct PlacementEnd: Codable, Sendable, Equatable {
     }
 }
 
+/// The two ends of the wall chain the server worked from, one each side of the meter.
 public struct PlacementEnds: Codable, Sendable, Equatable {
+    /// The end on the left, at negative s.
     public var left: PlacementEnd
+    /// The end on the right, at positive s.
     public var right: PlacementEnd
 
     private enum CodingKeys: String, CodingKey, CaseIterable { case left, right }
@@ -499,12 +679,22 @@ public struct PlacementEnds: Codable, Sendable, Equatable {
     }
 }
 
+/// One stretch of wall and how battery positions starting on it fared, merged with neighbours
+/// of equal outcome.
+///
+/// Together the runs colour the wall on the site plan: each stretch fails because of the checks
+/// in `failing`, is held by those in `unsure`, or passes. A stretch too far along the wall for
+/// any cable route is one failing run, not evaluated start by start.
 public struct PlacementSweepRun: Codable, Sendable, Equatable {
+    /// The wall this run is on.
     public var wallID: String
     /// Range of battery left-edge positions in s feet covered by this run.
     public var startFt: SIMD2<Double>
+    /// How battery positions starting in this run fared.
     public var outcome: PlacementOutcome
+    /// Ids of the checks that fail in this run.
     public var failing: [String]
+    /// Ids of the checks that are unsure in this run.
     public var unsure: [String]
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -532,12 +722,20 @@ public struct PlacementSweepRun: Codable, Sendable, Equatable {
     }
 }
 
+/// The solver's tally for one answer, and the hashes that tie it to what was judged.
 public struct PlacementStats: Codable, Sendable, Equatable {
+    /// Battery positions the solver evaluated.
     public var candidates: Int
+    /// How many evaluated positions passed.
     public var pass: Int
+    /// How many evaluated positions came out unsure.
     public var unsure: Int
+    /// How many evaluated positions came out failing.
     public var fail: Int
+    /// How long the solver took over the whole answer, milliseconds.
     public var elapsedMs: Double
+    /// Hash of the scene JSON as uploaded; `ScanStamp.Answer` keeps it beside the scan so an
+    /// answer can be matched to the scene it judged.
     public var inputSHA256: String
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -557,19 +755,45 @@ public struct PlacementStats: Codable, Sendable, Equatable {
     }
 }
 
+/// The placement server's answer for one scan, decoded strictly against the result schema.
+///
+/// `PlacementResult.decode(_:)` is the way in. The parts read in the order the screen leads
+/// with them: the `decision` and `summary` carry the verdict, `checks` back it at the chosen
+/// `spot` (or at `nearestConsidered` when no spot was chosen), `missingEvidence` asks for the
+/// views that would settle what is unsure, `ends` and `sweep` carry the whole-wall picture, and
+/// `stats` the solver's tally.
 public struct PlacementResult: Codable, Sendable, Equatable {
+    /// The schema the answer speaks; decode accepts only "1.0" and throws
+    /// `PlacementDecodingError.unsupportedSchemaVersion` for anything else, a newer server's
+    /// version included.
     public var schemaVersion: String
+    /// The server's overall call (`PlacementDecision`).
     public var decision: PlacementDecision
+    /// One sentence for the homeowner or reviewer, with the policy's `notice` appended when
+    /// there is one (`summaryWithoutNotice` splits them back apart).
     public var summary: String
+    /// Why the decision is what it is, in the server's words (`PlacementReason`).
     public var reasons: [PlacementReason]
+    /// The rules that judged the scan (`PlacementPolicy`).
     public var policy: PlacementPolicy
+    /// The chosen battery position: the best passing spot, or for a `manualReview` the best
+    /// spot with no failing check. Nil when no such spot exists, including every `reject`.
     public var spot: PlacementSpot?
+    /// The cable route to `spot` (`PlacementRoute`); nil whenever the spot is.
     public var route: PlacementRoute?
+    /// Every check at the chosen spot — or, when `spot` is nil, at `nearestConsidered`.
     public var checks: [PlacementCheck]
+    /// When `spot` is nil, the evaluated spot closest to passing (fewest failing checks, then
+    /// fewest unsure, then shortest route), whose checks explain why it fails; nil otherwise.
     public var nearestConsidered: PlacementSpot?
+    /// The views that would settle what is unsure (`PlacementMissingEvidence`); empty for
+    /// `pass` and `reject` decisions.
     public var missingEvidence: [PlacementMissingEvidence]
+    /// Where the wall chain ends, one each side (`PlacementEnds`).
     public var ends: PlacementEnds
+    /// The whole wall as runs of equal outcome (`PlacementSweepRun`).
     public var sweep: [PlacementSweepRun]
+    /// The solver's tally (`PlacementStats`).
     public var stats: PlacementStats
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -636,10 +860,12 @@ public struct PlacementResult: Codable, Sendable, Equatable {
 /// An unexplored wall end past which a spot nearer the meter could lie
 /// (`PlacementResult.closerUnseenEnd()`).
 public struct PlacementUnseenEnd: Sendable, Equatable {
+    /// Which end of the wall is being named.
     public var side: PlacementSide
     /// Where the scan stopped, in s feet from the meter.
     public var sFt: Double
 
+    /// Creates an end for `PlacementResult.closerUnseenEnd()` to name.
     public init(side: PlacementSide, sFt: Double) {
         self.side = side
         self.sFt = sFt
