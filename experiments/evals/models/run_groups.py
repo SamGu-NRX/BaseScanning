@@ -56,11 +56,39 @@ def write_group(out: Path, results, summary: dict) -> None:
                 res.cam_to_world,
                 res.arrays,
             )
+        # What reuse validates: each published NPZ's content identity, so a deleted, truncated
+        # or substituted output never rides on run.json's input fingerprint alone.
+        summary["outputs"] = {
+            p.name.removesuffix(".npz"): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(stage.glob("*.npz"))
+        }
         (stage / "run.json").write_text(json.dumps(summary, indent=1) + "\n")
     except BaseException:
         shutil.rmtree(stage, ignore_errors=True)
         raise
     publish(stage, out)
+
+
+def reusable(out: Path, members: list[str], key: str) -> bool:
+    """A cache hit needs more than run.json naming this run's inputs: every member's NPZ must
+    exist and still hash to what the run recorded. A deleted, truncated or substituted output
+    regenerates instead of failing later on np.load or scoring substituted geometry."""
+    try:
+        summary = json.loads((out / "run.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    if summary.get("fingerprint") != key:
+        return False
+    recorded = summary.get("outputs")
+    if not isinstance(recorded, dict) or set(recorded) != set(members):
+        return False
+    for stem, digest in recorded.items():
+        try:
+            if hashlib.sha256((out / f"{stem}.npz").read_bytes()).hexdigest() != digest:
+                return False
+        except OSError:
+            return False
+    return True
 
 
 def main() -> None:
@@ -119,9 +147,9 @@ def main() -> None:
             key = fingerprint(
                 members, images, intrinsics, poses, args.max_side, checkpoint["sha256"]
             )
-            done = out / "run.json"
-            # Reuse only an output made from these exact inputs and this checkpoint.
-            if done.exists() and json.loads(done.read_text()).get("fingerprint") == key:
+            # Reuse only an output made from these exact inputs and this checkpoint, whose
+            # every member NPZ is still the file the run recorded.
+            if reusable(out, members, key):
                 continue
             inputs = RunInputs(
                 images=images,

@@ -38,6 +38,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from evals import triangulate
 from evals.ar_poses import ADVIO_ARKIT_SCALES, SETTINGS, group_poses, noise_draws
 from evals.eth3d import SCENES, read_views
 from evals.pairs import INCH, evaluate_fixed, pool, results_json
@@ -130,15 +131,29 @@ def file_digest(path: Path) -> str:
 
 
 def fit_inputs(
-    T: dict, K: dict, max_reproj_px: float, images: dict[str, Path], depths: dict[str, Path]
+    T: dict,
+    K: dict,
+    max_reproj_px: float,
+    images: dict[str, Path],
+    depths: dict[str, Path],
+    *,
+    min_points: int = 20,
+    min_angle_deg: float = 2.0,
 ) -> str:
-    """Everything a group's scale fit reads: poses, intrinsics, the threshold, and the bytes of
-    each member's image and depth prediction."""
+    """Everything a group's scale fit reads: poses, intrinsics, the threshold, the matching
+    settings (`triangulate.RATIO`, `triangulate.MAX_FEATURES`, and the point count and angle
+    floors `view_scales` is called with, whose defaults these mirror), and the bytes of each
+    member's image and depth prediction. Changing any of them gives a new key, so new fits
+    replace the cached ones instead of silently reusing them."""
     spec = {
         "model": MODEL,
         "poses": {m: np.asarray(t).tolist() for m, t in T.items()},
         "K": {m: np.asarray(k).tolist() for m, k in K.items()},
         "max_reproj_px": max_reproj_px,
+        "match_ratio": triangulate.RATIO,
+        "match_max_features": triangulate.MAX_FEATURES,
+        "min_points": min_points,
+        "min_angle_deg": min_angle_deg,
         "images": {m: file_digest(p) for m, p in images.items()},
         "depths": {m: file_digest(p) for m, p in depths.items()},
     }
