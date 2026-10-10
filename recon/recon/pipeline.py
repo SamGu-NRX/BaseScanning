@@ -125,6 +125,11 @@ def run(
     bundle: Path, out: Path, work: Path, depth_mode: str, server_url: str | None, move_meter: bool
 ) -> dict:
     out.mkdir(parents=True, exist_ok=True)
+    # The report is written last, so a failure before it (the server's refusal, a depth crash)
+    # would otherwise leave a reused output directory reporting the previous run's
+    # reconstruction as this one's result. Everything else this run writes it overwrites;
+    # the report is the one file a failing run can leave behind.
+    (out / "report.md").unlink(missing_ok=True)
     capture = cap.load(bundle, work)
     _log(f"{capture.source}: {len(capture.frames)} frames from {bundle}")
     t0 = time.perf_counter()

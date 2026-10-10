@@ -760,10 +760,13 @@ def score(
     tap_error_in: float = TAP_ERROR_IN,
 ) -> str:
     # First: a re-run, even one that stops early below, must not leave an earlier run's rows
-    # for `score` to pick up.
+    # for `score` to pick up -- nor its scored folder or report, which would dress the old
+    # capture's results up as this run's. Everything derived goes together.
     out_dir.mkdir(parents=True, exist_ok=True)
     for name in ROW_FILES:
         (out_dir / name).unlink(missing_ok=True)
+    (out_dir / "field_report.md").unlink(missing_ok=True)
+    shutil.rmtree(out_dir / "scored", ignore_errors=True)
     folder, capture = unpack(session_path)
     session = load_session(folder)
     out = work_dir(folder)
