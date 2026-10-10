@@ -5,7 +5,10 @@ refusal when the walk can't vouch for it), the meter's error in the outdoor reac
 standoff credited to the wall carrying the path, count and clock enforcement while a solve
 lists its battery positions, a zip bundle's directory bounded before metadata is parsed, the
 meter working space's depth citation, the battery height's citation when it decides backing,
-the reason a rejection-forbidden policy gives, and the route length labelled a lower bound.
+the reason a rejection-forbidden policy gives, and the route length labelled a lower bound. A
+second batch adds independent witnesses -- a gap at a corner, a split span with only one
+camera-backed half, the route's lower bound reported with its unknown detour -- and schema
+compatibility checked both ways (new scenes and fieldless old results).
 """
 
 import io
@@ -16,7 +19,8 @@ from typing import Any
 
 import jsonschema
 import pytest
-from helpers import at_start, observed_band, parsed, rect, run, shared_fixture
+from helpers import at_start, check, observed_band, parsed, rect, run, shared_fixture
+from shapely.geometry import Point
 
 import api
 from rules import deep_merge, public_rules_dict, rules_from_dict
@@ -323,3 +327,103 @@ def test_results_still_validate_against_the_schema() -> None:
     result = run(shared_fixture(), PUBLIC)
     schema = json.loads((SCHEMA / "result.schema.json").read_text())
     jsonschema.validate(result, schema)
+
+
+# --- 7. independent corner, ground and uncertainty witnesses ------------------------------------
+
+
+def corner_passage_scene() -> dict[str, Any]:
+    """A gap mid-wall, then an outside corner 6 ft past it where the chain turns up the yard.
+    The passage behind the gap's line is no wall's behind-strip, so it is yard; a pool sits
+    deep behind the gap, past the pool-clearance rule."""
+    raw = shared_fixture()
+    raw["walls"] = [
+        {"id": "w1a", "baseline": [[0, 0], [10, 0]], "height_ft": 9, "plus_minus_ft": 0},
+        {"id": "w1b", "baseline": [[14, 0], [20, 0]], "height_ft": 9, "plus_minus_ft": 0},
+        {"id": "w2", "baseline": [[20, 0], [20, 30]], "height_ft": 9, "plus_minus_ft": 0},
+    ]
+    raw["overheads"] = []
+    raw["facing"] = []
+    raw["meter"]["wall_id"] = "w1a"
+    observed_band(raw, "wall", [(-50, 70)])
+    observed_band(raw, "ground", [(-50, 70)], out=30)
+    observed_band(raw, "overhead", [(-50, 70)])
+    observed_band(raw, "facing", [(-50, 70)])
+    raw["objects"] = [
+        {
+            "type": "pool",
+            "wall_id": "w1a",
+            "span_ft": [11, 13],
+            "source": "tap",
+            "plus_minus_ft": 0,
+            "footprint": rect(11, 13, -12, -11),
+        }
+    ]
+    return raw
+
+
+def test_a_camera_position_at_a_corner_gap_claims_its_passage() -> None:
+    raw = corner_passage_scene()
+    observed_band(raw, "ground", [(-50, 70)], out=30)
+    c = at_start(raw, 1.5, "pool_clearance", PUBLIC)
+    assert c.outcome == UNSURE and c.unsure_cause == "unobserved", c.reason
+    # The camera stands in the opening; its s resolves by projection past w1's end, at the
+    # corner the gap runs into.
+    raw["coverage"]["observed"].append(
+        {"band": "ground", "span_ft": [10, 14], "out_ft": 30, "camera_pos_ft": [12.0, 1.0]}
+    )
+    c = at_start(raw, 1.5, "pool_clearance", PUBLIC)
+    assert c.outcome == PASS, c.reason
+
+
+def test_only_the_camera_backed_part_of_a_split_gap_span_is_claimed() -> None:
+    raw = passage_scene()
+    observed_band(raw, "ground", [(-40, 10), (10, 12), (12, 14), (14, 40)], out=30)
+    raw["coverage"]["observed"][-3]["camera_pos_ft"] = [11.0, 1.0]  # only [10, 12] claims
+    scene = parsed(raw, PUBLIC)
+    unseen = scene.unobserved_ground()
+    assert not unseen.intersects(Point(11.0, -1.0)), "the camera-backed half must be seen"
+    assert unseen.intersects(Point(13.0, -1.0)), "the other half is still nobody's view"
+
+
+def test_the_route_reports_its_lower_bound_with_the_unknown_detour() -> None:
+    raw = shared_fixture()
+    raw["objects"] = [
+        {
+            "type": "elec_box",
+            "wall_id": "w1",
+            "span_ft": [2, 3],
+            "bottom_ft": 4,
+            "source": "tap",
+            "plus_minus_ft": 0,
+        }
+    ]
+    result = run(raw, PUBLIC)
+    path = check(result, "route_path")
+    assert (path["outcome"], path["unsure_cause"]) == ("unsure", "unknown_attribute"), path[
+        "reason"
+    ]
+    assert result["route"]["length_is_lower_bound"] is True
+    assert result["decision"] == "manual_review"
+
+
+# --- 8. schema compatibility, both ways ----------------------------------------------------------
+
+
+def test_scenes_with_and_without_camera_positions_validate_against_the_schema() -> None:
+    schema = json.loads((SCHEMA / "scene.schema.json").read_text())
+    jsonschema.validate(shared_fixture(), schema)  # the old shape, keyframes or none
+    jsonschema.validate(corner_passage_scene(), schema)
+    raw = passage_scene()
+    observed_band(raw, "ground", [(-40, 10), (10, 14), (14, 40)], out=30)
+    raw["coverage"]["observed"][-2]["camera_pos_ft"] = [12.0, 1.0]
+    jsonschema.validate(raw, schema)  # the new field on a ground view
+
+
+def test_results_without_the_new_fields_still_validate() -> None:
+    # Old results are pre-change output, not errors: the new fields are optional in the schema.
+    schema = json.loads((SCHEMA / "result.schema.json").read_text())
+    stripped = json.loads(json.dumps(run(shared_fixture(), PUBLIC)))
+    del stripped["route"]["length_is_lower_bound"]
+    del stripped["policy"]["allow_reject"]
+    jsonschema.validate(stripped, schema)
