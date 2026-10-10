@@ -1,0 +1,39 @@
+{
+  "arm": "tesseract",
+  "barcodes": [],
+  "case_id": "gen17",
+  "lines": [
+    {
+      "box": [
+        41,
+        22,
+        169,
+        13
+      ],
+      "text": "WATTHOUR METER"
+    },
+    {
+      "box": [
+        61,
+        153,
+        200,
+        16
+      ],
+      "text": "20(60)A 50Hz CL 200"
+    },
+    {
+      "box": [
+        62,
+        184,
+        78,
+        13
+      ],
+      "text": "FORM 9S"
+    }
+  ],
+  "reader": {
+    "name": "tesseract",
+    "psm": "6",
+    "version": "tesseract 5.5.0"
+  }
+}

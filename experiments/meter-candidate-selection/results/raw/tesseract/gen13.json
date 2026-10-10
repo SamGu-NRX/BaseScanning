@@ -1,0 +1,48 @@
+{
+  "arm": "tesseract",
+  "barcodes": [],
+  "case_id": "gen13",
+  "lines": [
+    {
+      "box": [
+        41,
+        22,
+        168,
+        13
+      ],
+      "text": "WATTHOUR METER"
+    },
+    {
+      "box": [
+        62,
+        78,
+        241,
+        33
+      ],
+      "text": "00000000"
+    },
+    {
+      "box": [
+        63,
+        158,
+        276,
+        26
+      ],
+      "text": "No. 57381904"
+    },
+    {
+      "box": [
+        62,
+        235,
+        199,
+        44
+      ],
+      "text": "uss"
+    }
+  ],
+  "reader": {
+    "name": "tesseract",
+    "psm": "6",
+    "version": "tesseract 5.5.0"
+  }
+}

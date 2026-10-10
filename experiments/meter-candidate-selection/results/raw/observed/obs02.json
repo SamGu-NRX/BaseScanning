@@ -1,0 +1,38 @@
+{
+  "arm": "observed",
+  "barcodes": [],
+  "case_id": "obs02",
+  "lines": [
+    {
+      "box": [
+        60,
+        130,
+        300,
+        40
+      ],
+      "text": "S/N 90274815"
+    },
+    {
+      "box": [
+        60,
+        220,
+        190,
+        22
+      ],
+      "text": "15(90)A 60Hz"
+    },
+    {
+      "box": [
+        60,
+        260,
+        96,
+        20
+      ],
+      "text": "CL 200"
+    }
+  ],
+  "reader": {
+    "file": "inputs/observations/obs02.json",
+    "name": "hand-authored observation set"
+  }
+}
