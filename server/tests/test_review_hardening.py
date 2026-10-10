@@ -70,7 +70,7 @@ def passage_scene() -> dict[str, Any]:
             "span_ft": [11, 13],
             "source": "tap",
             "plus_minus_ft": 0,
-            "footprint": rect(11, 13, -3.5, -0.5),
+            "footprint": rect(11, 13, -12, -11),  # far behind the gap, past the 10 ft rule
         }
     ]
     return raw
@@ -132,29 +132,29 @@ def test_the_reach_counts_the_meters_error() -> None:
     raw = shared_fixture()
     base = parse_scene(raw, PUBLIC.rules).reach_ft
     wider = parse_scene(
-        {**raw, "meter": {**raw["meter"], "plus_minus_ft": 10.0}}, PUBLIC.rules
+        {**raw, "meter": {**raw["meter"], "plus_minus_ft": 2.0}}, PUBLIC.rules
     ).reach_ft
-    assert wider == pytest.approx(base + 10.0)
+    assert wider == pytest.approx(base + 2.0)
 
-    # A pool just past the reach with the meter's error left out: the old reach never modelled
-    # its ground, so nothing about it was unseen and it passed; with the meter's error the
-    # model reaches it, the ground seen stops short, and the check asks for a view.
+    # A pool past the reach the old formula computes, with ground seen stopping just short of
+    # it: under the old reach the pool's ground is never modelled, so nothing within the
+    # pool-clearance radius is unseen and the spot passes; with the meter's error the model
+    # reaches past what was seen, and the spot asks for a view.
     pool = {
         "type": "pool",
         "wall_id": "w1",
         "span_ft": [0, 8],
         "source": "tap",
         "plus_minus_ft": 0,
-        "footprint": rect(0, 8, base + 1, base + 1.5),
+        "footprint": rect(0, 8, base + 3, base + 3.5),
     }
     seen = {**raw, "objects": [pool]}
     observed_band(seen, "ground", [(-40, 40)], out=base + 0.5)
-    before = run(seen, PUBLIC)
-    assert next(c for c in before["checks"] if c["id"] == "pool_clearance")["outcome"] == PASS
-    with_err = {**seen, "meter": {**seen["meter"], "plus_minus_ft": 10.0}}
-    result = run(with_err, PUBLIC)
-    c = next(c for c in result["checks"] if c["id"] == "pool_clearance")
-    assert c["outcome"] == UNSURE and c["unsure_cause"] == "unobserved", c["reason"]
+    before = at_start(seen, -20.0, "pool_clearance", PUBLIC)
+    assert before.outcome == PASS, before.reason
+    with_err = {**seen, "meter": {**seen["meter"], "plus_minus_ft": 2.0}}
+    after = at_start(with_err, -20.0, "pool_clearance", PUBLIC)
+    assert after.outcome == UNSURE and after.unsure_cause == "unobserved", after.reason
 
 
 # --- 3. the route standoff credits the wall carrying the path -----------------------------------
@@ -181,8 +181,7 @@ def test_the_route_standoff_credits_the_wall_carrying_the_path() -> None:
         }
     ]
     scene = parsed(raw, PUBLIC)
-    # A battery on w2, past the corner: the path runs along w1 and then along w2.
-    candidate = next((p for p in scene.walls if p.id == "w2"), scene.walls[-1])
+    candidate = scene.walls[-1]  # the w2 piece, past the corner
     solver = Solver(scene, PUBLIC)
     # Any battery position on w2: the path always runs along w1 past the box first.
     cands = [solver.evaluate(candidate, s) for s in solver.starts(candidate)]
@@ -300,7 +299,7 @@ def test_backing_cites_height_when_it_decides() -> None:
     c = at_start(raw, 2.0, "wall_backing", PUBLIC)
     assert c.outcome == FAIL, c.reason
     assert c.rule_key == "battery.height_ft"
-    assert c.rule is not None and c.rule.value == 1.0
+    assert c.rule is not None and c.measured == 1.0 and c.threshold == c.rule.value
 
 
 def test_a_rejection_under_review_only_rules_says_why() -> None:

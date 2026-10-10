@@ -53,12 +53,31 @@ def _limit_bytes(env: str, default_mb: float) -> int:
     return int(mb * _MB)
 
 
+def _limit_int(env: str, default: int) -> int:
+    raw = os.environ.get(env)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        value = -1
+    if value <= 0:
+        raise ValueError(f"{env}={raw!r} must be a positive whole number")
+    return value
+
+
 # Read once at import so a bad value stops the server at startup. Tests monkeypatch these names.
 MAX_UPLOAD_BYTES = _limit_bytes("HOUSESCAN_MAX_UPLOAD_MB", 256)
 MAX_UNZIPPED_BYTES = _limit_bytes("HOUSESCAN_MAX_UNZIPPED_MB", 512)
 # Parsing JSON takes many times its size in memory (10.5 MB took 255 MB), and a real scene.json
 # is well under 1 MB, so scene.json itself is capped far below the bundle.
 MAX_SCENE_BYTES = _limit_bytes("HOUSESCAN_MAX_SCENE_MB", 10)
+# A bundle's central directory is parsed in full the moment ZipFile is built, so the directory's
+# entry count and size are read from its end record BEFORE the bundle is opened. 20,000 entries
+# is far above any real walk's file count, and a directory holding them is far under this byte
+# cap; together they keep a crafted bundle from spending the request on metadata alone.
+MAX_ZIP_ENTRIES = _limit_int("HOUSESCAN_MAX_ZIP_ENTRIES", 20_000)
+MAX_ZIP_DIRECTORY_KB = _limit_int("HOUSESCAN_MAX_ZIP_DIRECTORY_KB", 8_192)
 
 # Loaded at import: invalid rules must stop the server before it answers anything.
 LOADED: LoadedRules = load_rules()
@@ -181,6 +200,8 @@ def _policy() -> dict[str, Any]:
         "version": p.version,
         # Same rule as solver.solve: no policy id means nothing is approved automatically.
         "auto_approve": p.auto_approve and p.id is not None,
+        # Same rule as solver.solve: reported so a client can ask why nothing was rejected.
+        "allow_reject": p.allow_reject,
         "sources": list(LOADED.sources),
         "rules_sha256": LOADED.sha256,
         "notice": p.notice,
@@ -298,8 +319,39 @@ def _check_scene_size(size: int) -> None:
         )
 
 
+def _zip_directory(data: bytes) -> tuple[int, int]:
+    """The central directory's entry count and size, read from the zip's end record before any
+    metadata is parsed. `zipfile.ZipFile` reads the whole directory and builds every entry while
+    it is constructed, so a later count comes too late. `zipfile._EndRecData` is the function
+    ZipFile itself uses (ZIP64 included), so the sizes checked here are the ones it will read."""
+    try:
+        with io.BytesIO(data) as f:
+            end = zipfile._EndRecData(f)
+    except OSError:
+        end = None
+    if not end:
+        raise ApiError(
+            400, "unreadable_zip", "The bundle has no zip end-of-central-directory record."
+        )
+    return end[zipfile._ECD_ENTRIES_TOTAL], end[zipfile._ECD_SIZE]
+
+
 def _open_bundle(data: bytes) -> tuple[bytes, set[str], str]:
     """scene.json's bytes, every file name in the bundle, and the folder scene.json sits in."""
+    entries, directory_bytes = _zip_directory(data)
+    if entries > MAX_ZIP_ENTRIES:
+        raise ApiError(
+            413,
+            "bundle_too_many_entries",
+            f"The bundle lists {entries} entries, over the {MAX_ZIP_ENTRIES} limit.",
+        )
+    if directory_bytes > MAX_ZIP_DIRECTORY_KB * 1024:
+        raise ApiError(
+            413,
+            "bundle_directory_too_large",
+            f"The bundle's zip directory is {directory_bytes} bytes, over the "
+            f"{MAX_ZIP_DIRECTORY_KB} KB limit.",
+        )
     try:
         zf = zipfile.ZipFile(io.BytesIO(data))
     except (zipfile.BadZipFile, zlib.error, ValueError, EOFError) as exc:
