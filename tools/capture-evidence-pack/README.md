@@ -18,6 +18,14 @@ python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/
 
 Prints a receipt. Exits non-zero with a named reason when a source ref or the result identity cannot be satisfied.
 
+## Inspect in a browser
+
+```sh
+python tools/capture-evidence-pack/inspection/serve.py
+```
+
+Serves a localhost page (default port 8793) that renders the committed pack, its recorded refusal outputs, and the pack's limits: no map of a real house, no installer approval claimed or implied, no geometry-correctness assertion. No external network calls; axe-core is vendored under `inspection/vendor/`. Open `/?axe=1` to run the vendored axe checks on the page.
+
 ## Test
 
 ```sh

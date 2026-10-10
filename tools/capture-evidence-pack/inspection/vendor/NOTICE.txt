@@ -1,0 +1,9 @@
+axe-core 4.10.2, vendored for the local inspection page's accessibility checks.
+
+Downloaded from: https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js
+Package: https://www.npmjs.com/package/axe-core
+Copyright (c) 2015 - 2024 Deque Systems, Inc.
+License: Mozilla Public License, v. 2.0 (http://mozilla.org/MPL/2.0/)
+
+The page loads this file from the local server only; nothing is fetched from a
+CDN at runtime. Run the checks by opening the page with /?axe=1.
