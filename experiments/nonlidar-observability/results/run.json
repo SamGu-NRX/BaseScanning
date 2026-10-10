@@ -1,0 +1,1355 @@
+{
+  "git_commit": "98b665b",
+  "manifest_hash": "a03db2d8c9c684f379214c85d287c5ff901ea79f5bae4664ff51893545a0926c",
+  "scenarios": [
+    {
+      "actions": {
+        "end_approach": {
+          "compatible_count": 1,
+          "description": "walk right and frame the right end low, from two new positions",
+          "observation_hash": "92e38443e9532f54a2d5a099f1e85d0e7af66307c4abfb27a90b28f7a975eab6",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "pan_pair": {
+          "compatible_count": 1,
+          "description": "yaw every existing keyframe in place: no new parallax, but the frames move and may reveal new landmarks",
+          "observation_hash": "454239f0c5c9ab25b4b50ce8c6d9c40f852f6134dac3ccc3c12560064fa08ac7",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "reobserve": {
+          "compatible_count": 1,
+          "description": "re-observe every existing keyframe from the same pose: no new information by construction (the zero-information control)",
+          "observation_hash": "8f960ac2945cd76887b388760b63dce193e3fc132ef3eea2adc9fde28a3d4825",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "stereo_step": {
+          "compatible_count": 1,
+          "description": "step to two new positions 14 ft out and frame the wall: adds parallax across the whole face",
+          "observation_hash": "ba2dd9a1478c99f76f34c5bfa9e5d24ca0d27abb0cd86d655abae763bbe23bdc",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "tilt_pair": {
+          "compatible_count": 1,
+          "description": "pitch up from two distinct positions, tight frame on the wall top",
+          "observation_hash": "4e12cc763f5cdab9b2df935cc3d088e1813e379312cbc3e07fe248f06b925015",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        }
+      },
+      "cameras": [
+        {
+          "center_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "fx": 1000.0,
+          "id": "kf0"
+        }
+      ],
+      "capability": "one keyframe frames the whole wall: with metric poses, ground landmarks pin the face from this frame alone",
+      "compatible_count": 1,
+      "grid_count": 2625,
+      "name": "one-view",
+      "observation": {
+        "along_1": {
+          "kf0": [
+            536.556,
+            1037.38
+          ]
+        },
+        "along_2": {
+          "kf0": [
+            889.426,
+            1037.38
+          ]
+        },
+        "end_left": {
+          "kf0": [
+            254.261,
+            1037.38
+          ]
+        },
+        "end_right": {
+          "kf0": [
+            1665.739,
+            1037.38
+          ]
+        },
+        "top_left": {
+          "kf0": [
+            237.89,
+            395.258
+          ]
+        },
+        "top_right": {
+          "kf0": [
+            1682.11,
+            395.258
+          ]
+        }
+      },
+      "observation_hash": "9775e86be4e4dc6bac3ee8c438a8be137b322899aabbbec516d982db8092d19b",
+      "true_world": {
+        "distance_ft": 20.0,
+        "height_ft": 9.0,
+        "left_end_ft": -10.0,
+        "orientation_deg": 0.0,
+        "right_end_ft": 10.0
+      },
+      "true_world_described": "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 9.0 ft",
+      "verdicts": [
+        {
+          "compatible_value_count": 1,
+          "fact": "orientation_deg",
+          "pair": null,
+          "supported": true,
+          "values": [
+            0.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "distance_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            20.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "left_end_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            -10.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "right_end_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            10.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "height_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            9.0
+          ]
+        }
+      ]
+    },
+    {
+      "actions": {
+        "end_approach": {
+          "compatible_count": 1,
+          "description": "walk right and frame the right end low, from two new positions",
+          "observation_hash": "be39714f344bc32b78b387874b7be4838df0eb294bb7beae48cc88d7fb499c86",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "pan_pair": {
+          "compatible_count": 1,
+          "description": "yaw every existing keyframe in place: no new parallax, but the frames move and may reveal new landmarks",
+          "observation_hash": "4eda5211788be394e4dfa270ede3c25be3931b6154d6d14d8104c6d3a32fe083",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "reobserve": {
+          "compatible_count": 1,
+          "description": "re-observe every existing keyframe from the same pose: no new information by construction (the zero-information control)",
+          "observation_hash": "48e85c4b83490d46ee5dd3f67807dee128938b8b3427cf7031be3ec57fe250a1",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "stereo_step": {
+          "compatible_count": 1,
+          "description": "step to two new positions 14 ft out and frame the wall: adds parallax across the whole face",
+          "observation_hash": "74a1b5b91168432f768efc99096f8c62b914948e065ed588ead4d836266ae0a1",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "tilt_pair": {
+          "compatible_count": 1,
+          "description": "pitch up from two distinct positions, tight frame on the wall top",
+          "observation_hash": "1400a9e0a7a37d1f5d026e9e0f01a4a3e5f3b883944b5fbbd9868fa0dee11b23",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        }
+      },
+      "cameras": [
+        {
+          "center_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "fx": 1000.0,
+          "id": "kf0"
+        },
+        {
+          "center_ft": [
+            5.0,
+            5.0,
+            -6.0
+          ],
+          "fx": 1000.0,
+          "id": "kf1"
+        }
+      ],
+      "capability": "two keyframes from distinct positions, both framing the whole wall",
+      "compatible_count": 1,
+      "grid_count": 2625,
+      "name": "two-view",
+      "observation": {
+        "along_1": {
+          "kf0": [
+            536.556,
+            1037.38
+          ],
+          "kf1": [
+            475.904,
+            994.696
+          ]
+        },
+        "along_2": {
+          "kf0": [
+            889.426,
+            1037.38
+          ],
+          "kf1": [
+            765.886,
+            1016.147
+          ]
+        },
+        "end_left": {
+          "kf0": [
+            254.261,
+            1037.38
+          ],
+          "kf1": [
+            269.641,
+            979.437
+          ]
+        },
+        "end_right": {
+          "kf0": [
+            1665.739,
+            1037.38
+          ],
+          "kf1": [
+            1570.726,
+            1075.686
+          ]
+        },
+        "top_left": {
+          "kf0": [
+            237.89,
+            395.258
+          ],
+          "kf1": [
+            256.643,
+            445.157
+          ]
+        },
+        "top_right": {
+          "kf0": [
+            1682.11,
+            395.258
+          ],
+          "kf1": [
+            1586.08,
+            364.737
+          ]
+        }
+      },
+      "observation_hash": "cdb8d7d0fb9c56929ab970fadbf38b6dd18615a22f9f2bb88fc661de523045df",
+      "true_world": {
+        "distance_ft": 20.0,
+        "height_ft": 9.0,
+        "left_end_ft": -10.0,
+        "orientation_deg": 0.0,
+        "right_end_ft": 10.0
+      },
+      "true_world_described": "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 9.0 ft",
+      "verdicts": [
+        {
+          "compatible_value_count": 1,
+          "fact": "orientation_deg",
+          "pair": null,
+          "supported": true,
+          "values": [
+            0.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "distance_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            20.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "left_end_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            -10.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "right_end_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            10.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "height_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            9.0
+          ]
+        }
+      ]
+    },
+    {
+      "actions": {
+        "end_approach": {
+          "compatible_count": 1,
+          "description": "walk right and frame the right end low, from two new positions",
+          "observation_hash": "539e7802b68fb26165afff4dd01d434f7bca4fced5b312a0e495e19540f51413",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "pan_pair": {
+          "compatible_count": 1,
+          "description": "yaw every existing keyframe in place: no new parallax, but the frames move and may reveal new landmarks",
+          "observation_hash": "81a6eadc6ac4d5dbd4a39cdb209460014b3a93770d1839904fb4c598653ee0a3",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "reobserve": {
+          "compatible_count": 1,
+          "description": "re-observe every existing keyframe from the same pose: no new information by construction (the zero-information control)",
+          "observation_hash": "29f7d317172680f9ae0fd9c5b56f7a08f9197b719eb75c40af6b5ef3907a90cf",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "stereo_step": {
+          "compatible_count": 1,
+          "description": "step to two new positions 14 ft out and frame the wall: adds parallax across the whole face",
+          "observation_hash": "8a2f64fde07962307febc4108be1cb9d697664581743cea52fcb2a5af87d2e52",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "tilt_pair": {
+          "compatible_count": 1,
+          "description": "pitch up from two distinct positions, tight frame on the wall top",
+          "observation_hash": "6995ebc2757a24c19b1f88a6fa43ec90f3e6d8227df9e5f22f5b9d4ee391e93d",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        }
+      },
+      "cameras": [
+        {
+          "center_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "fx": 1000.0,
+          "id": "kf0"
+        },
+        {
+          "center_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "fx": 1000.0,
+          "id": "kf1"
+        }
+      ],
+      "capability": "two keyframes at the same position, panned: the first frame already supports every fact",
+      "compatible_count": 1,
+      "grid_count": 2625,
+      "name": "two-view-pan-only",
+      "observation": {
+        "along_1": {
+          "kf0": [
+            536.556,
+            1037.38
+          ],
+          "kf1": null
+        },
+        "along_2": {
+          "kf0": [
+            889.426,
+            1037.38
+          ],
+          "kf1": [
+            298.265,
+            1112.614
+          ]
+        },
+        "end_left": {
+          "kf0": [
+            254.261,
+            1037.38
+          ],
+          "kf1": null
+        },
+        "end_right": {
+          "kf0": [
+            1665.739,
+            1037.38
+          ],
+          "kf1": [
+            1060.587,
+            978.758
+          ]
+        },
+        "top_left": {
+          "kf0": [
+            237.89,
+            395.258
+          ],
+          "kf1": null
+        },
+        "top_right": {
+          "kf0": [
+            1682.11,
+            395.258
+          ],
+          "kf1": [
+            1062.239,
+            453.371
+          ]
+        }
+      },
+      "observation_hash": "a75df8682ae0cb17f402cb87ea31e7bf0258e471a13e6e5af61b6cac94477934",
+      "true_world": {
+        "distance_ft": 20.0,
+        "height_ft": 9.0,
+        "left_end_ft": -10.0,
+        "orientation_deg": 0.0,
+        "right_end_ft": 10.0
+      },
+      "true_world_described": "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 9.0 ft",
+      "verdicts": [
+        {
+          "compatible_value_count": 1,
+          "fact": "orientation_deg",
+          "pair": null,
+          "supported": true,
+          "values": [
+            0.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "distance_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            20.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "left_end_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            -10.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "right_end_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            10.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "height_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            9.0
+          ]
+        }
+      ]
+    },
+    {
+      "actions": {
+        "end_approach": {
+          "compatible_count": 1,
+          "description": "walk right and frame the right end low, from two new positions",
+          "observation_hash": "79e09a01fa7a769d99b68c39b52333e381cd1fc1e03cc6c0e31b65fbb39771d0",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "pan_pair": {
+          "compatible_count": 1,
+          "description": "yaw every existing keyframe in place: no new parallax, but the frames move and may reveal new landmarks",
+          "observation_hash": "aa364f7b19d5bfd135ca67d6a7c5f204e6517fb9c2522c571ec1e115ee6c3b4c",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "reobserve": {
+          "compatible_count": 3,
+          "description": "re-observe every existing keyframe from the same pose: no new information by construction (the zero-information control)",
+          "observation_hash": "771215ac9402b9f491c7d749c527fece08d592084817fb25288304bf7a590f73",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 3,
+              "supported": false
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "stereo_step": {
+          "compatible_count": 1,
+          "description": "step to two new positions 14 ft out and frame the wall: adds parallax across the whole face",
+          "observation_hash": "32bfb1d1a3e2ba26b6277517819dc7cbd96632a5d2c74421749911713edd0230",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "tilt_pair": {
+          "compatible_count": 1,
+          "description": "pitch up from two distinct positions, tight frame on the wall top",
+          "observation_hash": "554db7e9ab2b0962868703d241b95c27f28b017bb34b0597b8897cace5ae91f9",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        }
+      },
+      "cameras": [
+        {
+          "center_ft": [
+            0.0,
+            3.0,
+            -6.0
+          ],
+          "fx": 1200.0,
+          "id": "kf0"
+        },
+        {
+          "center_ft": [
+            4.0,
+            3.0,
+            -6.0
+          ],
+          "fx": 1200.0,
+          "id": "kf1"
+        }
+      ],
+      "capability": "two keyframes from distinct positions, pitched down: the wall top never enters the frame",
+      "compatible_count": 3,
+      "grid_count": 2625,
+      "name": "two-view-top-blind",
+      "observation": {
+        "along_1": {
+          "kf0": [
+            457.13,
+            720.0
+          ],
+          "kf1": [
+            349.375,
+            701.898
+          ]
+        },
+        "along_2": {
+          "kf0": [
+            876.188,
+            720.0
+          ],
+          "kf1": [
+            720.365,
+            712.896
+          ]
+        },
+        "end_left": {
+          "kf0": [
+            121.884,
+            720.0
+          ],
+          "kf1": [
+            75.51,
+            693.779
+          ]
+        },
+        "end_right": {
+          "kf0": [
+            1798.116,
+            720.0
+          ],
+          "kf1": [
+            1671.869,
+            741.103
+          ]
+        },
+        "top_left": {
+          "kf0": null,
+          "kf1": null
+        },
+        "top_right": {
+          "kf0": null,
+          "kf1": null
+        }
+      },
+      "observation_hash": "f8351c6467f9f4eeee00c72e1798f9193a951ad5940e92814042625bda862828",
+      "true_world": {
+        "distance_ft": 20.0,
+        "height_ft": 9.0,
+        "left_end_ft": -10.0,
+        "orientation_deg": 0.0,
+        "right_end_ft": 10.0
+      },
+      "true_world_described": "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 9.0 ft",
+      "verdicts": [
+        {
+          "compatible_value_count": 1,
+          "fact": "orientation_deg",
+          "pair": null,
+          "supported": true,
+          "values": [
+            0.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "distance_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            20.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "left_end_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            -10.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "right_end_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            10.0
+          ]
+        },
+        {
+          "compatible_value_count": 3,
+          "fact": "height_ft",
+          "pair": [
+            "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 9.0 ft",
+            "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 8.0 ft"
+          ],
+          "supported": false,
+          "values": [
+            8.0,
+            9.0,
+            10.0
+          ]
+        }
+      ]
+    },
+    {
+      "actions": {
+        "end_approach": {
+          "compatible_count": 1,
+          "description": "walk right and frame the right end low, from two new positions",
+          "observation_hash": "6ef87e12c729a2ee5b193a11267566ec0cd796ee9508acf6cc6ee86484dbee45",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "pan_pair": {
+          "compatible_count": 3,
+          "description": "yaw every existing keyframe in place: no new parallax, but the frames move and may reveal new landmarks",
+          "observation_hash": "4a8693be31497f1edeadc35d70c9a74a04aafd87524c7d4ca10dd31b4e62f73f",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 3,
+              "supported": false
+            }
+          }
+        },
+        "reobserve": {
+          "compatible_count": 3,
+          "description": "re-observe every existing keyframe from the same pose: no new information by construction (the zero-information control)",
+          "observation_hash": "79b999ae847cd4906ff44c27ab01208a26744f8022283f39667fc38cc52a8601",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 3,
+              "supported": false
+            }
+          }
+        },
+        "stereo_step": {
+          "compatible_count": 1,
+          "description": "step to two new positions 14 ft out and frame the wall: adds parallax across the whole face",
+          "observation_hash": "0c8f4cdac690ce24e4452bb4f8eeac11f713b5023666bcfd23fda596fa46108a",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "tilt_pair": {
+          "compatible_count": 2,
+          "description": "pitch up from two distinct positions, tight frame on the wall top",
+          "observation_hash": "49dceb9845319d148bb0749350d355706841f9957635a0eef504bb7bc8f4e1ab",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 2,
+              "supported": false
+            }
+          }
+        }
+      },
+      "cameras": [
+        {
+          "center_ft": [
+            -6.0,
+            5.0,
+            -6.0
+          ],
+          "fx": 1400.0,
+          "id": "kf0"
+        },
+        {
+          "center_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "fx": 1400.0,
+          "id": "kf1"
+        }
+      ],
+      "capability": "two keyframes from distinct positions aimed left of the right end",
+      "compatible_count": 3,
+      "grid_count": 2625,
+      "name": "two-view-end-blind",
+      "observation": {
+        "along_1": {
+          "kf0": [
+            564.805,
+            1185.988
+          ],
+          "kf1": [
+            587.321,
+            1141.375
+          ]
+        },
+        "along_2": {
+          "kf0": [
+            1049.755,
+            1138.934
+          ],
+          "kf1": [
+            1057.817,
+            1164.86
+          ]
+        },
+        "end_left": {
+          "kf0": [
+            100.315,
+            1231.057
+          ],
+          "kf1": [
+            241.931,
+            1124.135
+          ]
+        },
+        "end_right": {
+          "kf0": null,
+          "kf1": null
+        },
+        "top_left": {
+          "kf0": [
+            78.582,
+            213.309
+          ],
+          "kf1": [
+            226.832,
+            299.965
+          ]
+        },
+        "top_right": {
+          "kf0": null,
+          "kf1": null
+        }
+      },
+      "observation_hash": "c43400abf93a049a860ac3a4ebe7208c6f42b848b0a3517a0888d952c33d47e4",
+      "true_world": {
+        "distance_ft": 20.0,
+        "height_ft": 9.0,
+        "left_end_ft": -10.0,
+        "orientation_deg": 0.0,
+        "right_end_ft": 16.0
+      },
+      "true_world_described": "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 16.0] ft, top 9.0 ft",
+      "verdicts": [
+        {
+          "compatible_value_count": 1,
+          "fact": "orientation_deg",
+          "pair": null,
+          "supported": true,
+          "values": [
+            0.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "distance_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            20.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "left_end_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            -10.0
+          ]
+        },
+        {
+          "compatible_value_count": 3,
+          "fact": "right_end_ft",
+          "pair": [
+            "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 16.0] ft, top 9.0 ft",
+            "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 12.0] ft, top 9.0 ft"
+          ],
+          "supported": false,
+          "values": [
+            12.0,
+            14.0,
+            16.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "height_ft",
+          "pair": null,
+          "supported": true,
+          "values": [
+            9.0
+          ]
+        }
+      ]
+    }
+  ]
+}
