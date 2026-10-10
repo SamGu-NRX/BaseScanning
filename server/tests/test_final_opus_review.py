@@ -48,15 +48,31 @@ def test_ground_behind_a_gap_between_walls_is_yard_until_seen() -> None:
 
 
 def test_a_view_into_the_passage_settles_it() -> None:
-    # The request names ground over exactly the gap's stretch; captured, it shows both sides of
-    # the gap's line (the camera pointed into the passage), and with the passage's surface
-    # recorded too (seen ground with none may be a driveway) the spot passes.
+    # The request names ground over exactly the gap's stretch; captured from the opening (the
+    # camera pointed into the passage), so the view carries the camera position and the walk's
+    # keyframe vouches for it, and with the passage's surface recorded too (seen ground with
+    # none may be a driveway) the spot passes.
     raw = side_passage()
     result = solve(parsed(raw, PUBLIC), PUBLIC)
     passage = [m for m in result["missing_evidence"] if m.get("span_ft") == [10.0, 14.0]]
     assert passage and passage[0]["band"] == "ground"
+    raw["keyframes"] = [
+        {
+            "id": "k1",
+            "pose": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 12.0, 4.5, 1.0, 1],
+            "intrinsics": [1450.0, 1450.0, 960.0, 720.0],
+            "w": 1920,
+            "h": 1440,
+            "img": "k1.jpg",
+        }
+    ]
     raw["coverage"]["observed"].append(
-        {"band": "ground", "span_ft": [10.0, 14.0], "out_ft": passage[0]["out_ft"]}
+        {
+            "band": "ground",
+            "span_ft": [10.0, 14.0],
+            "out_ft": passage[0]["out_ft"],
+            "camera_pos_ft": [12.0, 1.0],
+        }
     )
     raw["ground"].append({"type": "concrete", "polygon": rect(10, 14, -30, 0), "plus_minus_ft": 0})
     assert solve(parsed(raw, PUBLIC), PUBLIC)["decision"] == PASS

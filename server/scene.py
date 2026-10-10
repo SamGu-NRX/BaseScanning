@@ -162,9 +162,14 @@ class Scene:
     ground: list[GroundPatch]
     overheads: list[Measured]
     facing: list[Measured]
-    observed: dict[str, list[tuple[float, float, float | None]]]
+    # Coverage views as (span start, span end, out_ft, camera): the camera position is set only
+    # when the view declared one (a ground view's evidence that the camera stood there).
+    observed: dict[str, list[tuple[float, float, float | None, tuple[float, float] | None]]]
     end_kinds: dict[str, str]
     reach_ft: float  # how far out from the walls the outdoor area is modelled
+    # The plan positions of the packet's keyframe cameras: the walk's own record of where the
+    # cameras stood, what a coverage view's camera_pos_ft is checked against.
+    keyframe_positions: list[tuple[float, float]] = field(default_factory=list)
     # A wall view without out_ft reached headroom height (headroom.min_ft), per the contract.
     wall_default_ft: float = math.inf
     _cache: dict[str, Any] = field(default_factory=dict, repr=False)
@@ -262,18 +267,35 @@ class Scene:
         lo, hi = span or (self.pieces[0].s0, self.pieces[-1].s1)
         return unary_union([self.band_polygon(lo, hi, out), *self.passages(out)])
 
-    def view_polygon(self, s_lo: float, s_hi: float, out: float) -> Geometry:
+    def view_polygon(
+        self, s_lo: float, s_hi: float, out: float, camera: tuple[float, float] | None = None
+    ) -> Geometry:
         """What a ground view over [s_lo, s_hi] out to `out` shows: the band in front of the
         chain, and where its span lies within a gap, the passage behind the gap's line as well:
         the camera pointed into the passage from the opening, as a view past a limit end shows
         both sides of the continued line. A view that runs along the walls across a gap shows
         only the front (final review: a side passage counted as seen from a view along the
-        walls)."""
+        walls). The passage is claimed only when the view was taken from there: its `camera`
+        position — checked against the walk's keyframes at parse time — must sit in front of
+        the gap's line within its stretch. A span alone does not say the camera was there."""
         parts = [self.band_polygon(s_lo, s_hi, out)]
         for g in self.gaps:
-            if s_lo >= g.s0 - GAP_VIEW_SLACK_FT and s_hi <= g.s1 + GAP_VIEW_SLACK_FT and out > EPS:
-                parts.append(g.rect(max(s_lo, g.s0), min(s_hi, g.s1), -out, 0.0))
+            if (
+                s_lo >= g.s0 - GAP_VIEW_SLACK_FT
+                and s_hi <= g.s1 + GAP_VIEW_SLACK_FT
+                and out > EPS
+                and camera is not None
+            ):
+                s_cam, out_cam = self._where(camera)
+                if g.s0 - GAP_VIEW_SLACK_FT <= s_cam <= g.s1 + GAP_VIEW_SLACK_FT and out_cam > EPS:
+                    parts.append(g.rect(max(s_lo, g.s0), min(s_hi, g.s1), -out, 0.0))
         return unary_union(parts)
+
+    def _where(self, point: tuple[float, float]) -> tuple[float, float]:
+        """A plan point's s along the chain and its signed out-distance: where it stands
+        relative to the walls' line."""
+        nearest = min(self.pieces, key=lambda p: Point(point).distance(LineString([p.a, p.b])))
+        return nearest.local(point)
 
     def s_of(self, p: Point2) -> float:
         """s of the chain point nearest to a plan point."""
@@ -307,7 +329,7 @@ class Scene:
         return merge_intervals(
             [
                 (a, b)
-                for a, b, out in self.observed.get(band, [])
+                for a, b, out, _cam in self.observed.get(band, [])
                 if up_to is None
                 or (out is None and up_to <= self._default_reach(band) + EPS)
                 or (out is not None and out > up_to)
@@ -334,13 +356,15 @@ class Scene:
             self._cache["ground"] = self.unobserved_ground_given(self.observed.get("ground", []))
         return self._cache["ground"]
 
-    def unobserved_ground_given(self, ground: list[tuple[float, float, float | None]]) -> Geometry:
+    def unobserved_ground_given(
+        self, ground: list[tuple[float, float, float | None, tuple[float, float] | None]]
+    ) -> Geometry:
         """The ground nobody saw, given these ground views: what unobserved_ground is for the
         scene's own views, and what a request is checked against with its capture added."""
         # Behind a scanned wall is the house: at an inside corner one wall's strip reaches back
         # across the other's line, and that ground no view in front of a wall can show.
         outdoor = _minus(self.outdoor_band(self.reach_ft), self.house())
-        seen = unary_union([self.view_polygon(a, b, out or 0.0) for a, b, out in ground])
+        seen = unary_union([self.view_polygon(a, b, out or 0.0, cam) for a, b, out, cam in ground])
         # Growing what was seen (SEEN_GROWTH_FT) closes gaps between observed spans narrower
         # than the tolerance, as missing() ignores them for the 1D bands.
         unseen = _minus(outdoor, seen.buffer(SEEN_GROWTH_FT))
@@ -384,8 +408,10 @@ class Scene:
         lo, hi = self.coverable_span()
         seen_in_front = unary_union(
             [
-                self.view_polygon(max(a, lo), min(b, hi), out or 0.0)
-                for a, b, out in (self.observed.get("ground", []) if ground is None else ground)
+                self.view_polygon(max(a, lo), min(b, hi), out or 0.0, cam)
+                for a, b, out, cam in (
+                    self.observed.get("ground", []) if ground is None else ground
+                )
             ]
         ).buffer(SEEN_GROWTH_FT)
         known = unary_union([seen_in_front, self.house()])
@@ -396,7 +422,8 @@ class Scene:
         deepest view covering it, and over the stretch the shallowest of those. A view without
         `out_ft` saw all the way (infinite); a stretch no view covers gives 0."""
         spans = [
-            (a, b, math.inf if out is None else out) for a, b, out in self.observed.get(band, [])
+            (a, b, math.inf if out is None else out)
+            for a, b, out, _cam in self.observed.get(band, [])
         ]
         cuts = sorted({s_lo, s_hi} | {x for a, b, _ in spans for x in (a, b) if s_lo < x < s_hi})
         least = math.inf
@@ -438,7 +465,7 @@ class Scene:
             # ft a lens where a clearance circle meets the view's edge survived 1.7e-5 ft inside
             # the radius (test_final_review, the 108 degree corner); 1e-12 is still far above
             # the snapped overlays' noise (around 1e-18).
-            unseen = polygonal(self.unobserved_ground_given([*ground, (a, b, depth)]))
+            unseen = polygonal(self.unobserved_ground_given([*ground, (a, b, depth, None)]))
             return shapely.intersection(area, unseen, grid_size=1e-9).area <= 1e-12
 
         tol = COVERAGE_TOLERANCE_FT
@@ -727,6 +754,38 @@ GAP_VIEW_SLACK_FT = 2 * COVERAGE_TOLERANCE_FT
 # Coordinates beyond this are not a house scan; they would only exhaust memory in the sweep.
 MAX_COORDINATE_FT = 1e5
 
+# How close a coverage view's camera_pos_ft must sit to a keyframe's camera for the claim to be
+# the walk's own: about an arm's length of scene drift, far under the meter's worst default
+# error. Only a ground view taken from an opening may claim the passage behind a gap, so its
+# position is evidence and is checked, not taken on trust.
+CAMERA_TOLERANCE_FT = 1.0
+
+
+def _camera_of(
+    obs: dict[str, Any], keyframes: list[tuple[float, float]], path: str
+) -> tuple[float, float] | None:
+    """The camera position a coverage view claims, or None. A declared position must be one the
+    walk can vouch for: when the packet has keyframes, it is refused unless a keyframe's camera
+    sits within CAMERA_TOLERANCE_FT of it. A view's span alone does not say the camera was
+    there, so the position may not be invented either (review: a side passage counted as seen
+    from a view along the walls)."""
+    pos = obs.get("camera_pos_ft")
+    if pos is None:
+        return None
+    if not (isinstance(pos, list) and len(pos) == 2):
+        raise SceneError(path, "camera_pos_ft must be two plan coordinates [x, z]")
+    cam = (float(pos[0]), float(pos[1]))
+    vouched = not keyframes or any(
+        math.hypot(cam[0] - kx, cam[1] - kz) <= CAMERA_TOLERANCE_FT for kx, kz in keyframes
+    )
+    if not vouched:
+        raise SceneError(
+            path,
+            "camera_pos_ft names no keyframe's camera within "
+            f"{CAMERA_TOLERANCE_FT:g} ft; a coverage view's position must come from the walk",
+        )
+    return cam
+
 
 def _check_numbers(raw: Any) -> None:
     """JSON Schema accepts NaN and infinities as numbers; nothing in a scene may be either.
@@ -928,7 +987,11 @@ def parse_scene(raw: dict[str, Any], rules: Rules, input_bytes: bytes | None = N
         c.pool_ft.value,
     )
     wall_error = max(p.error_at(max(abs(p.s0), abs(p.s1))) for p in pieces if p.kind == "wall")
-    reach += rules.battery.depth_ft.value + wall_error + 1.0
+    # The meter's own position error shifts where every out-from-the-wall distance is measured
+    # from, so the outdoor area it can matter over widens by it too (review: an all-PASS
+    # candidate with meter error 2 ft and ground observed to 13 ft passed although its pool
+    # coverage needed 13.833333 ft).
+    reach += rules.battery.depth_ft.value + wall_error + meter_err + 1.0
     first, last = pieces[0], pieces[-1]
     ext_len = reach + rules.battery.width_ft.value
     left_ext = Piece(
@@ -959,6 +1022,10 @@ def parse_scene(raw: dict[str, Any], rules: Rules, input_bytes: bytes | None = N
     )
     pieces = [left_ext, *pieces, right_ext]
 
+    kf_positions = [
+        (float(kf["pose"][12]), float(kf["pose"][14])) for kf in raw.get("keyframes", [])
+    ]
+
     scene = Scene(
         input_sha256=hashlib.sha256(input_bytes).hexdigest(),
         pieces=pieces,
@@ -971,6 +1038,7 @@ def parse_scene(raw: dict[str, Any], rules: Rules, input_bytes: bytes | None = N
         ground=[],
         overheads=[],
         facing=[],
+        keyframe_positions=kf_positions,
         observed={},
         end_kinds={"left": "unexplored", "right": "unexplored"},
         reach_ft=reach,
@@ -1055,7 +1123,9 @@ def parse_scene(raw: dict[str, Any], rules: Rules, input_bytes: bytes | None = N
     coverage = raw.get("coverage", {})
     for i, obs in enumerate(coverage.get("observed", [])):
         span = _span(obs["span_ft"], f"/coverage/observed/{i}/span_ft")
-        scene.observed.setdefault(obs["band"], []).append((span[0], span[1], obs.get("out_ft")))
+        cam = _camera_of(obs, kf_positions, f"/coverage/observed/{i}/camera_pos_ft")
+        entry = (span[0], span[1], obs.get("out_ft"), cam)
+        scene.observed.setdefault(obs["band"], []).append(entry)
 
     _check_orientation(scene, raw.get("keyframes", []))
     return scene

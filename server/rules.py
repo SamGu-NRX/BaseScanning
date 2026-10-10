@@ -131,6 +131,16 @@ class MeterWorkingSpace(_Strict):
     width_ft: Value
     depth_ft: Value
 
+    @model_validator(mode="after")
+    def _positive_workspace(self) -> "MeterWorkingSpace":
+        # A zero width or depth collapses the working space to a line or a point; the solve
+        # would compare against a degenerate polygon and let a battery stand in the meter.
+        for name in ("width_ft", "depth_ft"):
+            value = getattr(self, name).value
+            if value <= 0:
+                raise ValueError(f"meter_working_space.{name} must be positive, got {value}")
+        return self
+
 
 class Ground(_Strict):
     allowed: list[GroundType]
