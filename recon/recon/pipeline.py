@@ -57,7 +57,10 @@ def reconstruct(
     # Only frames with a depth map can see anything (depth.depth_maps: LiDAR frames saved
     # without depth get none).
     seeing = [f for f in capture.frames if f.id in depths]
-    cov = coverage.compute(wall, seeing, depths, vol, surface)
+    # The fitted ground goes in so ground samples sit on the surface it fit, not on the horizontal
+    # plane through the meter's foot: on sloping ground that plane hangs above or below the real
+    # surface, and ground the scan saw read as unobserved.
+    cov = coverage.compute(wall, seeing, depths, vol, surface, ground)
     _log(f"coverage over {len(cov.cells)} cells ({time.perf_counter() - t0:.0f} s)")
     return {
         "depths": depths,
@@ -150,9 +153,11 @@ def run(
 
 def _coverage_doc(cov: coverage.CellCoverage) -> dict:
     ft = lambda a: [None if not np.isfinite(x) else round(float(x) / FEET, 3) for x in a]  # noqa: E731
+    ends = cov.cells + coverage.CELL_M if cov.ends is None else cov.ends
     return {
         "cell_ft": round(coverage.CELL_M / FEET, 3),
         "cells_s_ft": ft(cov.cells),
+        "cells_end_ft": ft(ends),  # a cell clipped to the fit's end is narrower than cell_ft
         "wall_observed": cov.wall.tolist(),
         "ground_out_ft": ft(cov.ground_out),
         "facing_gap_ft": ft(cov.facing_gap),
@@ -164,7 +169,6 @@ def _coverage_doc(cov: coverage.CellCoverage) -> dict:
 
 def _report(capture: Capture, r: dict, geo: dict, doc: dict, result: dict | None) -> str:
     cov, dr = r["coverage"], r["depth_report"]
-    cell = coverage.CELL_M / FEET
     wall, ground = geo["walls"][0], geo["ground"]
     lo, hi = wall["s_range_ft"]
     lines = [
@@ -179,8 +183,9 @@ def _report(capture: Capture, r: dict, geo: dict, doc: dict, result: dict | None
             f"- Scale fitted for {dr['fitted']} of {dr['frames']} frames: MoGe-2 x "
             f"{dr['median_scale']:.3f} median ({a:.3f} to {b:.3f}); the rest take the median."
         )
-    facing = np.isfinite(cov.facing_gap).sum() * cell
-    over = np.isfinite(cov.overhead_clearance).sum() * cell
+    widths_ft = (cov.cells + coverage.CELL_M if cov.ends is None else cov.ends) - cov.cells
+    facing = np.isfinite(cov.facing_gap) @ widths_ft / FEET
+    over = np.isfinite(cov.overhead_clearance) @ widths_ft / FEET
     obs = doc["coverage"]["observed"]
     lines += [
         f"- Model: {len(r['mesh'].vertices)} vertices at {r['volume'].voxel * 100:.1f} cm voxels.",
@@ -188,8 +193,10 @@ def _report(capture: Capture, r: dict, geo: dict, doc: dict, result: dict | None
         f"{len(geo['other_walls'])} other wall stretches.",
         f"- Ground: {ground['height_ft']:+.2f} ft, tilt {ground['tilt_deg']:.1f} deg, "
         f"fit RMS {ground['fit_rms_in']:.1f} in.",
-        f"- Wall band observed: {cov.wall.sum() * cell:.1f} of {len(cov.cells) * cell:.1f} ft.",
-        f"- Ground seen 4 ft out or more: {(cov.ground_out >= 4 * FEET).sum() * cell:.1f} ft.",
+        f"- Wall band observed: {widths_ft[cov.wall].sum() / FEET:.1f} of "
+        f"{widths_ft.sum() / FEET:.1f} ft.",
+        f"- Ground seen 4 ft out or more: "
+        f"{widths_ft[cov.ground_out >= 4 * FEET].sum() / FEET:.1f} ft.",
         f"- Facing gap measured over {facing:.1f} ft; overhead clearance over {over:.1f} ft.",
         f"- scene.json: {len(obs)} observed entries, {len(doc['facing'])} facing, "
         f"{len(doc['overheads'])} overheads.",
