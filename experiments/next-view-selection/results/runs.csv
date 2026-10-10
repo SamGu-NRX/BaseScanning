@@ -1,0 +1,85 @@
+world_index,world,policy,seed,resolved,answer,unsupported,guess_correct,cost_used,observations,moves,final_belief_size,actions
+0,OOSSSS,uncertainty-reduction,20261010,False,OOSSSS,True,True,4,2,2,2,observe:C move:R observe:R move:C
+0,OOSSSS,nearest-unseen,20261010,True,OOSSSS,False,True,3,2,1,1,observe:C move:L observe:L
+0,OOSSSS,fixed-order,20261010,True,OOSSSS,False,True,2,1,1,1,move:L observe:L
+0,OOSSSS,seeded-random,20261010,True,OOSSSS,False,True,2,1,1,1,move:L observe:L
+1,OSOSSS,uncertainty-reduction,20261011,False,OSOSSS,True,True,4,2,2,2,observe:C move:R observe:R move:C
+1,OSOSSS,nearest-unseen,20261011,True,OSOSSS,False,True,3,2,1,1,observe:C move:L observe:L
+1,OSOSSS,fixed-order,20261011,True,OSOSSS,False,True,2,1,1,1,move:L observe:L
+1,OSOSSS,seeded-random,20261011,False,OOSSSS,True,False,4,0,4,21,move:L move:C move:L move:C
+2,OSSOSS,uncertainty-reduction,20261012,False,OSSOSS,True,True,4,2,2,2,observe:C move:R observe:R move:C
+2,OSSOSS,nearest-unseen,20261012,True,OSSOSS,False,True,3,2,1,1,observe:C move:L observe:L
+2,OSSOSS,fixed-order,20261012,True,OSSOSS,False,True,4,2,2,1,move:L observe:L move:C observe:C
+2,OSSOSS,seeded-random,20261012,False,OSSOSS,True,True,4,3,1,4,move:L observe:L observe:L observe:L
+3,OSSSOS,uncertainty-reduction,20261013,False,OSSSOS,True,True,4,2,2,2,observe:C move:R observe:R move:C
+3,OSSSOS,nearest-unseen,20261013,False,OSSSOS,True,True,4,2,2,3,observe:C move:L observe:L move:C
+3,OSSSOS,fixed-order,20261013,False,OSSSOS,True,True,4,2,2,3,move:L observe:L move:C observe:C
+3,OSSSOS,seeded-random,20261013,False,OSSSOS,True,True,4,1,3,6,move:R move:C observe:C move:R
+4,OSSSSO,uncertainty-reduction,20261014,False,OSSSSO,True,True,4,2,2,2,observe:C move:R observe:R move:C
+4,OSSSSO,nearest-unseen,20261014,False,OSSSOS,True,False,4,2,2,3,observe:C move:L observe:L move:C
+4,OSSSSO,fixed-order,20261014,False,OSSSOS,True,False,4,2,2,3,move:L observe:L move:C observe:C
+4,OSSSSO,seeded-random,20261014,False,OSSSSO,True,True,4,2,2,4,move:R observe:R observe:R move:C
+5,OSSSSS,uncertainty-reduction,20261015,True,OSSSSS,False,True,3,2,1,1,observe:C move:R observe:R
+5,OSSSSS,nearest-unseen,20261015,False,OSSSOS,True,False,4,2,2,3,observe:C move:L observe:L move:C
+5,OSSSSS,fixed-order,20261015,False,OSSSOS,True,False,4,2,2,3,move:L observe:L move:C observe:C
+5,OSSSSS,seeded-random,20261015,False,OSSSOS,True,False,4,2,2,6,observe:C observe:C move:L move:C
+6,SOOSSS,uncertainty-reduction,20261016,True,SOOSSS,False,True,1,1,0,1,observe:C
+6,SOOSSS,nearest-unseen,20261016,True,SOOSSS,False,True,1,1,0,1,observe:C
+6,SOOSSS,fixed-order,20261016,True,SOOSSS,False,True,2,1,1,1,move:L observe:L
+6,SOOSSS,seeded-random,20261016,True,SOOSSS,False,True,1,1,0,1,observe:C
+7,SOSOSS,uncertainty-reduction,20261017,True,SOSOSS,False,True,1,1,0,1,observe:C
+7,SOSOSS,nearest-unseen,20261017,True,SOSOSS,False,True,1,1,0,1,observe:C
+7,SOSOSS,fixed-order,20261017,True,SOSOSS,False,True,4,2,2,1,move:L observe:L move:C observe:C
+7,SOSOSS,seeded-random,20261017,True,SOSOSS,False,True,4,2,2,1,move:L observe:L move:C observe:C
+8,SOSSOS,uncertainty-reduction,20261018,True,SOSSOS,False,True,3,2,1,1,observe:C move:R observe:R
+8,SOSSOS,nearest-unseen,20261018,False,SOSSOS,True,True,4,2,2,3,observe:C move:L observe:L move:C
+8,SOSSOS,fixed-order,20261018,False,SOSSOS,True,True,4,2,2,3,move:L observe:L move:C observe:C
+8,SOSSOS,seeded-random,20261018,False,SOSSOS,True,True,4,2,2,3,observe:C move:L observe:L move:C
+9,SOSSSO,uncertainty-reduction,20261019,True,SOSSSO,False,True,3,2,1,1,observe:C move:R observe:R
+9,SOSSSO,nearest-unseen,20261019,False,SOSSOS,True,False,4,2,2,3,observe:C move:L observe:L move:C
+9,SOSSSO,fixed-order,20261019,False,SOSSOS,True,False,4,2,2,3,move:L observe:L move:C observe:C
+9,SOSSSO,seeded-random,20261019,False,OSSSSO,True,False,4,1,3,4,move:R move:C move:R observe:R
+10,SOSSSS,uncertainty-reduction,20261020,False,OOSSSS,True,False,4,2,2,2,observe:C move:R observe:R move:C
+10,SOSSSS,nearest-unseen,20261020,False,SOSSOS,True,False,4,2,2,3,observe:C move:L observe:L move:C
+10,SOSSSS,fixed-order,20261020,False,SOSSOS,True,False,4,2,2,3,move:L observe:L move:C observe:C
+10,SOSSSS,seeded-random,20261020,False,OOSSSS,True,False,4,1,3,4,move:L move:C observe:C move:L
+11,SSOOSS,uncertainty-reduction,20261021,True,SSOOSS,False,True,1,1,0,1,observe:C
+11,SSOOSS,nearest-unseen,20261021,True,SSOOSS,False,True,1,1,0,1,observe:C
+11,SSOOSS,fixed-order,20261021,True,SSOOSS,False,True,4,2,2,1,move:L observe:L move:C observe:C
+11,SSOOSS,seeded-random,20261021,False,OSSOSS,True,False,4,1,3,4,move:R move:C move:R observe:R
+12,SSOSOS,uncertainty-reduction,20261022,True,SSOSOS,False,True,3,2,1,1,observe:C move:R observe:R
+12,SSOSOS,nearest-unseen,20261022,False,SSOSOS,True,True,4,2,2,3,observe:C move:L observe:L move:C
+12,SSOSOS,fixed-order,20261022,False,SSOSOS,True,True,4,2,2,3,move:L observe:L move:C observe:C
+12,SSOSOS,seeded-random,20261022,False,OOSSSS,True,False,4,0,4,21,move:R move:C move:R move:C
+13,SSOSSO,uncertainty-reduction,20261023,True,SSOSSO,False,True,3,2,1,1,observe:C move:R observe:R
+13,SSOSSO,nearest-unseen,20261023,False,SSOSOS,True,False,4,2,2,3,observe:C move:L observe:L move:C
+13,SSOSSO,fixed-order,20261023,False,SSOSOS,True,False,4,2,2,3,move:L observe:L move:C observe:C
+13,SSOSSO,seeded-random,20261023,False,OSOSSS,True,False,4,1,3,4,move:L move:C observe:C move:R
+14,SSOSSS,uncertainty-reduction,20261024,False,OSOSSS,True,False,4,2,2,2,observe:C move:R observe:R move:C
+14,SSOSSS,nearest-unseen,20261024,False,SSOSOS,True,False,4,2,2,3,observe:C move:L observe:L move:C
+14,SSOSSS,fixed-order,20261024,False,SSOSOS,True,False,4,2,2,3,move:L observe:L move:C observe:C
+14,SSOSSS,seeded-random,20261024,False,OOSSSS,True,False,4,2,2,6,move:R observe:R observe:R move:C
+15,SSSOOS,uncertainty-reduction,20261025,True,SSSOOS,False,True,3,2,1,1,observe:C move:R observe:R
+15,SSSOOS,nearest-unseen,20261025,False,SSSOOS,True,True,4,2,2,3,observe:C move:L observe:L move:C
+15,SSSOOS,fixed-order,20261025,False,SSSOOS,True,True,4,2,2,3,move:L observe:L move:C observe:C
+15,SSSOOS,seeded-random,20261025,False,OSSOSS,True,False,4,2,2,4,move:L move:C observe:C observe:C
+16,SSSOSO,uncertainty-reduction,20261026,True,SSSOSO,False,True,3,2,1,1,observe:C move:R observe:R
+16,SSSOSO,nearest-unseen,20261026,False,SSSOOS,True,False,4,2,2,3,observe:C move:L observe:L move:C
+16,SSSOSO,fixed-order,20261026,False,SSSOOS,True,False,4,2,2,3,move:L observe:L move:C observe:C
+16,SSSOSO,seeded-random,20261026,True,SSSOSO,False,True,4,3,1,1,observe:C observe:C move:R observe:R
+17,SSSOSS,uncertainty-reduction,20261027,False,OSSOSS,True,False,4,2,2,2,observe:C move:R observe:R move:C
+17,SSSOSS,nearest-unseen,20261027,False,SSSOOS,True,False,4,2,2,3,observe:C move:L observe:L move:C
+17,SSSOSS,fixed-order,20261027,False,SSSOOS,True,False,4,2,2,3,move:L observe:L move:C observe:C
+17,SSSOSS,seeded-random,20261027,False,OSSOSS,True,False,4,4,0,4,observe:C observe:C observe:C observe:C
+18,SSSSOO,uncertainty-reduction,20261028,True,SSSSOO,False,True,3,2,1,1,observe:C move:R observe:R
+18,SSSSOO,nearest-unseen,20261028,False,SSSSOO,True,True,4,2,2,3,observe:C move:L observe:L move:C
+18,SSSSOO,fixed-order,20261028,False,SSSSOO,True,True,4,2,2,3,move:L observe:L move:C observe:C
+18,SSSSOO,seeded-random,20261028,True,SSSSOO,False,True,2,1,1,1,move:R observe:R
+19,SSSSOS,uncertainty-reduction,20261029,False,OSSSOS,True,False,4,2,2,2,observe:C move:R observe:R move:C
+19,SSSSOS,nearest-unseen,20261029,False,SSSSOO,True,False,4,2,2,3,observe:C move:L observe:L move:C
+19,SSSSOS,fixed-order,20261029,False,SSSSOO,True,False,4,2,2,3,move:L observe:L move:C observe:C
+19,SSSSOS,seeded-random,20261029,False,OSSSOS,True,False,4,1,3,6,move:R move:C observe:C move:R
+20,SSSSSO,uncertainty-reduction,20261030,False,OSSSSO,True,False,4,2,2,2,observe:C move:R observe:R move:C
+20,SSSSSO,nearest-unseen,20261030,False,SSSSOO,True,False,4,2,2,3,observe:C move:L observe:L move:C
+20,SSSSSO,fixed-order,20261030,False,SSSSOO,True,False,4,2,2,3,move:L observe:L move:C observe:C
+20,SSSSSO,seeded-random,20261030,False,OSSSSO,True,False,4,1,3,4,move:R observe:R move:C move:L

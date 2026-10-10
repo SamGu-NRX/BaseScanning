@@ -1,0 +1,24 @@
+[project]
+name = "next-view-selection"
+version = "0.1.0"
+description = "Next-view selection as a finite decision problem: enumerated compatible worlds, observation and movement actions under a shared budget, and four view-selection policies compared on resolution rate, action cost, and unsupported definite answers."
+requires-python = ">=3.12,<3.13"
+dependencies = ["matplotlib>=3.9"]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.8"]
+
+[tool.uv]
+required-version = ">=0.11.15,<0.12"
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
