@@ -49,7 +49,7 @@ Each entry in `capture.source_refs` names one capture input file the report is a
 - `sha256`: lowercase 64-digit hexadecimal digest of the file's bytes.
 - `bytes`: file size in bytes, a positive integer.
 
-Refs point at files; the pack does not contain them. A reader that wants the bytes resolves each path against `capture_root` (or an explicit override) and checks the hash and size. The example pack points into `tools/capture-evidence-pack/fixtures/example/`, which is committed synthetic data. A pack about a real capture would point into `captures/`, which git ignores.
+Refs point at files; the pack does not contain them. A reader that wants the bytes resolves each path against `capture_root` (or an explicit override) and checks the hash and size. A capture input written as JSON that declares a `schema_version` field must declare the manifest's `capture_schema_version`; anything else is the `schema-drift` refusal. The example pack points into `tools/capture-evidence-pack/fixtures/example/`, which is committed synthetic data. A pack about a real capture would point into `captures/`, which git ignores.
 
 ### missing_fields
 
@@ -87,9 +87,10 @@ The packer and the reader refuse, exit non-zero, and name what mismatched:
 
 - `missing-source`: a source ref whose file is absent under the capture root, or whose bytes do not match the recorded hash and size.
 - `mismatched-result`: the result file's bytes do not match the recorded result hash and size.
+- `schema-drift`: a referenced capture input declares a `schema_version` that differs from the manifest's `capture_schema_version`.
 - `invalid-manifest`: the manifest violates the field rules in this document.
 - `wrong-pack-format`: `evidence_pack_format_version` is not `1.0`.
 
 ## Determinism
 
-`pack.py` writes byte-stable archives: entries sorted by name, fixed timestamps (1980-01-01 00:00:00), fixed file permissions, no platform-dependent metadata. Packing the same fixture twice yields the same bytes, so the pack's own SHA-256 is identity evidence too.
+`pack.py` writes byte-stable archives: entries sorted by name, fixed timestamps (1980-01-01 00:00:00), fixed file permissions, no platform-dependent metadata. Packing the same fixture twice to the same out path yields the same bytes, so the pack's own SHA-256 is identity evidence too. The out path is part of `reproduction.command`, so regenerations must reuse the same out path to stay byte-identical.

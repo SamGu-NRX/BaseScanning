@@ -1,0 +1,14 @@
+{
+  "schema_version": "synthetic-capture/2026.10",
+  "result_id": "result-synth-0001",
+  "note": "synthetic fixture: a reconstruction never produced this file; content differs from the example fixture",
+  "meter_anchor": {
+    "x": 3.4,
+    "y": 0.0,
+    "z": 1.1
+  },
+  "clearance": {
+    "kind": "synthetic",
+    "value": 0.8
+  }
+}

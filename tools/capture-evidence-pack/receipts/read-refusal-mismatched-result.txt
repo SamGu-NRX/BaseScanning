@@ -1,0 +1,4 @@
+$ python3 tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/mismatched-result
+REFUSAL mismatched-result: 'result/result.json' does not satisfy its recorded identity: hash 9ab425f1a59dc39f4f870fcbedb6d6abbbdddc8b4559edcf2e60845a7611c84d vs recorded b8878c6027cfe79e23b067d743d9daa36ea9c3045af47e5f51ab13711405e371, size 334 vs recorded 268
+verdict: REFUSED
+exit code: 2 (non-zero: refused)

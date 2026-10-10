@@ -176,18 +176,20 @@ def _correctness_problems(slot: object) -> list[str]:
 
 def check_sources(manifest: dict, root: Path) -> list[str]:
     """Satisfiability: every source ref and the result must exist under root
-    with the recorded hash and size. Empty list means the identity is satisfied."""
+    with the recorded hash and size, and any embedded schema_version must match
+    the manifest's capture_schema_version. Empty list means the identity is satisfied."""
     problems: list[str] = []
     capture = manifest.get("capture", {})
+    schema_version = manifest.get("capture_schema_version")
     for index, ref in enumerate(capture.get("source_refs", [])):
-        problems.extend(_satisfy_problems(f"source_refs[{index}]", ref, root))
+        problems.extend(_satisfy_problems(f"source_refs[{index}]", ref, root, schema_version))
     result = manifest.get("result", {})
     if isinstance(result, dict) and result:
-        problems.extend(_satisfy_problems("result", result, root))
+        problems.extend(_satisfy_problems("result", result, root, schema_version))
     return problems
 
 
-def _satisfy_problems(label: str, record: dict, root: Path) -> list[str]:
+def _satisfy_problems(label: str, record: dict, root: Path, schema_version: object) -> list[str]:
     path = root / record.get("path", "")
     if not path.is_file():
         return [f"{label}: missing-source: {record.get('path')!r} not found under {root}"]
@@ -201,7 +203,23 @@ def _satisfy_problems(label: str, record: dict, root: Path) -> list[str]:
         mismatches.append(f"size {size} != recorded {record.get('bytes')}")
     if mismatches:
         return [f"{label}: {record.get('path')!r} does not satisfy its recorded identity: " + "; ".join(mismatches)]
+    drift = _schema_drift(path, data, schema_version)
+    if drift:
+        return [f"{label}: schema-drift: {record.get('path')!r} {drift}"]
     return []
+
+
+def _schema_drift(path: Path, data: bytes, expected: object) -> str | None:
+    try:
+        parsed = json.loads(data)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(parsed, dict) or "schema_version" not in parsed:
+        return None
+    declared = parsed["schema_version"]
+    if declared != expected:
+        return f"declares schema_version {declared!r}, the manifest records {expected!r}"
+    return None
 
 
 def load_manifest(path: Path) -> dict:
