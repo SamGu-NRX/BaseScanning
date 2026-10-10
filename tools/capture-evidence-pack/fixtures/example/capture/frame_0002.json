@@ -1,0 +1,7 @@
+{
+  "schema_version": "synthetic-capture/2026.10",
+  "frame_id": "frame-0002",
+  "note": "synthetic fixture: no device, home, or capture produced this file",
+  "image": { "width": 64, "height": 48, "synthetic_pattern": "checker" },
+  "camera_pose": { "x": 0.3, "y": 0.0, "z": 0.1 }
+}

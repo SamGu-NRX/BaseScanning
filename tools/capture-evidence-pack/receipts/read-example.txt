@@ -1,0 +1,18 @@
+$ python3 tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip
+capture-evidence-pack reader
+pack: /home/user/work/BaseScanning-capture-evidence-pack/tools/capture-evidence-pack/evidence/example.zip
+pack sha256: 53857e0ae48b21d1b93088cec017f1be8aaa601a5371858566e51b62df73fde0
+manifest sha256: dcf7e29079e88657c5e1f39353c19ca2e56649b806b1b4a826db9b005940dc28
+evidence_pack_format_version: 1.0
+capture_schema_version: synthetic-capture/2026.10
+capture: capture-synth-0001 captured_at 2026-10-10T00:00:00Z
+source ref ok: frame:capture/frame_0001.json sha256 8ca88c571fc8bb6bc3028a6e9068d369c498cd09a24daea307dbc9c9fa08f3ea
+source ref ok: frame:capture/frame_0002.json sha256 96fdfa6c0753e0d5bf1adb0d21f5e230fec970b680f3447b0dfaf23fb61723b8
+result ok: result-synth-0001 result/result.json sha256 b8878c6027cfe79e23b067d743d9daa36ea9c3045af47e5f51ab13711405e371
+missing fields (explicit): 2
+  missing: capture.depth_map (the synthetic device produced no depth map for either frame)
+  missing: capture.lidar_point_cloud (the synthetic device has no LiDAR sensor)
+geometry_correctness: assertion null, no claim made (identity-only pack: no geometry-correctness check ran, none is claimed)
+reproduce: python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip
+verdict: PASS
+exit code: 0

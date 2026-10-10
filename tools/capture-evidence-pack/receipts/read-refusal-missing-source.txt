@@ -1,0 +1,4 @@
+$ python3 tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/missing-source
+REFUSAL missing-source: 'capture/frame_0002.json' not found under /home/user/work/BaseScanning-capture-evidence-pack/tools/capture-evidence-pack/fixtures/missing-source
+verdict: REFUSED
+exit code: 2 (non-zero: refused)

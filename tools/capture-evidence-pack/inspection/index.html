@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capture evidence pack inspection</title>
+<style>
+  :root {
+    --ink: #16211c;
+    --muted: #52615a;
+    --paper: #f6f8f6;
+    --card: #ffffff;
+    --line: #cfdad3;
+    --accent: #0b5c3f;
+    --accent-ink: #ffffff;
+    --warn-bg: #fff7e8;
+    --warn-line: #b7791f;
+    --refusal-bg: #fdf0f0;
+    --refusal-line: #a33a3a;
+    --focus: #1b4bff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.55 "Helvetica Neue", Arial, sans-serif;
+  }
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    background: var(--accent);
+    color: var(--accent-ink);
+    padding: 0.5rem 1rem;
+  }
+  .skip-link:focus { left: 0.5rem; top: 0.5rem; z-index: 10; }
+  :where(a, button, code[tabindex]):focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  header, main, footer { max-width: 60rem; margin: 0 auto; padding: 0 1.25rem; }
+  header { padding-top: 1.5rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.15rem; margin: 0 0 0.75rem; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+  }
+  .limits { background: var(--warn-bg); border-color: var(--warn-line); border-width: 2px; }
+  .limits h2 { color: #7a4d0a; }
+  .limits li { margin: 0.4rem 0; }
+  dl.grid { display: grid; grid-template-columns: minmax(9rem, 16rem) 1fr; gap: 0.35rem 1rem; margin: 0; }
+  dl.grid dt { font-weight: 700; color: var(--muted); }
+  dl.grid dd { margin: 0; overflow-wrap: anywhere; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  td code, dd code, li code { overflow-wrap: anywhere; }
+  .hash { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.8rem; }
+  .missing-tag {
+    display: inline-block;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-line);
+    border-radius: 4px;
+    padding: 0 0.4rem;
+    font-size: 0.8rem;
+  }
+  .refusal {
+    background: var(--refusal-bg);
+    border: 1px solid var(--refusal-line);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin: 0.75rem 0;
+  }
+  .refusal h3 { margin: 0 0 0.25rem; font-size: 1rem; color: #7c2424; }
+  pre { overflow-x: auto; background: #0e1512; color: #e8f1ec; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.8rem; }
+  .command { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+  .command code { background: #0e1512; color: #e8f1ec; padding: 0.5rem 0.75rem; border-radius: 6px; flex: 1 1 20rem; }
+  button {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.45rem 0.9rem;
+    font: inherit;
+    cursor: pointer;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    button { transition: background-color 120ms ease; }
+  }
+  .error-box { background: var(--refusal-bg); border: 2px solid var(--refusal-line); padding: 1rem; border-radius: 8px; }
+  [hidden] { display: none !important; }
+  footer { color: var(--muted); font-size: 0.9rem; padding-bottom: 2rem; }
+  @media (max-width: 480px) {
+    dl.grid { grid-template-columns: 1fr; }
+    dl.grid dt { margin-top: 0.5rem; }
+    body { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header>
+  <h1>Capture evidence pack inspection</h1>
+  <p>
+    Identity evidence for a bug report about one capture and one result. This page
+    renders the committed pack <code>tools/capture-evidence-pack/evidence/example.zip</code>
+    and its recorded receipts, served from localhost with no external network calls.
+  </p>
+</header>
+
+<main id="main">
+  <section class="limits" aria-labelledby="limits-heading" id="limitations">
+    <h2 id="limits-heading">What this pack does not claim</h2>
+    <ul>
+      <li><strong>No map of a real house.</strong> Every byte here is synthetic fixture data committed to this repository.</li>
+      <li><strong>No installer approval.</strong> None is claimed, implied, or recorded.</li>
+      <li><strong>No geometry-correctness assertion.</strong> The pack records identity only; <code>geometry_correctness.assertion</code> is <code>null</code>. See SPEC.md, &ldquo;Identity is not correctness&rdquo;.</li>
+    </ul>
+  </section>
+
+  <div id="error" class="error-box" role="alert" hidden>
+    <h2>Evidence unavailable</h2>
+    <p>This page reads the pack through its local server. Run
+      <code>python tools/capture-evidence-pack/inspection/serve.py</code> and open
+      <code>http://127.0.0.1:8793/</code>.</p>
+  </div>
+
+  <section aria-labelledby="identity-heading" id="identity" hidden data-needs-data>
+    <h2 id="identity-heading">Identity</h2>
+    <dl class="grid" id="identity-list"></dl>
+  </section>
+
+  <section aria-labelledby="versions-heading" id="versions" hidden data-needs-data>
+    <h2 id="versions-heading">Schema versions</h2>
+    <dl class="grid" id="versions-list"></dl>
+  </section>
+
+  <section aria-labelledby="sources-heading" id="sources" hidden data-needs-data>
+    <h2 id="sources-heading">Source refs: referenced, not embedded</h2>
+    <p>The pack carries no capture bytes. These refs resolve under the recorded capture root, checked by hash and size.</p>
+    <div style="overflow-x: auto;" tabindex="0" role="region" aria-label="Source refs table, horizontally scrollable">
+      <table>
+        <thead><tr><th scope="col">Role</th><th scope="col">Path</th><th scope="col">SHA-256</th><th scope="col">Bytes</th></tr></thead>
+        <tbody id="sources-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="packaged-heading" id="packaged" hidden data-needs-data>
+    <h2 id="packaged-heading">Packaged files and hashes</h2>
+    <div style="overflow-x: auto;" tabindex="0" role="region" aria-label="Packaged files table, horizontally scrollable">
+      <table>
+        <thead><tr><th scope="col">Path</th><th scope="col">SHA-256</th><th scope="col">Bytes</th></tr></thead>
+        <tbody id="packaged-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="missing-heading" id="missing" hidden data-needs-data>
+    <h2 id="missing-heading">Explicitly missing fields</h2>
+    <p>Recorded as missing on purpose; an empty list here would mean the described inputs were complete.</p>
+    <ul id="missing-list"></ul>
+  </section>
+
+  <section aria-labelledby="repro-heading" id="reproduction" hidden data-needs-data>
+    <h2 id="repro-heading">Reproduction command</h2>
+    <p>The exact command a reader runs to re-derive the receipt from the pack and its referenced inputs.</p>
+    <div class="command">
+      <code id="repro-command"></code>
+      <button id="copy-command" type="button">Copy command</button>
+      <span id="copy-feedback" role="status" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <section aria-labelledby="report-heading" id="report" hidden data-needs-data>
+    <h2 id="report-heading">Packed report text (report.md)</h2>
+    <pre id="report-text" tabindex="0"></pre>
+  </section>
+
+  <section aria-labelledby="refusals-heading" id="refusals">
+    <h2 id="refusals-heading">Recorded refusals</h2>
+    <p>
+      The reader refuses evidence it cannot satisfy. These two states are rendered verbatim from
+      their committed receipt files; the inspection page cannot make a refused pack pass.
+    </p>
+    <div id="refusals-list">
+      <p>Loading recorded refusals&hellip;</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="axe-heading" id="axe-results" hidden>
+    <h2 id="axe-heading">axe-core results</h2>
+    <pre id="axe-output" tabindex="0" aria-live="polite"></pre>
+  </section>
+</main>
+
+<footer>
+  <p>Served by <code>tools/capture-evidence-pack/inspection/serve.py</code> from the committed pack and receipts.
+     Format reference: <code>tools/capture-evidence-pack/SPEC.md</code>.</p>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  function fill(dl, pairs) {
+    dl.innerHTML = "";
+    pairs.forEach(function (pair) {
+      var dt = document.createElement("dt");
+      dt.textContent = pair[0];
+      var dd = document.createElement("dd");
+      if (pair[2]) {
+        var code = document.createElement("code");
+        code.className = "hash";
+        code.textContent = pair[1];
+        dd.appendChild(code);
+      } else {
+        dd.textContent = pair[1];
+      }
+      dl.appendChild(dt);
+      dl.appendChild(dd);
+    });
+  }
+
+  function hashCell(code, text) {
+    code.className = "hash";
+    code.textContent = text;
+  }
+
+  function render(evidence) {
+    var manifest = evidence.manifest;
+    var identity = document.getElementById("identity-list");
+    fill(identity, [
+      ["Capture id", manifest.capture.capture_id],
+      ["Captured at", manifest.capture.captured_at],
+      ["Result id", manifest.result.result_id],
+      ["Capture root", manifest.capture.capture_root],
+      ["Pack path", evidence.pack_path],
+      ["Pack SHA-256", evidence.pack_sha256, true],
+      ["Manifest SHA-256", evidence.manifest_sha256, true]
+    ]);
+
+    fill(document.getElementById("versions-list"), [
+      ["evidence_pack_format_version", manifest.evidence_pack_format_version],
+      ["capture_schema_version", manifest.capture_schema_version]
+    ]);
+
+    var sources = document.getElementById("sources-body");
+    manifest.capture.source_refs.forEach(function (ref) {
+      var row = document.createElement("tr");
+      [ref.role, ref.path, ref.sha256, String(ref.bytes)].forEach(function (value, index) {
+        var cell = document.createElement("td");
+        if (index === 2) {
+          var code = document.createElement("code");
+          hashCell(code, value);
+          cell.appendChild(code);
+        } else {
+          cell.textContent = value;
+        }
+        row.appendChild(cell);
+      });
+      sources.appendChild(row);
+    });
+
+    var packaged = document.getElementById("packaged-body");
+    manifest.packaged_files.forEach(function (record) {
+      var row = document.createElement("tr");
+      var pathCell = document.createElement("td");
+      pathCell.textContent = record.path;
+      var hashCellEl = document.createElement("td");
+      var code = document.createElement("code");
+      hashCell(code, record.sha256);
+      hashCellEl.appendChild(code);
+      var sizeCell = document.createElement("td");
+      sizeCell.textContent = String(record.bytes);
+      row.appendChild(pathCell);
+      row.appendChild(hashCellEl);
+      row.appendChild(sizeCell);
+      packaged.appendChild(row);
+    });
+
+    var missing = document.getElementById("missing-list");
+    manifest.missing_fields.forEach(function (entry) {
+      var item = document.createElement("li");
+      var tag = document.createElement("span");
+      tag.className = "missing-tag";
+      tag.textContent = "missing";
+      item.appendChild(tag);
+      item.appendChild(document.createTextNode(" " + entry.field + " \u2014 " + entry.detail));
+      missing.appendChild(item);
+    });
+    if (!manifest.missing_fields.length) {
+      var item = document.createElement("li");
+      item.textContent = "None recorded: the described inputs were complete.";
+      missing.appendChild(item);
+    }
+
+    document.getElementById("repro-command").textContent = manifest.reproduction.command;
+    document.getElementById("report-text").textContent = evidence.report_markdown;
+
+    document.querySelectorAll("[data-needs-data]").forEach(function (section) {
+      section.hidden = false;
+    });
+  }
+
+  function renderRefusals(payload) {
+    var container = document.getElementById("refusals-list");
+    container.innerHTML = "";
+    payload.refusals.forEach(function (refusal) {
+      var card = document.createElement("article");
+      card.className = "refusal";
+      card.setAttribute("aria-labelledby", "refusal-" + refusal.kind);
+      var title = document.createElement("h3");
+      title.id = "refusal-" + refusal.kind;
+      title.textContent = "Refused: " + refusal.kind;
+      var where = document.createElement("p");
+      var code = document.createElement("code");
+      code.textContent = refusal.receipt_path;
+      where.appendChild(document.createTextNode("Recorded output of "));
+      where.appendChild(code);
+      var pre = document.createElement("pre");
+      pre.tabIndex = 0;
+      pre.textContent = refusal.recorded_output;
+      card.appendChild(title);
+      card.appendChild(where);
+      card.appendChild(pre);
+      container.appendChild(card);
+    });
+  }
+
+  function fail() {
+    document.getElementById("error").hidden = false;
+    var container = document.getElementById("refusals-list");
+    container.innerHTML = "";
+    var note = document.createElement("p");
+    note.textContent = "Recorded refusals load from the local server; start serve.py to see them.";
+    container.appendChild(note);
+  }
+
+  document.getElementById("copy-command").addEventListener("click", function () {
+    var command = document.getElementById("repro-command").textContent;
+    var feedback = document.getElementById("copy-feedback");
+    function done(ok) { feedback.textContent = ok ? "Copied." : "Copy failed; select the command text instead."; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(command).then(function () { done(true); }, function () { done(false); });
+    } else {
+      done(false);
+    }
+  });
+
+  fetch("/data.json").then(function (response) {
+    if (!response.ok) { throw new Error("data.json " + response.status); }
+    return response.json();
+  }).then(function (evidence) {
+    render(evidence);
+  }).catch(function (error) {
+    console.error(error);
+    fail();
+  });
+
+  fetch("/refusals.json").then(function (response) {
+    if (!response.ok) { throw new Error("refusals.json " + response.status); }
+    return response.json();
+  }).then(renderRefusals).catch(function (error) {
+    console.error(error);
+  });
+
+  if (new URLSearchParams(location.search).has("axe")) {
+    var script = document.createElement("script");
+    script.src = "/vendor/axe.min.js";
+    script.onload = function () {
+      axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"] } })
+        .then(function (results) {
+          document.getElementById("axe-results").hidden = false;
+          document.getElementById("axe-output").textContent = JSON.stringify(
+            {
+              axe_version: results.toolOptions || undefined,
+              violations: results.violations.map(function (v) { return { id: v.id, impact: v.impact, nodes: v.nodes.length }; }),
+              passes: results.passes.map(function (p) { return p.id; }),
+              incomplete: results.incomplete.map(function (v) { return { id: v.id, nodes: v.nodes.length }; })
+            },
+            null, 2
+          );
+          window.__axeViolations = results.violations;
+        })
+        .catch(function (error) {
+          document.getElementById("axe-results").hidden = false;
+          document.getElementById("axe-output").textContent = "axe failed to run: " + error;
+        });
+    };
+    document.head.appendChild(script);
+  }
+})();
+</script>
+</body>
+</html>

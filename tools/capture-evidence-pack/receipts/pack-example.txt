@@ -1,0 +1,15 @@
+$ python3 tools/capture-evidence-pack/pack.py --fixture tools/capture-evidence-pack/fixtures/example --out tools/capture-evidence-pack/evidence/example.zip
+packer: wrote tools/capture-evidence-pack/evidence/example.zip
+pack sha256: 53857e0ae48b21d1b93088cec017f1be8aaa601a5371858566e51b62df73fde0
+manifest sha256: dcf7e29079e88657c5e1f39353c19ca2e56649b806b1b4a826db9b005940dc28
+entries: 2 (manifest.json plus 1 packaged)
+capture: capture-synth-0001 (2 source refs, referenced not embedded)
+result: result-synth-0001
+missing fields (explicit): 2
+geometry_correctness: assertion null (no claim made)
+reproduce: python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip
+verdict: PACKED
+exit code: 0
+
+pack sha256:
+53857e0ae48b21d1b93088cec017f1be8aaa601a5371858566e51b62df73fde0  tools/capture-evidence-pack/evidence/example.zip

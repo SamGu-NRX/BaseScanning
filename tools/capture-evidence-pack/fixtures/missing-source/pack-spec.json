@@ -1,0 +1,22 @@
+{
+  "capture_id": "capture-synth-0001",
+  "captured_at": "2026-10-10T00:00:00Z",
+  "capture_schema_version": "synthetic-capture/2026.10",
+  "result_id": "result-synth-0001",
+  "source_refs": [
+    { "role": "frame", "path": "capture/frame_0001.json" },
+    { "role": "frame", "path": "capture/frame_0002.json" }
+  ],
+  "result_path": "result/result.json",
+  "report_path": "report.md",
+  "missing_fields": [
+    {
+      "field": "capture.depth_map",
+      "detail": "the synthetic device produced no depth map for either frame"
+    },
+    {
+      "field": "capture.lidar_point_cloud",
+      "detail": "the synthetic device has no LiDAR sensor"
+    }
+  ]
+}
