@@ -64,5 +64,18 @@ Output sha256 (head obv/basescanning-004 + these tests):
 | wall_observed last cell | false (phantom grid cell) | true (cell ends at the real fit end) |
 | ground_out_ft | unchanged on flat ground (0.664 tail) | unchanged (slope case is the pytest witness above) |
 
-Full suite with the witnesses: `uv run pytest -q` - 98 passed, 56 warnings, 25.8 s; ruff check
-and format clean (23 files).
+Full suite with the witnesses: `uv run pytest -q` - 98 passed, 56 warnings, 25.8 s; ruff
+check and format clean (23 files).
+
+## Scene-schema compatibility receipt
+
+    uv run --with jsonschema python tests/scene_schema_check.py /tmp/witness-smoke/out
+
+    /tmp/witness-smoke/out: 0 strict schema errors, 5 keyframe-depth passthrough items
+    (input extension, not defined by the schema)
+
+The exported scene.json validates against `server/schemas/scene.schema.json` with no strict
+errors. The five reported items are the per-keyframe `depth` blocks the input bundle carried
+(one per input keyframe), which `scene.build` passes through unchanged; the schema does not
+define that input extension, so the receipt reports it separately rather than folding it into
+a pass. Full suite rerun after the schema script: 98 passed, ruff check and format clean.
