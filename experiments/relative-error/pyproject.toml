@@ -1,0 +1,24 @@
+[project]
+name = "relative-error-study"
+version = "0.1.0"
+description = "What error the 0.16 ft/ft drift allowance assigns to a clearance between two features, what rate-on-gap, scale-spread and local-clearance alternatives would assign, and which measurement would settle the difference"
+requires-python = ">=3.12"
+dependencies = ["numpy>=2.1", "scipy>=1.14", "shapely>=2.0", "jsonschema>=4.20", "pyyaml>=6", "pydantic>=2"]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.8"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["--strict-markers", "--strict-config"]
