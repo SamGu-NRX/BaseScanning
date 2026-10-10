@@ -1,0 +1,30 @@
+[project]
+name = "reconstruction-repeatability"
+version = "0.1.0"
+description = "Which input transformations preserve the reconstruction, and which cache histories change it: stable wrong walls versus history-dependent walls in the recon worker"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.1",
+    "opencv-python-headless>=4.10,<5",
+    "scipy>=1.14",
+    "scikit-image>=0.24",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.8"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["--strict-markers", "--strict-config"]

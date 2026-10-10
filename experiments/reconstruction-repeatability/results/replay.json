@@ -1,0 +1,47 @@
+{
+ "manifest_sha256": "036962b05ca58f8de150b050396d5b6ac71c52f36c706748cf159ced025fda1c",
+ "total": 10,
+ "agreed": 10,
+ "cases": [
+  {
+   "name": "baseline-repeat",
+   "agreement": "agree"
+  },
+  {
+   "name": "warm-cache",
+   "agreement": "agree"
+  },
+  {
+   "name": "frames-reordered",
+   "agreement": "agree"
+  },
+  {
+   "name": "frame-id-duplicate",
+   "agreement": "agree"
+  },
+  {
+   "name": "image-reencoded",
+   "agreement": "agree"
+  },
+  {
+   "name": "intrinsics-shift",
+   "agreement": "agree"
+  },
+  {
+   "name": "unrelated-history",
+   "agreement": "agree"
+  },
+  {
+   "name": "stale-cache-pose-edit",
+   "agreement": "agree"
+  },
+  {
+   "name": "interrupted-run",
+   "agreement": "agree"
+  },
+  {
+   "name": "same-size-cache-edit",
+   "agreement": "agree"
+  }
+ ]
+}
