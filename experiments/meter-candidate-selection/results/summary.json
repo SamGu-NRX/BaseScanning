@@ -1,0 +1,48 @@
+{
+  "arms": {
+    "meterocr": {
+      "note": "Apple Vision through meterocr needs macOS; this Linux sandbox cannot run it, and a mock is not OCR evidence, so no substitute arm ran",
+      "status": "not-run"
+    },
+    "observed": {
+      "cases": 12,
+      "note": "Hand-authored reader-shaped observation sets: observations, not OCR evidence",
+      "status": "ran"
+    },
+    "tesseract": {
+      "cases": 18,
+      "note": "Tesseract CLI (apt tesseract-ocr, eng) reading the frozen synthetic plates on Linux; real OCR output on synthetic input",
+      "status": "ran"
+    }
+  },
+  "counts": {
+    "observed": {
+      "absent_cases": 3,
+      "cases": 12,
+      "correct_rejection": 3,
+      "false_offer": 0,
+      "filtered_miss": 1,
+      "present_cases": 9,
+      "rank_miss": 0,
+      "ranking_cause": 1,
+      "recognition_cause": 1,
+      "recognition_miss": 1,
+      "top1": 6,
+      "top3": 7
+    },
+    "tesseract": {
+      "absent_cases": 3,
+      "cases": 18,
+      "correct_rejection": 2,
+      "false_offer": 1,
+      "filtered_miss": 0,
+      "present_cases": 15,
+      "rank_miss": 0,
+      "ranking_cause": 0,
+      "recognition_cause": 0,
+      "recognition_miss": 0,
+      "top1": 14,
+      "top3": 15
+    }
+  }
+}

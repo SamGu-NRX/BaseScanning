@@ -1,0 +1,29 @@
+{
+  "arm": "observed",
+  "barcodes": [],
+  "case_id": "obs03",
+  "lines": [
+    {
+      "box": [
+        60,
+        120,
+        340,
+        44
+      ],
+      "text": "No. 5039 2846"
+    },
+    {
+      "box": [
+        60,
+        220,
+        190,
+        22
+      ],
+      "text": "20(60)A 50Hz"
+    }
+  ],
+  "reader": {
+    "file": "inputs/observations/obs03.json",
+    "name": "hand-authored observation set"
+  }
+}
