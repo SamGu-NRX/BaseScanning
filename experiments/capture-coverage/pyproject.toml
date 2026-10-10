@@ -1,0 +1,24 @@
+[project]
+name = "capture-coverage"
+version = "0.1.0"
+description = "Closed-loop capture-coverage study: procedural scenes with known visibility, simulated walks, the real recon worker and placement server, and an independent reference. Does capture-to-scene keep unseen space unknown?"
+requires-python = ">=3.12,<3.13"
+dependencies = ["numpy>=2.1", "opencv-python-headless>=4.10"]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.8"]
+
+[tool.uv]
+required-version = ">=0.11.15,<0.12"
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
