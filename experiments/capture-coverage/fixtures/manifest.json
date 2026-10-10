@@ -1,0 +1,204 @@
+{
+ "frozen_at_commit": "c404045002439bf27ed7906fcba061a07097f046",
+ "groups": {
+  "A": {
+   "count": 7,
+   "scenarios": [
+    {
+     "capture_kwargs": {},
+     "frames": 41,
+     "name": "baseline",
+     "prediction": "no violations; worker claims the marked span, bounds facing at the door jamb, skips the door",
+     "witness_s": [
+      6.5,
+      9.0,
+      10.0,
+      15.0
+     ]
+    },
+    {
+     "capture_kwargs": {
+      "depth_sigma": 0.04
+     },
+     "frames": 41,
+     "name": "noise-high",
+     "prediction": "5x depth noise: still no violations (visibility truth ignores noise); claims may shrink",
+     "witness_s": [
+      6.5,
+      15.0
+     ]
+    },
+    {
+     "capture_kwargs": {},
+     "frames": 41,
+     "name": "skew-path",
+     "prediction": "exact poses, path angled 6 deg off the wall: no violations; fewer qualifying frames, claims shrink",
+     "witness_s": [
+      10.0
+     ]
+    },
+    {
+     "capture_kwargs": {},
+     "frames": 41,
+     "name": "drift-cross-track",
+     "prediction": "reported poses drift 4 cm/m while photons stay true: FALSE_CLEAR/FALSE_OBSERVED in true coordinates if claims trust the drifted poses; fingerprint stable (self-consistent)",
+     "witness_s": [
+      10.0,
+      15.0
+     ]
+    },
+    {
+     "capture_kwargs": {
+      "drop_frames": 14
+     },
+     "frames": 41,
+     "name": "frames-skip",
+     "prediction": "every 3rd frame dropped: no violations unless claims exceed what 2/3 of views support",
+     "witness_s": [
+      10.0
+     ]
+    },
+    {
+     "capture_kwargs": {
+      "depthless_frames": 8
+     },
+     "frames": 41,
+     "name": "depthless-frames",
+     "prediction": "every 5th frame reports pose but no depth: same expectation as frames-skip",
+     "witness_s": [
+      10.0
+     ]
+    },
+    {
+     "capture_kwargs": {
+      "omit_confidence": true
+     },
+     "frames": 41,
+     "name": "no-confidence",
+     "prediction": "depth without confidence planes: worker must keep claims (or shrink); no violations expected",
+     "witness_s": [
+      10.0
+     ]
+    }
+   ]
+  },
+  "B": {
+   "count": 6,
+   "scenarios": [
+    {
+     "capture_kwargs": {},
+     "frames": 41,
+     "name": "bush-against-wall",
+     "prediction": "1.2 m bush flush to the wall: ground strip and low wall behind it are UNSEEABLE; honest pipeline ends coverage there; FALSE_OBSERVED if it claims through",
+     "witness_s": [
+      14.5
+     ]
+    },
+    {
+     "capture_kwargs": {},
+     "frames": 41,
+     "name": "bin",
+     "prediction": "1 m bin 0.75 m tall 0.2 m off the wall: gap behind unseeable; FALSE_OBSERVED if claimed through; facing clear should bound at ~0.2 m before the bin",
+     "witness_s": [
+      15.5
+     ]
+    },
+    {
+     "capture_kwargs": {},
+     "frames": 41,
+     "name": "fence-parallel",
+     "prediction": "fence 4 m back, fully visible: honest facing-clear bounds near 13 ft; FALSE_CLEAR beyond",
+     "witness_s": [
+      10.0
+     ]
+    },
+    {
+     "capture_kwargs": {},
+     "frames": 41,
+     "name": "grazing-rail",
+     "prediction": "5 cm rail flush against the wall: LiDAR sees it at 2.4 m standoff; honest pipeline reports it as a facing measurement, not clear space",
+     "witness_s": [
+      17.5
+     ]
+    },
+    {
+     "capture_kwargs": {},
+     "frames": 41,
+     "name": "arc-wall",
+     "prediction": "wall bows 7.5 cm toward the cameras over [10,16]: straight-line fit rounds it off; claims stay coarse; hard violations would need the fit to cross the bow",
+     "witness_s": [
+      13.0
+     ]
+    },
+    {
+     "capture_kwargs": {},
+     "frames": 41,
+     "name": "low-pilaster",
+     "prediction": "6 cm proud pilaster: borderline for LiDAR at 2.4 m; either a facing measurement or a slightly wrong clear claim, both honest",
+     "witness_s": [
+      12.0
+     ]
+    }
+   ]
+  },
+  "C": {
+   "count": 3,
+   "scenarios": [
+    {
+     "capture_kwargs": {},
+     "frames": 41,
+     "name": "big-opening",
+     "prediction": "2 m unfillable doorway in the marked span: honest pipeline stops at the jamb and marks ends; OVERREACH if it claims the hole",
+     "witness_s": [
+      6.5
+     ]
+    },
+    {
+     "capture_kwargs": {},
+     "frames": 15,
+     "name": "short-walk",
+     "prediction": "walk and mark cover only [7,13] of a 24 m wall with ends unexplored: claims must stay inside; OVERREACH beyond the mark",
+     "witness_s": [
+      10.0
+     ]
+    },
+    {
+     "capture_kwargs": {},
+     "frames": 15,
+     "name": "fence-support",
+     "prediction": "short walk with a parallel fence: facing-clear-to-6ft needs wall-band support beyond the mark; honest pipeline either extends with evidence or marks UNSURE",
+     "witness_s": [
+      10.0,
+      13.0
+     ]
+    }
+   ]
+  },
+  "D": {
+   "count": 2,
+   "scenarios": [
+    {
+     "capture_kwargs": {},
+     "frames": 41,
+     "name": "no-ground",
+     "prediction": "capture attests no ground polygons: ground claims must come only from the worker's own depth; a server pass on ground rules without ground evidence would be UNSOUND_PASS",
+     "witness_s": [
+      10.0
+     ]
+    },
+    {
+     "capture_kwargs": {
+      "depthless_frames": 39
+     },
+     "frames": 41,
+     "name": "one-frame-depth",
+     "prediction": "exactly one depth frame: single-view free-space must not become claims; EVIDENCE_DEFICIT or UNSOUND_PASS if the pipeline certifies clear space from one view",
+     "witness_s": [
+      10.0
+     ]
+    }
+   ]
+  }
+ },
+ "scenario_count": 18
+}
