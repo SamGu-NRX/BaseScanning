@@ -118,6 +118,35 @@ scenario; decisions must agree where the rules agree, and any disagreement is re
   around them), so worker nondeterminism breaks replay. The artifact is preserved; replays
   report mismatch rather than papering over it.
 
+## Results (2026-10-10, commit a1eb463)
+
+Full 18-scenario grid, frozen manifest, `run.py` in one pass; replays of
+`drift-cross-track` and `frames-skip` reproduced their witness hashes
+byte-identically (`8f8507a995d1238f…`, `8cace8679a946456…`). Violation counts
+(scenario: kinds):
+
+- **A — degraded inputs.** baseline: 1 EVIDENCE_DEFICIT (the worker's own
+  evidence check, doing its job). noise-high, skew-path: 0. drift-cross-track:
+  10 EVIDENCE_DEFICIT — cross-track drift walked the views off the claimed
+  spans, so overhead claims rest on 0 views. frames-skip: 4 CLEAR_UNSEEN
+  (overheads claimed clear where no frame could see) + 6 EVIDENCE_DEFICIT.
+  depthless-frames: 3, no-confidence: 1.
+- **B — confound scenes.** bush-against-wall: 3, bin: 1, fence-parallel: 1,
+  low-pilaster: 1 (all EVIDENCE_DEFICIT); grazing-rail, arc-wall: 0.
+- **C — witnesses.** big-opening: 1 EVIDENCE_DEFICIT; short-walk,
+  fence-support: 0.
+- **D — detectable failures.** no-ground: 1 EVIDENCE_DEFICIT (the judge counts
+  no ground samples as observed; uncertainty summary reports them unknown).
+  one-frame-depth: the worker refused loudly before claiming anything
+  ("only 7 ground points in the reconstruction") — no overclaim, but the
+  preregistered audit path (EVIDENCE_DEFICIT/UNSOUND_PASS on a single-view
+  clear claim) was not exercised because the worker cannot produce a scene
+  from one frame at all.
+
+The judge never certifies an unobserved region: every degraded or confounded
+scenario surfaces as EVIDENCE_DEFICIT or CLEAR_UNSEEN, and the uncertainty
+summary reports unobserved wall/ground samples as unknown.
+
 ## Layout
 
     capture_coverage/  scenes.py sim.py reference.py judge.py solve.py runner.py
