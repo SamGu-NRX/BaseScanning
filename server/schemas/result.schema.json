@@ -36,6 +36,7 @@
         "id": {"type": ["string", "null"]},
         "version": {"type": ["string", "null"]},
         "auto_approve": {"type": "boolean", "description": "Whether the rules allow automatic decisions: false when no policy is selected or the rules set auto_approve false (the public strict policy does, because some values are placeholders; the public demo policy decides anyway and says so in notice). When false, every would-be pass or reject becomes manual_review. Each check's rule.placeholder says which values decided it."},
+        "allow_reject": {"type": "boolean", "description": "Whether the rules in use permit automatic rejections. When false, every would-be reject becomes manual_review with a policy_review_before_reject reason saying so."},
         "sources": {"type": "array", "items": {"enum": ["public", "private"]}, "description": "Which rules files were loaded."},
         "rules_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "Hash of the merged rules the decision used."},
         "notice": {"type": ["string", "null"], "description": "Whose rules these are, to show with the answer, for example that the public demo policy is not Base's. Null for rules that need no such label."}
@@ -218,6 +219,7 @@
             "properties": {"subject": {"type": "string"}, "extra_ft": {"type": "number"}}
           }
         },
+        "length_is_lower_bound": {"type": "boolean", "description": "True when a detour object on the run had no recorded height, so the detour's length is unknown and length_ft is a floor, not a measurement. The path check names the object."},
         "crossings": {
           "type": "array",
           "items": {

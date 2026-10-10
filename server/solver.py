@@ -234,6 +234,10 @@ class Route:
     polyline: list[tuple[float, float]]
     detours: list[dict[str, Any]]
     crossings: list[dict[str, Any]]
+    # True when a detour object's height was not recorded, so the run may be longer than the
+    # length given: the number is a floor, not a measurement (review: the length was reported
+    # as measured while the detour around an object of unknown height was unknown).
+    length_lower_bound: bool = False
 
 
 @dataclass
@@ -254,10 +258,13 @@ class Candidate:
 
 
 class Solver:
-    def __init__(self, scene: Scene, loaded: LoadedRules) -> None:
+    def __init__(
+        self, scene: Scene, loaded: LoadedRules, clock: Callable[[], float] | None = None
+    ) -> None:
         self.scene = scene
         r: Rules = loaded.rules
         self.r = r
+        self.clock = clock if clock is not None else time.perf_counter
         self.W = r.battery.width_ft.value
         self.D = r.battery.depth_ft.value
         self.H = r.battery.height_ft.value
@@ -287,7 +294,12 @@ class Solver:
         self.good = [g for g in scene.ground if g.type in r.ground.allowed]
         self.bad = [g for g in scene.ground if g.type not in r.ground.allowed]
         self.drives = [g for g in scene.ground if g.type in r.ground.drivable]
-        self.unobserved_ground = scene.unobserved_ground()
+        # The unobserved and unclassified outdoor grounds are computed when first a check needs
+        # them, not here: listing the scene's battery positions is the first step the count and
+        # clock guards run in, and a scene refused there should not pay for preprocessing first
+        # (review: geometry preprocessing preceded both guards).
+        self._unobserved_ground: Geometry | None = None
+        self._unclassified_cache: Geometry | None = None
         # How high up the wall each check needs the face seen, from rules.yaml: the battery's
         # back to its top, the cable at its run height, and the band's top (headroom height) for
         # anything that can hang above the battery: boxes, vents, gas and openings (up to the
@@ -304,12 +316,25 @@ class Solver:
         self.ws_span = (-ws.width_ft.value / 2, ws.width_ft.value / 2)
         self.ws_poly = scene.band_polygon(self.ws_span[0], self.ws_span[1], ws.depth_ft.value)
         self._good_union = unary_union([g.polygon for g in self.good]).buffer(1e-7)
-        recorded = unary_union([g.polygon for g in scene.ground])
-        outdoor = scene.outdoor_band(scene.reach_ft)
-        # Outdoor ground no patch describes; opened to drop floating point slivers.
-        self._unclassified = outdoor.difference(recorded).buffer(-1e-6).buffer(1e-6)
         self._buffers: dict[tuple[int, float], Geometry] = {}
         self._ground_error = max((g.plus_minus for g in scene.ground), default=0.0)
+
+    @property
+    def unobserved_ground(self) -> Geometry:
+        """The scene's unobserved ground, computed once when first a check needs it."""
+        if self._unobserved_ground is None:
+            self._unobserved_ground = self.scene.unobserved_ground()
+        return self._unobserved_ground
+
+    @property
+    def _unclassified(self) -> Geometry:
+        """Outdoor ground no patch describes; opened to drop floating point slivers. Computed
+        once when first a check needs it."""
+        if self._unclassified_cache is None:
+            recorded = unary_union([g.polygon for g in self.scene.ground])
+            outdoor = self.scene.outdoor_band(self.scene.reach_ft)
+            self._unclassified_cache = outdoor.difference(recorded).buffer(-1e-6).buffer(1e-6)
+        return self._unclassified_cache
 
     # --- geometry helpers ----------------------------------------------------------------------
 
@@ -385,6 +410,11 @@ class Solver:
             c.outcome = FAIL if fails else UNSURE
             c.measured, c.plus_minus, c.threshold = height, 0.0, self.H
             c.comparison = "at_least"
+            # The battery's height rule decided here, not its width; cite it, with the width
+            # still in the citation for the private-source grouping (review: the check kept the
+            # battery-width citation while the height decided).
+            c.rule_key, c.rule = "battery.height_ft", self.r.battery.height_ft
+            c.cites = ("battery.width_ft",)
             if not fails:
                 c.unsure_cause = "margin"
             c.reason = (
@@ -678,6 +708,7 @@ class Solver:
             "",
             "meter_working_space.width_ft",
             ws.width_ft,
+            cites=("meter_working_space.depth_ft",),
             threshold=0.0,
             comparison="at_least",
             subject="meter",
@@ -870,6 +901,14 @@ class Solver:
                     small_gaps.append(f"a {ft(gap.s1 - gap.s0)} gap between walls")
         h = r.height_ft.value
         path_line = self.scene.wall_line(lo, hi) if hi - lo > EPS else None
+        # The path runs along the chain; each straight stretch of it is carried by one piece,
+        # whose error says how far that stretch could sit from where it was measured.
+        path_segs: list[tuple[LineString, Piece, float, float]] = []
+        if path_line is not None:
+            for p in self.scene.pieces:
+                a, b = max(lo, p.s0), min(hi, p.s1)
+                if b - a > EPS:
+                    path_segs.append((LineString([p.point(a), p.point(b)]), p, a, b))
         # The run's length is known only to the battery's wall's error, that of every other wall
         # segment the cable runs along (each one's ends, its corners, may lie anywhere within
         # its error; summed, which may overstate but never understates), and the meter's, added
@@ -892,10 +931,23 @@ class Solver:
             definite = overlap - tol > EPS
             effect = r.crossing[o.type]  # type: ignore[index]
             # Something the cable can go round or behind is only in its way when it touches the
-            # wall the cable runs along; a door or garage blocks it wherever it is drawn.
-            standoff = o.geom.distance(path_line) - o.plus_minus - piece.plus_minus
-            if effect in ("detour", "allow") and standoff > _MEASURE_EPS:
-                continue
+            # wall the cable runs along; a door or garage blocks it wherever it is drawn. The
+            # standoff is credited the error of the wall carrying the path nearest the object,
+            # at its end furthest from the meter as _walls_between sums them, not the battery's
+            # wall's error everywhere (review: an exact gas footprint 0.5 ft off a routed wall
+            # with 1 ft error passed, where the truth could touch).
+            if effect in ("detour", "allow"):
+                if path_segs:
+                    _seg, carrier, ca, cb = min(path_segs, key=lambda sg: o.geom.distance(sg[0]))
+                    standoff = (
+                        o.geom.distance(path_line)
+                        - o.plus_minus
+                        - carrier.error_at(max(abs(ca), abs(cb)))
+                    )
+                else:
+                    standoff = o.geom.distance(path_line) - o.plus_minus - piece.plus_minus
+                if standoff > _MEASURE_EPS:
+                    continue
             if effect == "fail" and not definite:
                 # A door that may or may not reach the route: neither clear nor blocking.
                 maybe_blockers.append(o.label)
@@ -1060,6 +1112,7 @@ class Solver:
             + self.scene.polyline(0.0, near),
             detours=detours,
             crossings=crossings,
+            length_lower_bound=bool(unknown),
         )
         return route, path, reach
 
@@ -1344,7 +1397,7 @@ class Solver:
         for m in self.scene.overheads + self.scene.facing:
             boundaries += [(b, around) for b in m.span]
         for band in self.scene.observed.values():
-            for a, b, _ in band:
+            for a, b, _, _cam in band:
                 boundaries += [(a, around), (b, around)]
         for g in self.scene.gaps:
             boundaries += [(g.s0, around), (g.s1, around)]
@@ -1548,16 +1601,28 @@ class Solver:
         return found
 
     def candidates(self, budget_s: float) -> list[Candidate]:
-        started = time.perf_counter()
-        starts = [(piece, s0) for piece in self.scene.walls for s0 in self.starts(piece)]
-        if len(starts) > MAX_STARTS:
-            raise SceneTooComplex(
-                f"the scene needs {len(starts)} battery positions checked, more than the "
-                f"{MAX_STARTS} this server evaluates"
-            )
+        started = self.clock()
+        # The count and the clock are enforced as each wall's positions are generated, not
+        # after every wall has contributed and not after evaluation: generating starts is the
+        # first expensive step of a solve (review: a scene paid for generating all its starts
+        # before either limit applied, and fake walls could multiply past the cap).
+        starts: list[tuple[Piece, float]] = []
+        for piece in self.scene.walls:
+            starts += [(piece, s0) for s0 in self.starts(piece)]
+            if len(starts) > MAX_STARTS:
+                raise SceneTooComplex(
+                    f"the scene needs more than the {MAX_STARTS} battery positions this server "
+                    "evaluates"
+                )
+            elapsed = self.clock() - started
+            if elapsed > budget_s:
+                raise SceneTooComplex(
+                    f"listing the scene's battery positions took longer than {budget_s:g} "
+                    "seconds before any was evaluated"
+                )
         out = []
         for i, (piece, s0) in enumerate(starts):
-            elapsed = time.perf_counter() - started
+            elapsed = self.clock() - started
             if i % 64 == 0 and elapsed > budget_s:
                 raise SceneTooComplex(
                     f"checking the scene took longer than {budget_s:g} seconds "
@@ -1701,6 +1766,7 @@ def _route_json(solver: Solver, c: Candidate) -> dict[str, Any]:
             }
             for x in rt.crossings
         ],
+        "length_is_lower_bound": rt.length_lower_bound,
     }
 
 
@@ -1979,6 +2045,16 @@ def solve(scene: Scene, loaded: LoadedRules, budget_s: float = SOLVE_BUDGET_S) -
             missing = past_end_requests()
         if not auto:
             reasons.append(policy_reason)
+        elif not r.policy.allow_reject:
+            # Why nothing was rejected automatically: the rules in use leave rejections to a
+            # person (review: such a policy produced manual review with no policy reason).
+            reasons.append(
+                {
+                    "code": "policy_review_before_reject",
+                    "message": "The rules in use leave rejections to a person, so nothing here "
+                    "is rejected automatically.",
+                }
+            )
         decision = "reject" if can_reject else "manual_review"
         if decision == "reject":
             summary = (
@@ -2004,6 +2080,7 @@ def solve(scene: Scene, loaded: LoadedRules, budget_s: float = SOLVE_BUDGET_S) -
             "id": r.policy.id,
             "version": r.policy.version,
             "auto_approve": auto,
+            "allow_reject": r.policy.allow_reject,
             "sources": list(loaded.sources),
             "rules_sha256": loaded.sha256,
             "notice": r.policy.notice,
