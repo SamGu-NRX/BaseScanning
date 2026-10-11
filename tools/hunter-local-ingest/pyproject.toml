@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hunter-local-ingest"
+version = "0.1.0"
+description = "Real-client evaluation harness for the local Hunter capture API: public adapter interface, conformance scenarios, labeled fault controls, sanitized receipts."
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+hunter-local-ingest = "hunter_local_ingest.runner:main"
+hunter-selfcheck = "hunter_local_ingest.selfcheck:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
