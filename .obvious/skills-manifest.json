@@ -1,0 +1,17 @@
+{
+  "_about": "Written by Sam's vendor_skills.py. A refresh replaces only the skill folders and files listed here; any other folder under .obvious/skills/ belongs to this repo and is never touched.",
+  "skills": [
+    "anti-ui-slop",
+    "blast-radius",
+    "pstack-benchmark-checklist",
+    "pstack-create-verification-skill",
+    "pstack-principle-boundary-discipline",
+    "pstack-principle-explain-the-number",
+    "pstack-principle-foundational-thinking",
+    "pstack-principle-prove-it-works",
+    "pstack-principle-test-behavior-not-implementation",
+    "pstack-principle-type-system-discipline",
+    "pstack-technical-writing"
+  ],
+  "files": []
+}
