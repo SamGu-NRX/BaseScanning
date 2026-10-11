@@ -25,12 +25,21 @@ from .adapter import INTERFACE_VERSION
 from .faultproxy import serve, wait_tcp
 from .http_client import DirectHttpClient
 from .modes import Status, Transport
-from .receipts import Check, ChecksWriter, fresh_run_dir, write_run_manifest, write_summary
-from .scenarios import CapturePlan
+from .receipts import (
+    ChecksSink,
+    ChecksWriter,
+    fresh_run_dir,
+    write_run_manifest,
+    write_summary,
+)
+from .scenarios import (
+    CapturePlan,
+    PrefixedSink,
+    gpu_stub_lines,
+    unreachable_lines,
+)
 from .scenarios.controls import run_controls
 from .scenarios.lifecycle import run_lifecycle
-
-GPU_STUB_ARMS = ("objects", "vlm", "dense")
 
 ORIGIN_NOTE = (
     "Derived from published client behavior in HouseScanKit upload sources @ alpha "
@@ -70,39 +79,6 @@ def _load_plan(path: Path, seed: int) -> CapturePlan:
         ) from exc
 
 
-def _unreachable_lines(detail: str) -> list[dict]:
-    """BLOCKED receipts when the endpoint never came up."""
-    return [
-        {
-            "id": "lifecycle.health",
-            "transport": "REAL_MIRROR_CPU",
-            "oracle": "repo README run instructions: GET /healthz before use",
-            "expected": "HTTP 200 with a status field",
-            "observed": detail,
-            "status": "BLOCKED",
-            "evidence": None,
-        },
-        {
-            "id": "lifecycle.create",
-            "transport": "REAL_MIRROR_CPU",
-            "oracle": "published CaptureUploader: create with Idempotency-Key=packetId",
-            "expected": "2xx with captureId",
-            "observed": detail,
-            "status": "BLOCKED",
-            "evidence": None,
-        },
-        {
-            "id": "lifecycle.result",
-            "transport": "REAL_MIRROR_CPU",
-            "oracle": "public result-schema doc",
-            "expected": "schema-valid answer",
-            "observed": detail,
-            "status": "BLOCKED",
-            "evidence": None,
-        },
-    ]
-
-
 def run(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="hunter-local-ingest", description=__doc__)
     parser.add_argument("--endpoint", required=True, help="capture API base URL (…/v1)")
@@ -110,7 +86,13 @@ def run(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", default="runs", help="output root for run directories")
     parser.add_argument("--label", default="run", help="label for the run directory")
     parser.add_argument(
-        "--backend-mode", default="unverified", help="backend mode string for the manifest"
+        "--backend-mode",
+        required=True,
+        choices=[m.value for m in (Transport.REAL_MIRROR_CPU, Transport.FAKE_HUNTER)],
+        help=(
+            "honest transport class of the endpoint under test; the operator declares it "
+            "and every receipt row of the main round carries it"
+        ),
     )
     parser.add_argument("--backend-ref", default=None, help="commit SHA of the backend under test")
     parser.add_argument("--client-ref", default=None, help="commit SHA of the harness client")
@@ -126,6 +108,7 @@ def run(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     plan = _load_plan(Path(args.plan_file), args.seed)
+    round_transport = Transport(args.backend_mode)
 
     run_dir = fresh_run_dir(Path(args.out), args.label)
     commands = [
@@ -145,54 +128,28 @@ def run(argv: list[str] | None = None) -> int:
         origin_note=ORIGIN_NOTE,
     )
 
-    checks: list[Check] = []
     writer = ChecksWriter(run_dir)
-
-    def sink(line: dict) -> None:
-        checks.append(
-            Check(
-                id=line["id"],
-                transport=Transport(line["transport"]),
-                oracle=line["oracle"],
-                expected=line["expected"],
-                observed=line["observed"],
-                status=Status(line["status"]),
-                evidence=line.get("evidence"),
-                observation=line.get("observation"),
-            )
-        )
-        writer.write(checks[-1])
+    sink = ChecksSink(writer)
 
     # endpoint reachability gate
     if not wait_tcp(args.endpoint, timeout_s=10.0):
         detail = f"endpoint {args.endpoint} unreachable (TCP) within 10s"
-        for line in _unreachable_lines(detail):
-            checks.append(
-                Check(
-                    id=line["id"],
-                    transport=Transport(line["transport"]),
-                    oracle=line["oracle"],
-                    expected=line["expected"],
-                    observed=line["observed"],
-                    status=Status(line["status"]),
-                )
-            )
-            writer.write(checks[-1])
-        _gpu_stub_lines(sink)
-        write_summary(run_dir, checks, lead_questions=LEAD_QUESTIONS, blocked=[detail])
+        for line in unreachable_lines(detail, round_transport):
+            sink.append(line)
+        gpu_stub_lines(sink)
+        write_summary(run_dir, sink.checks, lead_questions=LEAD_QUESTIONS, blocked=[detail])
         writer.close()
         print(f"BLOCKED: {detail}")
         return 2
 
-
-
     client = DirectHttpClient(args.endpoint)
 
-    # REAL_MIRROR_CPU round: the real (or GPU-stubbed) local backend.
+    # Main round: the endpoint under test, at the transport class the
+    # operator declared for it.
     run_lifecycle(
         client,
         plan,
-        Transport.REAL_MIRROR_CPU,
+        round_transport,
         sink,
         result_budget_s=args.result_budget_s,
         poll_interval_s=args.poll_interval_s,
@@ -200,17 +157,18 @@ def run(argv: list[str] | None = None) -> int:
     run_controls(
         client,
         plan,
-        Transport.REAL_MIRROR_CPU,
+        round_transport,
         sink,
         restart_command=args.restart_command,
     )
 
     # GPU_STUB vocabulary lines: named arms, never executed unless authorized.
-    _gpu_stub_lines(sink)
+    gpu_stub_lines(sink)
 
     # FAKE_HUNTER fault round through the proxy, same client, labeled. A
     # distinct packet id keeps it an independent capture rather than an
-    # accidental replay of the real round.
+    # accidental replay of the real round; the prefixed sink keeps its
+    # receipt lines distinct from the main round's.
     if args.with_faults:
         plan_fh = CapturePlan(
             packet_id=plan.packet_id + "-fh",
@@ -226,7 +184,7 @@ def run(argv: list[str] | None = None) -> int:
                 proxied,
                 plan_fh,
                 Transport.FAKE_HUNTER,
-                sink,
+                PrefixedSink(sink, "fault."),
                 result_budget_s=min(args.result_budget_s, 120.0),
                 poll_interval_s=args.poll_interval_s,
             )
@@ -235,6 +193,7 @@ def run(argv: list[str] | None = None) -> int:
 
     writer.close()
 
+    checks = sink.checks
     any_fail = any(c.status is Status.FAIL for c in checks)
     any_blocked = any(c.status is Status.BLOCKED for c in checks)
     blocked_notes = [
@@ -256,24 +215,6 @@ def run(argv: list[str] | None = None) -> int:
     if any_blocked:
         return 2
     return 0
-
-
-def _gpu_stub_lines(sink) -> None:
-    for arm in GPU_STUB_ARMS:
-        sink(
-            {
-                "id": f"gpu-stub.{arm}",
-                "transport": "GPU_STUB",
-                "oracle": (
-                    "task vocabulary: GPU-stubbed arms are named, never executed without "
-                    "explicit authorization"
-                ),
-                "expected": "only run when the operator authorizes the GPU arm",
-                "observed": "not run: no GPU arm authorized in this run",
-                "status": "NOT_RUN",
-                "evidence": None,
-            }
-        )
 
 
 def main() -> int:

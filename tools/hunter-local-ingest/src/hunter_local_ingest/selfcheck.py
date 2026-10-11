@@ -30,7 +30,7 @@ from pathlib import Path
 
 from .modes import Status, Transport
 from .receipts import fresh_run_dir
-from .scenarios import CapturePlan
+from .scenarios import CapturePlan, PrefixedSink, gpu_stub_lines
 from .scenarios.controls import run_controls
 from .scenarios.lifecycle import run_lifecycle
 from .traces import compare_trace
@@ -259,13 +259,17 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
     client = _C(base, timeout_s=10.0)
 
     plan = build_plan()
-    transport = Transport.REAL_MIRROR_CPU
+    # The in-process fake is FAKE_HUNTER-class plumbing infrastructure, never
+    # REAL_MIRROR_CPU: it implements the same published lifecycle, but no row
+    # it produces may read as real-backend evidence.
+    transport = Transport.FAKE_HUNTER
     sink: list = []
 
     run_lifecycle(client, plan, transport, sink, result_budget_s=15.0, poll_interval_s=0.2)
     run_controls(client, plan, transport, sink)
 
-    # plumbing-fake FAKE_HUNTER round through the proxy
+    # fault-proxy FAKE_HUNTER round; prefixed ids keep these lines distinct
+    # from the direct round's.
     from .faultproxy import serve
 
     proxy = serve(base, {"create": {"kind": "delay", "ms": 100}})
@@ -282,12 +286,15 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
             proxied,
             plan_fh,
             Transport.FAKE_HUNTER,
-            sink,
+            PrefixedSink(sink, "fault."),
             result_budget_s=15.0,
             poll_interval_s=0.2,
         )
     finally:
         proxy.stop()
+
+    # GPU arms: named, never executed (NOT_RUN vocabulary rows).
+    gpu_stub_lines(sink)
 
     server.shutdown()
 
@@ -345,32 +352,33 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
         if got is not Status.NOT_RUN:
             problems.append(f"{tid}/{cid}: expected NOT_RUN, got {got}")
 
-    for tid in (Transport.REAL_MIRROR_CPU.value, Transport.FAKE_HUNTER.value):
-        for cid in (
-            "lifecycle.health",
-            "lifecycle.create",
-            "lifecycle.register",
-            "lifecycle.upload",
-            "lifecycle.commit",
-            "lifecycle.finalize",
-            "lifecycle.events",
-            "lifecycle.result",
-        ):
-            expect_pass(tid, cid)
+    _LIFECYCLE_IDS = (
+        "lifecycle.health",
+        "lifecycle.create",
+        "lifecycle.register",
+        "lifecycle.upload",
+        "lifecycle.commit",
+        "lifecycle.finalize",
+        "lifecycle.events",
+        "lifecycle.result",
+    )
+    for cid in _LIFECYCLE_IDS:
+        expect_pass(Transport.FAKE_HUNTER.value, cid)
+    for cid in _LIFECYCLE_IDS:
+        expect_pass(Transport.FAKE_HUNTER.value, "fault." + cid)
     for cid in (
         "control.idempotent-create",
         "control.corrupt-upload",
         "control.truncated-upload",
         "control.wrong-capture",
     ):
-        expect_pass(Transport.REAL_MIRROR_CPU.value, cid)
-    expect_not_run(Transport.REAL_MIRROR_CPU.value, "control.restart-recovery")
+        expect_pass(Transport.FAKE_HUNTER.value, cid)
+    # in-process fake has no process to restart; the restart-recovery control
+    # needs the real runner + backend and stays honestly NOT_RUN here
+    expect_not_run(Transport.FAKE_HUNTER.value, "control.restart-recovery")
 
     for arm in ("objects", "vlm", "dense"):
-        got = statuses.get(("GPU_STUB", f"gpu-stub.{arm}"))
-        # selfcheck drives scenarios directly (no runner GPU lines)
-        if got is not None and got is not Status.NOT_RUN:
-            problems.append(f"gpu-stub.{arm}: expected NOT_RUN, got {got}")
+        expect_not_run(Transport.GPU_STUB.value, f"gpu-stub.{arm}")
 
     # privacy sweep over the receipts
     receipt_text = (run_dir / "checks.jsonl").read_text(encoding="utf-8")
@@ -390,7 +398,7 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
     # (provisional-line) mismatches are reported, never hard failures
     trace_path = Path(__file__).resolve().parents[2] / "traces" / "expected-lifecycle-v1.jsonl"
     if trace_path.exists():
-        mismatches = compare_trace(checks, trace_path, transport=Transport.REAL_MIRROR_CPU)
+        mismatches = compare_trace(checks, trace_path, transport=Transport.FAKE_HUNTER)
         hard = [m for m in mismatches if not m.startswith("advisory: ")]
         advisory = [m for m in mismatches if m.startswith("advisory: ")]
         problems.extend(hard)

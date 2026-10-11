@@ -29,6 +29,35 @@ from .modes import Status, Transport
 RUN_ARTIFACTS = ("run-manifest.json", "checks.jsonl", "summary.json")
 
 
+class ChecksSink:
+    """The one sink interface scenarios and vocabulary helpers write to.
+
+    Anything with ``.append(line_dict)`` is a sink; this class is the
+    receipt-backed implementation the runner uses. It validates the enums
+    and writes each line as it is recorded, so a crashed run still leaves
+    every check that decided before the crash.
+    """
+
+    def __init__(self, writer: ChecksWriter) -> None:
+        self._writer = writer
+        self.checks: list[Check] = []
+
+    def append(self, line: dict) -> Check:
+        check = Check(
+            id=line["id"],
+            transport=Transport(line["transport"]),
+            oracle=line["oracle"],
+            expected=line["expected"],
+            observed=line["observed"],
+            status=Status(line["status"]),
+            evidence=line.get("evidence"),
+            observation=line.get("observation"),
+        )
+        self.checks.append(check)
+        self._writer.write(check)
+        return check
+
+
 @dataclasses.dataclass
 class Check:
     id: str

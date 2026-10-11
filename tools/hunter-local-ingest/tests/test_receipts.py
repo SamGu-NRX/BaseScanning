@@ -288,3 +288,126 @@ class TestFixtureDeterminism:
             plan = json.loads(out.read_text())
             digests.add(plan["plan"]["packet_id"])
         assert len(digests) == 2
+
+
+def _generate_plan(tmp_path: Path, seed: str = "3") -> Path:
+    gen = TOOL_ROOT / "fixtures" / "gen_synthetic_packet.py"
+    out = tmp_path / "plan.json"
+    subprocess.run(
+        [sys.executable, str(gen), "--seed", seed, "--out", str(out)],
+        check=True,
+        cwd=TOOL_ROOT,
+    )
+    return out
+
+
+class TestRunnerAgainstReachableEndpoint:
+    """The full runner CLI against a reachable local endpoint.
+
+    The self-check drives scenarios in-process; these tests drive the actual
+    runner (argparse → receipts → exit codes) over real HTTP so the
+    reachable path — not just the unreachable probe — is exercised.
+    """
+
+    @pytest.fixture()
+    def fake_server(self):
+        import threading
+        from http.server import ThreadingHTTPServer
+
+        from hunter_local_ingest.selfcheck import _FakeState, build_fake_handler
+
+        holder = {"base": ""}
+        state = _FakeState()
+        handler = build_fake_handler(holder)
+        server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        server.state = state  # type: ignore[attr-defined]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        host, port = server.server_address[:2]
+        holder["base"] = f"http://127.0.0.1:{port}"
+        yield holder["base"]
+        server.shutdown()
+        thread.join(timeout=5)
+
+    def test_full_runner_exit_zero_with_fake_labeled_rows(self, fake_server, tmp_path):
+        from hunter_local_ingest.runner import run as runner_run
+
+        plan = _generate_plan(tmp_path)
+        out = tmp_path / "runs"
+        code = runner_run(
+            [
+                "--endpoint",
+                fake_server,
+                "--plan-file",
+                str(plan),
+                "--out",
+                str(out),
+                "--label",
+                "runner-fake",
+                "--backend-mode",
+                "FAKE_HUNTER",
+                "--seed",
+                "3",
+            ]
+        )
+        assert code == 0, "runner must complete green against a reachable endpoint"
+        run_dir = next(out.iterdir())
+        lines = [
+            json.loads(line)
+            for line in (run_dir / "checks.jsonl").read_text().splitlines()
+        ]
+        # honest labeling: the fake endpoint may never produce a
+        # REAL_MIRROR_CPU row
+        assert all(line["transport"] != "REAL_MIRROR_CPU" for line in lines)
+        by_id = {line["id"]: line for line in lines}
+        for cid in (
+            "lifecycle.health",
+            "lifecycle.create",
+            "lifecycle.register",
+            "lifecycle.upload",
+            "lifecycle.commit",
+            "lifecycle.finalize",
+            "lifecycle.events",
+            "lifecycle.result",
+        ):
+            assert by_id[cid]["status"] == "PASS", (cid, by_id[cid]["observed"])
+        # GPU arms: named, never executed
+        for arm in ("objects", "vlm", "dense"):
+            assert by_id[f"gpu-stub.{arm}"]["status"] == "NOT_RUN"
+
+    def test_backend_mode_is_required(self, fake_server, tmp_path):
+        from hunter_local_ingest.runner import run as runner_run
+
+        plan = _generate_plan(tmp_path)
+        with pytest.raises(SystemExit) as excinfo:
+            runner_run(
+                [
+                    "--endpoint",
+                    fake_server,
+                    "--plan-file",
+                    str(plan),
+                    "--out",
+                    str(tmp_path / "runs2"),
+                ]
+            )
+        # argparse usage error: the operator must declare the transport class
+        assert excinfo.value.code == 2
+
+    def test_backend_mode_rejects_unknown_class(self, fake_server, tmp_path):
+        from hunter_local_ingest.runner import run as runner_run
+
+        plan = _generate_plan(tmp_path)
+        with pytest.raises(SystemExit) as excinfo:
+            runner_run(
+                [
+                    "--endpoint",
+                    fake_server,
+                    "--plan-file",
+                    str(plan),
+                    "--out",
+                    str(tmp_path / "runs3"),
+                    "--backend-mode",
+                    "unverified",
+                ]
+            )
+        assert excinfo.value.code == 2
