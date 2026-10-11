@@ -477,7 +477,26 @@ def replay(results_dir: Path) -> dict:
     cases = []
     with tempfile.TemporaryDirectory(prefix="recon-repeatability-replay-") as td:
         fresh = run_manifest(manifest_path, Path(td))
-    for old, new in zip(committed["cases"], fresh["cases"], strict=False):
+    old_names = [c["name"] for c in committed["cases"]]
+    fresh_names = [c["name"] for c in fresh["cases"]]
+    # Exact complete membership and identities, checked before any per-case comparison: a
+    # positional zip over unequal lists would silently truncate — a deleted witness or an
+    # appended forgery could pass as 9-of-9 or 10-of-10. Duplicated identities inside one
+    # record are equally evidence of corruption and are refused too.
+    if len(set(old_names)) != len(old_names) or len(set(fresh_names)) != len(fresh_names):
+        raise AssertionError(
+            "case identities are not unique: committed "
+            f"{[n for n in old_names if old_names.count(n) > 1]} / fresh "
+            f"{[n for n in fresh_names if fresh_names.count(n) > 1]}"
+        )
+    if old_names != fresh_names:
+        record_only = sorted(set(old_names) - set(fresh_names))
+        fresh_only = sorted(set(fresh_names) - set(old_names))
+        raise AssertionError(
+            "the committed record and the fresh run disagree on case membership: "
+            f"in-record-only={record_only or '[]'} fresh-only={fresh_only or '[]'}"
+        )
+    for old, new in zip(committed["cases"], fresh["cases"], strict=True):
         agreement = "agree" if old == new else "DIFFER"
         cases.append({"name": old["name"], "agreement": agreement})
     replay_doc = {

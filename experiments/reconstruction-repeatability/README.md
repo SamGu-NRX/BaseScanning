@@ -38,8 +38,11 @@ graded "measured, not graded" (intrinsics-shift) is exempt from within-case grad
 from replay witnessing: moved measurements mean the frozen contract broke.
 `tests/test_replay_gate.py` drives the actual CLI as the reviewer would run it: the clean witnesses
 replay to exit 0, a deliberately mutated cached result (a wall-metric figure rewritten in a
-committed witness record) replays to exit 1 with the case named, and a manifest-digest drift is
-refused.
+committed witness record) replays to exit 1 with the case named, a manifest-digest drift is
+refused, and so are membership corruptions — a witness deleted from the record or a forged case
+appended to it. Membership is checked exactly and completely before any per-case comparison: a
+positional zip over unequal lists would silently truncate, letting a deletion pass as 9-of-9 or
+an addition as 10-of-10. Duplicated identities inside one record are refused too.
 
 ## Cases
 

@@ -65,6 +65,38 @@ def test_mutated_witness_replays_to_nonzero(tmp_path: Path):
     assert marked["agreement"] == "DIFFER"
 
 
+def test_deleted_witness_replays_to_nonzero(tmp_path: Path):
+    """Deletion control: a committed witness removed from the record is a truncated
+    comparison — the CLI must refuse and exit nonzero naming the missing case, not pass
+    as 9-of-9."""
+    dest = copy_results(tmp_path)
+    record_path = dest / "reconstruction_repeatability.json"
+    record = json.loads(record_path.read_text())
+    last = record["cases"][-1]["name"]
+    record["cases"].pop()
+    record_path.write_text(json.dumps(record, indent=1))
+
+    proc = run_cli(dest)
+    assert proc.returncode != 0, proc.stdout + proc.stderr
+    assert f"fresh-only=['{last}']" in proc.stderr, proc.stdout + proc.stderr
+
+
+def test_appended_witness_replays_to_nonzero(tmp_path: Path):
+    """Addition control: a forged case appended to the committed record must make the CLI
+    refuse and exit nonzero naming it, not pass as 10-of-10 over a mismatched comparison."""
+    dest = copy_results(tmp_path)
+    record_path = dest / "reconstruction_repeatability.json"
+    record = json.loads(record_path.read_text())
+    forged = json.loads(json.dumps(record["cases"][0]))
+    forged["name"] = "forged-witness"
+    record["cases"].append(forged)
+    record_path.write_text(json.dumps(record, indent=1))
+
+    proc = run_cli(dest)
+    assert proc.returncode != 0, proc.stdout + proc.stderr
+    assert "in-record-only=['forged-witness']" in proc.stderr, proc.stdout + proc.stderr
+
+
 def test_manifest_drift_refuses_the_replay(tmp_path: Path):
     """A results dir whose record no longer matches its manifest digest is not evidence:
     the CLI must refuse and exit nonzero rather than silently replay the wrong contract."""
