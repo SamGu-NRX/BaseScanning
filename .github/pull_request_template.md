@@ -9,6 +9,13 @@
 
 <!-- Explain the reason or meaningful tradeoff without repeating the opening. -->
 
+## How it works
+
+<!-- One simple diagram when a flow, state change or structure is hard to picture:
+     a Mermaid chart (GitHub renders it) or an image. Few boxes, plain-word labels,
+     one idea, and a one-line caption saying what to notice.
+     Remove this section when the prose already makes it obvious. -->
+
 ## UI changes
 
 <!-- Show only changed behavior. Pair running-app captures of the same screen,
