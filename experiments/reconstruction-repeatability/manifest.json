@@ -1,0 +1,111 @@
+{
+  "experiment": "reconstruction-repeatability",
+  "question": "Which input transformations must preserve the reconstruction (a stable wrong wall is a transformation that deterministically changes it), and which manipulations of run history does the depth cache actually neutralize (a history-dependent wall is one that depends on what ran before, not on declared inputs)?",
+  "frozen": {
+    "date": "2026-10-10",
+    "branch_base": "obv/basescanning-004",
+    "base_commit": "c404045002439bf27ed7906fcba061a07097f046",
+    "base_commit_note": "PR #220's head (Witnesses for the clipped coverage grid and fitted ground); Hunter's recon, evaluated as it stood there.",
+    "source_sha256": {
+      "recon/recon/pipeline.py": "69316a6e5d4cbc31a6a07b38c7342c671dfd6e5c82069e8e95cf9b9db568af2f",
+      "recon/recon/capture.py": "5323eb224749de0542d69355b7e43b6406446e5bce8a5e7832f8626c80835c25",
+      "recon/recon/depth.py": "efac2bb1931dff0e34f2931861ac2edd6301e4893283817a9967a4f9e45af3c6",
+      "recon/recon/fusion.py": "733edfec26851e2b13d3ee56e57524b320041a3714ab7c1cc54ebd4d04a00a1e",
+      "recon/recon/geometry.py": "ad0aa56535f3e57a4302e213bf8a37ee64adbfae86b1614b3d803ec7449d82cb",
+      "recon/recon/coverage.py": "4a3af208342e02682e8fc5cb591244100eb07ccda1b8696c50b18624ab80bf99",
+      "recon/recon/scene.py": "ecde13cd0f20513d8a8c9b1cf7d002f3c5602fb0fc00661fc7e2523e187dfe9f",
+      "recon/models/moge_depth.py": "439fed383a79804ca24d88ca677b07a495d95806c92f4a2ee3ac8b4a6dd54634",
+      "recon/models/uv.lock": "dabc78bd0d943c22a637e9b36b3f2ec23fb0da21277f1a6508bf544bca77bb22"
+    },
+    "depth_model": "STUBBED, NOT EXERCISED: the MoGe-2 subprocess is replaced by an analytic deterministic renderer (bundles.make_stub_model); no weights, no GPU, no network. recon.depth.rescale is an identity pass (deterministic in depths and poses, holds no history).",
+    "scope_note": "This experiment measures repeatability only. No recon repair belongs here: a failing case is recorded as a finding, not fixed. The server branch (t3/server) is not evaluated; recon is absent there."
+  },
+  "tolerances": {
+    "identity_ft": 0.0,
+    "identity_note": "identity cases demand byte-identical outputs (deterministic stub, deterministic pipeline)",
+    "order_ft": 0.005,
+    "order_note": "frames-reordered: the fusion loop sums per-voxel means in list order, so float non-associativity may move the wall; 1.5 mm",
+    "guarded_ft": 0.0005,
+    "guarded_note": "guarded cases demand the guarded run equal its reference within 0.15 mm of wall"
+  },
+  "cases": [
+    {
+      "name": "baseline-repeat",
+      "class": "identity",
+      "transformation": "none: the same bundle through two fresh work directories",
+      "expectation": "the floor: both runs ship byte-identical outputs",
+      "check": "outputs_identical",
+      "tolerance_ft": 0.0
+    },
+    {
+      "name": "warm-cache",
+      "class": "identity",
+      "transformation": "second run in the same work directory (content-keyed cache hit)",
+      "expectation": "identical outputs, and the second run calls the model zero times",
+      "check": "outputs_identical",
+      "tolerance_ft": 0.0
+    },
+    {
+      "name": "frames-reordered",
+      "class": "identity",
+      "transformation": "scene.json keyframes reversed (frame ids key everything but the fusion loop's order)",
+      "expectation": "the wall and every output number move by at most order_ft",
+      "check": "wall_within",
+      "tolerance_ft": 0.005
+    },
+    {
+      "name": "frame-id-duplicate",
+      "class": "refusal",
+      "transformation": "a keyframe record repeated (same id, twice)",
+      "expectation": "the capture refuses it (DuplicateFrameId) before any reconstruction: one depth view must not count from two camera positions",
+      "check": "refusal"
+    },
+    {
+      "name": "image-reencoded",
+      "class": "identity",
+      "transformation": "every keyframe JPEG decoded and re-encoded in place: different bytes, and a lossy re-encode also drifts the decoded pixels slightly",
+      "expectation": "the key changes (bytes are in it), the cache recomputes, and the JSON outputs are byte-identical with the wall unmoved; the mesh digest may change (vertex colors carry the image bytes), and a real model's invariance to recompression is not claimed",
+      "check": "json_identical",
+      "tolerance_ft": 0.0
+    },
+    {
+      "name": "intrinsics-shift",
+      "class": "sensitivity",
+      "transformation": "fx/fy +4 px, cx/cy +2 px on every keyframe",
+      "expectation": "a declared input, so the result may differ; measured, not graded. The key must change (no stale reuse) and no cache folder may be shared",
+      "check": "measured"
+    },
+    {
+      "name": "unrelated-history",
+      "class": "identity",
+      "transformation": "a second capture (different poses, so a different cache key) runs through the same work directory between two runs of the first",
+      "expectation": "the first capture's second run is byte-identical to its first: unrelated history cannot touch a content-keyed cache folder",
+      "check": "outputs_identical",
+      "tolerance_ft": 0.0
+    },
+    {
+      "name": "stale-cache-pose-edit",
+      "class": "guarded",
+      "transformation": "a keyframe's camera moves 0.05 m after a first run, then the same work directory reruns",
+      "expectation": "the key mismatch sends the rerun to a fresh cache folder; the result equals a fresh run of the edited bundle",
+      "check": "outputs_identical",
+      "tolerance_ft": 0.0
+    },
+    {
+      "name": "interrupted-run",
+      "class": "guarded",
+      "transformation": "the model process dies after its first depth map (the worker's key file is already written), then the same work directory reruns",
+      "expectation": "the rerun recomputes the missing maps only and lands on the uninterrupted result",
+      "check": "outputs_identical",
+      "tolerance_ft": 0.0
+    },
+    {
+      "name": "same-size-cache-edit",
+      "class": "guarded",
+      "transformation": "one cached depth map overwritten with a copy shifted 0.05 m: same shape, same dtype, key.json untouched",
+      "expectation": "declared guarded: the rerun must equal the baseline within guarded_ft. Whatever the rerun returns when this fails is the history-dependent wall, and a third run records whether the wrong answer is itself stable (run-twice repeatability alone would pass it)",
+      "check": "wall_within",
+      "tolerance_ft": 0.0005
+    }
+  ]
+}
