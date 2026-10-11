@@ -26,11 +26,21 @@ when the observations fit two or more distinct values.
   observation maps — landmark → keyframe → quantized pixel — hash identically.
 - **Grid.** 5·5·5·7·3 = 2625 worlds (frozen in `manifest.json`). Nominal world:
   θ=0, d=20 ft, s∈[-10, 10] ft, h=9 ft.
-- **Scenarios.** Five observation capabilities (frozen rigs, per-rig focal
+- **Scenarios.** Six observation capabilities (frozen rigs, per-rig focal
   lengths chosen so each intended blind spot is real, with margin — tests
   assert the visibility patterns): `one-view`, `two-view`, `two-view-pan-only`,
-  `two-view-top-blind`, `two-view-end-blind` (true right end at 16 ft, aimed
-  left of it).
+  `two-view-top-blind`, `one-view-tops-only` (one frame aimed above the wall:
+  only the two top corners ever register), and `two-view-end-blind` (true right
+  end at 16 ft, aimed left of it).
+- **Family probe.** A grid count of 1 is not identification on its own: a
+  continuous family of worlds can pass through the true one while the coarse
+  grid holds no second point of it. Whenever the grid leaves one compatible
+  world, the engine walks that family (`identifiability.py::probe_family`): a
+  damped Gauss-Newton refit over the five continuous facts from a perturbed
+  start, then continuation along the chord to travel it. A member counts only
+  if its observation hash equals the true one EXACTLY; facts the farthest
+  member moved are downgraded to UNKNOWN with the pair recorded. A supported
+  fact is one the grid agrees on AND the walk could not move.
 - **Actions.** `stereo_step` (two new positions framing the wall),
   `tilt_pair` (pitch up, tight frame on the top), `end_approach` (walk right,
   frame the end low), `pan_pair` (yaw every existing keyframe in place), and
@@ -52,41 +62,55 @@ when the observations fit two or more distinct values.
   does. Nothing occludes, nothing is missed. Non-visibility of a landmark is
   therefore itself evidence (this is why the end-blind rig's non-visible right
   end still bounds s1 from below).
-- **A5 — finite grid.** "Supported" means agreed across the 2625 frozen grid
-  worlds only. A count of 1 is a statement about this grid, not a proof of
-  global identifiability; the two ~2 ft grid steps are well above the 3 px
-  quantization at these ranges.
+- **A5 — finite grid, family-checked.** "Supported" means agreed across the
+  2625 frozen grid worlds, and — when the grid leaves a single compatible
+  world — unchanged by the continuous family walk (see Method). Residual grid
+  relativity: a fact the probe could not move on the sampled family is
+  reported supported, which is evidence, not a proof of global
+  identifiability.
 - **A6 — one wall, no clutter.** The scene contains exactly one wall and the
   landmark set; detection, matching, and occlusion are out of scope.
 
 ## Results (results/table.md, results/run.json)
 
-| fact | one-view | two-view | pan-only | top-blind | end-blind |
-|---|---|---|---|---|---|
-| orientation | ✅ | ✅ | ✅ | ✅ | ✅ |
-| distance | ✅ | ✅ | ✅ | ✅ | ✅ |
-| extent s0 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| extent s1 | ✅ | ✅ | ✅ | ✅ | UNKNOWN (3) |
-| height | ✅ | ✅ | ✅ | UNKNOWN (3) | ✅ |
+| fact | one-view | two-view | pan-only | top-blind | tops-only | end-blind |
+|---|---|---|---|---|---|---|
+| orientation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| distance | ✅ | ✅ | ✅ | ✅ | UNKNOWN (family) | ✅ |
+| extent s0 | ✅ | ✅ | ✅ | ✅ | UNKNOWN (family) | ✅ |
+| extent s1 | ✅ | ✅ | ✅ | ✅ | UNKNOWN (family) | UNKNOWN (3) |
+| height | ✅ | ✅ | ✅ | UNKNOWN (3) | UNKNOWN (family) | ✅ |
 
-- **One view is enough.** With metric poses (A1) and ground landmarks (A3),
-  each ground-point pixel ray intersects the known ground plane at exactly one
-  3D point: orientation, distance, and both ends are pinned by a single frame
-  that contains them; one sight of any top corner pins height on the
-  ground-pinned wall plane. The binding constraint is **frame coverage**, not
-  multi-view geometry.
-- **The two real failure modes are blind spots.** Height stays UNKNOWN only
+- **One view is enough — when the ground is in frame.** With metric poses (A1)
+  and ground landmarks (A3), each ground-point pixel ray intersects the known
+  ground plane at exactly one 3D point: orientation, distance, and both ends
+  are pinned by a single frame that contains them; one sight of any top corner
+  pins height on the ground-pinned wall plane. The binding constraint is
+  **frame coverage**, not multi-view geometry.
+- **The first real failure mode is a blind spot.** Height stays UNKNOWN only
   when no top corner is ever in frame (top-blind); the right end stays UNKNOWN
   only when it is never in frame (end-blind, compatible with s1 ∈ {12, 14, 16}).
-- **Every action that moves a frame settles the blind spot — panning included.**
-  In top-blind, `tilt_pair`, `stereo_step`, `end_approach`, and even `pan_pair`
-  each settle height, because each brings a top corner into some frame. The
-  control (`reobserve`) settles nothing anywhere, and `pan_pair` does not
-  settle the end-blind right end (its panned frame sees the end from only one
-  center and non-visibility still bounds s1 to the same set). The practical
-  rule this study hands to capture-coverage: the export supports a wall fact
-  iff some exported keyframe's frame contains the corresponding landmark — ends
-  and interior marks need ground coverage, the top corners need top coverage.
+- **The second failure mode is a continuous family.** Aim a single frame above
+  the wall (tops-only): only the two top corners register, and the grid —
+  2625 worlds — agrees on exactly one world. That is a grid artifact. The
+  family walk refits a materially different wall (face 23.9 ft out, ends
+  ±12.8 ft, top 10.1 ft) whose observation hash is byte-identical: both top
+  corners sit on fixed rays from the camera center, and the equal-height
+  constraint is scale-homogeneous, so the wall scales about the camera center
+  with orientation exactly fixed. Orientation alone stays supported from this
+  rig — the one fact the scaling cannot turn.
+- **Every action that adds a camera center settles the family; panning cannot.**
+  For the four family facts, `tilt_pair`, `stereo_step`, and `end_approach`
+  each pin every fact: a second center makes the corner rays cross in 3D.
+  `pan_pair` yaws in place — same center, same rays, family intact — and the
+  `reobserve` control settles nothing anywhere. In top-blind and end-blind the
+  movers that bring the missing landmark into frame settle it (see
+  `results/table.md` for the per-cell detail); `pan_pair` does not settle the
+  end-blind right end. The practical rule this study hands to capture
+  coverage: the export supports a wall fact iff some exported keyframe's frame
+  contains the corresponding landmark — ends and interior marks need ground
+  coverage, the top corners need top coverage — and a single center seeing
+  only corners determines orientation and nothing else.
 
 ## Reproduce
 

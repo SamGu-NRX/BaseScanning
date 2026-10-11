@@ -8,12 +8,13 @@ Workflow:
     python run.py --replay results            # recompute from the manifest; verify the hashes
 
 A run writes results/run.json (per scenario: the raw observation map and its
-sha256, compatible-world counts per fact, one exactly-equivalent world pair per
-unknown fact, and per-action re-runs that say which added views distinguish the
-worlds) and results/table.md (the fact-by-capability table and the unknown
-outcomes). A replay re-executes every scenario from the frozen manifest and
-compares the hashes: a match means reproduced, a mismatch is reported, never
-papered over.
+sha256, compatible-world counts per fact — with the continuous family probe
+applied whenever the grid leaves one compatible world — one exactly-equivalent
+world pair per unknown fact, and per-action re-runs that say which added views
+distinguish the worlds) and results/table.md (the fact-by-capability table and
+the unknown outcomes). A replay re-executes every scenario from the frozen
+manifest and compares the hashes: a match means reproduced, a mismatch is
+reported, never papered over.
 
 Assumption (recorded): "root-level" means the experiment root,
 experiments/nonlidar-observability/.
@@ -154,7 +155,10 @@ def render_table(run: dict) -> str:
     lines += [
         "Compatible-world counts per fact. A count of 1 means every grid world compatible",
         "with the observations agrees on the fact (supported). A count above 1 means the",
-        "observations fit that many distinct fact values (UNKNOWN).",
+        "observations fit that many distinct fact values (UNKNOWN). A cell marked",
+        "UNKNOWN (family) means the grid left one compatible world but the continuous",
+        "family probe refit a materially different world with the identical observation:",
+        "the count of 1 is a grid artifact, not identification (README.md, A5).",
         "",
     ]
     header = "| fact | " + " | ".join(s["name"] for s in run["scenarios"]) + " |"
@@ -163,9 +167,12 @@ def render_table(run: dict) -> str:
         row = [FACT_LABELS[fact]]
         for s in run["scenarios"]:
             v = next(x for x in s["verdicts"] if x["fact"] == fact)
-            row.append(
-                "1 — supported" if v["supported"] else f"UNKNOWN ({v['compatible_value_count']})"
-            )
+            if v["supported"]:
+                row.append("1 — supported")
+            elif v.get("family"):
+                row.append("UNKNOWN (family)")
+            else:
+                row.append(f"UNKNOWN ({v['compatible_value_count']})")
         lines.append("| " + " | ".join(row) + " |")
 
     lines += ["", "## Extra actions that distinguish the worlds", ""]
@@ -183,9 +190,16 @@ def render_table(run: dict) -> str:
                 for name, a in sorted(s["actions"].items())
                 if a["post_verdicts"][v["fact"]]["supported"]
             ]
+            pair = v["pair"] or v.get("family_pair")
+            kind = (
+                f"{v['compatible_value_count']} distinct grid values fit"
+                if v["pair"]
+                else "the grid left one compatible world but a continuous family of worlds "
+                "shares the observation"
+            )
             lines.append(
-                f"  - {FACT_LABELS[v['fact']]}: UNKNOWN, {v['compatible_value_count']} distinct "
-                f"values fit. Equivalent pair: {v['pair'][0]} vs {v['pair'][1]}."
+                f"  - {FACT_LABELS[v['fact']]}: UNKNOWN — {kind}. "
+                f"Equivalent pair: {pair[0]} vs {pair[1]}."
             )
             if settlers:
                 lines.append(f"    Actions that distinguish the worlds: {', '.join(settlers)}.")
@@ -227,6 +241,7 @@ def replay(manifest: dict, stored: dict) -> list[str]:
             if (
                 v_was["supported"] != v_now["supported"]
                 or v_was["compatible_value_count"] != v_now["compatible_value_count"]
+                or bool(v_was.get("family")) != bool(v_now.get("family"))
             ):
                 problems.append(f"{now['name']}/{v_now['fact']}: verdict changed")
     return problems

@@ -205,6 +205,8 @@ class Scenario:
                     "compatible_value_count": v.count,
                     "values": list(v.values),
                     "pair": list(v.pair) if v.pair else None,
+                    "family": v.family_pair is not None,
+                    "family_pair": list(v.family_pair) if v.family_pair else None,
                 }
                 for v in base.verdicts
             ],
@@ -252,6 +254,15 @@ def scenarios() -> list[Scenario]:
                 cam("kf0", (0.0, 3.0, -6.0), (0.0, 0.0, -20.0), fx=FX_MID),
                 cam("kf1", (4.0, 3.0, -6.0), (2.0, 0.0, -20.0), fx=FX_MID),
             ),
+        ),
+        Scenario(
+            name="one-view-tops-only",
+            capability=(
+                "one keyframe aimed above the wall: only the top corners are in frame, "
+                "no ground landmark ever is"
+            ),
+            true_world=NOMINAL,
+            cameras=(cam("kf0", (0.0, 5.0, -6.0), (0.0, 10.37, -20.0), fx=1000.0),),
         ),
         Scenario(
             name="two-view-end-blind",

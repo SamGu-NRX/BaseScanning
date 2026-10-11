@@ -92,6 +92,11 @@ def test_rig_visibility_patterns() -> None:
             "along_2": ["kf0", "kf1"],
             "top_right": ["kf0", "kf1"],
         },
+        "one-view-tops-only": {
+            **{k: [] for k in LANDMARK_IDS},
+            "top_left": ["kf0"],
+            "top_right": ["kf0"],
+        },
         "two-view-top-blind": {
             **{k: ["kf0", "kf1"] for k in LANDMARK_IDS if k not in TOPS},
             "top_left": [],
@@ -151,6 +156,88 @@ def test_pan_action_reports_its_coverage_honestly() -> None:
         SMALL_GRID,
     )
     assert "height_ft" not in extended.unknown_facts
+
+
+def test_tops_only_facts_are_unknown_through_a_continuous_family() -> None:
+    """Tops-only: grid count 1, but a continuous family shares the observation.
+
+    Both top corners sit on fixed rays from the single camera center, and the
+    equal-height constraint is scale-homogeneous: the family scales the wall
+    about the camera center, moving distance, both ends, and height while
+    orientation stays fixed. So orientation_deg is supported even from this
+    rig, and the other four facts are unknown despite the grid agreeing.
+    """
+    tops_only = next(s for s in scenarios() if s.name == "one-view-tops-only")
+    base = evaluate(tops_only.true_world, list(tops_only.cameras), SMALL_GRID)
+    assert base.compatible_count == 1
+    orientation = next(v for v in base.verdicts if v.fact == "orientation_deg")
+    assert orientation.supported and orientation.family_pair is None
+    for fact in ("distance_ft", "left_end_ft", "right_end_ft", "height_ft"):
+        v = next(x for x in base.verdicts if x.fact == fact)
+        assert v.family_pair is not None, f"{fact}: family not detected"
+        assert not v.supported
+        assert v.family_pair[0] != v.family_pair[1]
+
+
+def test_tops_only_family_member_reproduces_the_observation() -> None:
+    """Independent of the probe: an analytically built family member is hash-equal.
+
+    Scales both top corners along their rays from the camera center by the
+    same factor (preserving equal heights) and checks that the probe walks to
+    a member sharing the observation, and that orientation is not movable.
+    """
+    import numpy as np
+
+    from nonlidar_observability.identifiability import probe_family
+    from nonlidar_observability.observe import observation_hash, observe
+
+    tops_only = next(s for s in scenarios() if s.name == "one-view-tops-only")
+    cams = list(tops_only.cameras)
+    true_obs = observe(tops_only.true_world, cams)
+    c = cams[0]
+    scale = 1.08
+    corners = []
+    for lm in ("top_left", "top_right"):
+        px = np.array(true_obs[lm]["kf0"])
+        x_cam = (px[0] - c.cx) / c.fx
+        y_cam = (px[1] - c.cy) / c.fy
+        ray = c.rotation @ np.array([x_cam, y_cam, -1.0])
+        corners.append(c.center + scale * (tops_only.true_world.h_ft - c.center[1]) / ray[1] * ray)
+    assert np.isclose(corners[0][1], corners[1][1])
+
+    found = probe_family(tops_only.true_world, cams, true_obs)
+    assert found, "probe found no family member at all"
+    assert "theta_deg" not in found, "orientation should stay pinned along the family"
+    assert {"d_ft", "s0_ft", "s1_ft", "h_ft"} <= set(found)
+    member = found["d_ft"]
+    assert abs(member.d_ft - tops_only.true_world.d_ft) > 0.05
+    assert observation_hash(observe(member, cams)) == observation_hash(true_obs)
+
+
+def test_tops_only_actions_settle_the_family() -> None:
+    """The observability comparison: which actions settle the family's facts.
+
+    Distance, both ends, and height are unknown on the tops-only rig. Any
+    action adding a distinct camera center (tilt_pair, stereo_step,
+    end_approach) settles every fact; pan_pair moves frames without a new
+    center and the reobserve control adds nothing, so the family survives
+    both. Orientation is supported throughout.
+    """
+    tops_only = next(s for s in scenarios() if s.name == "one-view-tops-only")
+    run = tops_only.run()
+    family_facts = ("distance_ft", "left_end_ft", "right_end_ft", "height_ft")
+    for fact in family_facts:
+        assert not next(v for v in run["verdicts"] if v["fact"] == fact)["supported"]
+    assert next(v for v in run["verdicts"] if v["fact"] == "orientation_deg")["supported"]
+    post = {name: a["post_verdicts"] for name, a in run["actions"].items()}
+    for fact in family_facts:
+        assert post["tilt_pair"][fact]["supported"]
+        assert post["stereo_step"][fact]["supported"]
+        assert post["end_approach"][fact]["supported"]
+        assert not post["pan_pair"][fact]["supported"]
+        assert not post["reobserve"][fact]["supported"]
+    for name in ("tilt_pair", "stereo_step", "end_approach", "pan_pair", "reobserve"):
+        assert post[name]["orientation_deg"]["supported"]
 
 
 def test_action_rigs_pin_their_targets() -> None:

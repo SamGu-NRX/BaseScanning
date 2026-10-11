@@ -1,6 +1,6 @@
 {
   "git_commit": "98b665b",
-  "manifest_hash": "a03db2d8c9c684f379214c85d287c5ff901ea79f5bae4664ff51893545a0926c",
+  "manifest_hash": "409243bb100db5a8dcb396fea9051cf90bce1c195d0ce73923cbd9c3b4d1a997",
   "scenarios": [
     {
       "actions": {
@@ -206,6 +206,8 @@
         {
           "compatible_value_count": 1,
           "fact": "orientation_deg",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -215,6 +217,8 @@
         {
           "compatible_value_count": 1,
           "fact": "distance_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -224,6 +228,8 @@
         {
           "compatible_value_count": 1,
           "fact": "left_end_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -233,6 +239,8 @@
         {
           "compatible_value_count": 1,
           "fact": "right_end_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -242,6 +250,8 @@
         {
           "compatible_value_count": 1,
           "fact": "height_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -487,6 +497,8 @@
         {
           "compatible_value_count": 1,
           "fact": "orientation_deg",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -496,6 +508,8 @@
         {
           "compatible_value_count": 1,
           "fact": "distance_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -505,6 +519,8 @@
         {
           "compatible_value_count": 1,
           "fact": "left_end_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -514,6 +530,8 @@
         {
           "compatible_value_count": 1,
           "fact": "right_end_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -523,6 +541,8 @@
         {
           "compatible_value_count": 1,
           "fact": "height_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -759,6 +779,8 @@
         {
           "compatible_value_count": 1,
           "fact": "orientation_deg",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -768,6 +790,8 @@
         {
           "compatible_value_count": 1,
           "fact": "distance_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -777,6 +801,8 @@
         {
           "compatible_value_count": 1,
           "fact": "left_end_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -786,6 +812,8 @@
         {
           "compatible_value_count": 1,
           "fact": "right_end_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -795,6 +823,8 @@
         {
           "compatible_value_count": 1,
           "fact": "height_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -1028,6 +1058,8 @@
         {
           "compatible_value_count": 1,
           "fact": "orientation_deg",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -1037,6 +1069,8 @@
         {
           "compatible_value_count": 1,
           "fact": "distance_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -1046,6 +1080,8 @@
         {
           "compatible_value_count": 1,
           "fact": "left_end_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -1055,6 +1091,8 @@
         {
           "compatible_value_count": 1,
           "fact": "right_end_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -1064,6 +1102,8 @@
         {
           "compatible_value_count": 3,
           "fact": "height_ft",
+          "family": false,
+          "family_pair": null,
           "pair": [
             "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 9.0 ft",
             "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 8.0 ft"
@@ -1073,6 +1113,264 @@
             8.0,
             9.0,
             10.0
+          ]
+        }
+      ]
+    },
+    {
+      "actions": {
+        "end_approach": {
+          "compatible_count": 1,
+          "description": "walk right and frame the right end low, from two new positions",
+          "observation_hash": "16cef70a54d10e5ce1d6cafc9c5a61dd78b5244bddbb1208665904287d458639",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "pan_pair": {
+          "compatible_count": 1,
+          "description": "yaw every existing keyframe in place: no new parallax, but the frames move and may reveal new landmarks",
+          "observation_hash": "a19d11908437af2a6df0504c44c4cd65ef09a6cda81858234d1668d535b28076",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": false
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": false
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": false
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": false
+            }
+          }
+        },
+        "reobserve": {
+          "compatible_count": 1,
+          "description": "re-observe every existing keyframe from the same pose: no new information by construction (the zero-information control)",
+          "observation_hash": "66c960321fd4aaeb0d50a76fc500992b5b9cc5b32b85615e257a81bdc3331ee5",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": false
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": false
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": false
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": false
+            }
+          }
+        },
+        "stereo_step": {
+          "compatible_count": 1,
+          "description": "step to two new positions 14 ft out and frame the wall: adds parallax across the whole face",
+          "observation_hash": "9283a5328e6577241d61c5022d64dad1b664572d3fc5981b2ef296b6aceacc83",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        },
+        "tilt_pair": {
+          "compatible_count": 1,
+          "description": "pitch up from two distinct positions, tight frame on the wall top",
+          "observation_hash": "9f265053a515c703550d190a67d5ca45b48b43ab3e064b59c0297bbf0959894a",
+          "post_verdicts": {
+            "distance_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "height_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "left_end_ft": {
+              "count": 1,
+              "supported": true
+            },
+            "orientation_deg": {
+              "count": 1,
+              "supported": true
+            },
+            "right_end_ft": {
+              "count": 1,
+              "supported": true
+            }
+          }
+        }
+      },
+      "cameras": [
+        {
+          "center_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "fx": 1000.0,
+          "id": "kf0"
+        }
+      ],
+      "capability": "one keyframe aimed above the wall: only the top corners are in frame, no ground landmark ever is",
+      "compatible_count": 1,
+      "grid_count": 2625,
+      "name": "one-view-tops-only",
+      "observation": {
+        "along_1": {
+          "kf0": null
+        },
+        "along_2": {
+          "kf0": null
+        },
+        "end_left": {
+          "kf0": null
+        },
+        "end_right": {
+          "kf0": null
+        },
+        "top_left": {
+          "kf0": [
+            270.531,
+            808.192
+          ]
+        },
+        "top_right": {
+          "kf0": [
+            1649.469,
+            808.192
+          ]
+        }
+      },
+      "observation_hash": "df6a0cb9c3083c9ce28726fe1f1a8393f9902b9096c20f6cbe35cd0519dabecf",
+      "true_world": {
+        "distance_ft": 20.0,
+        "height_ft": 9.0,
+        "left_end_ft": -10.0,
+        "orientation_deg": 0.0,
+        "right_end_ft": 10.0
+      },
+      "true_world_described": "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 9.0 ft",
+      "verdicts": [
+        {
+          "compatible_value_count": 1,
+          "fact": "orientation_deg",
+          "family": false,
+          "family_pair": null,
+          "pair": null,
+          "supported": true,
+          "values": [
+            0.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "distance_ft",
+          "family": true,
+          "family_pair": [
+            "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 9.0 ft",
+            "yaw -0.0 deg, face 23.9 ft from the meter, s in [-12.8, 12.8] ft, top 10.1 ft"
+          ],
+          "pair": null,
+          "supported": false,
+          "values": [
+            20.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "left_end_ft",
+          "family": true,
+          "family_pair": [
+            "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 9.0 ft",
+            "yaw -0.0 deg, face 23.9 ft from the meter, s in [-12.8, 12.8] ft, top 10.1 ft"
+          ],
+          "pair": null,
+          "supported": false,
+          "values": [
+            -10.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "right_end_ft",
+          "family": true,
+          "family_pair": [
+            "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 9.0 ft",
+            "yaw -0.0 deg, face 23.9 ft from the meter, s in [-12.8, 12.8] ft, top 10.1 ft"
+          ],
+          "pair": null,
+          "supported": false,
+          "values": [
+            10.0
+          ]
+        },
+        {
+          "compatible_value_count": 1,
+          "fact": "height_ft",
+          "family": true,
+          "family_pair": [
+            "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 10.0] ft, top 9.0 ft",
+            "yaw -0.0 deg, face 23.9 ft from the meter, s in [-12.8, 12.8] ft, top 10.1 ft"
+          ],
+          "pair": null,
+          "supported": false,
+          "values": [
+            9.0
           ]
         }
       ]
@@ -1302,6 +1600,8 @@
         {
           "compatible_value_count": 1,
           "fact": "orientation_deg",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -1311,6 +1611,8 @@
         {
           "compatible_value_count": 1,
           "fact": "distance_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -1320,6 +1622,8 @@
         {
           "compatible_value_count": 1,
           "fact": "left_end_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
@@ -1329,6 +1633,8 @@
         {
           "compatible_value_count": 3,
           "fact": "right_end_ft",
+          "family": false,
+          "family_pair": null,
           "pair": [
             "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 16.0] ft, top 9.0 ft",
             "yaw +0.0 deg, face 20.0 ft from the meter, s in [-10.0, 12.0] ft, top 9.0 ft"
@@ -1343,6 +1649,8 @@
         {
           "compatible_value_count": 1,
           "fact": "height_ft",
+          "family": false,
+          "family_pair": null,
           "pair": null,
           "supported": true,
           "values": [
