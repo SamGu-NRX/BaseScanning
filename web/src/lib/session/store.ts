@@ -20,6 +20,16 @@
 // the attempts that produced them — never displayed as the current answer. The
 // bearer token lives in memory for the next submission only: never persisted, never
 // logged, absent from every snapshot and receipt.
+//
+// M3 adds the record's lifecycle beyond the page's lifetime: every change re-saves
+// the redacted record browser-locally (scene bytes included; the token and headers
+// excluded by construction), the page offers reopening or discarding the saved
+// record, and exportSession/importSession move the same redacted shape as JSON.
+// Restore re-validates everything — the scene is re-intaked from its exact bytes and
+// the current result is re-derived from the attempt history — so a doctored record
+// fails closed instead of displaying what its author claimed. Reopening never
+// restores a token: a reopened session submits unauthenticated until a new one is
+// entered.
 
 import { PlacementClient, type SubmitReport } from "../contract/client.ts";
 import type { PlacementFailure } from "../contract/errors.ts";
@@ -39,6 +49,16 @@ import {
 } from "../contract/session.ts";
 import type { PlacementResult } from "../contract/types.ts";
 import type { SceneVersionReport } from "../contract/versions.ts";
+import {
+  buildSessionPayload,
+  defaultSessionPersistence,
+  parseSessionPayload,
+  rehydrateSession,
+  type SavedSessionSummary,
+  SESSION_STORAGE_KEY,
+  type SessionPersistence,
+  savedSessionSummaryOf,
+} from "./persist.ts";
 
 export const DEFAULT_BASE_URL = "http://localhost:8000";
 
@@ -92,12 +112,24 @@ export interface SessionStoreState {
   readonly intakeError: SceneIntakeIssue | null;
   readonly session: SessionRecord | null;
   readonly display: DisplayView;
+  /** Summary of the browser-local saved record, offered for reopen; null when none. */
+  readonly savedSession: SavedSessionSummary | null;
+  /** Why the last reopen or import failed. The previous session stays untouched. */
+  readonly restoreError: SceneIntakeIssue | null;
+  /** A storage-level problem (quota, corrupt saved record) that is not a restore refusal. */
+  readonly storageWarning: string | null;
 }
 
 export interface SessionStoreOptions {
   /** Injectable transport (tests use the contract fake). Defaults to globalThis.fetch. */
   readonly fetchImpl?: typeof fetch;
   readonly baseUrl?: string;
+  /**
+   * Injectable browser-local storage for the saved session (tests use an in-memory
+   * map). Defaults to localStorage when the environment has one; pass null to disable
+   * persistence.
+   */
+  readonly storage?: SessionPersistence | null;
 }
 
 /** Maps a client report onto the outcome the session layer applies. */
@@ -217,11 +249,17 @@ export class SessionStore {
   private sceneSummary: SceneSummary | null = null;
   private intakeError: SceneIntakeIssue | null = null;
   private inFlight: AbortController | null = null;
+  private savedSession: SavedSessionSummary | null = null;
+  private restoreError: SceneIntakeIssue | null = null;
+  private storageWarning: string | null = null;
+  private readonly storage: SessionPersistence | null;
   private current: SessionStoreState;
 
   constructor(options: SessionStoreOptions = {}) {
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+    this.storage = options.storage === undefined ? defaultSessionPersistence() : options.storage;
+    this.savedSession = this.loadSavedSummary();
     this.current = {
       baseUrl: this.baseUrl,
       hasToken: false,
@@ -229,6 +267,9 @@ export class SessionStore {
       intakeError: null,
       session: null,
       display: { kind: "no_scene" },
+      savedSession: this.savedSession,
+      restoreError: null,
+      storageWarning: this.storageWarning,
     };
   }
 
@@ -339,7 +380,166 @@ export class SessionStore {
     this.inFlight?.abort();
   }
 
+  /**
+   * Restores the browser-local saved session: scene bytes re-intaked from the exact
+   * persisted text (same bytes, same SHA-256), attempts, witnesses and receipts intact,
+   * so the newest bound result displays again and a new attempt can start. The bearer
+   * token is never restored — it lives in memory for the app lifetime only, so a
+   * reopened session submits unauthenticated until a new one is entered.
+   */
+  async reopenSession(): Promise<void> {
+    if (this.storage === null || this.savedSession === null) {
+      return;
+    }
+    let raw: string | null = null;
+    try {
+      raw = this.storage.getItem(SESSION_STORAGE_KEY);
+    } catch (error) {
+      this.storageWarning = `The saved session could not be read: ${(error as Error).message}`;
+      this.savedSession = null;
+      this.publish();
+      return;
+    }
+    if (raw === null) {
+      this.savedSession = null;
+      this.publish();
+      return;
+    }
+    await this.restoreFromText(raw);
+  }
+
+  /**
+   * Restores a record from JSON text (a user-chosen export file). Failures — malformed
+   * JSON, wrong format, unreadable attempts — leave the current session untouched and
+   * surface as restoreError.
+   */
+  async importSession(recordText: string): Promise<void> {
+    await this.restoreFromText(recordText);
+  }
+
+  /**
+   * The current session as redacted JSON, or null with no session to export. The
+   * payload structurally has no credential field: the token is excluded by
+   * construction, as are headers (the client never records them).
+   */
+  exportSession(): string | null {
+    if (this.intake === null || this.session === null) {
+      return null;
+    }
+    const payload = buildSessionPayload(
+      this.sceneSummary?.fileName ?? "",
+      this.intake.text,
+      this.session,
+    );
+    return JSON.stringify(payload, null, 2);
+  }
+
+  /** Clears the saved record and its notice; the live session is untouched. */
+  discardSavedSession(): void {
+    if (this.storage !== null) {
+      try {
+        this.storage.removeItem(SESSION_STORAGE_KEY);
+      } catch (error) {
+        this.storageWarning = `The saved session could not be discarded: ${(error as Error).message}`;
+      }
+    }
+    this.savedSession = null;
+    this.publish();
+  }
+
+  /** Shared reopen/import pipeline: validate, re-intake the scene, rehydrate the record. */
+  private async restoreFromText(raw: string): Promise<void> {
+    const parsed = parseSessionPayload(raw);
+    if (!parsed.ok) {
+      this.restoreError = {
+        code: parsed.failure.code,
+        message: parsed.failure.message,
+        path: null,
+      };
+      this.publish();
+      return;
+    }
+    // An in-flight attempt belongs to the session being replaced: abort it, so its
+    // late completion cannot argue with the restored record.
+    this.inFlight?.abort();
+    this.inFlight = null;
+    let intake: SceneIntake;
+    try {
+      intake = await intakeSceneText(parsed.payload.scene.text);
+    } catch (error) {
+      this.restoreError =
+        error instanceof SceneIntakeError
+          ? { code: error.code, message: error.message, path: error.path }
+          : { code: "unreadable_file", message: (error as Error).message, path: null };
+      this.publish();
+      return;
+    }
+    this.intake = intake;
+    this.session = rehydrateSession(parsed.payload);
+    this.sceneSummary = {
+      fileName: parsed.payload.scene.fileName,
+      sha256: intake.sha256,
+      byteLength: intake.bytes.byteLength,
+      version: intake.version,
+      warnings: intake.warnings,
+    };
+    this.intakeError = null;
+    this.restoreError = null;
+    // The restored record is the live session now; publish re-saves it (with any
+    // interrupted-attempt normalization) through the ordinary persistence path.
+    this.savedSession = null;
+    this.publish();
+  }
+
+  /** Reads the saved record (if any) into the summary the page offers for reopening. */
+  private loadSavedSummary(): SavedSessionSummary | null {
+    if (this.storage === null) {
+      return null;
+    }
+    let raw: string | null;
+    try {
+      raw = this.storage.getItem(SESSION_STORAGE_KEY);
+    } catch (error) {
+      this.storageWarning = `The saved session could not be read: ${(error as Error).message}`;
+      return null;
+    }
+    if (raw === null) {
+      return null;
+    }
+    const parsed = parseSessionPayload(raw);
+    if (!parsed.ok) {
+      // Keep the stored bytes (they may be recoverable by hand); only the offer goes away.
+      this.storageWarning = `A saved session record could not be read (${parsed.failure.message}); reopening stays unavailable and the saved bytes are kept.`;
+      return null;
+    }
+    return savedSessionSummaryOf(parsed.payload);
+  }
+
+  /**
+   * The write side of browser-local persistence: while a session is open, every
+   * published state re-saves the redacted record. Starting a new session replaces the
+   * saved one (one slot, like the page's one session at a time). The payload carries
+   * no credential field, so no caller can put the token in storage through here.
+   */
+  private saveToStorage(): void {
+    if (this.storage === null || this.intake === null || this.session === null) {
+      return;
+    }
+    try {
+      const payload = buildSessionPayload(
+        this.sceneSummary?.fileName ?? "",
+        this.intake.text,
+        this.session,
+      );
+      this.storage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
+      this.storageWarning = null;
+    } catch (error) {
+      this.storageWarning = `The session could not be saved in this browser: ${(error as Error).message}`;
+    }
+  }
+
   private publish(): void {
+    this.saveToStorage();
     this.current = {
       baseUrl: this.baseUrl,
       hasToken: this.token !== "",
@@ -347,6 +547,9 @@ export class SessionStore {
       intakeError: this.intakeError,
       session: this.session,
       display: displayedView(this.session),
+      savedSession: this.savedSession,
+      restoreError: this.restoreError,
+      storageWarning: this.storageWarning,
     };
     for (const listener of this.listeners) {
       listener();
