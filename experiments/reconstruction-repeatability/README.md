@@ -28,6 +28,19 @@ record against the committed one, proving the committed conclusions survive a re
 refuses to run if `manifest.json` has changed since the record was committed. The committed record
 is the contract; the replay is the proof.
 
+The replay is a gate, not a receipt writer: it exits 0 only when every committed case record
+reproduces, and exits 1 when a witness disagrees. **Meaningful disagreement** — every case record
+in the committed results is a witness, and the gate fails on any of them whose fresh record differs
+from the committed one in any field (verdict, check, observed values, notes), or on a case-count
+change. The only non-witness content is what the harness itself declares non-witness: the per-run
+scratch path, which frame-id-duplicate's refusal message scrubs to `<tmp>` before recording. A case
+graded "measured, not graded" (intrinsics-shift) is exempt from within-case grading only, never
+from replay witnessing: moved measurements mean the frozen contract broke.
+`tests/test_replay_gate.py` drives the actual CLI as the reviewer would run it: the clean witnesses
+replay to exit 0, a deliberately mutated cached result (a wall-metric figure rewritten in a
+committed witness record) replays to exit 1 with the case named, and a manifest-digest drift is
+refused.
+
 ## Cases
 
 | # | name | class | transformation | graded against |

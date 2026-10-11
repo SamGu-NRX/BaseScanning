@@ -447,8 +447,24 @@ def markdown(doc: dict, replay: dict | None) -> str:
     return "\n".join(lines) + "\n"
 
 
+# --- the replay gate ---------------------------------------------------------------------
+#
+# WHAT COUNTS AS A MEANINGFUL DISAGREEMENT. Every case record in the committed results is a
+# witness: the manifest is hash-pinned, the depth model is a deterministic analytic stub, and
+# per-run environment (the scratch root) is scrubbed before recording, so an honest replay must
+# reproduce each committed record field for field. A disagreement is meaningful -- the gate
+# exits 1 -- when a case's fresh record differs from the committed one in ANY field (verdict,
+# check, observed values, notes), or when the case count changes. The only non-witness content
+# is what the harness itself declares non-witness: the per-run scratch path, which
+# frame-id-duplicate's refusal message scrubs to "<tmp>" before recording. A case graded
+# "measured, not graded" (intrinsics-shift) is exempt from within-case grading only, never
+# from replay witnessing: moved measurements mean the frozen contract broke.
+
+
 def replay(results_dir: Path) -> dict:
-    """Re-run every case and diff the fresh records against the committed ones."""
+    """Re-run every case and diff the fresh records against the committed ones. The caller
+    gates on the returned document: any case that does not agree exactly is a meaningful
+    disagreement and must exit nonzero (see the definition above)."""
     path = results_dir / "reconstruction_repeatability.json"
     committed = json.loads(path.read_text())
     manifest_path = Path(committed["manifest"])
