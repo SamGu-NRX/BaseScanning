@@ -414,4 +414,6 @@ def test_a_group_write_that_fails_midway_keeps_the_previous_outputs(tmp_path, mo
     monkeypatch.setattr(run_groups, "write_npz", real_write)
     run_groups.write_group(out, results, {"run": "new"})
     assert sorted(p.name for p in out.iterdir()) == ["a.npz", "b.npz", "run.json"]
-    assert json.loads((out / "run.json").read_text()) == {"run": "new"}
+    doc = json.loads((out / "run.json").read_text())
+    # run.json now also records each published NPZ's digest, what reuse validates.
+    assert doc["run"] == "new" and set(doc["outputs"]) == {"a", "b"}

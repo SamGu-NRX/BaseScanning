@@ -21,6 +21,7 @@ import json
 import os
 import subprocess
 import sys
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -93,6 +94,19 @@ def lidar(frame: Frame) -> Depth:
     depth[~(depth > 0)] = np.nan
     color = cv2.resize(_image(frame), (d.width, d.height), interpolation=cv2.INTER_AREA)
     return Depth(depth, scaled(frame.intrinsics, d.width / frame.width), color, "lidar")
+
+
+def _moge_cached(path: Path) -> bool:
+    """The cached prediction is usable: it opens and holds a 2-D depth array. A file the model
+    process left truncated mid-write is treated as absent, so the next run regenerates it
+    instead of failing here on np.load -- and if regeneration fails too, the load at the end
+    still fails loudly rather than producing a false result."""
+    try:
+        with np.load(path, allow_pickle=False) as data:
+            depth = data["depth"]
+            return depth.ndim == 2 and depth.size > 0
+    except (OSError, ValueError, KeyError, zipfile.BadZipFile):
+        return False
 
 
 def _image(frame: Frame) -> np.ndarray:
@@ -184,7 +198,7 @@ def moge(capture: Capture, work: Path) -> dict[str, Depth]:
         k_up = rotated_intrinsics(k_small, small.shape[1], small.shape[0], turns)
         out = cache_file(work, f.id, ".moge2.npz")
         meta[f.id] = (out, turns, k_small, small)
-        if not out.exists():
+        if not _moge_cached(out):
             manifest.append({"image": str(up_path), "fx": float(k_up[0]), "out": str(out)})
     if manifest:
         (work / "moge2.json").write_text(json.dumps(manifest, indent=1))
