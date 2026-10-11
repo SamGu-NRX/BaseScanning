@@ -1,0 +1,71 @@
+{
+  "study": "next-view-selection",
+  "version": 1,
+  "frozen": "2026-10-10",
+  "question": "Choosing a next view is a decision problem, not another coverage-polygon test: which view-selection policy resolves a hidden wall world within a shared budget, at what action cost, and how often does it emit a definite answer the evidence does not support?",
+  "world": {
+    "n_bays": 6,
+    "bay_states": ["S", "O"],
+    "state_labels": {"S": "solid", "O": "opening"},
+    "prior": {"kind": "exact_opening_counts", "allowed_counts": [1, 2]},
+    "worlds": [
+      "OOSSSS", "OSOSSS", "OSSOSS", "OSSSOS", "OSSSSO", "OSSSSS",
+      "SOOSSS", "SOSOSS", "SOSSOS", "SOSSSO", "SOSSSS",
+      "SSOOSS", "SSOSOS", "SSOSSO", "SSOSSS",
+      "SSSOOS", "SSSOSO", "SSSOSS",
+      "SSSSOO", "SSSSOS", "SSSSSO"
+    ]
+  },
+  "stations": [
+    {"name": "L", "position": 0, "window": [0, 1, 2]},
+    {"name": "C", "position": 1, "window": [1, 2, 3]},
+    {"name": "R", "position": 2, "window": [3, 4, 5]}
+  ],
+  "start_station": "C",
+  "budget": {"total": 4, "observe_cost": 1, "move_cost": 1},
+  "movement_rules": "stations lie on a line; moves are only allowed between adjacent stations; one step costs move_cost",
+  "counts": {
+    "worlds": 21,
+    "observation_actions": 3,
+    "movement_actions": 4,
+    "max_actions_per_run": 4
+  },
+  "policies": {
+    "uncertainty-reduction": {
+      "rule": "greedy: observe the current station when it reduces expected posterior entropy (belief = uniform over compatible worlds), gain per cost; skip zero-gain observations; otherwise move toward the adjacent station whose window holds the most unseen bays, ties left; stop when resolved or no action is feasible",
+      "sees_hidden_truth": false
+    },
+    "nearest-unseen": {
+      "rule": "observe the current station if its window holds any unseen bay; otherwise move one step toward the nearest station whose window holds unseen bays, ties left; stop when resolved or no action is feasible",
+      "sees_hidden_truth": false
+    },
+    "fixed-order": {
+      "rule": "follow the frozen station order literally: move to each target, observe it, continue; stop early when resolved or the next action does not fit the budget; repeat or uninformative observations are not skipped",
+      "order": ["L", "C", "R"],
+      "sees_hidden_truth": false
+    },
+    "seeded-random": {
+      "rule": "uniform choice among feasible actions each step (repeat observations allowed); stop when resolved or no action is feasible",
+      "base_seed": 20261010,
+      "seed_rule": "base_seed + world_index",
+      "sees_hidden_truth": false
+    }
+  },
+  "metrics": [
+    "resolved", "cost_used", "observations", "moves", "final_belief_size",
+    "answer", "unsupported", "guess_correct"
+  ],
+  "definitions": {
+    "resolved": "the compatible set has size 1 at the end of the run",
+    "answer": "the single compatible world when resolved; otherwise the lexicographically smallest compatible world (a forced guess)",
+    "unsupported": "a definite answer emitted while more than one world remains compatible",
+    "guess_correct": "the emitted answer equals the hidden true world (recorded for diagnosis only; policies never see it)",
+    "impossible_view": "no action sequence within the frozen budget drives the compatible set to the true world as a singleton; established by an exhaustive search over action sequences, used for analysis only"
+  },
+  "notes": [
+    "Budget 4 is deliberately tight: the three-window tour needs 5-6 units, so every policy must choose which windows to buy and some worlds are unresolvable in principle.",
+    "Full-geometry view selection (continuous viewpoints, real frustums, occlusion, noisy captures) is a separately labelled upper bound and is NOT simulated here; this package studies the finite decision core.",
+    "Policies never read the true world: observations are the only channel through which truth enters the run.",
+    "Synthetic acquisition only: results describe this finite decision problem, never field improvement or electrical safety."
+  ]
+}
