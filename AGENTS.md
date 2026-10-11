@@ -13,15 +13,15 @@ Edit the other team's files only with that team's OK. Talk to the author before 
 
 ## Where to look
 
-A component's README wins over the docs. Files marked with a pull request exist only on that branch until it merges.
+A component's README wins over the docs. The pull requests named in the table are still open.
 
 | Task | Read |
 | --- | --- |
-| The iOS app | `ios/README.md` (PR #10 for guided capture) |
-| The capture packet | `packet/README.md` (PR #22) |
-| The rules engine, API and scene contract | `server/README.md` (PR #11), especially "What settles each check" |
-| Photos to a 3D model | `recon/HANDOFF.md` (PR #20) |
-| Accuracy evals and the field test | `experiments/evals/README.md` (PR #12), and the first phone run in `experiments/device-field-test/README.md` (PR #23) |
+| The iOS app | `ios/README.md`, with app work continuing in open PR #10 |
+| The capture packet | `packet/README.md` |
+| The rules engine, API and scene contract | `server/README.md` (newest revision in open PR #11), especially "What settles each check" |
+| Photos to a 3D model | `recon/HANDOFF.md` |
+| Accuracy evals and the field test | `experiments/evals/README.md`, and the first phone run in `experiments/device-field-test/README.md` |
 | Measurement conventions the code relies on | `docs/00-overview.md`, section "Conventions the code relies on" |
 | Public rule values, code citations, model and imagery licenses | `docs/04-prior-art-and-codes.md` |
 | The live guided-survey design | `docs/05-live-guided-survey-hld.md` |
