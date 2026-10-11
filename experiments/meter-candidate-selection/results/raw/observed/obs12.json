@@ -1,0 +1,30 @@
+{
+  "arm": "observed",
+  "barcodes": [
+    {
+      "box": [
+        300,
+        120,
+        80,
+        30
+      ],
+      "payload": "AB12"
+    }
+  ],
+  "case_id": "obs12",
+  "lines": [
+    {
+      "box": [
+        60,
+        220,
+        70,
+        20
+      ],
+      "text": "KWH"
+    }
+  ],
+  "reader": {
+    "file": "inputs/observations/obs12.json",
+    "name": "hand-authored observation set"
+  }
+}

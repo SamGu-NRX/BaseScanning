@@ -1,0 +1,152 @@
+{
+  "gen01": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "48201637"
+  },
+  "gen02": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "73150492"
+  },
+  "gen03": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "20984615"
+  },
+  "gen04": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "66403728"
+  },
+  "gen05": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "90172634"
+  },
+  "gen06": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "55832176"
+  },
+  "gen07": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "39218407"
+  },
+  "gen08": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "77051263"
+  },
+  "gen09": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "14509682"
+  },
+  "gen10": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "60934285"
+  },
+  "gen11": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "82761340"
+  },
+  "gen12": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "33402798"
+  },
+  "gen13": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "57381904"
+  },
+  "gen14": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "68109327"
+  },
+  "gen15": {
+    "origin": "generated plate",
+    "present": true,
+    "serial": "82645013"
+  },
+  "gen16": {
+    "origin": "generated plate",
+    "present": false,
+    "serial": null
+  },
+  "gen17": {
+    "origin": "generated plate",
+    "present": false,
+    "serial": null
+  },
+  "gen18": {
+    "origin": "generated plate",
+    "present": false,
+    "serial": null
+  },
+  "obs01": {
+    "origin": "hand-authored observation set",
+    "present": true,
+    "serial": "24681097"
+  },
+  "obs02": {
+    "origin": "hand-authored observation set",
+    "present": true,
+    "serial": "90274815"
+  },
+  "obs03": {
+    "origin": "hand-authored observation set",
+    "present": true,
+    "serial": "50392846"
+  },
+  "obs04": {
+    "origin": "hand-authored observation set",
+    "present": true,
+    "serial": "36472950"
+  },
+  "obs05": {
+    "origin": "hand-authored observation set",
+    "present": true,
+    "serial": "73841095"
+  },
+  "obs06": {
+    "origin": "hand-authored observation set",
+    "present": true,
+    "serial": "24681357"
+  },
+  "obs07": {
+    "origin": "hand-authored observation set",
+    "present": true,
+    "serial": "55551024"
+  },
+  "obs08": {
+    "origin": "hand-authored observation set",
+    "present": true,
+    "serial": "61920734"
+  },
+  "obs09": {
+    "origin": "hand-authored observation set",
+    "present": true,
+    "serial": "48201637"
+  },
+  "obs10": {
+    "origin": "hand-authored observation set",
+    "present": false,
+    "serial": null
+  },
+  "obs11": {
+    "origin": "hand-authored observation set",
+    "present": false,
+    "serial": null
+  },
+  "obs12": {
+    "origin": "hand-authored observation set",
+    "present": false,
+    "serial": null
+  }
+}

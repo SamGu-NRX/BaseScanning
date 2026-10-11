@@ -1,0 +1,39 @@
+{
+  "arm": "observed",
+  "barcodes": [
+    {
+      "box": [
+        60,
+        130,
+        260,
+        36
+      ],
+      "payload": "61920734"
+    }
+  ],
+  "case_id": "obs08",
+  "lines": [
+    {
+      "box": [
+        60,
+        130,
+        260,
+        36
+      ],
+      "text": "6192 073"
+    },
+    {
+      "box": [
+        60,
+        220,
+        190,
+        22
+      ],
+      "text": "20(60)A 50Hz"
+    }
+  ],
+  "reader": {
+    "file": "inputs/observations/obs08.json",
+    "name": "hand-authored observation set"
+  }
+}
