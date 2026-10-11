@@ -81,3 +81,67 @@ The next useful work, if resumed, is:
 5. **Representative recognition and identity evaluation:** use adjudicated labels and per-point correspondence/visibility truth. Compare abstention and wrong associations as well as successful reads.
 
 Keep browser coaching, ARCore, alternate reconstruction models and simpler evidence-first outputs available when device reach, measured quality or deployment costs change the tradeoff. No permanent model winner or whole-house accuracy claim was established.
+
+## Addendum (October 11, 2026): wall-fact observability without LiDAR
+
+After this handoff was written, a narrower question was studied as a finite
+experiment: **without LiDAR, which wall facts does the recon worker's scene
+export support at all?** The study lives in
+[`experiments/nonlidar-observability`](../experiments/nonlidar-observability/README.md)
+(draft [PR #226](https://github.com/SamGu-NRX/BaseScanning/pull/226), commits
+`dda71ad` and `f5a2785`). It binds a pinhole camera per keyframe to the raw
+export fields the schema defines (`keyframes[].pose`, `intrinsics`, `w`, `h`),
+builds a finite grid of 2625 candidate walls (orientation, distance, both ends,
+height), runs five observation-capability scenarios, and calls a fact
+**supported** only when every grid world consistent with the observations
+agrees on its value, **UNKNOWN** otherwise.
+
+**What the raw fields establish, and what they do not.** Binding fixtures
+(`tests/test_packet_binding.py`, stdlib only) pin the *reading* of the export:
+pose and intrinsics agree with `recon/recon/capture.py`'s `column_major`
+convention, and `walls[].baseline` is `[x, z]` plan points at ground `y = 0`.
+They cannot certify *accuracy* — that exported poses are true metric poses,
+that the scene frame is truly gravity-aligned, or that landmark identity holds
+across keyframes. Those are supplied capabilities of the capture stack, and
+every result below is conditional on them.
+
+**Committed engine results (at `f5a2785`).** On the frozen grid: distance,
+both ends, and height are supported whenever the corresponding landmarks enter
+some frame; height stays UNKNOWN under a top-blind rig, the right end under an
+end-blind rig. A tops-only frame — one camera center seeing only the top
+corners — hides a **continuous family**: the engine's family walk refits a
+materially different wall (face 23.9 ft out, ends ±12.8 ft, top 10.1 ft) whose
+observations are byte-identical, because corner rays from one center plus the
+scale-homogeneous equal-height constraint leave a one-parameter scale family
+about the camera center. The grid's apparent agreement there is a grid
+artifact. Orientation is the one fact the scaling cannot turn. Any action that
+adds a camera center settles the family; panning in place cannot. The rule
+handed to capture coverage: the export supports a wall fact iff some exported
+keyframe's frame contains the corresponding landmark — ends and interior marks
+need ground coverage, the top corners need top coverage, and a single center
+seeing only corners determines orientation and nothing else.
+
+**Orientation vs distance under a withdrawn-metric regime — a credited
+finding, not implemented in study code.** Derived in sibling thread
+`th_4bNmFneb`; the engine at `f5a2785` probes equivalent pairs only under the
+supplied-metric regime, and this construction is not frozen, tested, or
+exercised by it. The finding: under the supplied capabilities no rig yields an
+orientation or distance equivalent pair on the frozen grid. If the
+metric-trust capability is withdrawn — pose translations trusted only up to
+one global scale factor, with the gauge fixed on the true world — a
+constructed pair (same yaw, every length ×λ) is *exactly equivalent* on a
+ruler-free landmark set (ends and top corners only): no ground-plane
+observation pins the scale. The study's fixed-offset interior marks (4 ft and
+9 ft past the left end) break the similarity — lengths that do not scale with
+the wall act as a metric ruler and keep distance determined on the full
+landmark set — but the ruler is not free: knowing the marks' offsets in feet
+is itself metric knowledge, a supplied capability in another form. Scaling
+cannot hide a yaw change, so orientation stays determined in every regime.
+Implementing and freezing this regime comparison in the engine would be new
+work, not part of PR #226.
+
+**Boundary.** Everything above is a finite-grid statement about one wall on
+2625 frozen worlds, conditional on the supplied capabilities. It is not a
+general monocular-reconstruction result, and not a field-safety claim. The
+largest gap from the parent handoff stands: a real-phone session on
+representative exterior geometry with independently measured dimensions.
