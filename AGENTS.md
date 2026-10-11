@@ -57,3 +57,7 @@ A user's instruction outranks a skill.
 - Put `DEVELOPMENT_TEAM` in `ios/Config/Local.xcconfig` (copy `Local.xcconfig.example`), not in Xcode's Signing & Capabilities pane. The pane writes into `project.pbxproj`, and CI fails on that drift.
 - After editing `ios/project.yml`, run `make ios-project` (it needs XcodeGen 2.46.0) and commit the regenerated project. CI regenerates it and fails on any difference.
 - `sites/landing` is a submodule. Change the landing page in its own repository.
+
+## Portfolio entry
+
+`.portfolio/project.md` is this project's entry on kgu.one. When a change alters what the project does, its results, awards, stack or links, update that file in the same change, following the rules in its header. Its first paragraph is the summary, and the long-form text below it is the write-up on the project page.
