@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 SERVER_DIR = Path(__file__).resolve().parent
 PUBLIC_RULES = SERVER_DIR / "rules.yaml"
@@ -90,6 +90,13 @@ class Sweep(_Strict):
     wall_join_ft: Value
     meter_to_wall_max_ft: Value
 
+    @model_validator(mode="after")
+    def _positive_step(self) -> "Sweep":
+        # Every solve steps the battery along the wall by this much; zero or less can't advance.
+        if self.step_ft.value <= 0:
+            raise ValueError(f"sweep.step_ft must be positive, got {self.step_ft.value}")
+        return self
+
 
 class Clearances(_Strict):
     gas_ft: Value
@@ -139,6 +146,17 @@ class Route(_Strict):
     corner_allowance_ft: Value
     crossing: dict[ObjectType, Effect]
 
+    @model_validator(mode="after")
+    def _confident_within_max(self) -> "Route":
+        # Past the confident reach a run goes to review, past the maximum it fails; a confident
+        # reach beyond the maximum would let a run over the maximum pass.
+        if self.confident_reach_ft.value > self.max_ft.value:
+            raise ValueError(
+                f"route.confident_reach_ft ({self.confident_reach_ft.value}) must not exceed "
+                f"route.max_ft ({self.max_ft.value})"
+            )
+        return self
+
 
 class Rules(_Strict):
     policy: Policy
@@ -153,6 +171,18 @@ class Rules(_Strict):
     meter_working_space: MeterWorkingSpace
     ground: Ground
     route: Route
+
+    @model_validator(mode="after")
+    def _exemption_within_the_opening_checks_height(self) -> "Rules":
+        # The opening check needs the wall seen only up to headroom height; a window above that
+        # would still count under a higher exemption but could be missed, unseen, above the view.
+        exempt = self.openings.exempt_bottom_above_ft
+        if exempt is not None and exempt > self.headroom.min_ft.value:
+            raise ValueError(
+                f"openings.exempt_bottom_above_ft ({exempt}) must not exceed headroom.min_ft "
+                f"({self.headroom.min_ft.value}), the wall height the opening check requires seen"
+            )
+        return self
 
 
 @dataclass(frozen=True)
@@ -251,11 +281,67 @@ def load_rules(private_path: Path | None = None) -> LoadedRules:
     if private is None:
         return rules_from_dict(data)
     private_keys = frozenset(overridden_keys(data, private))
-    if "notice" not in private.get("policy", {}):
-        # The public notice says the answers are not under Base's rules; merged under private
-        # rules it would be false.
-        data["policy"]["notice"] = None
-    return rules_from_dict(deep_merge(data, private), ("public", "private"), private_keys)
+    merged = deep_merge(data, private)
+    # The public notice says the answers are not under Base's rules, which private rules make
+    # untrue; but any public placeholder they leave in place still decides answers, so the
+    # notice names those checks instead of going quiet.
+    own = private.get("policy", {}).get("notice")
+    merged["policy"]["notice"] = _mixed_notice(own, _placeholders_left(merged, private_keys))
+    return rules_from_dict(merged, ("public", "private"), private_keys)
+
+
+# The check each placeholder rule decides; placeholders not tied to one check are named by key.
+PLACEHOLDER_CHECKS = {
+    "clearances.drive_ft": "drive_clearance",
+    "clearances.pool_ft": "pool_clearance",
+    "clearances.wall_equipment_ft": "wall_equipment_above",
+    "headroom.min_ft": "headroom",
+    "ground": "ground_surface",
+    "route.confident_reach_ft": "route_length",
+    "route.corner_allowance_ft": "route_length",
+    "route.height_ft": "route_path",
+}
+
+
+def _placeholders_left(merged: dict[str, Any], private_keys: frozenset[str]) -> list[str]:
+    """Dotted keys still marked placeholder that the private file did not set."""
+    left: list[str] = []
+
+    def walk(node: dict[str, Any], path: str) -> None:
+        if node.get("placeholder") is True:
+            # A cited value is replaced when the private file sets it; a group (such as ground)
+            # only when it sets every child that decides something, not just one of them.
+            if "value" in node:
+                replaced = path in private_keys
+            else:
+                children = [k for k in node if k not in ("source", "placeholder")]
+                replaced = all(
+                    any(p == f"{path}.{k}" or p.startswith(f"{path}.{k}.") for p in private_keys)
+                    for k in children
+                )
+            if not replaced:
+                left.append(path)
+            return
+        for key, value in node.items():
+            if isinstance(value, dict):
+                walk(value, f"{path}.{key}" if path else key)
+
+    walk(merged, "")
+    return left
+
+
+def _mixed_notice(own: str | None, left: list[str]) -> str | None:
+    if not left:
+        return own
+    checks = sorted({PLACEHOLDER_CHECKS[k] for k in left if k in PLACEHOLDER_CHECKS})
+    other = sorted(k for k in left if k not in PLACEHOLDER_CHECKS)
+    parts = []
+    if checks:
+        parts.append("these checks still use public placeholder values: " + ", ".join(checks))
+    if other:
+        parts.append("placeholder settings still apply: " + ", ".join(other))
+    mixed = "Private rules, but " + "; ".join(parts) + "."
+    return f"{own} {mixed}" if own else mixed
 
 
 def _public_policy(data: dict[str, Any]) -> dict[str, Any]:

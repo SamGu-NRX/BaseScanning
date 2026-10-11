@@ -45,7 +45,9 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-_KEYED = urllib.request.build_opener(_NoRedirect)
+# An explicit empty proxy table: with http_proxy set, a keyed request would otherwise go through
+# the proxy, key included.
+_KEYED = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect)
 
 
 def post(url: str, body: bytes, key: str | None) -> tuple[int, dict]:
