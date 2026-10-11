@@ -1,0 +1,25 @@
+{
+  "package": "blast-radius",
+  "source": "https://github.com/cursor/plugins",
+  "revision": "93b00b89ef425a9c1bac0d0b317dfc49c930ac99",
+  "source_path": "pstack/skills/blast-radius/SKILL.md",
+  "license": "MIT",
+  "license_file": "LICENSE",
+  "adaptations": [
+    "Retain decisive safety facts, indirect consumers and five-level evidence ladder.",
+    "Replace missing how/why invocations with targeted source, blame, commits and linked PR evidence; separate mechanics from intent.",
+    "Replace arena with one fresh read-only review when justified and supported by current delegation rules.",
+    "Preserve read-only assessment: existing tests must be safe; new probes require narrow authorization and missing execution stays unproven.",
+    "Capability-first tools; no settings, model rosters, dependency or production operations.",
+    "Explicit-only Claude frontmatter and Codex policy; external unslop remains untouched."
+  ],
+  "upstream_sha256": {
+    "pstack/skills/blast-radius/SKILL.md": "b060df3ca85803eabbce9fab53f5cc024ca8d784bdde5513c1c1a784947523f8",
+    "pstack/LICENSE": "bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e"
+  },
+  "installed_sha256": {
+    "SKILL.md": "8db8b2618dbefddbca64c12575e8b1bef2a97e2a3aea70b8d8659abdb144325f",
+    "LICENSE": "bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e",
+    "agents/openai.yaml": "147424c1a91471e7fed0def5503290b20bfe7ed6520b3dea8742f39faabe3e7d"
+  }
+}
