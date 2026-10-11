@@ -428,6 +428,32 @@
     script.onload = function () { axeReady = true; maybeRunAxe(); };
     document.head.appendChild(script);
   }
+  document.getElementById("copy-command").addEventListener("click", function () {
+    var command = document.getElementById("repro-command").textContent;
+    var feedback = document.getElementById("copy-feedback");
+    function done(ok) { feedback.textContent = ok ? "Copied." : "Copy failed; select the command text instead."; }
+    function fallback() {
+      try {
+        var area = document.createElement("textarea");
+        area.value = command;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        var ok = document.execCommand("copy");
+        document.body.removeChild(area);
+        done(ok);
+      } catch (error) {
+        done(false);
+      }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(command).then(function () { done(true); }, fallback);
+    } else {
+      fallback();
+    }
+  });
 })();
 </script>
 </body>
