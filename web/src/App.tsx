@@ -8,6 +8,7 @@
 // persistence with reopen, and redacted export/import).
 
 import { useCallback, useRef, useSyncExternalStore } from "react";
+import "./styles/app.css";
 import { Inspector } from "./components/Inspector.tsx";
 import { OutcomePanel } from "./components/OutcomePanel.tsx";
 import { ScenePicker } from "./components/ScenePicker.tsx";

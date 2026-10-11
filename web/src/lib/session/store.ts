@@ -476,6 +476,13 @@ export class SessionStore {
     }
     this.intake = intake;
     this.session = rehydrateSession(parsed.payload);
+    // Keep submitting to the server this session actually used: the receipts carry the
+    // server origin, and falling back to the default would point a reopened session at
+    // whatever server the default names instead.
+    const restoredBaseUrl = baseUrlFromRecord(this.session);
+    if (restoredBaseUrl !== null) {
+      this.baseUrl = restoredBaseUrl;
+    }
     this.sceneSummary = {
       fileName: parsed.payload.scene.fileName,
       sha256: intake.sha256,
@@ -555,4 +562,25 @@ export class SessionStore {
       listener();
     }
   }
+}
+
+/**
+ * The server origin the record's own receipts show it was talking to, or null when the
+ * record carries no request URL. Reopen and import use this so a restored session keeps
+ * submitting to the server it actually used, instead of silently falling back to the
+ * default base URL (which may be a different, even real, server).
+ */
+export function baseUrlFromRecord(record: SessionRecord): string | null {
+  for (let index = record.attempts.length - 1; index >= 0; index -= 1) {
+    const url = record.attempts[index]?.request.url ?? "";
+    if (url === "") {
+      continue;
+    }
+    try {
+      return new URL(url).origin;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }

@@ -174,6 +174,26 @@ describe("browser-local persistence", () => {
     expect(reopened.getSnapshot().session?.attempts).toHaveLength(2);
   });
 
+  it("adopts the record's own server origin on reopen instead of the default", async () => {
+    const custom = "http://127.0.0.1:9990";
+    const fake = createContractFake();
+    const persistence = memoryPersistence();
+    const first = new SessionStore({ fetchImpl: fake.fetch, storage: persistence.storage });
+    first.setBaseUrl(custom);
+    await first.selectSceneFile(fileNamed("scene.json"));
+    await first.submit();
+    expect(first.getSnapshot().display.kind).toBe("bound");
+
+    // A brand-new store over the same storage — what a page reload sees.
+    const reopened = new SessionStore({ fetchImpl: fake.fetch, storage: persistence.storage });
+    await reopened.reopenSession();
+    // The receipts carry the server origin; the store adopts it so the next attempt
+    // goes to the server the session was actually talking to, not the built-in default.
+    expect(reopened.getSnapshot().baseUrl).toBe(custom);
+    // Origin only: the request path never leaks into the base URL.
+    expect(reopened.getSnapshot().baseUrl).not.toContain("/v1/placements");
+  });
+
   it("reports a corrupt saved record, keeps the bytes, and discard clears the slot", () => {
     const persistence = memoryPersistence();
     persistence.map.set(SESSION_STORAGE_KEY, "this is not the record you are looking for");

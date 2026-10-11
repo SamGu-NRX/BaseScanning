@@ -70,6 +70,19 @@ Because the scene text travels in full, treat an export file as you treat the
 original `scene.json`: it is a capture record, and the repository's rule about
 synthetic data applies to it too.
 
+## Browser evidence
+
+`pnpm test:e2e` drives the real production build through the whole session journey —
+pick a scene, submit, cancel, retry, refusal, mismatch witness, inspector history,
+reopen, export/import, 390×844, keyboard-only, reduced motion — plus axe scans of the
+empty, bound, refusal and inspector states in light and dark emulation. Everything
+runs against the contract fake served over loopback HTTP (`evidence/loopback-server.mjs`,
+bound to `127.0.0.1` only); no test or evidence run touches a real network endpoint,
+and the shared helper aborts and asserts the absence of any non-loopback request.
+Committed evidence lives in `evidence/screenshots/` and `evidence/axe/` (the JSON
+records assert zero violations of any impact level in all eight scans), and
+`CLAIMS.md` maps every user-visible claim to the code and evidence that proves it.
+
 ## Conventions
 
 - Lengths are stored in meters. Convert to feet and inches only for display, using `src/lib/units.ts`.
