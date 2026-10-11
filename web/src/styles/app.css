@@ -1,0 +1,10 @@
+/*
+ * The app ships exactly one small stylesheet. It declares no animation or transition
+ * rules, so reduced motion is honored trivially (the e2e evidence scans this sheet's
+ * rules to keep that true). Its one job: long unbreakable strings — SHA-256 hashes,
+ * JSON-pointer paths — must wrap instead of forcing horizontal overflow on small
+ * viewports.
+ */
+code {
+  overflow-wrap: anywhere;
+}
