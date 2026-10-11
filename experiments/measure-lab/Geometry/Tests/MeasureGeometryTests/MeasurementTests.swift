@@ -57,3 +57,44 @@ struct MeasuredValuesTests {
         #expect(isClose(values[.heightAboveGround] ?? .nan, 0.9))
     }
 }
+
+/// `wall` runs from x = 0 to x = 4 along z = 0.
+struct BeyondContactsTests {
+    let wall: Wall
+
+    init() throws {
+        wall = try Wall(contact1: SIMD3(0, 0, 0), contact2: SIMD3(4, 0, 0), cameraPosition: SIMD3(2, 1.5, 3))
+    }
+
+    @Test(arguments: [MeasuredQuantity.gapToWall, .heightAboveGround])
+    func `point-to-wall quantities past either end are beyond the contacts`(quantity: MeasuredQuantity) {
+        #expect(readsWallBeyondContacts(from: SIMD3(-0.5, 1, 1), to: .wall(wall), referenceWall: nil, compared: quantity))
+        #expect(readsWallBeyondContacts(from: SIMD3(4.5, 1, 1), to: .wall(wall), referenceWall: nil, compared: quantity))
+        #expect(!readsWallBeyondContacts(from: SIMD3(2, 1, 1), to: .wall(wall), referenceWall: nil, compared: quantity))
+    }
+
+    @Test func `along-wall distance checks both points against the reference wall`() {
+        let inside = SIMD3<Double>(1, 0, 2)
+        let past = readsWallBeyondContacts(from: inside, to: .point(SIMD3(5, 0, 2)), referenceWall: wall, compared: .alongWall)
+        let before = readsWallBeyondContacts(from: SIMD3(-1, 0, 2), to: .point(inside), referenceWall: wall, compared: .alongWall)
+        let within = readsWallBeyondContacts(from: inside, to: .point(SIMD3(3, 0, 2)), referenceWall: wall, compared: .alongWall)
+        #expect(past)
+        #expect(before)
+        #expect(!within)
+    }
+
+    @Test(arguments: [MeasuredQuantity.straight, .horizontal, .vertical])
+    func `distances that use no wall are never beyond it`(quantity: MeasuredQuantity) {
+        #expect(!readsWallBeyondContacts(from: SIMD3(-3, 0, 2), to: .point(SIMD3(9, 0, 2)), referenceWall: wall, compared: quantity))
+    }
+
+    @Test func `the defining contacts themselves are within`() throws {
+        // For this wall, along(end) = run·run / |run| rounds 4.4e-16 m past length.
+        let start = SIMD3<Double>(-1.9667586519159475, 0, -3.7980858426399475)
+        let end = SIMD3<Double>(-5.331733838114573, 0.05, -5.225922527733432)
+        let diagonal = try Wall(contact1: start, contact2: end, cameraPosition: SIMD3(0, 1.5, 3))
+        #expect(diagonal.along(end) > diagonal.length)
+        #expect(!readsWallBeyondContacts(from: start, to: .point(end), referenceWall: diagonal, compared: .alongWall))
+        #expect(!readsWallBeyondContacts(from: end, to: .wall(diagonal), referenceWall: nil, compared: .heightAboveGround))
+    }
+}

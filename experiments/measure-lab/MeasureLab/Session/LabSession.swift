@@ -28,7 +28,8 @@ final class LabSession {
 
     private(set) var manifest: SessionManifest
     private(set) var folder: URL?
-    private(set) var storageError: String?
+    private var storageErrors = StorageErrorState<String>()
+    var storageError: String? { storageErrors.message }
 
     private(set) var tool: Tool = .ground
     private(set) var wallStep: WallStep = .firstContact
@@ -44,12 +45,15 @@ final class LabSession {
 
     private var horizontalPlanes: Set<UUID> = []
     private var verticalPlanes: Set<UUID> = []
-    private var walls: [String: Wall] = [:]
+    /// Points, walls, checks and saved measurements, for every accept-or-abstain decision.
+    private var ledger = MeasurementLedger()
     /// Sends each finished keyframe write to the session that reserved it.
     private var router = KeyframeRouter<String>()
-    /// Closed sessions with keyframe writes still in flight, by session id. Each is dropped once
-    /// its last write reports back, however many sessions opened since.
-    private var closedSessions: [String: (manifest: SessionManifest, folder: URL)] = [:]
+    /// Closed sessions with keyframe writes still in flight or a manifest not yet on disk, by
+    /// session id. Each stays until both are done, however many sessions opened since.
+    private var closedManifests = ClosedManifests<String, ClosedSession>()
+    private var stability = TrackingStability(requiredSeconds: LabSession.trackingStableSeconds)
+    /// Wakes the UI when `stability` should turn stable; `stability` decides.
     private var stabilityTask: Task<Void, Never>?
     private var keyframesSinceSave = 0
     private var eventCount = 0
@@ -65,6 +69,11 @@ final class LabSession {
         let tapID: String
         let keyframeID: String
         let ray: Ray
+    }
+
+    private struct ClosedSession: Sendable {
+        var manifest: SessionManifest
+        let folder: URL
     }
 
     /// Pure: nothing touches disk until `start()`, so SwiftUI can re-create the owning view freely.
@@ -94,12 +103,18 @@ final class LabSession {
     /// stops the recorder first, passes how many writes the closing session reserved, and starts
     /// the recorder on the returned destination once the AR map resets.
     func startNewSession(sceneDepth: Bool, closingReserved: Int) -> KeyframeRecorder.Destination? {
-        save()
-        if router.closeCurrent(reserved: closingReserved), let folder {
-            closedSessions[manifest.session.id] = (manifest, folder)
+        let saved = save()
+        let awaitingWrites = router.closeCurrent(reserved: closingReserved)
+        if let folder {
+            closedManifests.close(
+                manifest.session.id,
+                ClosedSession(manifest: manifest, folder: folder),
+                awaitingWrites: awaitingWrites,
+                saved: saved
+            )
         }
         manifest = Self.makeManifest(sceneDepth: sceneDepth && lidarAvailable, recorder: recorder)
-        walls = [:]
+        ledger = MeasurementLedger()
         wallStep = .firstContact
         twoViewFirst = nil
         lastEvent = nil
@@ -148,7 +163,7 @@ final class LabSession {
         do {
             let folder = try SessionStore.makeFolder(id: manifest.session.id)
             self.folder = folder
-            storageError = nil
+            storageErrors.clear()
             let destination = KeyframeRecorder.Destination(sessionID: manifest.session.id, folder: folder)
             router.open(manifest.session.id)
             if startRecorder { recorder.start(destination) }
@@ -156,41 +171,73 @@ final class LabSession {
             return destination
         } catch {
             folder = nil
-            storageError = "Couldn't create a folder for this session: \(error.localizedDescription)"
+            storageErrors.report("Couldn't create a folder for this session: \(error.localizedDescription)")
             return nil
         }
     }
 
     /// Writes session.json and returns the folder to archive. Called right before zipping so the
-    /// manifest lists every keyframe saved so far.
+    /// manifest lists every keyframe saved so far. Returns nil when that write fails: the file on
+    /// disk is older than memory, and could still list a measurement as accepted after a later
+    /// wall check made it an abstention. `storageError` says why.
     func prepareExport() -> URL? {
-        save()
-        return folder
+        save() ? folder : nil
     }
 
-    func save() {
-        guard let folder else { return }
+    /// Writes the current session.json, and retries any closed session's manifest that is not on
+    /// disk yet. Returns whether the current one was written.
+    @discardableResult
+    func save() -> Bool {
+        defer { flushClosedManifests() }
+        guard let folder else { return false }
         do {
             try SessionStore.write(manifest, to: folder)
+            storageErrors.currentManifestSaved()
             keyframesSinceSave = 0
+            return true
         } catch {
-            storageError = "Couldn't save session.json: \(error.localizedDescription)"
+            storageErrors.currentManifestFailed("Couldn't save session.json: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private func flushClosedManifests() {
+        let result = closedManifests.flush { closed in try SessionStore.write(closed.manifest, to: closed.folder) }
+        for session in result.saved {
+            storageErrors.closedSessionSaved(session)
+        }
+        if let failure = result.failures.first {
+            storageErrors.report(
+                "Couldn't save session.json of closed session \(failure.session): "
+                    + "\(failure.error.localizedDescription). It is kept and saved again on the next write.",
+                closedSession: failure.session
+            )
         }
     }
 
     // MARK: - ARKit state
 
     func trackingChanged(to state: TrackingState, at time: Double) {
-        guard state != trackingState else { return }
-        trackingState = state
-        manifest.tracking.append(TrackingRecord(time: time, state: state.manifestName))
+        // Refused: a report from the AR run before the last reset, delivered late.
+        guard stability.trackingChanged(isNormal: state == .normal, at: time) else { return }
+        if state != trackingState {
+            trackingState = state
+            manifest.tracking.append(TrackingRecord(time: time, state: state.manifestName))
+        }
+        refreshStability()
+    }
+
+    /// Sets `isTrackingStable` from `stability` now, and wakes again when it should turn stable.
+    private func refreshStability() {
         stabilityTask?.cancel()
-        isTrackingStable = false
-        guard state == .normal else { return }
+        stabilityTask = nil
+        let now = ProcessInfo.processInfo.systemUptime
+        isTrackingStable = stability.isStable(at: now)
+        guard !isTrackingStable, let stableAt = stability.stableAt else { return }
         stabilityTask = Task {
-            try? await Task.sleep(for: .seconds(Self.trackingStableSeconds))
-            guard !Task.isCancelled, trackingState == .normal else { return }
-            isTrackingStable = true
+            try? await Task.sleep(for: .seconds(max(0, stableAt - now)))
+            guard !Task.isCancelled else { return }
+            refreshStability()
         }
     }
 
@@ -216,12 +263,11 @@ final class LabSession {
         verticalPlaneCount = verticalPlanes.count
     }
 
-    func interruptionChanged(isInterrupted: Bool) {
+    func interruptionChanged(isInterrupted: Bool, at time: Double) {
+        guard stability.interruptionChanged(isInterrupted: isInterrupted, at: time) else { return }
         self.isInterrupted = isInterrupted
-        if isInterrupted {
-            isTrackingStable = false
-            save()
-        }
+        refreshStability()
+        if isInterrupted { save() }
     }
 
     func sessionFailed(_ failure: SessionFailure) {
@@ -229,12 +275,13 @@ final class LabSession {
         save()
     }
 
-    /// Called when a new ARSession run resets tracking: plane counts start from zero, and taps wait
+    /// Called when a new ARSession run resets tracking at `resetUptime`: plane counts start from
+    /// zero, tracking and interruption reports stamped before the reset are ignored, and taps wait
     /// until the new map reports normal tracking for the full stability time.
-    func arSessionRestarted() {
-        stabilityTask?.cancel()
+    func arSessionRestarted(at resetUptime: Double) {
         trackingState = .notAvailable
-        isTrackingStable = false
+        stability.reset(at: resetUptime)
+        refreshStability()
         horizontalPlanes = []
         verticalPlanes = []
         horizontalPlaneCount = 0
@@ -251,19 +298,20 @@ final class LabSession {
             // Keep session.json close to the images on disk without re-encoding it every frame.
             if keyframesSinceSave >= 20 { save() }
         case (.current, .failure(let error)):
-            storageError = error.message
+            storageErrors.report(error.message)
         case (.closed, .success(let saved)):
-            if var closed = closedSessions[delivery.sessionID] {
-                closed.manifest.keyframes.append(saved.record)
-                closedSessions[delivery.sessionID] = closed
-                try? SessionStore.write(closed.manifest, to: closed.folder)
-            }
-        case (.closed, .failure), (.unknown, _):
+            closedManifests.update(delivery.sessionID) { $0.manifest.keyframes.append(saved.record) }
+        case (.closed, .failure(let error)):
+            // The keyframe itself is lost, so no manifest retry clears this.
+            storageErrors.report("Closed session \(delivery.sessionID): \(error.message)")
+        case (.unknown, _):
             break
         }
-        if drained {
-            closedSessions[delivery.sessionID] = nil
-        }
+        guard route == .closed else { return }
+        if drained { closedManifests.markDrained(delivery.sessionID) }
+        // Written now so a late keyframe reaches disk promptly; a failure stays kept for the
+        // next save to retry.
+        flushClosedManifests()
     }
 
     /// A save that reserved nothing, so no delivery will follow.
@@ -271,7 +319,7 @@ final class LabSession {
         if error == .frameFromPreviousMap {
             refuseUnresolvedTap(reason: "frameFromPreviousMap", message: error.message)
         } else {
-            storageError = error.message
+            storageErrors.report(error.message)
         }
     }
 
@@ -291,7 +339,7 @@ final class LabSession {
     }
 
     private var activeWall: (id: String, wall: Wall)? {
-        guard let id = manifest.walls.last?.id, let wall = walls[id] else { return nil }
+        guard let id = manifest.walls.last?.id, let wall = ledger.wall(id) else { return nil }
         return (id, wall)
     }
 
@@ -410,7 +458,7 @@ final class LabSession {
                 return
             }
             let id = "W\(manifest.walls.count + 1)"
-            walls[id] = wall
+            ledger.addWall(id, wall, contacts: [firstID, point.id])
             manifest.walls.append(WallRecord(
                 id: id,
                 contacts: [firstID, point.id],
@@ -425,22 +473,42 @@ final class LabSession {
             ))
             refreshWarnings(ofWall: id)
             wallStep = .validate(wallID: id)
-            let contactFlagged = wallStatus(id: id)?.warnings.contains(.wallContactWarning) ?? false
+            let contactFlagged = ledger.wallStatus(id)?.warnings.contains(.wallContactWarning) ?? false
             var lines = ["\(Format.length(wall.length)) between \(firstID) and \(point.id)"]
             if contactFlagged { lines.append("A contact has a warning, so everything on \(id) is flagged") }
             lines.append("Mark a third point on its base to check it")
             announce(contactFlagged ? .warning : .accepted, "\(id) set", lines)
 
         case .validate(let wallID):
-            guard let wall = walls[wallID], let index = manifest.walls.firstIndex(where: { $0.id == wallID }) else { return }
+            guard let wall = ledger.wall(wallID), let index = manifest.walls.firstIndex(where: { $0.id == wallID }) else { return }
             guard let point = makeGroundPoint(input, tap: &tap) else { return }
             let check = wall.validate(contact: point.position, gates: wallGates)
             manifest.walls[index].validations.append(WallRecord.Validation(
                 point: point.id, residual: check.residual, tolerance: check.tolerance, passes: check.passes
             ))
+            let result = ledger.addCheck(check, contact: point.id, toWall: wallID)
             refreshWarnings(ofWall: wallID)
-            let summary = "\(point.id) is \(Format.inches(check.residual)) off \(wallID) (limit \(Format.inches(check.tolerance)))"
-            announce(check.passes ? .accepted : .warning, check.passes ? "\(wallID) checks out" : "\(wallID) failed its check", [summary])
+            let nowAbstentions = applySavedWarnings(result.changedMeasurements)
+            var lines = ["\(point.id) is \(Format.inches(check.residual)) off \(wallID) (limit \(Format.inches(check.tolerance)))"]
+            let title: String
+            switch result.outcome {
+            case .confirmed:
+                title = "\(wallID) checks out"
+            case .unconfirmed:
+                title = "\(wallID) not confirmed"
+                lines += point.flags.map(\.message)
+                lines.append("A check point with a warning can't confirm the wall. Mark another on its base.")
+            case .failed:
+                title = "\(wallID) failed its check"
+            }
+            let wallWarnings = manifest.walls[index].warnings
+            if result.outcome == .confirmed {
+                lines += wallWarnings.map(\.message)
+            }
+            if !nowAbstentions.isEmpty {
+                lines.append("Now abstentions: \(nowAbstentions.joined(separator: ", "))")
+            }
+            announce(result.outcome == .confirmed && wallWarnings.isEmpty ? .accepted : .warning, title, lines)
         }
     }
 
@@ -462,7 +530,7 @@ final class LabSession {
             taps: [tap.id],
             onWall: PointRecord.OnWall(wall: wallID, range: hit.range, angleFromNormal: hit.angleFromNormal),
             flags: hit.withinContacts ? [] : [.outsideWallContacts],
-            wallWarnings: wallStatus(id: wallID)?.warnings ?? []
+            wallWarnings: ledger.wallStatus(wallID)?.warnings ?? []
         )
         tap.point = point.id
         announce(evidence(for: point).warnings.isEmpty ? .accepted : .warning, "\(point.id) on \(wallID)", describe(point))
@@ -570,36 +638,16 @@ final class LabSession {
             wallWarnings: wallWarnings
         )
         manifest.points.append(point)
+        ledger.addPoint(point.id, at: position, flags: flags, onWall: onWall?.wall)
         return point
     }
 
     // MARK: - Measurements
 
-    enum MeasureTarget: Hashable {
-        case point(String)
-        case wall(String)
-
-        var id: String {
-            switch self {
-            case .point(let id), .wall(let id): id
-            }
-        }
-    }
-
-    func point(id: String) -> PointRecord? {
-        manifest.points.first { $0.id == id }
-    }
+    typealias MeasureTarget = MeasurementLedger.Target
 
     func values(from pointID: String, to target: MeasureTarget, referenceWall: String?) -> [MeasuredQuantity: Double] {
-        guard let from = point(id: pointID) else { return [:] }
-        switch target {
-        case .point(let id):
-            guard let to = point(id: id) else { return [:] }
-            return measuredValues(from: from.position, to: .point(to.position), referenceWall: referenceWall.flatMap { walls[$0] })
-        case .wall(let id):
-            guard let wall = walls[id] else { return [:] }
-            return measuredValues(from: from.position, to: .wall(wall))
-        }
+        ledger.values(from: pointID, to: target, referenceWall: referenceWall)
     }
 
     func addMeasurement(
@@ -610,10 +658,11 @@ final class LabSession {
         tape: TapeReading?
     ) {
         let values = values(from: pointID, to: target, referenceWall: referenceWall)
-        guard let measured = values[quantity] else { return }
-        let warnings = warnings(from: pointID, to: target, referenceWall: referenceWall, compared: quantity, value: measured)
-        let comparison = tape.map { TapeComparison(measured: measured, tape: $0.meters) }
         let id = "M\(manifest.measurements.count + 1)"
+        guard let measured = values[quantity],
+              let warnings = ledger.saveMeasurement(id, from: pointID, to: target, referenceWall: referenceWall, compared: quantity)
+        else { return }
+        let comparison = tape.map { TapeComparison(measured: measured, tape: $0.meters) }
         manifest.measurements.append(MeasurementRecord(
             id: id,
             time: ProcessInfo.processInfo.systemUptime,
@@ -639,53 +688,42 @@ final class LabSession {
 
     // MARK: - Warnings
 
-    /// The wall's qualification from its contacts' own warnings and its validation checks.
-    func wallStatus(id: String) -> WallStatus? {
-        guard let record = manifest.walls.first(where: { $0.id == id }) else { return nil }
-        return WallStatus(
-            contactWarnings: record.contacts.map { point(id: $0)?.flags ?? [] },
-            validations: record.validations.map(\.passes)
-        )
+    private func refreshWarnings(ofWall id: String) {
+        guard let index = manifest.walls.firstIndex(where: { $0.id == id }), let status = ledger.wallStatus(id) else { return }
+        manifest.walls[index].warnings = status.warnings
     }
 
-    private func refreshWarnings(ofWall id: String) {
-        guard let index = manifest.walls.firstIndex(where: { $0.id == id }), let status = wallStatus(id: id) else { return }
-        manifest.walls[index].warnings = status.warnings
+    /// Copies the ledger's warnings onto saved measurement records after a wall check. Returns the
+    /// ids that were accepted and are now abstentions.
+    private func applySavedWarnings(_ ids: [String]) -> [String] {
+        var nowAbstentions: [String] = []
+        for id in ids {
+            guard let index = manifest.measurements.firstIndex(where: { $0.id == id }), let warnings = ledger.savedWarnings(id) else {
+                preconditionFailure("Measurement \(id) is in the ledger but not the manifest")
+            }
+            if manifest.measurements[index].accepted, !warnings.isEmpty { nowAbstentions.append(id) }
+            manifest.measurements[index].warnings = warnings
+            manifest.measurements[index].accepted = warnings.isEmpty
+        }
+        return nowAbstentions
     }
 
     /// A point's own warnings plus, for a point on a wall, that wall's current status.
     func evidence(for point: PointRecord) -> PointEvidence {
-        PointEvidence(own: point.flags, wall: point.onWall.flatMap { wallStatus(id: $0.wall) })
+        guard let evidence = ledger.evidence(forPoint: point.id) else {
+            preconditionFailure("Point \(point.id) is in the manifest but not the ledger")
+        }
+        return evidence
     }
 
-    /// Everything that makes this measurement an abstention, from the current state of the points
-    /// and walls it depends on.
+    /// Everything that would make this measurement an abstention if saved now.
     func warnings(
         from pointID: String,
         to target: MeasureTarget,
         referenceWall: String?,
-        compared quantity: MeasuredQuantity,
-        value: Double
+        compared quantity: MeasuredQuantity
     ) -> [MeasurementWarning] {
-        guard let from = point(id: pointID) else { return [] }
-        let to: PointEvidence?
-        let targetWall: WallStatus?
-        switch target {
-        case .point(let id):
-            to = point(id: id).map(evidence(for:))
-            targetWall = nil
-        case .wall(let id):
-            to = nil
-            targetWall = wallStatus(id: id)
-        }
-        return measurementWarnings(
-            from: evidence(for: from),
-            to: to,
-            targetWall: targetWall,
-            referenceWall: referenceWall.flatMap(wallStatus(id:)),
-            compared: quantity,
-            value: value
-        )
+        ledger.warnings(from: pointID, to: target, referenceWall: referenceWall, compared: quantity) ?? []
     }
 
     // MARK: - Log helpers
@@ -821,7 +859,7 @@ extension MeasurementWarning {
         case .shallowLookDown: "Looking down less than 30°; tap from closer"
         case .outsideWallContacts: "Beyond the wall's two contacts"
         case .wallContactWarning: "One of the wall's contacts has a warning"
-        case .wallNotValidated: "The wall has no check contact yet"
+        case .wallNotValidated: "The wall has no clean check point yet"
         case .wallValidationFailed: "The wall failed its check"
         case .belowGround: "Below the wall's ground line"
         }

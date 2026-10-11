@@ -89,3 +89,26 @@ public func measuredValues(
         ]
     }
 }
+
+/// Whether the compared quantity reads a wall's plane or ground line beyond the wall's two
+/// contacts, where both are extrapolated.
+///
+/// Facing gap and height above ground read the target wall at the point's along-wall position.
+/// Along-wall distance projects both points onto the reference wall. Straight, horizontal and
+/// vertical distances use no wall, so they are never beyond one.
+public func readsWallBeyondContacts(
+    from point: SIMD3<Double>,
+    to target: MeasurementTarget,
+    referenceWall: Wall?,
+    compared: MeasuredQuantity
+) -> Bool {
+    switch (target, compared) {
+    case (.wall(let wall), .gapToWall), (.wall(let wall), .heightAboveGround):
+        return !wall.containsAlong(wall.along(point))
+    case (.point(let other), .alongWall):
+        guard let referenceWall else { return false }
+        return [point, other].contains { !referenceWall.containsAlong(referenceWall.along($0)) }
+    default:
+        return false
+    }
+}

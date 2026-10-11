@@ -55,8 +55,11 @@ struct SessionArchive: Transferable {
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .zip) { archive in
+            // No zip when the current session.json couldn't be written: the older file on disk
+            // may disagree with what the app shows.
             guard let folder = await archive.session.prepareExport() else {
-                throw CocoaError(.fileNoSuchFile)
+                let reason = await archive.session.storageError ?? "No session folder is open."
+                throw CocoaError(.fileWriteUnknown, userInfo: [NSLocalizedDescriptionKey: reason])
             }
             return SentTransferredFile(try SessionStore.zip(folder: folder))
         }
