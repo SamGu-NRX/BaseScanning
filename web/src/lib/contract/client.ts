@@ -114,16 +114,27 @@ export class PlacementClient {
 
   constructor(options: PlacementClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    // Native fetch is receiver-sensitive: in a browser, calling it with any object
+    // other than the global as `this` throws "Illegal invocation", and a member
+    // call like `this.fetchImpl(...)` would do exactly that. Strip the receiver
+    // from whatever function was provided; bind the default to the global.
+    const provided = options.fetchImpl;
+    this.fetchImpl = provided
+      ? (...args: Parameters<typeof fetch>) => provided(...args)
+      : fetch.bind(globalThis);
     this.maxResponseBytes = options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
     this.authToken = options.authToken;
   }
 
-  private async buildReceipt(
+  /**
+   * The receipt for a planned submission, built synchronously from an intake so the
+   * session layer can record the attempt before its first await.
+   */
+  requestReceiptFor(
     attemptId: string,
     intake: SceneIntake,
-    startedAt: number,
-  ): Promise<RequestReceipt> {
+    startedAt: number = Date.now(),
+  ): RequestReceipt {
     return {
       attemptId,
       url: `${this.baseUrl}/v1/placements`,
@@ -147,7 +158,7 @@ export class PlacementClient {
     signal: AbortSignal,
   ): Promise<SubmitReport> {
     const startedAt = Date.now();
-    const request = await this.buildReceipt(attemptId, intake, startedAt);
+    const request = this.requestReceiptFor(attemptId, intake, startedAt);
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (this.authToken !== undefined) {
       headers.Authorization = `Bearer ${this.authToken}`;

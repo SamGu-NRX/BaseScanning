@@ -244,6 +244,36 @@ describe("transport faults and cancellation", () => {
     expect(report.exchange.request.requestSha256).toBe(run.requestSha256);
   });
 
+  it("invokes a provided fetch without binding a receiver, as Chromium's native fetch demands", async () => {
+    // Native fetch throws "Illegal invocation" when called with anything but the
+    // global as its receiver. The client stores the provided function and must
+    // never turn its calls into member calls on the client itself.
+    const fake = createContractFake();
+    const chromiumLike = function illegalUnlessReceiverFree(
+      this: unknown,
+      input: Parameters<typeof fetch>[0],
+      init?: Parameters<typeof fetch>[1],
+    ): Promise<Response> {
+      if (this !== undefined) {
+        return Promise.reject(
+          new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation"),
+        );
+      }
+      return fake.fetch(input, init);
+    };
+    const client = new PlacementClient({
+      baseUrl: "http://localhost:8000",
+      fetchImpl: chromiumLike,
+    });
+    const intake = await intakeSceneText(sceneText());
+    const report = await client.submitPlacement(
+      intake,
+      newAttemptId("t"),
+      new AbortController().signal,
+    );
+    expect(report.ok).toBe(true);
+  });
+
   it("reports cancellation when the signal is already aborted", async () => {
     const fake = createContractFake();
     const client = new PlacementClient({ baseUrl: "http://localhost:8000", fetchImpl: fake.fetch });

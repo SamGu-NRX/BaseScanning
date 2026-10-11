@@ -1,6 +1,12 @@
 # web
 
-Browser app for zero-install capture experiments. Right now it holds a placeholder page and `src/lib/units.ts`, which converts meters (what ARKit reports) to feet and inches for display.
+Browser app for zero-install capture experiments. The home page runs a placement
+session: pick a `scene.json`, aim it at a placement server, run the attempt (with a
+live status line and cancellation), and read the answer. The state layer lives in
+`src/lib/session/store.ts` on top of the placement contract in `src/lib/contract/`;
+the contract's test double (`contract-fake.ts`) is also the only server surface the
+tests use. The optional bearer token stays in memory for the next submission only —
+it is never persisted and never logged.
 
 ## Setup
 
