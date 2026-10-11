@@ -378,31 +378,36 @@ final class ScanEngine {
     /// asked for first, while the onboarding that says why is still on screen; otherwise the AR
     /// session and the barometer raise both prompts over "Find your electric meter". Without the
     /// camera there is no scan, so motion is not asked for and the camera failure screen shows.
+    /// An unanswered motion request goes on too, with the barometer held so it can't raise the
+    /// prompt over the meter search (`CapturePermissions`).
     func leaveOnboarding() {
-        guard options.replayFolder == nil else {
-            go(.findMeter)
-            return
+        let camera: CapturePermissions.Camera = switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized: .allowed
+        case .denied, .restricted: .refused
+        case .notDetermined: .undecided
+        @unknown default: .undecided
         }
-        let camera = AVCaptureDevice.authorizationStatus(for: .video)
-        if camera == .denied || camera == .restricted {
+        let exit = CapturePermissions.exit(
+            replay: options.replayFolder != nil, camera: camera, motionUndecided: MotionSource.needsPermission)
+        switch exit {
+        case .findMeter:
+            go(.findMeter)
+        case .cameraFailure:
             fail(.cameraDenied)
-            return
-        }
-        guard camera == .notDetermined || MotionSource.needsPermission else {
-            go(.findMeter)
-            return
-        }
-        guard !askingForPermissions else { return }
-        askingForPermissions = true
-        Task {
-            if camera == .notDetermined, !(await AVCaptureDevice.requestAccess(for: .video)) {
-                askingForPermissions = false
-                if state.phase == .onboarding { fail(.cameraDenied) }
-                return
+        case .ask(let askCamera, let askMotion):
+            guard !askingForPermissions else { return }
+            askingForPermissions = true
+            Task {
+                defer { askingForPermissions = false }
+                if askCamera, !(await AVCaptureDevice.requestAccess(for: .video)) {
+                    if state.phase == .onboarding { fail(.cameraDenied) }
+                    return
+                }
+                if askMotion, await motion.requestPermission() == .unanswered {
+                    RuntimeLog.capture.info("Motion & Fitness unanswered; the barometer waits until it is decided")
+                }
+                if state.phase == .onboarding { go(.findMeter) }
             }
-            await motion.requestPermission()
-            askingForPermissions = false
-            if state.phase == .onboarding { go(.findMeter) }
         }
     }
 
