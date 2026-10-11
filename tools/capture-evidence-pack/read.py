@@ -14,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
 import json
 import re
@@ -36,6 +37,8 @@ REQUIRED_FIELDS = (
     "packaged_files",
 )
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+STRICT_TIMESTAMP = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T[0-2]\d:[0-5]\d:[0-5]\dZ$")
 
 
 class Refusal(Exception):
@@ -117,6 +120,13 @@ def validate_manifest(manifest: dict) -> None:
         raise Refusal("invalid-manifest", "capture must be an object")
     if not isinstance(capture.get("capture_id"), str) or not capture["capture_id"].strip():
         raise Refusal("invalid-manifest", "capture.capture_id must be a non-empty string")
+    captured_at = capture.get("captured_at")
+    if not isinstance(captured_at, str) or not STRICT_TIMESTAMP.match(captured_at):
+        raise Refusal("invalid-manifest", f"capture.captured_at is not a strict zero-padded {TIMESTAMP_FORMAT} UTC form: {captured_at!r}")
+    try:
+        datetime.datetime.strptime(captured_at, TIMESTAMP_FORMAT)
+    except ValueError:
+        raise Refusal("invalid-manifest", f"capture.captured_at is not a real UTC date: {captured_at!r}") from None
     if not is_relative_path(capture.get("capture_root")):
         raise Refusal("invalid-manifest", f"capture.capture_root is not a relative POSIX path: {capture.get('capture_root')!r}")
     refs = capture.get("source_refs")
@@ -140,6 +150,8 @@ def validate_manifest(manifest: dict) -> None:
     for index, entry in enumerate(missing_fields):
         if not isinstance(entry, dict) or not isinstance(entry.get("field"), str) or not entry["field"].strip():
             raise Refusal("invalid-manifest", f"missing_fields[{index}] needs a non-empty field name")
+        if not isinstance(entry.get("detail"), str) or not entry["detail"].strip():
+            raise Refusal("invalid-manifest", f"missing_fields[{index}].detail must be a non-empty string explaining the gap")
 
     reproduction = manifest["reproduction"]
     if not isinstance(reproduction, dict) or not isinstance(reproduction.get("command"), str) or not reproduction["command"].strip():
@@ -177,7 +189,8 @@ def check_packaged_files(manifest: dict, entries: dict[str, bytes]) -> None:
         if sha256_hex(data) != record["sha256"] or len(data) != record["bytes"]:
             raise Refusal(
                 "invalid-manifest",
-                f"packaged file {path} does not match its recorded hash and size",
+                f"packaged file {path} does not match its recorded hash and size: "
+                f"hash {sha256_hex(data)} vs recorded {record['sha256']}, size {len(data)} vs recorded {record['bytes']}",
             )
 
 
@@ -230,6 +243,16 @@ def main() -> None:
         checked.append(f"{ref['role']}:{ref['path']} sha256 {digest}")
     result = manifest["result"]
     result_digest = satisfy(f"result {result['path']}", result, root, schema_version, mismatch_kind="mismatched-result")
+    try:
+        parsed_result = json.loads((root / result["path"]).read_bytes())
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        parsed_result = None
+    embedded_id = parsed_result.get("result_id") if isinstance(parsed_result, dict) else None
+    if isinstance(embedded_id, str) and embedded_id != result["result_id"]:
+        raise Refusal(
+            "mismatched-result",
+            f"the result file embeds result_id {embedded_id!r}, the manifest claims {result['result_id']!r}",
+        )
 
     print("capture-evidence-pack reader")
     print(f"pack: {pack_path}")
@@ -241,6 +264,10 @@ def main() -> None:
     for line in checked:
         print(f"source ref ok: {line}")
     print(f"result ok: {result['result_id']} {result['path']} sha256 {result_digest}")
+    if isinstance(embedded_id, str):
+        print(f"result identity: embedded id {embedded_id!r} matches result_id")
+    else:
+        print("result identity: bytes-only guarantee (the result file does not self-identify)")
     print(f"missing fields (explicit): {len(manifest['missing_fields'])}")
     for entry in manifest["missing_fields"]:
         print(f"  missing: {entry['field']} ({entry['detail']})")
@@ -253,6 +280,11 @@ if __name__ == "__main__":
     try:
         main()
     except Refusal as refusal:
+        pack_path = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else None
+        if pack_path is not None and pack_path.is_file():
+            print(f"rejected pack sha256: {sha256_hex(pack_path.read_bytes())}")
+        else:
+            print("rejected pack sha256: unavailable: the pack file could not be read")
         print(f"REFUSAL {refusal.kind}: {refusal.detail}")
         print("verdict: REFUSED")
         sys.exit(2)

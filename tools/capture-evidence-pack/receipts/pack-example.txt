@@ -5,6 +5,7 @@ manifest sha256: dcf7e29079e88657c5e1f39353c19ca2e56649b806b1b4a826db9b005940dc2
 entries: 2 (manifest.json plus 1 packaged)
 capture: capture-synth-0001 (2 source refs, referenced not embedded)
 result: result-synth-0001
+result identity: embedded id 'result-synth-0001' matches result_id
 missing fields (explicit): 2
 geometry_correctness: assertion null (no claim made)
 reproduce: python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip

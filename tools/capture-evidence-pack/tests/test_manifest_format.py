@@ -70,3 +70,33 @@ def test_rejects_empty_reproduction_command(valid_manifest):
 
 def test_rejects_non_object_manifest():
     assert validate.validate_manifest(["not", "an", "object"]) == ["manifest: expected a JSON object"]
+
+
+def test_rejects_missing_captured_at(valid_manifest):
+    del valid_manifest["capture"]["captured_at"]
+    assert_problems(valid_manifest, "captured_at")
+
+
+def test_rejects_malformed_captured_at(valid_manifest):
+    valid_manifest["capture"]["captured_at"] = "2026-13-45T99:99:99Z"
+    assert_problems(valid_manifest, "captured_at")
+
+
+def test_rejects_calendar_impossible_captured_at(valid_manifest):
+    valid_manifest["capture"]["captured_at"] = "2026-02-30T00:00:00Z"
+    assert_problems(valid_manifest, "captured_at")
+
+
+def test_rejects_non_padded_captured_at(valid_manifest):
+    valid_manifest["capture"]["captured_at"] = "2026-1-5T00:00:00Z"
+    assert_problems(valid_manifest, "captured_at")
+
+
+def test_rejects_null_missing_fields(valid_manifest):
+    valid_manifest["missing_fields"] = None
+    assert_problems(valid_manifest, "missing_fields")
+
+
+def test_missing_fields_entries_need_detail(valid_manifest):
+    del valid_manifest["missing_fields"][0]["detail"]
+    assert_problems(valid_manifest, "missing_fields[0].detail")

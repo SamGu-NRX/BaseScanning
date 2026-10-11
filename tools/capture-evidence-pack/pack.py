@@ -159,6 +159,12 @@ def main() -> None:
         refuse("missing-source", f"fixture directory {fixture} does not exist")
 
     spec = load_pack_spec(fixture)
+    spec_problems = validate.validate_pack_spec(spec)
+    if spec_problems:
+        for problem in spec_problems:
+            print(f"REFUSAL invalid-manifest: {problem}")
+        print("verdict: REFUSED (nothing written)")
+        sys.exit(2)
     manifest = build_manifest(fixture, spec, command_pack_path(out))
 
     problems = validate.validate_manifest(manifest)
@@ -166,6 +172,18 @@ def main() -> None:
         for problem in problems:
             print(f"invalid-manifest: {problem}", file=sys.stderr)
         refuse("invalid-manifest", "the packer produced a manifest that violates SPEC.md; this is a packer bug")
+
+    try:
+        parsed_result = json.loads((fixture / spec["result_path"]).read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        parsed_result = None
+    embedded_id = parsed_result.get("result_id") if isinstance(parsed_result, dict) else None
+    claimed_id = manifest["result"]["result_id"]
+    if isinstance(embedded_id, str) and embedded_id != claimed_id:
+        refuse(
+            "mismatched-result",
+            f"the result file embeds result_id {embedded_id!r}, the manifest claims {claimed_id!r}",
+        )
 
     report_relative = spec.get("report_path", "report.md")
     write_pack(out, manifest, (fixture / report_relative).read_bytes(), report_relative)
@@ -177,6 +195,10 @@ def main() -> None:
     print(f"entries: {len(manifest['packaged_files']) + 1} (manifest.json plus {len(manifest['packaged_files'])} packaged)")
     print(f"capture: {manifest['capture']['capture_id']} ({len(manifest['capture']['source_refs'])} source refs, referenced not embedded)")
     print(f"result: {manifest['result']['result_id']}")
+    if isinstance(embedded_id, str):
+        print(f"result identity: embedded id {embedded_id!r} matches result_id")
+    else:
+        print("result identity: bytes-only guarantee (the result file does not self-identify)")
     print(f"missing fields (explicit): {len(manifest['missing_fields'])}")
     print(f"geometry_correctness: assertion null (no claim made)")
     print(f"reproduce: {manifest['reproduction']['command']}")

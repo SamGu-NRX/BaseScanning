@@ -29,6 +29,7 @@ REQUIRED_TOP_LEVEL = (
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+_STRICT_TIMESTAMP_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T[0-2]\d:[0-5]\d:[0-5]\dZ$")
 
 
 def is_sha256(value: object) -> bool:
@@ -60,6 +61,31 @@ def file_record_problems(field: str, record: object) -> list[str]:
     return problems
 
 
+def _timestamp_problems(label: str, value: object) -> list[str]:
+    """Strict zero-padded `YYYY-MM-DDTHH:MM:SSZ` and a real calendar date."""
+    if isinstance(value, str) and _STRICT_TIMESTAMP_RE.match(value):
+        try:
+            datetime.datetime.strptime(value, _TIMESTAMP_FORMAT)
+            return []
+        except ValueError:
+            return [f"{label}: not a real UTC date: {value!r}"]
+    return [f"{label}: expected strict zero-padded {_TIMESTAMP_FORMAT} UTC form, got {value!r}"]
+
+
+def _missing_fields_problems(value: object) -> list[str]:
+    """Every gap is named with a non-empty field and detail; null is not an empty list."""
+    problems: list[str] = []
+    if isinstance(value, list):
+        for index, entry in enumerate(value):
+            if not isinstance(entry, dict) or not isinstance(entry.get("field"), str) or not entry["field"].strip():
+                problems.append(f"missing_fields[{index}]: expected an object with a non-empty field name")
+            elif not isinstance(entry.get("detail"), str) or not entry["detail"].strip():
+                problems.append(f"missing_fields[{index}].detail: expected a non-empty string explaining the gap")
+    else:
+        problems.append(f"missing_fields: expected a list (possibly empty), got {value!r}")
+    return problems
+
+
 def validate_manifest(manifest: object) -> list[str]:
     """Return every SPEC.md violation in the manifest, or an empty list if it conforms."""
     problems: list[str] = []
@@ -84,13 +110,7 @@ def validate_manifest(manifest: object) -> list[str]:
     problems.extend(_capture_problems(manifest.get("capture")))
     problems.extend(_result_problems(manifest.get("result")))
 
-    missing_fields = manifest.get("missing_fields")
-    if isinstance(missing_fields, list):
-        for index, entry in enumerate(missing_fields):
-            if not isinstance(entry, dict) or not isinstance(entry.get("field"), str) or not entry["field"].strip():
-                problems.append(f"missing_fields[{index}]: expected an object with a non-empty field name")
-    elif missing_fields is not None:
-        problems.append("missing_fields: expected a list (possibly empty)")
+    problems.extend(_missing_fields_problems(manifest.get("missing_fields")))
 
     reproduction = manifest.get("reproduction")
     if isinstance(reproduction, dict):
@@ -121,14 +141,7 @@ def _capture_problems(capture: object) -> list[str]:
     capture_id = capture.get("capture_id")
     if not isinstance(capture_id, str) or not capture_id.strip():
         problems.append("capture.capture_id: expected a non-empty string")
-    captured_at = capture.get("captured_at")
-    if isinstance(captured_at, str):
-        try:
-            datetime.datetime.strptime(captured_at, _TIMESTAMP_FORMAT)
-        except ValueError:
-            problems.append(f"capture.captured_at: expected {_TIMESTAMP_FORMAT} UTC form, got {captured_at!r}")
-    else:
-        problems.append("capture.captured_at: expected a timestamp string")
+    problems.extend(_timestamp_problems("capture.captured_at", capture.get("captured_at")))
     if not is_relative_path(capture.get("capture_root")):
         problems.append(f"capture.capture_root: not a relative POSIX path: {capture.get('capture_root')!r}")
     refs = capture.get("source_refs")
@@ -227,3 +240,47 @@ def load_manifest(path: Path) -> dict:
     if not isinstance(manifest, dict):
         raise ValueError("manifest.json must contain a JSON object")
     return manifest
+
+
+def validate_pack_spec(spec: object) -> list[str]:
+    """Validate the flat pack-spec.json a fixture carries before the packer
+    builds anything from it. Same rules as validate_manifest, applied to the
+    packer's input shape, so a malformed fixture is refused by name instead of
+    crashing the packer with a KeyError."""
+    if not isinstance(spec, dict):
+        return ["pack-spec: expected a JSON object"]
+    problems: list[str] = []
+    for key in ("capture_id", "captured_at", "capture_schema_version", "result_id", "source_refs", "result_path", "missing_fields"):
+        if key not in spec:
+            problems.append(f"{key}: required pack-spec field is missing")
+    capture_id = spec.get("capture_id")
+    if not isinstance(capture_id, str) or not capture_id.strip():
+        problems.append("capture_id: expected a non-empty string")
+    problems.extend(_timestamp_problems("captured_at", spec.get("captured_at")))
+    schema_version = spec.get("capture_schema_version")
+    if not isinstance(schema_version, str) or not schema_version.strip():
+        problems.append("capture_schema_version: expected a non-empty string")
+    result_id = spec.get("result_id")
+    if not isinstance(result_id, str) or not result_id.strip():
+        problems.append("result_id: expected a non-empty string")
+    result_path = spec.get("result_path")
+    if not is_relative_path(result_path):
+        problems.append(f"result_path: not a relative POSIX path: {result_path!r}")
+    report_path = spec.get("report_path", "report.md")
+    if not is_relative_path(report_path):
+        problems.append(f"report_path: not a relative POSIX path: {report_path!r}")
+    refs = spec.get("source_refs")
+    if isinstance(refs, list) and refs:
+        for index, ref in enumerate(refs):
+            if not isinstance(ref, dict):
+                problems.append(f"source_refs[{index}]: expected an object with role and path")
+                continue
+            role = ref.get("role")
+            if not isinstance(role, str) or not role.strip():
+                problems.append(f"source_refs[{index}].role: expected a non-empty string")
+            if not is_relative_path(ref.get("path")):
+                problems.append(f"source_refs[{index}].path: not a relative POSIX path: {ref.get('path')!r}")
+    else:
+        problems.append("source_refs: expected a non-empty list of source refs")
+    problems.extend(_missing_fields_problems(spec.get("missing_fields")))
+    return problems

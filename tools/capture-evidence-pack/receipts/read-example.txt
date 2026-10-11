@@ -9,6 +9,7 @@ capture: capture-synth-0001 captured_at 2026-10-10T00:00:00Z
 source ref ok: frame:capture/frame_0001.json sha256 8ca88c571fc8bb6bc3028a6e9068d369c498cd09a24daea307dbc9c9fa08f3ea
 source ref ok: frame:capture/frame_0002.json sha256 96fdfa6c0753e0d5bf1adb0d21f5e230fec970b680f3447b0dfaf23fb61723b8
 result ok: result-synth-0001 result/result.json sha256 b8878c6027cfe79e23b067d743d9daa36ea9c3045af47e5f51ab13711405e371
+result identity: embedded id 'result-synth-0001' matches result_id
 missing fields (explicit): 2
   missing: capture.depth_map (the synthetic device produced no depth map for either frame)
   missing: capture.lidar_point_cloud (the synthetic device has no LiDAR sensor)

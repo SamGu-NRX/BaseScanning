@@ -29,7 +29,7 @@ The manifest is one JSON object. Every field below is required; a manifest missi
 ### capture
 
 - `capture_id`: non-empty string.
-- `captured_at`: UTC timestamp in `YYYY-MM-DDTHH:MM:SSZ` form.
+- `captured_at`: UTC timestamp in `YYYY-MM-DDTHH:MM:SSZ` form, strictly zero-padded, and a real calendar date. `2026-1-5T00:00:00Z` (not zero-padded) and `2026-02-30T00:00:00Z` (no such day) are invalid.
 - `capture_root`: repository-relative path to the directory source refs resolve against. No `..`, no leading slash.
 - `source_refs`: non-empty list of source references.
 
@@ -53,7 +53,11 @@ Refs point at files; the pack does not contain them. A reader that wants the byt
 
 ### missing_fields
 
-Real captures have gaps: a depth map the device never produced, an intrinsic that never arrived. A pack enumerates every such gap in `missing_fields` instead of letting absence stay silent. Each entry names the capture `field` and a `detail` explaining the gap. An empty list means the described inputs were complete. Omitting the key is invalid; a reader cannot tell an empty list from a forgotten one, so the packer writes the key either way.
+Real captures have gaps: a depth map the device never produced, an intrinsic that never arrived. A pack enumerates every such gap in `missing_fields` instead of letting absence stay silent. Each entry names the capture `field` and a non-empty `detail` explaining the gap; an entry with a blank or absent `detail` is invalid. An empty list means the described inputs were complete. Omitting the key is invalid, and so is an explicit `null`: a reader cannot tell a null from a forgotten one, so the packer writes the key either way and both sides refuse a null.
+
+### Result identity
+
+The manifest claims which result the report is about through `result_id`, `path`, `sha256`, and `bytes`. When the result file names itself — a JSON object carrying a `result_id` field — the packer and the reader compare the embedded name with the claim and refuse `mismatched-result` on a mismatch. When the file carries no self-identification, the tools state a narrower guarantee instead of implying more: the receipt says the exact bytes were verified and that the file does not itself say which result it is.
 
 ### reproduction
 
@@ -86,11 +90,17 @@ The only slot where such a claim could live is `geometry_correctness`, and a con
 The packer and the reader refuse, exit non-zero, and name what mismatched:
 
 - `missing-source`: a source ref whose file is absent under the capture root, or whose bytes do not match the recorded hash and size.
-- `mismatched-result`: the result file's bytes do not match the recorded result hash and size.
+- `mismatched-result`: the result file's bytes do not match the recorded result hash and size, or the file embeds a `result_id` that differs from the manifest's claim.
 - `schema-drift`: a referenced capture input declares a `schema_version` that differs from the manifest's `capture_schema_version`.
-- `invalid-manifest`: the manifest violates the field rules in this document.
+- `invalid-manifest`: the manifest violates the field rules in this document, including a `captured_at` that is not a strict zero-padded real UTC timestamp and `missing_fields` entries with a blank or absent `field` or `detail`.
 - `wrong-pack-format`: `evidence_pack_format_version` is not `1.0`.
+
+The packer validates the flat `pack-spec.json` it consumes before building anything and refuses with the same named kinds, so a malformed fixture cannot crash the packer or half-write a pack. Packaged-file mismatch refusals name the rejected bytes' actual hash and size next to the recorded ones. Every reader refusal prints `rejected pack sha256:` with the SHA-256 of the pack bytes it refused, so a rejected pack can be identified and excluded by hash alone.
 
 ## Determinism
 
 `pack.py` writes byte-stable archives: entries sorted by name, fixed timestamps (1980-01-01 00:00:00), fixed file permissions, no platform-dependent metadata. Packing the same fixture twice to the same out path yields the same bytes, so the pack's own SHA-256 is identity evidence too. The out path is part of `reproduction.command`, so regenerations must reuse the same out path to stay byte-identical.
+
+## Replayable refusals
+
+Refusals are evidence too, and the repository commits the inputs that produce them. `fixtures/missing-captured-at`, `fixtures/invalid-captured-at`, `fixtures/null-missing-fields`, `fixtures/missing-detail`, and `fixtures/mismatched-result-id` are inputs the packer refuses by name. `tests/test_mutations.py` rebuilds the committed example pack with one defect at a time — five packer cases, seven reader cases — and replays each through the real command line, asserting the named refusal and that nothing is written. The `receipts/` directory records actual runs of the example and of two reader refusals.

@@ -1,6 +1,7 @@
 """The independent reader: acceptance, refusals, and independence from the packer."""
 
 import ast
+import hashlib
 import json
 import subprocess
 import sys
@@ -98,6 +99,8 @@ def test_reader_refuses_tampered_report(tmp_path):
     result = run_reader(pack)
     assert result.returncode == 2, result.stdout + result.stderr
     assert "does not match its recorded hash and size" in result.stdout
+    assert "hash " in result.stdout
+    assert "vs recorded" in result.stdout
 
 
 def test_reader_refuses_extra_unlisted_entry(tmp_path):
@@ -127,3 +130,44 @@ def test_reader_is_independent_of_the_packer():
             imported.add(node.module.split(".")[0])
     assert "pack" not in imported
     assert "validate" not in imported
+
+
+def test_reader_refusal_records_the_rejected_pack_sha(tmp_path):
+    pack = rebuilt_pack(
+        tmp_path,
+        manifest_mutation=lambda manifest: manifest.update(evidence_pack_format_version="2.0"),
+    )
+    result = run_reader(pack)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert f"rejected pack sha256: {hashlib.sha256(pack.read_bytes()).hexdigest()}" in result.stdout
+
+
+def test_reader_states_narrower_guarantee_when_result_does_not_self_identify(tmp_path):
+    frame_bytes = b'{"schema_version": "synthetic-capture/2026.10", "frame": 1}'
+    result_bytes = b'{"schema_version": "synthetic-capture/2026.10", "note": "no self-identification here"}'
+    root = tmp_path / "capture-root"
+    (root / "capture").mkdir(parents=True)
+    (root / "result").mkdir(parents=True)
+    (root / "capture" / "frame_0001.json").write_bytes(frame_bytes)
+    (root / "result" / "result.json").write_bytes(result_bytes)
+
+    def swap_sources(manifest):
+        manifest["capture"]["source_refs"] = [
+            {
+                "role": "frame",
+                "path": "capture/frame_0001.json",
+                "sha256": hashlib.sha256(frame_bytes).hexdigest(),
+                "bytes": len(frame_bytes),
+            }
+        ]
+        manifest["result"] = {
+            "result_id": "result-synth-0001",
+            "path": "result/result.json",
+            "sha256": hashlib.sha256(result_bytes).hexdigest(),
+            "bytes": len(result_bytes),
+        }
+
+    pack = rebuilt_pack(tmp_path, manifest_mutation=swap_sources)
+    outcome = run_reader(pack, "--capture-root", str(root))
+    assert outcome.returncode == 0, outcome.stdout + outcome.stderr
+    assert "result identity: bytes-only guarantee (the result file does not self-identify)" in outcome.stdout

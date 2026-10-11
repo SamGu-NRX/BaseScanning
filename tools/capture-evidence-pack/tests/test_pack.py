@@ -111,3 +111,9 @@ def test_packer_refuses_result_schema_drift(tmp_path):
     assert result.returncode == 2, result.stdout + result.stderr
     assert "REFUSAL schema-drift" in result.stdout
     assert not out.exists(), "a refused pack writes nothing"
+
+
+def test_pack_receipt_names_result_identity_guarantee(tmp_path):
+    result = run_pack(f"{TOOL}/fixtures/example", tmp_path / "example.zip")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "result identity: embedded id 'result-synth-0001' matches result_id" in result.stdout
