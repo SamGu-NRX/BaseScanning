@@ -491,6 +491,18 @@ def main() -> None:
                 f"recon-repeatability: replay agreed on {doc['agreed']} of {doc['total']} cases",
                 file=sys.stderr,
             )
+            if doc["agreed"] != doc["total"]:
+                differing = ", ".join(c["name"] for c in doc["cases"] if c["agreement"] != "agree")
+                print(
+                    f"recon-repeatability: replay REJECTED, records disagree: {differing}",
+                    file=sys.stderr,
+                )
+                raise SystemExit(1)
+    except AssertionError as e:
+        # A refused replay (frozen-contract drift) is a failure, not a crash: exit nonzero
+        # with the reason instead of a traceback.
+        print(f"recon-repeatability: replay refused: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
     finally:
         restore_stub()
 
