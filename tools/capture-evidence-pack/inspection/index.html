@@ -128,6 +128,7 @@
     <p>This page reads the pack through its local server. Run
       <code>python tools/capture-evidence-pack/inspection/serve.py</code> and open
       <code>http://127.0.0.1:8793/</code>.</p>
+    <p id="error-detail"></p>
   </div>
 
   <section aria-labelledby="identity-heading" id="identity" hidden data-needs-data>
@@ -239,6 +240,9 @@
       ["Capture id", manifest.capture.capture_id],
       ["Captured at", manifest.capture.captured_at],
       ["Result id", manifest.result.result_id],
+      ["Result path", manifest.result.path],
+      ["Result SHA-256", manifest.result.sha256, true],
+      ["Result bytes", String(manifest.result.bytes)],
       ["Capture root", manifest.capture.capture_root],
       ["Pack path", evidence.pack_path],
       ["Pack SHA-256", evidence.pack_sha256, true],
@@ -333,66 +337,95 @@
     });
   }
 
-  function fail() {
+  var reads = { data: "pending", refusals: "pending" };
+  var axeRequested = new URLSearchParams(location.search).has("axe");
+  var axeReady = false;
+  window.__inspectorReads = reads;
+
+  function bothSettled() {
+    return reads.data !== "pending" && reads.refusals !== "pending";
+  }
+
+  function maybeRunAxe() {
+    if (axeRequested && axeReady && bothSettled()) { runAxe(); }
+  }
+
+  function dataFailed(error) {
     document.getElementById("error").hidden = false;
+    document.getElementById("error-detail").textContent =
+      "The identity read failed (" + error.message +
+      "). Refusal records are independent: they still render below when their own read succeeds.";
+  }
+
+  function refusalsFailed(error) {
     var container = document.getElementById("refusals-list");
     container.innerHTML = "";
     var note = document.createElement("p");
-    note.textContent = "Recorded refusals load from the local server; start serve.py to see them.";
+    note.textContent = "The refusal read failed (" + error.message +
+      "). Recorded refusals could not be loaded from the local server; this is not a pack refusal.";
     container.appendChild(note);
   }
 
-  document.getElementById("copy-command").addEventListener("click", function () {
-    var command = document.getElementById("repro-command").textContent;
-    var feedback = document.getElementById("copy-feedback");
-    function done(ok) { feedback.textContent = ok ? "Copied." : "Copy failed; select the command text instead."; }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(command).then(function () { done(true); }, function () { done(false); });
-    } else {
-      done(false);
-    }
-  });
+  function loadData() {
+    fetch("/data.json").then(function (response) {
+      if (!response.ok) { throw new Error("data.json responded " + response.status); }
+      return response.json();
+    }).then(function (evidence) {
+      render(evidence);
+      reads.data = "ok";
+      maybeRunAxe();
+    }).catch(function (error) {
+      console.error(error);
+      reads.data = "failed";
+      dataFailed(error);
+      maybeRunAxe();
+    });
+  }
 
-  fetch("/data.json").then(function (response) {
-    if (!response.ok) { throw new Error("data.json " + response.status); }
-    return response.json();
-  }).then(function (evidence) {
-    render(evidence);
-  }).catch(function (error) {
-    console.error(error);
-    fail();
-  });
+  function loadRefusals() {
+    fetch("/refusals.json").then(function (response) {
+      if (!response.ok) { throw new Error("refusals.json responded " + response.status); }
+      return response.json();
+    }).then(function (payload) {
+      renderRefusals(payload);
+      reads.refusals = "ok";
+      maybeRunAxe();
+    }).catch(function (error) {
+      console.error(error);
+      reads.refusals = "failed";
+      refusalsFailed(error);
+      maybeRunAxe();
+    });
+  }
 
-  fetch("/refusals.json").then(function (response) {
-    if (!response.ok) { throw new Error("refusals.json " + response.status); }
-    return response.json();
-  }).then(renderRefusals).catch(function (error) {
-    console.error(error);
-  });
+  loadData();
+  loadRefusals();
 
-  if (new URLSearchParams(location.search).has("axe")) {
+  function runAxe() {
+    axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"] } })
+      .then(function (results) {
+        document.getElementById("axe-results").hidden = false;
+        document.getElementById("axe-output").textContent = JSON.stringify(
+          {
+            axe_version: results.toolOptions || undefined,
+            violations: results.violations.map(function (v) { return { id: v.id, impact: v.impact, nodes: v.nodes.length }; }),
+            passes: results.passes.map(function (p) { return p.id; }),
+            incomplete: results.incomplete.map(function (v) { return { id: v.id, nodes: v.nodes.length }; })
+          },
+          null, 2
+        );
+        window.__axeViolations = results.violations;
+      })
+      .catch(function (error) {
+        document.getElementById("axe-results").hidden = false;
+        document.getElementById("axe-output").textContent = "axe failed to run: " + error;
+      });
+  }
+
+  if (axeRequested) {
     var script = document.createElement("script");
     script.src = "/vendor/axe.min.js";
-    script.onload = function () {
-      axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"] } })
-        .then(function (results) {
-          document.getElementById("axe-results").hidden = false;
-          document.getElementById("axe-output").textContent = JSON.stringify(
-            {
-              axe_version: results.toolOptions || undefined,
-              violations: results.violations.map(function (v) { return { id: v.id, impact: v.impact, nodes: v.nodes.length }; }),
-              passes: results.passes.map(function (p) { return p.id; }),
-              incomplete: results.incomplete.map(function (v) { return { id: v.id, nodes: v.nodes.length }; })
-            },
-            null, 2
-          );
-          window.__axeViolations = results.violations;
-        })
-        .catch(function (error) {
-          document.getElementById("axe-results").hidden = false;
-          document.getElementById("axe-output").textContent = "axe failed to run: " + error;
-        });
-    };
+    script.onload = function () { axeReady = true; maybeRunAxe(); };
     document.head.appendChild(script);
   }
 })();

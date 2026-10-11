@@ -5,8 +5,14 @@ Serves the inspection page and the evidence it renders, reading the committed
 pack and receipt files as the single source of truth. Binds 127.0.0.1 only and
 makes no external network calls.
 
+The fault and delay flags reproduce fetch states deterministically when
+capturing evidence for the page's failure handling; defaults change nothing
+about what a normal run serves.
+
 Usage:
     python tools/capture-evidence-pack/inspection/serve.py [--port 8793]
+        [--fault none|data|refusals|both]
+        [--delay-data SECONDS] [--delay-refusals SECONDS]
 """
 
 from __future__ import annotations
@@ -14,6 +20,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import time
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -26,6 +33,10 @@ REFUSAL_RECEIPTS = [
     ("missing-source", "receipts/read-refusal-missing-source.txt"),
     ("mismatched-result", "receipts/read-refusal-mismatched-result.txt"),
 ]
+
+FAULTS = ("both", "data", "none", "refusals")
+
+OPTIONS = {"fault": "none", "delay_data": 0.0, "delay_refusals": 0.0}
 
 
 def sha256_hex(data: bytes) -> str:
@@ -71,8 +82,16 @@ class InspectionHandler(BaseHTTPRequestHandler):
         if path == "/":
             self.send_file(INSPECTION_DIR / "index.html", "text/html; charset=utf-8")
         elif path == "/data.json":
+            if OPTIONS["fault"] in ("data", "both"):
+                self.send_error(500)
+                return
+            time.sleep(OPTIONS["delay_data"])
             self.send_json(evidence_data())
         elif path == "/refusals.json":
+            if OPTIONS["fault"] in ("refusals", "both"):
+                self.send_error(500)
+                return
+            time.sleep(OPTIONS["delay_refusals"])
             self.send_json(refusal_data())
         else:
             candidate = (INSPECTION_DIR / path.lstrip("/")).resolve()
@@ -98,14 +117,21 @@ class InspectionHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, format: str, *args) -> None:  # silence default stderr spam
+    def log_message(self, format: str, *args) -> None:
         pass
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--port", type=int, default=8793)
+    parser.add_argument("--fault", choices=list(FAULTS), default="none",
+                        help="serve 500 for the chosen read to reproduce failure states")
+    parser.add_argument("--delay-data", type=float, default=0.0, dest="delay_data")
+    parser.add_argument("--delay-refusals", type=float, default=0.0, dest="delay_refusals")
     args = parser.parse_args()
+    OPTIONS["fault"] = args.fault
+    OPTIONS["delay_data"] = args.delay_data
+    OPTIONS["delay_refusals"] = args.delay_refusals
     server = ThreadingHTTPServer(("127.0.0.1", args.port), InspectionHandler)
     print(f"inspection page: http://127.0.0.1:{args.port}/ (localhost only, no external calls)")
     try:
