@@ -7,7 +7,7 @@ source and not run. Every blocker and major entry was re-read in the source by a
 
 | ID | Severity | Where the homeowner meets it | Evidence | Decision |
 | --- | --- | --- | --- | --- |
-| B-03 | Blocker | Camera denied, camera failure, unreadable replay: no message, no way on | seen (replay) | fix |
+| B-03 | Blocker | Camera denied or camera failure (find-meter, code only), unreadable replay (onboarding, seen): no message, no way on | seen (replay, on onboarding); camera cases code only | fix |
 | B-04 | Blocker | Meter close-up: "Can't get a clear shot" may never appear | code | fix |
 | B-09 | Blocker | Feature list: "Add something" does nothing | code | fix |
 | B-11 | Blocker | Meter tap can land on another wall's extended plane (ground height fixed at `beede15`) | code | fix |
@@ -28,12 +28,14 @@ source and not run. Every blocker and major entry was re-read in the source by a
 
 **B-03. Failures other than an unsupported phone never reach the screen.** Only the failure screen
 shows a failure, and the app switches to it only for an unsupported phone
-(`HouseScan/Runtime/ScanEngine.swift:91-93`). A denied camera, a failed session or an unreadable
-replay set the failure without changing screen (lines 105, 379, 381). The homeowner stays on
-"Find your electric meter" with no camera and taps do nothing; "Open Settings" is unreachable.
-Seen with `-replay /nonexistent`: the app logged "replay unreadable: cannot read
-/nonexistent/session.json" and stayed on onboarding (report
-`sim/20260926-044618-5520229-5520229d-preview-bad-replay`).
+(`HouseScan/Runtime/ScanEngine.swift:91-93`). Two cases, with different evidence:
+
+- **Unreadable replay (seen).** With `-replay /nonexistent` the app logged "replay unreadable:
+  cannot read /nonexistent/session.json" and stayed on onboarding, with no message and no way on
+  (report `sim/20260926-044618-5520229-5520229d-preview-bad-replay`).
+- **Camera denied, failed session (code, not run).** The source sets the failure without changing
+  screen (lines 105, 379, 381), so the homeowner stays on "Find your electric meter" with no
+  camera and taps do nothing; "Open Settings" is unreachable. Read from source only; never run.
 
 **B-04. The close-up's way out can fail to appear.** A failed try counts only when one problem
 lasts 4 s with no good frame in between (`HouseScanKit/.../Capture/CloseUpGate.swift`, `evaluate`),

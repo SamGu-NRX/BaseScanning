@@ -151,7 +151,9 @@ change. Tests find the controls as `action.onboardingNext`, `action.onboardingSk
   screen** (triaged as [B-03](../bug-triage.md)). The engine switches to the failure screen only
   for an unsupported phone (`Runtime/ScanEngine.swift:105-107`). A denied camera and a failed
   session set the failure (`ScanEngine.swift:489, 491`) and an unreadable replay does too
-  (`ScanEngine.swift:119`), with no screen change. The homeowner who declines the prompt sits on
+  (`ScanEngine.swift:119`), with no screen change. The unreadable replay is seen: with
+  `-replay /nonexistent` the app stays on onboarding with no message and no way on; the camera
+  cases are read from source only. The homeowner who declines the prompt sits on
   "Find your electric meter" with no camera image; the "Open Settings" and "Start over" buttons on
   `UI/Screens/UnsupportedScreen.swift:35-48` are unreachable outside the `-uiDemo` preview.
 - An unsupported phone gets no button: `UnsupportedScreen.swift:44` hides "Start over" for that
