@@ -23,6 +23,7 @@ import dataclasses
 import hashlib
 import json
 import re
+from collections.abc import Iterable
 
 from .sanitize import findings_in_text, redact_text
 
@@ -52,15 +53,125 @@ _SAFE_PATH_LISTS = frozenset({"committed", "notFound", "mismatch", "missing"})
 # Body fields that must never appear in any receipt, in any form.
 _FORBIDDEN_FIELDS = frozenset({"url", "headers", "Authorization", "authorization"})
 
-# Published vocabulary: lowercase contract words (statuses, error codes,
-# event types, stages, outcome kinds, decisions).
-_VOCAB_RE = re.compile(r"^[a-z][a-z0-9_.]{0,63}$")
+# Published contract vocabulary, from the recon contract map of the
+# HouseScanKit sources (CaptureResult.swift, CaptureAPI.swift,
+# CaptureUploader.swift). A value under one of these keys is retained
+# verbatim ONLY when it is a member of the key's published enumeration —
+# syntactic shape is not evidence that a server-controlled string is
+# public. Keys whose vocabulary the published sources do not enumerate
+# (kind, stage) carry an empty set: their values reduce unless the run
+# bound them as expected.
+_PUBLISHED_STATUS = frozenset(
+    {
+        "uploading",
+        "awaiting_files",
+        "processing",
+        "needs_views",
+        "complete",
+        "manual_review",
+        "failed",
+        "expired",
+    }
+)
+_PUBLISHED_CODE = frozenset(
+    {
+        "result_not_ready",
+        "capture_not_found",
+        "upload_method_unsupported",
+        "upload_method_missing",
+        "bad_digest",
+        "not_acknowledged",
+        "result_unreadable",
+        "result_for_another_run",
+        "auth_storage_authorization",
+        "auth_credential_malformed",
+        "auth_credential_unavailable",
+    }
+)
+_PUBLISHED_EVENT_TYPE = frozenset({"verdict_ready", "failed"})
+_PUBLISHED_DECISION = frozenset(
+    {"eligible", "needs_more_photos", "not_eligible", "manual_review"}
+)
+_PUBLISHED_NEXT_DIRECTIVE = frozenset({"retry_finalize"})
+_PUBLISHED_VERSIONS = frozenset({"0.4"})
 
-# Backend-minted ids this run already owns (capture ids, run ids).
-_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+_KEY_VOCABULARY = {
+    "status": _PUBLISHED_STATUS,
+    "code": _PUBLISHED_CODE,
+    "type": _PUBLISHED_EVENT_TYPE,
+    "decision": _PUBLISHED_DECISION,
+    "kind": frozenset(),
+    "stage": frozenset(),
+    "next": _PUBLISHED_NEXT_DIRECTIVE,
+}
 
-# schema_version values ("0.4").
-_VERSION_RE = re.compile(r"^[A-Za-z0-9.]{1,16}$")
+# Published response field names — the keys the published client decodes.
+# A body key that is not here reduces to a bounded digest even when it is
+# a clean identifier. (url/headers live in _FORBIDDEN_FIELDS and are
+# dropped before names are considered.)
+_KNOWN_FIELD_NAMES = frozenset(
+    {
+        "captureId",
+        "status",
+        "upload",
+        "finalizeBy",
+        "maxSinglePutBytes",
+        "urlTtlS",
+        "maxFiles",
+        "maxBatch",
+        "files",
+        "path",
+        "state",
+        "method",
+        "expiresAt",
+        "committed",
+        "notFound",
+        "mismatch",
+        "missing",
+        "runId",
+        "etaS",
+        "next",
+        "events",
+        "seq",
+        "type",
+        "at",
+        "data",
+        "code",
+        "kind",
+        "stage",
+        "viewsNeeded",
+        "memberActions",
+        "outcome",
+        "criteria",
+        "decision",
+        "errors",
+        "pointer",
+        "message",
+        "schema_version",
+    }
+)
+
+# Run-owned public expected values: ids and paths this run minted itself
+# (from the plan/fixture) and expects the backend to echo back. Binding is
+# per-run state, set via bind_expected(); it never holds server text.
+_EXPECTED: set[str] = set()
+
+
+def bind_expected(values: Iterable[str]) -> None:
+    """Bind this run's own expected ids/paths so echoes stay verbatim."""
+    for value in values:
+        if isinstance(value, str) and value and len(value) <= 128:
+            _EXPECTED.add(value)
+
+
+def reset_expected() -> None:
+    """Clear the run-bound expected registry (tests, new-run setup)."""
+    _EXPECTED.clear()
+
+
+def _bounded_digest(value: str) -> str:
+    """A bounded, content-derived stand-in for a non-public string."""
+    return "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()[:24]
 
 # ISO-8601 instants the contract reports.
 _TS_RE = re.compile(
@@ -83,7 +194,13 @@ _UNSAFE = "<unsafe>"
 
 
 def _validate_scalar(key: str, value: object) -> object:
-    """Value-type gate: an allowed key carries only its published shape."""
+    """Value gate: an allowed key carries only published or run-bound text.
+
+    Membership in the key's published enumeration — or equality with a
+    value this run bound as expected — is what makes a server-controlled
+    string public. Anything else reduces to a bounded digest, so drift
+    stays observable without retaining payload text.
+    """
     if isinstance(value, bool):
         return _UNSAFE
     if isinstance(value, int):
@@ -92,30 +209,33 @@ def _validate_scalar(key: str, value: object) -> object:
         return _UNSAFE
     if not isinstance(value, str) or len(value) > _MAX_VALUE_CHARS:
         return _UNSAFE
+    if value in _EXPECTED:
+        return value
     if key in {"captureId", "runId"}:
-        return value if _ID_RE.match(value) else _UNSAFE
+        return _bounded_digest(value)
     if key == "schema_version":
-        return value if _VERSION_RE.match(value) else _UNSAFE
+        return value if value in _PUBLISHED_VERSIONS else _bounded_digest(value)
     if key == "at":
-        return value if _TS_RE.match(value) else _UNSAFE
-    if key in {"status", "code", "kind", "stage", "type", "decision", "next"}:
-        # "next" is the events cursor (int, above) or a retry directive
-        # word ("retry_finalize") — both published vocabulary shapes.
-        return value if _VOCAB_RE.match(value) else _UNSAFE
-    return _UNSAFE
+        return value if _TS_RE.match(value) else _bounded_digest(value)
+    vocabulary = _KEY_VOCABULARY.get(key)
+    if vocabulary is None:
+        return _UNSAFE
+    return value if value in vocabulary else _bounded_digest(value)
 
 
 def _validate_path_item(item: object) -> str:
-    """Validate one entry of a contract path list (commit/missing)."""
+    """Validate one entry of a contract path list (commit/missing).
+
+    A path is retained verbatim only when the run bound it as expected
+    (the plan's own synthetic paths); anything else reduces to a bounded
+    digest so the commit report stays observable without echoing
+    server-controlled path text.
+    """
     if not isinstance(item, str) or len(item) > 128 or ".." in item:
         return _UNSAFE
     if not _PATH_ITEM_RE.match(item):
         return _UNSAFE
-    # Belt and suspenders: a path that looks like source, a URL, or any
-    # other forbidden span never reaches a receipt either.
-    if findings_in_text(item):
-        return _UNSAFE
-    return item
+    return item if item in _EXPECTED else _bounded_digest(item)
 
 
 def _validate_event(event: object) -> object:
@@ -137,10 +257,10 @@ def sanitize_body(parsed: object) -> dict:
     for key, value in parsed.items():
         if key in _FORBIDDEN_FIELDS:
             continue
-        # A body KEY is server-controlled text like any other: a key that is
-        # not a clean identifier shape (a signed-URL fragment, a smuggled
-        # token) is not echoed. Two unsafe keys collapse — shape drift stays
-        # observable, content does not.
+        # A body KEY is server-controlled text like any other: published
+        # names stay raw, everything else reduces (bounded digest for clean
+        # identifiers, placeholder otherwise) — drift stays observable,
+        # key text does not.
         safe[_safe_key(key)] = _safe_value(key, value)
     return safe
 
@@ -169,14 +289,29 @@ def _valid_key_text(name: object) -> bool:
     )
 
 
+def _safe_field_name(name: object) -> str:
+    """A recordable field name.
+
+    Published response names stay raw; an unexpected (but clean) name
+    reduces to a bounded digest so schema drift stays observable without
+    echoing server-controlled key text. Names that are not clean
+    identifiers collapse to the name-only placeholder.
+    """
+    if isinstance(name, str) and _valid_key_text(name):
+        if name in _KNOWN_FIELD_NAMES:
+            return name
+        return f"field:{_bounded_digest(name)}"
+    return "<name-only>"
+
+
 def _safe_key(key: object) -> str:
-    """A validated body key, or a placeholder that carries no content."""
-    return key if _valid_key_text(key) else "<name-only>"
+    """A recordable body key, reduced by the field-name policy."""
+    return _safe_field_name(key)
 
 
 def _validate_field_name(name: object) -> str:
     """Field names come from the parsed body — server-controlled text."""
-    return name if _valid_key_text(name) else _UNSAFE
+    return _safe_field_name(name)
 
 
 @dataclasses.dataclass(frozen=True)

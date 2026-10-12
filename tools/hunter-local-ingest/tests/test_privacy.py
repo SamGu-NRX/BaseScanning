@@ -296,7 +296,11 @@ def test_selfcheck_disclaimer_passes_unchanged():
 # observations.py: per-key value validation (recon gap d/§4)
 # ---------------------------------------------------------------------------
 
-from hunter_local_ingest.observations import Observation, sanitize_body  # noqa: E402
+from hunter_local_ingest.observations import (  # noqa: E402
+    Observation,
+    bind_expected,
+    sanitize_body,
+)
 
 
 def test_allowed_key_smuggled_values_are_replaced():
@@ -308,14 +312,21 @@ def test_allowed_key_smuggled_values_are_replaced():
         "code": "ok\x1b[31m",
     }
     safe = sanitize_body(body)
-    assert safe["status"] == "<unsafe>"
-    assert safe["runId"] == "<unsafe>"
-    assert safe["decision"] == "<unsafe>"
-    assert safe["code"] == "<unsafe>"
+    # CE1 policy: a non-published, unbound value reduces to a bounded
+    # digest — never a verbatim server-controlled string.
+    assert safe["status"].startswith("sha256:")
+    assert safe["runId"].startswith("sha256:")
+    assert safe["decision"].startswith("sha256:")
+    assert safe["code"].startswith("sha256:")
     assert marker not in json.dumps(safe)
+    assert "password" not in json.dumps(safe)
+    assert "Bearer" not in json.dumps(safe)
 
 
 def test_allowed_key_valid_values_pass_through():
+    # Published vocabulary is retained raw; run-owned ids and synthetic
+    # stage/kind/decision words pass through when the run binds them.
+    bind_expected(["cap-1a2b3c4d", "run-9f8e7d6c", "upload", "eligible", "pass"])
     body = {
         "status": "manual_review",
         "captureId": "cap-1a2b3c4d",
@@ -344,16 +355,23 @@ def test_value_type_gates():
     assert sanitize_body({"next": "retry_finalize"})["next"] == "retry_finalize"
 
 
-def test_overlong_vocab_value_rejected_but_64_char_vocab_passes():
-    assert sanitize_body({"status": "a" * 65})["status"] == "<unsafe>"
-    assert sanitize_body({"status": "a" * 64})["status"] == "a" * 64
+def test_vocab_gate_published_raw_unknown_digest_overlong_unsafe():
+    assert sanitize_body({"status": "a" * 81})["status"] == "<unsafe>"
+    # A clean-shaped but non-published word reduces; it is not echoed raw.
+    assert sanitize_body({"status": "a" * 64})["status"].startswith("sha256:")
+    assert sanitize_body({"status": "manual_review"})["status"] == "manual_review"
 
 
 def test_path_list_items_are_validated_per_item():
+    # The plan's own path is bound as expected and echoes verbatim; a
+    # well-shaped but unbound path reduces to a digest; shape-invalid
+    # entries collapse to <unsafe>.
+    bind_expected(["frames/0001/keyframe.bin"])
     safe = sanitize_body(
         {
             "committed": [
                 "frames/0001/keyframe.bin",
+                "frames/9999/unbound.bin",
                 "/srv/hss-baseline/private/rules/clearance.py",
                 "../etc/passwd",
                 "C:\\\\Users\\\\x",
@@ -363,7 +381,8 @@ def test_path_list_items_are_validated_per_item():
         }
     )
     assert safe["committed"][0] == "frames/0001/keyframe.bin"
-    assert all(item == "<unsafe>" for item in safe["committed"][1:])
+    assert safe["committed"][1].startswith("sha256:")
+    assert all(item == "<unsafe>" for item in safe["committed"][2:])
 
 
 def test_events_reduce_to_validated_scalars_only():
@@ -382,12 +401,12 @@ def test_events_reduce_to_validated_scalars_only():
         ]
     }
     safe = sanitize_body(body)["events"]
-    assert safe[0] == {
-        "seq": 1,
-        "type": "verdict_ready",
-        "at": "2026-10-12T00:00:00Z",
-        "runId": "<unsafe>",
-    }
+    assert safe[0]["seq"] == 1
+    assert safe[0]["type"] == "verdict_ready"
+    assert safe[0]["at"] == "2026-10-12T00:00:00Z"
+    # Smuggled runId text reduces to a digest — never echoed.
+    assert safe[0]["runId"].startswith("sha256:")
+    assert "signedUrl" not in safe[0]
     assert safe[1] == "<non-dict>"
     assert marker not in json.dumps(safe)
 
@@ -405,7 +424,7 @@ def test_field_names_and_detail_are_screened():
     )
     out = obs.as_json()
     assert marker not in json.dumps(out)
-    assert out["field_names"] == ["status", "<unsafe>"]  # sorted(raw keys), gated
+    assert out["field_names"] == ["status", "<name-only>"]  # published raw; dirty collapsed
     assert "<redacted:url-userinfo>" in out["detail"]
     assert "10.1.2.3" not in out["detail"]
 
