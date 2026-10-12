@@ -75,6 +75,7 @@ FLAG_KINDS = {
     "--restart-argv-json": "argv-json",
     "--restart-timeout-s": "float",
     "--with-faults": "flag",
+    "--api-token": "secret",
     "-h": "flag",
     "--help": "flag",
 }
@@ -201,6 +202,15 @@ def build_parser(argv: Sequence[str]) -> argparse.ArgumentParser:
         action="store_true",
         help="also run the FAKE_HUNTER fault round through a local proxy",
     )
+    parser.add_argument(
+        "--api-token",
+        default=None,
+        help=(
+            "bearer token for the capture API (RFC 6750 b64token); sent on the"
+            " API routes of --endpoint only, never on storage PUTs or the fault"
+            " round's local proxy; never recorded - receipts keep ***"
+        ),
+    )
     return parser
 
 
@@ -281,6 +291,16 @@ def run(argv: Sequence[str] | None = None) -> int:
             f"{PROGRAM}: {safe_failure(argv, f'endpoint:{exc.code}', FLAG_KINDS)}", file=sys.stderr
         )
         return EXIT_USAGE
+    if args.api_token is not None:
+        try:
+            # validates the b64token shape; opens no connection
+            DirectHttpClient(args.endpoint, api_token=args.api_token)
+        except EndpointError as exc:
+            print(
+                f"{PROGRAM}: {safe_failure(argv, f'endpoint:{exc.code}', FLAG_KINDS)}",
+                file=sys.stderr,
+            )
+            return EXIT_USAGE
     try:
         loaded = load_plan(Path(args.plan_file), args.seed)
     except PlanError as exc:
@@ -307,6 +327,9 @@ def run(argv: Sequence[str] | None = None) -> int:
             url,
             max_retries=overrides.get("max_retries", args.max_retries),
             retry_backoff_s=overrides.get("retry_backoff_s", args.retry_backoff_s),
+            # the credential belongs to the operator's declared endpoint
+            # alone; the fault round's local proxy runs unauthenticated
+            api_token=args.api_token if url == args.endpoint else None,
         )
 
     if receipts_error is None:
