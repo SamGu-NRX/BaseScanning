@@ -76,7 +76,7 @@ def read_command(pack: Path, capture_root: Path | None = None) -> str:
 def _verify(pack: Path, capture_root: Path | None) -> tuple[dict | None, read.Refusal | None, bytes | None]:
     pack_bytes = None
     try:
-        pack_bytes = read.read_pack_file(pack)
+        pack_bytes = read.read_pack_file(pack, "the pack")
         return read.verify_pack(pack_bytes, capture_root), None, pack_bytes
     except read.Refusal as refusal:
         return None, refusal, pack_bytes
@@ -192,7 +192,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--delay-data", type=float, default=0.0, dest="delay_data")
     parser.add_argument("--delay-refusals", type=float, default=0.0, dest="delay_refusals")
     args = parser.parse_args(argv)
-    OPTIONS.update(fault=args.fault, delay_data=args.delay_data, delay_refusals=args.delay_refusals, pack=args.pack.resolve())
+    # absolute() rather than resolve(): the pack is opened and checked on every
+    # request, so a missing or unreachable path shows on the page as the
+    # reader's refusal instead of stopping the server at startup.
+    OPTIONS.update(fault=args.fault, delay_data=args.delay_data, delay_refusals=args.delay_refusals, pack=args.pack.absolute())
     server = ThreadingHTTPServer(("127.0.0.1", args.port), InspectionHandler)
     print(f"inspection page: http://127.0.0.1:{server.server_port}/ (localhost only, no external calls)", flush=True)
     with contextlib.suppress(KeyboardInterrupt):

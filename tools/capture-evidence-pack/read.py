@@ -218,12 +218,17 @@ def read_regular_file(path: Path, limit: int, label: str) -> bytes:
         raise Refusal("missing-source", f"{label} cannot be read: the path cannot be passed to the operating system") from None
 
 
-def read_pack_file(pack_path: Path) -> bytes:
+def read_pack_file(pack_path: Path, label: str) -> bytes:
     """The one read of the pack. Everything the reader reports about the pack,
-    including the SHA-256 printed on refusal, comes from these bytes."""
-    if not pack_path.is_file():
-        raise Refusal("missing-source", f"pack {display_path(pack_path)} does not exist or is not a file")
-    data = read_regular_file(pack_path, MAX_PACK_BYTES, f"pack {display_path(pack_path)}")
+    including the SHA-256 printed on refusal, comes from these bytes.
+
+    There is no separate exists or is-file check first: such a check is a
+    second filesystem call that can raise on its own (EACCES on a locked
+    parent directory) outside the read's error handling, and it races the
+    open. The open reports a missing or unreachable pack, and fstat on the
+    open handle proves it is a regular file. label names the pack in
+    messages as the caller gave it."""
+    data = read_regular_file(pack_path, MAX_PACK_BYTES, label)
     if len(data) > MAX_PACK_BYTES:
         raise Refusal("invalid-archive", f"pack exceeds the {MAX_PACK_BYTES}-byte pack budget")
     return data
@@ -613,10 +618,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--capture-root", type=Path, default=None, help="resolve source refs against this directory instead of the recorded capture_root")
     args = parser.parse_args(arguments)
 
-    pack_path = args.pack.resolve()
+    # absolute() does not touch the filesystem; the open in read_pack_file is
+    # the first call that can fail, and it fails as a refusal.
+    pack_path = args.pack.absolute()
     pack_bytes = None
     try:
-        pack_bytes = read_pack_file(pack_path)
+        pack_bytes = read_pack_file(pack_path, f"pack {args.pack}")
         verified = verify_pack(pack_bytes, args.capture_root)
     except Refusal as refusal:
         print_refusal(refusal, pack_bytes, arguments)

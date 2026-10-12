@@ -133,7 +133,7 @@ The packer validates the flat `pack-spec.json` it consumes before building anyth
 
 Every reader refusal prints `rejected pack sha256:` and `rejected pack bytes:` for the bytes the reader actually checked, followed by `reader arguments:` with the arguments as given, whatever their order. When the reader refused before it held the pack bytes (the file is missing or over the pack budget), the hash line says `unavailable` instead of hashing a partial read.
 
-A file that cannot be opened is reported by the path the manifest or pack-spec declared and the operating system's error category, such as `Permission denied`. Neither tool prints the exception's own text, which carries the absolute path the operating system tried, so a repository-relative declaration never becomes a home-directory path in a receipt or on the inspection page.
+A file that cannot be opened is reported by the path the manifest or pack-spec declared and the operating system's error category, such as `Permission denied`. Neither tool prints the exception's own text, which carries the absolute path the operating system tried, so a repository-relative declaration never becomes a home-directory path in a receipt or on the inspection page. The same holds for the paths a caller passes: the reader opens the pack and checks the open handle is a regular file, and the packer checks the fixture with one `stat`, so a pack or fixture that is missing, not the right type, or behind a directory the caller cannot search is a `missing-source` refusal naming the path as given, not a traceback.
 
 ## Determinism
 

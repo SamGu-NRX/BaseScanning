@@ -520,3 +520,92 @@ def test_control_packer_packs_legitimate_non_ascii_paths(repo_fixture, tmp_path)
     assert packed.returncode == 0, packed.stdout + packed.stderr
     read = run_reader(out)
     assert read.returncode == 0, read.stdout + read.stderr
+
+
+# Expected filesystem failures on the paths a caller passes (the pack, the
+# fixture directory) are named refusals that print the path as given, never a
+# traceback carrying the machine path. The locked directory belongs to the
+# test and its permissions are restored in a finally block.
+
+
+@pytest.fixture
+def locked(tmp_path):
+    """tmp_path/locked holds a copy of the example pack and fixture, then loses
+    its read and search permission for the duration of the test."""
+    directory = tmp_path / "locked"
+    directory.mkdir()
+    shutil.copy(EXAMPLE_PACK, directory / "pack.zip")
+    shutil.copytree(EXAMPLE_FIXTURE, directory / "fixture")
+    directory.chmod(0)
+    try:
+        yield directory
+    finally:
+        directory.chmod(0o755)
+
+
+def assert_clean_refusal(outcome, kind: str, needle: str, tmp_path):
+    assert outcome.returncode == 2, outcome.stdout + outcome.stderr
+    assert f"REFUSAL {kind}: {needle}" in outcome.stdout, outcome.stdout
+    assert "Traceback" not in outcome.stderr, outcome.stderr
+    assert str(tmp_path) not in outcome.stdout + outcome.stderr
+    assert str(tmp_path.resolve()) not in outcome.stdout + outcome.stderr
+
+
+def test_reader_refuses_a_pack_under_an_inaccessible_directory(locked, tmp_path):
+    outcome = run_reader("locked/pack.zip", cwd=tmp_path)
+    assert_clean_refusal(outcome, "missing-source", "pack locked/pack.zip cannot be read: Permission denied", tmp_path)
+    assert "rejected pack sha256: unavailable" in outcome.stdout
+
+
+def test_packer_refuses_a_fixture_under_an_inaccessible_directory(locked, tmp_path):
+    outcome = run_packer("locked/fixture", tmp_path / "out.zip", cwd=tmp_path)
+    assert_clean_refusal(outcome, "missing-source", "fixture directory locked/fixture cannot be read: Permission denied", tmp_path)
+    assert not (tmp_path / "out.zip").exists()
+
+
+@pytest.mark.parametrize(
+    "setup,needle",
+    [
+        ("missing", "pack absent.zip cannot be read: No such file or directory"),
+        ("dangling-symlink", "pack absent.zip cannot be read: No such file or directory"),
+        ("directory", "pack absent.zip cannot be read: Is a directory"),
+    ],
+)
+def test_reader_names_each_unopenable_pack(tmp_path, setup, needle):
+    if setup == "dangling-symlink":
+        (tmp_path / "absent.zip").symlink_to(tmp_path / "nowhere.zip")
+    elif setup == "directory":
+        (tmp_path / "absent.zip").mkdir()
+    outcome = run_reader("absent.zip", cwd=tmp_path)
+    assert_clean_refusal(outcome, "missing-source", needle, tmp_path)
+
+
+@pytest.mark.parametrize(
+    "setup,needle",
+    [
+        ("missing", "fixture directory absent cannot be read: No such file or directory"),
+        ("file", "fixture absent is not a directory"),
+    ],
+)
+def test_packer_names_each_unusable_fixture(tmp_path, setup, needle):
+    if setup == "file":
+        (tmp_path / "absent").write_text("not a directory")
+    outcome = run_packer("absent", tmp_path / "out.zip", cwd=tmp_path)
+    assert_clean_refusal(outcome, "missing-source", needle, tmp_path)
+
+
+def test_control_reader_accepts_a_relative_and_a_symlinked_pack(tmp_path):
+    shutil.copy(EXAMPLE_PACK, tmp_path / "pack.zip")
+    (tmp_path / "link.zip").symlink_to(tmp_path / "pack.zip")
+    for name in ("pack.zip", "link.zip"):
+        outcome = run_reader(name, cwd=tmp_path)
+        assert outcome.returncode == 0, outcome.stdout + outcome.stderr
+        assert f"pack sha256: {sha256_hex(EXAMPLE_PACK.read_bytes())}" in outcome.stdout
+
+
+def test_control_packer_accepts_a_symlinked_fixture_directory(tmp_path):
+    (tmp_path / "fixture").symlink_to(EXAMPLE_FIXTURE, target_is_directory=True)
+    out = tmp_path / "out.zip"
+    outcome = run_packer("fixture", out, cwd=tmp_path)
+    assert outcome.returncode == 0, outcome.stdout + outcome.stderr
+    assert run_reader(out).returncode == 0

@@ -272,3 +272,31 @@ def test_read_failure_detail_reaches_the_page_without_absolute_paths(serve, tmp_
     assert payload["status"] == "refused"
     detail = payload["refusal"]["detail"]
     assert detail == "'capture/frame_0001.json' cannot be read: Permission denied", detail
+
+
+def test_http_pack_under_an_inaccessible_directory_is_a_named_refusal(server_factory, tmp_path):
+    directory = tmp_path / "locked"
+    directory.mkdir()
+    shutil.copy(EXAMPLE_PACK, directory / "pack.zip")
+    server = server_factory("--pack", directory / "pack.zip")
+    directory.chmod(0)
+    try:
+        status, body = server.get("/data.json")
+    finally:
+        directory.chmod(0o755)
+    assert status == 200
+    payload = json.loads(body)
+    assert payload["status"] == "refused" and "evidence" not in payload
+    assert payload["refusal"] == {
+        "kind": "missing-source",
+        "detail": "the pack cannot be read: Permission denied",
+        "rejected_pack_sha256": None,
+    }
+
+
+def test_server_starts_with_a_pack_that_is_not_there_yet(server_factory, tmp_path):
+    """--pack is checked per request, not resolved at startup, so a missing or
+    locked path is a refusal on the page rather than a startup traceback."""
+    status, body = server_factory("--pack", tmp_path / "later.zip").get("/data.json")
+    assert status == 200
+    assert json.loads(body)["refusal"]["detail"] == "the pack cannot be read: No such file or directory"

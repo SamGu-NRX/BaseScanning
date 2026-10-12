@@ -23,6 +23,7 @@ import io
 import json
 import os
 import shlex
+import stat
 import sys
 import tempfile
 import zipfile
@@ -96,11 +97,27 @@ def parse_object(relative: str, data: bytes) -> dict | None:
         raise Refused(problem.kind, [problem.detail]) from None
 
 
+def fixture_directory(given: Path) -> Path:
+    """Resolve the --fixture argument and check it is a directory. One stat
+    does both the reachability and the type check, inside the error handling:
+    Path.is_dir raises on EACCES (a locked parent directory) instead of
+    returning False. Messages name the path as the caller gave it."""
+    try:
+        fixture = given.resolve()
+        mode = os.stat(fixture).st_mode
+    except OSError as error:
+        raise Refused("missing-source", [f"fixture directory {given} cannot be read: {error.strerror or type(error).__name__}"]) from None
+    except (RuntimeError, ValueError):  # RuntimeError: symlink loop on Python < 3.13
+        raise Refused("missing-source", [f"fixture directory {given} cannot be read: the path cannot be resolved"]) from None
+    if not stat.S_ISDIR(mode):
+        raise Refused("missing-source", [f"fixture {given} is not a directory"])
+    return fixture
+
+
 def build(fixture: Path, out: Path) -> tuple[dict, bytes, str]:
     """Return (manifest, pack bytes, result identity) built from one read of
-    every input, or raise Refused before anything is written."""
-    if not fixture.is_dir():
-        raise Refused("missing-source", [f"fixture directory {validate.display_path(fixture)} does not exist"])
+    every input, or raise Refused before anything is written. fixture is the
+    resolved directory from fixture_directory."""
     spec = load_pack_spec(fixture)
 
     capture_schema = spec["capture_schema_version"]
@@ -246,9 +263,14 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="backslashreplace")
 
-    fixture = args.fixture.resolve()
-    out = args.out.resolve()
     try:
+        out = args.out.resolve()
+    except (OSError, RuntimeError, ValueError):
+        print(f"packer: could not write {args.out}: the path cannot be resolved")
+        print("verdict: NOT WRITTEN")
+        return 1
+    try:
+        fixture = fixture_directory(args.fixture)
         manifest, pack_bytes, identity = build(fixture, out)
     except Refused as refused:
         for detail in refused.details:
