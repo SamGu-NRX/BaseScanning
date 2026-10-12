@@ -492,3 +492,38 @@ def test_installed_rerun_of_a_committed_capture_passes(venv, outside):
     # first run: 5 baseline + 5 per tamper control; the rerun re-uploads only
     # its fresh control captures, never the committed baseline
     assert len(puts) == 5 + 10 + 10
+
+
+def test_installed_runner_api_token_stays_off_output_and_receipts(venv, outside):
+    from hunter_local_ingest.fakeapi import FakeConfig
+
+    token = f"synthetic-{os.urandom(8).hex()}"
+    plan = _plan(venv, outside)
+    out = outside / "runs"
+    with FakeApi(FakeConfig(require_token=token)) as api:
+        proc = _cli(
+            venv,
+            "hunter-local-ingest",
+            [
+                "--endpoint",
+                api.base_url,
+                "--plan-file",
+                str(plan),
+                "--out",
+                str(out),
+                "--backend-mode",
+                "FAKE_HUNTER",
+                "--api-token",
+                token,
+                *FAST,
+            ],
+            outside,
+        )
+        auth = set(api.state.api_auth)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert auth == {f"Bearer {token}"}
+    assert token not in proc.stdout + proc.stderr
+    run_dir = _run_dir(out)
+    assert token.encode() not in b"".join(p.read_bytes() for p in run_dir.iterdir())
+    command = json.loads((run_dir / "run-manifest.json").read_text())["command"]
+    assert command[command.index("--api-token") + 1] == "***"

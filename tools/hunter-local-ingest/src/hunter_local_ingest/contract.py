@@ -147,6 +147,7 @@ VIOLATIONS = frozenset(f"{kind}:{field}" for kind in _KINDS for field in _FIELDS
         "order:next",
         "order:seq",
         "verdict-for-another-run",
+        "overlap:commit-categories",
     }
 )
 
@@ -496,6 +497,12 @@ def decode_commit(parsed: object, requested: list[str], declared: frozenset[str]
                 out.add("unexpected-path", key)
             data[key] = values
             public[key] = [pub_path(v, declared & asked) for v in values[:64]]
+        # One answer cannot both acknowledge a file and refuse it.
+        committed, not_found, mismatch = (
+            set(data[k]) for k in ("committed", "notFound", "mismatch")
+        )
+        if committed & not_found or committed & mismatch or not_found & mismatch:
+            out.raw("overlap:commit-categories")
         extra = pub_unknown_keys(obj, _COMMIT_KEYS)
         if extra:
             public["unexpected_keys"] = extra
@@ -708,10 +715,21 @@ _FIELD_SET = frozenset(_FIELDS)
 
 
 def _swift_number(value: object) -> bool:
+    """A JSON number JSONDecoder can decode as a finite Swift Double.
+
+    Any integer or decimal spelling qualifies when it converts to a finite
+    double: 10000000000000000 and 1e16 alike. A bool, a string, an overflow
+    to infinity (1e400, a 400-digit integer) and NaN do not. This is about
+    decoding; the receipt bounds on exported integers (``is_int``) are a
+    separate rule, and these numbers are never exported.
+    """
     if isinstance(value, bool):
         return False
     if isinstance(value, int):
-        return -_MAX_INT < value < _MAX_INT
+        try:
+            return math.isfinite(float(value))
+        except OverflowError:
+            return False
     return isinstance(value, float) and math.isfinite(value)
 
 

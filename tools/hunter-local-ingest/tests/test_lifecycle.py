@@ -421,3 +421,107 @@ def test_result_with_a_malformed_placement_fails_the_lifecycle(fake, plan):
     with fake(FakeConfig(outcome_extra={"recommendedPlacement": 7})) as api:
         rows, _ = _run(api, plan)
     assert rows["lifecycle.result"]["status"] == "FAIL"
+
+
+# -- contradictory commit acks never pass a tamper control -----------------------
+
+
+def test_an_intact_path_also_listed_as_mismatch_fails_the_tamper_control(fake, plan):
+    intact = plan.files[1].path  # in the victim's batch when maxBatch is 2
+    with fake(FakeConfig(max_batch=2, commit_contradict_path=intact)) as api:
+        controls = _controls(api, plan)
+        rows, _ = _run(api, plan)
+    for check_id in ("control.corrupt-upload", "control.truncated-upload"):
+        assert controls[check_id]["status"] == "FAIL", controls[check_id]
+        assert "overlap:commit-categories" in controls[check_id]["observed"]["violations"]
+    assert rows["lifecycle.commit"]["status"] == "FAIL"
+
+
+def test_the_tamper_oracle_rejects_intact_paths_in_negative_categories(monkeypatch, fake, plan):
+    """Even if a decoder let the overlap through, the oracle itself refuses it."""
+    from hunter_local_ingest import contract
+
+    original = contract.decode_commit
+
+    def lenient(parsed, requested, declared):
+        dec = original(parsed, requested, declared)
+        kept = tuple(v for v in dec.violations if v != "overlap:commit-categories")
+        return contract.Decoded(kept, dec.public, dec.data)
+
+    from hunter_local_ingest.scenarios import steps
+
+    monkeypatch.setattr(steps, "decode_commit", lenient)
+    intact = plan.files[1].path
+    with fake(FakeConfig(max_batch=2, commit_contradict_path=intact)) as api:
+        controls = _controls(api, plan)
+    assert controls["control.corrupt-upload"]["status"] == "FAIL"
+    assert controls["control.corrupt-upload"]["observed"]["intact_reported_negative"] is True
+
+
+# -- a confirmed FAIL in one batch is not hidden by a later unavailable batch ------
+
+
+def test_register_invalid_first_batch_then_unavailable_stays_fail(fake, plan):
+    config = FakeConfig(max_batch=2, register_duplicate_first=True, abort_from={"files": 2})
+    with fake(config) as api:
+        rows, _ = _run(api, plan, client=_client(api, max_retries=0))
+        registers = [r for r in api.state.requests if r[1].endswith("/files")]
+    assert rows["lifecycle.register"]["status"] == "FAIL"
+    assert "duplicate:files" in rows["lifecycle.register"]["observed"]["violations"]
+    # one answered batch is on record; no batch is reported that never answered
+    assert len(rows["lifecycle.register"]["observed"]["batches"]) == len(registers) == 1
+
+
+def test_commit_invalid_first_batch_then_unavailable_stays_fail(fake, plan):
+    config = FakeConfig(max_batch=2, commit_extra_path=True, abort_from={"files:commit": 2})
+    with fake(config) as api:  # abort counts are per server: one each
+        rows, _ = _run(api, plan, client=_client(api, max_retries=0))
+    with fake(config) as api:
+        controls = _controls(api, plan, client=_client(api, max_retries=0))
+    assert rows["lifecycle.commit"]["status"] == "FAIL"
+    assert "unexpected-path:committed" in rows["lifecycle.commit"]["observed"]["violations"]
+    assert controls["control.corrupt-upload"]["status"] == "FAIL"
+
+
+def test_a_purely_unavailable_batch_is_still_blocked(fake, plan):
+    with fake(FakeConfig(max_batch=2, abort_from={"files": 2})) as api:
+        rows, _ = _run(api, plan, client=_client(api, max_retries=0))
+    assert rows["lifecycle.register"]["status"] == "BLOCKED"
+    batches = rows["lifecycle.register"]["observed"]["batches"]
+    assert batches[0]["violations"] == [] and batches[1]["http"]["error"].startswith("transport:")
+
+
+# -- a request the client refuses, or a malformed answer, is FAIL in the controls ---
+
+
+def test_control_with_a_traversal_capture_id_fails_without_sending(fake, plan):
+    with fake(FakeConfig(capture_id_override="../outside")) as api:
+        controls = _controls(api, plan, client=_client(api, api_token="synthetic-token"))
+        requests = list(api.state.requests)
+    for check_id in ("control.corrupt-upload", "control.truncated-upload"):
+        assert controls[check_id]["status"] == "FAIL", controls[check_id]
+    assert not any("outside" in p or "%2F" in p.upper() for _m, p, _a in requests)
+
+
+def test_control_with_a_signed_authorization_fails_without_putting(fake, plan):
+    with fake(FakeConfig(sign_authorization=True)) as api:
+        controls = _controls(api, plan, client=_client(api, api_token="synthetic-token"))
+        puts = [r for r in api.state.requests if r[0] == "PUT"]
+    assert controls["control.corrupt-upload"]["status"] == "FAIL"
+    assert controls["control.corrupt-upload"]["observed"]["http"]["error"] == (
+        "auth_storage_authorization"
+    )
+    assert puts == []
+
+
+def test_control_with_a_malformed_register_answer_fails(fake, plan):
+    with fake(FakeConfig(register_drop_last=True)) as api:
+        controls = _controls(api, plan)
+    assert controls["control.corrupt-upload"]["status"] == "FAIL"
+    assert "not-acknowledged:files" in controls["control.corrupt-upload"]["observed"]["violations"]
+
+
+def test_control_with_an_unavailable_register_is_blocked(fake, plan):
+    with fake(FakeConfig(abort_from={"files": 1})) as api:
+        controls = _controls(api, plan, client=_client(api, max_retries=0))
+    assert controls["control.corrupt-upload"]["status"] == "BLOCKED"

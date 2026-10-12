@@ -83,22 +83,29 @@ def _idempotent_create(adapter, plan: CapturePlan, transport, sink) -> None:
 def _integrity(
     adapter, plan: CapturePlan, transport, sink, check_id: str, tamper: Callable[[bytes], bytes]
 ) -> None:
-    def blocked(view: dict) -> None:
-        record(sink, transport, check_id, Status.BLOCKED, view)
+    def stop(status: Status, view: dict) -> None:
+        """The control could not reach its verdict. Why decides the status:
+        no answer is BLOCKED; a refused request or a malformed or wrong answer
+        is FAIL, never hidden as a run that did not happen."""
+        record(sink, transport, check_id, status, view)
 
     res = adapter.create(plan.create_body, plan.packet_id)
+    if res.error:
+        stop(error_status(res), {"step": "create", **step_view(res)})
+        return
     dec = decode_create(res.parsed) if is_2xx(res) else None
     capture_id = dec.data["captureId"] if dec is not None and dec.ok else None
     if not capture_id:
-        blocked({"step": "create", **step_view(res, dec)})
+        stop(Status.FAIL, {"step": "create", **step_view(res, dec)})
         return
     declared = plan.declared_paths
     size = batch_size(dec.data["maxBatch"])
     # Registration promises the ORIGINAL bytes; the PUT carries tampered ones.
     reg = register_round(adapter, capture_id, plan.files, size, declared)
     if reg.status is not Status.PASS or reg.committed:
-        # a fresh capture must not report files committed before any upload
-        blocked({"step": "register", "batches": reg.batches, "violations": reg.violations})
+        # A fresh capture cannot hold committed files before any upload.
+        status = reg.status if reg.status is not Status.PASS else Status.FAIL
+        stop(status, {"step": "register", "batches": reg.batches, "violations": reg.violations})
         return
     victim: PlanFile = plan.files[0]
     tampered_status = None
@@ -107,23 +114,28 @@ def _integrity(
         body = tamper(f.content) if f is victim else f.content
         put = adapter.upload(target["url"], body, target["headers"])
         if put.error:
-            blocked({"step": "upload", **step_view(put)})
+            stop(error_status(put), {"step": "upload", **step_view(put)})
             return
         if f is victim:
             tampered_status = put.http_status
         elif not is_2xx(put):
-            blocked({"step": "upload", **step_view(put)})
+            # storage refused a file whose bytes match their digest
+            stop(Status.FAIL, {"step": "upload", **step_view(put)})
             return
     com = commit_round(adapter, capture_id, plan.files, size, declared)
     if com.status is Status.BLOCKED:
-        blocked({"step": "commit", "batches": com.batches})
+        stop(Status.BLOCKED, {"step": "commit", "batches": com.batches})
         return
     reported = victim.path in com.mismatch | com.not_found
     put_refused = tampered_status is not None and not (200 <= tampered_status < 300)
     intact = {f.path for f in plan.files if f is not victim}
+    # An intact file must be acknowledged and never also refused, whatever
+    # the decoder allowed.
+    intact_negative = bool(intact & (com.mismatch | com.not_found))
     ok = (
         com.status is Status.PASS
         and intact <= com.committed
+        and not intact_negative
         and victim.path not in com.committed
         and (reported or put_refused)
     )
@@ -140,6 +152,7 @@ def _integrity(
             "tampered_committed": victim.path in com.committed,
             "tampered_reported": reported,
             "intact_committed": intact <= com.committed,
+            "intact_reported_negative": intact_negative,
         },
         com.last.observation if com.last is not None else None,
     )

@@ -438,3 +438,72 @@ def test_result_placement_values_never_reach_the_public_view():
     secret = "wall-" + "x" * 12
     dec = decode_result(_with(("outcome", "recommendedPlacement", "wallId"), secret))
     assert dec.ok and secret not in repr(dec.public)
+
+
+# -- a commit answer may not put one path in two categories ----------------------
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"committed": [PATHS[0]], "notFound": [], "mismatch": [PATHS[0]]},
+        {"committed": [PATHS[0]], "notFound": [PATHS[0]], "mismatch": []},
+        {"committed": [], "notFound": [PATHS[1]], "mismatch": [PATHS[1]]},
+    ],
+)
+def test_commit_rejects_a_path_in_two_categories(body):
+    assert "overlap:commit-categories" in decode_commit(body, PATHS, DECLARED).violations
+
+
+def test_commit_disjoint_categories_are_fine():
+    body = {"committed": [PATHS[0]], "notFound": [], "mismatch": [PATHS[1]]}
+    assert decode_commit(body, PATHS, DECLARED).ok
+
+
+# -- Swift Double: any finite JSON number, however it is spelled -----------------
+
+
+def _placement_body(start: str, pose: str) -> bytes:
+    return (
+        '{"runId": "r1", "status": "complete", "viewsNeeded": [], "memberActions": [],'
+        ' "outcome": {"kind": "eligible", "profile": "p", "message": "m", "viewsNeeded": [],'
+        ' "reasons": [], "recommendedPlacement": {"wallId": "w", "startSM": ' + start + ","
+        ' "confidence": 0.5, "boxArkitWorld": {"pose": ' + pose + ', "size": [1, 2, 3]}}}}'
+    ).encode()
+
+
+@pytest.mark.parametrize(
+    "start, pose",
+    [
+        ("10000000000000000", "[10000000000000000, 1]"),
+        ("1e16", "[1e16, 1]"),
+        ("9007199254740993", "[9007199254740993]"),
+        ("-1.7976931348623157e308", "[1.7976931348623157e308]"),
+        ("0", "[]"),
+    ],
+)
+def test_swift_double_accepts_every_finite_spelling(start, pose):
+    dec = decode_result(parse_body(_placement_body(start, pose)))
+    assert dec.ok, dec.violations
+    # the placement never reaches the public view: only typed words and counts
+    assert set(dec.public["outcome"]) == {"kind", "reasons"}
+    assert "recommendedPlacement" not in repr(dec.public)
+
+
+@pytest.mark.parametrize(
+    "start, pose",
+    [
+        ("true", "[1]"),
+        ("1", "[false]"),
+        ("1e400", "[1]"),
+        ("1", "[-1e400]"),
+        ("NaN", "[1]"),
+        ("1", "[Infinity]"),
+        ("1" + "0" * 400, "[1]"),
+        ("1", "[" + "9" * 400 + "]"),
+        ('"1"', "[1]"),
+    ],
+)
+def test_swift_double_rejects_bool_nonfinite_overflow_and_strings(start, pose):
+    dec = decode_result(parse_body(_placement_body(start, pose)))
+    assert not dec.ok, (start, pose)

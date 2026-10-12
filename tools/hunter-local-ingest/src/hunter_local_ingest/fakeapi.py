@@ -78,6 +78,9 @@ class FakeConfig:
     capture_id_override: str | None = None  # mint this captureId instead of a safe one
     result_extra: dict | None = None  # merged into the result body
     outcome_extra: dict | None = None  # merged into the result's outcome
+    commit_contradict_path: str | None = None  # also list this path as mismatch when committed
+    # step -> n: from the n-th request of that step on, close without answering
+    abort_from: dict | None = None
 
 
 class FakeState:
@@ -92,6 +95,7 @@ class FakeState:
         self.api_auth: list[str | None] = []
         # every request as (method, raw path, Authorization present)
         self.requests: list[tuple[str, str, bool]] = []
+        self.step_hits: dict[str, int] = {}
 
     def maybe_forget(self) -> None:
         marker = self.config.forget_file
@@ -192,6 +196,12 @@ def _handler(state: FakeState, base_holder: dict):
                     return
                 if parts == ["captures"]:
                     self._create(body)
+                    return
+                step = parts[2] if len(parts) == 3 else ""
+                state.step_hits[step] = state.step_hits.get(step, 0) + 1
+                limit = (cfg.abort_from or {}).get(step)
+                if limit is not None and state.step_hits[step] >= limit:
+                    self.close_connection = True
                     return
                 cap = (
                     state.captures.get(parts[1])
@@ -346,6 +356,8 @@ def _handler(state: FakeState, base_holder: dict):
                     cap["committed"].add(f["path"])
                 else:
                     mismatch.append(f["path"])
+            if cfg.commit_contradict_path in committed:
+                mismatch.append(cfg.commit_contradict_path)
             if cfg.commit_extra_path:
                 committed.append(f"{cfg.canary}-path" if cfg.canary else "synthetic/scan98.bin")
             self._send(200, {"committed": committed, "notFound": not_found, "mismatch": mismatch})

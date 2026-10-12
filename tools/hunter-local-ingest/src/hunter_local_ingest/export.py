@@ -189,6 +189,7 @@ OBSERVED_KEYS = frozenset(
         "declared",
         "committed_total",
         "committed_at_register",
+        "intact_reported_negative",
     }
 )
 

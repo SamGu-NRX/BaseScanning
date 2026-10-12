@@ -53,6 +53,11 @@ class Round:
     def _absorb(self, violations) -> None:
         self.violations += [v for v in violations if v not in self.violations]
 
+    def settle(self, status: Status) -> None:
+        """Keep the worse outcome: a confirmed FAIL is never lowered to BLOCKED."""
+        if self.status is not Status.FAIL:
+            self.status = status
+
 
 def register_round(adapter, capture_id: str, files, size: int, declared: frozenset[str]) -> Round:
     out = Round()
@@ -60,7 +65,7 @@ def register_round(adapter, capture_id: str, files, size: int, declared: frozens
         res = adapter.register(capture_id, [f.register_entry() for f in chunk])
         out.last = res
         if res.error:
-            out.status = error_status(res)
+            out.settle(error_status(res))
             out.batches.append(step_view(res))
             return out
         dec = (
@@ -68,13 +73,15 @@ def register_round(adapter, capture_id: str, files, size: int, declared: frozens
         )
         out.batches.append(step_view(res, dec))
         if dec is None:
-            out.status = Status.FAIL
+            out.settle(Status.FAIL)
             return out
         out._absorb(dec.violations)
         out.targets.update(dec.data["targets"])
         out.committed.update(dec.data["committed"])
         if not dec.ok:
-            out.status = Status.FAIL
+            # An invalid answer decides the round; later batches are not sent.
+            out.settle(Status.FAIL)
+            return out
     return out
 
 
@@ -85,13 +92,13 @@ def commit_round(adapter, capture_id: str, files, size: int, declared: frozenset
         res = adapter.commit(capture_id, [f.commit_entry() for f in chunk])
         out.last = res
         if res.error:
-            out.status = error_status(res)
+            out.settle(error_status(res))
             out.batches.append(step_view(res))
             return out
         dec = decode_commit(res.parsed, requested, declared) if is_2xx(res) else None
         out.batches.append(step_view(res, dec))
         if dec is None:
-            out.status = Status.FAIL
+            out.settle(Status.FAIL)
             out.exact = False
             return out
         out._absorb(dec.violations)
@@ -107,5 +114,7 @@ def commit_round(adapter, capture_id: str, files, size: int, declared: frozenset
         if not exact:
             out.exact = False
         if not dec.ok:
-            out.status = Status.FAIL
+            # An invalid answer decides the round; later batches are not sent.
+            out.settle(Status.FAIL)
+            return out
     return out
