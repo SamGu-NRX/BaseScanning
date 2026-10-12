@@ -286,6 +286,16 @@ def screen_artifact(path: str) -> list[str]:
     return findings
 
 
+def safe_failure(argv: list[str], message: str) -> str:
+    """One-line CLI failure output, safe for stdout.
+
+    The runner prints exception summaries on failure; both the command and
+    the message are operator/server-influenced free text, so both pass the
+    same redaction as every artifact.
+    """
+    return f"{redact_command(argv)}: {redact_text(message)}"
+
+
 def _flag_split(token: str) -> tuple[str | None, str, str]:
     """Split ``--flag=value``; returns (normalized_name, eq, inline_value)."""
     if not token.startswith("--"):

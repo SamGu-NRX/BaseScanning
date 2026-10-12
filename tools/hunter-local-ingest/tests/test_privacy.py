@@ -290,3 +290,266 @@ def test_selfcheck_disclaimer_passes_unchanged():
     # the backend_mode string selfcheck records for its in-process fake
     disclaimer = "plumbing-fake (self-check only; never evidence)"
     assert redact_text(disclaimer) == disclaimer
+
+
+# ---------------------------------------------------------------------------
+# observations.py: per-key value validation (recon gap d/§4)
+# ---------------------------------------------------------------------------
+
+from hunter_local_ingest.observations import Observation, sanitize_body  # noqa: E402
+
+
+def test_allowed_key_smuggled_values_are_replaced():
+    marker = canary("x")
+    body = {
+        "status": f"complete?next=https://127.0.0.1:9/x?X-Signature={marker}",
+        "runId": f"run-1; password={canary('pw')}",
+        "decision": f"Bearer {canary('bearer')}",
+        "code": "ok\x1b[31m",
+    }
+    safe = sanitize_body(body)
+    assert safe["status"] == "<unsafe>"
+    assert safe["runId"] == "<unsafe>"
+    assert safe["decision"] == "<unsafe>"
+    assert safe["code"] == "<unsafe>"
+    assert marker not in json.dumps(safe)
+
+
+def test_allowed_key_valid_values_pass_through():
+    body = {
+        "status": "manual_review",
+        "captureId": "cap-1a2b3c4d",
+        "runId": "run-9f8e7d6c",
+        "seq": 4,
+        "next": 7,
+        "etaS": 30,
+        "type": "verdict_ready",
+        "code": "result_not_ready",
+        "stage": "upload",
+        "kind": "eligible",
+        "decision": "pass",
+        "schema_version": "0.4",
+        "at": "2026-10-12T02:53:23Z",
+    }
+    assert sanitize_body(body) == body
+
+
+def test_value_type_gates():
+    assert sanitize_body({"status": True})["status"] == "<unsafe>"
+    assert sanitize_body({"seq": "12"})["seq"] == "<unsafe>"  # string, not int
+    assert sanitize_body({"seq": 10**12})["seq"] == "<unsafe>"  # out of range
+    assert sanitize_body({"etaS": 2.5})["etaS"] == "<unsafe>"  # float, not int
+    assert sanitize_body({"status": ["complete"]})["status"] == "<name-only>"
+    # "next" is either an int cursor or a retry directive word
+    assert sanitize_body({"next": "retry_finalize"})["next"] == "retry_finalize"
+
+
+def test_overlong_vocab_value_rejected_but_64_char_vocab_passes():
+    assert sanitize_body({"status": "a" * 65})["status"] == "<unsafe>"
+    assert sanitize_body({"status": "a" * 64})["status"] == "a" * 64
+
+
+def test_path_list_items_are_validated_per_item():
+    safe = sanitize_body(
+        {
+            "committed": [
+                "frames/0001/keyframe.bin",
+                "/srv/hss-baseline/private/rules/clearance.py",
+                "../etc/passwd",
+                "C:\\\\Users\\\\x",
+                "a" * 129,
+                None,
+            ]
+        }
+    )
+    assert safe["committed"][0] == "frames/0001/keyframe.bin"
+    assert all(item == "<unsafe>" for item in safe["committed"][1:])
+
+
+def test_events_reduce_to_validated_scalars_only():
+    marker = canary("x")
+    body = {
+        "events": [
+            {
+                "seq": 1,
+                "type": "verdict_ready",
+                "at": "2026-10-12T00:00:00Z",
+                "runId": f"run-1?leak={marker}",
+                "signedUrl": f"https://127.0.0.1:9443/s?X-Signature={marker}",
+                "blob": {"deep": "nested"},
+            },
+            "not-a-dict",
+        ]
+    }
+    safe = sanitize_body(body)["events"]
+    assert safe[0] == {
+        "seq": 1,
+        "type": "verdict_ready",
+        "at": "2026-10-12T00:00:00Z",
+        "runId": "<unsafe>",
+    }
+    assert safe[1] == "<non-dict>"
+    assert marker not in json.dumps(safe)
+
+
+def test_field_names_and_detail_are_screened():
+    marker = canary("x")
+    body = json.dumps(
+        {"status": "complete", f"x?X-Signature={marker}": "v"}, ensure_ascii=True
+    ).encode()
+    obs = Observation.from_http(
+        200,
+        body,
+        5,
+        detail=f"transport error: https://svc:{marker}@10.1.2.3/internal/mirror",
+    )
+    out = obs.as_json()
+    assert marker not in json.dumps(out)
+    assert out["field_names"] == ["status", "<unsafe>"]  # sorted(raw keys), gated
+    assert "<redacted:url-userinfo>" in out["detail"]
+    assert "10.1.2.3" not in out["detail"]
+
+
+# ---------------------------------------------------------------------------
+# receipts.py: manifest redaction, post-summary screening, chain + seal
+# ---------------------------------------------------------------------------
+
+from hunter_local_ingest.receipts import (  # noqa: E402
+    CHAIN_FILE,
+    SCREEN_FILE,
+    Check,
+    ChecksWriter,
+    Status,
+    Transport,
+    verify_run_integrity,
+    write_run_manifest,
+    write_summary,
+)
+
+
+def _manifest_kwargs(**over: object) -> dict:
+    kwargs: dict = {
+        "endpoint": "http://127.0.0.1:8000/v1",
+        "backend_ref": None,
+        "backend_mode": "REAL_MIRROR_CPU",
+        "client_ref": None,
+        "adapter_interface": "iface/1",
+        "fixture_identity": "gen_synthetic_packet seed=3",
+        "seed": 3,
+        "commands": ["hunter-local-ingest run --seed 3"],
+        "label": "run",
+        "origin_note": "origin",
+    }
+    kwargs.update(over)
+    return kwargs
+
+
+def _check(check_id: str, observed: str) -> Check:
+    return Check(
+        id=check_id,
+        transport=Transport.REAL_MIRROR_CPU,
+        oracle="published contract",
+        expected="terminal status",
+        observed=observed,
+        status=Status.PASS,
+    )
+
+
+def test_manifest_never_records_raw_endpoint(tmp_path):
+    write_run_manifest(tmp_path, **_manifest_kwargs(endpoint="http://u:p@127.0.0.1:9443/v1?x=1"))
+    text = (tmp_path / "run-manifest.json").read_text()
+    assert "u:p" not in text and "9443" in text  # host:port label only
+
+
+def test_manifest_redacts_non_loopback_endpoint(tmp_path):
+    write_run_manifest(tmp_path, **_manifest_kwargs(endpoint="https://mirror.internal.example/v1"))
+    manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+    assert manifest["endpoint"] == "<redacted:endpoint>"
+    assert "mirror.internal.example" not in json.dumps(manifest)
+
+
+def test_manifest_redacts_commands_and_lookalike_loopback(tmp_path):
+    token = canary("key")
+    write_run_manifest(
+        tmp_path,
+        **_manifest_kwargs(
+            endpoint="http://127.0.0.1.evil.com:8000/v1",
+            commands=[f"hunter-local-ingest run --api-key {token}"],
+        ),
+    )
+    manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+    assert manifest["endpoint"] == "<redacted:endpoint>"
+    assert token not in json.dumps(manifest)
+    assert manifest["commands"][0].endswith("--api-key <redacted:credential-kv>")
+
+
+def test_clean_run_summary_screens_clean_and_seals(tmp_path):
+    write_run_manifest(tmp_path, **_manifest_kwargs())
+    writer = ChecksWriter(tmp_path)
+    writer.write(_check("lifecycle.health", "http 200; fields=status"))
+    writer.close()
+    checks_list = [_check("lifecycle.health", "http 200; fields=status")]
+    findings = write_summary(tmp_path, checks_list, lead_questions=[], blocked=[])
+    assert findings == []
+    record = json.loads((tmp_path / SCREEN_FILE).read_text())
+    assert record["clean"] is True
+    for name in ("run-manifest.json", "checks.jsonl", "summary.json", CHAIN_FILE):
+        assert not ((tmp_path / name).stat().st_mode & 0o222), name
+    assert verify_run_integrity(tmp_path) == []
+
+
+def test_write_summary_refuses_rewrite(tmp_path):
+    write_summary(tmp_path, [], lead_questions=[], blocked=[])
+    with pytest.raises(SystemExit):
+        write_summary(tmp_path, [], lead_questions=[], blocked=[])
+
+
+def test_planted_canary_is_screened_and_evidence_survives(tmp_path):
+    """A regression that bypasses write-time redaction is still caught by
+    the post-summary screen; the evidence is never deleted or rewritten."""
+    marker = canary("mftok")
+    write_run_manifest(tmp_path, **_manifest_kwargs())
+    # simulate a future unscreened field writer (regression)
+    path = tmp_path / "run-manifest.json"
+    path.write_text(path.read_text().replace("origin", f"origin Bearer {marker}"))
+    checks = [_check("lifecycle.health", "ok")]
+    findings = write_summary(tmp_path, checks, lead_questions=[], blocked=[])
+    assert any("bearer-token" in f for f in findings)
+    record = json.loads((tmp_path / SCREEN_FILE).read_text())
+    assert record["clean"] is False and record["findings"]
+    assert marker not in json.dumps(record)  # findings never echo material
+    assert marker in path.read_text()  # failed evidence preserved, sealed
+    assert not (path.stat().st_mode & 0o222)
+    assert verify_run_integrity(tmp_path)  # chain pins the pre-plant digest too
+
+
+def test_verify_detects_tamper_and_missing_chain(tmp_path):
+    write_run_manifest(tmp_path, **_manifest_kwargs())
+    writer = ChecksWriter(tmp_path)
+    writer.write(_check("lifecycle.health", "ok"))
+    writer.close()
+    write_summary(tmp_path, [_check("lifecycle.health", "ok")], lead_questions=[], blocked=[])
+    assert verify_run_integrity(tmp_path) == []
+
+    checks = tmp_path / "checks.jsonl"
+    checks.chmod(0o644)
+    checks.write_text(checks.read_text() + "tampered line\n")
+    problems = verify_run_integrity(tmp_path)
+    assert any("checks.jsonl: modified after chain entry" in p for p in problems)
+
+    empty = tmp_path.parent / "empty-run"
+    empty.mkdir()
+    assert verify_run_integrity(empty) == [f"missing {CHAIN_FILE}"]
+
+
+def test_failure_output_helper(tmp_path):
+    from hunter_local_ingest.sanitize import safe_failure
+
+    token = canary("tok")
+    line = safe_failure(
+        ["hunter-local-ingest", "run", "--endpoint", f"https://u:{token}@10.1.2.3/v1"],
+        f"transport error: Authorization: Bearer {token} refused",
+    )
+    assert token not in line
+    assert "<redacted:url-userinfo>" in line
+    assert "<redacted:bearer-token>" in line
