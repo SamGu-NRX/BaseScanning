@@ -115,6 +115,13 @@ def _conforming():
 def test_trace_is_package_data_and_v1_is_kept():
     assert len(load_trace()) == 12
     assert load_trace("expected-lifecycle-v1.jsonl")[0]["id"] == "lifecycle.health"
+    # v2 ships unedited; v3 differs from it only by the upload and commit branch
+    v2, v3 = load_trace("expected-lifecycle-v2.jsonl"), load_trace()
+    assert [{k: v for k, v in line.items() if k != "no_request_branch"} for line in v3] == v2
+    assert [line["id"] for line in v3 if "no_request_branch" in line] == [
+        "lifecycle.upload",
+        "lifecycle.commit",
+    ]
 
 
 def test_conforming_run_agrees_with_the_trace():
@@ -325,8 +332,8 @@ def test_exit_four_when_blocked(plan_path, tmp_path):
     summary = json.loads((run_dir / "summary.json").read_text())
     assert summary["verdict"] == "BLOCKED" and "lifecycle.create" in summary["blocked"]
     rows = read_checks(run_dir)
-    assert rows["trace.expected-lifecycle-v2"]["status"] == "BLOCKED"
-    assert rows["trace.expected-lifecycle-v2"]["observed"]["compared"] == 0
+    assert rows["trace.expected-lifecycle-v3"]["status"] == "BLOCKED"
+    assert rows["trace.expected-lifecycle-v3"]["observed"]["compared"] == 0
     assert verify_run_integrity(run_dir) == []
 
 
@@ -437,3 +444,55 @@ def test_real_api_label_is_a_declaration(fake, plan_path, tmp_path):
         "gpu-stub.objects",
         "gpu-stub.vlm",
     ]
+
+
+# -- the trace's no-request branch: only an explicit, complete committed set -------
+
+DECLARED = frozenset({"synthetic/scan00.bin", "synthetic/scan01.bin"})
+
+
+def _skipped(check_id, committed):
+    return Check(
+        check_id,
+        Transport.REAL_API,
+        Status.PASS,
+        {"committed_at_register": sorted(committed)},
+        None,
+    )
+
+
+def _with_skip(committed_upload, committed_commit):
+    checks = [c for c in _conforming() if c.id not in {"lifecycle.upload", "lifecycle.commit"}]
+    checks.append(_skipped("lifecycle.upload", committed_upload))
+    checks.append(_skipped("lifecycle.commit", committed_commit))
+    return checks
+
+
+def test_full_register_skip_agrees_with_the_trace():
+    result = compare_trace(
+        _with_skip(DECLARED, DECLARED), load_trace(), Transport.REAL_API, declared=DECLARED
+    )
+    assert result.status is Status.PASS, result
+
+
+@pytest.mark.parametrize(
+    "upload, commit",
+    [
+        (set(), set()),  # a broken client that claims PASS with no request
+        ({"synthetic/scan00.bin"}, DECLARED),  # partial set without an observation
+        (DECLARED | {"synthetic/scan02.bin"}, DECLARED),  # more than declared
+    ],
+)
+def test_a_skip_without_the_complete_committed_set_disagrees(upload, commit):
+    result = compare_trace(
+        _with_skip(upload, commit), load_trace(), Transport.REAL_API, declared=DECLARED
+    )
+    assert result.status is Status.FAIL
+    assert ("lifecycle.upload", "no-observation") in result.disagreements
+
+
+def test_only_upload_and_commit_have_a_no_request_branch():
+    checks = [c for c in _conforming() if c.id != "lifecycle.finalize"]
+    checks.append(_skipped("lifecycle.finalize", DECLARED))
+    result = compare_trace(checks, load_trace(), Transport.REAL_API, declared=DECLARED)
+    assert ("lifecycle.finalize", "no-observation") in result.disagreements

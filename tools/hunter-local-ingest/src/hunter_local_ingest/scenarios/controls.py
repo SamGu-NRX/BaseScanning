@@ -16,11 +16,9 @@ from collections.abc import Callable, Sequence
 
 from ..adapter import HunterIngestAdapter
 from ..contract import (
-    decode_commit,
     decode_create,
     decode_errors,
     decode_events,
-    decode_register,
     decode_result,
     digest12,
     pub_id,
@@ -29,6 +27,7 @@ from ..modes import Status, Transport
 from ..plan import CapturePlan, PlanFile
 from . import is_2xx, record, step_view
 from .lifecycle import LifecycleOutcome
+from .steps import batch_size, commit_round, error_status, register_round
 
 
 def run_controls(
@@ -62,7 +61,7 @@ def _idempotent_create(adapter, plan: CapturePlan, transport, sink) -> None:
             sink,
             transport,
             "control.idempotent-create",
-            Status.BLOCKED,
+            error_status(first if first.error else second),
             {"first": step_view(first), "second": step_view(second)},
         )
         return
@@ -94,17 +93,17 @@ def _integrity(
         blocked({"step": "create", **step_view(res, dec)})
         return
     declared = plan.declared_paths
-    paths = [f.path for f in plan.files]
+    size = batch_size(dec.data["maxBatch"])
     # Registration promises the ORIGINAL bytes; the PUT carries tampered ones.
-    res = adapter.register(capture_id, [f.register_entry() for f in plan.files])
-    dec = decode_register(res.parsed, paths, declared) if is_2xx(res) else None
-    if dec is None or not dec.ok or dec.data["committed"]:
-        blocked({"step": "register", **step_view(res, dec)})
+    reg = register_round(adapter, capture_id, plan.files, size, declared)
+    if reg.status is not Status.PASS or reg.committed:
+        # a fresh capture must not report files committed before any upload
+        blocked({"step": "register", "batches": reg.batches, "violations": reg.violations})
         return
     victim: PlanFile = plan.files[0]
     tampered_status = None
     for f in plan.files:
-        target = dec.data["targets"][f.path]
+        target = reg.targets[f.path]
         body = tamper(f.content) if f is victim else f.content
         put = adapter.upload(target["url"], body, target["headers"])
         if put.error:
@@ -115,22 +114,17 @@ def _integrity(
         elif not is_2xx(put):
             blocked({"step": "upload", **step_view(put)})
             return
-    res = adapter.commit(capture_id, [f.commit_entry() for f in plan.files])
-    if res.error:
-        blocked({"step": "commit", **step_view(res)})
+    com = commit_round(adapter, capture_id, plan.files, size, declared)
+    if com.status is Status.BLOCKED:
+        blocked({"step": "commit", "batches": com.batches})
         return
-    dec = decode_commit(res.parsed, paths, declared) if is_2xx(res) else None
-    committed = set(dec.data["committed"]) if dec is not None else set()
-    reported = dec is not None and victim.path in set(dec.data["mismatch"]) | set(
-        dec.data["notFound"]
-    )
+    reported = victim.path in com.mismatch | com.not_found
     put_refused = tampered_status is not None and not (200 <= tampered_status < 300)
     intact = {f.path for f in plan.files if f is not victim}
     ok = (
-        dec is not None
-        and dec.ok
-        and intact <= committed
-        and victim.path not in committed
+        com.status is Status.PASS
+        and intact <= com.committed
+        and victim.path not in com.committed
         and (reported or put_refused)
     )
     record(
@@ -139,14 +133,15 @@ def _integrity(
         check_id,
         Status.PASS if ok else Status.FAIL,
         {
-            **step_view(res, dec),
+            "batches": com.batches,
+            "violations": com.violations,
             "tampered": victim.path,
             "tampered_put_status": tampered_status,
-            "tampered_committed": victim.path in committed,
+            "tampered_committed": victim.path in com.committed,
             "tampered_reported": reported,
-            "intact_committed": intact <= committed,
+            "intact_committed": intact <= com.committed,
         },
-        res.observation,
+        com.last.observation if com.last is not None else None,
     )
 
 
@@ -155,7 +150,7 @@ def _wrong_capture(adapter, plan: CapturePlan, transport, sink) -> None:
     bogus = f"bogus-{digest12(plan.packet_id + ':wrong-capture')}"
     res = adapter.result(bogus)
     if res.error:
-        record(sink, transport, "control.wrong-capture", Status.BLOCKED, step_view(res))
+        record(sink, transport, "control.wrong-capture", error_status(res), step_view(res))
         return
     codes = decode_errors(res.parsed).data["codes"]
     ok = res.http_status == 404 and "capture_not_found" in codes
@@ -229,7 +224,7 @@ def run_restart_control(
             sink,
             transport,
             check_id,
-            Status.BLOCKED,
+            error_status(events if events.error else result),
             {"exit_code": 0, "after_restart": [step_view(events), step_view(result)]},
         )
         return

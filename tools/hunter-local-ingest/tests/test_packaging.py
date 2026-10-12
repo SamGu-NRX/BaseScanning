@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -123,6 +124,7 @@ def test_wheel_ships_modules_traces_and_scripts(built_wheel):
         "hunter_local_ingest/fixturegen.py",
         "hunter_local_ingest/traces/expected-lifecycle-v1.jsonl",
         "hunter_local_ingest/traces/expected-lifecycle-v2.jsonl",
+        "hunter_local_ingest/traces/expected-lifecycle-v3.jsonl",
     ):
         assert required in names, required
     for script in SCRIPTS:
@@ -365,3 +367,128 @@ def test_installed_forced_fail_exits_one(venv, outside):
     assert proc.returncode == 1, proc.stdout + proc.stderr
     summary = json.loads((_run_dir(out) / "summary.json").read_text())
     assert summary["verdict"] == "FAIL" and summary["counts_by_transport"]["REAL_API"]["FAIL"] >= 1
+
+
+# -- hunter-verify-run on damaged run directories -----------------------------
+
+
+@pytest.fixture(scope="session")
+def sealed_run(venv, tmp_path_factory) -> Path:
+    work = tmp_path_factory.mktemp("sealed-work")
+    plan = _plan(venv, work)
+    out = work / "runs"
+    with FakeApi() as api:
+        proc = _cli(
+            venv,
+            "hunter-local-ingest",
+            [
+                "--endpoint",
+                api.base_url,
+                "--plan-file",
+                str(plan),
+                "--out",
+                str(out),
+                "--backend-mode",
+                "FAKE_HUNTER",
+                *FAST,
+            ],
+            work,
+        )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    return _run_dir(out)
+
+
+def _damaged(sealed: Path, tmp_path: Path, name: str, content: bytes | None) -> Path:
+    copy = tmp_path / "damaged"
+    shutil.copytree(sealed, copy)
+    target = copy / name
+    target.chmod(0o644)
+    if content is None:
+        target.unlink()
+    else:
+        target.write_bytes(content)
+        target.chmod(0o444)
+    return copy
+
+
+def test_installed_verify_run_accepts_the_sealed_baseline(venv, sealed_run, outside):
+    proc = _cli(venv, "hunter-verify-run", [str(sealed_run)], outside)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+MARKER = b"CANARY-raw-0123456789ab"
+
+
+@pytest.mark.parametrize(
+    "name, content",
+    [
+        ("summary.json", b"[]"),
+        ("summary.json", b"null"),
+        ("summary.json", b"5"),
+        ("summary.json", b'{"artifacts": []}'),
+        ("summary.json", b"\xff\xfe" + MARKER),
+        ("run-manifest.json", b"\xff" + MARKER),
+        ("run-manifest.json", b"[]"),
+        ("checks.jsonl", b"\xff" + MARKER + b"\n"),
+        ("checks.jsonl", b"[]\n7\n"),
+        ("privacy-screen.json", b"\xff" + MARKER),
+        ("privacy-chain.jsonl", b"\xff" + MARKER + b"\n"),
+        ("privacy-chain.jsonl", b"[]\n"),
+        ("summary.json", None),
+        ("privacy-chain.jsonl", None),
+    ],
+)
+def test_installed_verify_run_reports_damage_without_traceback(
+    venv, sealed_run, outside, tmp_path, name, content
+):
+    damaged = _damaged(sealed_run, tmp_path, name, content)
+    proc = _cli(venv, "hunter-verify-run", [str(damaged)], outside)
+    output = proc.stdout + proc.stderr
+    assert proc.returncode == 5, output
+    assert "Traceback" not in output
+    assert MARKER.decode() not in output
+    assert name in output
+
+
+def test_installed_verify_run_reports_a_tampered_byte(venv, sealed_run, outside, tmp_path):
+    original = (sealed_run / "checks.jsonl").read_bytes()
+    damaged = _damaged(sealed_run, tmp_path, "checks.jsonl", original.replace(b"PASS", b"FAIL", 1))
+    proc = _cli(venv, "hunter-verify-run", [str(damaged)], outside)
+    assert proc.returncode == 5
+    assert "checks.jsonl: modified after chain entry" in proc.stdout
+
+
+# -- an installed rerun of the same, already committed capture -----------------
+
+
+def test_installed_rerun_of_a_committed_capture_passes(venv, outside):
+    plan = _plan(venv, outside)
+    with FakeApi() as api:
+        codes = []
+        for label in ("first", "rerun"):
+            proc = _cli(
+                venv,
+                "hunter-local-ingest",
+                [
+                    "--endpoint",
+                    api.base_url,
+                    "--plan-file",
+                    str(plan),
+                    "--out",
+                    str(outside / label),
+                    "--backend-mode",
+                    "FAKE_HUNTER",
+                    *FAST,
+                ],
+                outside,
+            )
+            codes.append((proc.returncode, proc.stdout + proc.stderr))
+        puts = [r for r in api.state.requests if r[0] == "PUT"]
+    assert [c for c, _ in codes] == [0, 0], codes
+    rows = {row["id"]: row for row in _rows(_run_dir(outside / "rerun"))}
+    assert rows["lifecycle.upload"]["observed"]["uploads"] == []
+    assert rows["trace.expected-lifecycle-v3"]["status"] == "PASS"
+    assert rows["control.corrupt-upload"]["status"] == "PASS"
+    # first run: 5 baseline + 5 per tamper control; the rerun re-uploads only
+    # its fresh control captures, never the committed baseline
+    assert len(puts) == 5 + 10 + 10

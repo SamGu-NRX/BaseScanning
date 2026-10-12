@@ -50,7 +50,7 @@ from .export import (
 )
 from .modes import Status, Transport
 from .observations import Observation
-from .plan import DERIVED_SUFFIXES, PACKET_ID_RE, PATH_RE
+from .plan import DERIVED_SUFFIXES, PACKET_ID_RE, PATH_RE, derived_id
 from .sanitize import screen_artifact
 from .scenarios.oracles import oracle_for
 
@@ -110,11 +110,15 @@ def fresh_run_dir(root: Path, label: str) -> tuple[Path, str]:
     return run_dir, run_id
 
 
-def context_for(paths: frozenset[str], packet_id: str) -> ExportContext:
+def context_for(paths: frozenset[str], packet_id: str, nonce: str = "") -> ExportContext:
     """The export context of a plan: its paths and its derived packet ids."""
     if not PACKET_ID_RE.match(packet_id) or not all(PATH_RE.match(p) for p in paths):
         raise ExportError(MANIFEST, "/fixture", "undeclared-identity")
-    ids = {packet_id, *(f"{packet_id}-{s}" for s in DERIVED_SUFFIXES)}
+    ids = {packet_id}
+    for suffix in DERIVED_SUFFIXES:
+        ids.add(derived_id(packet_id, suffix))
+        if nonce:
+            ids.add(derived_id(packet_id, suffix, nonce))
     return ExportContext(paths=frozenset(paths), packet_ids=frozenset(ids))
 
 
@@ -307,6 +311,38 @@ def seal_run(run_dir: Path) -> None:
             path.chmod(_SEALED_MODE)
 
 
+def read_json(path: Path, *, lines: bool = False) -> tuple[object, str | None]:
+    """Parse an artifact, or name why it cannot be: never raises, never echoes.
+
+    Returns ``(value, None)`` or ``(None, problem)`` where the problem is
+    one of missing-artifact, unreadable, not-utf8 or not-json. With
+    ``lines`` the value is a list of parsed lines.
+    """
+    try:
+        raw = path.read_bytes()
+    except FileNotFoundError:
+        return None, "missing-artifact"
+    except OSError:
+        return None, "unreadable"
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None, "not-utf8"
+    try:
+        if lines:
+            return [json.loads(line) for line in text.splitlines()], None
+        return json.loads(text), None
+    except (ValueError, RecursionError):
+        return None, "not-json"
+
+
+def _digest(path: Path) -> str | None:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
 def verify_run_integrity(run_dir: Path) -> list[str]:
     """Problems with a sealed run directory; empty means none were found.
 
@@ -314,25 +350,37 @@ def verify_run_integrity(run_dir: Path) -> list[str]:
     mentions it. The chain must replay, every chained artifact's latest
     entry must match its bytes, the summary's recorded digests must match
     the manifest and checks, every file must be read-only, and no other
-    file may be present.
+    file may be present. A file that cannot be read or parsed is a problem
+    named by file and category; its content is never repeated.
     """
     problems: list[str] = []
     for name in MANDATORY:
         if not (run_dir / name).exists():
             problems.append(f"{name}: missing-artifact")
-    extra = sorted(p.name for p in run_dir.iterdir() if p.name not in MANDATORY)
+    try:
+        extra = sorted(p.name for p in run_dir.iterdir() if p.name not in MANDATORY)
+    except OSError:
+        return [*problems, "run-dir: unreadable"]
     if extra:
         problems.append(f"run-dir: {len(extra)} unexpected file(s)")
 
     latest: dict[str, str] = {}
     chain_path = run_dir / CHAIN_FILE
     if chain_path.exists():
+        try:
+            chain_text = chain_path.read_bytes().decode("utf-8")
+        except UnicodeDecodeError:
+            chain_text = None
+            problems.append(f"{CHAIN_FILE}: not-utf8")
+        except OSError:
+            chain_text = None
+            problems.append(f"{CHAIN_FILE}: unreadable")
         prev = ""
-        for lineno, line in enumerate(chain_path.read_text(encoding="utf-8").splitlines(), 1):
+        for lineno, line in enumerate((chain_text or "").splitlines(), 1):
             try:
                 entry = json.loads(line)
                 validate_chain_entry(entry)
-            except (json.JSONDecodeError, ExportError):
+            except (ValueError, RecursionError):  # JSON errors and ExportError
                 problems.append(f"{CHAIN_FILE}:{lineno}: unreadable chain entry")
                 continue
             expected = hashlib.sha256(
@@ -349,25 +397,29 @@ def verify_run_integrity(run_dir: Path) -> list[str]:
             continue
         if name not in latest:
             problems.append(f"{name}: no chain entry")
-        elif hashlib.sha256(path.read_bytes()).hexdigest() != latest[name]:
+        elif _digest(path) != latest[name]:
             problems.append(f"{name}: modified after chain entry")
 
-    summary_path = run_dir / SUMMARY
-    if summary_path.exists():
-        try:
-            recorded = json.loads(summary_path.read_text(encoding="utf-8")).get("artifacts", {})
-        except json.JSONDecodeError:
-            recorded = None
-            problems.append(f"{SUMMARY}: unreadable")
-        if isinstance(recorded, dict):
+    if (run_dir / SUMMARY).exists():
+        summary, problem = read_json(run_dir / SUMMARY)
+        recorded = summary.get("artifacts") if isinstance(summary, dict) else None
+        if problem:
+            problems.append(f"{SUMMARY}: {problem}")
+        elif not isinstance(recorded, dict):
+            problems.append(f"{SUMMARY}: artifacts is not an object")
+        else:
             for name in (MANIFEST, CHECKS):
                 path = run_dir / name
-                actual = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+                actual = _digest(path) if path.exists() else None
                 if recorded.get(name) != actual:
                     problems.append(f"{name}: differs from the digest in the summary")
 
     for name in MANDATORY:
         path = run_dir / name
-        if path.exists() and path.stat().st_mode & 0o222:
+        try:
+            writable = path.exists() and path.stat().st_mode & 0o222
+        except OSError:
+            writable = False
+        if writable:
             problems.append(f"{name}: not sealed (writable)")
     return problems

@@ -34,6 +34,7 @@ PATH_RE = re.compile(r"^(synthetic/scan[0-9]{2}\.bin|streams/(arkit_poses|imu_ra
 CONTENT_TYPES = {"application/octet-stream", "application/gzip"}
 _DEVICE_TEXT_RE = re.compile(r"^[A-Za-z0-9 ._()-]{1,40}$")
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
+_NONCE_RE = re.compile(r"^[0-9a-f]{8}$")
 
 # Suffixes of the packet ids derived for controls and fault checks.
 DERIVED_SUFFIXES = (
@@ -97,6 +98,10 @@ class CapturePlan:
     create_request: dict
     files: tuple[PlanFile, ...]
     packet: bytes
+    # Set per run (the run id's first 8 hex). Derived packet ids carry it, so
+    # each run's controls and faults open fresh captures even against a
+    # server that still holds an earlier run's.
+    nonce: str = ""
 
     @property
     def create_body(self) -> bytes:
@@ -111,7 +116,7 @@ class CapturePlan:
         """The same files under a packet id of their own, for one control."""
         if suffix not in DERIVED_SUFFIXES:
             raise ValueError(f"unknown derived suffix {suffix!r}")
-        packet_id = f"{self.packet_id}-{suffix}"
+        packet_id = derived_id(self.packet_id, suffix, self.nonce)
         packet = json.loads(self.packet)
         packet["packetId"] = packet_id
         return CapturePlan(
@@ -121,8 +126,14 @@ class CapturePlan:
             packet=json.dumps(packet, sort_keys=True, separators=(",", ":")).encode(),
         )
 
-    def packet_ids(self) -> frozenset[str]:
-        return frozenset({self.packet_id, *(f"{self.packet_id}-{s}" for s in DERIVED_SUFFIXES)})
+    def for_run(self, run_id: str) -> CapturePlan:
+        if not _NONCE_RE.match(run_id[:8]):
+            raise ValueError("run id must start with 8 hex characters")
+        return dataclasses.replace(self, nonce=run_id[:8])
+
+
+def derived_id(packet_id: str, suffix: str, nonce: str = "") -> str:
+    return f"{packet_id}-{suffix}-{nonce}" if nonce else f"{packet_id}-{suffix}"
 
 
 @dataclasses.dataclass(frozen=True)

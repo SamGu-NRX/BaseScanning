@@ -52,7 +52,7 @@ from .scenarios import gpu_stub_lines, record, unreachable_lines
 from .scenarios.controls import run_controls, run_restart_control
 from .scenarios.faults import run_fault_round
 from .scenarios.lifecycle import LifecycleOutcome, run_lifecycle
-from .traces import compare_trace, load_trace
+from .traces import TRACE_CHECK_ID, compare_trace, load_trace
 
 PROGRAM = "hunter-local-ingest"
 EXIT_PASS, EXIT_FAIL, EXIT_USAGE, EXIT_PLAN, EXIT_BLOCKED, EXIT_RECEIPTS = 0, 1, 2, 3, 4, 5
@@ -287,11 +287,10 @@ def run(argv: Sequence[str] | None = None) -> int:
         # field and problem are this package's fixed text; never the value
         print(f"{PROGRAM}: error: plan refused: {exc.field}: {exc.problem}", file=sys.stderr)
         return EXIT_PLAN
-    plan = loaded.plan
-    ctx = context_for(plan.declared_paths, plan.packet_id)
     transport = Transport(args.backend_mode)
-
     run_dir, run_id = fresh_run_dir(Path(args.out), args.label)
+    plan = loaded.plan.for_run(run_id)
+    ctx = context_for(plan.declared_paths, plan.packet_id, plan.nonce)
     receipts_error: str | None = None
     try:
         write_run_manifest(
@@ -384,8 +383,8 @@ def _run_checks(args, plan, transport: Transport, sink, client_for) -> None:
                 poll_interval_s=args.poll_interval_s,
                 events_wait_s=args.events_wait_s,
             )
-    comparison = compare_trace(sink.checks, load_trace(), transport)
-    record(sink, transport, "trace.expected-lifecycle-v2", comparison.status, comparison.public())
+    comparison = compare_trace(sink.checks, load_trace(), transport, plan.declared_paths)
+    record(sink, transport, TRACE_CHECK_ID, comparison.status, comparison.public())
     if baseline.capture_id is not None:
         run_restart_control(
             client_for(args.endpoint),

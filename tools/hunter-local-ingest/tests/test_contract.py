@@ -271,3 +271,170 @@ def test_bodies_that_are_not_objects():
     assert "shape:not-json" in decode_create(parse_body(b"<html>")).violations
     assert "shape:empty" in decode_create(parse_body(b"")).violations
     assert "shape:not-object" in decode_create(parse_body(b"[1]")).violations
+
+
+# -- every present published nested field, with Swift Codable semantics ---------
+#
+# CaptureResult.Response decodes with JSONDecoder: a non-optional field
+# rejects both missing and null, an optional one accepts missing and null but
+# rejects any other wrong type. Unknown extra keys are ignored by Swift, so
+# they are not violations here either.
+
+
+def _view(**over):
+    view = {
+        "id": "v",
+        "kind": "wall_band",
+        "criteria": ["c1"],
+        "why": "w",
+        "promptId": "p",
+        "prompt": {"title": "t", "body": "b"},
+        "band": "low",
+        "wallId": "w1",
+        "target": "meter",
+        "referenceCrop": {"image": "img", "boxPx": [0, 0, 10.5, 10]},
+    }
+    view.update(over)
+    return view
+
+
+def _complete(**over):
+    """A result with every published optional field present and valid."""
+    body = {
+        "runId": "r1",
+        "status": "complete",
+        "viewsNeeded": [_view()],
+        "memberActions": ["call"],
+        "outcome": {
+            "kind": "eligible",
+            "profile": "p",
+            "message": "m",
+            "viewsNeeded": [_view()],
+            "reasons": [
+                {
+                    "criterion": "c",
+                    "text": "t",
+                    "measuredFt": 3,
+                    "plusMinusFt": 0.5,
+                    "thresholdFt": 3.0,
+                    "comparison": "gte",
+                }
+            ],
+            "arkitEpoch": "e1",
+            "recommendedPlacement": {
+                "wallId": "w1",
+                "startSM": -1.2,
+                "confidence": 0.5,
+                "boxArkitWorld": {"pose": [1] * 16, "size": [0.7, 1.2, 0.3]},
+            },
+        },
+        "criteria": [
+            {
+                "id": "c",
+                "outcome": "pass",
+                "unsureCause": "u",
+                "measuredFt": 1,
+                "plusMinusFt": 0.1,
+                "thresholdFt": 1,
+                "coverage": "full",
+            }
+        ],
+        "previewUrl": "https://s.example/p.png",
+        "reviewUrl": "/v1/review/1",
+    }
+    body.update(over)
+    return body
+
+
+def _with(path, value, base=None):
+    body = base or _complete()
+    node = body
+    for key in path[:-1]:
+        node = node[key]
+    if value is _DELETE:
+        del node[path[-1]]
+    else:
+        node[path[-1]] = value
+    return body
+
+
+_DELETE = object()
+
+
+def test_complete_result_baseline_is_ok():
+    dec = decode_result(_complete())
+    assert dec.ok, dec.violations
+
+
+@pytest.mark.parametrize(
+    "path, value",
+    [
+        (("outcome", "recommendedPlacement"), 7),
+        (("outcome", "recommendedPlacement", "wallId"), _DELETE),
+        (("outcome", "recommendedPlacement", "startSM"), "1"),
+        (("outcome", "recommendedPlacement", "startSM"), True),
+        (("outcome", "recommendedPlacement", "confidence"), None),
+        (("outcome", "recommendedPlacement", "boxArkitWorld"), 7),
+        (("outcome", "recommendedPlacement", "boxArkitWorld", "pose"), [1, "a"]),
+        (("outcome", "recommendedPlacement", "boxArkitWorld", "size"), _DELETE),
+        (("outcome", "arkitEpoch"), 5),
+        (("outcome", "reasons"), ["a string reason"]),
+        (("outcome", "reasons", 0, "measuredFt"), "3"),
+        (("outcome", "reasons", 0, "comparison"), 5),
+        (("outcome", "viewsNeeded", 0, "criteria"), [7]),
+        (("viewsNeeded", 0, "criteria"), [7]),
+        (("viewsNeeded", 0, "band"), 5),
+        (("viewsNeeded", 0, "wallId"), ["w"]),
+        (("viewsNeeded", 0, "referenceCrop"), "img"),
+        (("viewsNeeded", 0, "referenceCrop", "boxPx"), ["x"]),
+        (("viewsNeeded", 0, "referenceCrop", "image"), _DELETE),
+        (("viewsNeeded", 0, "prompt", "title"), None),
+        (("criteria", 0, "outcome"), 5),
+        (("criteria", 0, "measuredFt"), "x"),
+        (("criteria", 0, "coverage"), 1),
+        (("criteria", 0, "unsureCause"), 2),
+        (("previewUrl",), 5),
+        (("reviewUrl",), {"u": 1}),
+        (("memberActions",), None),
+        (("memberActions",), ["a", 1]),
+        (("outcome", "profile"), None),
+        (("runId",), 5),
+        (("status",), None),
+    ],
+)
+def test_result_rejects_what_swift_codable_rejects(path, value):
+    dec = decode_result(_with(path, value))
+    assert not dec.ok, (path, value)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ("outcome", "recommendedPlacement"),
+        ("outcome", "recommendedPlacement", "boxArkitWorld"),
+        ("outcome", "arkitEpoch"),
+        ("outcome", "reasons", 0, "measuredFt"),
+        ("viewsNeeded", 0, "band"),
+        ("viewsNeeded", 0, "referenceCrop"),
+        ("criteria", 0, "coverage"),
+        ("criteria",),
+        ("previewUrl",),
+        ("runId",),
+    ],
+)
+def test_result_optionals_accept_null_and_missing(path):
+    assert decode_result(_with(path, None)).ok, path
+    assert decode_result(_with(path, _DELETE)).ok, path
+
+
+def test_result_unknown_extra_keys_are_ignored_like_swift():
+    body = _complete()
+    body["outcome"]["recommendedPlacement"]["extra"] = {"anything": 1}
+    body["viewsNeeded"][0]["extra"] = [1]
+    assert decode_result(body).ok
+
+
+def test_result_placement_values_never_reach_the_public_view():
+    secret = "wall-" + "x" * 12
+    dec = decode_result(_with(("outcome", "recommendedPlacement", "wallId"), secret))
+    assert dec.ok and secret not in repr(dec.public)

@@ -74,6 +74,10 @@ class FakeConfig:
     require_token: str | None = None
     canary: str | None = None  # plant this marker in every response
     forget_file: Path | None = None  # when it exists, drop all state (restart loss)
+    max_batch: int = 50  # advertised as upload.maxBatch and enforced on register/commit
+    capture_id_override: str | None = None  # mint this captureId instead of a safe one
+    result_extra: dict | None = None  # merged into the result body
+    outcome_extra: dict | None = None  # merged into the result's outcome
 
 
 class FakeState:
@@ -86,6 +90,8 @@ class FakeState:
         self.next = 1
         self.put_headers: list[dict[str, str]] = []
         self.api_auth: list[str | None] = []
+        # every request as (method, raw path, Authorization present)
+        self.requests: list[tuple[str, str, bool]] = []
 
     def maybe_forget(self) -> None:
         marker = self.config.forget_file
@@ -122,6 +128,15 @@ def _handler(state: FakeState, base_holder: dict):
                 item["message"] = f"internal detail {cfg.canary}"
             self._send(status, {"errors": [item]})
 
+        def _log(self, method: str) -> None:
+            state.requests.append((method, self.path, "Authorization" in self.headers))
+
+        def _too_many(self, files: list) -> bool:
+            if len(files) > cfg.max_batch:
+                self._error(413, "harness_schema")
+                return True
+            return False
+
         def _body(self) -> bytes:
             length = int(self.headers.get("Content-Length") or 0)
             return self.rfile.read(length) if length else b""
@@ -142,6 +157,7 @@ def _handler(state: FakeState, base_holder: dict):
 
         def do_GET(self) -> None:  # noqa: N802
             with state.lock:
+                self._log("GET")
                 state.maybe_forget()
                 parts, query = self._route()
                 if parts == ["healthz"]:
@@ -168,6 +184,7 @@ def _handler(state: FakeState, base_holder: dict):
         def do_POST(self) -> None:  # noqa: N802
             body = self._body()
             with state.lock:
+                self._log("POST")
                 state.maybe_forget()
                 parts, _ = self._route()
                 if not self._authorized():
@@ -196,6 +213,7 @@ def _handler(state: FakeState, base_holder: dict):
         def do_PUT(self) -> None:  # noqa: N802
             body = self._body()
             with state.lock:
+                self._log("PUT")
                 parts, _ = self._route()
                 state.put_headers.append({k.lower(): v for k, v in self.headers.items()})
                 target = (
@@ -232,7 +250,7 @@ def _handler(state: FakeState, base_holder: dict):
                 cid, status = state.by_packet[packet_id], 200
             else:
                 prefix = f"{cfg.canary}-cap" if cfg.canary else "cap_fake"
-                cid = f"{prefix}_{state.next}"
+                cid = cfg.capture_id_override or f"{prefix}_{state.next}"
                 state.next += 1
                 state.captures[cid] = {
                     "id": cid,
@@ -247,7 +265,8 @@ def _handler(state: FakeState, base_holder: dict):
                 state.by_packet[packet_id] = cid
                 status = 201
             self._send(
-                status, {"captureId": cid, "status": "uploading", "upload": {"maxBatch": 50}}
+                status,
+                {"captureId": cid, "status": "uploading", "upload": {"maxBatch": cfg.max_batch}},
             )
 
         def _register(self, cap: dict, body: bytes) -> None:
@@ -257,6 +276,8 @@ def _handler(state: FakeState, base_holder: dict):
                     assert set(f) == {"path", "bytes", "sha256", "md5", "role", "contentType"}
             except (ValueError, KeyError, TypeError, AssertionError):
                 self._error(422, "harness_schema")
+                return
+            if self._too_many(files):
                 return
             base = cfg.storage_base or base_holder["origin"]
             entries = []
@@ -308,6 +329,8 @@ def _handler(state: FakeState, base_holder: dict):
                     assert set(f) == {"path", "sha256"}
             except (ValueError, KeyError, TypeError, AssertionError):
                 self._error(422, "harness_schema")
+                return
+            if self._too_many(files):
                 return
             committed, not_found, mismatch = [], [], []
             for f in files:
@@ -446,6 +469,10 @@ def _handler(state: FakeState, base_holder: dict):
             }
             if cfg.canary:
                 payload["previewUrl"] = f"https://storage.invalid/p.png?X-Signature={cfg.canary}"
+            if cfg.outcome_extra and isinstance(outcome, dict):
+                outcome.update(cfg.outcome_extra)
+            if cfg.result_extra:
+                payload.update(cfg.result_extra)
             self._send(200, payload)
 
     return Handler

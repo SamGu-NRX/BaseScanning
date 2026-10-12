@@ -1,15 +1,20 @@
 """Frozen expected traces, loaded from the installed package, and their comparison.
 
-``traces/expected-lifecycle-v2.jsonl`` is the current expectation, written
+``traces/expected-lifecycle-v3.jsonl`` is the current expectation, written
 from the published contract: each line names a check, the status it must
 end with, the HTTP status class of the answer that decided it, and the
 published top-level fields that answer must carry (subset semantics:
 extra fields are fine).
 
-``expected-lifecycle-v1.jsonl`` is kept unedited as history. It expected a
-``schema_version`` field on the result, which the published
-CaptureResult.Response does not have, and a health route the client never
-calls; v2 replaces it. A new contract version gets a new file.
+v3 adds one branch to v2. When register reports every declared file
+already committed (a replayed or resumed capture), the published client
+sends no PUT and no commit, so those two checks have no HTTP answer. A line
+with ``no_request_branch: committed-at-register`` accepts that, and only
+when the check's own record lists a committed-at-register set equal to the
+plan's declared paths. Every other missing answer is still a disagreement.
+
+Older files are kept unedited as history: v1 expected a ``schema_version``
+field the published result does not have; v2 had no replay branch.
 
 Traces are package data, read through ``importlib.resources``, so a
 non-editable install finds them inside the installed package.
@@ -23,7 +28,8 @@ from importlib import resources
 
 from .modes import Status, Transport
 
-CURRENT_TRACE = "expected-lifecycle-v2.jsonl"
+CURRENT_TRACE = "expected-lifecycle-v3.jsonl"
+TRACE_CHECK_ID = "trace.expected-lifecycle-v3"
 
 
 def load_trace(name: str = CURRENT_TRACE) -> list[dict]:
@@ -69,7 +75,25 @@ class TraceComparison:
         }
 
 
-def compare_trace(checks: list, expected: list[dict], transport: Transport) -> TraceComparison:
+def _skipped_by_register(check, declared: frozenset[str]) -> bool:
+    """The record names exactly the declared set as committed at register."""
+    listed = (
+        check.observed.get("committed_at_register") if isinstance(check.observed, dict) else None
+    )
+    return (
+        bool(declared)
+        and isinstance(listed, list)
+        and len(listed) == len(set(listed))
+        and set(listed) == declared
+    )
+
+
+def compare_trace(
+    checks: list,
+    expected: list[dict],
+    transport: Transport,
+    declared: frozenset[str] = frozenset(),
+) -> TraceComparison:
     """Diff a run's checks against a frozen trace.
 
     A traced check that is missing or FAILs is a disagreement. One that is
@@ -96,7 +120,8 @@ def compare_trace(checks: list, expected: list[dict], transport: Transport) -> T
         obs = check.observation
         needs_obs = line.get("http_status_class") is not None or line.get("field_names") is not None
         if obs is None:
-            if needs_obs:
+            branch = line.get("no_request_branch") == "committed-at-register"
+            if needs_obs and not (branch and _skipped_by_register(check, declared)):
                 disagreements.append((check_id, "no-observation"))
             continue
         status_class = line.get("http_status_class")

@@ -285,3 +285,139 @@ def test_unreachable_endpoint_blocks_every_step(plan):
     rows = {line["id"]: line for line in sink}
     assert [rows[i]["status"] for i in LIFECYCLE_IDS] == [Status.BLOCKED.value] * 8
     assert rows["lifecycle.health"]["observed"]["note"] == "endpoint-unreachable"
+
+
+# -- every final API URL passes the scope gate before any header or request ------
+
+HOSTILE_IDS = ["../outside", "..", ".", "a/b", "a\\b", "x/../../outside"]
+
+
+@pytest.mark.parametrize("capture_id", HOSTILE_IDS)
+def test_hostile_capture_ids_are_refused_before_any_request(fake, plan, capture_id):
+    token = "synthetic-api-token"
+    with fake() as api:
+        client = _client(api, api_token=token)
+        f = plan.files[0]
+        calls = [
+            lambda: client.register(capture_id, [f.register_entry()]),
+            lambda: client.commit(capture_id, [f.commit_entry()]),
+            lambda: client.finalize(capture_id, plan.packet, plan.packet_id),
+            lambda: client.events(capture_id, 0, 0),
+            lambda: client.result(capture_id),
+        ]
+        for call in calls:
+            res = call()
+            assert res.error == "auth_destination_refused", res
+            assert res.attempts == 0 and res.observation is None
+        assert api.state.requests == [], "nothing reached the transport"
+
+
+def test_a_server_minted_traversal_id_never_carries_the_credential(fake, plan):
+    token = "synthetic-api-token"
+    with fake(FakeConfig(capture_id_override="../outside")) as api:
+        rows, _ = _run(api, plan, client=_client(api, api_token=token))
+        requests = list(api.state.requests)
+    assert rows["lifecycle.create"]["status"] == "PASS"
+    assert rows["lifecycle.register"]["status"] == "FAIL"
+    assert rows["lifecycle.register"]["observed"]["batches"][0]["http"]["error"] == (
+        "auth_destination_refused"
+    )
+    # only health and create were sent; nothing went to a traversal path
+    assert [(m, p.split("?")[0]) for m, p, _auth in requests] == [
+        ("GET", "/v1/healthz"),
+        ("POST", "/v1/captures"),
+    ]
+    assert not any("outside" in p or "%2F" in p.upper() for _m, p, _a in requests)
+
+
+# -- the advertised batch limit holds for controls as well as the lifecycle -------
+
+
+def test_a_two_file_batch_limit_is_honoured_everywhere(fake, plan):
+    assert len(plan.files) == 5
+    with fake(FakeConfig(max_batch=2)) as api:
+        rows, _ = _run(api, plan)
+        controls = _controls(api, plan)
+        state = api.state
+        by_packet = dict(state.by_packet)
+        baseline = state.captures[by_packet[plan.packet_id]]
+    assert all(rows[i]["status"] == "PASS" for i in LIFECYCLE_IDS), rows
+    for check_id in ("control.corrupt-upload", "control.truncated-upload"):
+        observed = controls[check_id]["observed"]
+        assert controls[check_id]["status"] == "PASS", controls[check_id]
+        assert observed["tampered_reported"] is True and observed["intact_committed"] is True
+        assert observed["tampered_committed"] is False
+    # the fake answers 413 to any register or commit over two files, so the
+    # all-PASS rows above mean every request respected the limit
+    assert len(rows["lifecycle.register"]["observed"]["batches"]) == 3
+    # each control on a capture of its own; the baseline bytes are untouched
+    assert len(set(by_packet.values())) == len(by_packet)
+    for f in plan.files:
+        assert hashlib.sha256(baseline["stored"][f.path]).hexdigest() == f.sha256
+
+
+def test_batched_controls_still_fail_when_tampered_bytes_are_committed(fake, plan):
+    with fake(FakeConfig(max_batch=2, commit_everything=True)) as api:
+        controls = _controls(api, plan)
+    for check_id in ("control.corrupt-upload", "control.truncated-upload"):
+        assert controls[check_id]["status"] == "FAIL"
+        assert controls[check_id]["observed"]["tampered_committed"] is True
+
+
+# -- files already committed at register: legitimate skips, explicit sets -------
+
+
+def test_rerun_of_a_fully_committed_capture_skips_put_and_commit(fake, plan):
+    with fake() as api:
+        _run(api, plan)
+        before = len(api.state.requests)
+        rows, _ = _run(api, plan)
+        second = api.state.requests[before:]
+    assert all(rows[i]["status"] == "PASS" for i in LIFECYCLE_IDS), rows
+    assert not any(m == "PUT" or p.endswith("files:commit") for m, p, _a in second)
+    declared = sorted(plan.declared_paths)
+    assert rows["lifecycle.upload"]["observed"]["uploads"] == []
+    assert sorted(rows["lifecycle.upload"]["observed"]["committed_at_register"]) == declared
+    assert sorted(rows["lifecycle.commit"]["observed"]["committed_at_register"]) == declared
+    assert rows["lifecycle.commit"]["observed"]["batches"] == []
+
+
+def test_partial_replay_uploads_and_commits_only_the_rest(fake, plan):
+    with fake() as api:
+        client = _client(api)
+        res = client.create(plan.create_body, plan.packet_id)
+        capture_id = res.parsed["captureId"]
+        first = plan.files[:2]
+        reg = client.register(capture_id, [f.register_entry() for f in first])
+        for entry, f in zip(reg.parsed["files"], first, strict=True):
+            assert entry["path"] == f.path
+            client.upload(entry["upload"]["url"], f.content, entry["upload"]["headers"])
+        client.commit(capture_id, [f.commit_entry() for f in first])
+        rows, _ = _run(api, plan)
+        cap = api.state.captures[capture_id]
+    assert all(rows[i]["status"] == "PASS" for i in LIFECYCLE_IDS), rows
+    uploaded = {u["path"] for u in rows["lifecycle.upload"]["observed"]["uploads"]}
+    assert uploaded == {f.path for f in plan.files[2:]}
+    assert sorted(rows["lifecycle.upload"]["observed"]["committed_at_register"]) == sorted(
+        f.path for f in first
+    )
+    assert cap["committed"] == plan.declared_paths
+
+
+def test_a_client_that_skips_a_required_put_fails(fake, plan, monkeypatch):
+    from hunter_local_ingest.adapter import StepResult
+
+    with fake() as api:
+        client = _client(api)
+        monkeypatch.setattr(client, "upload", lambda url, body, headers: StepResult("upload"))
+        rows, _ = _run(api, plan, client=client)
+        puts = [r for r in api.state.requests if r[0] == "PUT"]
+    assert puts == []
+    assert rows["lifecycle.upload"]["status"] == "FAIL"
+    assert rows["lifecycle.commit"]["status"] == "BLOCKED"
+
+
+def test_result_with_a_malformed_placement_fails_the_lifecycle(fake, plan):
+    with fake(FakeConfig(outcome_extra={"recommendedPlacement": 7})) as api:
+        rows, _ = _run(api, plan)
+    assert rows["lifecycle.result"]["status"] == "FAIL"

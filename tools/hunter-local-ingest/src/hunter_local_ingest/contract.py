@@ -28,6 +28,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import math
 
 from .netpolicy import upload_url_problem
 
@@ -124,6 +125,15 @@ _FIELDS = (
     "reasons",
     "errors",
     "code",
+    "profile",
+    "message",
+    "arkitEpoch",
+    "recommendedPlacement",
+    "boxArkitWorld",
+    "prompt",
+    "referenceCrop",
+    "previewUrl",
+    "reviewUrl",
 )
 _KINDS = ("missing", "type", "enum", "range", "duplicate", "unexpected-path", "not-acknowledged")
 VIOLATIONS = frozenset(f"{kind}:{field}" for kind in _KINDS for field in _FIELDS) | frozenset(
@@ -628,133 +638,170 @@ def decode_events(parsed: object, *, after: int, run_id: str | None) -> Decoded:
     return Decoded(tuple(out.items), public, data)
 
 
-_RESULT_KEYS = frozenset(
-    {
-        "runId",
-        "status",
-        "viewsNeeded",
-        "memberActions",
-        "outcome",
-        "criteria",
-        "previewUrl",
-        "reviewUrl",
-    }
-)
-_OUTCOME_KEYS = frozenset(
-    {"kind", "profile", "message", "viewsNeeded", "reasons", "arkitEpoch", "recommendedPlacement"}
-)
-_VIEW_REQUIRED = ("id", "kind", "why", "promptId")
+# CaptureResult.swift, field by field: (kind, required). A kind is "str",
+# "num" (Swift Double: a finite JSON number, never a bool), "[str]", "[num]",
+# a nested spec dict, or ("list", spec). JSONDecoder rejects a required field
+# that is missing or null, accepts a missing or null optional, and rejects
+# any present value of the wrong type. Unknown keys are ignored, as in Swift.
+_PROMPT = {"title": ("str", True), "body": ("str", True)}
+_REFERENCE_CROP = {"image": ("str", True), "boxPx": ("[num]", True)}
+_VIEW = {
+    "id": ("str", True),
+    "kind": ("str", True),
+    "criteria": ("[str]", True),
+    "why": ("str", True),
+    "promptId": ("str", True),
+    "prompt": (_PROMPT, True),
+    "band": ("str", False),
+    "wallId": ("str", False),
+    "target": ("str", False),
+    "referenceCrop": (_REFERENCE_CROP, False),
+}
+_REASON = {
+    "criterion": ("str", True),
+    "text": ("str", True),
+    "measuredFt": ("num", False),
+    "plusMinusFt": ("num", False),
+    "thresholdFt": ("num", False),
+    "comparison": ("str", False),
+}
+# BoxArkitWorld's counts are checked only when the app asks for AR, so a
+# decode accepts any list of numbers here.
+_BOX = {"pose": ("[num]", True), "size": ("[num]", True)}
+_PLACEMENT = {
+    "wallId": ("str", True),
+    "startSM": ("num", True),
+    "confidence": ("num", True),
+    "boxArkitWorld": (_BOX, False),
+}
+_OUTCOME = {
+    "kind": ("str", True),
+    "profile": ("str", True),
+    "message": ("str", True),
+    "viewsNeeded": (("list", _VIEW), True),
+    "reasons": (("list", _REASON), True),
+    "arkitEpoch": ("str", False),
+    "recommendedPlacement": (_PLACEMENT, False),
+}
+_CRITERION = {
+    "id": ("str", True),
+    "outcome": ("str", True),
+    "unsureCause": ("str", False),
+    "measuredFt": ("num", False),
+    "plusMinusFt": ("num", False),
+    "thresholdFt": ("num", False),
+    "coverage": ("str", False),
+}
+_RESULT = {
+    "runId": ("str", False),
+    "status": ("str", True),
+    "viewsNeeded": (("list", _VIEW), True),
+    "memberActions": ("[str]", True),
+    "outcome": (_OUTCOME, False),
+    "criteria": (("list", _CRITERION), False),
+    "previewUrl": ("str", False),
+    "reviewUrl": ("str", False),
+}
+_RESULT_KEYS = frozenset(_RESULT)
+_OUTCOME_KEYS = frozenset(_OUTCOME)
+_FIELD_SET = frozenset(_FIELDS)
 
 
-def _check_views(views: object, out: _Collector, field: str) -> int | None:
-    if not isinstance(views, list):
-        out.add("type", field)
-        return None
-    for view in views:
-        ok = (
-            isinstance(view, dict)
-            and all(isinstance(view.get(k), str) for k in _VIEW_REQUIRED)
-            and isinstance(view.get("criteria"), list)
-            and isinstance(view.get("prompt"), dict)
-            and isinstance(view["prompt"].get("title"), str)
-            and isinstance(view["prompt"].get("body"), str)
-        )
-        if not ok:
-            out.add("type", field)
-    return len(views)
+def _swift_number(value: object) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return -_MAX_INT < value < _MAX_INT
+    return isinstance(value, float) and math.isfinite(value)
+
+
+def _check_value(value: object, kind, label: str, out: _Collector) -> None:
+    """Record ``type:<label>`` when ``value`` is not a ``kind`` (never None here)."""
+    if kind == "str":
+        ok = isinstance(value, str)
+    elif kind == "num":
+        ok = _swift_number(value)
+    elif kind == "[str]":
+        ok = isinstance(value, list) and all(isinstance(v, str) for v in value)
+    elif kind == "[num]":
+        ok = isinstance(value, list) and all(_swift_number(v) for v in value)
+    elif isinstance(kind, tuple):
+        ok = isinstance(value, list)
+        if ok:
+            for item in value:
+                _check_object(item, kind[1], label, out)
+    else:
+        _check_object(value, kind, label, out)
+        return
+    if not ok:
+        out.add("type", label)
+
+
+def _check_object(value: object, spec: dict, label: str, out: _Collector) -> None:
+    if not isinstance(value, dict):
+        out.add("type", label)
+        return
+    for key, (kind, required) in spec.items():
+        field = key if key in _FIELD_SET else label
+        if value.get(key) is None:
+            if required:
+                out.add("missing", field)
+            continue
+        _check_value(value[key], kind, field, out)
 
 
 def decode_result(parsed: object) -> Decoded:
-    """CaptureResult.Response, decoded as strictly as the app decodes it.
+    """CaptureResult.Response, decoded as strictly as the app's JSONDecoder.
 
-    The public view keeps the status, the outcome kind, counts and the run
-    id as a digest. It never keeps the homeowner message, prompts, reasons
-    or the signed preview URL.
+    Every published field that is present must have its Swift type, nested
+    ones included (``_RESULT``). On top of that the harness requires the
+    status and outcome kind to be published words. The public view keeps
+    the status, the outcome kind, counts and the run id as a digest; never
+    the homeowner message, prompts, reasons, placement or signed URLs.
     """
     out = _Collector()
     obj = _object(parsed, out)
     public: dict = {}
     data: dict = {"runId": None, "status": None, "outcome_present": False, "kind": None}
-    if obj is not None:
-        run_id = obj.get("runId")
-        if run_id is not None and not isinstance(run_id, str):
-            out.add("type", "runId")
-            run_id = None
-        status = _str(obj, "status", out)
-        if status is not None and status not in CAPTURE_STATUSES:
-            out.add("enum", "status")
-        if "viewsNeeded" not in obj:
-            out.add("missing", "viewsNeeded")
-            views_count = None
-        else:
-            views_count = _check_views(obj["viewsNeeded"], out, "viewsNeeded")
-        actions = _str_list(obj, "memberActions", out)
-        outcome = obj.get("outcome")
-        kind = None
-        reasons = None
-        if outcome is not None:
-            if not isinstance(outcome, dict):
-                out.add("type", "outcome")
-            else:
-                kind = _str(outcome, "kind", out)
-                if kind is not None and kind not in OUTCOME_KINDS:
-                    out.add("enum", "kind")
-                if not isinstance(outcome.get("profile"), str):
-                    out.add("type", "outcome")
-                if not isinstance(outcome.get("message"), str):
-                    out.add("type", "outcome")
-                if "viewsNeeded" not in outcome:
-                    out.add("missing", "outcome")
-                else:
-                    _check_views(outcome["viewsNeeded"], out, "outcome")
-                reasons_raw = outcome.get("reasons")
-                if isinstance(reasons_raw, list) and all(
-                    isinstance(r, dict)
-                    and isinstance(r.get("criterion"), str)
-                    and isinstance(r.get("text"), str)
-                    for r in reasons_raw
-                ):
-                    reasons = len(reasons_raw)
-                else:
-                    out.add("type", "reasons")
-        criteria = obj.get("criteria")
-        criteria_count = None
-        if criteria is not None:
-            if isinstance(criteria, list) and all(
-                isinstance(c, dict)
-                and isinstance(c.get("id"), str)
-                and isinstance(c.get("outcome"), str)
-                for c in criteria
-            ):
-                criteria_count = len(criteria)
-            else:
-                out.add("type", "criteria")
-        for key in ("previewUrl", "reviewUrl"):
-            if obj.get(key) is not None and not isinstance(obj[key], str):
-                out.add("type", "body")
-        if status is not None:
-            public["status"] = pub_enum(status, CAPTURE_STATUSES)
-        public["runId"] = pub_id(run_id) if run_id is not None else None
-        if isinstance(outcome, dict):
-            public["outcome"] = {"kind": pub_enum(kind, OUTCOME_KINDS), "reasons": reasons}
-            extra = pub_unknown_keys(outcome, _OUTCOME_KEYS)
-            if extra:
-                public["outcome"]["unexpected_keys"] = extra
-        else:
-            public["outcome"] = None
-        public["viewsNeeded"] = views_count
-        public["memberActions"] = len(actions) if actions is not None else None
-        public["criteria"] = criteria_count
-        public["has_preview_url"] = isinstance(obj.get("previewUrl"), str)
-        extra = pub_unknown_keys(obj, _RESULT_KEYS)
-        if extra:
-            public["unexpected_keys"] = extra
-        data = {
-            "runId": run_id,
-            "status": status,
-            "outcome_present": outcome is not None,
-            "kind": kind,
+    if obj is None:
+        return Decoded(tuple(out.items), public, data)
+    _check_object(obj, _RESULT, "body", out)
+    run_id = obj.get("runId") if isinstance(obj.get("runId"), str) else None
+    status = obj.get("status") if isinstance(obj.get("status"), str) else None
+    if status is not None and status not in CAPTURE_STATUSES:
+        out.add("enum", "status")
+    outcome = obj.get("outcome")
+    kind = None
+    if isinstance(outcome, dict):
+        kind = outcome.get("kind") if isinstance(outcome.get("kind"), str) else None
+        if kind is not None and kind not in OUTCOME_KINDS:
+            out.add("enum", "kind")
+        reasons = outcome.get("reasons")
+        public["outcome"] = {
+            "kind": pub_enum(kind, OUTCOME_KINDS),
+            "reasons": len(reasons) if isinstance(reasons, list) else None,
         }
+        extra = pub_unknown_keys(outcome, _OUTCOME_KEYS)
+        if extra:
+            public["outcome"]["unexpected_keys"] = extra
+    else:
+        public["outcome"] = None
+    if status is not None:
+        public["status"] = pub_enum(status, CAPTURE_STATUSES)
+    public["runId"] = pub_id(run_id) if run_id is not None else None
+    for key in ("viewsNeeded", "memberActions", "criteria"):
+        value = obj.get(key)
+        public[key] = len(value) if isinstance(value, list) else None
+    public["has_preview_url"] = isinstance(obj.get("previewUrl"), str)
+    extra = pub_unknown_keys(obj, _RESULT_KEYS)
+    if extra:
+        public["unexpected_keys"] = extra
+    data = {
+        "runId": run_id,
+        "status": status,
+        "outcome_present": outcome is not None,
+        "kind": kind,
+    }
     return Decoded(tuple(out.items), public, data)
 
 

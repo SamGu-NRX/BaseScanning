@@ -158,17 +158,24 @@ class DirectHttpClient:
         headers: dict[str, str],
         timeout_s: float | None = None,
     ) -> StepResult:
+        base = self._base
+        path = base.route(route)
+        # ScopedCaptureHTTP.send checks the final URL before it asks for the
+        # credential: a server-minted id such as "../x" becomes an encoded
+        # separator or a dot segment here, and nothing is sent.
+        host = f"[{base.host}]" if ":" in base.host else base.host
+        if not base.in_scope(f"{base.scheme}://{host}:{base.port}{path}"):
+            return StepResult(step=step, error="auth_destination_refused", attempts=0)
         sent = dict(headers)
         if self._token is not None:
             sent["Authorization"] = f"Bearer {self._token}"
-        base = self._base
         return self._send(
             step,
             method,
             base.scheme,
             base.host,
             base.port,
-            base.route(route),
+            path,
             body,
             sent,
             timeout_s,

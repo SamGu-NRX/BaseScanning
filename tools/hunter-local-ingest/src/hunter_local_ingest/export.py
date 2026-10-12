@@ -188,6 +188,7 @@ OBSERVED_KEYS = frozenset(
         "step",
         "declared",
         "committed_total",
+        "committed_at_register",
     }
 )
 

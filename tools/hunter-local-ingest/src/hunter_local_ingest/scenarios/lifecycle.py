@@ -16,21 +16,19 @@ from ..adapter import HunterIngestAdapter
 from ..contract import (
     STATUSES_WITHOUT_OUTCOME,
     TERMINAL_STATUSES,
-    decode_commit,
     decode_create,
     decode_errors,
     decode_events,
     decode_finalize,
     decode_health,
-    decode_register,
     decode_result,
 )
 from ..modes import Status, Transport
 from ..plan import CapturePlan
 from . import LIFECYCLE_IDS, is_2xx, record, skip_rest, step_view
+from .steps import batch_size, commit_round, error_status, register_round
 
 # CaptureUploader.Policy defaults.
-DEFAULT_BATCH = 10
 MAX_FINALIZE_RETRIES = 3
 MAX_NOT_READY_RESULTS = 10
 
@@ -101,8 +99,8 @@ def run_lifecycle(
     # -- create ---------------------------------------------------------------
     res = adapter.create(plan.create_body, plan.packet_id)
     if res.error:
-        record(sink, transport, "lifecycle.create", Status.BLOCKED, step_view(res))
-        return stop("lifecycle.create", "skipped-after-blocked-step")
+        record(sink, transport, "lifecycle.create", error_status(res), step_view(res))
+        return stop("lifecycle.create", _skip_note(error_status(res)))
     dec = decode_create(res.parsed) if is_2xx(res) else None
     capture_id = dec.data["captureId"] if dec is not None and dec.ok else None
     status = Status.PASS if capture_id else Status.FAIL
@@ -110,45 +108,23 @@ def run_lifecycle(
     if status is not Status.PASS:
         return stop("lifecycle.create", "skipped-after-failed-step")
     outcome.capture_id = capture_id
-    batch = min(DEFAULT_BATCH, dec.data["maxBatch"] or DEFAULT_BATCH)
+    size = batch_size(dec.data["maxBatch"])
 
     # -- register, in batches, matched by path ---------------------------------
-    targets: dict[str, dict] = {}
-    committed_at_register: set[str] = set()
-    batches: list[dict] = []
-    violations: list[str] = []
-    status = Status.PASS
-    last = res
-    for start in range(0, len(plan.files), batch):
-        chunk = plan.files[start : start + batch]
-        res = adapter.register(capture_id, [f.register_entry() for f in chunk])
-        last = res
-        if res.error:
-            status = Status.BLOCKED
-            batches.append(step_view(res))
-            break
-        dec = (
-            decode_register(res.parsed, [f.path for f in chunk], declared) if is_2xx(res) else None
-        )
-        batches.append(step_view(res, dec))
-        if dec is None:
-            status = Status.FAIL
-            break
-        violations += [v for v in dec.violations if v not in violations]
-        targets.update(dec.data["targets"])
-        committed_at_register.update(dec.data["committed"])
-        if not dec.ok:
-            status = Status.FAIL
+    reg = register_round(adapter, capture_id, plan.files, size, declared)
+    # A file the server already holds (a replayed or resumed capture) comes
+    # back committed and is neither uploaded nor committed again.
+    at_register = sorted(reg.committed)
     record(
         sink,
         transport,
         "lifecycle.register",
-        status,
-        {"batches": batches, "violations": violations},
-        last.observation,
+        reg.status,
+        {"batches": reg.batches, "violations": reg.violations},
+        reg.last.observation if reg.last is not None else None,
     )
-    if status is not Status.PASS:
-        return stop("lifecycle.register", _skip_note(status))
+    if reg.status is not Status.PASS:
+        return stop("lifecycle.register", _skip_note(reg.status))
 
     # -- upload: each file to its own target, exactly the signed headers -------
     uploads: list[dict] = []
@@ -156,9 +132,9 @@ def run_lifecycle(
     status = Status.PASS
     last = None
     for f in plan.files:
-        if f.path in committed_at_register:
+        if f.path in reg.committed:
             continue
-        target = targets[f.path]
+        target = reg.targets[f.path]
         res = adapter.upload(target["url"], f.content, target["headers"])
         last = res
         uploads.append({"path": f.path, **res.public()})
@@ -173,44 +149,19 @@ def run_lifecycle(
         transport,
         "lifecycle.upload",
         status,
-        {"uploads": uploads},
+        {"uploads": uploads, "committed_at_register": at_register},
         last.observation if last is not None else None,
     )
     if status is not Status.PASS:
         return stop("lifecycle.upload", _skip_note(status))
 
     # -- commit: exactly the uploaded set comes back committed ------------------
-    to_commit = [f for f in plan.files if f.path in uploaded]
-    batches = []
-    violations = []
-    committed: set[str] = set(committed_at_register)
-    status = Status.PASS
-    last = None
-    for start in range(0, len(to_commit), batch):
-        chunk = to_commit[start : start + batch]
-        requested = [f.path for f in chunk]
-        res = adapter.commit(capture_id, [f.commit_entry() for f in chunk])
-        last = res
-        if res.error:
-            status = Status.BLOCKED
-            batches.append(step_view(res))
-            break
-        dec = decode_commit(res.parsed, requested, declared) if is_2xx(res) else None
-        batches.append(step_view(res, dec))
-        if dec is None:
-            status = Status.FAIL
-            break
-        violations += [v for v in dec.violations if v not in violations]
-        exact = (
-            dec.ok
-            and set(dec.data["committed"]) == set(requested)
-            and not dec.data["notFound"]
-            and not dec.data["mismatch"]
-        )
-        committed.update(p for p in dec.data["committed"] if p in requested)
-        if not exact:
-            status = Status.FAIL
-    if status is Status.PASS and committed != declared:
+    com = commit_round(
+        adapter, capture_id, [f for f in plan.files if f.path in uploaded], size, declared
+    )
+    committed = reg.committed | com.committed
+    status = com.status
+    if status is Status.PASS and (not com.exact or committed != declared):
         status = Status.FAIL
     record(
         sink,
@@ -218,12 +169,13 @@ def run_lifecycle(
         "lifecycle.commit",
         status,
         {
-            "batches": batches,
-            "violations": violations,
+            "batches": com.batches,
+            "violations": com.violations,
+            "committed_at_register": at_register,
             "committed_total": len(committed),
             "declared": len(declared),
         },
-        last.observation if last is not None else None,
+        com.last.observation if com.last is not None else None,
     )
     if status is not Status.PASS:
         return stop("lifecycle.commit", _skip_note(status))
@@ -231,8 +183,8 @@ def run_lifecycle(
     # -- finalize ----------------------------------------------------------------
     res = adapter.finalize(capture_id, plan.packet, plan.packet_id)
     if res.error:
-        record(sink, transport, "lifecycle.finalize", Status.BLOCKED, step_view(res))
-        return stop("lifecycle.finalize", "skipped-after-blocked-step")
+        record(sink, transport, "lifecycle.finalize", error_status(res), step_view(res))
+        return stop("lifecycle.finalize", _skip_note(error_status(res)))
     dec = decode_finalize(res.parsed, declared) if is_2xx(res) else None
     run_id = dec.data["runId"] if dec is not None and dec.ok and dec.data["missing"] == [] else None
     status = Status.PASS if run_id else Status.FAIL
@@ -255,7 +207,7 @@ def run_lifecycle(
         res = adapter.events(capture_id, cursor, events_wait_s)
         answers += 1
         if res.error:
-            status, view = Status.BLOCKED, step_view(res)
+            status, view = error_status(res), step_view(res)
             break
         last_obs = res.observation
         dec = decode_events(res.parsed, after=cursor, run_id=run_id) if is_2xx(res) else None
@@ -274,7 +226,7 @@ def run_lifecycle(
             again = adapter.finalize(capture_id, plan.packet, plan.packet_id)
             fdec = decode_finalize(again.parsed, declared) if is_2xx(again) else None
             if again.error:
-                status, view = Status.BLOCKED, step_view(again)
+                status, view = error_status(again), step_view(again)
                 break
             if fdec is None or not fdec.ok:
                 status, view = Status.FAIL, step_view(again, fdec)
@@ -303,7 +255,7 @@ def run_lifecycle(
     while True:
         res = adapter.result(capture_id)
         if res.error:
-            record(sink, transport, "lifecycle.result", Status.BLOCKED, step_view(res))
+            record(sink, transport, "lifecycle.result", error_status(res), step_view(res))
             return outcome
         if res.http_status == 404 and "result_not_ready" in decode_errors(res.parsed).data["codes"]:
             ready = False

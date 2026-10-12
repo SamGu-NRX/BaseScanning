@@ -24,7 +24,7 @@ from .fakeapi import FakeApi
 from .fixturegen import write_plan
 from .modes import Status, Transport
 from .runner import run
-from .scenarios.oracles import GPU, ORACLES
+from .scenarios.oracles import GPU, ORACLES, RETIRED
 from .verify import verify_run
 
 
@@ -67,6 +67,8 @@ def selfcheck(out_root: Path) -> list[str]:
     lines = [json.loads(line) for line in (run_dir / "checks.jsonl").read_text().splitlines()]
     seen = {line["id"]: line for line in lines}
     for check_id in ORACLES:
+        if check_id in RETIRED:
+            continue
         if check_id == "harness.internal-error":
             if check_id in seen:
                 problems.append("harness raised an internal error")

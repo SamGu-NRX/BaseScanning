@@ -16,11 +16,11 @@ Exit 0 when nothing was found, 5 otherwise, 2 for a usage error.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
 from .export import (
+    ExportContext,
     ExportError,
     validate_check_line,
     validate_manifest,
@@ -33,44 +33,82 @@ from .receipts import (
     SCREEN_FILE,
     SUMMARY,
     context_for,
+    read_json,
     verify_run_integrity,
 )
 from .runner import FLAG_KINDS
 from .sanitize import screen_artifact
 
 
+def _context(manifest: object) -> ExportContext | None:
+    """The paths and packet ids the manifest's own fixture declares, if well formed."""
+    if not isinstance(manifest, dict):
+        return None
+    fixture = manifest.get("fixture")
+    run_id = manifest.get("run_id")
+    if not isinstance(fixture, dict) or not isinstance(run_id, str):
+        return None
+    files = fixture.get("files")
+    packet_id = fixture.get("packet_id")
+    if not isinstance(files, list) or not isinstance(packet_id, str):
+        return None
+    paths = [f.get("path") for f in files if isinstance(f, dict)]
+    if len(paths) != len(files) or not all(isinstance(path, str) for path in paths):
+        return None
+    try:
+        return context_for(frozenset(paths), packet_id, run_id[:8])
+    except ExportError:
+        return None
+
+
+def _schema(problems: list[str], name: str, check) -> None:
+    try:
+        check()
+    except ExportError as exc:
+        problems.append(f"{name}: schema {exc.category}")
+    except (KeyError, TypeError, AttributeError):
+        problems.append(f"{name}: schema malformed")
+
+
 def verify_run(run_dir: Path) -> list[str]:
     problems = list(verify_run_integrity(run_dir))
-    try:
-        manifest = json.loads((run_dir / MANIFEST).read_text(encoding="utf-8"))
-        fixture = manifest["fixture"]
-        ctx = context_for(frozenset(f["path"] for f in fixture["files"]), fixture["packet_id"])
-        validate_manifest(manifest, ctx, FLAG_KINDS)
-        for lineno, line in enumerate(
-            (run_dir / CHECKS).read_text(encoding="utf-8").splitlines(), 1
-        ):
-            try:
-                validate_check_line(json.loads(line), ctx)
-            except (json.JSONDecodeError, ExportError) as exc:
-                category = exc.category if isinstance(exc, ExportError) else "not-json"
-                problems.append(f"{CHECKS}:{lineno}: schema {category}")
-        validate_summary(json.loads((run_dir / SUMMARY).read_text(encoding="utf-8")), ctx)
-        screen = json.loads((run_dir / SCREEN_FILE).read_text(encoding="utf-8"))
-        validate_screen(screen, ctx)
-        if screen.get("clean") is not True:
-            problems.append(f"{SCREEN_FILE}: recorded findings")
-    except FileNotFoundError:
-        problems.append("run-dir: cannot validate with a missing artifact")
-    except (json.JSONDecodeError, KeyError, TypeError):
-        problems.append("run-dir: an artifact is not in the expected format")
-    except ExportError as exc:
-        problems.append(f"{exc.artifact}{exc.pointer}: schema {exc.category}")
+    manifest, problem = read_json(run_dir / MANIFEST)
+    ctx = None if problem else _context(manifest)
+    if problem:
+        problems.append(f"{MANIFEST}: {problem}")
+    elif ctx is None:
+        problems.append(f"{MANIFEST}: fixture is not in the expected format")
+    if ctx is not None:
+        _schema(problems, MANIFEST, lambda: validate_manifest(manifest, ctx, FLAG_KINDS))
+        lines, problem = read_json(run_dir / CHECKS, lines=True)
+        if problem:
+            problems.append(f"{CHECKS}: {problem}")
+        else:
+            for lineno, line in enumerate(lines, 1):
+                _schema(
+                    problems, f"{CHECKS}:{lineno}", lambda line=line: validate_check_line(line, ctx)
+                )
+        summary, problem = read_json(run_dir / SUMMARY)
+        if problem:
+            problems.append(f"{SUMMARY}: {problem}")
+        else:
+            _schema(problems, SUMMARY, lambda: validate_summary(summary, ctx))
+        screen, problem = read_json(run_dir / SCREEN_FILE)
+        if problem:
+            problems.append(f"{SCREEN_FILE}: {problem}")
+        else:
+            _schema(problems, SCREEN_FILE, lambda: validate_screen(screen, ctx))
+            if not isinstance(screen, dict) or screen.get("clean") is not True:
+                problems.append(f"{SCREEN_FILE}: recorded findings")
     for name in (MANIFEST, CHECKS, SUMMARY):
-        if (run_dir / name).exists():
-            problems.extend(
-                f"rescreen {finding}" for finding in screen_artifact(str(run_dir / name))
-            )
-    return problems
+        path = run_dir / name
+        try:
+            findings = screen_artifact(str(path)) if path.exists() else []
+        except OSError:
+            findings = [f"{name}: unreadable"]
+        problems.extend(f"rescreen {finding}" for finding in findings)
+    # one problem may be reached two ways; report it once, in order
+    return list(dict.fromkeys(problems))
 
 
 def main() -> int:

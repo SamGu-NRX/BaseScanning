@@ -105,6 +105,17 @@ FAULTS: dict[str, tuple[str, str]] = {
 }
 
 TRACE: dict[str, tuple[str, str]] = {
+    "trace.expected-lifecycle-v3": (
+        "frozen expected trace traces/expected-lifecycle-v3.jsonl, written from the "
+        "published contract, with a no-request branch for files committed at register",
+        "every traced check present and PASS with the traced status class and fields, or "
+        "upload and commit skipped because register reported every declared file committed",
+    ),
+}
+
+# Ids an earlier version emitted. Kept so receipts written then still verify;
+# this version never emits them.
+RETIRED: dict[str, tuple[str, str]] = {
     "trace.expected-lifecycle-v2": (
         "frozen expected trace traces/expected-lifecycle-v2.jsonl, written from the "
         "published contract",
@@ -136,6 +147,7 @@ ORACLES: dict[str, tuple[str, str]] = {
     **CONTROLS,
     **FAULTS,
     **TRACE,
+    **RETIRED,
     **GPU,
     **HARNESS,
 }

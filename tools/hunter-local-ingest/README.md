@@ -48,9 +48,26 @@ which outranks the others.
   evidence about a backend.
 - `GPU_STUB`: the `objects`, `vlm` and `dense` arms, named and always NOT_RUN.
 
-BLOCKED means the check could not be decided, and NOT_RUN means it was
-deliberately skipped. Neither counts as a pass, and the frozen-trace check
-reports such rows as not comparable rather than agreeing.
+BLOCKED means the check got no answer or depends on a step that did not
+complete, and NOT_RUN means it was deliberately skipped. Neither counts as a
+pass, and the frozen-trace check reports such rows as not comparable rather
+than agreeing. A request the client refuses to send (see below) is FAIL.
+
+## What the client refuses
+
+Every API request's final URL passes the published scope rule
+(`ScopedCaptureHTTP`) before any header, token or connection: same scheme,
+host and port as the base, under its path, with no dot segment and no
+encoded `/`, `\` or `.`. A server-minted capture id such as `../outside`
+therefore becomes a refused request (`auth_destination_refused`), and
+nothing is sent. Storage PUTs use their own rule: https, or http to an exact
+loopback host, with exactly the signed headers and never `Authorization`.
+
+Register and commit go in batches of `min(10, upload.maxBatch)`, the
+published uploader's limit, in the lifecycle and in the tamper controls
+alike. When register reports a file already committed (a replayed or resumed
+capture), the client neither uploads nor commits it again, and both checks
+record that committed-at-register set explicitly.
 
 ## The synthetic plan
 
@@ -60,8 +77,9 @@ published `CreateRequest`, and a Packet04 packet whose `source.kind` is
 The runner's loader (`plan.py`) refuses any plan whose digests do not
 recompute from the bytes it read, whose paths are not the generator's, or
 whose create body or packet differ from the published shapes. Each control
-and fault check uses its own derived packet id, so none of them can land on
-the baseline capture.
+and fault check uses its own derived packet id carrying this run's id, so
+none of them can land on the baseline capture, and a rerun against the same
+server opens fresh control captures while the baseline is a true replay.
 
 ## Receipts
 
@@ -95,7 +113,9 @@ What the integrity check proves: the chain, the read-only modes and
 byte, a broken link, a writable, extra or missing file. They do not stop the
 directory's owner from rewriting a file, recomputing the chain and sealing
 it again. The chain head is printed when the run ends; recording it
-somewhere the run cannot write is the only anchor.
+somewhere the run cannot write is the only anchor. A file `hunter-verify-run`
+cannot read, decode or parse, or one of the wrong JSON shape, is reported by
+file name and category with exit 5; its content is never printed.
 
 ## Layout
 
@@ -106,7 +126,7 @@ somewhere the run cannot write is the only anchor.
 | `http_client.py` | the client: transient retries, API-only credential, exact signed PUT headers |
 | `scenarios/` | lifecycle, controls, fault round; the only place PASS/FAIL is decided |
 | `scenarios/oracles.py` | every check id with its oracle and expectation |
-| `traces/` | frozen expectations; v2 is current, v1 is kept unedited |
+| `traces/` | frozen expectations; v3 is current (v2 plus the committed-at-register branch); v1 and v2 are kept unedited |
 | `export.py`, `receipts.py`, `verify.py` | schemas, writing and sealing, independent re-check |
 | `fakeapi.py`, `faultproxy.py` | FAKE_HUNTER plumbing with knobs to misbehave |
 | `provenance.py` | source digest, git state, runtime |
