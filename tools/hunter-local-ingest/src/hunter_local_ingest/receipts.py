@@ -40,7 +40,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .modes import Status, Transport
-from .sanitize import redact_text, screen_artifact
+from .sanitize import redact_command, redact_text, screen_artifact
 
 RUN_ARTIFACTS = ("run-manifest.json", "checks.jsonl", "summary.json")
 CHAIN_FILE = "privacy-chain.jsonl"
@@ -195,7 +195,7 @@ def write_run_manifest(
     adapter_interface: str,
     fixture_identity: str,
     seed: int,
-    commands: list[str],
+    commands: list[list[str] | str],
     label: str,
     origin_note: str,
 ) -> None:
@@ -210,9 +210,14 @@ def write_run_manifest(
         "adapter_interface": redact_text(adapter_interface),
         "fixture_identity": redact_text(fixture_identity),
         "seed": seed,
-        # the caller's command lines, screened through the same redaction as
-        # every artifact (credential flag values, URL material, endpoints)
-        "commands": [redact_text(command) for command in commands],
+        # the caller's command lines. A structured argv list passes the
+        # redact_command boundary (credential flag values become *** in both
+        # argument forms); a pre-joined string passes the same free-text
+        # redaction as every artifact.
+        "commands": [
+            redact_command(item) if isinstance(item, list) else redact_text(item)
+            for item in commands
+        ],
         "runtime": {
             "python": sys.version.split()[0],
             "platform": platform.platform(),
@@ -270,11 +275,19 @@ def seal_run(run_dir: Path) -> None:
 
 
 def verify_run_integrity(run_dir: Path) -> list[str]:
-    """Replay the receipt digest chain; empty list = intact run dir."""
+    """Replay the receipt digest chain; empty list = intact run dir.
+
+    Mandatory receipt artifacts must exist even when the chain carries no
+    entry for them: absence of evidence is named, never silently green.
+    """
+    problems: list[str] = []
+    for name in RUN_ARTIFACTS:
+        if not (run_dir / name).exists():
+            problems.append(f"{name}: missing mandatory receipt artifact")
     chain_path = run_dir / CHAIN_FILE
     if not chain_path.exists():
-        return [f"missing {CHAIN_FILE}"]
-    problems: list[str] = []
+        problems.append(f"missing {CHAIN_FILE}")
+        return problems
     prev = ""
     latest: dict[str, dict] = {}
     for lineno, line in enumerate(
@@ -296,7 +309,7 @@ def verify_run_integrity(run_dir: Path) -> list[str]:
     for name in (*RUN_ARTIFACTS, CHAIN_FILE, SCREEN_FILE):
         path = run_dir / name
         if not path.exists():
-            if name in latest or name == CHAIN_FILE:
+            if name in latest:
                 problems.append(f"{name}: chained but missing")
             continue
         if name not in latest and name != CHAIN_FILE:
@@ -360,9 +373,15 @@ def write_summary(
     for name in (*RUN_ARTIFACTS, SCREEN_FILE):
         path = run_dir / name
         if not path.exists():
+            if name in RUN_ARTIFACTS:
+                # A missing mandatory receipt is named and non-green —
+                # never silently skipped.
+                findings.append(f"{name}: missing mandatory receipt artifact")
             continue
         screened.append(name)
         findings.extend(screen_artifact(str(path)))
+        if name == "checks.jsonl" and path.stat().st_size == 0:
+            findings.append(f"{name}: empty (no checks recorded)")
     screen_record = {
         "finished_utc": utc_now_iso(),
         "screened": screened,

@@ -558,7 +558,13 @@ def test_verify_detects_tamper_and_missing_chain(tmp_path):
 
     empty = tmp_path.parent / "empty-run"
     empty.mkdir()
-    assert verify_run_integrity(empty) == [f"missing {CHAIN_FILE}"]
+    problems = verify_run_integrity(empty)
+    # CE4: an empty run dir is named, not just its absent chain.
+    assert f"missing {CHAIN_FILE}" in problems
+    assert any(
+        "run-manifest.json: missing mandatory receipt artifact" in p for p in problems
+    )
+    assert any("checks.jsonl: missing mandatory receipt artifact" in p for p in problems)
 
 
 def test_failure_output_helper(tmp_path):

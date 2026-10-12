@@ -38,6 +38,7 @@ never echo matched material -- only category, file, and line.
 
 from __future__ import annotations
 
+import ipaddress
 import re
 import shlex
 import urllib.parse
@@ -109,7 +110,7 @@ _NON_URL_PATTERNS: list[tuple[str, re.Pattern[str], int | None]] = [
         re.compile(
             r"(?i)[\"']?(?:api[-_]?key|api[-_]?secret|access[-_]?token|"
             r"refresh[-_]?token|client[-_]?secret|secret|password|passwd|"
-            r"passphrase|token|credentials?|authorization|"
+            r"passphrase|token|credentials?|authorization|bearer|"
             r"(?:x[-_])?[a-z0-9-]*signature|(?:x[-_])?auth[-_]?token)"
             r"[\"']?\s*[:=]\s*[\"']?([^\s\"',;}&<>\\]{4,})"
         ),
@@ -117,11 +118,15 @@ _NON_URL_PATTERNS: list[tuple[str, re.Pattern[str], int | None]] = [
     ),
     (
         "credential-kv",
+        # A CLI flag and its value, in separated form. The literal "--" is
+        # required: prose like "which credential form does the backend
+        # expect" must not trip the screen, while "--token <value>" must.
         re.compile(
-            r"(?i)(?:^|[\s'\"])(?:--)?(?:api[-_]?key|access[-_]?token|"
-            r"auth[-_]?token|bearer[-_]?token|api[-_]?token|secret[-_]?key|"
-            r"password|passwd)\b\s+"
-            r"[\"']?([^\s\"',;}&<>\\]{4,})"
+            r"(?i)(?:^|[\s'\"])--(?:api[-_]?key|api[-_]?secret|"
+            r"access[-_]?token|auth[-_]?token|bearer[-_]?token|api[-_]?token|"
+            r"secret[-_]?key|client[-_]?secret|refresh[-_]?token|passphrase|"
+            r"credentials?|authorization|bearer|password|passwd|secret|token)"
+            r"\b\s+[\"']?([^\s\"',;}&<>\\]{4,})"
         ),
         1,
     ),
@@ -196,12 +201,19 @@ def _unfold(line: str) -> str:
 
 
 def _is_loopback_host(host: str) -> bool:
-    host = (host or "").lower().strip("[]")
-    return (
-        host in {"127.0.0.1", "::1", "localhost"}
-        or host.startswith("127.")
-        or host.endswith(".localhost")
-    )
+    """One strict loopback policy: parse, never string-prefix.
+
+    A ``127.`` prefix test admits lookalikes like ``127.0.0.1.evil.com``;
+    the host must parse as a loopback address or be the localhost name.
+    Shared by endpoint, command and failure screening.
+    """
+    name = (host or "").lower().strip("[]").rstrip(".")
+    if name == "localhost" or name.endswith(".localhost"):
+        return True
+    try:
+        return ipaddress.ip_address(name).is_loopback
+    except ValueError:
+        return False
 
 
 def _classify_url(url: str) -> str | None:
