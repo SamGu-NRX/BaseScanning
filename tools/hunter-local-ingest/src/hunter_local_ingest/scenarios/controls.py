@@ -123,7 +123,18 @@ def _integrity(
             # storage refused a file whose bytes match their digest
             stop(Status.FAIL, {"step": "upload", **step_view(put)})
             return
-    com = commit_round(adapter, capture_id, plan.files, size, declared)
+
+    def batch_ok(requested: list[str], dec) -> bool:
+        """The victim may be refused but never committed; every intact file
+        in the batch must be committed and never also refused or missing."""
+        committed = set(dec.data["committed"])
+        refused = set(dec.data["mismatch"]) | set(dec.data["notFound"])
+        intact = [p for p in requested if p != victim.path]
+        return victim.path not in committed and all(
+            p in committed and p not in refused for p in intact
+        )
+
+    com = commit_round(adapter, capture_id, plan.files, size, declared, accept=batch_ok)
     if com.status is Status.BLOCKED:
         stop(Status.BLOCKED, {"step": "commit", "batches": com.batches})
         return

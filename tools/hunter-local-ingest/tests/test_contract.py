@@ -5,6 +5,8 @@ Each case states one published rule and the single result it allows.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from hunter_local_ingest import contract
@@ -526,7 +528,8 @@ INT64_MAX, INT64_MIN = 2**63 - 1, -(2**63)
         (INT64_MIN - 1, False),
         (True, False),
         (False, False),
-        (5.0, False),
+        (5.0, True),  # Foundation JSONDecoder: 5.0 -> 5
+        (float(2**53 + 2), False),  # a Python float this large may already be rounded
         (1.5, False),
         ("5", False),
         (None, False),
@@ -556,7 +559,22 @@ def test_events_accept_any_int64_cursor_and_record_it_without_overflowing(cursor
     assert dec.public["events"][0]["seq"].startswith("large-int:")
 
 
-@pytest.mark.parametrize("cursor", [str(INT64_MAX + 1), "1e3", "5.0", "true", '"5"', "-1"])
+@pytest.mark.parametrize(
+    "cursor",
+    [
+        str(INT64_MAX + 1),
+        "9223372036854775808.0",
+        "9223372036854775807.0",  # Foundation refuses: range-checked as a Double
+        "5.1",
+        "1.0000000000000000001",
+        "1e400",
+        "NaN",
+        "Infinity",
+        "true",
+        '"5"',
+        "-1",
+    ],
+)
 def test_events_reject_a_cursor_swift_cannot_decode_or_the_contract_forbids(cursor):
     assert (
         "type:next"
@@ -588,3 +606,57 @@ def test_finalize_eta_and_create_batch_accept_int64():
             {"captureId": "c", "status": "uploading", "upload": {"maxFiles": INT64_MAX + 1}}
         ).violations
     )
+
+
+# Expected results recorded from Foundation's JSONDecoder decoding Int (the
+# reviewer's independent oracle, re-run here with /usr/bin/swift; see the PR):
+# integral decimal and exponent spellings decode, exactly. Foundation also
+# decodes "1.0000000000000000001" as 1 by rounding; the harness refuses that
+# non-integral value on purpose (it is in the reject list above).
+FOUNDATION_INT = [
+    ("5.0", 5),
+    ("1e3", 1000),
+    ("4611686018427387905.0", 4611686018427387905),
+    ("-0.0", 0),
+]
+
+
+@pytest.mark.parametrize("literal, expected", FOUNDATION_INT)
+def test_events_decode_integral_decimal_literals_exactly(literal, expected):
+    dec = decode_events(parse_body(_events_body(literal, literal)), after=-1, run_id="r1")
+    assert dec.ok, dec.violations
+    assert dec.data["next"] == expected and type(dec.data["next"]) is int
+
+
+def test_parse_body_keeps_decimal_literals_exact_and_never_exports_them():
+    from decimal import Decimal
+
+    parsed = parse_body(b'{"next": 4611686018427387905.0, "x": 0.1}')
+    assert parsed["next"] == Decimal("4611686018427387905.0")
+    assert parsed["x"] == Decimal("0.1")
+    dec = decode_events(
+        parse_body(_events_body("4611686018427387905.0", "4611686018427387905.0")),
+        after=0,
+        run_id="r1",
+    )
+    # the public view holds only ints, words and digests: never a Decimal
+    assert "Decimal" not in repr(dec.public)
+    json.dumps(dec.public)
+
+
+def test_other_int_fields_accept_integral_decimals():
+    create = decode_create(
+        parse_body(
+            b'{"captureId": "c", "status": "uploading",'
+            b' "upload": {"maxBatch": 2.0, "urlTtlS": 6e2}}'
+        )
+    )
+    assert create.ok and create.data["maxBatch"] == 2 and type(create.data["maxBatch"]) is int
+    fin = decode_finalize(
+        parse_body(b'{"status": "processing", "missing": [], "runId": "r", "etaS": 30.0}'), DECLARED
+    )
+    assert fin.ok and fin.public["etaS"] == 30
+    bad = decode_finalize(
+        parse_body(b'{"status": "processing", "missing": [], "runId": "r", "etaS": 30.5}'), DECLARED
+    )
+    assert "type:etaS" in bad.violations

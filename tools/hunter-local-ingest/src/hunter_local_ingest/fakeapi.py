@@ -17,6 +17,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import re
 import threading
 import urllib.parse
 import uuid
@@ -84,6 +85,13 @@ class FakeConfig:
     # added to the first event's seq and next: a valid Swift Int cursor
     # past the 2**53 a receipt can hold as a plain number
     cursor_offset: int = 0
+    # write event seq/next as decimal literals ("12.0"), which JSONDecoder
+    # still decodes as Int
+    cursor_decimal_text: bool = False
+    # report this stored, matching path as notFound instead of committed
+    commit_not_found_path: str | None = None
+    # leave this path out of all three commit lists
+    commit_omit_path: str | None = None
 
 
 class FakeState:
@@ -121,7 +129,10 @@ def _handler(state: FakeState, base_holder: dict):
         def _send(self, status: int, payload: dict | None) -> None:
             if payload is not None and cfg.canary:
                 payload = {**payload, f"{cfg.canary}-key": cfg.canary}
-            body = b"" if payload is None else json.dumps(payload, sort_keys=True).encode()
+            text = "" if payload is None else json.dumps(payload, sort_keys=True)
+            if cfg.cursor_decimal_text and payload is not None and "events" in payload:
+                text = re.sub(r'"(next|seq)": (-?[0-9]+)', r'"\1": \2.0', text)
+            body = text.encode()
             self.send_response(status)
             if payload is not None:
                 self.send_header("Content-Type", "application/json")
@@ -359,6 +370,11 @@ def _handler(state: FakeState, base_holder: dict):
                     cap["committed"].add(f["path"])
                 else:
                     mismatch.append(f["path"])
+            if cfg.commit_omit_path in committed:
+                committed.remove(cfg.commit_omit_path)
+            if cfg.commit_not_found_path in committed:
+                committed.remove(cfg.commit_not_found_path)
+                not_found.append(cfg.commit_not_found_path)
             if cfg.commit_contradict_path in committed:
                 mismatch.append(cfg.commit_contradict_path)
             if cfg.commit_extra_path:

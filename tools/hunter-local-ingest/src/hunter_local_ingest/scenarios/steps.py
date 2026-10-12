@@ -9,6 +9,7 @@ batch size sees the same requests from a control as from the lifecycle.
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Callable
 
 from ..adapter import CLIENT_REFUSALS, StepResult
 from ..contract import decode_commit, decode_register
@@ -85,7 +86,31 @@ def register_round(adapter, capture_id: str, files, size: int, declared: frozens
     return out
 
 
-def commit_round(adapter, capture_id: str, files, size: int, declared: frozenset[str]) -> Round:
+def exact_commit(requested: list[str], dec) -> bool:
+    """The lifecycle's batch check: every requested path committed, none refused."""
+    return (
+        set(dec.data["committed"]) == set(requested)
+        and not dec.data["notFound"]
+        and not dec.data["mismatch"]
+    )
+
+
+def commit_round(
+    adapter,
+    capture_id: str,
+    files,
+    size: int,
+    declared: frozenset[str],
+    accept: Callable[[list[str], object], bool] = exact_commit,
+) -> Round:
+    """Commit in batches; ``accept(requested, decoded)`` judges each answer.
+
+    The scenario supplies ``accept``, because what a valid answer may say
+    depends on it: the lifecycle needs every path committed, a tamper
+    control expects its victim refused. The first answer that is invalid or
+    that ``accept`` rejects ends the round as FAIL, and no later batch is
+    sent, so a later batch with no answer cannot turn it into BLOCKED.
+    """
     out = Round()
     for chunk in _chunks(files, size):
         requested = [f.path for f in chunk]
@@ -105,16 +130,9 @@ def commit_round(adapter, capture_id: str, files, size: int, declared: frozenset
         out.committed.update(p for p in dec.data["committed"] if p in requested)
         out.not_found.update(dec.data["notFound"])
         out.mismatch.update(dec.data["mismatch"])
-        exact = (
-            dec.ok
-            and set(dec.data["committed"]) == set(requested)
-            and not dec.data["notFound"]
-            and not dec.data["mismatch"]
-        )
-        if not exact:
+        if not (dec.ok and exact_commit(requested, dec)):
             out.exact = False
-        if not dec.ok:
-            # An invalid answer decides the round; later batches are not sent.
+        if not dec.ok or not accept(requested, dec):
             out.settle(Status.FAIL)
             return out
     return out

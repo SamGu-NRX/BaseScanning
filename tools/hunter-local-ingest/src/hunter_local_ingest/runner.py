@@ -102,7 +102,7 @@ def _bounded(kind, low, high):
 
 def _pattern(regex: re.Pattern[str]):
     def parse(text: str) -> str:
-        if not regex.match(text):
+        if not regex.fullmatch(text):
             raise argparse.ArgumentTypeError("invalid")
         return text
 

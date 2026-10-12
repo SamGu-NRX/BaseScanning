@@ -127,7 +127,7 @@ class CapturePlan:
         )
 
     def for_run(self, run_id: str) -> CapturePlan:
-        if not _NONCE_RE.match(run_id[:8]):
+        if not _NONCE_RE.fullmatch(run_id[:8]):
             raise ValueError("run id must start with 8 hex characters")
         return dataclasses.replace(self, nonce=run_id[:8])
 
@@ -207,7 +207,7 @@ def load_plan(path: Path, expected_seed: int | None = None) -> LoadedPlan:
         _need(seed == expected_seed, "generator.seed", "differs from --seed")
     recorded = generator["sha256_of_plan"]
     _need(
-        isinstance(recorded, str) and bool(_HEX64_RE.match(recorded)),
+        isinstance(recorded, str) and bool(_HEX64_RE.fullmatch(recorded)),
         "generator.sha256_of_plan",
         "not a digest",
     )
@@ -224,7 +224,7 @@ def load_plan(path: Path, expected_seed: int | None = None) -> LoadedPlan:
     )
     packet_id = body["packet_id"]
     _need(
-        isinstance(packet_id, str) and bool(PACKET_ID_RE.match(packet_id)),
+        isinstance(packet_id, str) and bool(PACKET_ID_RE.fullmatch(packet_id)),
         "plan.packet_id",
         "not a synthetic packet id",
     )
@@ -248,7 +248,7 @@ def load_plan(path: Path, expected_seed: int | None = None) -> LoadedPlan:
     )
     for key, value in device.items():
         _need(
-            isinstance(value, str) and bool(_DEVICE_TEXT_RE.match(value)),
+            isinstance(value, str) and bool(_DEVICE_TEXT_RE.fullmatch(value)),
             f"plan.create_request.device.{key}",
             "not synthetic device text",
         )
@@ -268,7 +268,7 @@ def load_plan(path: Path, expected_seed: int | None = None) -> LoadedPlan:
         )
         fpath = entry["path"]
         _need(
-            isinstance(fpath, str) and bool(PATH_RE.match(fpath)),
+            isinstance(fpath, str) and bool(PATH_RE.fullmatch(fpath)),
             f"{field}.path",
             "not a generator path",
         )

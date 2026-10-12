@@ -24,8 +24,10 @@ from .observations import Observation, transport_error
 
 _JSON = "application/json"
 
-# RFC 6750 b64token, as ScopedCaptureHTTP.isBearerToken checks it.
-_BEARER_RE = re.compile(r"^[A-Za-z0-9\-._~+/]+=*$")
+# RFC 6750 b64token, as ScopedCaptureHTTP.isBearerToken checks it, matched
+# against the WHOLE token: ``re.match`` with ``$`` would also accept a token
+# followed by a newline, which could end or add a header.
+_BEARER_RE = re.compile(r"[A-Za-z0-9\-._~+/]+=*")
 
 # The only place a capture-API credential is read from, and only when the
 # operator passes --api-token-env. A secret manager should put it into the
@@ -115,7 +117,7 @@ class DirectHttpClient:
         api_token: str | None = None,
     ) -> None:
         self._base: ApiBase = parse_api_base(base_url)
-        if api_token is not None and not _BEARER_RE.match(api_token):
+        if api_token is not None and not _BEARER_RE.fullmatch(api_token):
             raise EndpointError("auth_credential_malformed")
         self._token = api_token
         self._timeout_s = timeout_s

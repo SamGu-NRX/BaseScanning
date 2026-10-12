@@ -30,6 +30,7 @@ import dataclasses
 import hashlib
 import json
 import math
+from decimal import Decimal
 
 from .netpolicy import upload_url_problem
 
@@ -204,17 +205,43 @@ def is_int(value: object) -> bool:
 _INT64_MIN, _INT64_MAX = -(2**63), 2**63 - 1
 
 
-def is_swift_int(value: object) -> bool:
-    """A JSON integer JSONDecoder can decode as a Swift Int (64-bit).
+def swift_int(value: object) -> int | None:
+    """The exact integer JSONDecoder would decode as a Swift Int, or None.
 
-    Decoding follows Swift, not the receipt: a cursor of 2**62 is valid.
-    A bool, a float spelling (5.0, 1e3) and anything outside 64 bits are not.
+    Foundation decodes Int from the number's value, not its spelling: 5,
+    5.0 and 1e3 all decode (to 5, 5 and 1000), as does
+    4611686018427387905.0, exactly. One recorded difference: Foundation
+    decodes 1.0000000000000000001 as 1 by rounding; the harness refuses it,
+    because the value is not an integer. ``parse_body`` keeps decimal literals as
+    exact ``Decimal`` values for this reason; a Python float can stand in
+    only below 2**53, where it is exact. A bool, a non-integral value (5.1),
+    NaN, infinity and anything outside 64 bits are refused.
     """
-    return (
-        isinstance(value, int)
-        and not isinstance(value, bool)
-        and (_INT64_MIN <= value <= _INT64_MAX)
-    )
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        exact = value
+    elif isinstance(value, Decimal):
+        if not value.is_finite() or value != value.to_integral_value():
+            return None
+        # Recorded Foundation behavior: a decimal or exponent spelling is
+        # range-checked through a Double, so 9223372036854775807.0 (2**63 as a
+        # Double) is refused while 4611686018427387905.0 decodes exactly. The
+        # harness is never more lenient than the app.
+        if not (_INT64_MIN <= value <= _INT64_MAX) or not (-(2.0**63) <= float(value) < 2.0**63):
+            return None
+        exact = int(value)
+    elif isinstance(value, float):
+        if not math.isfinite(value) or not value.is_integer() or abs(value) >= 2**53:
+            return None
+        exact = int(value)
+    else:
+        return None
+    return exact if _INT64_MIN <= exact <= _INT64_MAX else None
+
+
+def is_swift_int(value: object) -> bool:
+    return swift_int(value) is not None
 
 
 def pub_int(value: int) -> int | str:
@@ -260,7 +287,9 @@ def parse_body(body: bytes | None) -> object:
     if not body:
         return EMPTY
     try:
-        return json.loads(body.decode("utf-8"))
+        # Decimal literals stay exact (see swift_int); they never leave the
+        # decoders, whose public views hold only ints, words and digests.
+        return json.loads(body.decode("utf-8"), parse_float=Decimal)
     except (UnicodeDecodeError, json.JSONDecodeError, RecursionError):
         return NOT_JSON
 
@@ -373,11 +402,14 @@ def decode_create(parsed: object) -> Decoded:
                 out.add("type", "upload")
             else:
                 for key in _LIMIT_KEYS & limits.keys():
-                    value = limits[key]
-                    if value is not None and not (is_swift_int(value) and value >= 0):
+                    if limits[key] is None:
+                        continue
+                    exact = swift_int(limits[key])
+                    if exact is None or exact < 0:
                         out.add("type", "upload")
-                if is_swift_int(limits.get("maxBatch")) and limits["maxBatch"] > 0:
-                    max_batch = limits["maxBatch"]
+                batch_value = swift_int(limits.get("maxBatch"))
+                if batch_value is not None and batch_value > 0:
+                    max_batch = batch_value
                 extra = pub_unknown_keys(limits, _LIMIT_KEYS)
                 if extra:
                     public["upload_unexpected_keys"] = extra
@@ -551,15 +583,16 @@ def decode_finalize(parsed: object, declared: frozenset[str]) -> Decoded:
         if run_id is not None and not run_id:
             out.add("range", "runId")
             run_id = None
-        eta = obj.get("etaS")
-        if eta is not None and not (is_swift_int(eta) and eta >= 0):
+        eta_raw = obj.get("etaS")
+        eta = swift_int(eta_raw)
+        if eta_raw is not None and not (eta is not None and eta >= 0):
             out.add("type", "etaS")
         if status is not None:
             public["status"] = pub_enum(status, CAPTURE_STATUSES)
         if missing is not None:
             public["missing"] = [pub_path(p, declared) for p in missing[:64]]
         public["runId"] = pub_id(obj.get("runId"))
-        if is_swift_int(eta) and eta >= 0:
+        if eta is not None and eta >= 0:
             public["etaS"] = pub_int(eta)
         extra = pub_unknown_keys(obj, _FINALIZE_KEYS)
         if extra:
@@ -588,11 +621,11 @@ def decode_events(parsed: object, *, after: int, run_id: str | None) -> Decoded:
         status = _str(obj, "status", out)
         if status is not None and status not in CAPTURE_STATUSES:
             out.add("enum", "status")
-        nxt = obj.get("next")
+        nxt = swift_int(obj.get("next"))  # exact int from here on
         if "next" not in obj:
             out.add("missing", "next")
             nxt = None
-        elif not is_swift_int(nxt) or nxt < 0:
+        elif nxt is None or nxt < 0:
             out.add("type", "next")
             nxt = None
         elif nxt < after:
@@ -606,10 +639,10 @@ def decode_events(parsed: object, *, after: int, run_id: str | None) -> Decoded:
             if not isinstance(event, dict):
                 out.add("type", "events")
                 continue
-            seq = event.get("seq")
+            seq = swift_int(event.get("seq"))
             etype = event.get("type")
             row: dict = {}
-            if not is_swift_int(seq):
+            if seq is None:
                 out.add("missing" if "seq" not in event else "type", "seq")
             else:
                 row["seq"] = pub_int(seq)
@@ -749,7 +782,7 @@ def _swift_number(value: object) -> bool:
     """
     if isinstance(value, bool):
         return False
-    if isinstance(value, int):
+    if isinstance(value, int | Decimal):
         try:
             return math.isfinite(float(value))
         except OverflowError:

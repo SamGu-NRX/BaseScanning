@@ -263,7 +263,7 @@ class _V:
             raise self.fail(ptr, "not-a-boolean")
 
     def match(self, value: object, ptr: str, pattern: re.Pattern[str], category: str):
-        if not isinstance(value, str) or not pattern.match(value):
+        if not isinstance(value, str) or not pattern.fullmatch(value):
             raise self.fail(ptr, category)
 
     def member(self, value: object, ptr: str, allowed: frozenset[str] | set[str], category: str):
@@ -273,7 +273,7 @@ class _V:
     def safe_string(self, value: str, ptr: str):
         if value in VOCABULARY or value in self.ctx.paths or value in self.ctx.packet_ids:
             return
-        if _DIGEST_RE.match(value) or _HEX12_RE.match(value):
+        if _DIGEST_RE.fullmatch(value) or _HEX12_RE.fullmatch(value):
             return
         raise self.fail(ptr, "unsafe-string")
 
@@ -344,7 +344,7 @@ def validate_command(tokens: object, known: Mapping[str, str], v: _V, ptr: str) 
             raise v.fail(here, "not-a-string")
         # An unknown flag may take no value; redact_argv then emits the next
         # flag as a flag, so a flag-shaped token ends the foreign pending.
-        if pending == "foreign" and _FLAG_RE.match(token.partition("=")[0]):
+        if pending == "foreign" and _FLAG_RE.fullmatch(token.partition("=")[0]):
             pending = None
         if pending is not None:
             _rendered(token, pending, v, here)
@@ -353,7 +353,7 @@ def validate_command(tokens: object, known: Mapping[str, str], v: _V, ptr: str) 
         if token in {"--", "<value>", "***"}:
             continue
         flag, eq, rest = token.partition("=")
-        if not _FLAG_RE.match(flag):
+        if not _FLAG_RE.fullmatch(flag):
             raise v.fail(here, "unsafe-command-token")
         kind = known.get(flag)
         if eq:
@@ -376,17 +376,17 @@ def _rendered(token: str, kind: str, v: _V, ptr: str) -> None:
     if kind == "foreign":
         ok = False
     elif kind == "endpoint":
-        ok = bool(_ENDPOINT_LABEL_RE.match(token)) or token == "<redacted:endpoint>"
+        ok = bool(_ENDPOINT_LABEL_RE.fullmatch(token)) or token == "<redacted:endpoint>"
     elif kind.startswith("enum:"):
         ok = token in kind[5:].split("|")
     elif kind == "int":
-        ok = bool(_INT_TEXT_RE.match(token))
+        ok = bool(_INT_TEXT_RE.fullmatch(token))
     elif kind == "float":
-        ok = bool(_FLOAT_TEXT_RE.match(token))
+        ok = bool(_FLOAT_TEXT_RE.fullmatch(token))
     elif kind == "ref":
-        ok = bool(_REF_RE.match(token))
+        ok = bool(_REF_RE.fullmatch(token))
     elif kind == "label":
-        ok = bool(_LABEL_RE.match(token))
+        ok = bool(_LABEL_RE.fullmatch(token))
     elif kind == "path":
         ok = token == "<path>"
     elif kind == "argv-json":

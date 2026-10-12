@@ -321,7 +321,7 @@ def _render_known(kind: str, value: str) -> str:
     if kind.startswith("enum:"):
         return value if value in kind[5:].split("|") else "<invalid>"
     if kind == "int":
-        return value if _INT_RE.match(value) else "<invalid>"
+        return value if _INT_RE.fullmatch(value) else "<invalid>"
     if kind == "float":
         try:
             number = float(value)
@@ -329,9 +329,9 @@ def _render_known(kind: str, value: str) -> str:
             return "<invalid>"
         return repr(number) if math.isfinite(number) else "<invalid>"
     if kind == "ref":
-        return value if _REF_RE.match(value) else "<invalid>"
+        return value if _REF_RE.fullmatch(value) else "<invalid>"
     if kind == "label":
-        return value if _LABEL_RE.match(value) else "<invalid>"
+        return value if _LABEL_RE.fullmatch(value) else "<invalid>"
     if kind == "path":
         return "<path>"
     if kind == "argv-json":
@@ -362,7 +362,7 @@ def redact_argv(argv: Sequence[str], known: Mapping[str, str] | None = None) -> 
         if token == "--":
             out.append(token)
             continue
-        match = _FLAG_RE.match(token)
+        match = _FLAG_RE.fullmatch(token)
         if match is None:
             out.append(REDACTED_VALUE)
             continue
@@ -403,5 +403,5 @@ def safe_failure(argv: Sequence[str], category: str, known: Mapping[str, str] | 
     Exception messages and argparse's own text never pass through here;
     they can quote the value that caused the failure.
     """
-    shown = category if _CATEGORY_RE.match(category) else "error"
+    shown = category if _CATEGORY_RE.fullmatch(category) else "error"
     return f"error: {shown} (argv: {' '.join(redact_argv(argv, known))})"

@@ -555,3 +555,36 @@ def test_installed_runner_refuses_the_retired_value_flag(venv, outside):
         assert "usage:retired-flag:--api-token" in proc.stderr
         assert "CANARY-retired" not in proc.stdout + proc.stderr
         assert not (outside / "r").exists()
+
+
+@pytest.mark.parametrize("suffix", ["\n", "\r", "\r\n", " ", "\t", "\x1b"])
+def test_installed_runner_refuses_a_token_with_a_control_suffix(venv, outside, suffix):
+    plan = _plan(venv, outside)
+    out = outside / "runs"
+    env = {**_env(), "HUNTER_API_TOKEN": "CANARY-bearer-0123" + suffix}  # this subprocess only
+    with FakeApi() as api:
+        proc = subprocess.run(
+            [
+                str(venv / "bin" / "hunter-local-ingest"),
+                "--endpoint",
+                api.base_url,
+                "--plan-file",
+                str(plan),
+                "--out",
+                str(out),
+                "--backend-mode",
+                "FAKE_HUNTER",
+                "--api-token-env",
+                *FAST,
+            ],
+            capture_output=True,
+            text=True,
+            cwd=outside,
+            env=env,
+            timeout=120,
+        )
+        requests = list(api.state.requests)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "credential:auth_credential_malformed" in proc.stderr
+    assert "CANARY-bearer" not in proc.stdout + proc.stderr
+    assert requests == [] and not out.exists()

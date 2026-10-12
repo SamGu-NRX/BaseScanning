@@ -65,12 +65,19 @@ loopback host, with exactly the signed headers and never `Authorization`.
 
 Register and commit go in batches of `min(10, upload.maxBatch)`, the
 published uploader's limit, in the lifecycle and in the tamper controls
-alike. When register reports a file already committed (a replayed or resumed
+alike. Each commit answer is judged as it arrives, by the scenario's own
+rule (the lifecycle needs every path committed; a tamper control needs its
+victim kept out and every intact file committed), and the first answer that
+breaks it ends the round as FAIL before another batch is sent. When register reports a file already committed (a replayed or resumed
 capture), the client neither uploads nor commits it again, and both checks
 record that committed-at-register set explicitly.
 
 Published Swift `Int` fields (event `seq` and `next`, `etaS`, upload limits)
-decode as 64-bit integers, as JSONDecoder does. A value too large for a
+decode as 64-bit integers by value, as Foundation's JSONDecoder does: `5`,
+`5.0` and `1e3` are all integers, and a non-integral value such as `5.1` is
+refused. The response parser keeps decimal literals exact, so
+`4611686018427387905.0` decodes to exactly that integer, never to a rounded
+float. A value too large for a
 receipt to hold as an exact JSON number (2^53 and up) is recorded as
 `large-int:<digest>`, never clamped and never rejected. `Double` fields accept
 any JSON number that converts to a finite double.
@@ -88,8 +95,9 @@ process environment, not a literal assignment typed into a shell, which
 history keeps. The environment is still readable by the same user and by
 root; nothing here protects against them.
 
-The token is checked (RFC 6750 b64token) before any run directory or request
-exists. It goes only on API requests to `--endpoint` whose final URL passes
+The whole token is checked (RFC 6750 b64token, so a trailing newline, a
+carriage return, a space or any control character is refused) before any run
+directory or request exists. It goes only on API requests to `--endpoint` whose final URL passes
 the scope rule, never on a storage PUT and never to the fault proxy. Restart
 commands and git run without it in their environment. Receipts record only
 the flag name.

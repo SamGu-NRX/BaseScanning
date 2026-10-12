@@ -525,3 +525,67 @@ def test_control_with_an_unavailable_register_is_blocked(fake, plan):
     with fake(FakeConfig(abort_from={"files": 1})) as api:
         controls = _controls(api, plan, client=_client(api, max_retries=0))
     assert controls["control.corrupt-upload"]["status"] == "BLOCKED"
+
+
+# -- a batch whose answer is wrong for THIS scenario decides the round at once ----
+#
+# Each answer below is decoder-valid. Whether it is acceptable depends on the
+# scenario: the lifecycle needs every requested path committed; a tamper
+# control needs the victim kept out and every intact file committed.
+
+
+def _commit_requests(api) -> int:
+    return sum(1 for _m, p, _a in api.state.requests if p.endswith("files:commit"))
+
+
+def test_lifecycle_not_found_batch_then_unavailable_is_fail(fake, plan):
+    config = FakeConfig(
+        max_batch=2, commit_not_found_path=plan.files[1].path, abort_from={"files:commit": 2}
+    )
+    with fake(config) as api:
+        rows, _ = _run(api, plan, client=_client(api, max_retries=0))
+        sent = _commit_requests(api)
+    assert rows["lifecycle.commit"]["status"] == "FAIL"
+    assert sent == 1, "the round stops at the batch that decided it"
+    assert len(rows["lifecycle.commit"]["observed"]["batches"]) == 1
+
+
+def test_control_victim_committed_then_unavailable_is_fail(fake, plan):
+    config = FakeConfig(max_batch=2, commit_everything=True, abort_from={"files:commit": 2})
+    with fake(config) as api:
+        controls = _controls(api, plan, client=_client(api, max_retries=0))
+    # corrupt: its first batch acknowledged the victim, so FAIL, one batch sent
+    corrupt = controls["control.corrupt-upload"]
+    assert corrupt["status"] == "FAIL", corrupt
+    assert len(corrupt["observed"]["batches"]) == 1
+    # truncated runs next on the same server; its first commit is the aborted
+    # second request, a purely missing answer, so it stays BLOCKED
+    assert controls["control.truncated-upload"]["status"] == "BLOCKED"
+
+
+@pytest.mark.parametrize("knob", ["commit_not_found_path", "commit_omit_path"])
+def test_control_intact_file_refused_or_missing_then_unavailable_is_fail(fake, plan, knob):
+    intact = plan.files[1].path  # shares the victim's first two-file batch
+    config = FakeConfig(max_batch=2, abort_from={"files:commit": 2}, **{knob: intact})
+    with fake(config) as api:
+        controls = _controls(api, plan, client=_client(api, max_retries=0))
+    assert controls["control.corrupt-upload"]["status"] == "FAIL", controls[
+        "control.corrupt-upload"
+    ]
+
+
+def test_purely_unavailable_commit_stays_blocked(fake, plan):
+    with fake(FakeConfig(max_batch=2, abort_from={"files:commit": 1})) as api:
+        rows, _ = _run(api, plan, client=_client(api, max_retries=0))
+    with fake(FakeConfig(max_batch=2, abort_from={"files:commit": 1})) as api:
+        controls = _controls(api, plan, client=_client(api, max_retries=0))
+    assert rows["lifecycle.commit"]["status"] == "BLOCKED"
+    assert controls["control.corrupt-upload"]["status"] == "BLOCKED"
+
+
+def test_expected_tamper_still_passes_across_batches(fake, plan):
+    with fake(FakeConfig(max_batch=2)) as api:
+        controls = _controls(api, plan)
+    for check_id in ("control.corrupt-upload", "control.truncated-upload"):
+        assert controls[check_id]["status"] == "PASS"
+        assert len(controls[check_id]["observed"]["batches"]) == 3

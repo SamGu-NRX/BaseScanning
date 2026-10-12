@@ -524,3 +524,29 @@ def test_a_cursor_past_2_53_polls_and_records_without_a_receipt_failure(fake, pl
     events = read_checks(run_dir)["lifecycle.events"]
     assert events["status"] == "PASS" and events["observed"]["finalize_retries"] == 1
     assert verify_run_integrity(run_dir) == []
+
+
+def test_a_decimal_spelled_cursor_past_2_53_is_polled_exactly(fake, plan_path, tmp_path):
+    from hunter_local_ingest.fakeapi import FakeConfig
+
+    out = tmp_path / "runs"
+    config = FakeConfig(cursor_offset=2**62, cursor_decimal_text=True, retry_finalize_once=True)
+    with fake(config) as api:
+        code = run_cli(
+            [
+                "--endpoint",
+                api.base_url,
+                "--plan-file",
+                str(plan_path),
+                "--out",
+                str(out),
+                "--backend-mode",
+                "FAKE_HUNTER",
+                *FAST,
+            ]
+        )
+        polls = [p for _m, p, _a in api.state.requests if "/events?" in p]
+    assert code == 0
+    # 4611686018427387905 as a float would be 4611686018427387904
+    assert any("after=4611686018427387905&" in p for p in polls), polls
+    assert verify_run_integrity(only_run_dir(out)) == []

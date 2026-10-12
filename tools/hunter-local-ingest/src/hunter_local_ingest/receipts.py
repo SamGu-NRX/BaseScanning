@@ -112,7 +112,7 @@ def fresh_run_dir(root: Path, label: str) -> tuple[Path, str]:
 
 def context_for(paths: frozenset[str], packet_id: str, nonce: str = "") -> ExportContext:
     """The export context of a plan: its paths and its derived packet ids."""
-    if not PACKET_ID_RE.match(packet_id) or not all(PATH_RE.match(p) for p in paths):
+    if not PACKET_ID_RE.fullmatch(packet_id) or not all(PATH_RE.fullmatch(p) for p in paths):
         raise ExportError(MANIFEST, "/fixture", "undeclared-identity")
     ids = {packet_id}
     for suffix in DERIVED_SUFFIXES:
