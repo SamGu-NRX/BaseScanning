@@ -182,3 +182,75 @@ def test_summary_mutations_rejected(real_artifacts, mutate, category):
 def test_empty_context_admits_no_paths():
     with pytest.raises(ExportError):
         validate_check_line(_line({"tampered": "synthetic/scan00.bin"}), ExportContext())
+
+
+# -- lead questions: current text for new runs, exact legacy text only to verify --
+
+from hunter_local_ingest import export as _export  # noqa: E402
+
+POLICY = (
+    "--api-token-env opts into HUNTER_API_TOKEN for scoped API routes; "
+    "token-protected proxy fault coverage remains BLOCKED."
+)
+FROZEN_SETS = ("23d5fc9", "1511668")
+
+
+def test_new_summaries_state_the_settled_credential_policy(tmp_path):
+    from hunter_local_ingest import runner
+    from hunter_local_ingest.receipts import write_summary
+
+    assert runner.LEAD_QUESTIONS is _export.LEAD_QUESTIONS
+    assert POLICY in _export.LEAD_QUESTIONS
+    assert not set(_export.LEGACY_LEAD_QUESTIONS) & set(_export.LEAD_QUESTIONS)
+    assert len(_export.LEAD_QUESTIONS) == 4  # amendment, policy, clock, homeowner text
+    write_summary(
+        tmp_path,
+        "0123456789abcdef",
+        [],
+        declared_backend="FAKE_HUNTER",
+        lead_questions=runner.LEAD_QUESTIONS,
+        ctx=ExportContext(),
+    )
+    written = json.loads((tmp_path / "summary.json").read_text())["lead_questions"]
+    assert written == list(_export.LEAD_QUESTIONS)
+    assert "no CLI flag supplies one yet" not in json.dumps(written)
+
+
+def test_legacy_question_validates_only_verbatim(real_artifacts):
+    _manifest, summary, ctx = real_artifacts
+    legacy = _export.LEGACY_LEAD_QUESTIONS[0]
+    old = copy.deepcopy(summary)
+    old["lead_questions"][1] = legacy
+    validate_summary(old, ctx)  # a receipt written before the policy change
+    for text in (legacy.replace("yet.", "yet!"), legacy + " ", canary("q"), POLICY.upper()):
+        bad = copy.deepcopy(summary)
+        bad["lead_questions"][1] = text
+        with pytest.raises(ExportError) as exc:
+            validate_summary(bad, ctx)
+        assert exc.value.category == "not-registered-text"
+
+
+@pytest.mark.parametrize("frozen", FROZEN_SETS)
+def test_frozen_receipt_sets_verify_with_the_current_verifier(frozen, tmp_path):
+    import hashlib
+    import shutil
+    from pathlib import Path
+
+    from hunter_local_ingest.verify import verify_run
+
+    root = Path(__file__).resolve().parents[1] / "evidence" / frozen
+    run_dirs = sorted(p.parent for p in root.glob("*/*/summary.json"))
+    assert run_dirs, root
+    before = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob("*") if p.is_file()}
+    legacy_seen = False
+    for run_dir in run_dirs:
+        copy_dir = tmp_path / run_dir.parent.name / run_dir.name
+        shutil.copytree(run_dir, copy_dir)
+        for path in copy_dir.iterdir():
+            path.chmod(0o444)  # git checks files out writable; re-seal the copy only
+        assert verify_run(copy_dir) == [], run_dir
+        summary = json.loads((run_dir / "summary.json").read_text())
+        legacy_seen |= bool(set(summary["lead_questions"]) & set(_export.LEGACY_LEAD_QUESTIONS))
+    assert legacy_seen, "these frozen sets were written with the legacy text"
+    after = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob("*") if p.is_file()}
+    assert after == before, "the frozen files are never rewritten"

@@ -586,7 +586,12 @@ def validate_summary(summary: object, ctx: ExportContext) -> None:
     if not isinstance(questions, list):
         raise v.fail("/lead_questions", "not-a-list")
     for i, question in enumerate(questions):
-        v.member(question, f"/lead_questions/{i}", set(LEAD_QUESTIONS), "not-registered-text")
+        v.member(
+            question,
+            f"/lead_questions/{i}",
+            set(LEAD_QUESTIONS) | set(LEGACY_LEAD_QUESTIONS),
+            "not-registered-text",
+        )
     artifacts = summary["artifacts"]
     v.keys(artifacts, "/artifacts", set(), {"run-manifest.json", "checks.jsonl"})
     for name, digest in artifacts.items():
@@ -655,12 +660,22 @@ SANITIZATION_NOTE = (
     "and packet ids. A pattern screen then ran over the written files."
 )
 
-LEAD_QUESTIONS = (
-    "Amendment semantics: does the published contract allow amending a registered capture, "
-    "and with which route and headers?",
+# Exact texts that earlier versions wrote into summary.json and that are no
+# longer true. They are accepted ONLY so frozen receipt sets (evidence/23d5fc9,
+# evidence/1511668) still verify; no run writes them, and no other text is
+# accepted.
+LEGACY_LEAD_QUESTIONS = (
     "Local-run auth mode: which credential form does the local backend expect from the "
     "published client? The client can send a bearer token on API routes only; no CLI flag "
     "supplies one yet.",
+)
+
+LEAD_QUESTIONS = (
+    "Amendment semantics: does the published contract allow amending a registered capture, "
+    "and with which route and headers?",
+    # The lead settled the harness's side of local-run auth; this states it.
+    "--api-token-env opts into HUNTER_API_TOKEN for scoped API routes; "
+    "token-protected proxy fault coverage remains BLOCKED.",
     "Clock and expiry authority: whose clock governs capture expiry on the local backend?",
     "Homeowner text: confirm that receipts may carry outcome kinds and counts but never "
     "messages, prompts or reasons.",
