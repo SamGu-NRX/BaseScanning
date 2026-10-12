@@ -1,0 +1,29 @@
+Before/after test matrix, fifth review round
+============================================
+The current tests/ directory run twice with CPython 3.13.3 and pytest 8.0.1:
+- after: this branch's working tree before the commit that adds this file (source hashes in sources.txt).
+- before: tools, fixtures and example pack exported from 18e0307128ef9ca91c2c047e026c7f061aa78271
+  with git archive, and only tests/ replaced by the current one. Tests that blocked on a FIFO
+  failed at their 15-second deadline instead of hanging.
+after: 249 passed. before: 11 failed, 238 passed.
+
+New tests that failed before and pass after (10):
+  test_cli_contract.py::test_packer_refuses_a_fifo_input_without_blocking[capture/frame_0001.json]
+  test_cli_contract.py::test_packer_refuses_a_fifo_input_without_blocking[pack-spec.json]
+  test_cli_contract.py::test_packer_refuses_a_fifo_input_without_blocking[report.md]
+  test_cli_contract.py::test_packer_refuses_a_fifo_input_without_blocking[result/result.json]
+  test_cli_contract.py::test_reader_helper_closes_the_descriptor_it_refuses
+  test_cli_contract.py::test_reader_refuses_a_fifo_pack_without_blocking
+  test_cli_contract.py::test_reader_refuses_a_fifo_reference_without_blocking[capture/frame_0001.json]
+  test_cli_contract.py::test_reader_refuses_a_fifo_reference_without_blocking[result/result.json]
+  test_inspector.py::test_http_fifo_pack_is_refused_without_blocking
+  test_inspector.py::test_http_fifo_reference_is_refused_without_blocking
+
+New tests that pass both times (1): a character device behind a symlink, which
+opens without blocking, so the earlier fstat check already refused it.
+  test_cli_contract.py::test_reader_refuses_a_character_device_without_blocking
+
+Earlier tests that fail before (1): the expected message for a directory given
+as the pack changed from the OS's "Is a directory" to "is not a regular file", because the
+directory now opens and is refused by the fstat check. Both versions refuse it with exit 2.
+  test_cli_contract.py::test_reader_names_each_unopenable_pack[directory-pack absent.zip is not a regular file]

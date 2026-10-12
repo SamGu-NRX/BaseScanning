@@ -7,6 +7,7 @@ now. The HTTP tests start the real server process."""
 import ast
 import importlib
 import json
+import os
 import select
 import shutil
 import subprocess
@@ -300,3 +301,26 @@ def test_server_starts_with_a_pack_that_is_not_there_yet(server_factory, tmp_pat
     status, body = server_factory("--pack", tmp_path / "later.zip").get("/data.json")
     assert status == 200
     assert json.loads(body)["refusal"]["detail"] == "the pack cannot be read: No such file or directory"
+
+
+def test_http_fifo_pack_is_refused_without_blocking(server_factory, tmp_path):
+    os.mkfifo(tmp_path / "pack.zip")
+    status, body = server_factory("--pack", tmp_path / "pack.zip").get("/data.json")
+    assert status == 200
+    assert json.loads(body)["refusal"] == {"kind": "missing-source", "detail": "the pack is not a regular file", "rejected_pack_sha256": None}
+
+
+def test_http_fifo_reference_is_refused_without_blocking(server_factory, tmp_path):
+    fixture = copy_fixture_into_repo("inspector-fifo")
+    try:
+        pack = tmp_path / "pack.zip"
+        assert run_packer(fixture, pack).returncode == 0
+        (fixture / "capture/frame_0001.json").unlink()
+        os.mkfifo(fixture / "capture/frame_0001.json")
+        status, body = server_factory("--pack", pack).get("/data.json")
+    finally:
+        shutil.rmtree(fixture, ignore_errors=True)
+    assert status == 200
+    payload = json.loads(body)
+    assert payload["status"] == "refused" and "evidence" not in payload
+    assert payload["refusal"]["detail"] == "'capture/frame_0001.json' is not a regular file"

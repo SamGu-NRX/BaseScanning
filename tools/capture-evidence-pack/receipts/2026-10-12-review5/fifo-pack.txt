@@ -1,0 +1,7 @@
+$ (in a scratch directory holding fifo.zip, made with mkfifo, no writer)
+$ python3 tools/capture-evidence-pack/read.py fifo.zip
+rejected pack sha256: unavailable: the reader refused before it held the pack bytes
+reader arguments: fifo.zip
+REFUSAL missing-source: pack fifo.zip is not a regular file
+verdict: REFUSED
+exit code: 2

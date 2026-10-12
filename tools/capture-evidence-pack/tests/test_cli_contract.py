@@ -568,7 +568,7 @@ def test_packer_refuses_a_fixture_under_an_inaccessible_directory(locked, tmp_pa
     [
         ("missing", "pack absent.zip cannot be read: No such file or directory"),
         ("dangling-symlink", "pack absent.zip cannot be read: No such file or directory"),
-        ("directory", "pack absent.zip cannot be read: Is a directory"),
+        ("directory", "pack absent.zip is not a regular file"),
     ],
 )
 def test_reader_names_each_unopenable_pack(tmp_path, setup, needle):
@@ -609,3 +609,73 @@ def test_control_packer_accepts_a_symlinked_fixture_directory(tmp_path):
     outcome = run_packer("fixture", out, cwd=tmp_path)
     assert outcome.returncode == 0, outcome.stdout + outcome.stderr
     assert run_reader(out).returncode == 0
+
+
+# Non-regular files are refused without blocking. A FIFO with no writer makes
+# a plain open() wait forever; the tools open without blocking and check the
+# file type on the open descriptor before any read. Each FIFO lives in a
+# directory the test owns.
+
+FIFO_TIMEOUT = 15
+
+
+def test_reader_refuses_a_fifo_pack_without_blocking(tmp_path):
+    os.mkfifo(tmp_path / "pack.zip")
+    outcome = run_reader("pack.zip", cwd=tmp_path, timeout=FIFO_TIMEOUT)
+    assert_clean_refusal(outcome, "missing-source", "pack pack.zip is not a regular file", tmp_path)
+    assert "rejected pack sha256: unavailable" in outcome.stdout
+
+
+@pytest.mark.parametrize("target", ["capture/frame_0001.json", "result/result.json"])
+def test_reader_refuses_a_fifo_reference_without_blocking(tmp_path, target):
+    frame = json_bytes({"schema_version": CAPTURE})
+    result = json_bytes({"schema_version": RESULT, "result_id": "result-synth-0001"})
+    root = capture_root_with(tmp_path, {"capture/frame_0001.json": frame, "result/result.json": result})
+    (root / target).unlink()
+    os.mkfifo(root / target)
+    pack = rebuilt_example(tmp_path, lambda manifest: point_manifest_at(manifest, frame, result))
+    outcome = run_reader(pack, "--capture-root", root, timeout=FIFO_TIMEOUT)
+    assert outcome.returncode == 2, outcome.stdout + outcome.stderr
+    assert f"REFUSAL missing-source: {target!r} is not a regular file" in outcome.stdout, outcome.stdout
+
+
+@pytest.mark.parametrize("target", ["pack-spec.json", "capture/frame_0001.json", "result/result.json", "report.md"])
+def test_packer_refuses_a_fifo_input_without_blocking(repo_fixture, tmp_path, target):
+    (repo_fixture / target).unlink()
+    os.mkfifo(repo_fixture / target)
+    out = tmp_path / "out.zip"
+    outcome = run_packer(repo_fixture, out, timeout=FIFO_TIMEOUT)
+    assert outcome.returncode == 2, outcome.stdout + outcome.stderr
+    assert f"REFUSAL missing-source: {target!r} is not a regular file" in outcome.stdout, outcome.stdout
+    assert not out.exists()
+
+
+def test_reader_refuses_a_character_device_without_blocking(tmp_path):
+    (tmp_path / "pack.zip").symlink_to("/dev/zero")
+    outcome = run_reader("pack.zip", cwd=tmp_path, timeout=FIFO_TIMEOUT)
+    assert_clean_refusal(outcome, "missing-source", "pack pack.zip is not a regular file", tmp_path)
+
+
+FD_PROBE = """
+import os, sys
+sys.path.insert(0, sys.argv[1])
+import read
+before = len(os.listdir("/dev/fd"))
+for _ in range(50):
+    try:
+        read.read_regular_file(sys.argv[2], 10, "'fifo'")
+    except read.Refusal:
+        pass
+print(len(os.listdir("/dev/fd")) - before)
+"""
+
+
+def test_reader_helper_closes_the_descriptor_it_refuses(tmp_path):
+    """Run in a child process with a deadline: a helper that blocks on the
+    FIFO must fail this test, not hang the suite."""
+    os.mkfifo(tmp_path / "fifo")
+    probe = subprocess.run(
+        [sys.executable, "-c", FD_PROBE, str(TOOL_DIR), str(tmp_path / "fifo")], capture_output=True, text=True, timeout=FIFO_TIMEOUT
+    )
+    assert probe.returncode == 0, probe.stderr
+    assert probe.stdout.strip() == "0", "each refused descriptor must be closed"

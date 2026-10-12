@@ -135,6 +135,8 @@ Every reader refusal prints `rejected pack sha256:` and `rejected pack bytes:` f
 
 A file that cannot be opened is reported by the path the manifest or pack-spec declared and the operating system's error category, such as `Permission denied`. Neither tool prints the exception's own text, which carries the absolute path the operating system tried, so a repository-relative declaration never becomes a home-directory path in a receipt or on the inspection page. The same holds for the paths a caller passes: the reader opens the pack and checks the open handle is a regular file, and the packer checks the fixture with one `stat`, so a pack or fixture that is missing, not the right type, or behind a directory the caller cannot search is a `missing-source` refusal naming the path as given, not a traceback.
 
+Every file either tool reads (the pack, `pack-spec.json`, `report.md`, and each referenced file) is opened without blocking (`O_NONBLOCK`), checked with `fstat` on that same descriptor, and read only if it is a regular file. A FIFO, a device or a directory is refused as `missing-source` before any read, so a FIFO with no writer cannot hang the tools or the inspection server. Both tools need `O_NONBLOCK`, which macOS and Linux provide; on a platform without it they refuse to read rather than open a file that might block.
+
 ## Determinism
 
 `pack.py` writes byte-stable archives: entries sorted by name, fixed timestamps (1980-01-01 00:00:00), fixed file permissions, no platform-dependent metadata. Packing the same fixture twice to the same out path yields the same bytes, so the pack's own SHA-256 is identity evidence too. The out path is part of `reproduction.command`, so regenerations must reuse the same out path to stay byte-identical.

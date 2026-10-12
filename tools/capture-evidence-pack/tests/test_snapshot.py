@@ -33,24 +33,35 @@ def repo_fixture():
 
 
 def watch_opens(monkeypatch, watched: dict[Path, bytes]):
-    """Count read opens of each watched path. On the second open of one,
-    replace its contents with the given bytes before the open proceeds."""
+    """Count read opens of each watched path, through open() and os.open().
+    On the second open of one, replace its contents with the given bytes
+    before the open proceeds."""
     real_open = io.open
+    real_os_open = os.open
     counts: Counter = Counter()
     targets = {path.resolve(): replacement for path, replacement in watched.items()}
 
+    def note(file) -> None:
+        path = Path(os.fspath(file)).resolve()
+        if path in targets:
+            counts[path] += 1
+            if counts[path] == 2:
+                with real_open(path, "wb") as handle:
+                    handle.write(targets[path])
+
     def tracking_open(file, mode="r", *args, **kwargs):
         if isinstance(file, (str, os.PathLike)) and "r" in mode:
-            path = Path(os.fspath(file)).resolve()
-            if path in targets:
-                counts[path] += 1
-                if counts[path] == 2:
-                    with real_open(path, "wb") as handle:
-                        handle.write(targets[path])
+            note(file)
         return real_open(file, mode, *args, **kwargs)
+
+    def tracking_os_open(file, flags, *args, **kwargs):
+        if isinstance(file, (str, os.PathLike)) and flags & os.O_ACCMODE == os.O_RDONLY:
+            note(file)
+        return real_os_open(file, flags, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "open", tracking_open)
     monkeypatch.setattr(io, "open", tracking_open)
+    monkeypatch.setattr(os, "open", tracking_os_open)
     return counts
 
 

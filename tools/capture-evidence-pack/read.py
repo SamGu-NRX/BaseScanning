@@ -201,21 +201,43 @@ def is_nonblank_string(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+# Opening without blocking lets the reader check the file type before it can
+# wait: a plain open() of a FIFO with no writer never returns. O_NONBLOCK has
+# no effect on reads from a regular file, the only kind read here.
+_NONBLOCK = getattr(os, "O_NONBLOCK", None)
+_READ_FLAGS = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOCTTY", 0)
+
+
 def read_regular_file(path: Path, limit: int, label: str) -> bytes:
-    """Read at most limit + 1 bytes from a regular file through one handle.
-    The caller compares the length against the limit. Messages name the file
-    by label, the path as the caller declared it, and give only the OS's
-    error category: an OSError's text carries the absolute path it opened,
-    which a declared relative path must not turn into."""
+    """Read at most limit + 1 bytes from a regular file through one
+    descriptor. The caller compares the length against the limit.
+
+    The descriptor is opened without blocking and fstat on it decides the
+    type before any read, so a FIFO, device or directory is refused at once
+    and there is no gap between the check and the read. Every refusal closes
+    the descriptor. Messages name the file by label, the path as the caller
+    declared it, and give only the OS's error category: an OSError's text
+    carries the absolute path it opened."""
+    if _NONBLOCK is None:
+        raise Refusal("missing-source", f"{label} cannot be read: this platform cannot open a file without blocking")
     try:
-        with open(path, "rb") as handle:
-            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
-                raise Refusal("missing-source", f"{label} is not a regular file")
-            return handle.read(limit + 1)
+        descriptor = os.open(path, _READ_FLAGS | _NONBLOCK)
     except OSError as error:
         raise Refusal("missing-source", f"{label} cannot be read: {error.strerror or type(error).__name__}") from None
     except ValueError:
         raise Refusal("missing-source", f"{label} cannot be read: the path cannot be passed to the operating system") from None
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise Refusal("missing-source", f"{label} is not a regular file")
+        handle = os.fdopen(descriptor, "rb")
+        descriptor = None  # the handle owns it now
+        with handle:
+            return handle.read(limit + 1)
+    except OSError as error:
+        raise Refusal("missing-source", f"{label} cannot be read: {error.strerror or type(error).__name__}") from None
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
 
 
 def read_pack_file(pack_path: Path, label: str) -> bytes:

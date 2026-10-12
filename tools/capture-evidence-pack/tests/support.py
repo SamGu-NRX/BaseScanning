@@ -24,18 +24,24 @@ def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def run_reader(*args, cwd: Path = REPO_ROOT):
+# Every CLI run has a deadline, so a tool that blocks (on a FIFO with no
+# writer, say) fails its test instead of hanging the suite.
+CLI_TIMEOUT = 60
+
+
+def run_reader(*args, cwd: Path = REPO_ROOT, timeout: float = CLI_TIMEOUT):
     return subprocess.run(
-        [sys.executable, str(TOOL_DIR / "read.py"), *map(str, args)], capture_output=True, text=True, cwd=cwd
+        [sys.executable, str(TOOL_DIR / "read.py"), *map(str, args)], capture_output=True, text=True, cwd=cwd, timeout=timeout
     )
 
 
-def run_packer(fixture, out, cwd: Path = REPO_ROOT):
+def run_packer(fixture, out, cwd: Path = REPO_ROOT, timeout: float = CLI_TIMEOUT):
     return subprocess.run(
         [sys.executable, str(TOOL_DIR / "pack.py"), "--fixture", str(fixture), "--out", str(out)],
         capture_output=True,
         text=True,
         cwd=cwd,
+        timeout=timeout,
     )
 
 

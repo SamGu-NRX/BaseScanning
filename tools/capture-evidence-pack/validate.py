@@ -168,17 +168,32 @@ def read_bounded(root: Path, relative: str, limit: int) -> bytes:
         raise InputProblem("missing-source", f"{relative!r} not found under {display_path(root)}") from None
     if not resolved.is_relative_to(root):
         raise InputProblem("missing-source", f"{relative} resolves outside {display_path(root)}")
-    # Errors name the declared relative path and the OS's category only. An
+    # Open without blocking and decide the type with fstat on that descriptor
+    # before any read: a plain open() of a FIFO with no writer never returns.
+    # Errors name the declared relative path and the OS's category only; an
     # OSError's own text carries the absolute path it tried to open.
+    nonblock = getattr(os, "O_NONBLOCK", None)
+    if nonblock is None:
+        raise InputProblem("missing-source", f"{relative!r} cannot be read: this platform cannot open a file without blocking")
+    flags = os.O_RDONLY | nonblock | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOCTTY", 0)
     try:
-        with open(resolved, "rb") as handle:
-            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
-                raise InputProblem("missing-source", f"{relative!r} is not a regular file")
-            data = handle.read(limit + 1)
+        descriptor = os.open(resolved, flags)
     except OSError as error:
         raise InputProblem("missing-source", f"{relative!r} cannot be read: {error.strerror or type(error).__name__}") from None
     except ValueError:
         raise InputProblem("missing-source", f"{relative!r} cannot be read: the path cannot be passed to the operating system") from None
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise InputProblem("missing-source", f"{relative!r} is not a regular file")
+        handle = os.fdopen(descriptor, "rb")
+        descriptor = None  # the handle owns it now
+        with handle:
+            data = handle.read(limit + 1)
+    except OSError as error:
+        raise InputProblem("missing-source", f"{relative!r} cannot be read: {error.strerror or type(error).__name__}") from None
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
     if len(data) > limit:
         raise InputProblem("invalid-manifest", f"{relative} is larger than its {limit}-byte budget")
     return data
