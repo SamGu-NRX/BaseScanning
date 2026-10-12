@@ -1,0 +1,7 @@
+$ python3 tools/capture-evidence-pack/read.py --capture-root tools/capture-evidence-pack/fixtures/missing-source tools/capture-evidence-pack/evidence/example.zip
+rejected pack sha256: 623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2
+rejected pack bytes: 1353
+reader arguments: --capture-root tools/capture-evidence-pack/fixtures/missing-source tools/capture-evidence-pack/evidence/example.zip
+REFUSAL missing-source: 'capture/frame_0002.json' not found under tools/capture-evidence-pack/fixtures/missing-source
+verdict: REFUSED
+exit code: 2

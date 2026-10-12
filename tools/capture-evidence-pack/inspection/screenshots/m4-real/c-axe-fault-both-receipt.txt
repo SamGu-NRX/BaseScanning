@@ -1,0 +1,8 @@
+case: c-axe-fault-both (settled axe run)
+commit: 8fd04074d51082386ae9213abcd4c9a3e934ed3e (dirty)
+invocation: open http://localhost:8934/?axe=1; poll eval #axe-output until non-empty (<=30s); save to axe-fault-both.json
+url: http://localhost:8934/?axe=1
+viewport: 1440x900
+assertion: axe results written into #axe-output after both fetch paths settle
+result: PASS
+observed: output_head=["{\n \"axe_version\": {\n \"runOnly\": {\n \"type\": \"tag\",\n \"values\": [\n \"wcag2a\",\n \"wcag2aa\",\n \"wcag21a\",\n \"wcag21aa\",\n \"best-practice\"\n ]\n },\n \"reporter\": \"v1\"\n },\n \"violations\": [],\n \"passes\": [\n ]

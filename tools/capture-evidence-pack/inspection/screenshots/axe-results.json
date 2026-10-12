@@ -1,0 +1,73 @@
+{
+  "summary": {
+    "axe_core_version": "4.10.2 (vendored at inspection/vendor/axe.min.js, sha256 b511cd9dec01c76f4b2ad1723b66b6db37d4c2eb4ed199076e1829d9ee7b75e3)",
+    "how_run": "Loaded the rendered page from the local server with /?axe=1 and ran axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice']}}) in the live page, at both viewports",
+    "viewports": ["1280x800 desktop", "375x812 mobile"],
+    "violations": 0,
+    "passes": 46,
+    "incomplete_accepted": 1
+  },
+  "runs": [
+    {
+      "viewport": "1280x800",
+      "violations": [],
+      "passes": 46,
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "nodes": [
+            "article[aria-labelledby=\"refusal-missing-source\"] > pre",
+            "article[aria-labelledby=\"refusal-mismatched-result\"] > pre"
+          ],
+          "axe_reason": "Element's background color could not be determined because it's partially obscured by another element"
+        }
+      ]
+    },
+    {
+      "viewport": "375x812",
+      "violations": [],
+      "passes": 46,
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "nodes": [
+            "#sources > div[role=\"region\"] > table > thead > tr > th:nth-child(3)",
+            "th:nth-child(4)",
+            "tr:nth-child(1) > td:nth-child(3) > .hash",
+            "tr:nth-child(1) > td:nth-child(4)",
+            "tr:nth-child(2) > td:nth-child(3) > .hash",
+            "tr:nth-child(2) > td:nth-child(4)",
+            "#report-text",
+            "article[aria-labelledby=\"refusal-missing-source\"] > pre",
+            "article[aria-labelledby=\"refusal-mismatched-result\"] > pre",
+            "#axe-output"
+          ],
+          "axe_reason": "Element's background color could not be determined because it's partially obscured by another element"
+        }
+      ]
+    }
+  ],
+  "accepted_incomplete": {
+    "rule": "color-contrast",
+    "reason_accepted": "Every flagged element has an explicit foreground/background pair in CSS; axe marks them 'incomplete' (needs human review, not a violation) because a horizontal scrollbar overlays the element during static contrast sampling. Computed ratios from the declared colors, all above the 4.5:1 WCAG AA threshold:",
+    "computed_ratios": [
+      {"elements": "#report-text, refusal <pre> blocks, #axe-output (text #e8f1ec on background #0e1512)", "ratio": "16.06:1"},
+      {"elements": "body text --ink #16211c on --card #ffffff", "ratio": "16.56:1"},
+      {"elements": "table header text --muted #52615a on --card #ffffff", "ratio": "6.53:1"},
+      {"elements": "limits heading #7a4d0a on --warn-bg #fff7e8", "ratio": "6.82:1"},
+      {"elements": "refusal heading #7c2424 on --refusal-bg #fdf0f0", "ratio": "8.85:1"}
+    ]
+  },
+  "violations_fixed_during_verification": [
+    {
+      "id": "scrollable-region-focusable",
+      "found": "serious, 2 nodes at desktop (report/refusal <pre> blocks), 2 nodes at mobile (#sources table wrapper, #axe-output)",
+      "fix": "tabindex=\"0\" on all horizontally scrollable <pre> regions; tabindex=\"0\" role=\"region\" aria-label on the two scrollable table wrappers"
+    },
+    {
+      "id": "aria-prohibited-attr (incomplete)",
+      "found": "aria-label on refusal <pre> without a valid role",
+      "fix": "removed the aria-label; the adjacent 'Recorded output of <path>' paragraph names the content"
+    }
+  ]
+}

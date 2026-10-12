@@ -1,0 +1,306 @@
+#!/usr/bin/env python3
+"""Deterministic packer for capture evidence packs.
+
+Packs one fixture directory into a byte-stable zip whose manifest.json carries
+the identity evidence SPEC.md defines. Runs the packer-side validator and
+refuses to write a pack that would not conform. The reader (read.py) is
+deliberately independent of this file.
+
+Every input is read once. The manifest's hashes, the schema and identity
+checks, and the packed report all come from that one read, so a file that
+changes while the packer runs cannot end up hashed as one version and packed
+as another.
+
+Usage:
+    python tools/capture-evidence-pack/pack.py --fixture tools/capture-evidence-pack/fixtures/example --out tools/capture-evidence-pack/evidence/example.zip
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import io
+import json
+import os
+import shlex
+import stat
+import sys
+import tempfile
+import zipfile
+import zlib
+from pathlib import Path
+
+import validate
+from validate import InputProblem
+
+REPO_ROOT = validate.REPO_ROOT
+
+# Fixed zip metadata so the same fixture always packs to the same bytes.
+_FIXED_DATE_TIME = (1980, 1, 1, 0, 0, 0)
+_FILE_MODE = 0o644 << 16
+
+
+class Refused(Exception):
+    def __init__(self, kind: str, details: list[str]):
+        super().__init__("; ".join(details))
+        self.kind = kind
+        self.details = details
+
+
+def command_pack_path(out: Path) -> str:
+    """The pack path as the reproduction command records it: repo-relative when
+    the pack lives in the repo, absolute otherwise. Regenerating to the same
+    out path is what makes byte-stable output; the recorded path is part of the
+    manifest bytes."""
+    return validate.display_path(out)
+
+
+def reproduction_command(out: Path) -> str:
+    # Quoted so the command survives a path with spaces or shell characters.
+    return f"python tools/capture-evidence-pack/read.py {shlex.quote(command_pack_path(out))}"
+
+
+def sha256_hex(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def file_record(relative: str, data: bytes) -> dict:
+    return {"path": relative, "sha256": sha256_hex(data), "bytes": len(data)}
+
+
+def load_pack_spec(fixture: Path) -> dict:
+    try:
+        data = validate.read_bounded(fixture, "pack-spec.json", validate.MAX_PACK_SPEC_BYTES)
+    except InputProblem as problem:
+        raise Refused(problem.kind, [f"{problem.detail}; a fixture needs pack-spec.json, capture/, result/ and report.md"]) from None
+    try:
+        spec = validate.load_json_strict(data)
+    except ValueError as error:
+        raise Refused("invalid-manifest", [f"pack-spec.json is not usable JSON: {error}"]) from None
+    problems = validate.validate_pack_spec(spec)
+    if problems:
+        raise Refused("invalid-manifest", problems)
+    return spec
+
+
+def read_input(fixture: Path, relative: str, limit: int) -> bytes:
+    try:
+        return validate.read_bounded(fixture, relative, limit)
+    except InputProblem as problem:
+        raise Refused(problem.kind, [problem.detail]) from None
+
+
+def parse_object(relative: str, data: bytes) -> dict | None:
+    try:
+        return validate.parse_json_object(relative, data)
+    except InputProblem as problem:
+        raise Refused(problem.kind, [problem.detail]) from None
+
+
+def fixture_directory(given: Path) -> Path:
+    """Resolve the --fixture argument and check it is a directory. One stat
+    does both the reachability and the type check, inside the error handling:
+    Path.is_dir raises on EACCES (a locked parent directory) instead of
+    returning False. Messages name the path as the caller gave it."""
+    try:
+        fixture = given.resolve()
+        mode = os.stat(fixture).st_mode
+    except OSError as error:
+        raise Refused("missing-source", [f"fixture directory {given} cannot be read: {error.strerror or type(error).__name__}"]) from None
+    except (RuntimeError, ValueError):  # RuntimeError: symlink loop on Python < 3.13
+        raise Refused("missing-source", [f"fixture directory {given} cannot be read: the path cannot be resolved"]) from None
+    if not stat.S_ISDIR(mode):
+        raise Refused("missing-source", [f"fixture {given} is not a directory"])
+    return fixture
+
+
+def build(fixture: Path, out: Path) -> tuple[dict, bytes, str]:
+    """Return (manifest, pack bytes, result identity) built from one read of
+    every input, or raise Refused before anything is written. fixture is the
+    resolved directory from fixture_directory."""
+    spec = load_pack_spec(fixture)
+
+    capture_schema = spec["capture_schema_version"]
+    source_refs = []
+    for ref in spec["source_refs"]:
+        data = read_input(fixture, ref["path"], validate.MAX_REFERENCED_FILE_BYTES)
+        drift = validate.schema_drift(parse_object(ref["path"], data), capture_schema, "capture_schema_version")
+        if drift:
+            raise Refused("schema-drift", [f"{ref['path']} {drift}"])
+        source_refs.append({**file_record(ref["path"], data), "role": ref["role"]})
+
+    result_relative = spec["result_path"]
+    result_data = read_input(fixture, result_relative, validate.MAX_REFERENCED_FILE_BYTES)
+    parsed_result = parse_object(result_relative, result_data)
+    drift = validate.schema_drift(parsed_result, spec["result_schema_version"], "result_schema_version")
+    if drift:
+        raise Refused("schema-drift", [f"{result_relative} {drift}"])
+    identity_problem = validate.result_identity_problem(parsed_result, spec["result_id"])
+    if identity_problem:
+        raise Refused("mismatched-result", [identity_problem])
+    identity = "embedded-match" if parsed_result is not None and "result_id" in parsed_result else "bytes-only"
+
+    report_data = read_input(fixture, validate.REPORT_ENTRY, validate.MAX_REPORT_BYTES)
+    try:
+        report_data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise Refused("invalid-manifest", [f"{validate.REPORT_ENTRY} is not UTF-8 text"]) from None
+
+    try:
+        capture_root = fixture.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        raise Refused(
+            "invalid-manifest",
+            [f"fixture {fixture} lives outside the repository; capture_root must be a repository-relative path (SPEC.md, capture)"],
+        ) from None
+
+    manifest = {
+        "evidence_pack_format_version": validate.PACK_FORMAT_VERSION,
+        "capture_schema_version": capture_schema,
+        "result_schema_version": spec["result_schema_version"],
+        "capture": {
+            "capture_id": spec["capture_id"],
+            "captured_at": spec["captured_at"],
+            "capture_root": capture_root,
+            "source_refs": source_refs,
+        },
+        "result": {"result_id": spec["result_id"], **file_record(result_relative, result_data)},
+        "missing_fields": spec["missing_fields"],
+        "reproduction": {"command": reproduction_command(out)},
+        "geometry_correctness": {
+            "assertion": None,
+            "note": "identity-only pack: no geometry-correctness check ran, none is claimed",
+        },
+        "packaged_files": [file_record(validate.REPORT_ENTRY, report_data)],
+    }
+    problems = validate.validate_manifest(manifest)
+    if problems:
+        for problem in problems:
+            print(f"invalid-manifest: {problem}", file=sys.stderr)
+        raise Refused("invalid-manifest", ["the packer produced a manifest that violates SPEC.md; this is a packer bug"])
+    return manifest, archive_bytes(manifest, report_data), identity
+
+
+def archive_bytes(manifest: dict, report_bytes: bytes) -> bytes:
+    """Build the archive and hold it to the limits the reader applies, so the
+    packer never reports PACKED for a pack its reader must refuse."""
+    try:
+        manifest_bytes = json_deterministic(manifest)
+    except ValueError:
+        raise Refused("invalid-manifest", ["manifest.json would hold a number that is not finite, which JSON cannot encode"]) from None
+    if len(manifest_bytes) > validate.MAX_MANIFEST_BYTES:
+        raise Refused(
+            "invalid-manifest",
+            [f"manifest.json would be {len(manifest_bytes)} bytes, over the {validate.MAX_MANIFEST_BYTES}-byte budget (SPEC.md, Archive limits)"],
+        )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.comment = b""
+        _add_entry(archive, "manifest.json", manifest_bytes)
+        _add_entry(archive, validate.REPORT_ENTRY, report_bytes)
+        infos = archive.infolist()
+    for info in infos:
+        if info.file_size > validate.MAX_COMPRESSION_RATIO * max(info.compress_size, 1):
+            raise Refused("invalid-archive", [f"{info.filename} was written over the compression budget; this is a packer bug"])
+    data = buffer.getvalue()
+    # Two entries within their budgets cannot reach this today. The check keeps
+    # a later budget change from letting the packer write a pack the reader's
+    # size limit refuses.
+    if len(data) > validate.MAX_PACK_BYTES:
+        raise Refused("invalid-archive", [f"the pack would be {len(data)} bytes, over the {validate.MAX_PACK_BYTES}-byte pack budget"])
+    return data
+
+
+def compress_type_for(data: bytes) -> int:
+    """Deflate unless deflate would shrink the entry past the reader's ratio
+    budget; then store it. The choice depends only on the bytes, so repacking
+    stays byte-identical. Level 6 matches the compresslevel passed to zipfile."""
+    deflater = zlib.compressobj(6, zlib.DEFLATED, -15)
+    deflated_size = len(deflater.compress(data) + deflater.flush())
+    if len(data) > validate.MAX_COMPRESSION_RATIO * max(deflated_size, 1):
+        return zipfile.ZIP_STORED
+    return zipfile.ZIP_DEFLATED
+
+
+def _add_entry(archive: zipfile.ZipFile, name: str, data: bytes) -> None:
+    info = zipfile.ZipInfo(filename=name, date_time=_FIXED_DATE_TIME)
+    info.compress_type = compress_type_for(data)
+    info.external_attr = _FILE_MODE
+    info.create_system = 0
+    archive.writestr(info, data, compresslevel=6)
+
+
+def json_deterministic(value: dict) -> bytes:
+    # allow_nan=False: Python would otherwise write `Infinity`, which is not
+    # JSON and which the reader refuses.
+    text = json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n"
+    return text.encode("utf-8")
+
+
+def write_atomically(out: Path, data: bytes) -> None:
+    """Write through a temporary file in the same directory and rename it into
+    place, so a reader never sees a half-written pack and a failed write leaves
+    any earlier file at the out path untouched."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    handle, temporary = tempfile.mkstemp(prefix=f".{out.name}.", suffix=".tmp", dir=out.parent)
+    try:
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temporary, 0o644)
+        os.replace(temporary, out)
+    except BaseException:
+        Path(temporary).unlink(missing_ok=True)
+        raise
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--fixture", required=True, type=Path, help="fixture directory: pack-spec.json, capture/, result/, report.md")
+    parser.add_argument("--out", required=True, type=Path, help="zip path to write, relative or absolute")
+    args = parser.parse_args(argv)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="backslashreplace")
+
+    try:
+        out = args.out.resolve()
+    except (OSError, RuntimeError, ValueError):
+        print(f"packer: could not write {args.out}: the path cannot be resolved")
+        print("verdict: NOT WRITTEN")
+        return 1
+    try:
+        fixture = fixture_directory(args.fixture)
+        manifest, pack_bytes, identity = build(fixture, out)
+    except Refused as refused:
+        for detail in refused.details:
+            print(f"REFUSAL {refused.kind}: {detail}")
+        print("verdict: REFUSED (nothing written)")
+        return 2
+    try:
+        write_atomically(out, pack_bytes)
+    except OSError as error:
+        print(f"packer: could not write {command_pack_path(out)}: {error.strerror or type(error).__name__}")
+        print("verdict: NOT WRITTEN")
+        return 1
+
+    packaged = manifest["packaged_files"]
+    print(f"packer: wrote {command_pack_path(out)}")
+    print(f"pack sha256: {sha256_hex(pack_bytes)}")
+    print(f"manifest sha256: {sha256_hex(json_deterministic(manifest))}")
+    print(f"entries: {len(packaged) + 1} (manifest.json plus {len(packaged)} packaged)")
+    print(f"capture: {manifest['capture']['capture_id']} ({len(manifest['capture']['source_refs'])} source refs, referenced not embedded)")
+    print(f"result: {manifest['result']['result_id']}")
+    if identity == "embedded-match":
+        print(f"result identity: embedded id {manifest['result']['result_id']!r} matches result_id")
+    else:
+        print("result identity: bytes-only guarantee (the result file does not self-identify)")
+    print(f"missing fields (explicit): {len(manifest['missing_fields'])}")
+    print("geometry_correctness: assertion null (no claim made)")
+    print(f"reproduce: {manifest['reproduction']['command']}")
+    print("verdict: PACKED")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

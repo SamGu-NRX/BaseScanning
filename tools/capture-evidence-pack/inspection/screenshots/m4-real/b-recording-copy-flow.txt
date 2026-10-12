@@ -1,0 +1,8 @@
+case: b-recording-copy-flow
+commit: b0d3322b5f4a2b0f99278b7b5c5c408125a2e33d (dirty)
+invocation: record start; click #copy-command; record stop; screenshots initial+completed
+url: http://localhost:8931/
+viewport: 1440x900
+assertion: recorded interaction shows copy click and resulting feedback
+result: PASS
+observed: feedback=[""]

@@ -1,0 +1,100 @@
+{
+  "harness": "tools/capture-evidence-pack/inspection/capture-browser-evidence.mjs",
+  "started_at": "2026-10-12T10:13:14.290Z",
+  "browser": {
+    "engine": "chromium headless",
+    "version": "156.0.8078.4",
+    "playwright": "1.64.0"
+  },
+  "source": {
+    "tree_label": "before",
+    "files": {
+      "tools/capture-evidence-pack/inspection/index.html": "12b691920ac2bfe5470c31db5eb6cf378d8220f7a4f779532c54c9d620852fd0",
+      "tools/capture-evidence-pack/inspection/serve.py": "2ce9bb78e13ee2e568c154b6d8bac36e58e15db6a57b6d0b956514f5066265fc",
+      "tools/capture-evidence-pack/read.py": "121fb3d6e5a5989d0c12b59383d885fd133f6a26a91eaff7da74ec6a7d6f889e",
+      "tools/capture-evidence-pack/evidence/example.zip": "e16a06630d4fd38fe5453be5d2996c52d93fe3795416cdf7d7e28ed234d92411",
+      "tools/capture-evidence-pack/inspection/vendor/axe.min.js": "b511cd9dec01c76f4b2ad1723b66b6db37d4c2eb4ed199076e1829d9ee7b75e3",
+      "capture-browser-evidence.mjs (this harness)": "f41dd584fa8188a012807bbf32d92c7f4c6caa43394f88e7a62a783d53b9018d"
+    },
+    "git_head": null,
+    "note": "not a git checkout; identity rests on the file hashes above"
+  },
+  "invocation": [
+    "node",
+    "capture-browser-evidence.mjs",
+    "--tree",
+    "before-badpack",
+    "--out",
+    "final-before-bad",
+    "--label",
+    "before",
+    "--bad-pack",
+    "bad-assertion.zip",
+    "--cases",
+    "desktop-refused-pack"
+  ],
+  "receipts": [
+    {
+      "case": "desktop-refused-pack",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64714"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": "the bad pack was copied over evidence/example.zip in the exported tree, because this tree's server has no --pack flag",
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "bad_pack_sha256": "e16a06630d4fd38fe5453be5d2996c52d93fe3795416cdf7d7e28ed234d92411",
+        "read_states": {
+          "data": null,
+          "refusals": null,
+          "verdict": null
+        },
+        "identity_section_visible": true,
+        "identity_text": "Identity\n    Capture idcapture-synth-0001Captured at2026-10-10T00:00:00ZResult idresult-synth-0001Result pathresult/result.jsonResult SHA-2560e17b8169d865e851aca98201f3968076b66fe36888d8a2e4db4f946835888d0Result bytes263Capture roottools/capture-evidence-pack/fixtures/examplePack pathtools/capture-evidence-pack/evidence/example.zipPack SHA-256e16a06630d4fd38fe5453be5d2996c52d93fe3795416cdf7d7e28ed234d92411Manifest SHA-256ad8a177f3c3dbb35873172e6bb3673cb97af486c87068afd8b22c76df4fdd2b8",
+        "refused_text": null,
+        "timeline": [
+          {
+            "t": 6,
+            "state": "null|null"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "identity section stays hidden for a refused pack",
+          "observed": true,
+          "expected": false,
+          "outcome": "FAIL"
+        },
+        {
+          "assertion": "data read state",
+          "observed": null,
+          "expected": "refused",
+          "outcome": "FAIL"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "desktop-refused-pack.png",
+          "sha256": "6f8ad145f67b9b0edc5f812c416cf59988ac555a6e6e85c987f694deb12a2e58",
+          "full_page": false
+        }
+      ]
+    }
+  ]
+}

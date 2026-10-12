@@ -1,0 +1,8 @@
+case: a1-clip-click-native (NATIVE clipboard readback probe)
+commit: 9482fdd0463abb34914f152aae7602665602ec5f (clean)
+invocation: python3 serve.py --port 8931; agent-browser open http://localhost:8931/; agent-browser set viewport 1440 900 2; agent-browser click '#copy-command'; eval feedback; eval navigator.clipboard.readText()
+url: http://localhost:8931/
+viewport: 1440x900
+assertion: #copy-command click copies; native readback returns value or exact rejection
+result: PASS
+observed: feedback=[""] readback=["READBACK_REJECT:NotAllowedError: Failed to execute 'readText' on 'Clipboard': Read permission denied."] click_rc=0

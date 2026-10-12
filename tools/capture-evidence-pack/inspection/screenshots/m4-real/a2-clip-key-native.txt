@@ -1,0 +1,8 @@
+case: a2-clip-key-native (NATIVE clipboard readback probe)
+commit: 9482fdd0463abb34914f152aae7602665602ec5f (dirty)
+invocation: focus #copy-command via eval; agent-browser press Enter; eval feedback; eval navigator.clipboard.readText()
+url: http://localhost:8931/
+viewport: 1440x900
+assertion: Enter on focused #copy-command copies; native readback returns value or exact rejection
+result: PASS
+observed: focus=["focused"] press_rc=0 press=[✓ Done] feedback=["Copied."] readback=["READBACK_REJECT:NotAllowedError: Failed to execute 'readText' on 'Clipboard': Read permission denied."]

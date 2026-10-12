@@ -1,0 +1,10 @@
+$ python3 tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/absent.zip
+rejected pack sha256: unavailable: the reader refused before it held the pack bytes
+reader arguments: tools/capture-evidence-pack/evidence/absent.zip
+REFUSAL missing-source: pack tools/capture-evidence-pack/evidence/absent.zip cannot be read: No such file or directory
+verdict: REFUSED
+exit code: 2
+$ python3 tools/capture-evidence-pack/pack.py --fixture tools/capture-evidence-pack/fixtures/absent --out /private/tmp/opus228-r4/unused.zip
+REFUSAL missing-source: fixture directory tools/capture-evidence-pack/fixtures/absent cannot be read: No such file or directory
+verdict: REFUSED (nothing written)
+exit code: 2

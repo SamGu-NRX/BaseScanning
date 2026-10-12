@@ -1,0 +1,13 @@
+base commit: 7342767af77431ea5284be91786f6e30cb05acc6
+working tree:  M tools/capture-evidence-pack/SPEC.md
+working tree:  M tools/capture-evidence-pack/inspection/serve.py
+working tree:  M tools/capture-evidence-pack/pack.py
+working tree:  M tools/capture-evidence-pack/read.py
+working tree:  M tools/capture-evidence-pack/tests/test_cli_contract.py
+working tree:  M tools/capture-evidence-pack/tests/test_inspector.py
+working tree: ?? tools/capture-evidence-pack/receipts/2026-10-12-review4/
+11f88880d55bc1c8337ce89652e2b90ec299f594db5cda2360f79006d06ff107  tools/capture-evidence-pack/read.py
+ee5bcd988f7c8017c2cbf981b680b4a651a935b7115ecddf543c35d56fd8336a  tools/capture-evidence-pack/pack.py
+43662f3b77e2b40d7f1b4b5b93f23ded8e300ecdd201e6abfeb17fcc0aa6edc3  tools/capture-evidence-pack/validate.py
+d496750e9a0760f0eb4847708349bfad67fcd85275711aa94ab5a1a9d9709bd0  tools/capture-evidence-pack/inspection/serve.py
+35768fce246885ce987215be3ed7b326c85f62292a56256bcba59b48747c4016  tools/capture-evidence-pack/inspection/index.html

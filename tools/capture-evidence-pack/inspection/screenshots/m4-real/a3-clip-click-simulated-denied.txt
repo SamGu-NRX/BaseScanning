@@ -1,0 +1,8 @@
+case: a3-clip-click-simulated-denied (SIMULATED stub, not native)
+commit: 9482fdd0463abb34914f152aae7602665602ec5f (dirty)
+invocation: eval navigator.clipboard={writeText(){throw new Error('denied')}}; document.execCommand=()=>true; then click #copy-command; eval feedback
+url: http://localhost:8931/
+viewport: 1440x900
+assertion: denied Clipboard API routes to textarea/execCommand fallback; feedback reflects fallback outcome
+result: PASS
+observed: stub=["stubbed"] feedback=["Copied."]
