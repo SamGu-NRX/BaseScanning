@@ -114,12 +114,56 @@ Mechanics, per run directory:
 - `checks.jsonl` — append-only, one JSON object per check, flushed per line;
   a second writer appends, never truncates.
 - `summary.json` — counts by transport, lead questions, blocked notes and
-  notes; rewritten at the end of the run.
+  notes. Written once at the end of the run; an existing summary is never
+  rewritten (the writer refuses and points at a fresh `--out`).
+- `privacy-chain.jsonl` — the digest chain over every receipt file, appended
+  at each write and sealed at summary time (see Integrity below).
+- `privacy-screen.json` — the post-write privacy screen's outcome: files
+  screened, findings, clean flag.
 
 Run directories are second-resolution stamps under `--out` and are never
 overwritten or merged: a name collision refuses to run (exit 3), and absent
 `--out` parents are created. Observations never carry raw response bodies —
 digest prefixes, field names and allowlisted scalar values only.
+
+## Integrity: tamper checks, not immutability
+
+At summary time the run is screened, chained and sealed — and all three are
+detection mechanisms only:
+
+- Every receipt digest is linked into `privacy-chain.jsonl` (each entry binds
+  the previous chain value, so editing or reordering any covered file — or
+  the chain — shows up on replay), the post-write privacy screen's outcome is
+  recorded in `privacy-screen.json` (findings never delete evidence: failed
+  artifacts survive, sealed, for the operator to inspect), and every receipt
+  file is then set read-only (`chmod 0444`).
+- `verify_run_integrity(run_dir)` in `receipts.py` replays the chain and
+  flags chain breaks, files modified after their entry, chained-but-missing
+  files, files with no chain entry, and files left writable. It is not yet
+  wired into any CLI flag or self-check step; call it directly on a run dir.
+
+What these checks cannot do — the honest limits:
+
+- Read-only permission bits are advisory: the file owner, root, or any later
+  `chmod` can still modify or delete the files. Sealing is a guard rail
+  against accidental edits, not a lock.
+- The chain detects later modification; it cannot prevent it. It binds
+  content after the fact and says nothing about who wrote a file or whether
+  it was honest at creation time — the writer process controls every receipt
+  while producing it, before any seal.
+- The chain file lives in the same run directory under the same owner as the
+  receipts it covers. A process able to rewrite the receipts can rebuild a
+  coherent chain just as easily. The machinery assumes the creating process
+  and detects independent, later tampering (a second process, manual edits,
+  partial writes); it is not a defence against the writer itself.
+- Sealing and a clean screen make receipts tamper-evident, not publishable.
+  The privacy posture above governs when a receipt may leave the machine.
+
+Known gap, hardening in flight: a receipt that was never created (a missing
+`run-manifest.json` or `checks.jsonl`) is skipped by the post-write screen
+and unflagged by the verifier today. A pending privacy change will make a
+missing receipt a named, non-green finding in both the screen and the
+verifier.
 
 ## Label vocabulary (what a receipt row may claim)
 
