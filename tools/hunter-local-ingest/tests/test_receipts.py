@@ -7,6 +7,7 @@ self-check's trace gate actually bites.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -16,7 +17,7 @@ import pytest
 
 from hunter_local_ingest.adapter import Observation, StepResult
 from hunter_local_ingest.modes import Status, Transport
-from hunter_local_ingest.receipts import Check, fresh_run_dir, write_summary
+from hunter_local_ingest.receipts import Check, ChecksWriter, fresh_run_dir, write_summary
 from hunter_local_ingest.scenarios import record, step_observed
 from hunter_local_ingest.traces import compare_trace
 
@@ -182,6 +183,41 @@ class TestReceipts:
         assert summary["counts_by_transport"]["GPU_STUB"] == {"NOT_RUN": 1}
         assert summary["counts_by_transport"]["REAL_MIRROR_CPU"]["PASS"] == 12
 
+    def test_fresh_run_dir_creates_absent_parents(self, tmp_path):
+        """Absent --out parents are created (mkdir parents=True), not a crash."""
+        root = tmp_path / "deep" / "nested"
+        run_dir = fresh_run_dir(root, "run")
+        assert run_dir.is_dir()
+        assert run_dir.parent == root
+
+    def test_checks_writer_appends_across_instances(self, tmp_path):
+        """checks.jsonl is append-only: a second writer must not truncate."""
+        writer_a = ChecksWriter(tmp_path)
+        writer_a.write(_check("lifecycle.health", 200, ("status",)))
+        writer_a.close()
+        writer_b = ChecksWriter(tmp_path)
+        writer_b.write(_check("lifecycle.create", 201, ("captureId", "status")))
+        writer_b.close()
+        lines = [
+            json.loads(line)
+            for line in (tmp_path / "checks.jsonl").read_text().splitlines()
+            if line.strip()
+        ]
+        assert [line["id"] for line in lines] == ["lifecycle.health", "lifecycle.create"]
+
+    def test_summary_carries_blocked_notes_and_questions(self, tmp_path):
+        write_summary(
+            tmp_path,
+            [],
+            lead_questions=["q1"],
+            blocked=["lifecycle.health: endpoint unreachable"],
+            notes=["advisory note"],
+        )
+        summary = json.loads((tmp_path / "summary.json").read_text())
+        assert summary["blocked"] == ["lifecycle.health: endpoint unreachable"]
+        assert summary["lead_questions"] == ["q1"]
+        assert summary["notes"] == ["advisory note"]
+
 
 class TestSanitization:
     def test_step_observed_only_carries_allowlisted_pieces(self):
@@ -288,6 +324,45 @@ class TestFixtureDeterminism:
             plan = json.loads(out.read_text())
             digests.add(plan["plan"]["packet_id"])
         assert len(digests) == 2
+
+    def test_different_seed_keeps_same_paths_and_sizes(self, tmp_path):
+        """Seed variation must not perturb the plan's shape - only content."""
+        plans = [
+            json.loads(_generate_plan(tmp_path, seed=seed).read_text())
+            for seed in ("1", "2")
+        ]
+        shape1 = [(f["path"], f["bytes"], f["role"]) for f in plans[0]["plan"]["files"]]
+        shape2 = [(f["path"], f["bytes"], f["role"]) for f in plans[1]["plan"]["files"]]
+        assert shape1 == shape2, "seed variation must not change paths, sizes or roles"
+        assert plans[0]["plan"]["packet_id"] != plans[1]["plan"]["packet_id"]
+
+    @pytest.mark.xfail(
+        reason=(
+            "gen_synthetic_packet.noise_bytes reseeds from sha256(path-tag) alone, so "
+            "different --seed values produce identical file bytes; only packet_id "
+            "varies (recon S3r) and the manifest's fixture_identity seed=N overstates "
+            "content variation. The fix belongs to the generator (protocol child's "
+            "file - cross-file ask). XPASS(strict) once it lands: remove this marker."
+        ),
+        strict=True,
+    )
+    def test_different_seed_changes_file_bytes(self, tmp_path):
+        """Decisive recon S3r check: file bytes must be derived from --seed."""
+        plans = [
+            json.loads(_generate_plan(tmp_path, seed=seed).read_text())
+            for seed in ("1", "2")
+        ]
+        hex1 = {f["path"]: f["content_hex"] for f in plans[0]["plan"]["files"]}
+        hex2 = {f["path"]: f["content_hex"] for f in plans[1]["plan"]["files"]}
+        assert hex1 != hex2, "fixture file bytes must vary with --seed, not just packet_id"
+
+    def test_generator_digest_binds_plan_bytes(self, tmp_path):
+        """The recorded plan digest must bind the emitted plan bytes."""
+        plan = json.loads(_generate_plan(tmp_path, seed="5").read_text())
+        recorded = plan["generator"]["sha256_of_plan"]
+        plan["generator"]["sha256_of_plan"] = None
+        blob = json.dumps(plan, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        assert hashlib.sha256(blob).hexdigest() == recorded
 
 
 def _generate_plan(tmp_path: Path, seed: str = "3") -> Path:
