@@ -1,0 +1,47 @@
+Before/after test matrix, third review round
+============================================
+The current tests/ directory run twice with CPython 3.13.3 and pytest 8.0.1:
+- after: this branch's working tree before the commit that adds this file (source hashes in sources.txt).
+- before: tools, fixtures and example pack exported from 579b15e1b411b36aa30601b5f3f00c9b017204fd
+  with git archive, and only tests/ replaced by the current one.
+after: 227 passed. before: 29 failed, 198 passed.
+All 193 tests from the earlier rounds pass both times.
+
+New tests that failed before and pass after (29):
+  test_cli_contract.py::test_packer_read_failure_names_the_declared_path_only
+  test_cli_contract.py::test_packer_refuses_unpaired_surrogates[capture-id-high]
+  test_cli_contract.py::test_packer_refuses_unpaired_surrogates[capture-id-low]
+  test_cli_contract.py::test_packer_refuses_unpaired_surrogates[result-path-high]
+  test_cli_contract.py::test_packer_refuses_unpaired_surrogates[result-path-low]
+  test_cli_contract.py::test_packer_refuses_unpaired_surrogates[source-path-high]
+  test_cli_contract.py::test_packer_refuses_unpaired_surrogates[source-path-low]
+  test_cli_contract.py::test_reader_read_failure_names_the_declared_path_only
+  test_cli_contract.py::test_reader_refuses_unpaired_surrogates[capture_id-high]
+  test_cli_contract.py::test_reader_refuses_unpaired_surrogates[capture_id-low]
+  test_cli_contract.py::test_reader_refuses_unpaired_surrogates[capture_root-high]
+  test_cli_contract.py::test_reader_refuses_unpaired_surrogates[capture_root-low]
+  test_cli_contract.py::test_reader_refuses_unpaired_surrogates[missing-detail-high]
+  test_cli_contract.py::test_reader_refuses_unpaired_surrogates[missing-detail-low]
+  test_cli_contract.py::test_reader_refuses_unpaired_surrogates[result-high]
+  test_cli_contract.py::test_reader_refuses_unpaired_surrogates[result-low]
+  test_cli_contract.py::test_reader_refuses_unpaired_surrogates[source-high]
+  test_cli_contract.py::test_reader_refuses_unpaired_surrogates[source-low]
+  test_cli_contract.py::test_reader_value_error_on_open_is_a_fixed_message
+  test_finite_numbers.py::test_packer_encoder_refuses_a_non_finite_value_that_reaches_it
+  test_finite_numbers.py::test_packer_refuses_non_finite_numbers_in_pack_spec[negative-overflow]
+  test_finite_numbers.py::test_packer_refuses_non_finite_numbers_in_pack_spec[nested]
+  test_finite_numbers.py::test_packer_refuses_non_finite_numbers_in_pack_spec[positive-overflow]
+  test_finite_numbers.py::test_reader_refuses_non_finite_numbers_in_the_manifest[negative-overflow]
+  test_finite_numbers.py::test_reader_refuses_non_finite_numbers_in_the_manifest[nested]
+  test_finite_numbers.py::test_reader_refuses_non_finite_numbers_in_the_manifest[positive-overflow]
+  test_inspector.py::test_http_unpaired_surrogate_root_is_refused_not_dropped[high]
+  test_inspector.py::test_http_unpaired_surrogate_root_is_refused_not_dropped[low]
+  test_inspector.py::test_read_failure_detail_reaches_the_page_without_absolute_paths
+
+New tests that pass both times (5): valid-input controls (non-ASCII paths, finite
+numbers in an extension key) and the referenced-file number rule, which this round keeps unchanged.
+  test_cli_contract.py::test_control_packer_packs_legitimate_non_ascii_paths
+  test_cli_contract.py::test_control_reader_accepts_legitimate_non_ascii_paths
+  test_finite_numbers.py::test_control_finite_extension_packs_and_reads
+  test_finite_numbers.py::test_control_reader_accepts_finite_extensions
+  test_finite_numbers.py::test_referenced_files_keep_their_own_number_rule

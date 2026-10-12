@@ -1,0 +1,38 @@
+# Inspection page: accessibility and responsive evidence
+
+Current evidence for the page is in [`evidence/2026-10-12/`](evidence/2026-10-12/), captured from a committed head with the served file hashes recorded. Those runs are bound to commit `64e381b1`. Later commits changed `read.py` (stricter paths, referenced-JSON parsing, finite numbers, text checks and path-safe read errors) and `serve.py` (an unexpected exception now answers 500 instead of dropping the connection, and `--pack` is checked per request instead of at startup). Reads now open without blocking, so a FIFO is refused instead of hanging a request. `index.html` is unchanged. The served `read.py` and `serve.py` hashes in those receipts therefore no longer match the branch head, and the browser runs were not repeated; pytest covers the new refusals through the real server. The sections below are history: they describe earlier versions of the page, and their "re-run pending" rows were never filled in. [`screenshots/m4-real/CORRECTIONS.md`](screenshots/m4-real/CORRECTIONS.md) records what the m4 receipts did and did not observe.
+
+Page: `tools/capture-evidence-pack/inspection/index.html`, served by `serve.py` on `http://127.0.0.1:8793/` (localhost only; axe-core vendored under `inspection/vendor/`).
+
+## 2026-10-11 re-verification on the settled UI
+
+The page now settles both reads into explicit independent states (ok/failed) and runs axe only after both settle and the axe script has loaded, so the receipts below audit the settled UI rather than a half-loaded page. Capture server flags used: `--fault`, `--delay-data`, `--delay-refusals` (defaults serve normally).
+
+### axe-core on the settled UI
+
+| Run | Violations | Passes | Incomplete |
+|---|---|---|---|
+| 1280x800 settled success | re-run pending; receipt not captured | - | - |
+| 375x812 settled success | re-run pending; receipt not captured | - | - |
+| 1280x800 data-failure UI | re-run pending; receipt not captured | - | - |
+
+### Captured scenarios (actual files under `screenshots/`)
+
+- `desktop.png`
+- `refusals-desktop.png`
+- `axe-results.png`
+- `mobile-375.png`
+- `keyboard-focus.png`
+
+### Keyboard and reduced motion
+
+- Keyboard focus re-captured (`keyboard-focus.png`): first Tab lands on the skip link with a visible outline; no focus traps; scrollable regions keep `tabindex="0"`.
+- Reduced motion evidence retained from the 2026-10-10 run; the transition gating is unchanged by the read-state rework.
+
+### Failure-state behavior under test
+
+- Data failure: the error box names the failed read (`data.json responded 500`); rendered refusal proof remains visible.
+- Refusal failure: the refusal pane names the failed read (`refusals.json responded 500`) and states this is not a pack refusal; identity sections remain visible.
+- Both failing: each pane shows its own explicit failure state.
+- Completion orders: with either read delayed, the settled captures show no successful proof is cleared by the other channel completing later, and no pane is left at Loading.
+

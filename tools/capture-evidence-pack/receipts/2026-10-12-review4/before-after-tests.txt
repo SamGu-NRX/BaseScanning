@@ -1,0 +1,24 @@
+Before/after test matrix, fourth review round
+=============================================
+The current tests/ directory run twice with CPython 3.13.3 and pytest 8.0.1:
+- after: this branch's working tree before the commit that adds this file (source hashes in sources.txt).
+- before: tools, fixtures and example pack exported from 7342767af77431ea5284be91786f6e30cb05acc6
+  with git archive, and only tests/ replaced by the current one.
+after: 238 passed. before: 9 failed, 229 passed.
+All 227 tests from the earlier rounds pass both times.
+
+New tests that failed before and pass after (9):
+  test_cli_contract.py::test_packer_names_each_unusable_fixture[file-fixture
+  test_cli_contract.py::test_packer_names_each_unusable_fixture[missing-fixture
+  test_cli_contract.py::test_packer_refuses_a_fixture_under_an_inaccessible_directory
+  test_cli_contract.py::test_reader_names_each_unopenable_pack[dangling-symlink-pack
+  test_cli_contract.py::test_reader_names_each_unopenable_pack[directory-pack
+  test_cli_contract.py::test_reader_names_each_unopenable_pack[missing-pack
+  test_cli_contract.py::test_reader_refuses_a_pack_under_an_inaccessible_directory
+  test_inspector.py::test_http_pack_under_an_inaccessible_directory_is_a_named_refusal
+  test_inspector.py::test_server_starts_with_a_pack_that_is_not_there_yet
+
+New tests that pass both times (2): valid-input controls (a relative and a symlinked pack,
+a symlinked fixture directory).
+  test_cli_contract.py::test_control_packer_accepts_a_symlinked_fixture_directory
+  test_cli_contract.py::test_control_reader_accepts_a_relative_and_a_symlinked_pack
