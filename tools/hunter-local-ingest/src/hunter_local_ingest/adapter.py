@@ -1,4 +1,4 @@
-"""The frozen client adapter interface, version 1.0.0.
+"""The frozen client adapter interface, version 1.1.0.
 
 Public client code and public scenarios code against this seam, never
 against one backend's implementation.
@@ -22,6 +22,15 @@ Published semantics carried over deliberately:
 
 The interface is frozen: new steps arrive as new methods with a bumped
 INTERFACE_VERSION, never as edits to existing method signatures.
+
+Version history
+---------------
+1.0.0  Baseline step surface returning StepResult observations.
+1.1.0  Optional ``credential`` construction argument — an RFC 6750 bearer
+       token for the capture-API steps only (implementations refuse it on
+       storage PUTs) — and ``StepResult.retry_after_s`` (the server-advised
+       delay when a transient reply carried Retry-After, capped at the
+       published 120 s ceiling).
 """
 
 from __future__ import annotations
@@ -31,7 +40,7 @@ import typing
 
 from .observations import Observation
 
-INTERFACE_VERSION = "1.0.0"
+INTERFACE_VERSION = "1.1.0"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -48,6 +57,7 @@ class StepResult:
     observation: Observation | None = None
     error: str | None = None
     context: dict | None = None
+    retry_after_s: float | None = None
 
     @property
     def http_status(self) -> int | None:
@@ -70,14 +80,18 @@ class HunterIngestAdapter(typing.Protocol):
     local mirror backend) and the fault-proxy wrapper (labeled
     FAKE_HUNTER). Each step returns a StepResult; scenarios decide
     PASS/FAIL from observations plus the published contract.
+
+    ``credential`` is optional; implementations validate it as an RFC 6750
+    b64token at construction and scope it to capture-API requests.
     """
 
+    def __init__(
+        self, base_url: str, *, credential: str | None = None
+    ) -> None: ...
+
     def health(self) -> StepResult: ...
-
     def create(self, request: dict, idempotency_key: str) -> StepResult: ...
-
     def register(self, capture_id: str, files: list[dict]) -> StepResult: ...
-
     def upload(
         self,
         capture_id: str,
@@ -86,11 +100,7 @@ class HunterIngestAdapter(typing.Protocol):
         url: str,
         headers: dict[str, str] | None,
     ) -> StepResult: ...
-
     def commit(self, capture_id: str, files: list[dict]) -> StepResult: ...
-
     def finalize(self, capture_id: str, packet: bytes, idempotency_key: str) -> StepResult: ...
-
     def events(self, capture_id: str, after: int, wait_s: int) -> StepResult: ...
-
     def result(self, capture_id: str) -> StepResult: ...
