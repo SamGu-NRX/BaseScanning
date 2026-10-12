@@ -1,0 +1,65 @@
+{
+  "committed_source_sha256": "ddb7f24f4ebcb814564578776393ac88584b393e6e2a35ca5f65b06f97640c28",
+  "installed_source_sha256": "ddb7f24f4ebcb814564578776393ac88584b393e6e2a35ca5f65b06f97640c28",
+  "plan_sha256": "eabf28a3f818ee22d38cec91ad6d85af6921f5cb45156378a007475368ab692f",
+  "runs": {
+    "bearer-trailing-lf": {
+      "category_reported": true,
+      "exit_code": 2,
+      "out_dir_created": false,
+      "requests_sent": 0,
+      "token_occurrences_in_output": 0
+    },
+    "commit-batch-semantic-fail": {
+      "artifacts": {
+        "checks.jsonl": "0513a460e14c9ce043d7a08059f916e1c73bdc9a7f391331e0b4800691b15c43",
+        "privacy-chain.jsonl": "17c7240152810828aee2cb8bfac6c5b19d8367a9a10330fa182ded7bb3b9b780",
+        "privacy-screen.json": "293993f78f077d1ed4bf6cda674f6804029c9a7f81286e9cd8d07ed6adabd4a1",
+        "run-manifest.json": "301976851fddada9c169cd88ea031c6adecf132a6a9c27303a0b9ff53762f226",
+        "summary.json": "ad930d245a271879630539e1dab938d61ba83db4d137e23db12a4af8da248f81"
+      },
+      "blocked": [
+        "lifecycle.finalize",
+        "lifecycle.events",
+        "lifecycle.result",
+        "control.corrupt-upload",
+        "control.truncated-upload"
+      ],
+      "chain_head": "f89e9b6c23963e06d81f29c665be8ba12e9569c7528ae7f79015eebb4e3ddae2",
+      "commit_requests": 3,
+      "exit_code": 1,
+      "failed": [
+        "lifecycle.commit",
+        "trace.expected-lifecycle-v3"
+      ],
+      "lifecycle_commit": "FAIL",
+      "lifecycle_commit_batches": 1,
+      "lifecycle_events": "BLOCKED",
+      "run_dir": "batch-fail-20261012T130248Z-191f85151f05e372",
+      "verdict": "FAIL",
+      "verify_exit": 0,
+      "verify_last_line": "verify: OK"
+    },
+    "decimal-cursor-exact": {
+      "artifacts": {
+        "checks.jsonl": "b46988fe2f0b322e05c694d135632be4362ee134777576c65fb3c4ec60862886",
+        "privacy-chain.jsonl": "d830753bf8e74b59bd22da10b41495b97c256b47ec98050f64efe97b515c58b6",
+        "privacy-screen.json": "ae14151223d3688ec0370bdee3857ba9f545007ba73255ec40f923e160feca24",
+        "run-manifest.json": "7ae7395c2adc4b3b784e499b198a004aa33f8af22a7d4c973a07565c27c9ea80",
+        "summary.json": "c9fd0969f93f1bae0c23f2fa848a6aa406657da67fab73537b994030a4ce2278"
+      },
+      "blocked": [],
+      "chain_head": "c96011eb0b78ad34ea1407ddc04476b1bd40cc75a9100e6a55ad7f7e9a26d364",
+      "exit_code": 0,
+      "failed": [],
+      "lifecycle_commit": "PASS",
+      "lifecycle_events": "PASS",
+      "polled_exact_cursor": true,
+      "polled_rounded_cursor": false,
+      "run_dir": "decimal-cursor-20261012T130249Z-6f398a7fc05434a5",
+      "verdict": "PASS",
+      "verify_exit": 0,
+      "verify_last_line": "verify: OK"
+    }
+  }
+}
