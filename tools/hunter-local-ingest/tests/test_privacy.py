@@ -584,9 +584,16 @@ _CE_LOOKALIKE = "http://127.0.0.1.evil.com:8000/v1"
 
 @pytest.fixture(autouse=True)
 def _ce_clean_binding():
-    """Isolate the run-bound expected-value registry around every test."""
-    from hunter_local_ingest.observations import reset_expected
+    """Isolate the run-bound expected-value registry around every test.
 
+    Tolerates the pre-CE1 module, where the registry does not exist yet;
+    once the fix lands, every test runs with a clean registry.
+    """
+    try:
+        from hunter_local_ingest.observations import reset_expected
+    except ImportError:
+        yield
+        return
     reset_expected()
     yield
     reset_expected()
