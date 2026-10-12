@@ -1,0 +1,12 @@
+{"id": "lifecycle.health", "status": "PASS", "http_status_class": "2xx", "field_names": ["status"]}
+{"id": "lifecycle.create", "status": "PASS", "http_status_class": "2xx", "field_names": ["captureId", "status"]}
+{"id": "lifecycle.register", "status": "PASS", "http_status_class": "2xx", "field_names": ["files"]}
+{"id": "lifecycle.upload", "status": "PASS", "http_status_class": "2xx", "field_names": null}
+{"id": "lifecycle.commit", "status": "PASS", "http_status_class": "2xx", "field_names": ["committed", "mismatch", "notFound"]}
+{"id": "lifecycle.finalize", "status": "PASS", "http_status_class": "2xx", "field_names": ["missing", "runId", "status"]}
+{"id": "lifecycle.events", "status": "PASS", "http_status_class": "2xx", "field_names": ["events", "next", "status"]}
+{"id": "lifecycle.result", "status": "PASS", "http_status_class": "2xx", "field_names": ["memberActions", "status", "viewsNeeded"]}
+{"id": "control.idempotent-create", "status": "PASS", "http_status_class": "2xx", "field_names": ["captureId", "status"]}
+{"id": "control.corrupt-upload", "status": "PASS", "http_status_class": "2xx", "field_names": ["committed", "mismatch", "notFound"]}
+{"id": "control.truncated-upload", "status": "PASS", "http_status_class": "2xx", "field_names": ["committed", "mismatch", "notFound"]}
+{"id": "control.wrong-capture", "status": "PASS", "http_status_class": "404", "field_names": ["errors"]}

@@ -1,0 +1,4 @@
+{"artifact": "run-manifest.json", "at": "2026-10-12T11:35:34.277Z", "bytes": 3478, "chain_sha256": "f0f5fd9b4cb4f2b1ddc6acb1156cfd9c1b4156906a7415a98ff4c47de48cd517", "sha256": "de02f749138caa6f2498f6ef6ac4d69b3975e14f6db8e486aa8a4017216099b1"}
+{"artifact": "checks.jsonl", "at": "2026-10-12T11:35:36.947Z", "bytes": 21616, "chain_sha256": "176d63715f2b5732a16455d8727293bc09ae9a83036173c9963ca11c2e079f52", "sha256": "e4e51f47d421915d07f81a240a187b0ff2f9eb978de64014f0a9b04ff93d5597"}
+{"artifact": "summary.json", "at": "2026-10-12T11:35:36.947Z", "bytes": 1482, "chain_sha256": "b355e966f3ac2baaff51e8f7dc98e921bd3d3e3e9f41446cb6c01d9d3209059d", "sha256": "fb1a5072dba5eef74fd9f418bf7cf49e6e05ceb09e3d705ec1c10288851cfd68"}
+{"artifact": "privacy-screen.json", "at": "2026-10-12T11:35:36.960Z", "bytes": 238, "chain_sha256": "53f2ebf77525f3c6863afa09456ee5ef6450dde8c0dabaa1a18165f8941653e6", "sha256": "0d325f47d2ce67341c707f02e28314dd4287d125550da6baf480ca49465a00c6"}

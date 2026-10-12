@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hunter-local-ingest"
+version = "0.2.0"
+description = "Published-client checks against a local capture API, with labeled fault controls and validated, screened, chained receipts."
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+hunter-local-ingest = "hunter_local_ingest.runner:main"
+hunter-selfcheck = "hunter_local_ingest.selfcheck:main"
+hunter-verify-run = "hunter_local_ingest.verify:main"
+hunter-gen-plan = "hunter_local_ingest.fixturegen:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Frozen expected traces live in src/hunter_local_ingest/traces/ and ship as
+# package data; traces.py reads them with importlib.resources, so an
+# installed copy finds them without the repo checkout.
+[tool.setuptools.package-data]
+hunter_local_ingest = ["traces/*.jsonl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]

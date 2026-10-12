@@ -1,0 +1,12 @@
+{
+  "clean": true,
+  "findings": [],
+  "finished_utc": "2026-10-12T13:02:49.555Z",
+  "missing": [],
+  "schema": "hunter-local-ingest/privacy-screen/2",
+  "screened": [
+    "run-manifest.json",
+    "checks.jsonl",
+    "summary.json"
+  ]
+}
