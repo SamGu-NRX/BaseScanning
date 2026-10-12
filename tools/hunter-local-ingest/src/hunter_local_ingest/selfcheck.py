@@ -37,6 +37,35 @@ from .traces import compare_trace
 
 _TEMP = tempfile.gettempdir()
 
+_TRACE_NAME = "expected-lifecycle-v1.jsonl"
+
+
+def frozen_trace_candidates() -> tuple[Path, ...]:
+    """Where the frozen trace may live, in priority order.
+
+    First: inside the installed package (works for wheel installs once
+    package-data ships it, and for editable installs via the src tree).
+    Second: the repo checkout's tool-root traces/ directory — a compat
+    symlink to the package copy while consumers (tests/test_receipts.py)
+    still reference that path.
+    """
+    package_dir = Path(__file__).resolve().parent
+    return (
+        package_dir / "traces" / _TRACE_NAME,
+        package_dir.parents[1] / "traces" / _TRACE_NAME,
+    )
+
+
+def frozen_trace_path() -> Path:
+    """Resolve the frozen trace from the first candidate that exists."""
+    candidates = frozen_trace_candidates()
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(
+        "frozen trace missing at " + " and at ".join(str(c) for c in candidates)
+    )
+
 
 class _FakeState:
     """In-memory capture state for the plumbing fake."""
@@ -395,16 +424,20 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
         problems.append("privacy: receipts missing body digests (digests must be present)")
 
     # frozen expected trace comparison (REAL_MIRROR_CPU round); advisory
-    # (provisional-line) mismatches are reported, never hard failures
-    trace_path = Path(__file__).resolve().parents[2] / "traces" / "expected-lifecycle-v1.jsonl"
-    if trace_path.exists():
+    # (provisional-line) mismatches are reported, never hard failures.
+    # Resolved package-relative first so a non-editable (wheel) install
+    # finds the trace it ships; the repo-root fallback keeps checkouts
+    # that predate the move working.
+    try:
+        trace_path = frozen_trace_path()
+    except FileNotFoundError as exc:
+        problems.append(str(exc))
+    else:
         mismatches = compare_trace(checks, trace_path, transport=Transport.FAKE_HUNTER)
         hard = [m for m in mismatches if not m.startswith("advisory: ")]
         advisory = [m for m in mismatches if m.startswith("advisory: ")]
         problems.extend(hard)
         notes_out.extend(advisory)
-    else:
-        problems.append(f"frozen trace missing at {trace_path}")
 
     write_summary(
         run_dir,

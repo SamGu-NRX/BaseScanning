@@ -1,12 +1,1 @@
-{"id": "lifecycle.health", "http_status_class": "2xx", "field_names": ["status"], "provisional": false}
-{"id": "lifecycle.create", "http_status_class": "2xx", "field_names": ["captureId", "status"], "provisional": false}
-{"id": "lifecycle.register", "http_status_class": "2xx", "field_names": ["files"], "provisional": false}
-{"id": "lifecycle.upload", "http_status_class": "2xx", "field_names": null, "provisional": false}
-{"id": "lifecycle.commit", "http_status_class": "2xx", "field_names": ["committed"], "provisional": false}
-{"id": "lifecycle.finalize", "http_status_class": "2xx", "field_names": ["status"], "provisional": false}
-{"id": "lifecycle.events", "http_status_class": "200", "field_names": ["next"], "provisional": false}
-{"id": "lifecycle.result", "http_status_class": "2xx", "field_names": ["schema_version"], "provisional": true}
-{"id": "control.idempotent-create", "http_status_class": "2xx", "field_names": null, "provisional": true}
-{"id": "control.corrupt-upload", "http_status_class": null, "field_names": null, "provisional": false}
-{"id": "control.truncated-upload", "http_status_class": null, "field_names": null, "provisional": false}
-{"id": "control.wrong-capture", "http_status_class": null, "field_names": null, "provisional": true}
+../src/hunter_local_ingest/traces/expected-lifecycle-v1.jsonl
