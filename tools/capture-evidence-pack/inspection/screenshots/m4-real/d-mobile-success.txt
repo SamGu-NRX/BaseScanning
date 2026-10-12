@@ -1,0 +1,8 @@
+case: d-mobile-success
+commit: 1cae7d1d8bca62d0a64f94389032f52ce1a09d80 (dirty)
+invocation: viewport 390x844; open http://localhost:8931/; sleep 2; screenshot; eval feedback
+url: http://localhost:8931/
+viewport: 390x844
+assertion: mobile layout renders the scenario correctly
+result: PASS
+observed: feedback=[""]
