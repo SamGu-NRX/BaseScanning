@@ -259,6 +259,32 @@ def run(argv: list[str] | None = None) -> int:
         finally:
             proxy.stop()
 
+        # Named arm that cannot run yet (recon §3t): the fault proxy fronts
+        # plain HTTP origins only. DirectHttpClient opens raw HTTP(S)
+        # connections with no CONNECT-tunnel client, and the proxy neither
+        # terminates TLS nor forwards an upstream CONNECT — so an HTTPS
+        # origin cannot be fronted, and a truncated-response framing fault
+        # over TLS is unreachable until both exist. Recorded BLOCKED, never
+        # silently skipped, so no fault receipt can claim https coverage.
+        sink.append(
+            {
+                "id": "fault.https-proxy",
+                "transport": Transport.FAKE_HUNTER.value,
+                "oracle": (
+                    "fault-suite coverage: an HTTPS origin fronted by the fault"
+                    " proxy must reproduce the same fault kinds over TLS"
+                ),
+                "expected": "the https-proxy fault arm runs",
+                "observed": (
+                    "BLOCKED until a CONNECT-tunneling client transport and a"
+                    " TLS-capable fault proxy exist: the fault proxy fronts"
+                    " plain HTTP origins only (no TLS termination, no upstream"
+                    " CONNECT), and DirectHttpClient has no proxy support"
+                ),
+                "status": Status.BLOCKED.value,
+            }
+        )
+
     writer.close()
 
     checks = sink.checks
