@@ -61,8 +61,9 @@ LEAD_QUESTIONS = [
 
 
 def _load_plan(path: Path, seed: int) -> CapturePlan:
-    raw = json.loads(path.read_text(encoding="utf-8"))
     try:
+        # JSONDecodeError is a ValueError, so malformed JSON exits 3 too.
+        raw = json.loads(path.read_text(encoding="utf-8"))
         plan_raw = raw["plan"]
         files = [(f["path"], bytes.fromhex(f["content_hex"])) for f in plan_raw["files"]]
         return CapturePlan(

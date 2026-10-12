@@ -12,18 +12,25 @@ live with the scenarios (and their own conforming stubs).
 
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 import socket
 import socketserver
+import subprocess
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 import pytest
 
 from hunter_local_ingest.http_client import DirectHttpClient
+from hunter_local_ingest.scenarios import ROLE_VOCABULARY
 
 BASE = "http://127.0.0.1"  # client-facing base; the port is filled in
 BASE_HOST = "127.0.0.1"  # bare loopback host for the stub bind
+TOOL_ROOT = Path(__file__).resolve().parents[1]
 
 
 class _NoReverseDnsServer(ThreadingHTTPServer):
@@ -651,3 +658,72 @@ class TestVerdictEventBinding:
         from hunter_local_ingest.scenarios import verdict_events_binding
 
         assert verdict_events_binding(["run-9"], None) != []
+
+
+def _generate_plan(tmp_path, seed):
+    out = tmp_path / f"plan-{seed}.json"
+    subprocess.run(
+        [
+            sys.executable,
+            str(TOOL_ROOT / "fixtures" / "gen_synthetic_packet.py"),
+            "--seed",
+            str(seed),
+            "--out",
+            str(out),
+        ],
+        check=True,
+        cwd=TOOL_ROOT,
+    )
+    return json.loads(out.read_text(encoding="utf-8"))
+
+
+class TestFixturePacket04:
+    """Fixture plans match the published packet/create contract (recon §3e/f/r)."""
+
+    def test_same_seed_reproduces_file_bytes(self, tmp_path):
+        a = _generate_plan(tmp_path, 5)
+        b = _generate_plan(tmp_path, 5)
+        fa = [f["content_hex"] for f in a["plan"]["files"]]
+        fb = [f["content_hex"] for f in b["plan"]["files"]]
+        assert fa == fb, "same seed must reproduce file bytes exactly"
+
+    def test_different_seed_changes_file_bytes(self, tmp_path):
+        a = _generate_plan(tmp_path, 1)
+        b = _generate_plan(tmp_path, 2)
+        fa = [f["content_hex"] for f in a["plan"]["files"]]
+        fb = [f["content_hex"] for f in b["plan"]["files"]]
+        assert fa != fb, "a changed seed must change actual payload bytes"
+        assert a["plan"]["packet_id"] != b["plan"]["packet_id"]
+
+    def test_packet_is_packet04_shaped(self, tmp_path):
+        plan = _generate_plan(tmp_path, 5)
+        packet = json.loads(bytes.fromhex(plan["plan"]["packet_hex"]).decode("utf-8"))
+        assert packet["format"] == "house-capture-packet"
+        assert packet["formatVersion"] == "0.4"
+        assert packet["packetId"] == plan["plan"]["packet_id"]
+        contents = {
+            f["path"]: bytes.fromhex(f["content_hex"]) for f in plan["plan"]["files"]
+        }
+        assert [e["path"] for e in packet["files"]] == list(contents)
+        for entry in packet["files"]:
+            assert entry["sha256"] == hashlib.sha256(contents[entry["path"]]).hexdigest()
+            assert entry["bytes"] == len(contents[entry["path"]])
+            assert entry["role"] in ROLE_VOCABULARY
+
+    def test_create_body_is_published_create_request(self, tmp_path):
+        plan = _generate_plan(tmp_path, 5)
+        body = plan["plan"]["create_request"]
+        assert body["packetId"] == plan["plan"]["packet_id"]
+        assert body["formatVersion"] == "0.4"
+        assert body["tier"] in ("arkit", "arkit_lidar")
+        assert body["flow"] == "guided"
+        assert set(body["device"]) == {"model", "systemVersion", "appVersion"}
+
+    def test_packet_id_matches_published_pattern(self, tmp_path):
+        plan = _generate_plan(tmp_path, 5)
+        assert re.fullmatch(r"[A-Za-z0-9_-]{8,64}", plan["plan"]["packet_id"])
+
+    def test_plan_roles_are_published(self, tmp_path):
+        plan = _generate_plan(tmp_path, 5)
+        assert plan["plan"]["roles"]
+        assert set(plan["plan"]["roles"].values()) <= ROLE_VOCABULARY

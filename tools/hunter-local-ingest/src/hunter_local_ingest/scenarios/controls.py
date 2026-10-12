@@ -196,7 +196,7 @@ def _integrity_control(
         descriptors.append(
             {
                 "path": path,
-                "role": plan.roles.get(path, "mesh"),
+                "role": plan.roles.get(path, "keyframe"),
                 "sha256": hashlib.sha256(content).hexdigest(),
                 "bytes": len(content),
             }
