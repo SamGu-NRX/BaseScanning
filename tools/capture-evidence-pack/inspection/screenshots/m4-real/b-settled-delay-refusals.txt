@@ -1,5 +1,5 @@
 case: b-settled-delay-refusals
-commit: 48503111c97cf80edb4800b728a47fb43e294b72 (dirty)
+commit: b0d3322b5f4a2b0f99278b7b5c5c408125a2e33d (dirty)
 invocation: serve.py --port 8935 per-scenario flags; open; sleep 5 (past all 3s delays); screenshot; eval feedback
 url: http://localhost:8935/
 viewport: 1440x900
