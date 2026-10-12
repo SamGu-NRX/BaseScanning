@@ -26,6 +26,7 @@ import shlex
 import sys
 import tempfile
 import zipfile
+import zlib
 from pathlib import Path
 
 import validate
@@ -164,17 +165,46 @@ def build(fixture: Path, out: Path) -> tuple[dict, bytes, str]:
 
 
 def archive_bytes(manifest: dict, report_bytes: bytes) -> bytes:
+    """Build the archive and hold it to the limits the reader applies, so the
+    packer never reports PACKED for a pack its reader must refuse."""
+    manifest_bytes = json_deterministic(manifest)
+    if len(manifest_bytes) > validate.MAX_MANIFEST_BYTES:
+        raise Refused(
+            "invalid-manifest",
+            [f"manifest.json would be {len(manifest_bytes)} bytes, over the {validate.MAX_MANIFEST_BYTES}-byte budget (SPEC.md, Archive limits)"],
+        )
     buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+    with zipfile.ZipFile(buffer, "w") as archive:
         archive.comment = b""
-        _add_entry(archive, "manifest.json", json_deterministic(manifest))
+        _add_entry(archive, "manifest.json", manifest_bytes)
         _add_entry(archive, validate.REPORT_ENTRY, report_bytes)
-    return buffer.getvalue()
+        infos = archive.infolist()
+    for info in infos:
+        if info.file_size > validate.MAX_COMPRESSION_RATIO * max(info.compress_size, 1):
+            raise Refused("invalid-archive", [f"{info.filename} was written over the compression budget; this is a packer bug"])
+    data = buffer.getvalue()
+    # Two entries within their budgets cannot reach this today. The check keeps
+    # a later budget change from letting the packer write a pack the reader's
+    # size limit refuses.
+    if len(data) > validate.MAX_PACK_BYTES:
+        raise Refused("invalid-archive", [f"the pack would be {len(data)} bytes, over the {validate.MAX_PACK_BYTES}-byte pack budget"])
+    return data
+
+
+def compress_type_for(data: bytes) -> int:
+    """Deflate unless deflate would shrink the entry past the reader's ratio
+    budget; then store it. The choice depends only on the bytes, so repacking
+    stays byte-identical. Level 6 matches the compresslevel passed to zipfile."""
+    deflater = zlib.compressobj(6, zlib.DEFLATED, -15)
+    deflated_size = len(deflater.compress(data) + deflater.flush())
+    if len(data) > validate.MAX_COMPRESSION_RATIO * max(deflated_size, 1):
+        return zipfile.ZIP_STORED
+    return zipfile.ZIP_DEFLATED
 
 
 def _add_entry(archive: zipfile.ZipFile, name: str, data: bytes) -> None:
     info = zipfile.ZipInfo(filename=name, date_time=_FIXED_DATE_TIME)
-    info.compress_type = zipfile.ZIP_DEFLATED
+    info.compress_type = compress_type_for(data)
     info.external_attr = _FILE_MODE
     info.create_system = 0
     archive.writestr(info, data, compresslevel=6)

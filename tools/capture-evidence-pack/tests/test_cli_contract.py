@@ -295,3 +295,103 @@ def test_packer_refuses_a_capture_input_too_deep_to_check(repo_fixture, tmp_path
     assert outcome.returncode == 2, outcome.stdout + outcome.stderr
     assert "REFUSAL schema-drift: capture/frame_0001.json nests too deeply" in outcome.stdout
     assert not out.exists()
+
+
+# Repeated keys in referenced JSON are declarations, never "last one wins".
+# Both tools refuse them; a file that is not JSON at all stays opaque.
+
+DUPLICATE_RESULT_ID = b'{"schema_version": "synthetic-result/1.0", "result_id": "other", "result_id": "result-synth-0001"}\n'
+DUPLICATE_RESULT_SCHEMA = b'{"schema_version": "synthetic-capture/2026.10", "schema_version": "synthetic-result/1.0", "result_id": "result-synth-0001"}\n'
+DUPLICATE_CAPTURE_SCHEMA = b'{"schema_version": "synthetic-result/1.0", "schema_version": "synthetic-capture/2026.10", "frame_id": "frame-0001"}\n'
+NAN_OTHER_RESULT = b'{"schema_version": "synthetic-result/1.0", "result_id": "other", "value": NaN}\n'
+OPAQUE_RESULT = b'{"schema_version": "synthetic-result/1.0", "result_id": "other", trailing garbage\n'
+
+
+@pytest.mark.parametrize(
+    "relative,data,kind,needle",
+    [
+        ("result/result.json", DUPLICATE_RESULT_ID, "mismatched-result", "declares result_id more than once"),
+        ("result/result.json", DUPLICATE_RESULT_SCHEMA, "schema-drift", "declares schema_version more than once"),
+        ("capture/frame_0001.json", DUPLICATE_CAPTURE_SCHEMA, "schema-drift", "declares schema_version more than once"),
+        ("result/result.json", NAN_OTHER_RESULT, "mismatched-result", "'other'"),
+    ],
+    ids=["result-id-twice", "result-schema-twice", "capture-schema-twice", "nan-does-not-hide-result-id"],
+)
+def test_packer_refuses_ambiguous_declarations(repo_fixture, tmp_path, relative, data, kind, needle):
+    (repo_fixture / relative).write_bytes(data)
+    out = tmp_path / "out.zip"
+    outcome = run_packer(repo_fixture, out)
+    assert outcome.returncode == 2, outcome.stdout + outcome.stderr
+    assert f"REFUSAL {kind}:" in outcome.stdout and needle in outcome.stdout, outcome.stdout
+    assert not out.exists()
+
+
+@pytest.mark.parametrize(
+    "frame,result,kind,needle",
+    [
+        (json_bytes({"schema_version": CAPTURE}), DUPLICATE_RESULT_SCHEMA, "schema-drift", "declares schema_version more than once"),
+        (DUPLICATE_CAPTURE_SCHEMA, json_bytes({"schema_version": RESULT}), "schema-drift", "declares schema_version more than once"),
+        (json_bytes({"schema_version": CAPTURE}), NAN_OTHER_RESULT, "mismatched-result", "'other'"),
+    ],
+    ids=["result-schema-twice", "capture-schema-twice", "nan-does-not-hide-result-id"],
+)
+def test_reader_refuses_ambiguous_declarations(tmp_path, frame, result, kind, needle):
+    root = capture_root_with(tmp_path, {"capture/frame_0001.json": frame, "result/result.json": result})
+    pack = rebuilt_example(tmp_path, lambda manifest: point_manifest_at(manifest, frame, result))
+    outcome = run_reader(pack, "--capture-root", root)
+    assert outcome.returncode == 2, outcome.stdout + outcome.stderr
+    assert f"REFUSAL {kind}:" in outcome.stdout and needle in outcome.stdout, outcome.stdout
+
+
+def test_control_both_tools_treat_a_file_that_is_not_json_as_opaque(repo_fixture, tmp_path):
+    """The documented narrower guarantee: text that is not a JSON object makes
+    no declaration, whatever it looks like, in both tools alike."""
+    (repo_fixture / "result/result.json").write_bytes(OPAQUE_RESULT)
+    out = tmp_path / "out.zip"
+    packed = run_packer(repo_fixture, out)
+    assert packed.returncode == 0, packed.stdout + packed.stderr
+    assert "bytes-only guarantee" in packed.stdout
+    read = run_reader(out)
+    assert read.returncode == 0, read.stdout
+    assert "bytes-only guarantee" in read.stdout
+
+
+# Paths with NUL or other control characters are refused by name, never a traceback.
+
+CONTROL_PATHS = ["capture/frame\x00.json", "capture/frame\x1f.json", "capture/frame\x7f.json", "capture/\x85frame.json"]
+
+
+@pytest.mark.parametrize("bad", CONTROL_PATHS, ids=["nul", "unit-separator", "delete", "next-line"])
+def test_packer_refuses_control_characters_in_paths(repo_fixture, tmp_path, bad):
+    spec_path = repo_fixture / "pack-spec.json"
+    spec = json.loads(spec_path.read_text())
+    spec["source_refs"][0]["path"] = bad
+    spec_path.write_text(json.dumps(spec))
+    out = tmp_path / "out.zip"
+    outcome = run_packer(repo_fixture, out)
+    assert outcome.returncode == 2, outcome.stdout + outcome.stderr
+    assert "REFUSAL invalid-manifest: source_refs[0].path: not a relative POSIX path" in outcome.stdout
+    assert "Traceback" not in outcome.stderr
+    assert not out.exists()
+
+
+def with_path(field: str, bad: str):
+    def mutate(manifest):
+        if field == "source":
+            manifest["capture"]["source_refs"][0]["path"] = bad
+        elif field == "result":
+            manifest["result"]["path"] = bad
+        else:
+            manifest["capture"]["capture_root"] = bad
+
+    return mutate
+
+
+@pytest.mark.parametrize("field", ["source", "result", "capture_root"])
+@pytest.mark.parametrize("bad", CONTROL_PATHS, ids=["nul", "unit-separator", "delete", "next-line"])
+def test_reader_refuses_control_characters_in_paths(tmp_path, field, bad):
+    pack = rebuilt_example(tmp_path, with_path(field, bad))
+    outcome = run_reader(pack)
+    assert outcome.returncode == 2, outcome.stdout + outcome.stderr
+    assert "REFUSAL invalid-manifest:" in outcome.stdout and "not a relative POSIX path" in outcome.stdout, outcome.stdout
+    assert "Traceback" not in outcome.stderr

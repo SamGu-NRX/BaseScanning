@@ -50,8 +50,15 @@ PACK_SPEC_OPTIONAL = ("report_path",)
 MAX_PACK_SPEC_BYTES = 1024 * 1024
 MAX_REPORT_BYTES = 2 * 1024 * 1024
 MAX_REFERENCED_FILE_BYTES = 64 * 1024 * 1024
+# Output limits the reader enforces on the archive the packer writes.
+MAX_MANIFEST_BYTES = 1024 * 1024
+MAX_PACK_BYTES = 8 * 1024 * 1024
+MAX_COMPRESSION_RATIO = 100
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+# C0 controls, DEL and C1 controls. NUL makes the OS path calls raise, and
+# the others make names that terminals and receipts cannot show faithfully.
+_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 _TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 _STRICT_TIMESTAMP_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T[0-2]\d:[0-5]\d:[0-5]\dZ$")
 
@@ -77,7 +84,7 @@ def is_relative_path(value: object) -> bool:
     """A pack path is relative, POSIX-style, and cannot escape its root."""
     if not isinstance(value, str) or not value:
         return False
-    if value.startswith("/") or "\\" in value or value in (".", ".."):
+    if value.startswith("/") or "\\" in value or value in (".", "..") or _CONTROL_RE.search(value):
         return False
     parts = value.split("/")
     return ".." not in parts and all(part not in ("", ".") for part in parts)
@@ -120,8 +127,8 @@ def read_bounded(root: Path, relative: str, limit: int) -> bytes:
     root = root.resolve()
     try:
         resolved = (root / relative).resolve(strict=True)
-    except (OSError, RuntimeError):  # RuntimeError: symlink loop on Python < 3.13
-        raise InputProblem("missing-source", f"{relative} not found under {display_path(root)}") from None
+    except (OSError, RuntimeError, ValueError):  # RuntimeError: symlink loop on Python < 3.13
+        raise InputProblem("missing-source", f"{relative!r} not found under {display_path(root)}") from None
     if not resolved.is_relative_to(root):
         raise InputProblem("missing-source", f"{relative} resolves outside {display_path(root)}")
     try:
@@ -129,19 +136,40 @@ def read_bounded(root: Path, relative: str, limit: int) -> bytes:
             if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
                 raise InputProblem("missing-source", f"{relative} is not a regular file")
             data = handle.read(limit + 1)
-    except OSError as error:
-        raise InputProblem("missing-source", f"{relative} cannot be read: {error.strerror}") from None
+    except (OSError, ValueError) as error:
+        raise InputProblem("missing-source", f"{relative!r} cannot be read: {error}") from None
     if len(data) > limit:
         raise InputProblem("invalid-manifest", f"{relative} is larger than its {limit}-byte budget")
     return data
 
 
-def parse_json_object(relative: str, data: bytes) -> dict | None:
-    """The file as a JSON object, or None when it is not one. Files that are
-    not JSON objects make no schema or identity declaration. A file nested too
-    deeply to parse is refused, not treated as declaring nothing."""
+class DeclaringObject(dict):
+    """A parsed JSON object that keeps the keys it saw more than once, so a
+    repeated schema_version or result_id is refused instead of letting the
+    last value win."""
+
+    repeated: frozenset = frozenset()
+
+
+def _keep_repeats(pairs: list[tuple[str, object]]) -> DeclaringObject:
+    result = DeclaringObject()
+    repeated = set()
+    for key, value in pairs:
+        if key in result:
+            repeated.add(key)
+        result[key] = value
+    result.repeated = frozenset(repeated)
+    return result
+
+
+def parse_json_object(relative: str, data: bytes) -> DeclaringObject | None:
+    """The file as a JSON object, or None when it is not one: not UTF-8, not
+    JSON, or JSON whose top level is not an object. Those files make no schema
+    or identity declaration. NaN and Infinity parse, as Python's json reads
+    them, so they cannot turn a declaring file into an opaque one. A file
+    nested too deeply to parse is refused, not treated as declaring nothing."""
     try:
-        parsed = json.loads(data.decode("utf-8"))
+        parsed = json.loads(data.decode("utf-8"), object_pairs_hook=_keep_repeats)
     except RecursionError:
         raise InputProblem("schema-drift", f"{relative} nests too deeply to check its schema_version") from None
     except (UnicodeDecodeError, ValueError):
@@ -154,6 +182,8 @@ def schema_drift(parsed: dict | None, expected: object, field: str) -> str | Non
     null is a declaration that does not match, not an absent one."""
     if parsed is None or "schema_version" not in parsed:
         return None
+    if "schema_version" in getattr(parsed, "repeated", ()):
+        return "declares schema_version more than once"
     declared = parsed["schema_version"]
     if declared != expected:
         return f"declares schema_version {declared!r}, the manifest's {field} is {expected!r}"
@@ -166,6 +196,8 @@ def result_identity_problem(parsed: dict | None, claimed: object) -> str | None:
     to the bytes; that case returns None like a match does."""
     if parsed is None or "result_id" not in parsed:
         return None
+    if "result_id" in getattr(parsed, "repeated", ()):
+        return "the result file declares result_id more than once"
     embedded = parsed["result_id"]
     if not is_nonblank_string(embedded):
         return f"the result file embeds a malformed result_id {embedded!r}; a present result_id must be a non-empty string"

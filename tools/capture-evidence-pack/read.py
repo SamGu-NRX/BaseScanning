@@ -45,6 +45,9 @@ REQUIRED_FIELDS = (
 )
 PACK_ENTRIES = ("manifest.json", "report.md")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+# C0 controls, DEL and C1 controls are not allowed in pack paths. NUL makes
+# the OS path calls raise; the rest cannot be shown faithfully in a receipt.
+CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 STRICT_TIMESTAMP = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T[0-2]\d:[0-5]\d:[0-5]\dZ$")
 
@@ -101,10 +104,13 @@ class TooDeep(ValueError):
     refused rather than treated as making no declaration."""
 
 
-def parse_json(data: bytes) -> object:
-    """Strict UTF-8 JSON: no NaN or Infinity; objects record duplicate keys."""
+def parse_json(data: bytes, allow_constants: bool = False) -> object:
+    """UTF-8 JSON whose objects record duplicate keys. The manifest refuses
+    NaN and Infinity; referenced files allow them (allow_constants), because
+    a file Python's json reads as an object must not count as opaque."""
+    constant_hook = None if allow_constants else _reject_constant
     try:
-        return json.loads(data.decode("utf-8"), object_pairs_hook=_strict_pairs, parse_constant=_reject_constant)
+        return json.loads(data.decode("utf-8"), object_pairs_hook=_strict_pairs, parse_constant=constant_hook)
     except RecursionError:
         raise TooDeep("JSON nests deeper than the parser follows") from None
 
@@ -147,6 +153,7 @@ def is_relative_path(value: object) -> bool:
         and bool(value)
         and not value.startswith("/")
         and "\\" not in value
+        and not CONTROL_CHARACTERS.search(value)
         and value not in (".", "..")
         and all(part not in ("", ".", "..") for part in value.split("/"))
     )
@@ -164,8 +171,8 @@ def read_regular_file(path: Path, limit: int) -> bytes:
             if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
                 raise Refusal("missing-source", f"{display_path(path)} is not a regular file")
             return handle.read(limit + 1)
-    except OSError as error:
-        raise Refusal("missing-source", f"{display_path(path)} cannot be read: {error.strerror}") from None
+    except (OSError, ValueError) as error:
+        raise Refusal("missing-source", f"{display_path(path)!r} cannot be read: {error}") from None
 
 
 def read_pack_file(pack_path: Path) -> bytes:
@@ -385,7 +392,7 @@ def snapshot_reference(record: dict, root: Path, mismatch_kind: str) -> bytes:
     candidate = root / record["path"]
     try:
         resolved = candidate.resolve(strict=True)
-    except (OSError, RuntimeError):  # RuntimeError: symlink loop on Python < 3.13
+    except (OSError, RuntimeError, ValueError):  # RuntimeError: symlink loop on Python < 3.13
         raise Refusal("missing-source", f"{record['path']!r} not found under {display_path(root)}") from None
     if not resolved.is_relative_to(root):
         raise Refusal("missing-source", f"{record['path']!r} resolves outside the capture root {display_path(root)}")
@@ -409,7 +416,7 @@ def _json_object_or_none(path: str, data: bytes) -> _StrictObject | None:
     """A referenced file parsed as a JSON object, or None when it is not one.
     Files that are not JSON objects make no schema or identity declaration."""
     try:
-        parsed = parse_json(data)
+        parsed = parse_json(data, allow_constants=True)
     except TooDeep:
         raise Refusal("schema-drift", f"{path!r} nests too deeply to check its schema_version") from None
     except (UnicodeDecodeError, ValueError):

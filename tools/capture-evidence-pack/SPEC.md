@@ -34,6 +34,8 @@ The manifest is one JSON object. Every field below is required; a manifest missi
 - `capture_id`: non-empty string.
 - `captured_at`: UTC timestamp in `YYYY-MM-DDTHH:MM:SSZ` form, strictly zero-padded, and a real calendar date. `2026-1-5T00:00:00Z` (not zero-padded) and `2026-02-30T00:00:00Z` (no such day) are invalid.
 - `capture_root`: repository-relative path to the directory source refs resolve against. No `..`, no leading slash.
+
+Every path in a pack (`capture_root`, each `path`, and the zip entry names) is relative POSIX: no leading slash, no backslash, no empty, `.` or `..` segment, and no control character (U+0000 to U+001F, U+007F to U+009F). A NUL makes the operating system's path calls fail, and the other controls cannot be shown faithfully in a receipt, so both tools refuse such a path by name instead of trying to open it.
 - `source_refs`: non-empty list of source references.
 
 ### result
@@ -52,7 +54,9 @@ Each entry in `capture.source_refs` names one capture input file the report is a
 - `sha256`: lowercase 64-digit hexadecimal digest of the file's bytes.
 - `bytes`: file size in bytes, a positive integer.
 
-Refs point at files; the pack does not contain them. A reader that wants the bytes resolves each path against `capture_root` (or an explicit override) and checks the hash and size. A path that resolves outside the root through a symlink does not satisfy its ref. A capture input written as a JSON object that declares a `schema_version` field must declare the manifest's `capture_schema_version`; anything else, including a declared `null`, is the `schema-drift` refusal. The example pack points into `tools/capture-evidence-pack/fixtures/example/`, which is committed synthetic data. A pack about a real capture would point into `captures/`, which git ignores.
+Refs point at files; the pack does not contain them. A reader that wants the bytes resolves each path against `capture_root` (or an explicit override) and checks the hash and size. A path that resolves outside the root through a symlink does not satisfy its ref. A capture input written as a JSON object that declares a `schema_version` field must declare the manifest's `capture_schema_version`; anything else, including a declared `null` or the key appearing twice, is the `schema-drift` refusal.
+
+A referenced file counts as a JSON object when it is UTF-8 without a byte-order mark, parses as JSON with Python's `json` module (which accepts `NaN` and `Infinity`), and has an object at the top level. Only such a file can declare `schema_version` or `result_id`; every other file is opaque and is checked by its bytes alone. Both tools apply this one definition, so a file cannot make a declaration to one tool and be opaque to the other, and a repeated key is a refusal, never "the last value wins". The example pack points into `tools/capture-evidence-pack/fixtures/example/`, which is committed synthetic data. A pack about a real capture would point into `captures/`, which git ignores.
 
 ### missing_fields
 
@@ -105,6 +109,8 @@ The reader reads a pack file once, at most 8 MiB, and opens the archive from tho
 - a declared size more than 100 times the compressed size.
 
 It then decodes each entry through a cap of its budget plus one byte, so a size field that lies cannot widen the read, and refuses when the decoded length differs from the declared one or the CRC fails. Referenced inputs are read once each, at most 64 MiB.
+
+The packer holds its output to the same limits before it writes anything. It refuses a manifest that would encode to more than 1 MiB and an archive over 8 MiB, and it stores an entry without compression when deflate would shrink it past 100:1, as a long run of one character does. That choice depends only on the entry's bytes, so repacking stays byte-identical. A pack the packer reports as PACKED is one these limits accept.
 
 These numbers are resource bounds, not measurements. No real pack exists to calibrate against. The committed example is about 1.4 KB with a 1.6 KB manifest, so the bounds leave three orders of magnitude of headroom while keeping a hostile archive from forcing an unbounded read, an unbounded decompression, or a scan of thousands of entries. Deflate cannot exceed about 1032:1, and text manifests and reports compress below 10:1, so 100:1 is far outside honest input. A pack about real captures with inputs over 64 MiB needs a reader with a streaming hash and a new version of this section.
 

@@ -1,0 +1,48 @@
+Before/after test matrix, second review round
+=============================================
+The current tests/ directory run twice with CPython 3.13.3 and pytest 8.0.1:
+- after: this branch's working tree before the commit that adds this file.
+- before: tools, fixtures and example pack exported from c36261050b5289c9d6b7b70a1e1772074e109c39
+  with git archive, and only tests/ replaced by the current one.
+after: 193 passed. before: 28 failed, 165 passed.
+All 159 tests from the first round pass both times.
+
+New tests that failed before and pass after (28):
+  test_cli_contract.py::test_packer_refuses_ambiguous_declarations[capture-schema-twice]
+  test_cli_contract.py::test_packer_refuses_ambiguous_declarations[result-id-twice]
+  test_cli_contract.py::test_packer_refuses_ambiguous_declarations[result-schema-twice]
+  test_cli_contract.py::test_packer_refuses_control_characters_in_paths[delete]
+  test_cli_contract.py::test_packer_refuses_control_characters_in_paths[next-line]
+  test_cli_contract.py::test_packer_refuses_control_characters_in_paths[nul]
+  test_cli_contract.py::test_packer_refuses_control_characters_in_paths[unit-separator]
+  test_cli_contract.py::test_reader_refuses_ambiguous_declarations[nan-does-not-hide-result-id]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[delete-capture_root]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[delete-result]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[delete-source]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[next-line-capture_root]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[next-line-result]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[next-line-source]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[nul-capture_root]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[nul-result]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[nul-source]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[unit-separator-capture_root]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[unit-separator-result]
+  test_cli_contract.py::test_reader_refuses_control_characters_in_paths[unit-separator-source]
+  test_inspector.py::test_control_character_path_reaches_the_page_as_a_refusal[control]
+  test_inspector.py::test_control_character_path_reaches_the_page_as_a_refusal[nul]
+  test_inspector.py::test_http_control_character_path_is_refused_not_dropped
+  test_producer_budgets.py::test_compressible_report_repacks_to_identical_bytes
+  test_producer_budgets.py::test_highly_compressible_report_packs_and_reads[1.5MiB]
+  test_producer_budgets.py::test_highly_compressible_report_packs_and_reads[exactly-2MiB]
+  test_producer_budgets.py::test_manifest_one_byte_over_budget_is_refused_by_the_packer
+  test_producer_budgets.py::test_packer_checks_the_whole_archive_against_the_pack_budget
+
+New tests that pass both times (6): valid-input controls, and guards for rules the
+earlier tools already kept (the reader already refused repeated schema_version keys; the
+packer already parsed NaN and refused the mismatched result_id behind it).
+  test_cli_contract.py::test_control_both_tools_treat_a_file_that_is_not_json_as_opaque
+  test_cli_contract.py::test_packer_refuses_ambiguous_declarations[nan-does-not-hide-result-id]
+  test_cli_contract.py::test_reader_refuses_ambiguous_declarations[capture-schema-twice]
+  test_cli_contract.py::test_reader_refuses_ambiguous_declarations[result-schema-twice]
+  test_producer_budgets.py::test_manifest_exactly_at_budget_packs_and_reads
+  test_producer_budgets.py::test_report_one_byte_over_budget_is_refused_by_the_packer

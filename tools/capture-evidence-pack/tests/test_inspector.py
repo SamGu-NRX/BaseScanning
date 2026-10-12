@@ -218,3 +218,25 @@ def test_http_serves_no_other_files(server_factory):
     for path in ("/serve.py", "/../read.py", "/screenshots/axe-results.json", "/vendor/NOTICE.txt"):
         assert server.get(path)[0] == 404, path
 
+
+
+@pytest.mark.parametrize("bad", ["capture/frame\x00.json", "capture/frame\x1f.json"], ids=["nul", "control"])
+def test_control_character_path_reaches_the_page_as_a_refusal(serve, tmp_path, bad):
+    def mutate(manifest):
+        manifest["capture"]["source_refs"][0]["path"] = bad
+
+    pack = rebuilt_example(tmp_path, mutate, "bad.zip")
+    payload = serve.verification_payload(pack)
+    assert payload["status"] == "refused"
+    assert "evidence" not in payload
+    assert payload["refusal"]["kind"] == "invalid-manifest"
+
+
+def test_http_control_character_path_is_refused_not_dropped(server_factory, tmp_path):
+    def mutate(manifest):
+        manifest["result"]["path"] = "result/result\x00.json"
+
+    pack = rebuilt_example(tmp_path, mutate, "bad.zip")
+    status, body = server_factory("--pack", pack).get("/data.json")
+    assert status == 200
+    assert json.loads(body)["status"] == "refused"
