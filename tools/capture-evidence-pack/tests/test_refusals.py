@@ -81,3 +81,25 @@ def test_refuse_source_schema_drift(valid_manifest, tmp_path):
     ref["bytes"] = len(content)
     problems = validate.check_sources(manifest, tmp_path)
     assert any("schema-drift" in problem and "frame_0001.json" in problem for problem in problems)
+
+
+def test_result_schema_is_checked_against_result_schema_version(valid_manifest, tmp_path):
+    """The result follows its own schema; matching the capture schema is drift."""
+    manifest = satisfiable_manifest(valid_manifest, tmp_path)
+    content = b'{"schema_version": "synthetic-capture/2026.10"}'
+    manifest["result"].update(sha256=write_input(tmp_path, "result/result.json", content), bytes=len(content))
+    problems = validate.check_sources(manifest, tmp_path)
+    assert any(problem.startswith("result: schema-drift") and "result_schema_version" in problem for problem in problems), problems
+
+
+def test_refuse_malformed_embedded_result_id(valid_manifest, tmp_path):
+    manifest = satisfiable_manifest(valid_manifest, tmp_path)
+    content = b'{"result_id": null}'
+    manifest["result"].update(sha256=write_input(tmp_path, "result/result.json", content), bytes=len(content))
+    problems = validate.check_sources(manifest, tmp_path)
+    assert any("mismatched-result" in problem and "malformed result_id" in problem for problem in problems), problems
+
+
+def test_control_matching_sources_satisfy(valid_manifest, tmp_path):
+    manifest = satisfiable_manifest(valid_manifest, tmp_path)
+    assert validate.check_sources(manifest, tmp_path) == []

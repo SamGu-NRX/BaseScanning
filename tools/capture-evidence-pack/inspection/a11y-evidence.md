@@ -1,5 +1,7 @@
 # Inspection page: accessibility and responsive evidence
 
+Current evidence for the page is in [`evidence/2026-10-12/`](evidence/2026-10-12/), captured from a committed head with the served file hashes recorded. The sections below are history: they describe earlier versions of the page, and their "re-run pending" rows were never filled in. [`screenshots/m4-real/CORRECTIONS.md`](screenshots/m4-real/CORRECTIONS.md) records what the m4 receipts did and did not observe.
+
 Page: `tools/capture-evidence-pack/inspection/index.html`, served by `serve.py` on `http://127.0.0.1:8793/` (localhost only; axe-core vendored under `inspection/vendor/`).
 
 ## 2026-10-11 re-verification on the settled UI

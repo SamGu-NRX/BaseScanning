@@ -1,6 +1,10 @@
 """Format validation for capture evidence pack manifests (SPEC.md)."""
 
+import json
+
+import pytest
 import validate
+from support import EXAMPLE_FIXTURE
 
 
 def assert_problems(manifest, needle):
@@ -100,3 +104,61 @@ def test_rejects_null_missing_fields(valid_manifest):
 def test_missing_fields_entries_need_detail(valid_manifest):
     del valid_manifest["missing_fields"][0]["detail"]
     assert_problems(valid_manifest, "missing_fields[0].detail")
+
+
+# Present-but-null required values are checked, never skipped as absent.
+NULLABLE_REQUIRED = [
+    "evidence_pack_format_version",
+    "capture_schema_version",
+    "result_schema_version",
+    "capture",
+    "result",
+    "reproduction",
+    "geometry_correctness",
+    "packaged_files",
+]
+
+
+@pytest.mark.parametrize("key", NULLABLE_REQUIRED)
+def test_explicit_null_required_field_is_refused(valid_manifest, key):
+    valid_manifest[key] = None
+    assert_problems(valid_manifest, key)
+
+
+def test_rejects_missing_result_schema_version(valid_manifest):
+    del valid_manifest["result_schema_version"]
+    assert_problems(valid_manifest, "result_schema_version")
+
+
+@pytest.mark.parametrize("value", [None, 5, "", "   "])
+def test_rejects_malformed_result_id_claim(valid_manifest, value):
+    valid_manifest["result"]["result_id"] = value
+    assert_problems(valid_manifest, "result.result_id")
+
+
+def valid_pack_spec():
+    return json.loads((EXAMPLE_FIXTURE / "pack-spec.json").read_text())
+
+
+def test_example_pack_spec_is_valid():
+    assert validate.validate_pack_spec(valid_pack_spec()) == []
+
+
+@pytest.mark.parametrize("report_path", ["notes/report.md", "report.txt", None, ""])
+def test_pack_spec_refuses_a_report_path_other_than_report_md(report_path):
+    spec = valid_pack_spec()
+    spec["report_path"] = report_path
+    problems = validate.validate_pack_spec(spec)
+    assert any(problem.startswith("report_path:") for problem in problems), problems
+
+
+def test_pack_spec_requires_result_schema_version():
+    spec = valid_pack_spec()
+    del spec["result_schema_version"]
+    assert any("result_schema_version" in problem for problem in validate.validate_pack_spec(spec))
+
+
+def test_pack_spec_refuses_unknown_keys():
+    spec = valid_pack_spec()
+    spec["result_schema_versoin"] = "typo"
+    assert any("result_schema_versoin: unknown" in problem for problem in validate.validate_pack_spec(spec))

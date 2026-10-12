@@ -144,7 +144,8 @@ def test_reader_refusal_records_the_rejected_pack_sha(tmp_path):
 
 def test_reader_states_narrower_guarantee_when_result_does_not_self_identify(tmp_path):
     frame_bytes = b'{"schema_version": "synthetic-capture/2026.10", "frame": 1}'
-    result_bytes = b'{"schema_version": "synthetic-capture/2026.10", "note": "no self-identification here"}'
+    # The result declares its own schema (result_schema_version), not the capture's.
+    result_bytes = b'{"schema_version": "synthetic-result/1.0", "note": "no self-identification here"}'
     root = tmp_path / "capture-root"
     (root / "capture").mkdir(parents=True)
     (root / "result").mkdir(parents=True)

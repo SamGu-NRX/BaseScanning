@@ -92,7 +92,17 @@
   @media (prefers-reduced-motion: no-preference) {
     button { transition: background-color 120ms ease; }
   }
-  .error-box { background: var(--refusal-bg); border: 2px solid var(--refusal-line); padding: 1rem; border-radius: 8px; }
+  .error-box { background: var(--refusal-bg); border: 2px solid var(--refusal-line); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+  .error-box h2 { color: #7c2424; }
+  .verdict { border-left: 6px solid var(--line); }
+  .verdict[data-state="verified"] { border-left-color: var(--accent); }
+  .verdict h2 { margin-bottom: 0.35rem; }
+  .verdict[data-state="verified"] h2 { color: var(--accent); }
+  .verdict p { margin: 0.35rem 0; }
+  .verdict ul { margin: 0.35rem 0 0; padding-left: 1.25rem; }
+  .refusal.unexpected { background: var(--warn-bg); border-color: var(--warn-line); }
+  .refusal.unexpected h3 { color: #7a4d0a; }
+  .refusal dl.grid { margin-top: 0.5rem; }
   [hidden] { display: none !important; }
   footer { color: var(--muted); font-size: 0.9rem; padding-bottom: 2rem; }
   @media (max-width: 480px) {
@@ -102,14 +112,15 @@
   }
 </style>
 </head>
-<body>
+<body data-read-data="pending" data-read-refusals="pending">
 <a class="skip-link" href="#main">Skip to content</a>
 <header>
   <h1>Capture evidence pack inspection</h1>
   <p>
-    Identity evidence for a bug report about one capture and one result. This page
-    renders the committed pack <code>tools/capture-evidence-pack/evidence/example.zip</code>
-    and its recorded receipts, served from localhost with no external network calls.
+    Identity evidence for a bug report about one capture and one result. The local server runs
+    <code>tools/capture-evidence-pack/read.py</code> on the pack and its referenced files for every
+    page load, and this page shows only what that check returned. Served from localhost with no
+    external network calls.
   </p>
 </header>
 
@@ -119,13 +130,34 @@
     <ul>
       <li><strong>No map of a real house.</strong> Every byte here is synthetic fixture data committed to this repository.</li>
       <li><strong>No installer approval.</strong> None is claimed, implied, or recorded.</li>
-      <li><strong>No geometry-correctness assertion.</strong> The pack records identity only; <code>geometry_correctness.assertion</code> is <code>null</code>. See SPEC.md, &ldquo;Identity is not correctness&rdquo;.</li>
+      <li><strong>No geometry-correctness assertion.</strong> The format requires <code>geometry_correctness.assertion</code> to be <code>null</code>, and the reader refuses any pack where it is not. Matching hashes say which bytes these are, not that their geometry is right. See SPEC.md, &ldquo;Identity is not correctness&rdquo;.</li>
     </ul>
   </section>
 
+  <section class="verdict" aria-labelledby="verdict-heading" id="verdict" data-state="pending">
+    <h2 id="verdict-heading">Checking the pack</h2>
+    <p id="verdict-status" role="status">Running read.py on the pack and its referenced files&hellip;</p>
+    <div id="verdict-detail" hidden>
+      <p>Pack <code id="verdict-pack"></code></p>
+      <ul id="verdict-checks"></ul>
+    </div>
+  </section>
+
+  <div id="refused" class="error-box" role="alert" hidden>
+    <h2>read.py refused this pack</h2>
+    <p>Nothing about this pack is shown as evidence, because the independent reader would not accept it.</p>
+    <dl class="grid">
+      <dt>Refusal</dt><dd><code id="refused-kind"></code></dd>
+      <dt>Reason</dt><dd id="refused-detail"></dd>
+      <dt>Pack</dt><dd><code id="refused-pack"></code></dd>
+      <dt>Rejected pack SHA-256</dt><dd><code class="hash" id="refused-sha"></code></dd>
+      <dt>Reproduce</dt><dd><code id="refused-command"></code></dd>
+    </dl>
+  </div>
+
   <div id="error" class="error-box" role="alert" hidden>
     <h2>Evidence unavailable</h2>
-    <p>This page reads the pack through its local server. Run
+    <p>This page could not read the check result from its local server, so it shows no evidence. Run
       <code>python tools/capture-evidence-pack/inspection/serve.py</code> and open
       <code>http://127.0.0.1:8793/</code>.</p>
     <p id="error-detail"></p>
@@ -143,10 +175,10 @@
 
   <section aria-labelledby="sources-heading" id="sources" hidden data-needs-data>
     <h2 id="sources-heading">Source refs: referenced, not embedded</h2>
-    <p>The pack carries no capture bytes. These refs resolve under the recorded capture root, checked by hash and size.</p>
+    <p>The pack carries no capture bytes. read.py read each file under <code id="sources-root"></code> and matched it to the recorded hash and size.</p>
     <div style="overflow-x: auto;" tabindex="0" role="region" aria-label="Source refs table, horizontally scrollable">
       <table>
-        <thead><tr><th scope="col">Role</th><th scope="col">Path</th><th scope="col">SHA-256</th><th scope="col">Bytes</th></tr></thead>
+        <thead><tr><th scope="col">Role</th><th scope="col">Path</th><th scope="col">Checked SHA-256</th><th scope="col">Bytes</th></tr></thead>
         <tbody id="sources-body"></tbody>
       </table>
     </div>
@@ -156,7 +188,7 @@
     <h2 id="packaged-heading">Packaged files and hashes</h2>
     <div style="overflow-x: auto;" tabindex="0" role="region" aria-label="Packaged files table, horizontally scrollable">
       <table>
-        <thead><tr><th scope="col">Path</th><th scope="col">SHA-256</th><th scope="col">Bytes</th></tr></thead>
+        <thead><tr><th scope="col">Path</th><th scope="col">Checked SHA-256</th><th scope="col">Bytes</th></tr></thead>
         <tbody id="packaged-body"></tbody>
       </table>
     </div>
@@ -184,13 +216,14 @@
   </section>
 
   <section aria-labelledby="refusals-heading" id="refusals">
-    <h2 id="refusals-heading">Recorded refusals</h2>
+    <h2 id="refusals-heading">Refusals, run now</h2>
     <p>
-      The reader refuses evidence it cannot satisfy. These two states are rendered verbatim from
-      their committed receipt files; the inspection page cannot make a refused pack pass.
+      The reader must refuse evidence it cannot satisfy. On every page load the server runs it on the
+      committed example pack against two capture roots that do not match, and shows what it returned.
+      Nothing on this page can turn a refusal into a pass.
     </p>
     <div id="refusals-list">
-      <p>Loading recorded refusals&hellip;</p>
+      <p>Running the reader against the mismatched capture roots&hellip;</p>
     </div>
   </section>
 
@@ -201,25 +234,35 @@
 </main>
 
 <footer>
-  <p>Served by <code>tools/capture-evidence-pack/inspection/serve.py</code> from the committed pack and receipts.
-     Format reference: <code>tools/capture-evidence-pack/SPEC.md</code>.</p>
+  <p>Served by <code>tools/capture-evidence-pack/inspection/serve.py</code>, checked by
+     <code>tools/capture-evidence-pack/read.py</code>. Format reference: <code>tools/capture-evidence-pack/SPEC.md</code>.</p>
 </footer>
 
 <script>
 (function () {
   "use strict";
 
+  function byId(id) { return document.getElementById(id); }
+
+  function hashCode(text) {
+    var code = document.createElement("code");
+    code.className = "hash";
+    code.textContent = text;
+    return code;
+  }
+
   function fill(dl, pairs) {
-    dl.innerHTML = "";
+    dl.textContent = "";
     pairs.forEach(function (pair) {
       var dt = document.createElement("dt");
       dt.textContent = pair[0];
       var dd = document.createElement("dd");
-      if (pair[2]) {
+      if (pair[2] === "code") {
         var code = document.createElement("code");
-        code.className = "hash";
         code.textContent = pair[1];
         dd.appendChild(code);
+      } else if (pair[2]) {
+        dd.appendChild(hashCode(pair[1]));
       } else {
         dd.textContent = pair[1];
       }
@@ -228,113 +271,213 @@
     });
   }
 
-  function hashCell(code, text) {
-    code.className = "hash";
-    code.textContent = text;
+  function row(cells, hashIndex) {
+    var tr = document.createElement("tr");
+    cells.forEach(function (value, index) {
+      var td = document.createElement("td");
+      if (index === hashIndex) { td.appendChild(hashCode(value)); } else { td.textContent = value; }
+      tr.appendChild(td);
+    });
+    return tr;
   }
 
-  function render(evidence) {
-    var manifest = evidence.manifest;
-    var identity = document.getElementById("identity-list");
-    fill(identity, [
-      ["Capture id", manifest.capture.capture_id],
-      ["Captured at", manifest.capture.captured_at],
-      ["Result id", manifest.result.result_id],
-      ["Result path", manifest.result.path],
-      ["Result SHA-256", manifest.result.sha256, true],
-      ["Result bytes", String(manifest.result.bytes)],
-      ["Capture root", manifest.capture.capture_root],
-      ["Pack path", evidence.pack_path],
-      ["Pack SHA-256", evidence.pack_sha256, true],
-      ["Manifest SHA-256", evidence.manifest_sha256, true]
+  function isString(value) { return typeof value === "string" && value.length > 0; }
+  function isText(value) { return typeof value === "string" && value.trim().length > 0; }
+  function isHash(value) { return typeof value === "string" && /^[0-9a-f]{64}$/.test(value); }
+  function isCount(value) { return typeof value === "number" && value > 0 && Math.floor(value) === value; }
+
+  // The server's payload is checked again here, so a server bug or a
+  // malformed response shows as a failed read, never as partial evidence.
+  function verifiedShapeProblem(payload) {
+    var e = payload.evidence;
+    if (!e || typeof e !== "object") { return "no evidence object"; }
+    if (!isHash(e.pack_sha256) || !isHash(e.manifest_sha256)) { return "pack hashes missing"; }
+    if (!e.geometry_correctness || e.geometry_correctness.assertion !== null) {
+      return "a verified pack must carry a null geometry assertion";
+    }
+    if (!isString(payload.pack_path)) { return "pack path missing"; }
+    if (!e.capture || !isString(e.capture.capture_id) || !isString(e.capture.captured_at) ||
+        !isString(e.capture.capture_root) || !isString(e.capture.resolved_root)) { return "capture identity missing"; }
+    if (!Array.isArray(e.source_refs) || !e.source_refs.length) { return "source refs missing"; }
+    if (!e.source_refs.every(function (r) { return isString(r.role) && isString(r.path) && isHash(r.sha256) && isCount(r.bytes); })) {
+      return "a source ref is incomplete";
+    }
+    var r = e.result;
+    if (!r || !isString(r.result_id) || !isString(r.path) || !isHash(r.sha256) || !isCount(r.bytes)) { return "result identity missing"; }
+    if (r.identity !== "embedded-match" && r.identity !== "bytes-only") { return "result identity guarantee unknown"; }
+    if (!Array.isArray(e.packaged_files) || !e.packaged_files.length ||
+        !e.packaged_files.every(function (f) { return isString(f.path) && isHash(f.sha256) && isCount(f.bytes); })) {
+      return "a packaged file record is incomplete";
+    }
+    if (!Array.isArray(e.missing_fields) ||
+        !e.missing_fields.every(function (m) { return isText(m.field) && isText(m.detail); })) {
+      return "a missing-field entry is incomplete";
+    }
+    if (!isString(e.reproduction_command) || typeof e.report_markdown !== "string") { return "command or report missing"; }
+    if (!isString(e.capture_schema_version) || !isString(e.result_schema_version) || !isString(e.evidence_pack_format_version)) {
+      return "schema versions missing";
+    }
+    return null;
+  }
+
+  function renderVerified(payload) {
+    var e = payload.evidence;
+    var verdict = byId("verdict");
+    verdict.dataset.state = "verified";
+    byId("verdict-heading").textContent = "Verified by read.py";
+    byId("verdict-status").textContent =
+      "read.py accepted this pack. The values below are the ones it checked.";
+    byId("verdict-pack").textContent = payload.pack_path;
+    var checks = byId("verdict-checks");
+    checks.textContent = "";
+    [
+      "Manifest follows SPEC.md, format " + e.evidence_pack_format_version + ".",
+      "report.md matches its recorded SHA-256 and size.",
+      e.source_refs.length + " source refs matched their recorded SHA-256 and size under " + e.capture.resolved_root + ".",
+      "The result file matched its recorded SHA-256 and size" +
+        (e.result.identity === "embedded-match"
+          ? ", and its embedded result_id names this result."
+          : ". It does not name itself, so only its bytes are verified."),
+      "Not checked: whether any geometry is correct."
+    ].forEach(function (text) {
+      var li = document.createElement("li");
+      li.textContent = text;
+      checks.appendChild(li);
+    });
+    byId("verdict-detail").hidden = false;
+
+    fill(byId("identity-list"), [
+      ["Capture id", e.capture.capture_id],
+      ["Captured at", e.capture.captured_at],
+      ["Result id", e.result.result_id],
+      ["Result identity", e.result.identity === "embedded-match"
+        ? "The result file embeds this result_id"
+        : "Bytes only: the result file does not name itself"],
+      ["Result path", e.result.path],
+      ["Result SHA-256 (checked)", e.result.sha256, true],
+      ["Result bytes", String(e.result.bytes)],
+      ["Capture root (recorded)", e.capture.capture_root],
+      ["Pack path", payload.pack_path],
+      ["Pack SHA-256", e.pack_sha256, true],
+      ["Manifest SHA-256", e.manifest_sha256, true]
+    ]);
+    fill(byId("versions-list"), [
+      ["evidence_pack_format_version", e.evidence_pack_format_version],
+      ["capture_schema_version", e.capture_schema_version],
+      ["result_schema_version", e.result_schema_version]
     ]);
 
-    fill(document.getElementById("versions-list"), [
-      ["evidence_pack_format_version", manifest.evidence_pack_format_version],
-      ["capture_schema_version", manifest.capture_schema_version]
-    ]);
+    byId("sources-root").textContent = e.capture.resolved_root;
+    var sources = byId("sources-body");
+    sources.textContent = "";
+    e.source_refs.forEach(function (ref) { sources.appendChild(row([ref.role, ref.path, ref.sha256, String(ref.bytes)], 2)); });
+    var packaged = byId("packaged-body");
+    packaged.textContent = "";
+    e.packaged_files.forEach(function (rec) { packaged.appendChild(row([rec.path, rec.sha256, String(rec.bytes)], 1)); });
 
-    var sources = document.getElementById("sources-body");
-    manifest.capture.source_refs.forEach(function (ref) {
-      var row = document.createElement("tr");
-      [ref.role, ref.path, ref.sha256, String(ref.bytes)].forEach(function (value, index) {
-        var cell = document.createElement("td");
-        if (index === 2) {
-          var code = document.createElement("code");
-          hashCell(code, value);
-          cell.appendChild(code);
-        } else {
-          cell.textContent = value;
-        }
-        row.appendChild(cell);
-      });
-      sources.appendChild(row);
-    });
-
-    var packaged = document.getElementById("packaged-body");
-    manifest.packaged_files.forEach(function (record) {
-      var row = document.createElement("tr");
-      var pathCell = document.createElement("td");
-      pathCell.textContent = record.path;
-      var hashCellEl = document.createElement("td");
-      var code = document.createElement("code");
-      hashCell(code, record.sha256);
-      hashCellEl.appendChild(code);
-      var sizeCell = document.createElement("td");
-      sizeCell.textContent = String(record.bytes);
-      row.appendChild(pathCell);
-      row.appendChild(hashCellEl);
-      row.appendChild(sizeCell);
-      packaged.appendChild(row);
-    });
-
-    var missing = document.getElementById("missing-list");
-    manifest.missing_fields.forEach(function (entry) {
+    var missing = byId("missing-list");
+    missing.textContent = "";
+    e.missing_fields.forEach(function (entry) {
       var item = document.createElement("li");
       var tag = document.createElement("span");
       tag.className = "missing-tag";
       tag.textContent = "missing";
       item.appendChild(tag);
-      item.appendChild(document.createTextNode(" " + entry.field + " \u2014 " + entry.detail));
+      item.appendChild(document.createTextNode(" " + entry.field + " — " + entry.detail));
       missing.appendChild(item);
     });
-    if (!manifest.missing_fields.length) {
-      var item = document.createElement("li");
-      item.textContent = "None recorded: the described inputs were complete.";
-      missing.appendChild(item);
+    if (!e.missing_fields.length) {
+      var none = document.createElement("li");
+      none.textContent = "None recorded: the described inputs were complete.";
+      missing.appendChild(none);
     }
 
-    document.getElementById("repro-command").textContent = manifest.reproduction.command;
-    document.getElementById("report-text").textContent = evidence.report_markdown;
+    byId("repro-command").textContent = e.reproduction_command;
+    byId("report-text").textContent = e.report_markdown;
+    document.querySelectorAll("[data-needs-data]").forEach(function (section) { section.hidden = false; });
+  }
 
-    document.querySelectorAll("[data-needs-data]").forEach(function (section) {
-      section.hidden = false;
-    });
+  // On refusal or failure the red alert box replaces the neutral check block,
+  // so the page states the outcome once.
+  function renderRefused(payload) {
+    var verdict = byId("verdict");
+    verdict.dataset.state = "refused";
+    verdict.hidden = true;
+    var refusal = payload.refusal;
+    byId("refused-kind").textContent = refusal.kind;
+    byId("refused-detail").textContent = refusal.detail;
+    byId("refused-pack").textContent = payload.pack_path;
+    byId("refused-sha").textContent = refusal.rejected_pack_sha256 || "unavailable: the pack bytes could not be read";
+    byId("refused-command").textContent = payload.command;
+    byId("refused").hidden = false;
+  }
+
+  function dataFailed(message) {
+    var verdict = byId("verdict");
+    verdict.dataset.state = "failed";
+    verdict.hidden = true;
+    document.querySelectorAll("[data-needs-data]").forEach(function (section) { section.hidden = true; });
+    byId("refused").hidden = true;
+    byId("error").hidden = false;
+    byId("error-detail").textContent =
+      "The identity read failed (" + message +
+      "). The refusal runs below are a separate read and still render when it succeeds.";
+  }
+
+  function demoCard(demo) {
+    var card = document.createElement("article");
+    var ok = demo.outcome === "refused";
+    card.className = ok ? "refusal" : "refusal unexpected";
+    var id = "refusal-" + demo.expected_kind;
+    card.setAttribute("aria-labelledby", id);
+    var title = document.createElement("h3");
+    title.id = id;
+    if (ok) {
+      title.textContent = "Refused: " + demo.kind;
+    } else if (demo.outcome === "not-refused") {
+      title.textContent = "Expected a " + demo.expected_kind + " refusal; the reader accepted the pack";
+    } else {
+      title.textContent = "Expected a " + demo.expected_kind + " refusal; the reader refused with " + demo.kind;
+    }
+    card.appendChild(title);
+    var details = document.createElement("dl");
+    details.className = "grid";
+    var pairs = [["Command", demo.command, "code"]];
+    if (demo.detail) { pairs.push(["Reason", demo.detail]); }
+    if (demo.rejected_pack_sha256) { pairs.push(["Rejected pack SHA-256", demo.rejected_pack_sha256, true]); }
+    fill(details, pairs);
+    card.appendChild(details);
+    return card;
+  }
+
+  // Each outcome must carry exactly the fields that outcome implies, or the
+  // whole read counts as failed rather than as a reader result.
+  function demoShapeOk(d) {
+    if (!isString(d.expected_kind) || !isString(d.command)) { return false; }
+    if (d.outcome === "not-refused") { return d.kind === null; }
+    var refusedShape = isString(d.kind) && isText(d.detail) &&
+      (d.rejected_pack_sha256 === null || isHash(d.rejected_pack_sha256));
+    if (d.outcome === "refused") { return refusedShape && d.kind === d.expected_kind; }
+    if (d.outcome === "refused-other-kind") { return refusedShape && d.kind !== d.expected_kind; }
+    return false;
   }
 
   function renderRefusals(payload) {
-    var container = document.getElementById("refusals-list");
-    container.innerHTML = "";
-    payload.refusals.forEach(function (refusal) {
-      var card = document.createElement("article");
-      card.className = "refusal";
-      card.setAttribute("aria-labelledby", "refusal-" + refusal.kind);
-      var title = document.createElement("h3");
-      title.id = "refusal-" + refusal.kind;
-      title.textContent = "Refused: " + refusal.kind;
-      var where = document.createElement("p");
-      var code = document.createElement("code");
-      code.textContent = refusal.receipt_path;
-      where.appendChild(document.createTextNode("Recorded output of "));
-      where.appendChild(code);
-      var pre = document.createElement("pre");
-      pre.tabIndex = 0;
-      pre.textContent = refusal.recorded_output;
-      card.appendChild(title);
-      card.appendChild(where);
-      card.appendChild(pre);
-      container.appendChild(card);
-    });
+    if (!payload || !Array.isArray(payload.refusals) || !payload.refusals.length || !payload.refusals.every(demoShapeOk)) {
+      throw new Error("refusals.json has an unexpected shape");
+    }
+    var container = byId("refusals-list");
+    container.textContent = "";
+    payload.refusals.forEach(function (demo) { container.appendChild(demoCard(demo)); });
+  }
+
+  function refusalsFailed(message) {
+    var container = byId("refusals-list");
+    container.textContent = "";
+    var note = document.createElement("p");
+    note.textContent = "The refusal read failed (" + message +
+      "). The refusal runs could not be loaded from the local server; this is not a pack refusal.";
+    container.appendChild(note);
   }
 
   var reads = { data: "pending", refusals: "pending" };
@@ -342,84 +485,91 @@
   var axeReady = false;
   window.__inspectorReads = reads;
 
-  function bothSettled() {
-    return reads.data !== "pending" && reads.refusals !== "pending";
+  function settle(name, state) {
+    reads[name] = state;
+    document.body.setAttribute("data-read-" + name, state);
+    maybeRunAxe();
   }
 
+  function bothSettled() { return reads.data !== "pending" && reads.refusals !== "pending"; }
+  // axe is a diagnostic. It runs on a later task, outside the read chains, so
+  // an axe failure can never be mistaken for, or turn into, a failed read.
+  var axeStarted = false;
   function maybeRunAxe() {
-    if (axeRequested && axeReady && bothSettled()) { runAxe(); }
+    if (axeRequested && axeReady && bothSettled() && !axeStarted) {
+      axeStarted = true;
+      setTimeout(runAxe, 0);
+    }
   }
 
-  function dataFailed(error) {
-    document.getElementById("error").hidden = false;
-    document.getElementById("error-detail").textContent =
-      "The identity read failed (" + error.message +
-      "). Refusal records are independent: they still render below when their own read succeeds.";
-  }
-
-  function refusalsFailed(error) {
-    var container = document.getElementById("refusals-list");
-    container.innerHTML = "";
-    var note = document.createElement("p");
-    note.textContent = "The refusal read failed (" + error.message +
-      "). Recorded refusals could not be loaded from the local server; this is not a pack refusal.";
-    container.appendChild(note);
-  }
-
-  function loadData() {
-    fetch("/data.json").then(function (response) {
-      if (!response.ok) { throw new Error("data.json responded " + response.status); }
-      return response.json();
-    }).then(function (evidence) {
-      render(evidence);
-      reads.data = "ok";
-      maybeRunAxe();
-    }).catch(function (error) {
-      console.error(error);
-      reads.data = "failed";
-      dataFailed(error);
-      maybeRunAxe();
+  function getJson(url) {
+    return fetch(url, { cache: "no-store" }).then(function (response) {
+      if (!response.ok) { throw new Error(url.slice(1) + " responded " + response.status); }
+      return response.text();
+    }).then(function (text) {
+      try { return JSON.parse(text); } catch (error) { throw new Error(url.slice(1) + " is not valid JSON"); }
     });
   }
 
-  function loadRefusals() {
-    fetch("/refusals.json").then(function (response) {
-      if (!response.ok) { throw new Error("refusals.json responded " + response.status); }
-      return response.json();
-    }).then(function (payload) {
-      renderRefusals(payload);
-      reads.refusals = "ok";
-      maybeRunAxe();
-    }).catch(function (error) {
-      console.error(error);
-      reads.refusals = "failed";
-      refusalsFailed(error);
-      maybeRunAxe();
-    });
-  }
+  getJson("/data.json").then(function (payload) {
+    if (payload && payload.status === "refused") {
+      var refusal = payload.refusal;
+      if (!refusal || !isString(refusal.kind) || !isText(refusal.detail) || !isString(payload.pack_path) ||
+          !isString(payload.command) || !(refusal.rejected_pack_sha256 === null || isHash(refusal.rejected_pack_sha256))) {
+        throw new Error("data.json has an unexpected shape: incomplete refusal");
+      }
+      renderRefused(payload);
+      settle("data", "refused");
+      return;
+    }
+    var problem = payload && payload.status === "verified" ? verifiedShapeProblem(payload) : "unknown status";
+    if (problem) { throw new Error("data.json has an unexpected shape: " + problem); }
+    renderVerified(payload);
+    settle("data", "verified");
+  }).catch(function (error) {
+    console.error(error);
+    dataFailed(error.message);
+    settle("data", "failed");
+  });
 
-  loadData();
-  loadRefusals();
+  getJson("/refusals.json").then(function (payload) {
+    renderRefusals(payload);
+    settle("refusals", "ok");
+  }).catch(function (error) {
+    console.error(error);
+    refusalsFailed(error.message);
+    settle("refusals", "failed");
+  });
+
+  function showAxeFailure(error) {
+    byId("axe-results").hidden = false;
+    byId("axe-output").textContent = "axe failed to run: " + error;
+  }
 
   function runAxe() {
+    try {
+      runAxeChecks();
+    } catch (error) {
+      showAxeFailure(error);
+    }
+  }
+
+  function runAxeChecks() {
     axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"] } })
       .then(function (results) {
-        document.getElementById("axe-results").hidden = false;
-        document.getElementById("axe-output").textContent = JSON.stringify(
+        window.__axeResults = results;
+        byId("axe-results").hidden = false;
+        byId("axe-output").textContent = JSON.stringify(
           {
-            axe_version: results.toolOptions || undefined,
+            axe_version: results.testEngine.version,
             violations: results.violations.map(function (v) { return { id: v.id, impact: v.impact, nodes: v.nodes.length }; }),
             passes: results.passes.map(function (p) { return p.id; }),
             incomplete: results.incomplete.map(function (v) { return { id: v.id, nodes: v.nodes.length }; })
           },
           null, 2
         );
-        window.__axeViolations = results.violations;
       })
-      .catch(function (error) {
-        document.getElementById("axe-results").hidden = false;
-        document.getElementById("axe-output").textContent = "axe failed to run: " + error;
-      });
+      .catch(showAxeFailure);
   }
 
   if (axeRequested) {
@@ -428,28 +578,44 @@
     script.onload = function () { axeReady = true; maybeRunAxe(); };
     document.head.appendChild(script);
   }
-  document.getElementById("copy-command").addEventListener("click", function () {
-    var command = document.getElementById("repro-command").textContent;
-    var feedback = document.getElementById("copy-feedback");
-    function done(ok) { feedback.textContent = ok ? "Copied." : "Copy failed; select the command text instead."; }
-    function fallback() {
-      try {
-        var area = document.createElement("textarea");
-        area.value = command;
-        area.setAttribute("readonly", "");
-        area.style.position = "fixed";
-        area.style.opacity = "0";
-        document.body.appendChild(area);
-        area.select();
-        var ok = document.execCommand("copy");
-        document.body.removeChild(area);
-        done(ok);
-      } catch (error) {
-        done(false);
-      }
+
+  // Copy: try the Clipboard API, fall back to a selected textarea and
+  // execCommand. writeText can reject or throw synchronously; both fall back.
+  // data-copy-path on the feedback records which path produced the message.
+  byId("copy-command").addEventListener("click", function () {
+    var command = byId("repro-command").textContent;
+    var feedback = byId("copy-feedback");
+    function done(path, ok) {
+      feedback.dataset.copyPath = path;
+      feedback.textContent = ok ? "Copied." : "Copy failed; select the command text instead.";
     }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(command).then(function () { done(true); }, fallback);
+    function fallback() {
+      var ok = false;
+      var area = document.createElement("textarea");
+      area.value = command;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      try {
+        area.select();
+        ok = document.execCommand("copy") === true;
+      } catch (error) {
+        ok = false;
+      }
+      document.body.removeChild(area);
+      done(ok ? "exec-command" : "failed", ok);
+    }
+    var attempt;
+    try {
+      attempt = navigator.clipboard && navigator.clipboard.writeText
+        ? navigator.clipboard.writeText(command)
+        : null;
+    } catch (error) {
+      attempt = null;
+    }
+    if (attempt && typeof attempt.then === "function") {
+      attempt.then(function () { done("clipboard-api", true); }, fallback);
     } else {
       fallback();
     }

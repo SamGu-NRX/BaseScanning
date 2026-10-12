@@ -9,16 +9,19 @@ This document is the reference for the format. Version 1.0 is the only version.
 A pack is a zip archive with exactly two entries:
 
 - `manifest.json`: the identity evidence described below.
-- `report.md`: the bug report text the pack accompanies.
+- `report.md`: the bug report text the pack accompanies, as UTF-8.
+
+The entry names are fixed. The packer reads the report from `report.md` at the fixture root and packs it under the same name, so a fixture cannot name its report anything else. The archive limits below bound how the reader opens a pack.
 
 `manifest.json` hashes every other entry under `packaged_files`. A manifest cannot contain its own hash, so manifest integrity is pinned by the receipt the packer prints and the reader repeats. Anyone who relays a pack records that receipt.
 
 ## manifest.json
 
-The manifest is one JSON object. Every field below is required; a manifest missing any of them is invalid, and both the packer and the reader refuse it. Unknown top-level fields are invalid.
+The manifest is one JSON object. Every field below is required; a manifest missing any of them is invalid, and both the packer and the reader refuse it. A required field that is present with a JSON `null` is invalid in the same way, except `geometry_correctness.assertion`, which must be null. Unknown top-level fields are invalid. A key that appears twice in one object is invalid, because two parsers can disagree about which value counts.
 
 - `evidence_pack_format_version`: string, `1.0`.
-- `capture_schema_version`: non-empty string naming the capture schema the described inputs follow, for example `synthetic-capture/2026.10`.
+- `capture_schema_version`: non-empty string naming the schema the capture inputs follow, for example `synthetic-capture/2026.10`.
+- `result_schema_version`: non-empty string naming the schema the result file follows, for example `synthetic-result/1.0`.
 - `capture`: object identifying the capture the report is about.
 - `result`: object identifying the result the report is about.
 - `missing_fields`: list of absent capture fields, possibly empty.
@@ -49,7 +52,7 @@ Each entry in `capture.source_refs` names one capture input file the report is a
 - `sha256`: lowercase 64-digit hexadecimal digest of the file's bytes.
 - `bytes`: file size in bytes, a positive integer.
 
-Refs point at files; the pack does not contain them. A reader that wants the bytes resolves each path against `capture_root` (or an explicit override) and checks the hash and size. A capture input written as JSON that declares a `schema_version` field must declare the manifest's `capture_schema_version`; anything else is the `schema-drift` refusal. The example pack points into `tools/capture-evidence-pack/fixtures/example/`, which is committed synthetic data. A pack about a real capture would point into `captures/`, which git ignores.
+Refs point at files; the pack does not contain them. A reader that wants the bytes resolves each path against `capture_root` (or an explicit override) and checks the hash and size. A path that resolves outside the root through a symlink does not satisfy its ref. A capture input written as a JSON object that declares a `schema_version` field must declare the manifest's `capture_schema_version`; anything else, including a declared `null`, is the `schema-drift` refusal. The example pack points into `tools/capture-evidence-pack/fixtures/example/`, which is committed synthetic data. A pack about a real capture would point into `captures/`, which git ignores.
 
 ### missing_fields
 
@@ -57,13 +60,17 @@ Real captures have gaps: a depth map the device never produced, an intrinsic tha
 
 ### Result identity
 
-The manifest claims which result the report is about through `result_id`, `path`, `sha256`, and `bytes`. When the result file names itself — a JSON object carrying a `result_id` field — the packer and the reader compare the embedded name with the claim and refuse `mismatched-result` on a mismatch. When the file carries no self-identification, the tools state a narrower guarantee instead of implying more: the receipt says the exact bytes were verified and that the file does not itself say which result it is.
+The manifest claims which result the report is about through `result_id`, `path`, `sha256`, and `bytes`. The result is resolved under the capture root like a source ref, and its bytes must match the recorded hash and size.
+
+The result follows its own schema. When the result file is a JSON object that declares `schema_version`, the declaration must equal `result_schema_version`, never `capture_schema_version`. The two versions move independently: a capture format and a result format change on different schedules.
+
+When the result file is a JSON object with a `result_id` key, it names itself, and the packer and the reader compare that name with the claim. The key's value must be a non-empty string equal to the manifest's `result_id`. A `null`, a number, a blank string, or the key appearing twice is the `mismatched-result` refusal, the same as a different name. Only a file without the key, or a file that is not a JSON object, makes no self-identification. Then the tools state a narrower guarantee instead of implying more: the receipt says the exact bytes were verified and that the file does not itself say which result it is.
 
 ### reproduction
 
 - `command`: non-empty string. The exact command a reader runs to re-derive the receipt from the pack and the referenced inputs.
 
-The packer fills this field, the reader repeats it in its receipt, and the inspection page shows it so a reader can paste it.
+The packer fills this field with the pack path quoted for a POSIX shell, so a path with spaces or shell characters survives `shlex.split`. The reader repeats it in its receipt, and the inspection page shows it so a reader can paste it.
 
 ### geometry_correctness
 
@@ -72,12 +79,13 @@ The packer fills this field, the reader repeats it in its receipt, and the inspe
 
 ## Schema versions
 
-Two versions ride in every manifest, and both are explicit:
+Three versions ride in every manifest, and all are explicit:
 
 - `capture_schema_version` describes the capture inputs the report is about.
+- `result_schema_version` describes the result file.
 - `evidence_pack_format_version` describes the pack itself.
 
-Neither is inferred, defaulted, or optional. A reader that meets an unknown pack format version refuses the pack instead of guessing.
+None is inferred, defaulted, or optional. `report.md` is the report's prose and is never checked against a schema version. A reader that meets an unknown pack format version refuses the pack instead of guessing.
 
 ## Identity is not correctness
 
@@ -85,17 +93,39 @@ This format records identity only: which capture, which result, which bytes, whi
 
 The only slot where such a claim could live is `geometry_correctness`, and a conforming pack keeps `assertion` null. The packer refuses to write a manifest whose assertion is non-null, and the reader refuses a pack whose assertion is non-null. A future format that carries verified correctness needs a new format version, new fields, and its own evidence chain. It does not grow inside this one.
 
+## Archive limits
+
+The reader reads a pack file once, at most 8 MiB, and opens the archive from those bytes. It refuses with `invalid-archive`, before decoding any entry, when the central directory shows:
+
+- a number of entries other than two, a repeated name, or a name other than `manifest.json` and `report.md`;
+- a name that is absolute, empty, contains a backslash, or has a `..` part;
+- a directory, a symlink, or another non-regular Unix file type;
+- an encrypted entry, or a compression method other than stored or deflated;
+- a declared size over the entry's budget (1 MiB for `manifest.json`, 2 MiB for `report.md`);
+- a declared size more than 100 times the compressed size.
+
+It then decodes each entry through a cap of its budget plus one byte, so a size field that lies cannot widen the read, and refuses when the decoded length differs from the declared one or the CRC fails. Referenced inputs are read once each, at most 64 MiB.
+
+These numbers are resource bounds, not measurements. No real pack exists to calibrate against. The committed example is about 1.4 KB with a 1.6 KB manifest, so the bounds leave three orders of magnitude of headroom while keeping a hostile archive from forcing an unbounded read, an unbounded decompression, or a scan of thousands of entries. Deflate cannot exceed about 1032:1, and text manifests and reports compress below 10:1, so 100:1 is far outside honest input. A pack about real captures with inputs over 64 MiB needs a reader with a streaming hash and a new version of this section.
+
+## One read per input
+
+The packer and the reader each read every file once and derive everything from those bytes: the recorded and checked hashes, the schema and identity checks, the packed report, and the pack hash in every receipt. A file that changes while a tool runs cannot be hashed as one version and packed, parsed, or reported as another. The packer builds the archive in memory and moves it into place with an atomic rename, so a refused or failed run leaves any earlier file at the out path untouched.
+
 ## Refusals
 
-The packer and the reader refuse, exit non-zero, and name what mismatched:
+The packer and the reader refuse, exit 2, and name what mismatched:
 
-- `missing-source`: a source ref whose file is absent under the capture root, or whose bytes do not match the recorded hash and size.
-- `mismatched-result`: the result file's bytes do not match the recorded result hash and size, or the file embeds a `result_id` that differs from the manifest's claim.
-- `schema-drift`: a referenced capture input declares a `schema_version` that differs from the manifest's `capture_schema_version`.
-- `invalid-manifest`: the manifest violates the field rules in this document, including a `captured_at` that is not a strict zero-padded real UTC timestamp and `missing_fields` entries with a blank or absent `field` or `detail`.
+- `missing-source`: a source ref whose file is absent under the capture root, resolves outside it, or is not a regular file, or whose bytes do not match the recorded hash and size. A pack path that does not exist is refused with the same kind.
+- `mismatched-result`: the result file's bytes do not match the recorded result hash and size, or the file embeds a `result_id` that is malformed or differs from the manifest's claim.
+- `schema-drift`: a capture input declares a `schema_version` other than `capture_schema_version`, or the result declares one other than `result_schema_version`.
+- `invalid-manifest`: the manifest violates the field rules in this document, including a `captured_at` that is not a strict zero-padded real UTC timestamp, `missing_fields` entries with a blank or absent `field` or `detail`, a required field set to `null`, and a repeated key.
+- `invalid-archive`: the pack breaks the layout or a limit in Archive limits, is not a readable zip, or carries a `report.md` that is not UTF-8.
 - `wrong-pack-format`: `evidence_pack_format_version` is not `1.0`.
 
-The packer validates the flat `pack-spec.json` it consumes before building anything and refuses with the same named kinds, so a malformed fixture cannot crash the packer or half-write a pack. Packaged-file mismatch refusals name the rejected bytes' actual hash and size next to the recorded ones. Every reader refusal prints `rejected pack sha256:` with the SHA-256 of the pack bytes it refused, so a rejected pack can be identified and excluded by hash alone.
+The packer validates the flat `pack-spec.json` it consumes before building anything and refuses with the same named kinds, so a malformed fixture cannot crash the packer or half-write a pack. Its keys are `capture_id`, `captured_at`, `capture_schema_version`, `result_schema_version`, `result_id`, `source_refs` (each with `role` and `path`), `result_path`, `missing_fields`, and an optional `report_path` that must be `report.md`; any other key is refused. Packaged-file mismatch refusals name the rejected bytes' actual hash and size next to the recorded ones.
+
+Every reader refusal prints `rejected pack sha256:` and `rejected pack bytes:` for the bytes the reader actually checked, followed by `reader arguments:` with the arguments as given, whatever their order. When the reader refused before it held the pack bytes (the file is missing or over the pack budget), the hash line says `unavailable` instead of hashing a partial read.
 
 ## Determinism
 
@@ -103,4 +133,4 @@ The packer validates the flat `pack-spec.json` it consumes before building anyth
 
 ## Replayable refusals
 
-Refusals are evidence too, and the repository commits the inputs that produce them. `fixtures/missing-captured-at`, `fixtures/invalid-captured-at`, `fixtures/null-missing-fields`, `fixtures/missing-detail`, and `fixtures/mismatched-result-id` are inputs the packer refuses by name. `tests/test_mutations.py` rebuilds the committed example pack with one defect at a time — five packer cases, seven reader cases — and replays each through the real command line, asserting the named refusal and that nothing is written. The `receipts/` directory records actual runs of the example and of two reader refusals.
+Refusals are evidence too, and the repository commits the inputs that produce them. `fixtures/missing-captured-at`, `fixtures/invalid-captured-at`, `fixtures/null-missing-fields`, `fixtures/missing-detail`, and `fixtures/mismatched-result-id` are inputs the packer refuses by name, and `fixtures/missing-source` and `fixtures/mismatched-result` are capture roots the reader refuses for the example pack. The tests under `tests/` replay every refusal kind through the real command line, each next to a passing control: `test_mutations.py` rebuilds the example pack with one defect at a time, `test_archive_limits.py` covers every archive limit, `test_cli_contract.py` covers result identity, schema independence, quoting, refusal binding and output paths, and `test_snapshot.py` changes inputs between reads. The `receipts/` directory records actual runs of the example and of the reader refusals.

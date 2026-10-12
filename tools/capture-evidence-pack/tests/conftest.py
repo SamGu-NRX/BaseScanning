@@ -1,17 +1,18 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 TOOL_DIR = Path(__file__).resolve().parents[1]
 if str(TOOL_DIR) not in sys.path:
     sys.path.insert(0, str(TOOL_DIR))
-
-import pytest
 
 # A manifest with well-formed but meaningless hashes: enough for schema checks.
 # Satisfiability tests build their own files under tmp_path and hash them.
 VALID_MANIFEST = {
     "evidence_pack_format_version": "1.0",
     "capture_schema_version": "synthetic-capture/2026.10",
+    "result_schema_version": "synthetic-result/1.0",
     "capture": {
         "capture_id": "capture-synth-0001",
         "captured_at": "2026-10-10T00:00:00Z",

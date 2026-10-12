@@ -1,6 +1,7 @@
 {
   "capture_id": "capture-synth-0001",
   "capture_schema_version": "synthetic-capture/2026.10",
+  "result_schema_version": "synthetic-result/1.0",
   "result_id": "result-synth-0001",
   "source_refs": [
     {

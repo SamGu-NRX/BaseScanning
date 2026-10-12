@@ -16,7 +16,7 @@ def test_spec_names_every_required_manifest_field():
 
 def test_spec_names_every_refusal_kind():
     text = SPEC.read_text(encoding="utf-8")
-    for kind in ("missing-source", "mismatched-result", "invalid-manifest", "wrong-pack-format"):
+    for kind in ("missing-source", "mismatched-result", "schema-drift", "invalid-manifest", "invalid-archive", "wrong-pack-format"):
         assert f"`{kind}`" in text, f"SPEC.md never mentions the {kind} refusal"
 
 

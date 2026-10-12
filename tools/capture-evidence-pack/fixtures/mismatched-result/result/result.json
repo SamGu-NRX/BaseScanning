@@ -1,5 +1,5 @@
 {
-  "schema_version": "synthetic-capture/2026.10",
+  "schema_version": "synthetic-result/1.0",
   "result_id": "result-synth-0001",
   "note": "synthetic fixture: a reconstruction never produced this file; content differs from the example fixture",
   "meter_anchor": {
