@@ -9,13 +9,28 @@ What is verified:
   1. the runner completes end to end (exit 0) including the FAKE_HUNTER
      fault round through the local proxy;
   2. every lifecycle.* and control.* check lands PASS except the
-     deliberately NOT_RUN restart-recovery and GPU_STUB lines;
-  3. receipts exist, parse, and are internally consistent;
-  4. the privacy sweep: no signed URL, no synthetic signature header
+     deliberately NOT_RUN GPU_STUB lines, the restart-recovery control
+     when no --restart-command is supplied, and the deliberately
+     non-passing fault-round rows — each asserted non-passing for the
+     right reason: a fault that fired without a matching detection row
+     is itself a self-check failure;
+  3. the fault oracles bite: truncated response framing, expired
+     signed-URL 403, canned capture_not_found 404, and a retry_finalize
+     event injection each produce the expected detection;
+  4. when --restart-command is supplied, the restart-recovery control
+     executes the command, wipes the fake's in-process state (simulated
+     process memory loss), probes the pre-restart capture, and pushes a
+     recovery capture through the full lifecycle under the same
+     idempotency key;
+  5. receipts exist, parse, and are internally consistent;
+  6. the privacy sweep: no signed URL, no synthetic signature header
      value, no file content, and no request header material appears in
-     any receipt; digests and field names do.
+     any receipt; digests and field names do; the receipt writer's own
+     post-write screen and the integrity verdict over the sealed run are
+     consumed fail-closed (any finding or integrity problem fails the
+     self-check).
 
-Usage: hunter-selfcheck [--out /tmp/hli-selfcheck]
+Usage: hunter-selfcheck [--out /tmp/hli-selfcheck] [--restart-command '...']
 Exit 0 when all assertions hold, 1 otherwise.
 """
 
@@ -23,14 +38,26 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import tempfile
 import threading
+import time
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from .adapter import HunterIngestAdapter
 from .modes import Status, Transport
 from .receipts import fresh_run_dir
-from .scenarios import CapturePlan, PrefixedSink, gpu_stub_lines
+from .sanitize import redact_text
+from .scenarios import (
+    TERMINAL_STATUSES,
+    CapturePlan,
+    PrefixedSink,
+    gpu_stub_lines,
+    record,
+    step_observed,
+)
 from .scenarios.controls import run_controls
 from .scenarios.lifecycle import run_lifecycle
 from .traces import compare_trace
@@ -91,6 +118,17 @@ class _FakeState:
                 "finalized": False,
             }
             return cid, True
+
+    def hard_reset(self) -> None:
+        """Simulate process memory loss: drop captures and stored bytes.
+
+        The id counter is deliberately kept monotonic — a restarted backend
+        must never re-mint an id it already used, so a replayed idempotency
+        key after the wipe is observable as a fresh capture id.
+        """
+        with self.lock:
+            self.captures.clear()
+            self.storage.clear()
 
 
 def build_fake_handler(base_url_holder: dict):
@@ -162,7 +200,13 @@ def build_fake_handler(base_url_holder: dict):
                 self._json(201, {"captureId": cid, "status": "capturing"})
                 return
             if path.endswith("/files"):
-                base = base_url_holder["base"]
+                # Storage URLs are rooted at the host the request reached —
+                # the proxy, when a fault round fronts the origin — so signed
+                # PUTs traverse the same path the register answer came from.
+                # Direct (unproxied) requests carry Host: origin, which
+                # reproduces the historical holder-based URL exactly.
+                host_header = self.headers.get("Host")
+                base = f"http://{host_header}" if host_header else base_url_holder["base"]
                 cid = path.split("/captures/")[1].rsplit("/files", 1)[0]
                 request = json.loads(body.decode("utf-8") or "{}")
                 entries = []
@@ -267,7 +311,257 @@ def build_plan(seed: int = 1) -> CapturePlan:
     )
 
 
-def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
+_FAULT_ROUND_SPECS: tuple[dict, ...] = (
+    {
+        "prefix": "trunc.",
+        "faults": {"commit": {"kind": "truncate_response", "bytes": 8}},
+        "step": "commit",
+        "signature": "IncompleteRead",
+        "expect_not_pass": ("lifecycle.commit",),
+    },
+    {
+        "prefix": "xurl.",
+        "faults": {"upload": {"kind": "expired_url"}},
+        "step": "upload",
+        "signature": "http 403",
+        "expect_not_pass": ("lifecycle.upload", "lifecycle.commit"),
+    },
+    {
+        "prefix": "nf404.",
+        "faults": {"commit": {"kind": "capture_not_found"}},
+        "step": "commit",
+        "signature": "http 404",
+        "expect_not_pass": ("lifecycle.commit",),
+    },
+    {
+        "prefix": "rfin.",
+        "faults": {"events": {"kind": "retry_finalize", "recover_after": 1}},
+        "step": "events",
+        "signature": None,
+        "expect_not_pass": (),
+        "require_event_type": "failed",
+    },
+)
+
+
+def selfcheck_manifest_commands(restart_command: str | None) -> list[str]:
+    """The manifest's commands field; a restart command is redacted first."""
+    commands = ["hunter-selfcheck"]
+    if restart_command:
+        commands.append("--restart-command=" + redact_text(restart_command))
+    return commands
+
+
+def _safe(result, key: str):
+    obs = result.observation
+    if obs is None:
+        return None
+    return (obs.safe_values or {}).get(key)
+
+
+def fault_round_problems(
+    sink_lines: list[dict],
+    injected_counts: dict[str, int],
+    spec: dict,
+) -> list[str]:
+    """Evaluate one fault round: the fault must have FIRED and been DETECTED.
+
+    A round that records the faulted step as PASS is a blind spot (the
+    harness met the fault and reported success); a round whose fault never
+    fired proves nothing. Both are self-check problems.
+    """
+    prefix = spec["prefix"]
+    step = spec["step"]
+    problems: list[str] = []
+    if injected_counts.get(step, 0) <= 0:
+        problems.append(
+            f"{prefix}: fault never fired at {step} (injected: {injected_counts})"
+        )
+        return problems
+    line = next((e for e in sink_lines if e["id"] == f"{prefix}lifecycle.{step}"), None)
+    if line is None:
+        problems.append(f"{prefix}: no receipt row for lifecycle.{step}")
+        return problems
+    signature = spec.get("signature")
+    if signature is not None:
+        non_pass = line["status"] in (Status.FAIL.value, Status.BLOCKED.value)
+        if not non_pass or signature not in str(line["observed"]):
+            problems.append(
+                f"{prefix}: {step} expected a non-pass row naming {signature!r}, "
+                f"got {line['status']} ({line['observed']!r})"
+            )
+    require_event_type = spec.get("require_event_type")
+    if require_event_type is not None:
+        observation = line.get("observation")
+        events = (observation.safe_values or {}).get("events") if observation else None
+        types = (
+            [e.get("type") for e in events if isinstance(e, dict)]
+            if isinstance(events, list)
+            else []
+        )
+        if require_event_type not in types:
+            problems.append(
+                f"{prefix}: events observation lacks a {require_event_type!r} event "
+                f"(saw types: {types})"
+            )
+    return problems
+
+
+def run_restart_control(
+    adapter: HunterIngestAdapter,
+    plan: CapturePlan,
+    *,
+    restart_command: str,
+    reset_state: Callable[[], None] | None = None,
+    poll_interval_s: float = 0.2,
+    result_budget_s: float = 15.0,
+) -> tuple[Status, str]:
+    """Execute a real restart and prove the client handles both fates.
+
+    The restart runs the operator's command (shell form, 60s cap) and, when
+    reset_state is given, wipes the fake's in-process state — the simulated
+    process memory loss. The control then requires one of the two published
+    outcomes: the restarted backend still answers for the earlier capture,
+    or it answers 404 and a full lifecycle re-send under the SAME
+    idempotency key completes. Anything else fails the control.
+    """
+    notes: list[str] = []
+
+    res = adapter.health()
+    if res.error:
+        return Status.BLOCKED, f"endpoint unreachable pre-restart: {step_observed(res)}"
+    res = adapter.create(plan.create_request, plan.packet_id)
+    capture_id = _safe(res, "captureId")
+    if res.error or not capture_id:
+        return Status.BLOCKED, f"create unavailable pre-restart: {step_observed(res)}"
+    res = adapter.register(capture_id, plan.file_descriptors)
+    if res.error or not (res.http_status and 200 <= res.http_status < 300):
+        return Status.BLOCKED, f"register unavailable pre-restart: {step_observed(res)}"
+    targets = (res.context or {}).get("upload_targets") or []
+    for (path, content), target in zip(plan.files, targets, strict=False):
+        url = target.get("url") if isinstance(target, dict) else None
+        if not url:
+            return Status.BLOCKED, f"pre-restart: no signed target for {path}"
+        res = adapter.upload(capture_id, path, content, url, target.get("headers"))
+        if res.error or not (res.http_status and 200 <= res.http_status < 300):
+            return (
+                Status.BLOCKED,
+                f"pre-restart upload failed ({path}): {step_observed(res)}",
+            )
+
+    try:
+        completed = subprocess.run(
+            restart_command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return Status.BLOCKED, "restart command did not finish within 60s"
+    notes.append(f"restart command exit={completed.returncode}")
+    if reset_state is not None:
+        reset_state()
+        notes.append("in-process fake state wiped (simulated process memory loss)")
+    if completed.returncode != 0:
+        notes.append("restart command failed; recovery not attempted")
+        return Status.BLOCKED, "; ".join(notes)
+
+    res = adapter.events(capture_id, 0, int(poll_interval_s))
+    if res.error:
+        notes.append(f"old-capture probe transport error: {res.error}")
+        return Status.BLOCKED, "; ".join(notes)
+    if res.http_status is not None and 200 <= res.http_status < 300:
+        notes.append(
+            f"old capture {capture_id} answers 2xx post-restart (state preserved)"
+        )
+    elif res.http_status == 404:
+        notes.append(f"old capture {capture_id} answers 404 post-restart (state loss)")
+    else:
+        notes.append(f"old-capture probe unexpected: {step_observed(res)}")
+        return Status.BLOCKED, "; ".join(notes)
+
+    # recovery under the SAME idempotency key
+    res = adapter.create(plan.create_request, plan.packet_id)
+    recovery_id = _safe(res, "captureId")
+    if res.error or not recovery_id:
+        return (
+            Status.FAIL,
+            "; ".join(notes + [f"recovery create failed: {step_observed(res)}"]),
+        )
+    notes.append(f"recovery capture {recovery_id}")
+
+    res = adapter.register(recovery_id, plan.file_descriptors)
+    if res.error or not (res.http_status and 200 <= res.http_status < 300):
+        return (
+            Status.FAIL,
+            "; ".join(notes + [f"recovery register failed: {step_observed(res)}"]),
+        )
+    targets = (res.context or {}).get("upload_targets") or []
+    for (path, content), target in zip(plan.files, targets, strict=False):
+        url = target.get("url") if isinstance(target, dict) else None
+        if not url:
+            return Status.FAIL, "; ".join(notes + [f"recovery: no signed target for {path}"])
+        res = adapter.upload(recovery_id, path, content, url, target.get("headers"))
+        if res.error or not (res.http_status and 200 <= res.http_status < 300):
+            return (
+                Status.FAIL,
+                "; ".join(notes + [f"recovery upload failed ({path}): {step_observed(res)}"]),
+            )
+
+    res = adapter.commit(recovery_id, plan.file_descriptors)
+    committed = _safe(res, "committed")
+    if res.error or not (res.http_status and 200 <= res.http_status < 300 and committed):
+        return (
+            Status.FAIL,
+            "; ".join(notes + [f"recovery commit failed: {step_observed(res)}"]),
+        )
+
+    res = adapter.finalize(recovery_id, plan.packet, plan.packet_id)
+    if res.error or not (res.http_status and 200 <= res.http_status < 300):
+        return (
+            Status.FAIL,
+            "; ".join(notes + [f"recovery finalize failed: {step_observed(res)}"]),
+        )
+
+    deadline = time.monotonic() + result_budget_s
+    terminal = False
+    status_now = None
+    while time.monotonic() < deadline:
+        res = adapter.events(recovery_id, 0, int(poll_interval_s))
+        if res.error:
+            return (
+                Status.FAIL,
+                "; ".join(notes + [f"recovery events transport error: {res.error}"]),
+            )
+        status_now = _safe(res, "status")
+        if status_now in TERMINAL_STATUSES:
+            terminal = True
+            break
+        time.sleep(poll_interval_s)
+    if not terminal:
+        return (
+            Status.FAIL,
+            "; ".join(
+                notes
+                + [f"recovery events never reached a terminal status (last: {status_now!r})"]
+            ),
+        )
+
+    res = adapter.result(recovery_id)
+    if res.error or not (res.http_status and 200 <= res.http_status < 300):
+        return (
+            Status.FAIL,
+            "; ".join(notes + [f"recovery result read failed: {step_observed(res)}"]),
+        )
+    notes.append("recovery lifecycle complete; result read 2xx")
+    return Status.PASS, "; ".join(notes)
+
+
+def selfcheck(
+    out_root: str | None = None, restart_command: str | None = None
+) -> tuple[int, list[str]]:
     problems: list[str] = []
     notes_out: list[str] = []
 
@@ -297,23 +591,25 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
     run_lifecycle(client, plan, transport, sink, result_budget_s=15.0, poll_interval_s=0.2)
     run_controls(client, plan, transport, sink)
 
-    # fault-proxy FAKE_HUNTER round; prefixed ids keep these lines distinct
+    def plan_variant(suffix: str) -> CapturePlan:
+        return CapturePlan(
+            packet_id=plan.packet_id + suffix,
+            create_request=dict(plan.create_request),
+            files=list(plan.files),
+            roles=dict(plan.roles),
+            packet=plan.packet,
+        )
+
+    # fault-proxy FAKE_HUNTER rounds; prefixed ids keep these lines distinct
     # from the direct round's.
     from .faultproxy import serve
 
     proxy = serve(base, {"create": {"kind": "delay", "ms": 100}})
     try:
         proxied = _C(proxy.base_url, timeout_s=10.0)
-        plan_fh = CapturePlan(
-            packet_id=plan.packet_id + "-fh",
-            create_request=dict(plan.create_request),
-            files=list(plan.files),
-            roles=dict(plan.roles),
-            packet=plan.packet,
-        )
         run_lifecycle(
             proxied,
-            plan_fh,
+            plan_variant("-fh"),
             Transport.FAKE_HUNTER,
             PrefixedSink(sink, "fault."),
             result_budget_s=15.0,
@@ -322,8 +618,61 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
     finally:
         proxy.stop()
 
+    # decisive fault rounds: each oracle must fire AND be detected — a round
+    # whose fault never fired, or whose faulted step still reads PASS, is a
+    # self-check problem (blind-spot proof).
+    for spec in _FAULT_ROUND_SPECS:
+        proxy = serve(base, spec["faults"])
+        try:
+            proxied = _C(proxy.base_url, timeout_s=10.0)
+            run_lifecycle(
+                proxied,
+                plan_variant("-" + spec["prefix"].rstrip(".")),
+                Transport.FAKE_HUNTER,
+                PrefixedSink(sink, spec["prefix"]),
+                result_budget_s=15.0,
+                poll_interval_s=0.2,
+            )
+        finally:
+            proxy.stop()
+        problems.extend(fault_round_problems(sink, proxy.injected_counts, spec))
+
     # GPU arms: named, never executed (NOT_RUN vocabulary rows).
     gpu_stub_lines(sink)
+
+    # restart-recovery (while the fake is still serving): execute the
+    # operator's restart command, wipe the fake's in-process state (the
+    # simulated memory loss), and require one of the two published
+    # outcomes. The NOT_RUN stub row run_controls wrote is replaced by the
+    # real result.
+    if restart_command:
+        sink[:] = [
+            line
+            for line in sink
+            if not (
+                line["id"] == "control.restart-recovery"
+                and line["transport"] == Transport.FAKE_HUNTER.value
+            )
+        ]
+        status_r, observed_r = run_restart_control(
+            _C(base, timeout_s=10.0),
+            plan,
+            restart_command=restart_command,
+            reset_state=state.hard_reset,
+        )
+        record(
+            sink,
+            Transport.FAKE_HUNTER,
+            "control.restart-recovery",
+            "published CaptureUploader: a restarted backend either still answers "
+            "for existing captures (2xx) or answers capture_not_found, which the "
+            "client recovers by re-creating under the same idempotency key and "
+            "re-sending every file",
+            "restart executes; the pre-restart capture's fate is observed; the "
+            "recovery lifecycle completes",
+            f"command {redact_text(restart_command)!r}; {observed_r}",
+            status_r,
+        )
 
     server.shutdown()
 
@@ -332,7 +681,13 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
     run_dir = fresh_run_dir(out, "selfcheck")
 
     from .adapter import INTERFACE_VERSION
-    from .receipts import Check, ChecksWriter, write_run_manifest, write_summary
+    from .receipts import (
+        Check,
+        ChecksWriter,
+        verify_run_integrity,
+        write_run_manifest,
+        write_summary,
+    )
     from .runner import LEAD_QUESTIONS, ORIGIN_NOTE
 
     checks = [
@@ -357,7 +712,7 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
         adapter_interface=INTERFACE_VERSION,
         fixture_identity="selfcheck build_plan",
         seed=1,
-        commands=["hunter-selfcheck"],
+        commands=selfcheck_manifest_commands(restart_command),
         label="selfcheck",
         origin_note=ORIGIN_NOTE,
     )
@@ -395,6 +750,21 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
         expect_pass(Transport.FAKE_HUNTER.value, cid)
     for cid in _LIFECYCLE_IDS:
         expect_pass(Transport.FAKE_HUNTER.value, "fault." + cid)
+
+    def expect_not_pass(tid: str, cid: str) -> None:
+        got = statuses.get((tid, cid))
+        if got not in (Status.FAIL, Status.BLOCKED):
+            line = next(
+                (e for e in sink if e["id"] == cid and e["transport"] == tid), None
+            )
+            problems.append(f"{tid}/{cid}: expected FAIL/BLOCKED, got {got} ({line})")
+
+    for spec in _FAULT_ROUND_SPECS:
+        for cid in _LIFECYCLE_IDS:
+            if cid in spec["expect_not_pass"]:
+                expect_not_pass(Transport.FAKE_HUNTER.value, spec["prefix"] + cid)
+            else:
+                expect_pass(Transport.FAKE_HUNTER.value, spec["prefix"] + cid)
     for cid in (
         "control.idempotent-create",
         "control.corrupt-upload",
@@ -402,9 +772,13 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
         "control.wrong-capture",
     ):
         expect_pass(Transport.FAKE_HUNTER.value, cid)
-    # in-process fake has no process to restart; the restart-recovery control
-    # needs the real runner + backend and stays honestly NOT_RUN here
-    expect_not_run(Transport.FAKE_HUNTER.value, "control.restart-recovery")
+    if restart_command:
+        got = statuses.get((Transport.FAKE_HUNTER.value, "control.restart-recovery"))
+        if got is not Status.PASS:
+            problems.append(f"restart-recovery: expected PASS, got {got}")
+    else:
+        # without a restart command the control stays honestly NOT_RUN
+        expect_not_run(Transport.FAKE_HUNTER.value, "control.restart-recovery")
 
     for arm in ("objects", "vlm", "dense"):
         expect_not_run(Transport.GPU_STUB.value, f"gpu-stub.{arm}")
@@ -439,29 +813,43 @@ def selfcheck(out_root: str | None = None) -> tuple[int, list[str]]:
         problems.extend(hard)
         notes_out.extend(advisory)
 
-    write_summary(
-        run_dir,
-        checks,
-        lead_questions=LEAD_QUESTIONS,
-        blocked=problems,
-        notes=notes_out,
+    # Receipt screening + integrity (fail-closed): write_summary screens
+    # every artifact post-write, records the outcome in privacy-screen.json,
+    # chains and seals the run. Its findings are consumed here and the
+    # integrity verdict over the sealed receipts is asserted too.
+    problems.extend(
+        write_summary(
+            run_dir,
+            checks,
+            lead_questions=LEAD_QUESTIONS,
+            blocked=problems,
+            notes=notes_out,
+        )
     )
+    problems.extend(verify_run_integrity(run_dir))
 
     print(f"selfcheck run dir: {run_dir}")
     counts: dict[str, int] = {}
     for c in checks:
         counts[c.status.value] = counts.get(c.status.value, 0) + 1
     print("counts: " + json.dumps(counts, sort_keys=True))
+
     return (1 if problems else 0), problems
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="hunter-selfcheck", description=__doc__)
     parser.add_argument("--out", default=None)
+    parser.add_argument(
+        "--restart-command",
+        default=None,
+        help="shell command executed for the restart-recovery control; the "
+        "in-process fake state is wiped to simulate process memory loss",
+    )
     args = parser.parse_args()
-    code, problems = selfcheck(args.out)
+    code, problems = selfcheck(args.out, restart_command=args.restart_command)
     for p in problems:
-        print(f"SELF-CHECK PROBLEM: {p}")
+        print(f"SELF-CHECK PROBLEM: {redact_text(p)}")
     print("selfcheck: PASS" if code == 0 else "selfcheck: FAIL")
     return code
 
