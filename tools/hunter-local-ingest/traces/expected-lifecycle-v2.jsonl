@@ -1,0 +1,12 @@
+{"id": "lifecycle.health", "http_status_class": "2xx", "field_names": ["status"], "provisional": false}
+{"id": "lifecycle.create", "http_status_class": "2xx", "field_names": ["captureId", "status"], "provisional": false}
+{"id": "lifecycle.register", "http_status_class": "2xx", "field_names": ["files"], "provisional": false}
+{"id": "lifecycle.upload", "http_status_class": "2xx", "field_names": null, "provisional": false}
+{"id": "lifecycle.commit", "http_status_class": "2xx", "field_names": ["committed", "notFound", "mismatch"], "provisional": false}
+{"id": "lifecycle.finalize", "http_status_class": "2xx", "field_names": ["status", "missing", "runId"], "provisional": false}
+{"id": "lifecycle.events", "http_status_class": "2xx", "field_names": ["status", "next", "events"], "provisional": false}
+{"id": "lifecycle.result", "http_status_class": "2xx", "field_names": ["status", "viewsNeeded", "memberActions"], "provisional": false}
+{"id": "control.idempotent-create", "http_status_class": "2xx", "field_names": null, "provisional": true}
+{"id": "control.corrupt-upload", "http_status_class": null, "field_names": null, "provisional": false}
+{"id": "control.truncated-upload", "http_status_class": null, "field_names": null, "provisional": false}
+{"id": "control.wrong-capture", "http_status_class": null, "field_names": null, "provisional": true}

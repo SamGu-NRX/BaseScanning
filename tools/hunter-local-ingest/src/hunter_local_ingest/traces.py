@@ -88,3 +88,14 @@ def compare_trace(
                     f"{prefix}trace: {check_id} response fields missing {sorted(missing)}"
                 )
     return problems
+
+
+def preferred_trace_path(traces_dir: Path) -> Path:
+    """The newest frozen trace contract present (v2 preferred; v1 fallback).
+
+    v1 stays byte-frozen; corrected expectations land in v2 files.
+    """
+    v2 = traces_dir / "expected-lifecycle-v2.jsonl"
+    if v2.exists():
+        return v2
+    return traces_dir / "expected-lifecycle-v1.jsonl"

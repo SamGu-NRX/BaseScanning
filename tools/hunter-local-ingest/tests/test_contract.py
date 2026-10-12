@@ -475,3 +475,179 @@ class TestContextViews:
         assert res.ok
         assert res.context.get("result_view") is None
         assert res.observation.field_names == ()
+
+
+class TestPublishedVocabulary:
+    """Published terminal statuses and the RegisterFile descriptor set."""
+
+    def test_terminal_statuses_are_the_published_five(self):
+        from hunter_local_ingest.scenarios import TERMINAL_STATUSES
+
+        assert TERMINAL_STATUSES == frozenset(
+            {"complete", "manual_review", "failed", "expired", "needs_views"}
+        )
+
+    def test_role_vocabulary_has_no_mesh(self):
+        from hunter_local_ingest.scenarios import ROLE_VOCABULARY
+
+        assert ROLE_VOCABULARY == frozenset(
+            {"keyframe", "depth", "confidence", "features", "still", "stream", "other"}
+        )
+        assert "mesh" not in ROLE_VOCABULARY
+
+    def test_descriptors_carry_md5_and_content_type(self):
+        import base64
+        import hashlib as _h
+
+        from hunter_local_ingest.scenarios import CapturePlan
+
+        content = b"synthetic-bytes"
+        plan = CapturePlan(
+            packet_id="pkt-1",
+            create_request={},
+            files=[("synthetic/a.syn", content)],
+            roles={},
+            packet=b"{}",
+        )
+        (descriptor,) = plan.file_descriptors
+        assert descriptor["path"] == "synthetic/a.syn"
+        assert descriptor["sha256"] == _h.sha256(content).hexdigest()
+        assert descriptor["md5"] == base64.b64encode(_h.md5(content).digest()).decode(
+            "ascii"
+        )
+        assert descriptor["contentType"] == "application/octet-stream"
+        assert descriptor["role"] == "keyframe"  # published default, no mesh
+        assert descriptor["bytes"] == len(content)
+
+    def test_plan_roles_are_kept_when_published(self):
+        from hunter_local_ingest.scenarios import CapturePlan
+
+        plan = CapturePlan(
+            packet_id="pkt-1",
+            create_request={},
+            files=[("synthetic/a.syn", b"x")],
+            roles={"synthetic/a.syn": "depth"},
+            packet=b"{}",
+        )
+        assert plan.file_descriptors[0]["role"] == "depth"
+
+
+class TestRegisterRoundOracle:
+    """Register answers match BY PATH (CaptureUploader.swift:460)."""
+
+    def _descs(self, *paths):
+        return [{"path": p} for p in paths]
+
+    def test_targets_matched_by_path_not_position(self):
+        from hunter_local_ingest.scenarios import register_round
+
+        answer = {
+            "b.syn": {"state": "awaiting_upload", "method": "PUT", "url": "u2"},
+            "a.syn": {"state": "awaiting_upload", "method": "PUT", "url": "u1"},
+        }
+        round_plan = register_round(self._descs("a.syn", "b.syn"), answer)
+        assert set(round_plan.to_upload) == {"a.syn", "b.syn"}
+        assert round_plan.to_upload["a.syn"]["url"] == "u1"
+        assert round_plan.to_upload["b.syn"]["url"] == "u2"
+        assert round_plan.unacknowledged == []
+
+    def test_committed_state_short_circuits(self):
+        from hunter_local_ingest.scenarios import register_round
+
+        answer = {"a.syn": {"state": "committed"}}
+        round_plan = register_round(self._descs("a.syn"), answer)
+        assert round_plan.already_committed == ["a.syn"]
+        assert round_plan.to_upload == {}
+        assert round_plan.unacknowledged == []
+
+    def test_missing_target_is_unacknowledged(self):
+        from hunter_local_ingest.scenarios import register_round
+
+        round_plan = register_round(self._descs("a.syn", "b.syn"), {})
+        assert round_plan.unacknowledged == ["a.syn", "b.syn"]
+
+    def test_method_refusals(self):
+        from hunter_local_ingest.scenarios import register_round
+
+        answer = {
+            "a.syn": {"state": "awaiting_upload", "method": "POST", "url": "u"},
+            "b.syn": {"state": "awaiting_upload", "method": "PUT"},
+            "c.syn": {"state": "awaiting_upload"},
+        }
+        round_plan = register_round(self._descs("a.syn", "b.syn", "c.syn"), answer)
+        assert ("a.syn", "upload_method_not_put") in round_plan.method_refusals
+        assert ("b.syn", "upload_method_missing_url") in round_plan.method_refusals
+        assert ("c.syn", "upload_method_missing_url") in round_plan.method_refusals
+        assert round_plan.to_upload == {}
+
+    def test_answer_paths_outside_the_plan_are_flagged(self):
+        from hunter_local_ingest.scenarios import register_round
+
+        answer = {
+            "a.syn": {"state": "awaiting_upload", "method": "PUT", "url": "u"},
+            "ghost.syn": {"state": "awaiting_upload", "method": "PUT", "url": "g"},
+        }
+        round_plan = register_round(self._descs("a.syn"), answer)
+        assert round_plan.duplicated == ["ghost.syn"]
+        assert round_plan.to_upload == {"a.syn": answer["a.syn"]}
+
+
+class TestStrictCommitOracle:
+    """Partial commits FAIL (recon §3k; CaptureUploader.swift:578-582)."""
+
+    def test_full_commit_passes(self):
+        from hunter_local_ingest.scenarios import strict_commit_verdict
+
+        ok, detail = strict_commit_verdict(
+            ["a.syn", "b.syn"],
+            {"committed": ["a.syn", "b.syn"], "notFound": [], "mismatch": []},
+        )
+        assert ok and "all 2" in detail
+
+    def test_partial_commit_fails_naming_offenders(self):
+        from hunter_local_ingest.scenarios import strict_commit_verdict
+
+        ok, detail = strict_commit_verdict(
+            ["a.syn", "b.syn", "c.syn"],
+            {"committed": ["a.syn"], "notFound": ["c.syn"], "mismatch": ["b.syn"]},
+        )
+        assert not ok
+        assert "not committed: ['b.syn', 'c.syn']" in detail
+        assert "notFound: ['c.syn']" in detail
+        assert "mismatch: ['b.syn']" in detail
+
+    def test_unexpected_committed_paths_fail(self):
+        from hunter_local_ingest.scenarios import strict_commit_verdict
+
+        ok, detail = strict_commit_verdict(
+            ["a.syn"], {"committed": ["a.syn", "ghost.syn"], "notFound": [], "mismatch": []}
+        )
+        assert not ok
+        assert "ghost.syn" in detail
+
+    def test_missing_membership_keys_are_empty_not_errors(self):
+        from hunter_local_ingest.scenarios import strict_commit_verdict
+
+        ok, _detail = strict_commit_verdict(["a.syn"], {"committed": ["a.syn"]})
+        assert ok
+
+
+class TestVerdictEventBinding:
+    """verdict_ready binds data.runId nil-or-equal (CaptureUploader.swift:624)."""
+
+    def test_nil_or_equal_bind_pass(self):
+        from hunter_local_ingest.scenarios import verdict_events_binding
+
+        assert verdict_events_binding([None, "run-9"], "run-9") == []
+
+    def test_foreign_run_fails(self):
+        from hunter_local_ingest.scenarios import verdict_events_binding
+
+        violations = verdict_events_binding(["run-9", "other-run"], "run-9")
+        assert len(violations) == 1
+        assert "other-run" in violations[0]
+
+    def test_foreign_run_without_finalize_run_id_fails(self):
+        from hunter_local_ingest.scenarios import verdict_events_binding
+
+        assert verdict_events_binding(["run-9"], None) != []

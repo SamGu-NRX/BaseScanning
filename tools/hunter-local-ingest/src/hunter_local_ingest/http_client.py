@@ -518,6 +518,7 @@ class DirectHttpClient:
                 view["status"] = answer["status"]
             events = answer.get("events")
             run_ids: list[str] = []
+            verdict_run_ids: list[str | None] = []
             if isinstance(events, list):
                 for event in events:
                     if not isinstance(event, dict):
@@ -525,7 +526,14 @@ class DirectHttpClient:
                     data = event.get("data")
                     if isinstance(data, dict) and isinstance(data.get("runId"), str):
                         run_ids.append(data["runId"])
+                    # verdict_ready events bind data.runId nil-or-equal to
+                    # the finalize's runId (CaptureUploader.swift:624).
+                    if event.get("type") == "verdict_ready":
+                        verdict_run_ids.append(
+                            data.get("runId") if isinstance(data, dict) else None
+                        )
             view["event_run_ids"] = run_ids
+            view["verdict_ready_run_ids"] = verdict_run_ids
             return {"events_view": view}
 
         return self._call(
