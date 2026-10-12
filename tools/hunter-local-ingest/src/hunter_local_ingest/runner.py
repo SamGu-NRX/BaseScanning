@@ -37,10 +37,12 @@ from .scenarios import (
     PrefixedSink,
     derived_control_identity,
     gpu_stub_lines,
+    record,
     unreachable_lines,
 )
 from .scenarios.controls import run_controls
 from .scenarios.lifecycle import run_lifecycle
+from .traces import compare_trace, preferred_trace_path
 
 ORIGIN_NOTE = (
     "Derived from published client behavior in HouseScanKit upload sources @ alpha "
@@ -90,7 +92,15 @@ def run(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--backend-mode",
         required=True,
-        choices=[m.value for m in (Transport.REAL_MIRROR_CPU, Transport.FAKE_HUNTER)],
+        choices=[
+            m.value
+            for m in (
+                Transport.REAL_MIRROR_CPU,
+                Transport.FAKE_HUNTER,
+                Transport.REAL_API,
+                Transport.PREPARED,
+            )
+        ],
         help=(
             "honest transport class of the endpoint under test; the operator declares it "
             "and every receipt row of the main round carries it"
@@ -163,6 +173,53 @@ def run(argv: list[str] | None = None) -> int:
         sink,
         restart_command=args.restart_command,
     )
+
+    # Frozen-trace conformance on a real run (recon §3q): diff the main
+    # round's receipts against the newest frozen trace. A hard
+    # disagreement FAILs the run; advisory (provisional-line)
+    # disagreements are recorded without flipping the verdict; a missing
+    # trace is NOT_RUN, never a silent pass. FAKE_HUNTER rounds are
+    # excluded — the selfcheck owns fake-vs-trace comparison.
+    if round_transport is not Transport.FAKE_HUNTER:
+        trace_path = preferred_trace_path(Path(__file__).resolve().parents[2] / "traces")
+        if trace_path.exists():
+            problems = compare_trace(sink.checks, trace_path, round_transport)
+            hard = [p for p in problems if not p.startswith("advisory:")]
+            advisory = [p for p in problems if p.startswith("advisory:")]
+            oracle = (
+                f"run receipts match the frozen trace {trace_path.name} "
+                "(status class + pinned response fields)"
+            )
+            if hard:
+                record(
+                    sink,
+                    round_transport,
+                    "trace.conformance",
+                    oracle,
+                    "no hard disagreements with the frozen trace",
+                    f"{len(hard)} hard: " + "; ".join(hard[:5]),
+                    Status.FAIL,
+                )
+            else:
+                record(
+                    sink,
+                    round_transport,
+                    "trace.conformance",
+                    oracle,
+                    "no hard disagreements with the frozen trace",
+                    "; ".join(advisory) if advisory else "no disagreements",
+                    Status.PASS,
+                )
+        else:
+            record(
+                sink,
+                round_transport,
+                "trace.conformance",
+                "run receipts compared against the frozen trace",
+                f"frozen trace present at {trace_path}",
+                "frozen trace missing on this install",
+                Status.NOT_RUN,
+            )
 
     # GPU_STUB vocabulary lines: named arms, never executed unless authorized.
     gpu_stub_lines(sink)

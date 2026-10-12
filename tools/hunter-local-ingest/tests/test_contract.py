@@ -22,11 +22,13 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from hunter_local_ingest.http_client import DirectHttpClient
 from hunter_local_ingest.modes import Transport
+from hunter_local_ingest.runner import run as runner_run
 from hunter_local_ingest.scenarios import (
     ROLE_VOCABULARY,
     CapturePlan,
@@ -918,3 +920,82 @@ class TestMalformedPlanExits3:
         )
         assert proc.returncode == 3, f"stderr: {proc.stderr}"
         assert "does not match the generator schema" in (proc.stderr + proc.stdout)
+
+
+class TestCompareTraceSemantics:
+    """The frozen-trace differ separates hard from advisory disagreements."""
+
+    @staticmethod
+    def _check(cid, status, transport="REAL_MIRROR_CPU"):
+        from hunter_local_ingest.modes import Status, Transport
+
+        return SimpleNamespace(
+            id=cid,
+            status=getattr(Status, status),
+            transport=getattr(Transport, transport),
+            observation=None,
+        )
+
+    def test_missing_check_is_a_hard_disagreement(self, tmp_path):
+        from hunter_local_ingest.traces import compare_trace
+
+        trace = tmp_path / "t.jsonl"
+        trace.write_text(
+            json.dumps({"id": "lifecycle.create", "http_status_class": "2xx"}) + "\n",
+            encoding="utf-8",
+        )
+        problems = compare_trace([self._check("lifecycle.other", "PASS")], trace, None)
+        assert problems == ["trace: lifecycle.create missing from run"]
+
+    def test_fail_status_is_hard_and_provisional_is_advisory(self, tmp_path):
+        from hunter_local_ingest.traces import compare_trace
+
+        trace = tmp_path / "t.jsonl"
+        trace.write_text(
+            json.dumps({"id": "a", "http_status_class": "2xx"})
+            + "\n"
+            + json.dumps({"id": "b", "http_status_class": "2xx", "provisional": True})
+            + "\n",
+            encoding="utf-8",
+        )
+        problems = compare_trace(
+            [self._check("a", "FAIL"), self._check("b", "FAIL")], trace, None
+        )
+        hard = [p for p in problems if not p.startswith("advisory:")]
+        advisory = [p for p in problems if p.startswith("advisory:")]
+        assert len(hard) == 1 and hard[0].startswith("trace: a ")
+        assert len(advisory) == 1 and advisory[0].startswith("advisory: trace: b ")
+
+
+class TestRunnerComparesTraceOnRealRuns:
+    """A REAL_MIRROR_CPU run diffs its receipts against the frozen trace."""
+
+    def test_dry_real_endpoint_fails_trace_conformance(self, stub_server, tmp_path):
+        base, stub = stub_server  # no script: every step answers stub_script_empty
+        _generate_plan(tmp_path, 7)  # writes plan-7.json for the runner
+        code = runner_run(
+            [
+                "--endpoint",
+                base,
+                "--plan-file",
+                str(tmp_path / "plan-7.json"),
+                "--out",
+                str(tmp_path / "runs"),
+                "--label",
+                "trace-wiring",
+                "--backend-mode",
+                "REAL_MIRROR_CPU",
+            ]
+        )
+        assert code == 1
+        rows = []
+        for path in (tmp_path / "runs").rglob("checks.jsonl"):
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    rows.append(json.loads(line))
+        conformance = [r for r in rows if r.get("id") == "trace.conformance"]
+        assert conformance, "the run must record a trace.conformance row"
+        assert conformance[0]["status"] == "FAIL"
+        assert "missing from run" in conformance[0].get("observed", "") or (
+            conformance[0].get("observed", "").startswith("1 hard")
+        )
