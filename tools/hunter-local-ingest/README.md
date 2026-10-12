@@ -77,10 +77,21 @@ decode as 64-bit integers by value, as Foundation's JSONDecoder does: `5`,
 `5.0` and `1e3` are all integers, and a non-integral value such as `5.1` is
 refused. The response parser keeps decimal literals exact, so
 `4611686018427387905.0` decodes to exactly that integer, never to a rounded
-float. A value too large for a
-receipt to hold as an exact JSON number (2^53 and up) is recorded as
-`large-int:<digest>`, never clamped and never rejected. `Double` fields accept
-any JSON number that converts to a finite double.
+float. A decimal spelling is range-checked through a Double, as Foundation
+does, so `9223372036854775807.0` is refused while the integer
+`9223372036854775807` is accepted. A value too large for a receipt to hold as
+an exact JSON number (2^53 and up) is recorded as `large-int:<digest>`, never
+clamped and never rejected. `Double` fields accept any JSON number that
+converts to a finite double.
+
+One known compatibility limit: this rule is a deliberately conservative
+oracle, not exact Swift Codable parity. Foundation decodes
+`1.0000000000000000001` as the Int `1`, because it rounds the literal first;
+the harness refuses it, because the value is not an integer. A response the
+app would accept can therefore FAIL here in that one kind of case: a
+fractional literal that Foundation rounds to an integer. Run locally,
+Foundation's JSONDecoder agrees with the harness on 20 of 21 recorded
+literals; that is the 21st.
 
 ## The API credential
 
