@@ -1,10 +1,15 @@
-"""Fault-oracle tests: new proxy kinds, their gates, and wire behavior.
+"""Fault-oracle tests: new proxy kinds, their gates, wire behavior, the
+real restart control, and the self-check's mutation controls.
 
 These prove the fault proxy actually applies each new fault (truncated
 response framing, expired signed-URL answer, canned unknown-capture
 answer, retry_finalize event injection) and that the after/recover_after
-gates release it — the wire behavior the self-check fault rounds and the
-mutation controls are built on in later milestones.
+gates release it. The restart-control tests prove the executed command,
+the state-wipe probe, and both published recovery outcomes. The mutation
+controls disable a harness detection and prove the round evaluator fails
+closed — a fault that fires without a matching detection, a round that
+never fired, a missing signature, or a stripped failed event are all
+self-check problems, never silent passes.
 """
 
 from __future__ import annotations
@@ -22,7 +27,17 @@ from hunter_local_ingest.faultproxy import (
     _truncate_response_payload,
     serve,
 )
-from hunter_local_ingest.selfcheck import _FakeState, build_fake_handler
+from hunter_local_ingest.http_client import DirectHttpClient
+from hunter_local_ingest.modes import Status, Transport
+from hunter_local_ingest.scenarios.lifecycle import run_lifecycle
+from hunter_local_ingest.selfcheck import (
+    _FakeState,
+    build_fake_handler,
+    build_plan,
+    fault_round_problems,
+    run_restart_control,
+    selfcheck_manifest_commands,
+)
 
 
 @pytest.fixture()
@@ -263,3 +278,137 @@ def test_after_gate_releases_early_hits(fake_origin):
         assert proxy.injected_counts.get("commit") == 1
     finally:
         proxy.stop()
+
+
+# -- restart control (real --restart-command behavior) ------------------------
+
+
+def test_restart_control_recovers_after_state_loss(fake_origin):
+    """The command executes, the fake state is wiped, the pre-restart
+    capture 404s, and the full recovery lifecycle completes under the SAME
+    idempotency key."""
+    origin, state = fake_origin
+    client = DirectHttpClient(origin, timeout_s=10.0)
+    status, observed = run_restart_control(
+        client, build_plan(), restart_command="true", reset_state=state.hard_reset
+    )
+    assert status is Status.PASS
+    assert "restart command exit=0" in observed
+    assert "simulated process memory loss" in observed
+    assert "404 post-restart" in observed
+    assert "recovery lifecycle complete" in observed
+
+
+def test_restart_control_passes_when_state_is_preserved(fake_origin):
+    """Without a wipe the restarted backend still answers for the earlier
+    capture, and the replayed idempotency key returns the same capture."""
+    origin, _state = fake_origin
+    client = DirectHttpClient(origin, timeout_s=10.0)
+    status, observed = run_restart_control(client, build_plan(), restart_command="true")
+    assert status is Status.PASS
+    assert "2xx post-restart (state preserved)" in observed
+    assert "recovery lifecycle complete" in observed
+
+
+def test_restart_control_blocks_when_the_command_fails(fake_origin):
+    origin, _state = fake_origin
+    client = DirectHttpClient(origin, timeout_s=10.0)
+    status, observed = run_restart_control(client, build_plan(), restart_command="exit 7")
+    assert status is Status.BLOCKED
+    assert "restart command exit=7" in observed
+    assert "recovery not attempted" in observed
+
+
+def test_manifest_commands_fingerprint_the_restart_command():
+    """The command text never reaches the manifest — a credential the
+    pattern redactor cannot see (bare -u user:pass) must still not leak."""
+    command = "curl -u user:secret-token-xyz http://127.0.0.1/restart"
+    commands = selfcheck_manifest_commands(command)
+    assert commands[0] == "hunter-selfcheck"
+    assert len(commands) == 2
+    assert commands[1].startswith("--restart-command=<fingerprint:sha256-")
+    assert "secret-token-xyz" not in commands[1]
+    assert commands[1] == selfcheck_manifest_commands(command)[1]
+    assert selfcheck_manifest_commands(None) == ["hunter-selfcheck"]
+
+
+# -- mutation controls (anti-blind-spot evidence) -----------------------------
+
+
+_TRUNC_SPEC = {
+    "prefix": "trunc.",
+    "faults": {"commit": {"kind": "truncate_response", "bytes": 8}},
+    "step": "commit",
+    "signature": "IncompleteRead",
+    "expect_not_pass": ("lifecycle.commit",),
+}
+
+
+def _faulted_commit_round_sink() -> list[dict]:
+    """A sink as the live trunc. round emits it: fault fired and detected."""
+    return [
+        {
+            "id": "trunc.lifecycle.commit",
+            "transport": Transport.FAKE_HUNTER.value,
+            "oracle": "oracle",
+            "expected": "non-pass with the read failure named",
+            "observed": "transport after 3 attempt(s): IncompleteRead(",
+            "status": Status.BLOCKED.value,
+        }
+    ]
+
+
+def test_mutation_control_passes_when_the_round_is_honest():
+    sink = _faulted_commit_round_sink()
+    assert fault_round_problems(sink, {"commit": 3}, _TRUNC_SPEC) == []
+
+
+def test_mutation_vacuous_pass_is_flagged():
+    """Disabling the detection — the faulted step records PASS — must fail
+    the round evaluation instead of reading as success."""
+    sink = _faulted_commit_round_sink()
+    sink[0]["status"] = Status.PASS.value
+    problems = fault_round_problems(sink, {"commit": 3}, _TRUNC_SPEC)
+    assert any("expected a non-pass row" in p for p in problems)
+
+
+def test_mutation_fault_never_fired_is_flagged():
+    problems = fault_round_problems(_faulted_commit_round_sink(), {}, _TRUNC_SPEC)
+    assert any("fault never fired" in p for p in problems)
+
+
+def test_mutation_wrong_signature_is_flagged():
+    sink = _faulted_commit_round_sink()
+    sink[0]["observed"] = "transport after 3 attempt(s): ConnectionReset("
+    problems = fault_round_problems(sink, {"commit": 3}, _TRUNC_SPEC)
+    assert any("expected a non-pass row" in p for p in problems)
+
+
+def test_mutation_missing_retry_finalize_event_is_flagged(fake_origin):
+    """Stripping the injected failed event from a REAL observation must fail
+    the round evaluation."""
+    origin, _state = fake_origin
+    proxy = serve(origin, {"events": {"kind": "retry_finalize", "recover_after": 1}})
+    sink: list[dict] = []
+    try:
+        client = DirectHttpClient(proxy.base_url, timeout_s=10.0)
+        run_lifecycle(
+            client,
+            build_plan(),
+            Transport.FAKE_HUNTER,
+            sink,
+            result_budget_s=15.0,
+            poll_interval_s=0.2,
+        )
+    finally:
+        proxy.stop()
+    spec = {"prefix": "", "step": "events", "require_event_type": "failed"}
+    assert fault_round_problems(sink, dict(proxy.injected_counts), spec) == []
+
+    row = next(line for line in sink if line["id"] == "lifecycle.events")
+    events = row["observation"].safe_values["events"]
+    row["observation"].safe_values["events"] = [
+        e for e in events if e.get("type") != "failed"
+    ]
+    problems = fault_round_problems(sink, dict(proxy.injected_counts), spec)
+    assert any("failed" in p and "event" in p for p in problems)

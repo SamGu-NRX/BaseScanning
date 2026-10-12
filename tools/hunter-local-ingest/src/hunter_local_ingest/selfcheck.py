@@ -37,6 +37,7 @@ Exit 0 when all assertions hold, 1 otherwise.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import tempfile
@@ -344,11 +345,25 @@ _FAULT_ROUND_SPECS: tuple[dict, ...] = (
 )
 
 
+def restart_command_fingerprint(restart_command: str) -> str:
+    """A leak-proof, auditable stand-in for the command text.
+
+    The restart command is operator free text that may embed credentials no
+    pattern-based redactor can catch reliably (bare ``-u user:pass`` args,
+    heredocs, env assignments). The receipt keeps a sha256 fingerprint the
+    operator can match against their own command — never the text itself.
+    """
+    digest = hashlib.sha256(restart_command.encode("utf-8")).hexdigest()[:12]
+    return f"<fingerprint:sha256-{digest}>"
+
+
 def selfcheck_manifest_commands(restart_command: str | None) -> list[str]:
-    """The manifest's commands field; a restart command is redacted first."""
+    """The manifest's commands field; a restart command is fingerprinted."""
     commands = ["hunter-selfcheck"]
     if restart_command:
-        commands.append("--restart-command=" + redact_text(restart_command))
+        commands.append(
+            f"--restart-command={restart_command_fingerprint(restart_command)}"
+        )
     return commands
 
 
@@ -670,7 +685,7 @@ def selfcheck(
             "re-sending every file",
             "restart executes; the pre-restart capture's fate is observed; the "
             "recovery lifecycle completes",
-            f"command {redact_text(restart_command)!r}; {observed_r}",
+            f"command {restart_command_fingerprint(restart_command)}; {observed_r}",
             status_r,
         )
 
