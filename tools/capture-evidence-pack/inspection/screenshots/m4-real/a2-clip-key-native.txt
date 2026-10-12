@@ -1,5 +1,5 @@
 case: a2-clip-key-native (NATIVE clipboard readback probe)
-commit: 0555f5a7740d4a4032986fe54b3b5c55612e1128 (dirty)
+commit: 9482fdd0463abb34914f152aae7602665602ec5f (dirty)
 invocation: focus #copy-command via eval; agent-browser press Enter; eval feedback; eval navigator.clipboard.readText()
 url: http://localhost:8931/
 viewport: 1440x900

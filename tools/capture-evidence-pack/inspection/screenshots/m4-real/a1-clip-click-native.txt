@@ -1,5 +1,5 @@
 case: a1-clip-click-native (NATIVE clipboard readback probe)
-commit: 0555f5a7740d4a4032986fe54b3b5c55612e1128 (clean)
+commit: 9482fdd0463abb34914f152aae7602665602ec5f (clean)
 invocation: python3 serve.py --port 8931; agent-browser open http://localhost:8931/; agent-browser set viewport 1440 900 2; agent-browser click '#copy-command'; eval feedback; eval navigator.clipboard.readText()
 url: http://localhost:8931/
 viewport: 1440x900
