@@ -15,7 +15,7 @@ import hashlib
 
 from ..adapter import HunterIngestAdapter
 from ..modes import Status, Transport
-from . import CapturePlan, record, step_observed
+from . import CapturePlan, derived_control_identity, record, step_observed
 
 
 def _safe_list(result, key: str) -> list:
@@ -42,12 +42,11 @@ def run_controls(
     """Client-harness controls around idempotency, byte integrity, capture isolation."""
 
     # -- control: idempotent create -----------------------------------------
-    res1 = adapter.create(plan_a.create_request, plan_a.packet_id)
-    res2 = (
-        adapter.create(plan_a.create_request, plan_a.packet_id)
-        if not res1.error
-        else res1
-    )
+    # Isolated identity (recon §3s): the replay exercises idempotency
+    # against the control's own capture, never the baseline round's.
+    idem_request, idem_id = derived_control_identity(plan_a, "-ctl-idem")
+    res1 = adapter.create(idem_request, idem_id)
+    res2 = adapter.create(idem_request, idem_id) if not res1.error else res1
     first_id = _safe_value(res1, "captureId")
     second_id = _safe_value(res2, "captureId")
     if res1.error or res2.error:
@@ -90,7 +89,9 @@ def run_controls(
         )
 
     # -- control: corrupted upload rejected at commit -------------------------
-    status_val, observed = _integrity_control(adapter, plan_a, corrupt=True)
+    status_val, observed = _integrity_control(
+        adapter, plan_a, corrupt=True, suffix="-ctl-corrupt"
+    )
     record(
         sink,
         transport,
@@ -103,7 +104,9 @@ def run_controls(
     )
 
     # -- control: truncated upload rejected at commit -------------------------
-    status_val, observed = _integrity_control(adapter, plan_a, corrupt=False, truncate=True)
+    status_val, observed = _integrity_control(
+        adapter, plan_a, corrupt=False, truncate=True, suffix="-ctl-trunc"
+    )
     record(
         sink,
         transport,
@@ -174,9 +177,16 @@ def _integrity_control(
     *,
     corrupt: bool,
     truncate: bool = False,
+    suffix: str = "-ctl-tamper",
 ) -> tuple[Status, str]:
-    """Full mini-lifecycle for one tampered file; decision made at commit."""
-    res = adapter.create(plan.create_request, plan.packet_id)
+    """Full mini-lifecycle for one tampered file; decision made at commit.
+
+    Runs on its own capture identity (recon §3s): tampered bytes are
+    registered and uploaded onto the control's capture, never onto the
+    baseline round's.
+    """
+    tamper_request, capture_identity = derived_control_identity(plan, suffix)
+    res = adapter.create(tamper_request, capture_identity)
     capture_id = _safe_value(res, "captureId")
     if res.error or not capture_id:
         return Status.BLOCKED, f"create step unavailable: {step_observed(res)}"

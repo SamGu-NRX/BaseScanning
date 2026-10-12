@@ -35,6 +35,7 @@ from .receipts import (
 from .scenarios import (
     CapturePlan,
     PrefixedSink,
+    derived_control_identity,
     gpu_stub_lines,
     unreachable_lines,
 )
@@ -171,12 +172,21 @@ def run(argv: list[str] | None = None) -> int:
     # accidental replay of the real round; the prefixed sink keeps its
     # receipt lines distinct from the main round's.
     if args.with_faults:
+        # Isolated identity (recon §3s): the fault round creates its own
+        # capture; the frozen packet's packetId is rewritten to match so
+        # the finalize body names the same capture as the create.
+        fh_request, fh_id = derived_control_identity(plan, "-fh")
+        packet_obj = json.loads(plan.packet.decode("utf-8"))
+        packet_obj["packetId"] = fh_id
+        fh_packet = json.dumps(packet_obj, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
         plan_fh = CapturePlan(
-            packet_id=plan.packet_id + "-fh",
-            create_request=dict(plan.create_request),
+            packet_id=fh_id,
+            create_request=fh_request,
             files=list(plan.files),
             roles=dict(plan.roles),
-            packet=plan.packet,
+            packet=fh_packet,
         )
         proxy = serve(args.endpoint, {"create": {"kind": "delay", "ms": 300}})
         try:
@@ -222,8 +232,12 @@ def main() -> int:
     try:
         return run()
     except SystemExit as exc:  # argparse + plan errors
-        code = exc.code if isinstance(exc.code, int) else 3
-        return code
+        if isinstance(exc.code, int):
+            return exc.code
+        if exc.code:
+            # The loader's diagnostic would otherwise vanish with the exit.
+            print(exc.code, file=sys.stderr)
+        return 3
 
 
 if __name__ == "__main__":

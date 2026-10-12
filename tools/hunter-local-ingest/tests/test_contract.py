@@ -26,7 +26,12 @@ from pathlib import Path
 import pytest
 
 from hunter_local_ingest.http_client import DirectHttpClient
-from hunter_local_ingest.scenarios import ROLE_VOCABULARY
+from hunter_local_ingest.modes import Transport
+from hunter_local_ingest.scenarios import (
+    ROLE_VOCABULARY,
+    CapturePlan,
+    derived_control_identity,
+)
 
 BASE = "http://127.0.0.1"  # client-facing base; the port is filled in
 BASE_HOST = "127.0.0.1"  # bare loopback host for the stub bind
@@ -506,7 +511,6 @@ class TestPublishedVocabulary:
         import base64
         import hashlib as _h
 
-        from hunter_local_ingest.scenarios import CapturePlan
 
         content = b"synthetic-bytes"
         plan = CapturePlan(
@@ -727,3 +731,190 @@ class TestFixturePacket04:
         plan = _generate_plan(tmp_path, 5)
         assert plan["plan"]["roles"]
         assert set(plan["plan"]["roles"].values()) <= ROLE_VOCABULARY
+
+
+def _control_plan() -> CapturePlan:
+    from hunter_local_ingest.scenarios import CapturePlan
+
+    pid = "synthetic-ctlplan"
+    return CapturePlan(
+        packet_id=pid,
+        create_request={
+            "packetId": pid,
+            "formatVersion": "0.4",
+            "tier": "arkit",
+            "flow": "guided",
+            "device": {"model": " synth", "systemVersion": "0.0", "appVersion": "t"},
+        },
+        files=[("a.syn", b"control payload bytes")],
+        roles={"a.syn": "keyframe"},
+        packet=json.dumps(
+            {
+                "format": "house-capture-packet",
+                "formatVersion": "0.4",
+                "packetId": pid,
+                "files": [
+                    {
+                        "path": "a.syn",
+                        "bytes": 21,
+                        "sha256": hashlib.sha256(b"control payload bytes").hexdigest(),
+                        "role": "keyframe",
+                    }
+                ],
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8"),
+    )
+
+
+class TestDerivedControlIdentity:
+    """The control-identity helper isolates controls from the baseline round."""
+
+    def test_identity_differs_from_baseline_and_copies_request(self):
+
+        plan = _control_plan()
+        request, pid = derived_control_identity(plan, "-ctl-idem")
+        assert pid != plan.packet_id
+        assert request["packetId"] == pid
+        # The plan's own create request is untouched.
+        assert plan.create_request["packetId"] == plan.packet_id
+        assert request is not plan.create_request
+
+    def test_identity_stays_within_the_published_pattern(self):
+        import re
+
+        plan = CapturePlan(
+            packet_id="x" * 64,
+            create_request={},
+            files=[],
+            roles={},
+            packet=b"{}",
+        )
+        for suffix in ("-ctl-idem", "-ctl-corrupt", "-ctl-trunc", "-fh"):
+            _, pid = derived_control_identity(plan, suffix)
+            assert len(pid) <= 64
+            assert re.fullmatch(r"[A-Za-z0-9_-]{8,64}", pid)
+
+
+class TestControlsUseIsolatedIdentity:
+    """Every control create names its own capture, never the baseline's."""
+
+    def test_no_control_create_reuses_the_baseline_identity(self, stub_server):
+        from hunter_local_ingest.scenarios.controls import run_controls
+
+        base, stub = stub_server
+        plan = _control_plan()
+        put_url = f"{base}/storage/ctl/0"
+
+        def register_reply():
+            stub.push(
+                200,
+                {},
+                json.dumps(
+                    {
+                        "files": [
+                            {
+                                "path": "a.syn",
+                                "state": "awaiting_upload",
+                                "upload": {
+                                    "method": "PUT",
+                                    "url": put_url,
+                                    "headers": {"X-Sig": "v1"},
+                                },
+                            }
+                        ]
+                    }
+                ).encode("utf-8"),
+            )
+
+        # idem create x2, corrupt (create/register/PUT/commit),
+        # trunc (create/register/PUT/commit), wrong-capture result 404.
+        for _ in range(2):
+            stub.push(200, {}, b'{"captureId": "cap-idem", "status": "uploading"}')
+        for cap in ("cap-corrupt", "cap-trunc"):
+            stub.push(
+                200,
+                {},
+                json.dumps({"captureId": cap, "status": "uploading"}).encode("utf-8"),
+            )
+            register_reply()
+            stub.push(200, {}, b"")
+            stub.push(
+                200,
+                {},
+                json.dumps(
+                    {"committed": [], "notFound": [], "mismatch": ["a.syn"]}
+                ).encode("utf-8"),
+            )
+        stub.push(
+            404,
+            {},
+            json.dumps({"errors": [{"code": "result_not_ready"}]}).encode("utf-8"),
+        )
+
+        run_controls(_fast_client(base), plan, Transport.FAKE_HUNTER, [])
+
+        creates = [
+            req
+            for req in stub.seen
+            if req["method"] == "POST" and req["path"].rstrip("/").endswith("/captures")
+        ]
+        assert len(creates) == 4, f"expected 4 control creates, saw {len(creates)}"
+        ids = []
+        for req in creates:
+            key = req["headers"].get("Idempotency-Key", "")
+            body = json.loads(req["body"].decode("utf-8"))
+            assert key != plan.packet_id, "a control replayed the baseline key"
+            assert body.get("packetId") != plan.packet_id, (
+                "a control created the baseline capture"
+            )
+            ids.append(key)
+        # The idempotency control reuses its OWN derived key (the replay
+        # is the control); the other rounds each own a distinct one.
+        assert ids[0] == ids[1], "the idempotency replay must reuse its key"
+        assert len(set(ids)) == 3, "each control round must own its identity"
+
+    def test_baseline_plan_is_not_mutated_by_the_control_round(self, stub_server):
+        from hunter_local_ingest.scenarios.controls import run_controls
+
+        base, stub = stub_server
+        plan = _control_plan()
+        baseline_request = json.dumps(plan.create_request, sort_keys=True)
+        # Minimal script: idem x2 then script-empty failures for the rest.
+        stub.push(200, {}, b'{"captureId": "cap-idem"}')
+        stub.push(200, {}, b'{"captureId": "cap-idem"}')
+        run_controls(_fast_client(base), plan, Transport.FAKE_HUNTER, [])
+        assert json.dumps(plan.create_request, sort_keys=True) == baseline_request
+        assert plan.packet_id == "synthetic-ctlplan"
+
+
+class TestMalformedPlanExits3:
+    """A plan file that is not valid JSON exits 3 with the schema message."""
+
+    def test_malformed_plan_json_exits_3(self, tmp_path):
+        import subprocess
+
+        bad = tmp_path / "bad-plan.json"
+        bad.write_text("{not json at all", encoding="utf-8")
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "hunter_local_ingest.runner",
+                "--endpoint",
+                "http://127.0.0.1:1/v1",
+                "--plan-file",
+                str(bad),
+                "--out",
+                str(tmp_path / "runs"),
+                "--backend-mode",
+                "FAKE_HUNTER",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=TOOL_ROOT,
+            timeout=60,
+        )
+        assert proc.returncode == 3, f"stderr: {proc.stderr}"
+        assert "does not match the generator schema" in (proc.stderr + proc.stdout)

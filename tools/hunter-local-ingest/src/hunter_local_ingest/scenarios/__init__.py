@@ -302,3 +302,17 @@ def verdict_events_binding(verdict_ready_run_ids: list, finalize_run_id) -> list
                 f"verdict_ready runId {run_id!r} != finalize {finalize_run_id!r}"
             )
     return violations
+
+
+def derived_control_identity(plan: CapturePlan, suffix: str) -> tuple[dict, str]:
+    """Isolated identity for a control round (recon §3s).
+
+    Same create shape as the plan, but the packetId names the control's
+    own capture: no control mints or mutates the baseline round's
+    capture. The id stays inside the published packetId pattern
+    (Packet04.swift:282-284) by bounding the base length to 64.
+    """
+    packet_id = (plan.packet_id + suffix)[:64]
+    request = dict(plan.create_request) if isinstance(plan.create_request, dict) else {}
+    request["packetId"] = packet_id
+    return request, packet_id
