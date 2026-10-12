@@ -1,5 +1,5 @@
 case: d-mobile-success
-commit: 1cae7d1d8bca62d0a64f94389032f52ce1a09d80 (dirty)
+commit: 7088750fe77da9f2f742fd11c26b5f217d9bfc65 (clean)
 invocation: viewport 390x844; open http://localhost:8931/; sleep 2; screenshot; eval feedback
 url: http://localhost:8931/
 viewport: 390x844
