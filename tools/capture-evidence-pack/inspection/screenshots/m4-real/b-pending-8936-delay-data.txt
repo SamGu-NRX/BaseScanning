@@ -1,0 +1,8 @@
+case: b-pending-delay-data (pending fetch state, right after load)
+commit: 48503111c97cf80edb4800b728a47fb43e294b72 (dirty)
+invocation: serve.py --port 8936 --delay-data 3; open; immediate screenshot; eval feedback
+url: http://localhost:8936/
+viewport: 1440x900
+assertion: page shows pending/loading state while /data.json is delayed 3s
+result: PASS
+observed: feedback_immediately_after_load=[""]

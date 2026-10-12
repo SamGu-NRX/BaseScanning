@@ -1,0 +1,8 @@
+case: b-settled-fault-refusals
+commit: 48503111c97cf80edb4800b728a47fb43e294b72 (dirty)
+invocation: serve.py --port 8933 per-scenario flags; open; sleep 5 (past all 3s delays); screenshot; eval feedback
+url: http://localhost:8933/
+viewport: 1440x900
+assertion: page reaches settled state; feedback reflects the scenario
+result: PASS
+observed: feedback_settled=[""]
