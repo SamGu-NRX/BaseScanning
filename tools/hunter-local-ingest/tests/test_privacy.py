@@ -553,3 +553,286 @@ def test_failure_output_helper(tmp_path):
     assert token not in line
     assert "<redacted:url-userinfo>" in line
     assert "<redacted:bearer-token>" in line
+
+
+# ---------------------------------------------------------------------------
+# Operator counterexample controls (CE1-CE4) — failing-first.
+#
+# These encode the four defects found in static review of joined checkpoint
+# 1df1f62c (direction 2). Canary material is synthetic and assembled at
+# runtime; nothing is a real credential. No test performs network I/O: the
+# lookalike host below is NEVER contacted — redaction/screening unit tests
+# only.
+#
+# CE1  shape-valid server strings (ids, paths, unknown keys) survive
+#      observations.py -> fix: published enumerations + run-bound expected
+#      values + bounded digests for everything else
+# CE2  whitespace-separated credential flags missed by text screening;
+#      manifest commands serialized as guessed shell strings -> fix: one
+#      structured argv boundary covering every supported flag
+# CE3  "127."-prefix hostnames treated as loopback -> fix: strict parsed-IP
+#      policy shared by endpoint, command, and failure screening
+# CE4  missing mandatory receipts screened as clean / verifier silent
+#      -> fix: mandatory-artifact failures independent of chain entries
+
+_CE_RUN_ID = "CANARY-id-012345abcdef"
+_CE_PATH = "CANARY-path-012345abcdef"
+_CE_TOKEN = "CANARY-token-012345abcdef"
+_CE_FIELD = "CANARY-field-012345abcdef"
+_CE_LOOKALIKE = "http://127.0.0.1.evil.com:8000/v1"
+
+
+@pytest.fixture(autouse=True)
+def _ce_clean_binding():
+    """Isolate the run-bound expected-value registry around every test."""
+    from hunter_local_ingest.observations import reset_expected
+
+    reset_expected()
+    yield
+    reset_expected()
+
+
+def _ce_observation(body: dict, detail: str | None = None) -> dict:
+    from hunter_local_ingest.observations import Observation
+
+    return Observation.from_http(
+        200, json.dumps(body).encode("utf-8"), 5, detail
+    ).as_json()
+
+
+def _ce_write_manifest(run_dir, *, commands):
+    from hunter_local_ingest.receipts import write_run_manifest
+
+    write_run_manifest(
+        run_dir,
+        endpoint="http://127.0.0.1:8080/v1",
+        backend_ref=None,
+        backend_mode="FAKE_HUNTER",
+        client_ref=None,
+        adapter_interface="CaptureClient",
+        fixture_identity="synthetic/seed=1",
+        seed=1,
+        commands=commands,
+        label="ce-control",
+        origin_note="test",
+    )
+
+
+# --- CE1: value-level retention under allowed keys -----------------------
+
+
+def test_ce1_unbound_runid_canary_is_not_retained_verbatim():
+    out = _ce_observation({"captureId": "pkt-ce", "runId": _CE_RUN_ID})
+    serialized = json.dumps(out)
+    assert _CE_RUN_ID not in serialized
+    assert out["safe_values"]["runId"].startswith("sha256:")
+
+
+def test_ce1_unbound_committed_path_canary_is_not_retained():
+    out = _ce_observation({"committed": [_CE_PATH, "kf_0001.jpg"]})
+    serialized = json.dumps(out)
+    assert _CE_PATH not in serialized
+    assert out["safe_values"]["committed"][0].startswith("sha256:")
+
+
+def test_ce1_bound_expected_values_are_retained_verbatim():
+    from hunter_local_ingest.observations import bind_expected
+
+    bind_expected([_CE_RUN_ID, _CE_PATH])
+    out = _ce_observation({"runId": _CE_RUN_ID, "committed": [_CE_PATH]})
+    assert out["safe_values"]["runId"] == _CE_RUN_ID
+    assert out["safe_values"]["committed"] == [_CE_PATH]
+
+
+def test_ce1_published_enumerations_are_retained_raw():
+    out = _ce_observation(
+        {
+            "status": "manual_review",
+            "code": "result_not_ready",
+            "type": "verdict_ready",
+            "next": "retry_finalize",
+            "decision": "eligible",
+            "schema_version": "0.4",
+        }
+    )
+    safe = out["safe_values"]
+    assert safe["status"] == "manual_review"
+    assert safe["code"] == "result_not_ready"
+    assert safe["type"] == "verdict_ready"
+    assert safe["next"] == "retry_finalize"
+    assert safe["decision"] == "eligible"
+    assert safe["schema_version"] == "0.4"
+    # Negative control: a non-published status word reduces to a digest.
+    out2 = _ce_observation({"status": "definitely-not-published"})
+    assert out2["safe_values"]["status"].startswith("sha256:")
+
+
+def test_ce1_unknown_field_name_becomes_bounded_digest():
+    out = _ce_observation({"captureId": "pkt-ce", _CE_FIELD: "x"})
+    serialized = json.dumps(out)
+    assert _CE_FIELD not in serialized
+    assert any(name.startswith("field:") for name in out["field_names"])
+
+
+def test_ce1_published_field_names_stay_raw():
+    out = _ce_observation({"captureId": "pkt-ce", "viewsNeeded": 2})
+    assert "captureId" in out["field_names"]
+    assert "viewsNeeded" in out["field_names"]
+
+
+# --- CE2: credential flags across every argument form ---------------------
+
+
+def test_ce2_every_credential_flag_covered_in_both_argument_forms():
+    from hunter_local_ingest.sanitize import _CREDENTIAL_FLAG_NAMES
+
+    for required in ("token", "secret", "client-secret", "refresh-token"):
+        assert required in _CREDENTIAL_FLAG_NAMES
+    for flag in sorted(_CREDENTIAL_FLAG_NAMES):
+        separated = redact_command(["run", f"--{flag}", _CE_TOKEN])
+        equals = redact_command(["run", f"--{flag}={_CE_TOKEN}"])
+        text_separated = redact_text(f"run --{flag} {_CE_TOKEN}")
+        text_equals = redact_text(f"run --{flag}={_CE_TOKEN}")
+        text_quoted = redact_text(f'run --{flag} "{_CE_TOKEN}"')
+        for rendered in (
+            separated,
+            equals,
+            text_separated,
+            text_equals,
+            text_quoted,
+        ):
+            assert _CE_TOKEN not in rendered, f"--{flag} leaked: {rendered!r}"
+
+
+def test_ce2_manifest_accepts_structured_argv(tmp_path):
+    run_dir = tmp_path / "ce2-run"
+    run_dir.mkdir()
+    _ce_write_manifest(
+        run_dir,
+        commands=[["hunter-local-ingest", "run", "--token", _CE_TOKEN]],
+    )
+    manifest_text = (run_dir / "run-manifest.json").read_text(encoding="utf-8")
+    assert _CE_TOKEN not in manifest_text
+    assert "***" in manifest_text
+
+
+def test_ce2_screen_catches_separated_token_inside_an_artifact(tmp_path):
+    line = (
+        json.dumps(
+            {
+                "id": "ce2",
+                "transport": "FAKE_HUNTER",
+                "oracle": "public-contract",
+                "expected": "no secret in receipts",
+                "observed": f"argv: hunter-local-ingest run --token {_CE_TOKEN}",
+                "status": "FAIL",
+            }
+        )
+        + "\n"
+    )
+    artifact = tmp_path / "checks.jsonl"
+    artifact.write_text(line, encoding="utf-8")
+    assert screen_artifact(str(artifact)), "separated --token form not caught"
+
+
+# --- CE3: strict parsed-IP loopback policy --------------------------------
+
+
+def test_ce3_lookalike_loopback_host_is_not_loopback():
+    text = f"endpoint {_CE_LOOKALIKE} refused"
+    assert "<redacted:private-endpoint>" in redact_text(text)
+    assert "evil.com" not in redact_text(text)
+    argv = redact_command(["hunter-local-ingest", "run", "--endpoint", _CE_LOOKALIKE])
+    assert "evil.com" not in argv, f"lookalike survived argv redaction: {argv!r}"
+
+
+def test_ce3_strict_loopback_positives_still_pass():
+    for url in (
+        "http://127.0.0.1:8080/v1",
+        "http://[::1]:8080/v1",
+        "http://localhost:8080/v1",
+        "http://127.29.0.4:8080/v1",
+    ):
+        text = f"endpoint {url} ok"
+        assert sanitize.findings_in_text(text) == [], url
+        assert redact_text(text) == text, url
+
+
+def test_ce3_lookalike_inside_emitted_command_is_screened(tmp_path):
+    artifact = tmp_path / "checks.jsonl"
+    artifact.write_text(
+        json.dumps({"observed": f"ran with endpoint {_CE_LOOKALIKE}"}) + "\n",
+        encoding="utf-8",
+    )
+    findings = screen_artifact(str(artifact))
+    assert findings, "lookalike endpoint not caught by the screen"
+    assert "private-endpoint" in findings[0]
+
+
+def test_ce3_manifest_endpoint_lookalike_is_redacted(tmp_path):
+    run_dir = tmp_path / "ce3-run"
+    run_dir.mkdir()
+    from hunter_local_ingest.receipts import write_run_manifest
+
+    write_run_manifest(
+        run_dir,
+        endpoint=_CE_LOOKALIKE,
+        backend_ref=None,
+        backend_mode="FAKE_HUNTER",
+        client_ref=None,
+        adapter_interface="CaptureClient",
+        fixture_identity="synthetic/seed=1",
+        seed=1,
+        commands=["hunter-local-ingest run"],
+        label="ce3",
+        origin_note="test",
+    )
+    manifest_text = (run_dir / "run-manifest.json").read_text(encoding="utf-8")
+    assert "evil.com" not in manifest_text
+    assert "<redacted:endpoint>" in manifest_text
+
+
+# --- CE4: mandatory receipts are never silently absent --------------------
+
+
+def test_ce4_missing_mandatory_artifacts_are_non_green(tmp_path):
+    from hunter_local_ingest.receipts import SCREEN_FILE, write_summary
+
+    findings = write_summary(tmp_path, [], lead_questions=[], blocked=[])
+    joined = "\n".join(findings)
+    assert "run-manifest.json" in joined, joined
+    assert "checks.jsonl" in joined, joined
+    record = json.loads((tmp_path / SCREEN_FILE).read_text(encoding="utf-8"))
+    assert record["clean"] is False
+
+
+def test_ce4_verifier_names_missing_mandatory_without_chain(tmp_path):
+    from hunter_local_ingest.receipts import verify_run_integrity
+
+    problems = verify_run_integrity(tmp_path)
+    joined = "\n".join(problems)
+    assert "run-manifest.json" in joined, joined
+    assert "checks.jsonl" in joined, joined
+
+
+def test_ce4_verifier_names_missing_mandatory_with_chain(tmp_path):
+    from hunter_local_ingest.receipts import verify_run_integrity
+
+    (tmp_path / "privacy-chain.jsonl").write_text("", encoding="utf-8")
+    problems = verify_run_integrity(tmp_path)
+    joined = "\n".join(problems)
+    assert "run-manifest.json" in joined, joined
+    assert "checks.jsonl" in joined, joined
+
+
+def test_ce4_empty_checks_file_is_flagged(tmp_path):
+    from hunter_local_ingest.receipts import SCREEN_FILE, write_summary
+
+    _ce_write_manifest(tmp_path, commands=["hunter-local-ingest run"])
+    (tmp_path / "checks.jsonl").write_text("", encoding="utf-8")
+    findings = write_summary(tmp_path, [], lead_questions=[], blocked=[])
+    joined = "\n".join(findings)
+    assert "checks.jsonl" in joined, joined
+    assert "empty" in joined or "missing" in joined, joined
+    record = json.loads((tmp_path / SCREEN_FILE).read_text(encoding="utf-8"))
+    assert record["clean"] is False
