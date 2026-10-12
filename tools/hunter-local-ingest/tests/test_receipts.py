@@ -496,3 +496,31 @@ def test_only_upload_and_commit_have_a_no_request_branch():
     checks.append(_skipped("lifecycle.finalize", DECLARED))
     result = compare_trace(checks, load_trace(), Transport.REAL_API, declared=DECLARED)
     assert ("lifecycle.finalize", "no-observation") in result.disagreements
+
+
+def test_a_cursor_past_2_53_polls_and_records_without_a_receipt_failure(fake, plan_path, tmp_path):
+    from hunter_local_ingest.fakeapi import FakeConfig
+
+    out = tmp_path / "runs"
+    # retry_finalize forces a second poll whose ``after`` is the large cursor
+    with fake(FakeConfig(cursor_offset=2**62, retry_finalize_once=True)) as api:
+        code = run_cli(
+            [
+                "--endpoint",
+                api.base_url,
+                "--plan-file",
+                str(plan_path),
+                "--out",
+                str(out),
+                "--backend-mode",
+                "FAKE_HUNTER",
+                *FAST,
+            ]
+        )
+        polls = [p for m, p, _a in api.state.requests if "/events?" in p]
+    assert code == 0
+    assert any(f"after={2**62 + 1}" in p for p in polls), polls
+    run_dir = only_run_dir(out)
+    events = read_checks(run_dir)["lifecycle.events"]
+    assert events["status"] == "PASS" and events["observed"]["finalize_retries"] == 1
+    assert verify_run_integrity(run_dir) == []

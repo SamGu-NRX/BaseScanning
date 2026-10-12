@@ -23,6 +23,7 @@ from ..contract import (
     digest12,
     pub_id,
 )
+from ..http_client import child_env
 from ..modes import Status, Transport
 from ..plan import CapturePlan, PlanFile
 from . import is_2xx, record, step_view
@@ -205,6 +206,7 @@ def run_restart_control(
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            env=child_env(),  # the API credential is never handed to it
             timeout=timeout_s,
             check=False,
         )

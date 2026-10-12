@@ -81,6 +81,9 @@ class FakeConfig:
     commit_contradict_path: str | None = None  # also list this path as mismatch when committed
     # step -> n: from the n-th request of that step on, close without answering
     abort_from: dict | None = None
+    # added to the first event's seq and next: a valid Swift Int cursor
+    # past the 2**53 a receipt can hold as a plain number
+    cursor_offset: int = 0
 
 
 class FakeState:
@@ -393,6 +396,9 @@ def _handler(state: FakeState, base_holder: dict):
                 },
             )
 
+        def _step(self, after: int) -> int:
+            return after + 1 + (cfg.cursor_offset if after == 0 else 0)
+
         def _all_committed(self, cap: dict) -> bool:
             return cap["listed"] is not None and all(p in cap["committed"] for p in cap["listed"])
 
@@ -407,12 +413,14 @@ def _handler(state: FakeState, base_holder: dict):
                 cap["retried"] = True
                 cap["run"] = None  # the server lost the finalize
                 event = {
-                    "seq": after + 1,
+                    "seq": self._step(after),
                     "type": "failed",
                     "at": "2026-01-01T00:00:00Z",
                     "data": {"next": "retry_finalize", "code": "harness_fault"},
                 }
-                self._send(200, {"status": "processing", "next": after + 1, "events": [event]})
+                self._send(
+                    200, {"status": "processing", "next": self._step(after), "events": [event]}
+                )
                 return
             end = _END_STATUS[cfg.answer]
             ended = end in {"failed", "expired"}
@@ -420,14 +428,14 @@ def _handler(state: FakeState, base_holder: dict):
             if cfg.canary:
                 data["stage"] = cfg.canary
             event = {
-                "seq": after + 1,
+                "seq": self._step(after),
                 "type": "failed" if ended else "verdict_ready",
                 "at": "2026-01-01T00:00:00Z",
                 "data": data,
             }
             if cfg.canary:
                 event["type"] = cfg.canary if not ended else event["type"]
-            self._send(200, {"status": end, "next": after + 1, "events": [event]})
+            self._send(200, {"status": end, "next": self._step(after), "events": [event]})
 
         def _result(self, cap: dict) -> None:
             if cap["run"] is None or not self._all_committed(cap) or cfg.answer == "hold":

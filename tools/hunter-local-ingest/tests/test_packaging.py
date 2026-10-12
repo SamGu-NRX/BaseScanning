@@ -494,17 +494,17 @@ def test_installed_rerun_of_a_committed_capture_passes(venv, outside):
     assert len(puts) == 5 + 10 + 10
 
 
-def test_installed_runner_api_token_stays_off_output_and_receipts(venv, outside):
+def test_installed_runner_reads_the_token_only_from_the_named_env(venv, outside):
     from hunter_local_ingest.fakeapi import FakeConfig
 
     token = f"synthetic-{os.urandom(8).hex()}"
     plan = _plan(venv, outside)
     out = outside / "runs"
+    env = {**_env(), "HUNTER_API_TOKEN": token}  # this subprocess only
     with FakeApi(FakeConfig(require_token=token)) as api:
-        proc = _cli(
-            venv,
-            "hunter-local-ingest",
+        proc = subprocess.run(
             [
+                str(venv / "bin" / "hunter-local-ingest"),
                 "--endpoint",
                 api.base_url,
                 "--plan-file",
@@ -513,11 +513,14 @@ def test_installed_runner_api_token_stays_off_output_and_receipts(venv, outside)
                 str(out),
                 "--backend-mode",
                 "FAKE_HUNTER",
-                "--api-token",
-                token,
+                "--api-token-env",
                 *FAST,
             ],
-            outside,
+            capture_output=True,
+            text=True,
+            cwd=outside,
+            env=env,
+            timeout=180,
         )
         auth = set(api.state.api_auth)
     assert proc.returncode == 0, proc.stdout + proc.stderr
@@ -526,4 +529,29 @@ def test_installed_runner_api_token_stays_off_output_and_receipts(venv, outside)
     run_dir = _run_dir(out)
     assert token.encode() not in b"".join(p.read_bytes() for p in run_dir.iterdir())
     command = json.loads((run_dir / "run-manifest.json").read_text())["command"]
-    assert command[command.index("--api-token") + 1] == "***"
+    assert command.count("--api-token-env") == 1 and "***" not in command
+
+
+def test_installed_runner_refuses_the_retired_value_flag(venv, outside):
+    plan = _plan(venv, outside)
+    for form in (["--api-token", "CANARY-retired-0123"], ["--api-token=CANARY-retired-0123"]):
+        proc = _cli(
+            venv,
+            "hunter-local-ingest",
+            [
+                "--endpoint",
+                "http://127.0.0.1:9/v1",
+                "--plan-file",
+                str(plan),
+                "--out",
+                str(outside / "r"),
+                "--backend-mode",
+                "FAKE_HUNTER",
+                *form,
+            ],
+            outside,
+        )
+        assert proc.returncode == 2
+        assert "usage:retired-flag:--api-token" in proc.stderr
+        assert "CANARY-retired" not in proc.stdout + proc.stderr
+        assert not (outside / "r").exists()

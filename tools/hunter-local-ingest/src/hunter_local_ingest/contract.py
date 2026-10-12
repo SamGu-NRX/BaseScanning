@@ -17,6 +17,7 @@ Each decoder returns two things:
   identifiers (captureId, runId) become ``id:<digest>``. A path appears only
   when the run itself declared it; any other becomes
   ``unexpected-path:<digest>``. Unknown keys become a count and one digest.
+  A valid Swift Int too large for a receipt number becomes ``large-int:<digest>``.
   Homeowner text (messages, prompts, reasons) and URLs are never kept.
 
 A digest is the first 12 hex characters of SHA-256. It lets a reader see
@@ -196,7 +197,30 @@ _MAX_INT = 2**53
 
 
 def is_int(value: object) -> bool:
+    """An integer a receipt may record as a plain JSON number (below 2**53)."""
     return isinstance(value, int) and not isinstance(value, bool) and -_MAX_INT < value < _MAX_INT
+
+
+_INT64_MIN, _INT64_MAX = -(2**63), 2**63 - 1
+
+
+def is_swift_int(value: object) -> bool:
+    """A JSON integer JSONDecoder can decode as a Swift Int (64-bit).
+
+    Decoding follows Swift, not the receipt: a cursor of 2**62 is valid.
+    A bool, a float spelling (5.0, 1e3) and anything outside 64 bits are not.
+    """
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and (_INT64_MIN <= value <= _INT64_MAX)
+    )
+
+
+def pub_int(value: int) -> int | str:
+    """A decoded Swift Int for a receipt: the number itself while a JSON
+    reader can hold it exactly, otherwise a digest. Never clamped."""
+    return value if is_int(value) else f"large-int:{digest12(str(value))}"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -350,9 +374,9 @@ def decode_create(parsed: object) -> Decoded:
             else:
                 for key in _LIMIT_KEYS & limits.keys():
                     value = limits[key]
-                    if value is not None and not (is_int(value) and value >= 0):
+                    if value is not None and not (is_swift_int(value) and value >= 0):
                         out.add("type", "upload")
-                if is_int(limits.get("maxBatch")) and limits["maxBatch"] > 0:
+                if is_swift_int(limits.get("maxBatch")) and limits["maxBatch"] > 0:
                     max_batch = limits["maxBatch"]
                 extra = pub_unknown_keys(limits, _LIMIT_KEYS)
                 if extra:
@@ -364,7 +388,7 @@ def decode_create(parsed: object) -> Decoded:
         if status is not None:
             public["status"] = pub_enum(status, CAPTURE_STATUSES)
         if max_batch is not None:
-            public["maxBatch"] = max_batch
+            public["maxBatch"] = pub_int(max_batch)
         extra = pub_unknown_keys(obj, _CREATE_KEYS)
         if extra:
             public["unexpected_keys"] = extra
@@ -528,15 +552,15 @@ def decode_finalize(parsed: object, declared: frozenset[str]) -> Decoded:
             out.add("range", "runId")
             run_id = None
         eta = obj.get("etaS")
-        if eta is not None and not (is_int(eta) and eta >= 0):
+        if eta is not None and not (is_swift_int(eta) and eta >= 0):
             out.add("type", "etaS")
         if status is not None:
             public["status"] = pub_enum(status, CAPTURE_STATUSES)
         if missing is not None:
             public["missing"] = [pub_path(p, declared) for p in missing[:64]]
         public["runId"] = pub_id(obj.get("runId"))
-        if is_int(eta) and eta >= 0:
-            public["etaS"] = eta
+        if is_swift_int(eta) and eta >= 0:
+            public["etaS"] = pub_int(eta)
         extra = pub_unknown_keys(obj, _FINALIZE_KEYS)
         if extra:
             public["unexpected_keys"] = extra
@@ -568,7 +592,7 @@ def decode_events(parsed: object, *, after: int, run_id: str | None) -> Decoded:
         if "next" not in obj:
             out.add("missing", "next")
             nxt = None
-        elif not is_int(nxt) or nxt < 0:
+        elif not is_swift_int(nxt) or nxt < 0:
             out.add("type", "next")
             nxt = None
         elif nxt < after:
@@ -585,10 +609,10 @@ def decode_events(parsed: object, *, after: int, run_id: str | None) -> Decoded:
             seq = event.get("seq")
             etype = event.get("type")
             row: dict = {}
-            if not is_int(seq):
+            if not is_swift_int(seq):
                 out.add("missing" if "seq" not in event else "type", "seq")
             else:
-                row["seq"] = seq
+                row["seq"] = pub_int(seq)
                 if seq <= after or (nxt is not None and seq > nxt):
                     out.raw("order:seq")
             if not isinstance(etype, str):
@@ -634,7 +658,7 @@ def decode_events(parsed: object, *, after: int, run_id: str | None) -> Decoded:
         if status is not None:
             public["status"] = pub_enum(status, CAPTURE_STATUSES)
         if nxt is not None:
-            public["next"] = nxt
+            public["next"] = pub_int(nxt)
         public["events"] = rows[:50]
         if len(rows) > 50:
             public["events_total"] = len(rows)

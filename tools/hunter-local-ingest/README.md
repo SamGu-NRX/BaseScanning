@@ -69,6 +69,38 @@ alike. When register reports a file already committed (a replayed or resumed
 capture), the client neither uploads nor commits it again, and both checks
 record that committed-at-register set explicitly.
 
+Published Swift `Int` fields (event `seq` and `next`, `etaS`, upload limits)
+decode as 64-bit integers, as JSONDecoder does. A value too large for a
+receipt to hold as an exact JSON number (2^53 and up) is recorded as
+`large-int:<digest>`, never clamped and never rejected. `Double` fields accept
+any JSON number that converts to a finite double.
+
+## The API credential
+
+`--api-token-env` makes the runner read a bearer token from the
+`HUNTER_API_TOKEN` environment variable. Without the flag the variable is not
+read. There is no flag that takes the token itself: `--api-token` is refused
+in every spelling, without echoing its value, because a command-line value
+shows up in process listings and shell history.
+
+Supply the variable through a secret manager that sets it in the runner's
+process environment, not a literal assignment typed into a shell, which
+history keeps. The environment is still readable by the same user and by
+root; nothing here protects against them.
+
+The token is checked (RFC 6750 b64token) before any run directory or request
+exists. It goes only on API requests to `--endpoint` whose final URL passes
+the scope rule, never on a storage PUT and never to the fault proxy. Restart
+commands and git run without it in their environment. Receipts record only
+the flag name.
+
+With a token, `--with-faults` does not run the fault round: every fault check
+is BLOCKED with the reason `auth_fault_proxy_not_authorized`, and the run
+exits 4 unless something failed. The proxy is never given the credential,
+and its requests sent without one would only read as endpoint failures. So a
+token-protected API gets no fault coverage from this harness; that gap is
+open, not passed. Without a token the fault round runs as before.
+
 ## The synthetic plan
 
 `fixturegen.py` writes seeded noise files, two seeded CSV streams, the

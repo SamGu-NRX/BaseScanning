@@ -559,44 +559,9 @@ def test_findings_never_echo_material(tmp_path):
 # --------------------------------------------------------------------------
 
 
-def test_api_token_is_sent_only_on_direct_api_requests(fake, plan_path, tmp_path, capsys):
+def test_api_token_never_reaches_a_traversal_destination(fake, plan_path, tmp_path, monkeypatch):
     token = f"synthetic-{uuid.uuid4().hex}"
-    out = tmp_path / "runs"
-    with fake(FakeConfig(require_token=token)) as api:
-        code = run_cli(
-            [
-                "--endpoint",
-                api.base_url,
-                "--plan-file",
-                str(plan_path),
-                "--out",
-                str(out),
-                "--backend-mode",
-                "FAKE_HUNTER",
-                "--with-faults",
-                "--api-token",
-                token,
-                *FAST,
-            ]
-        )
-        requests = list(api.state.requests)
-        api_auth = list(api.state.api_auth)
-    run_dir = only_run_dir(out)
-    rows = read_checks(run_dir)
-    # the direct lifecycle authenticated; the proxied fault round did not
-    assert rows["lifecycle.result"]["status"] == "PASS"
-    assert rows["fault.lifecycle.create"]["observed"]["http"]["http_status"] == 401
-    assert set(api_auth) == {f"Bearer {token}", None}
-    assert not any(has_auth for method, _p, has_auth in requests if method == "PUT")
-    assert code == 1  # the unauthenticated fault round fails by design
-    captured = capsys.readouterr()
-    assert token not in captured.out + captured.err
-    assert token.encode() not in b"".join(p.read_bytes() for p in run_dir.iterdir())
-    assert not any(token in s for s in artifact_values(run_dir))
-
-
-def test_api_token_never_reaches_a_traversal_destination(fake, plan_path, tmp_path):
-    token = f"synthetic-{uuid.uuid4().hex}"
+    monkeypatch.setenv("HUNTER_API_TOKEN", token)
     with fake(FakeConfig(capture_id_override="../outside")) as api:
         run_cli(
             [
@@ -608,8 +573,7 @@ def test_api_token_never_reaches_a_traversal_destination(fake, plan_path, tmp_pa
                 str(tmp_path / "runs"),
                 "--backend-mode",
                 "FAKE_HUNTER",
-                "--api-token",
-                token,
+                "--api-token-env",
                 *FAST,
             ]
         )

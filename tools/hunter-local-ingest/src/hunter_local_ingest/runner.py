@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import sys
 from collections.abc import Sequence
@@ -33,7 +34,7 @@ from . import __version__
 from .adapter import INTERFACE_VERSION
 from .export import LEAD_QUESTIONS, MANIFEST_SCHEMA, ORIGIN_NOTE, SANITIZATION_NOTE, ExportError
 from .faultproxy import wait_tcp
-from .http_client import DirectHttpClient
+from .http_client import API_TOKEN_ENV, DirectHttpClient
 from .modes import Status, Transport
 from .netpolicy import EndpointError, parse_api_base
 from .plan import LoadedPlan, PlanError, load_plan
@@ -50,7 +51,7 @@ from .receipts import (
 from .sanitize import redact_argv, safe_failure
 from .scenarios import gpu_stub_lines, record, unreachable_lines
 from .scenarios.controls import run_controls, run_restart_control
-from .scenarios.faults import run_fault_round
+from .scenarios.faults import blocked_fault_round, run_fault_round
 from .scenarios.lifecycle import LifecycleOutcome, run_lifecycle
 from .traces import TRACE_CHECK_ID, compare_trace, load_trace
 
@@ -75,7 +76,7 @@ FLAG_KINDS = {
     "--restart-argv-json": "argv-json",
     "--restart-timeout-s": "float",
     "--with-faults": "flag",
-    "--api-token": "secret",
+    "--api-token-env": "flag",
     "-h": "flag",
     "--help": "flag",
 }
@@ -150,8 +151,13 @@ def _usage_category(message: str, argv: Sequence[str]) -> str:
 
 
 def build_parser(argv: Sequence[str]) -> argparse.ArgumentParser:
+    # No abbreviations: the retired --api-token must never resolve to
+    # --api-token-env with its value left behind as a stray argument.
     parser = _Parser(
-        argv, prog=PROGRAM, description="Published-client checks against one endpoint."
+        argv,
+        prog=PROGRAM,
+        description="Published-client checks against one endpoint.",
+        allow_abbrev=False,
     )
     parser.add_argument(
         "--endpoint", required=True, help="capture API base URL, e.g. http://127.0.0.1:8000/v1"
@@ -203,12 +209,13 @@ def build_parser(argv: Sequence[str]) -> argparse.ArgumentParser:
         help="also run the FAKE_HUNTER fault round through a local proxy",
     )
     parser.add_argument(
-        "--api-token",
-        default=None,
+        "--api-token-env",
+        action="store_true",
         help=(
-            "bearer token for the capture API (RFC 6750 b64token); sent on the"
-            " API routes of --endpoint only, never on storage PUTs or the fault"
-            " round's local proxy; never recorded - receipts keep ***"
+            f"read the capture API bearer token from ${API_TOKEN_ENV}, which a secret"
+            " manager should place in this process's environment; sent on API routes"
+            " of --endpoint only, never on storage PUTs or to the fault proxy, never"
+            " recorded. Without this flag the variable is not read."
         ),
     )
     return parser
@@ -280,8 +287,44 @@ def _exception_category(exc: BaseException) -> str:
     return f"exception:{name}" if name in known else "exception:other"
 
 
+def _refuse_retired_flag(argv: Sequence[str]) -> None:
+    """--api-token VALUE put the credential on the command line, where process
+    listings and shell history keep it. It is refused in every spelling, with
+    the value never echoed (safe_failure renders it as ***)."""
+    if any(tok == "--api-token" or tok.startswith("--api-token=") for tok in argv):
+        print(
+            f"{PROGRAM}: {safe_failure(argv, 'usage:retired-flag:--api-token', FLAG_KINDS)}",
+            file=sys.stderr,
+        )
+        print(
+            f"{PROGRAM}: pass --api-token-env and provide ${API_TOKEN_ENV} through the"
+            " process environment",
+            file=sys.stderr,
+        )
+        raise SystemExit(EXIT_USAGE)
+
+
+def _api_token(args, argv: Sequence[str]) -> tuple[str | None, int | None]:
+    """The token, read only when --api-token-env is given; or an exit code."""
+    if not args.api_token_env:
+        return None, None
+    token = os.environ.get(API_TOKEN_ENV)
+    code = "auth_credential_unavailable" if not token else None
+    if code is None:
+        try:
+            # checks the RFC 6750 b64token shape; opens no connection
+            DirectHttpClient(args.endpoint, api_token=token)
+        except EndpointError as exc:
+            code = exc.code
+    if code is not None:
+        print(f"{PROGRAM}: {safe_failure(argv, f'credential:{code}', FLAG_KINDS)}", file=sys.stderr)
+        return None, EXIT_USAGE
+    return token, None
+
+
 def run(argv: Sequence[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    _refuse_retired_flag(argv)
     args = build_parser(argv).parse_args(argv)
 
     try:
@@ -291,16 +334,9 @@ def run(argv: Sequence[str] | None = None) -> int:
             f"{PROGRAM}: {safe_failure(argv, f'endpoint:{exc.code}', FLAG_KINDS)}", file=sys.stderr
         )
         return EXIT_USAGE
-    if args.api_token is not None:
-        try:
-            # validates the b64token shape; opens no connection
-            DirectHttpClient(args.endpoint, api_token=args.api_token)
-        except EndpointError as exc:
-            print(
-                f"{PROGRAM}: {safe_failure(argv, f'endpoint:{exc.code}', FLAG_KINDS)}",
-                file=sys.stderr,
-            )
-            return EXIT_USAGE
+    token, failed = _api_token(args, argv)
+    if failed is not None:
+        return failed
     try:
         loaded = load_plan(Path(args.plan_file), args.seed)
     except PlanError as exc:
@@ -327,14 +363,13 @@ def run(argv: Sequence[str] | None = None) -> int:
             url,
             max_retries=overrides.get("max_retries", args.max_retries),
             retry_backoff_s=overrides.get("retry_backoff_s", args.retry_backoff_s),
-            # the credential belongs to the operator's declared endpoint
-            # alone; the fault round's local proxy runs unauthenticated
-            api_token=args.api_token if url == args.endpoint else None,
+            # the credential belongs to the operator's declared endpoint alone
+            api_token=token if url == args.endpoint else None,
         )
 
     if receipts_error is None:
         try:
-            _run_checks(args, plan, transport, sink, client_for)
+            _run_checks(args, plan, transport, sink, client_for, authenticated=token is not None)
         except ExportError as exc:
             receipts_error = f"export {exc.artifact}{exc.pointer}: {exc.category}"
         except Exception as exc:  # a harness bug: recorded, never swallowed
@@ -380,7 +415,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     return EXIT_PASS
 
 
-def _run_checks(args, plan, transport: Transport, sink, client_for) -> None:
+def _run_checks(args, plan, transport: Transport, sink, client_for, *, authenticated: bool) -> None:
     baseline = LifecycleOutcome()
     if not wait_tcp(args.endpoint, timeout_s=10.0):
         unreachable_lines(sink, transport)
@@ -396,7 +431,12 @@ def _run_checks(args, plan, transport: Transport, sink, client_for) -> None:
             events_wait_s=args.events_wait_s,
         )
         run_controls(client, plan, transport, sink)
-        if args.with_faults:
+        if args.with_faults and authenticated:
+            # The proxy never gets the credential, and its requests sent
+            # without one would read as endpoint failures. The arm is
+            # BLOCKED: authenticated fault coverage is not provided.
+            blocked_fault_round(sink, "auth_fault_proxy_not_authorized")
+        elif args.with_faults:
             run_fault_round(
                 args.endpoint,
                 plan,

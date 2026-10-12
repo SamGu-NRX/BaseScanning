@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import http.client
 import json
+import os
 import re
 import time
 import urllib.parse
@@ -25,6 +26,20 @@ _JSON = "application/json"
 
 # RFC 6750 b64token, as ScopedCaptureHTTP.isBearerToken checks it.
 _BEARER_RE = re.compile(r"^[A-Za-z0-9\-._~+/]+=*$")
+
+# The only place a capture-API credential is read from, and only when the
+# operator passes --api-token-env. A secret manager should put it into the
+# runner's process environment; a literal assignment in a shell would land in
+# history. Nothing here hides it from the same user or root, who can read a
+# process's environment.
+API_TOKEN_ENV = "HUNTER_API_TOKEN"
+
+
+def child_env() -> dict[str, str]:
+    """This process's environment for a child (restart command, git), minus
+    the API credential: no child needs it, so none inherits it."""
+    return {k: v for k, v in os.environ.items() if k != API_TOKEN_ENV}
+
 
 # CaptureUploader.Policy.delay caps a server's Retry-After at 120 s.
 RETRY_AFTER_CAP_S = 120.0

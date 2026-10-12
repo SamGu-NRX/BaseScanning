@@ -369,7 +369,14 @@ def redact_argv(argv: Sequence[str], known: Mapping[str, str] | None = None) -> 
         dashes, name, joined, inline = match.groups()
         flag = f"{dashes}{name}"
         secret = is_credential_flag(name)
-        kind = None if secret else known.get(flag)
+        # A known flag that takes no value (such as --api-token-env, which
+        # names an environment variable) consumes nothing, whatever its name
+        # suggests; any value glued onto a credential-named flag is still ***.
+        takes_no_value = known.get(flag) == "flag"
+        kind = None if secret and not takes_no_value else known.get(flag)
+        if takes_no_value and not joined:
+            out.append(flag)
+            continue
         if joined is not None:
             if secret:
                 out.append(f"{flag}={REDACTED_SECRET}")

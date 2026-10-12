@@ -507,3 +507,84 @@ def test_swift_double_accepts_every_finite_spelling(start, pose):
 def test_swift_double_rejects_bool_nonfinite_overflow_and_strings(start, pose):
     dec = decode_result(parse_body(_placement_body(start, pose)))
     assert not dec.ok, (start, pose)
+
+
+# -- Swift Int: 64-bit on decode; the receipt's 2**53 limit is a separate rule ---
+
+INT64_MAX, INT64_MIN = 2**63 - 1, -(2**63)
+
+
+@pytest.mark.parametrize(
+    "value, ok",
+    [
+        (INT64_MAX, True),
+        (INT64_MIN, True),
+        (2**53 + 1, True),
+        (0, True),
+        (-5, True),
+        (INT64_MAX + 1, False),
+        (INT64_MIN - 1, False),
+        (True, False),
+        (False, False),
+        (5.0, False),
+        (1.5, False),
+        ("5", False),
+        (None, False),
+    ],
+)
+def test_swift_int_bounds(value, ok):
+    assert contract.is_swift_int(value) is ok
+
+
+def _events_body(cursor: str, seq: str) -> bytes:
+    return (
+        '{"status": "complete", "next": '
+        + cursor
+        + ', "events": [{"seq": '
+        + seq
+        + ', "type": "verdict_ready", "at": "t", "data": {"runId": "r1"}}]}'
+    ).encode()
+
+
+@pytest.mark.parametrize("cursor", [str(2**62), str(INT64_MAX), str(2**53 + 1)])
+def test_events_accept_any_int64_cursor_and_record_it_without_overflowing(cursor):
+    dec = decode_events(parse_body(_events_body(cursor, cursor)), after=0, run_id="r1")
+    assert dec.ok, dec.violations
+    assert dec.data["next"] == int(cursor)
+    # too large for a receipt number: recorded as a digest, not clamped or rejected
+    assert dec.public["next"].startswith("large-int:")
+    assert dec.public["events"][0]["seq"].startswith("large-int:")
+
+
+@pytest.mark.parametrize("cursor", [str(INT64_MAX + 1), "1e3", "5.0", "true", '"5"', "-1"])
+def test_events_reject_a_cursor_swift_cannot_decode_or_the_contract_forbids(cursor):
+    assert (
+        "type:next"
+        in decode_events(parse_body(_events_body(cursor, "1")), after=0, run_id="r1").violations
+    )
+
+
+def test_small_cursors_stay_plain_numbers():
+    dec = decode_events(parse_body(_events_body("7", "7")), after=6, run_id="r1")
+    assert dec.ok and dec.public["next"] == 7 and dec.public["events"][0]["seq"] == 7
+
+
+def test_finalize_eta_and_create_batch_accept_int64():
+    fin = decode_finalize(
+        {"status": "processing", "missing": [], "runId": "r", "etaS": 2**60}, DECLARED
+    )
+    assert fin.ok and fin.public["etaS"].startswith("large-int:")
+    create = decode_create(
+        {
+            "captureId": "c",
+            "status": "uploading",
+            "upload": {"maxBatch": 2**60, "urlTtlS": INT64_MAX},
+        }
+    )
+    assert create.ok and create.data["maxBatch"] == 2**60
+    assert (
+        "type:upload"
+        in decode_create(
+            {"captureId": "c", "status": "uploading", "upload": {"maxFiles": INT64_MAX + 1}}
+        ).violations
+    )

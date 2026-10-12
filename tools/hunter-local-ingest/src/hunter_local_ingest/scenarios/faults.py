@@ -17,8 +17,21 @@ from ..modes import Status, Transport
 from ..plan import CapturePlan
 from . import PrefixedSink, is_2xx, record, step_view
 from .lifecycle import run_lifecycle
+from .oracles import FAULTS, LIFECYCLE
 
 FAKE = Transport.FAKE_HUNTER
+
+
+def blocked_fault_round(sink, note: str) -> None:
+    """Every fault-round check BLOCKED with one fixed reason, nothing sent.
+
+    Used when the API needs a credential: the proxy is never given one, and
+    sending its requests unauthenticated would turn a 401 into a false FAIL.
+    """
+    for check_id in LIFECYCLE:
+        record(sink, FAKE, f"fault.{check_id}", Status.BLOCKED, {"note": note})
+    for check_id in FAULTS:
+        record(sink, FAKE, check_id, Status.BLOCKED, {"note": note})
 
 
 def run_fault_round(

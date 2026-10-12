@@ -5,7 +5,7 @@ receipts are safe by construction instead: each artifact has a schema, and
 every string in it must belong to a known class. The classes are published
 enum words and this package's registered constants (contract.py,
 observations.py, scenarios/oracles.py, this module), digests
-(``id:``/``unrecognized:``/``unexpected-path:``/``unexpected-keys:`` plus 12
+(``id:``/``unrecognized:``/``unexpected-path:``/``unexpected-keys:``/``large-int:`` plus 12
 hex), hex digests, ISO timestamps, and the paths and packet ids the run's
 own plan declared. Numbers must be finite and bounded.
 
@@ -48,6 +48,7 @@ NOTES = frozenset(
         "gpu-not-authorized",
         "plan-too-small",
         "harness-exception",
+        "auth_fault_proxy_not_authorized",
     }
 )
 
@@ -193,7 +194,9 @@ OBSERVED_KEYS = frozenset(
     }
 )
 
-_DIGEST_RE = re.compile(r"^(id|unrecognized|unexpected-path|unexpected-keys):[0-9a-f]{12}$")
+_DIGEST_RE = re.compile(
+    r"^(id|unrecognized|unexpected-path|unexpected-keys|large-int):[0-9a-f]{12}$"
+)
 _HEX12_RE = re.compile(r"^[0-9a-f]{12}$")
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 _ISO_RE = re.compile(

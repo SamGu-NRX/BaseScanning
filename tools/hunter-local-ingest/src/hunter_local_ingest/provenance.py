@@ -21,6 +21,8 @@ import re
 import subprocess
 from pathlib import Path
 
+from .http_client import child_env
+
 PACKAGE_DIR = Path(__file__).resolve().parent
 _TEXT_RE = re.compile(r"[^A-Za-z0-9._+-]")
 
@@ -36,7 +38,7 @@ def source_sha256(package_dir: Path = PACKAGE_DIR) -> str:
 
 
 def _git(args: list[str], cwd: Path) -> bytes | None:
-    env = {**os.environ, "GIT_OPTIONAL_LOCKS": "0"}
+    env = {**child_env(), "GIT_OPTIONAL_LOCKS": "0"}
     try:
         proc = subprocess.run(  # noqa: S603, S607 - fixed argv, read-only git
             ["git", *args], cwd=cwd, env=env, capture_output=True, timeout=10, check=False
