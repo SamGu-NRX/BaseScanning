@@ -19,6 +19,7 @@ import datetime
 import hashlib
 import io
 import json
+import math
 import os
 import re
 import shlex
@@ -45,9 +46,13 @@ REQUIRED_FIELDS = (
 )
 PACK_ENTRIES = ("manifest.json", "report.md")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
-# C0 controls, DEL and C1 controls are not allowed in pack paths. NUL makes
-# the OS path calls raise; the rest cannot be shown faithfully in a receipt.
-CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+# Not allowed in pack paths: C0 controls, DEL, C1 controls, and surrogate
+# code points. NUL and a lone surrogate make the OS path calls raise; the
+# controls cannot be shown faithfully in a receipt.
+UNSAFE_PATH_CHARACTERS = re.compile(r"[\x00-\x1f\x7f-\x9f\ud800-\udfff]")
+# A str holds a surrogate code point only when it is unpaired: json combines
+# a valid escaped pair into one character. Unpaired ones are not text.
+SURROGATE = re.compile(r"[\ud800-\udfff]")
 TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 STRICT_TIMESTAMP = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T[0-2]\d:[0-5]\d:[0-5]\dZ$")
 
@@ -98,6 +103,17 @@ def _reject_constant(name: str) -> None:
     raise ValueError(f"non-standard JSON constant {name}")
 
 
+class NotFinite(ValueError):
+    """A number in manifest.json that Python's json would read as infinity."""
+
+
+def _finite_float(text: str) -> float:
+    value = float(text)
+    if not math.isfinite(value):
+        raise NotFinite(f"manifest.json contains a number that is not finite: {text[:40]}")
+    return value
+
+
 class TooDeep(ValueError):
     """JSON nested deeper than Python's parser follows. Kept distinct from
     other parse failures so a referenced file that is too deep to inspect is
@@ -106,13 +122,35 @@ class TooDeep(ValueError):
 
 def parse_json(data: bytes, allow_constants: bool = False) -> object:
     """UTF-8 JSON whose objects record duplicate keys. The manifest refuses
-    NaN and Infinity; referenced files allow them (allow_constants), because
-    a file Python's json reads as an object must not count as opaque."""
+    NaN, Infinity and numbers too large to be finite (1e400); referenced
+    files allow them (allow_constants), because a file Python's json reads as
+    an object must not count as opaque."""
     constant_hook = None if allow_constants else _reject_constant
+    float_hook = None if allow_constants else _finite_float
     try:
-        return json.loads(data.decode("utf-8"), object_pairs_hook=_strict_pairs, parse_constant=constant_hook)
+        return json.loads(
+            data.decode("utf-8"), object_pairs_hook=_strict_pairs, parse_constant=constant_hook, parse_float=float_hook
+        )
     except RecursionError:
         raise TooDeep("JSON nests deeper than the parser follows") from None
+
+
+def _first_unpaired_surrogate(value: object) -> str | None:
+    """The first unpaired surrogate in any key or string of a parsed manifest,
+    as U+XXXX, or None. Iterative, like _first_duplicate."""
+    pending = [value]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, str):
+            found = SURROGATE.search(current)
+            if found:
+                return f"U+{ord(found.group()):04X}"
+        elif isinstance(current, dict):
+            pending.extend(current.keys())
+            pending.extend(current.values())
+        elif isinstance(current, list):
+            pending.extend(current)
+    return None
 
 
 def _first_duplicate(value: object) -> str | None:
@@ -153,7 +191,7 @@ def is_relative_path(value: object) -> bool:
         and bool(value)
         and not value.startswith("/")
         and "\\" not in value
-        and not CONTROL_CHARACTERS.search(value)
+        and not UNSAFE_PATH_CHARACTERS.search(value)
         and value not in (".", "..")
         and all(part not in ("", ".", "..") for part in value.split("/"))
     )
@@ -163,16 +201,21 @@ def is_nonblank_string(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
-def read_regular_file(path: Path, limit: int) -> bytes:
+def read_regular_file(path: Path, limit: int, label: str) -> bytes:
     """Read at most limit + 1 bytes from a regular file through one handle.
-    The caller compares the length against the limit."""
+    The caller compares the length against the limit. Messages name the file
+    by label, the path as the caller declared it, and give only the OS's
+    error category: an OSError's text carries the absolute path it opened,
+    which a declared relative path must not turn into."""
     try:
         with open(path, "rb") as handle:
             if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
-                raise Refusal("missing-source", f"{display_path(path)} is not a regular file")
+                raise Refusal("missing-source", f"{label} is not a regular file")
             return handle.read(limit + 1)
-    except (OSError, ValueError) as error:
-        raise Refusal("missing-source", f"{display_path(path)!r} cannot be read: {error}") from None
+    except OSError as error:
+        raise Refusal("missing-source", f"{label} cannot be read: {error.strerror or type(error).__name__}") from None
+    except ValueError:
+        raise Refusal("missing-source", f"{label} cannot be read: the path cannot be passed to the operating system") from None
 
 
 def read_pack_file(pack_path: Path) -> bytes:
@@ -180,7 +223,7 @@ def read_pack_file(pack_path: Path) -> bytes:
     including the SHA-256 printed on refusal, comes from these bytes."""
     if not pack_path.is_file():
         raise Refusal("missing-source", f"pack {display_path(pack_path)} does not exist or is not a file")
-    data = read_regular_file(pack_path, MAX_PACK_BYTES)
+    data = read_regular_file(pack_path, MAX_PACK_BYTES, f"pack {display_path(pack_path)}")
     if len(data) > MAX_PACK_BYTES:
         raise Refusal("invalid-archive", f"pack exceeds the {MAX_PACK_BYTES}-byte pack budget")
     return data
@@ -269,10 +312,15 @@ def load_pack(pack_bytes: bytes) -> tuple[dict, dict[str, bytes]]:
 
     try:
         manifest = parse_json(entries["manifest.json"])
+    except NotFinite as error:
+        raise Refusal("invalid-manifest", str(error)) from None
     except (UnicodeDecodeError, ValueError) as error:
         raise Refusal("invalid-manifest", f"manifest.json is not readable JSON: {error}") from None
     if not isinstance(manifest, dict):
         raise Refusal("invalid-manifest", "manifest.json must contain a JSON object")
+    surrogate = _first_unpaired_surrogate(manifest)
+    if surrogate is not None:
+        raise Refusal("invalid-manifest", f"manifest.json contains an unpaired surrogate ({surrogate}), which is not text")
     duplicate = _first_duplicate(manifest)
     if duplicate is not None:
         raise Refusal("invalid-manifest", f"manifest.json repeats the key {duplicate!r}; a reader cannot tell which value counts")
@@ -396,7 +444,7 @@ def snapshot_reference(record: dict, root: Path, mismatch_kind: str) -> bytes:
         raise Refusal("missing-source", f"{record['path']!r} not found under {display_path(root)}") from None
     if not resolved.is_relative_to(root):
         raise Refusal("missing-source", f"{record['path']!r} resolves outside the capture root {display_path(root)}")
-    data = read_regular_file(resolved, MAX_REFERENCED_FILE_BYTES)
+    data = read_regular_file(resolved, MAX_REFERENCED_FILE_BYTES, repr(record["path"]))
     if len(data) > MAX_REFERENCED_FILE_BYTES:
         raise Refusal(
             mismatch_kind,
@@ -465,7 +513,10 @@ def verify_pack(pack_bytes: bytes, capture_root: Path | None = None) -> dict:
     check_packaged_files(manifest, entries)
 
     capture = manifest["capture"]
-    root = (capture_root if capture_root is not None else REPO_ROOT / capture["capture_root"]).resolve()
+    try:
+        root = (capture_root if capture_root is not None else REPO_ROOT / capture["capture_root"]).resolve()
+    except (OSError, RuntimeError, ValueError):
+        raise Refusal("missing-source", f"the capture root {capture['capture_root']!r} cannot be resolved") from None
 
     sources = []
     for ref in capture["source_refs"]:
@@ -552,6 +603,10 @@ def print_refusal(refusal: Refusal, pack_bytes: bytes | None, arguments: list[st
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Arguments are echoed in receipts; an undecodable byte in a filename
+    # must print as an escape, not stop the reader mid-receipt.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="backslashreplace")
     arguments = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("pack", type=Path, help="path to the evidence pack zip")

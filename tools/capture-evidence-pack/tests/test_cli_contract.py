@@ -12,6 +12,7 @@ import subprocess
 import sys
 
 import pytest
+import read
 from support import (
     EXAMPLE_FIXTURE,
     EXAMPLE_PACK,
@@ -395,3 +396,127 @@ def test_reader_refuses_control_characters_in_paths(tmp_path, field, bad):
     assert outcome.returncode == 2, outcome.stdout + outcome.stderr
     assert "REFUSAL invalid-manifest:" in outcome.stdout and "not a relative POSIX path" in outcome.stdout, outcome.stdout
     assert "Traceback" not in outcome.stderr
+
+
+# Read failures name the declared path and the OS's category, never the
+# absolute path the OS reported.
+
+
+@pytest.fixture
+def unreadable_frame(repo_fixture):
+    frame = repo_fixture / "capture/frame_0001.json"
+    yield frame
+    frame.chmod(0o644)
+
+
+def assert_no_absolute_paths(outcome_text: str):
+    assert str(REPO_ROOT) not in outcome_text, outcome_text
+    assert "/Users/" not in outcome_text and "/private/" not in outcome_text, outcome_text
+
+
+def test_packer_read_failure_names_the_declared_path_only(unreadable_frame, repo_fixture, tmp_path):
+    unreadable_frame.chmod(0)
+    outcome = run_packer(repo_fixture, tmp_path / "out.zip")
+    assert outcome.returncode == 2, outcome.stdout + outcome.stderr
+    assert "REFUSAL missing-source: 'capture/frame_0001.json' cannot be read: Permission denied" in outcome.stdout
+    assert_no_absolute_paths(outcome.stdout + outcome.stderr)
+
+
+def test_reader_read_failure_names_the_declared_path_only(unreadable_frame, repo_fixture, tmp_path):
+    pack = tmp_path / "pack.zip"
+    assert run_packer(repo_fixture, pack).returncode == 0
+    unreadable_frame.chmod(0)
+    outcome = run_reader(pack)
+    assert outcome.returncode == 2, outcome.stdout + outcome.stderr
+    assert "REFUSAL missing-source: 'capture/frame_0001.json' cannot be read: Permission denied" in outcome.stdout
+    lines = [line for line in outcome.stdout.splitlines() if not line.startswith("reader arguments:")]
+    assert_no_absolute_paths("\n".join(lines) + outcome.stderr)
+
+
+def test_reader_value_error_on_open_is_a_fixed_message():
+    with pytest.raises(read.Refusal) as caught:
+        read.read_regular_file(REPO_ROOT / "not\x00a-path", 10, "'not-a-path'")
+    assert caught.value.kind == "missing-source"
+    assert caught.value.detail == "'not-a-path' cannot be read: the path cannot be passed to the operating system"
+
+
+# Unpaired surrogates are not text: refused in every declared path and string,
+# while legitimate non-ASCII names keep working.
+
+SURROGATES = ["\ud800", "\udfff"]
+
+
+@pytest.mark.parametrize("surrogate", SURROGATES, ids=["high", "low"])
+@pytest.mark.parametrize("field", ["source-path", "result-path", "capture-id"])
+def test_packer_refuses_unpaired_surrogates(repo_fixture, tmp_path, surrogate, field):
+    spec_path = repo_fixture / "pack-spec.json"
+    spec = json.loads(spec_path.read_text())
+    if field == "source-path":
+        spec["source_refs"][0]["path"] = f"capture/frame{surrogate}.json"
+    elif field == "result-path":
+        spec["result_path"] = f"result/result{surrogate}.json"
+    else:
+        spec["capture_id"] = f"capture{surrogate}"
+    spec_path.write_text(json.dumps(spec))  # ensure_ascii writes the surrogate as an escape
+    out = tmp_path / "out.zip"
+    outcome = run_packer(repo_fixture, out)
+    assert outcome.returncode == 2, outcome.stdout + outcome.stderr
+    assert "REFUSAL invalid-manifest:" in outcome.stdout, outcome.stdout
+    assert "Traceback" not in outcome.stderr
+    assert not out.exists()
+
+
+def with_text(field: str, surrogate: str):
+    def mutate(manifest):
+        if field == "capture_root":
+            manifest["capture"]["capture_root"] = f"tools/root{surrogate}"
+        elif field == "source":
+            manifest["capture"]["source_refs"][0]["path"] = f"capture/frame{surrogate}.json"
+        elif field == "result":
+            manifest["result"]["path"] = f"result/result{surrogate}.json"
+        elif field == "capture_id":
+            manifest["capture"]["capture_id"] = f"capture{surrogate}"
+        else:
+            manifest["missing_fields"][0]["detail"] = f"gap{surrogate}"
+
+    return mutate
+
+
+@pytest.mark.parametrize("surrogate", SURROGATES, ids=["high", "low"])
+@pytest.mark.parametrize("field", ["capture_root", "source", "result", "capture_id", "missing-detail"])
+def test_reader_refuses_unpaired_surrogates(tmp_path, surrogate, field):
+    pack = rebuilt_example(tmp_path, with_text(field, surrogate))
+    outcome = run_reader(pack)
+    assert outcome.returncode == 2, outcome.stdout + outcome.stderr
+    assert "REFUSAL invalid-manifest:" in outcome.stdout, outcome.stdout
+    assert "Traceback" not in outcome.stderr
+
+
+NON_ASCII = "capture/främé_кадр_幀.json"
+
+
+def test_control_reader_accepts_legitimate_non_ascii_paths(tmp_path):
+    frame = json_bytes({"schema_version": CAPTURE})
+    result = json_bytes({"schema_version": RESULT, "result_id": "result-synth-0001"})
+    root = capture_root_with(tmp_path, {NON_ASCII: frame, "result/result.json": result})
+
+    def mutate(manifest):
+        point_manifest_at(manifest, frame, result)
+        manifest["capture"]["source_refs"][0]["path"] = NON_ASCII
+
+    outcome = run_reader(rebuilt_example(tmp_path, mutate), "--capture-root", root)
+    assert outcome.returncode == 0, outcome.stdout + outcome.stderr
+    assert f"source ref ok: frame:{NON_ASCII}" in outcome.stdout
+
+
+def test_control_packer_packs_legitimate_non_ascii_paths(repo_fixture, tmp_path):
+    (repo_fixture / "capture/frame_0001.json").rename(repo_fixture / NON_ASCII)
+    spec_path = repo_fixture / "pack-spec.json"
+    spec = json.loads(spec_path.read_text())
+    spec["source_refs"][0]["path"] = NON_ASCII
+    spec_path.write_text(json.dumps(spec, ensure_ascii=False), encoding="utf-8")
+    out = tmp_path / "out.zip"
+    packed = run_packer(repo_fixture, out)
+    assert packed.returncode == 0, packed.stdout + packed.stderr
+    read = run_reader(out)
+    assert read.returncode == 0, read.stdout + read.stderr

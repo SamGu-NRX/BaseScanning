@@ -11,6 +11,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import math
 import os
 import re
 import stat
@@ -56,9 +57,13 @@ MAX_PACK_BYTES = 8 * 1024 * 1024
 MAX_COMPRESSION_RATIO = 100
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-# C0 controls, DEL and C1 controls. NUL makes the OS path calls raise, and
-# the others make names that terminals and receipts cannot show faithfully.
-_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+# C0 controls, DEL, C1 controls and surrogate code points. NUL and a lone
+# surrogate make the OS path calls raise; the controls make names that
+# terminals and receipts cannot show faithfully.
+_UNSAFE_PATH_RE = re.compile(r"[\x00-\x1f\x7f-\x9f\ud800-\udfff]")
+# A str holds a surrogate code point only when it is unpaired: json combines
+# a valid escaped pair into one character.
+_SURROGATE_RE = re.compile(r"[\ud800-\udfff]")
 _TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 _STRICT_TIMESTAMP_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T[0-2]\d:[0-5]\d:[0-5]\dZ$")
 
@@ -84,7 +89,7 @@ def is_relative_path(value: object) -> bool:
     """A pack path is relative, POSIX-style, and cannot escape its root."""
     if not isinstance(value, str) or not value:
         return False
-    if value.startswith("/") or "\\" in value or value in (".", "..") or _CONTROL_RE.search(value):
+    if value.startswith("/") or "\\" in value or value in (".", "..") or _UNSAFE_PATH_RE.search(value):
         return False
     parts = value.split("/")
     return ".." not in parts and all(part not in ("", ".") for part in parts)
@@ -111,13 +116,45 @@ def _reject_constant(name: str) -> None:
     raise ValueError(f"non-standard JSON constant {name}")
 
 
+def _finite_float(text: str) -> float:
+    value = float(text)
+    if not math.isfinite(value):
+        raise ValueError(f"contains a number that is not finite: {text[:40]}")
+    return value
+
+
+def _unpaired_surrogate(value: object) -> str | None:
+    pending = [value]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, str):
+            found = _SURROGATE_RE.search(current)
+            if found:
+                return f"U+{ord(found.group()):04X}"
+        elif isinstance(current, dict):
+            pending.extend(current.keys())
+            pending.extend(current.values())
+        elif isinstance(current, list):
+            pending.extend(current)
+    return None
+
+
 def load_json_strict(data: bytes) -> object:
-    """UTF-8 JSON with no duplicate keys and no NaN or Infinity. Raises
-    ValueError (UnicodeDecodeError is one) on anything else."""
+    """UTF-8 JSON with no duplicate keys, no NaN or Infinity, no number too
+    large to be finite (1e400 parses to infinity otherwise) and no unpaired
+    surrogate. Raises ValueError (UnicodeDecodeError is one) on anything else.
+    Referenced capture files use parse_json_object, which is deliberately
+    looser (SPEC.md, Source refs)."""
     try:
-        return json.loads(data.decode("utf-8"), object_pairs_hook=_no_duplicate_keys, parse_constant=_reject_constant)
+        parsed = json.loads(
+            data.decode("utf-8"), object_pairs_hook=_no_duplicate_keys, parse_constant=_reject_constant, parse_float=_finite_float
+        )
     except RecursionError:
         raise ValueError("JSON nests deeper than the parser follows") from None
+    surrogate = _unpaired_surrogate(parsed)
+    if surrogate is not None:
+        raise ValueError(f"contains an unpaired surrogate ({surrogate}), which is not text")
+    return parsed
 
 
 def read_bounded(root: Path, relative: str, limit: int) -> bytes:
@@ -131,13 +168,17 @@ def read_bounded(root: Path, relative: str, limit: int) -> bytes:
         raise InputProblem("missing-source", f"{relative!r} not found under {display_path(root)}") from None
     if not resolved.is_relative_to(root):
         raise InputProblem("missing-source", f"{relative} resolves outside {display_path(root)}")
+    # Errors name the declared relative path and the OS's category only. An
+    # OSError's own text carries the absolute path it tried to open.
     try:
         with open(resolved, "rb") as handle:
             if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
-                raise InputProblem("missing-source", f"{relative} is not a regular file")
+                raise InputProblem("missing-source", f"{relative!r} is not a regular file")
             data = handle.read(limit + 1)
-    except (OSError, ValueError) as error:
-        raise InputProblem("missing-source", f"{relative!r} cannot be read: {error}") from None
+    except OSError as error:
+        raise InputProblem("missing-source", f"{relative!r} cannot be read: {error.strerror or type(error).__name__}") from None
+    except ValueError:
+        raise InputProblem("missing-source", f"{relative!r} cannot be read: the path cannot be passed to the operating system") from None
     if len(data) > limit:
         raise InputProblem("invalid-manifest", f"{relative} is larger than its {limit}-byte budget")
     return data

@@ -75,7 +75,7 @@ def load_pack_spec(fixture: Path) -> dict:
     try:
         spec = validate.load_json_strict(data)
     except ValueError as error:
-        raise Refused("invalid-manifest", [f"pack-spec.json is not readable JSON: {error}"]) from None
+        raise Refused("invalid-manifest", [f"pack-spec.json is not usable JSON: {error}"]) from None
     problems = validate.validate_pack_spec(spec)
     if problems:
         raise Refused("invalid-manifest", problems)
@@ -167,7 +167,10 @@ def build(fixture: Path, out: Path) -> tuple[dict, bytes, str]:
 def archive_bytes(manifest: dict, report_bytes: bytes) -> bytes:
     """Build the archive and hold it to the limits the reader applies, so the
     packer never reports PACKED for a pack its reader must refuse."""
-    manifest_bytes = json_deterministic(manifest)
+    try:
+        manifest_bytes = json_deterministic(manifest)
+    except ValueError:
+        raise Refused("invalid-manifest", ["manifest.json would hold a number that is not finite, which JSON cannot encode"]) from None
     if len(manifest_bytes) > validate.MAX_MANIFEST_BYTES:
         raise Refused(
             "invalid-manifest",
@@ -211,7 +214,9 @@ def _add_entry(archive: zipfile.ZipFile, name: str, data: bytes) -> None:
 
 
 def json_deterministic(value: dict) -> bytes:
-    text = json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    # allow_nan=False: Python would otherwise write `Infinity`, which is not
+    # JSON and which the reader refuses.
+    text = json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n"
     return text.encode("utf-8")
 
 
@@ -238,6 +243,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fixture", required=True, type=Path, help="fixture directory: pack-spec.json, capture/, result/, report.md")
     parser.add_argument("--out", required=True, type=Path, help="zip path to write, relative or absolute")
     args = parser.parse_args(argv)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="backslashreplace")
 
     fixture = args.fixture.resolve()
     out = args.out.resolve()
@@ -248,7 +255,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"REFUSAL {refused.kind}: {detail}")
         print("verdict: REFUSED (nothing written)")
         return 2
-    write_atomically(out, pack_bytes)
+    try:
+        write_atomically(out, pack_bytes)
+    except OSError as error:
+        print(f"packer: could not write {command_pack_path(out)}: {error.strerror or type(error).__name__}")
+        print("verdict: NOT WRITTEN")
+        return 1
 
     packaged = manifest["packaged_files"]
     print(f"packer: wrote {command_pack_path(out)}")

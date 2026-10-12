@@ -8,6 +8,7 @@ import ast
 import importlib
 import json
 import select
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -18,8 +19,10 @@ import read
 from support import (
     EXAMPLE_PACK,
     TOOL_DIR,
+    copy_fixture_into_repo,
     example_entries,
     rebuilt_example,
+    run_packer,
     run_reader,
     sha256_hex,
     write_pack,
@@ -240,3 +243,32 @@ def test_http_control_character_path_is_refused_not_dropped(server_factory, tmp_
     status, body = server_factory("--pack", pack).get("/data.json")
     assert status == 200
     assert json.loads(body)["status"] == "refused"
+
+
+@pytest.mark.parametrize("surrogate", ["\ud800", "\udfff"], ids=["high", "low"])
+def test_http_unpaired_surrogate_root_is_refused_not_dropped(server_factory, tmp_path, surrogate):
+    def mutate(manifest):
+        manifest["capture"]["capture_root"] = f"tools/root{surrogate}"
+
+    pack = rebuilt_example(tmp_path, mutate, "bad.zip")
+    status, body = server_factory("--pack", pack).get("/data.json")
+    assert status == 200
+    payload = json.loads(body)
+    assert payload["status"] == "refused" and "evidence" not in payload
+    assert payload["refusal"]["kind"] == "invalid-manifest"
+
+
+def test_read_failure_detail_reaches_the_page_without_absolute_paths(serve, tmp_path):
+    fixture = copy_fixture_into_repo("inspector-permission")
+    frame = fixture / "capture/frame_0001.json"
+    try:
+        pack = tmp_path / "pack.zip"
+        assert run_packer(fixture, pack).returncode == 0
+        frame.chmod(0)
+        payload = serve.verification_payload(pack)
+    finally:
+        frame.chmod(0o644)
+        shutil.rmtree(fixture, ignore_errors=True)
+    assert payload["status"] == "refused"
+    detail = payload["refusal"]["detail"]
+    assert detail == "'capture/frame_0001.json' cannot be read: Permission denied", detail

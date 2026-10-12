@@ -125,6 +125,17 @@ def refusal_demo_payload() -> dict:
 
 class InspectionHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # http.server calls do_<METHOD>
+        # A failure the reader did not turn into a refusal is a bug. Answer
+        # 500 so the page shows a failed read instead of a dropped
+        # connection, and log only the exception type: its text can carry
+        # absolute paths.
+        try:
+            self.route()
+        except Exception as error:
+            print(f"inspection server: request failed with {type(error).__name__}", file=sys.stderr, flush=True)
+            self.send_error(500)
+
+    def route(self) -> None:
         path = self.path.split("?", 1)[0].split("#", 1)[0]
         fault = OPTIONS["fault"]
         if path == "/":

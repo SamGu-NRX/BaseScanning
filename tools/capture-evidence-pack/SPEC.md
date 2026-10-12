@@ -17,7 +17,7 @@ The entry names are fixed. The packer reads the report from `report.md` at the f
 
 ## manifest.json
 
-The manifest is one JSON object. Every field below is required; a manifest missing any of them is invalid, and both the packer and the reader refuse it. A required field that is present with a JSON `null` is invalid in the same way, except `geometry_correctness.assertion`, which must be null. Unknown top-level fields are invalid. A key that appears twice in one object is invalid, because two parsers can disagree about which value counts.
+The manifest is one JSON object. Every field below is required; a manifest missing any of them is invalid, and both the packer and the reader refuse it. A required field that is present with a JSON `null` is invalid in the same way, except `geometry_correctness.assertion`, which must be null. Unknown top-level fields are invalid. A key that appears twice in one object is invalid, because two parsers can disagree about which value counts. Every number must be finite: `NaN`, `Infinity`, and a literal too large for a double, such as `1e400`, which Python's json would otherwise read as infinity, are invalid wherever they appear, including in extra keys of a `missing_fields` entry. Every string and key must be Unicode text: an escaped surrogate that is not half of a valid pair is invalid. The packer applies the same rules to `pack-spec.json` and refuses to encode a manifest holding a non-finite number.
 
 - `evidence_pack_format_version`: string, `1.0`.
 - `capture_schema_version`: non-empty string naming the schema the capture inputs follow, for example `synthetic-capture/2026.10`.
@@ -35,7 +35,7 @@ The manifest is one JSON object. Every field below is required; a manifest missi
 - `captured_at`: UTC timestamp in `YYYY-MM-DDTHH:MM:SSZ` form, strictly zero-padded, and a real calendar date. `2026-1-5T00:00:00Z` (not zero-padded) and `2026-02-30T00:00:00Z` (no such day) are invalid.
 - `capture_root`: repository-relative path to the directory source refs resolve against. No `..`, no leading slash.
 
-Every path in a pack (`capture_root`, each `path`, and the zip entry names) is relative POSIX: no leading slash, no backslash, no empty, `.` or `..` segment, and no control character (U+0000 to U+001F, U+007F to U+009F). A NUL makes the operating system's path calls fail, and the other controls cannot be shown faithfully in a receipt, so both tools refuse such a path by name instead of trying to open it.
+Every path in a pack (`capture_root`, each `path`, and the zip entry names) is relative POSIX: no leading slash, no backslash, no empty, `.` or `..` segment, no control character (U+0000 to U+001F, U+007F to U+009F), and no surrogate code point (U+D800 to U+DFFF). A NUL or an unpaired surrogate makes the operating system's path calls fail, and the controls cannot be shown faithfully in a receipt, so both tools refuse such a path by name instead of trying to open it.
 - `source_refs`: non-empty list of source references.
 
 ### result
@@ -56,7 +56,7 @@ Each entry in `capture.source_refs` names one capture input file the report is a
 
 Refs point at files; the pack does not contain them. A reader that wants the bytes resolves each path against `capture_root` (or an explicit override) and checks the hash and size. A path that resolves outside the root through a symlink does not satisfy its ref. A capture input written as a JSON object that declares a `schema_version` field must declare the manifest's `capture_schema_version`; anything else, including a declared `null` or the key appearing twice, is the `schema-drift` refusal.
 
-A referenced file counts as a JSON object when it is UTF-8 without a byte-order mark, parses as JSON with Python's `json` module (which accepts `NaN` and `Infinity`), and has an object at the top level. Only such a file can declare `schema_version` or `result_id`; every other file is opaque and is checked by its bytes alone. Both tools apply this one definition, so a file cannot make a declaration to one tool and be opaque to the other, and a repeated key is a refusal, never "the last value wins". The example pack points into `tools/capture-evidence-pack/fixtures/example/`, which is committed synthetic data. A pack about a real capture would point into `captures/`, which git ignores.
+A referenced file counts as a JSON object when it is UTF-8 without a byte-order mark, parses as JSON with Python's `json` module (which accepts `NaN`, `Infinity` and `1e400`, read as infinity), and has an object at the top level. These files are not held to the manifest's finite-number and text rules, because they are evidence the pack describes, not the pack's own claims. Only such a file can declare `schema_version` or `result_id`; every other file is opaque and is checked by its bytes alone. Both tools apply this one definition, so a file cannot make a declaration to one tool and be opaque to the other, and a repeated key is a refusal, never "the last value wins". The example pack points into `tools/capture-evidence-pack/fixtures/example/`, which is committed synthetic data. A pack about a real capture would point into `captures/`, which git ignores.
 
 ### missing_fields
 
@@ -132,6 +132,8 @@ The packer and the reader refuse, exit 2, and name what mismatched:
 The packer validates the flat `pack-spec.json` it consumes before building anything and refuses with the same named kinds, so a malformed fixture cannot crash the packer or half-write a pack. Its keys are `capture_id`, `captured_at`, `capture_schema_version`, `result_schema_version`, `result_id`, `source_refs` (each with `role` and `path`), `result_path`, `missing_fields`, and an optional `report_path` that must be `report.md`; any other key is refused. Packaged-file mismatch refusals name the rejected bytes' actual hash and size next to the recorded ones.
 
 Every reader refusal prints `rejected pack sha256:` and `rejected pack bytes:` for the bytes the reader actually checked, followed by `reader arguments:` with the arguments as given, whatever their order. When the reader refused before it held the pack bytes (the file is missing or over the pack budget), the hash line says `unavailable` instead of hashing a partial read.
+
+A file that cannot be opened is reported by the path the manifest or pack-spec declared and the operating system's error category, such as `Permission denied`. Neither tool prints the exception's own text, which carries the absolute path the operating system tried, so a repository-relative declaration never becomes a home-directory path in a receipt or on the inspection page.
 
 ## Determinism
 
