@@ -1,47 +1,45 @@
-"""Artifact privacy screening: the single owner of forbidden patterns.
+"""Artifact privacy screening and command redaction.
 
-Every receipt artifact (run-manifest.json, checks.jsonl, summary.json, CLI
-failure output) must be safe for public export. This module is the one place
-that defines what may never appear in one, and owns the two operations the
-rest of the harness consumes.
+Two layers keep private material out of receipts. The first is
+construction: export.py validates every artifact value against a typed
+schema before it is written, so a value reaches disk only if it is a
+published enum word, a digest, a run-declared path, a bounded number or a
+constant from this package. This module is the second layer, a pattern
+screen that runs over the written files after the summary exists.
 
-Sibling seam (child C wires these from runner.py):
+The screen cannot recognize a bare word-shaped secret (``CANARY-abc123``
+looks like an honest id), which is why the first layer exists. Findings
+name a file, a line and a category; they never echo the matched text.
 
   screen_artifact(path) -> list[str]
-      Screen one artifact file. Returns finding strings
-      ``"<file>:<line>: <category>"``; an empty list means clean. A missing
-      file raises FileNotFoundError; undecodable content is a finding.
+      ``"<file>:<line>: <category>"`` per finding; empty means clean. A
+      missing file raises FileNotFoundError; undecodable bytes are a finding.
 
-  redact_command(argv) -> str
-      Render a command line safe to record in a receipt: credential-named
-      flag values become ``***``, URL values lose userinfo/query material,
-      and any remaining forbidden span is replaced by ``<redacted:...>``.
+  redact_argv(argv, known) -> list[str]
+      The one boundary for recording a command. It works on the argv list,
+      never on a joined shell string. Values of this program's own flags
+      are rendered by type; every other value becomes ``<value>``, and a
+      credential-named flag's value becomes ``***``.
 
-Receipts-layer support (used by receipts.py; not part of the sibling seam):
-
-  redact_text(text) -> str
-      Replace every forbidden span in free text with ``<redacted:category>``.
+  safe_failure(argv, category) -> str
+      A one-line CLI error naming a fixed category and the redacted argv.
 
 Forbidden categories: bearer tokens, credential key/value assignments,
 URL userinfo, signed-capability URLs, non-loopback endpoints, private
 hostnames, key material (PEM/AWS/GitHub/JWT shapes), source snippets (source
 path:line refs, tracebacks, private tree names, home-dir paths), and
 non-ASCII/control characters.
-
-What the screen deliberately does NOT catch: an unstructured string with no
-credential, URL, hostname, or source anchor (for example a bare word-shaped
-secret with no assignment separator). Such strings must never reach an
-artifact at all: observations.py validates the shape of every recorded value,
-so the screen is the second line of defense, not a substitute. Findings
-never echo matched material -- only category, file, and line.
 """
 
 from __future__ import annotations
 
+import math
 import re
-import shlex
 import urllib.parse
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+
+from .netpolicy import EndpointError, is_loopback_host, parse_api_base
 
 MAX_FINDINGS = 200
 
@@ -131,9 +129,7 @@ _NON_URL_PATTERNS: list[tuple[str, re.Pattern[str], int | None]] = [
     ("key-material", re.compile(r"\bgh[pousr]_[A-Za-z0-9_-]{20,}\b"), None),
     (
         "key-material",
-        re.compile(
-            r"\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}(?:\.[A-Za-z0-9_-]{6,})?\b"
-        ),
+        re.compile(r"\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}(?:\.[A-Za-z0-9_-]{6,})?\b"),
         None,
     ),
     (
@@ -195,19 +191,11 @@ def _unfold(line: str) -> str:
     return _JSON_ESCAPE_RE.sub(repl, line)
 
 
-def _is_loopback_host(host: str) -> bool:
-    host = (host or "").lower().strip("[]")
-    return (
-        host in {"127.0.0.1", "::1", "localhost"}
-        or host.startswith("127.")
-        or host.endswith(".localhost")
-    )
-
-
 def _classify_url(url: str) -> str | None:
     """Classify one absolute URL; None means it may appear in a receipt."""
     try:
         parts = urllib.parse.urlsplit(url)
+        host = parts.hostname
     except ValueError:
         return "private-endpoint"  # fail closed on malformed URLs
     if (parts.scheme or "").lower() not in {"http", "https", "ws", "wss"}:
@@ -218,8 +206,9 @@ def _classify_url(url: str) -> str | None:
     params = urllib.parse.parse_qsl(tail, keep_blank_values=True)
     if any(name.lower() in _SIGNED_QUERY_PARAMS for name, _ in params):
         return "signed-url"
-    host = (parts.hostname or "").lower()
-    if not _is_loopback_host(host):
+    # The same exact-host rule as endpoint validation (netpolicy): a
+    # lookalike such as 127.0.0.1.evil.com is not loopback here either.
+    if not is_loopback_host(host):
         return "private-endpoint"
     return None
 
@@ -286,62 +275,126 @@ def screen_artifact(path: str) -> list[str]:
     return findings
 
 
-def safe_failure(argv: list[str], message: str) -> str:
-    """One-line CLI failure output, safe for stdout.
+# Flag-name fragments that mark a value as a credential, after lowercasing
+# and turning "_" into "-". Substring match, so --github-token and
+# --client-secret count without listing every spelling.
+_CREDENTIAL_FRAGMENTS = (
+    "token",
+    "secret",
+    "passw",
+    "passphrase",
+    "credential",
+    "authorization",
+    "auth",
+    "api-key",
+    "apikey",
+    "bearer",
+    "cookie",
+    "private-key",
+    "signature",
+)
 
-    The runner prints exception summaries on failure; both the command and
-    the message are operator/server-influenced free text, so both pass the
-    same redaction as every artifact.
+_FLAG_RE = re.compile(r"^(--?)([A-Za-z][A-Za-z0-9_-]{0,47})(=(.*))?$", re.DOTALL)
+_REF_RE = re.compile(r"^[0-9a-f]{7,40}$")
+_LABEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")
+_INT_RE = re.compile(r"^-?[0-9]{1,9}$")
+_CATEGORY_RE = re.compile(r"^[a-z0-9][a-z0-9_.:-]{0,79}$")
+
+REDACTED_VALUE = "<value>"
+REDACTED_SECRET = "***"
+
+
+def is_credential_flag(name: str) -> bool:
+    normalized = name.lower().replace("_", "-")
+    return normalized in _CREDENTIAL_FLAG_NAMES or any(
+        fragment in normalized for fragment in _CREDENTIAL_FRAGMENTS
+    )
+
+
+def _render_known(kind: str, value: str) -> str:
+    """Render one value of this program's own flag by its declared type."""
+    if kind == "endpoint":
+        try:
+            return parse_api_base(value).label
+        except EndpointError:
+            return "<invalid>"
+    if kind.startswith("enum:"):
+        return value if value in kind[5:].split("|") else "<invalid>"
+    if kind == "int":
+        return value if _INT_RE.match(value) else "<invalid>"
+    if kind == "float":
+        try:
+            number = float(value)
+        except ValueError:
+            return "<invalid>"
+        return repr(number) if math.isfinite(number) else "<invalid>"
+    if kind == "ref":
+        return value if _REF_RE.match(value) else "<invalid>"
+    if kind == "label":
+        return value if _LABEL_RE.match(value) else "<invalid>"
+    if kind == "path":
+        return "<path>"
+    if kind == "argv-json":
+        return "<argv>"
+    raise ValueError(f"unknown flag kind {kind!r}")
+
+
+def redact_argv(argv: Sequence[str], known: Mapping[str, str] | None = None) -> list[str]:
+    """Render a command for a receipt, one argv element at a time.
+
+    ``known`` maps this program's flags to a value kind ("flag" for a flag
+    that takes no value). Its values are rendered by type: an endpoint as
+    its loopback label, a ref only as hex, a path never. Everything else is
+    foreign: a flag name is kept when it has a plain flag shape, and every
+    value -- separated, ``=``-joined, quoted into one element -- becomes
+    ``<value>``, or ``***`` after a credential-named flag. Nothing is split
+    on spaces, so a quoted ``"--token X"`` element is one value.
     """
-    return f"{redact_command(argv)}: {redact_text(message)}"
-
-
-def _flag_split(token: str) -> tuple[str | None, str, str]:
-    """Split ``--flag=value``; returns (normalized_name, eq, inline_value)."""
-    if not token.startswith("--"):
-        return None, "", ""
-    name_part, eq, inline = token[2:].partition("=")
-    return name_part.lower().replace("_", "-"), eq, inline
-
-
-def _safe_token(token: str) -> str:
-    """Redact one non-flag command token (URLs, interior flag-value pairs)."""
-    if not token:
-        return token
-    return redact_text(token)
-
-
-def redact_command(argv: list[str]) -> str:
-    """Render a command line safe for receipts.
-
-    Credential-named flag values become ``***`` (both ``--flag=value`` and
-    ``--flag value`` forms, case-insensitive); URL tokens lose userinfo,
-    signed-query material, and non-loopback endpoints; everything else goes
-    through the same forbidden-span redaction as free text.
-    """
-    parts: list[str] = []
-    i = 0
-    while i < len(argv):
-        token = argv[i]
-        name, eq, _inline = _flag_split(token)
-        if name is not None and name in _CREDENTIAL_FLAG_NAMES:
-            original_name = token[2:].partition("=")[0]
-            if eq:
-                parts.append(f"--{original_name}=***")
+    known = known or {}
+    out: list[str] = []
+    # How to render the next element: a known kind, "secret", or None.
+    pending: str | None = None
+    for token in argv:
+        if pending is not None:
+            out.append(REDACTED_SECRET if pending == "secret" else _render_known(pending, token))
+            pending = None
+            continue
+        if token == "--":
+            out.append(token)
+            continue
+        match = _FLAG_RE.match(token)
+        if match is None:
+            out.append(REDACTED_VALUE)
+            continue
+        dashes, name, joined, inline = match.groups()
+        flag = f"{dashes}{name}"
+        secret = is_credential_flag(name)
+        kind = None if secret else known.get(flag)
+        if joined is not None:
+            if secret:
+                out.append(f"{flag}={REDACTED_SECRET}")
+            elif kind is not None and kind != "flag":
+                out.append(f"{flag}={_render_known(kind, inline)}")
             else:
-                parts.append(token)
-                if i + 1 < len(argv):
-                    parts.append("***")
-                    i += 1
-        else:
-            parts.append(_safe_token(token))
-        i += 1
-    return " ".join(shlex.quote(part) if _needs_quote(part) else part for part in parts)
+                out.append(f"{flag}={REDACTED_VALUE}")
+            continue
+        out.append(flag)
+        if secret:
+            pending = "secret"
+        elif kind == "flag":
+            pending = None
+        elif kind is not None:
+            pending = kind
+        # An unknown flag may or may not take a value; the next element,
+        # if it is not a flag, is rendered as a foreign value anyway.
+    return out
 
 
-def _needs_quote(part: str) -> bool:
-    # Parts containing redaction placeholders are already safe; never
-    # shell-quote them.
-    if "***" in part or "<redacted:" in part:
-        return False
-    return bool(part) and not re.fullmatch(r"[A-Za-z0-9_@%+=:,./-]+", part)
+def safe_failure(argv: Sequence[str], category: str, known: Mapping[str, str] | None = None) -> str:
+    """One-line CLI failure output: a fixed category and the redacted argv.
+
+    Exception messages and argparse's own text never pass through here;
+    they can quote the value that caused the failure.
+    """
+    shown = category if _CATEGORY_RE.match(category) else "error"
+    return f"error: {shown} (argv: {' '.join(redact_argv(argv, known))})"

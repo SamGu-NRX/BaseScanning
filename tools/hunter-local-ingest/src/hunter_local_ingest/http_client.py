@@ -1,15 +1,11 @@
-"""Direct HTTP adapter implementing the frozen interface.
+"""Direct HTTP adapter implementing the client interface.
 
-Transport label: this is the client used for REAL_MIRROR_CPU checks when it
-points at the real local mirror backend, and for FAKE_HUNTER checks when a
-scenario fronts it with the fault proxy. The scenarios own the label.
-
-Route map, bodies, headers and answer shapes derive from the published wire
+Route map, bodies, headers and retry rules come from the published wire
 behavior in ios/HouseScanKit/Sources/HouseScanKit/Upload/ (CaptureAPI.swift,
 CaptureUploader.swift, ScopedCaptureHTTP.swift) on alpha
-263827efaa5d600ecd7ed0443b6e7dd05fbef807. Nothing here is copied from any
-private source; expectations beyond this published contract are refined
-only from sanitized local-run observations (traces/).
+263827efaa5d600ecd7ed0443b6e7dd05fbef807. The transport label (REAL_API or
+FAKE_HUNTER) belongs to the scenario that drives this client, not to the
+client.
 """
 
 from __future__ import annotations
@@ -17,29 +13,32 @@ from __future__ import annotations
 import hashlib
 import http.client
 import json
+import re
 import time
 import urllib.parse
 
 from .adapter import StepResult
-from .observations import Observation
+from .netpolicy import ApiBase, EndpointError, parse_api_base, upload_url_problem
+from .observations import Observation, transport_error
 
 _JSON = "application/json"
 
+# RFC 6750 b64token, as ScopedCaptureHTTP.isBearerToken checks it.
+_BEARER_RE = re.compile(r"^[A-Za-z0-9\-._~+/]+=*$")
 
-class _Endpoint:
-    """Parsed base URL: scheme, host, port, and the path prefix (…/v1)."""
+# CaptureUploader.Policy.delay caps a server's Retry-After at 120 s.
+RETRY_AFTER_CAP_S = 120.0
 
-    def __init__(self, base_url: str) -> None:
-        parsed = urllib.parse.urlparse(base_url)
-        if parsed.scheme not in ("http", "https") or not parsed.hostname:
-            raise ValueError(f"endpoint must be an http(s) URL: {base_url!r}")
-        self.scheme = parsed.scheme
-        self.host = parsed.hostname
-        self.port = parsed.port or (443 if parsed.scheme == "https" else 80)
-        self.prefix = parsed.path.rstrip("/")
 
-    def route(self, path: str) -> str:
-        return f"{self.prefix}/{path.lstrip('/')}"
+def is_transient(status: int) -> bool:
+    """CaptureUploader.isTransient: worth the same request again."""
+    return status in (0, 408, 429) or (500 <= status < 600 and status != 501)
+
+
+def _connection(scheme: str, host: str, port: int, timeout_s: float) -> http.client.HTTPConnection:
+    if scheme == "https":
+        return http.client.HTTPSConnection(host, port, timeout=timeout_s)
+    return http.client.HTTPConnection(host, port, timeout=timeout_s)
 
 
 def _one_request(
@@ -51,211 +50,192 @@ def _one_request(
     body: bytes | None,
     headers: dict[str, str],
     timeout_s: float,
-) -> tuple[int, bytes, int]:
-    """One request, redirects never followed (http.client does not follow)."""
+) -> tuple[int, bytes, float | None, int]:
+    """One request. http.client never follows redirects; a 3xx comes back as is."""
     started = time.perf_counter()
-    if scheme == "https":
-        conn: http.client.HTTPConnection = http.client.HTTPSConnection(
-            host, port, timeout=timeout_s
-        )
-    else:
-        conn = http.client.HTTPConnection(host, port, timeout=timeout_s)
+    conn = _connection(scheme, host, port, timeout_s)
     try:
-        conn.request(method, path, body=body, headers=headers)
+        # skip_accept_encoding: send no header the caller did not choose.
+        conn.putrequest(method, path, skip_host=False, skip_accept_encoding=True)
+        for name, value in headers.items():
+            conn.putheader(name, value)
+        if body is not None:
+            conn.putheader("Content-Length", str(len(body)))
+        conn.endheaders(body)
         response = conn.getresponse()
         payload = response.read()
+        retry_after = _retry_after(response.getheader("Retry-After"))
         status = response.status
     finally:
         conn.close()
-    elapsed_ms = int((time.perf_counter() - started) * 1000)
-    return status, payload, elapsed_ms
+    return status, payload, retry_after, int((time.perf_counter() - started) * 1000)
+
+
+def _retry_after(value: str | None) -> float | None:
+    try:
+        seconds = float(value) if value is not None else None
+    except ValueError:
+        return None
+    if seconds is None or not (seconds >= 0):  # rejects NaN as well
+        return None
+    return min(seconds, RETRY_AFTER_CAP_S)
 
 
 class DirectHttpClient:
-    """The adapter the public runner uses against a configurable endpoint."""
+    """The adapter the runner uses against a configured API base.
+
+    ``api_token``, when given, is sent as ``Authorization: Bearer`` on API
+    routes only. Every API route is built from the base, so it is in scope
+    by construction; a storage PUT never gets the token, even when storage
+    shares the API's origin, and nothing in a response can retarget it.
+    """
 
     def __init__(
         self,
         base_url: str,
+        *,
         timeout_s: float = 30.0,
-        max_same_body_retries: int = 2,
+        max_retries: int = 2,
         retry_backoff_s: float = 1.0,
+        api_token: str | None = None,
     ) -> None:
-        self._ep = _Endpoint(base_url)
+        self._base: ApiBase = parse_api_base(base_url)
+        if api_token is not None and not _BEARER_RE.match(api_token):
+            raise EndpointError("auth_credential_malformed")
+        self._token = api_token
         self._timeout_s = timeout_s
-        self._max_same_body_retries = max(0, max_same_body_retries)
-        self._retry_backoff_s = retry_backoff_s
+        self._max_retries = max(0, max_retries)
+        self._retry_backoff_s = max(0.0, retry_backoff_s)
+
+    @property
+    def base(self) -> ApiBase:
+        return self._base
 
     # -- plumbing ---------------------------------------------------------
 
-    def _call(
+    def _send(
         self,
         step: str,
         method: str,
-        url: str,
+        scheme: str,
+        host: str,
+        port: int,
+        path: str,
         body: bytes | None,
         headers: dict[str, str],
         timeout_s: float | None = None,
-        same_body_retries: int = 0,
-        context_builder: callable | None = None,
     ) -> StepResult:
-        """One step; same-body retries only where the published uploader retries.
-
-        ``context_builder(status, payload_bytes) -> dict | None`` lets a step
-        stash transient working values (never serialized) for the next step.
-        """
-        host = self._ep.host
-        port = self._ep.port
-        scheme = self._ep.scheme
-        path = url
-        if url.lower().startswith(("http://", "https://")):
-            parsed = urllib.parse.urlparse(url)
-            host = parsed.hostname or host
-            port = parsed.port or (443 if parsed.scheme == "https" else 80)
-            scheme = parsed.scheme
-            path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
-        timeout = timeout_s if timeout_s is not None else self._timeout_s
-        attempts_left = max(same_body_retries, 0)
-        last_error = "unreachable"
-        for attempt in range(1 + attempts_left):
+        """Bounded same-body retries on a transient answer or no answer."""
+        timeout = self._timeout_s if timeout_s is None else timeout_s
+        last_error = "transport:other"
+        for attempt in range(1, self._max_retries + 2):
             try:
-                status, payload, elapsed_ms = _one_request(
+                status, payload, retry_after, elapsed = _one_request(
                     scheme, host, port, method, path, body, headers, timeout
                 )
-            except (TimeoutError, OSError, http.client.HTTPException) as exc:
-                last_error = f"transport after {attempt + 1} attempt(s): {type(exc).__name__}"
-                if attempt < attempts_left:
+            except (OSError, http.client.HTTPException) as exc:
+                last_error = transport_error(exc)
+                if attempt <= self._max_retries:
                     time.sleep(self._retry_backoff_s)
-                continue
-            detail = f"attempt {attempt + 1}" if attempt else None
-            if status == 503 and attempt < attempts_left:
-                # Published uploader behavior: retry the same body on 503.
-                time.sleep(self._retry_backoff_s)
+                    continue
+                return StepResult(step=step, error=last_error, attempts=attempt)
+            if is_transient(status) and attempt <= self._max_retries:
+                time.sleep(retry_after if retry_after is not None else self._retry_backoff_s)
                 continue
             return StepResult(
                 step=step,
-                ok=True,
-                observation=Observation.from_http(status, payload, elapsed_ms, detail),
-                context=context_builder(status, payload) if context_builder else None,
+                observation=Observation.from_http(status, payload, elapsed, attempts=attempt),
+                attempts=attempt,
             )
-        return StepResult(step=step, ok=False, error=last_error)
+        return StepResult(step=step, error=last_error, attempts=self._max_retries + 1)
+
+    def _api(
+        self,
+        step: str,
+        method: str,
+        route: str,
+        body: bytes | None,
+        headers: dict[str, str],
+        timeout_s: float | None = None,
+    ) -> StepResult:
+        sent = dict(headers)
+        if self._token is not None:
+            sent["Authorization"] = f"Bearer {self._token}"
+        base = self._base
+        return self._send(
+            step,
+            method,
+            base.scheme,
+            base.host,
+            base.port,
+            base.route(route),
+            body,
+            sent,
+            timeout_s,
+        )
 
     @staticmethod
-    def _json_bytes(payload: dict) -> bytes:
-        return json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    def _json_headers() -> dict[str, str]:
+        return {"Content-Type": _JSON, "Accept": _JSON}
 
-    # -- frozen interface --------------------------------------------------
+    # -- interface ----------------------------------------------------------
 
     def health(self) -> StepResult:
-        return self._call("health", "GET", self._ep.route("healthz"), None, {"Accept": _JSON})
+        return self._api("health", "GET", "healthz", None, {"Accept": _JSON})
 
-    def create(self, request: dict, idempotency_key: str) -> StepResult:
-        headers = {
-            "Content-Type": _JSON,
-            "Accept": _JSON,
-            "Idempotency-Key": idempotency_key,
-        }
-        return self._call(
-            "create", "POST", self._ep.route("captures"), self._json_bytes(request), headers
-        )
+    def create(self, body: bytes, idempotency_key: str) -> StepResult:
+        headers = {**self._json_headers(), "Idempotency-Key": idempotency_key}
+        return self._api("create", "POST", "captures", body, headers)
 
     def register(self, capture_id: str, files: list[dict]) -> StepResult:
-        headers = {"Content-Type": _JSON, "Accept": _JSON}
-        body = self._json_bytes({"files": files})
+        body = _json_bytes({"files": files})
+        route = f"captures/{_segment(capture_id)}/files"
+        return self._api("register", "POST", route, body, self._json_headers())
 
-        def stash_targets(status: int, payload: bytes) -> dict | None:
-            """Pull the signed upload targets into transient step context.
-
-            The receipt never records them (observations.py drops nested
-            values); the upload step needs the target it was granted.
-            """
-            if not (200 <= status < 300):
-                return None
-            try:
-                answer = json.loads(payload.decode("utf-8"))
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                return None
-            entries = answer.get("files") if isinstance(answer, dict) else None
-            if not isinstance(entries, list):
-                return None
-            targets = []
-            for entry in entries:
-                upload = entry.get("upload") if isinstance(entry, dict) else None
-                if isinstance(upload, dict) and isinstance(upload.get("url"), str):
-                    targets.append(
-                        {"url": upload["url"], "headers": upload.get("headers") or {}}
-                    )
-                else:
-                    targets.append({})
-            return {"upload_targets": targets}
-
-        return self._call(
-            "register",
-            "POST",
-            self._ep.route(f"captures/{capture_id}/files"),
-            body,
-            headers,
-            context_builder=stash_targets,
+    def upload(self, url: str, body: bytes, headers: dict[str, str]) -> StepResult:
+        problem = upload_url_problem(url)
+        if problem:
+            return StepResult(step="upload", error=problem, attempts=0)
+        if any(name.lower() == "authorization" for name in headers):
+            return StepResult(step="upload", error="auth_storage_authorization", attempts=0)
+        parts = urllib.parse.urlsplit(url)
+        scheme = parts.scheme.lower()
+        path = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+        port = parts.port or (443 if scheme == "https" else 80)
+        # Exactly the headers the server signed; nothing added.
+        return self._send(
+            "upload", "PUT", scheme, parts.hostname or "", port, path, body, dict(headers)
         )
-
-    def upload(
-        self,
-        capture_id: str,
-        path: str,
-        body: bytes,
-        url: str,
-        headers: dict[str, str] | None,
-    ) -> StepResult:
-        del capture_id  # identity is carried by the signed URL
-        # Exactly the headers the server signed; never the API's own credentials.
-        send_headers = dict(headers or {})
-        send_headers.setdefault("Content-Type", "application/octet-stream")
-        return self._call("upload", "PUT", url, body, send_headers)
 
     def commit(self, capture_id: str, files: list[dict]) -> StepResult:
-        headers = {"Content-Type": _JSON, "Accept": _JSON}
-        body = self._json_bytes({"files": files})
-        return self._call(
-            "commit",
-            "POST",
-            self._ep.route(f"captures/{capture_id}/files:commit"),
-            body,
-            headers,
-            same_body_retries=self._max_same_body_retries,
-        )
+        body = _json_bytes({"files": files})
+        route = f"captures/{_segment(capture_id)}/files:commit"
+        return self._api("commit", "POST", route, body, self._json_headers())
 
     def finalize(self, capture_id: str, packet: bytes, idempotency_key: str) -> StepResult:
         headers = {
-            "Content-Type": _JSON,
-            "Accept": _JSON,
+            **self._json_headers(),
             "Idempotency-Key": idempotency_key,
             "X-Packet-Sha256": hashlib.sha256(packet).hexdigest(),
         }
-        return self._call(
-            "finalize",
-            "POST",
-            self._ep.route(f"captures/{capture_id}/finalize"),
-            packet,
-            headers,
-            same_body_retries=self._max_same_body_retries,
-        )
+        route = f"captures/{_segment(capture_id)}/finalize"
+        return self._api("finalize", "POST", route, packet, headers)
 
     def events(self, capture_id: str, after: int, wait_s: int) -> StepResult:
-        path = f"captures/{capture_id}/events?after={after}&wait={wait_s}"
-        return self._call(
-            "events",
-            "GET",
-            self._ep.route(path),
-            None,
-            {"Accept": _JSON},
-            timeout_s=wait_s + 30.0,
-        )
+        route = f"captures/{_segment(capture_id)}/events?after={int(after)}&wait={int(wait_s)}"
+        # CaptureUploader.pollEvents: the request may be held for `wait` seconds.
+        return self._api("events", "GET", route, None, {"Accept": _JSON}, timeout_s=wait_s + 30.0)
 
     def result(self, capture_id: str) -> StepResult:
-        return self._call(
-            "result",
-            "GET",
-            self._ep.route(f"captures/{capture_id}/result"),
-            None,
-            {"Accept": _JSON},
-        )
+        route = f"captures/{_segment(capture_id)}/result"
+        return self._api("result", "GET", route, None, {"Accept": _JSON})
+
+
+def _segment(value: str) -> str:
+    """A server-minted id as one path segment; it can never add a segment."""
+    return urllib.parse.quote(value, safe="")
+
+
+def _json_bytes(payload: dict) -> bytes:
+    # The published client's JSONEncoder output is compact.
+    return json.dumps(payload, separators=(",", ":")).encode("utf-8")

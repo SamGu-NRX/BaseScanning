@@ -1,173 +1,133 @@
-"""Run receipts: run-manifest.json, checks.jsonl, summary.json.
+"""Run receipts: one fresh directory per run, validated, screened, chained, sealed.
 
-Every run writes into a fresh, never-overwritten directory. A replay that
-lands on an existing directory name is refused, never merged into it.
+A run directory holds exactly five files, all mandatory:
 
-Check-line contract (one JSON object per line in checks.jsonl):
-  id         stable check id, e.g. "lifecycle.create"
-  transport  REAL_MIRROR_CPU | FAKE_HUNTER | GPU_STUB
-  oracle     what decides correctness, and its public basis
-  expected   the expectation under that oracle
-  observed   what actually happened (sanitized)
-  status     PASS | FAIL | BLOCKED | NOT_RUN
-  evidence   path to the receipt of the step that decided it, if any
+  run-manifest.json     what ran: refs, source digest, fixture digests,
+                        redacted command, runtime, settings
+  checks.jsonl          one validated line per check, flushed as it decides
+  summary.json          verdict, counts, failed/blocked/not-run ids,
+                        output digests
+  privacy-screen.json   the pattern screen over the three files above,
+                        run after the summary exists
+  privacy-chain.jsonl   a SHA-256 chain over every artifact's final bytes
 
-Privacy and integrity hardening (artifact-level):
-  - the manifest records the endpoint as a loopback host[:port] label only,
-    never the raw URL (userinfo, query or token never reach disk), and every
-    free-text manifest field is redacted;
-  - free-text check fields pass the forbidden-span redaction at write time;
-  - write_summary screens all three artifacts after writing them and records
-    the outcome in privacy-screen.json (failed-run receipts survive, sealed,
-    never rewritten to look clean);
-  - every artifact's digest is chained into receipts-chain.jsonl at write/
-    close time and files are sealed read-only at summary time; a second
-    writer to the same run dir is detected by verify_run_integrity().
+The directory is created with an exclusive mkdir and a random run id, and
+every file with exclusive creation, so a replay can never overwrite or
+merge into earlier receipts. A missing mandatory file is reported by name;
+nothing creates an empty stand-in for it.
+
+What the integrity check proves, and what it does not: the chain and the
+read-only seal detect an accidental or careless edit after the run (a
+changed digest, a broken link, a writable file, an extra or missing file).
+They do not stop the file owner: anyone who can write the directory can
+rewrite a file, recompute the chain and chmod it again. The chain head is
+printed when the run ends; recording it somewhere the run cannot write is
+the only anchor.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import hashlib
-import ipaddress
 import json
-import os
-import platform
-import sys
-import time
-import urllib.parse
+import secrets
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .export import (
+    CHAINED_ARTIFACTS,
+    SCREEN_SCHEMA,
+    SCREENED_ARTIFACTS,
+    SUMMARY_SCHEMA,
+    ExportContext,
+    ExportError,
+    validate_chain_entry,
+    validate_check_line,
+    validate_manifest,
+    validate_screen,
+    validate_summary,
+)
 from .modes import Status, Transport
-from .sanitize import redact_text, screen_artifact
+from .observations import Observation
+from .plan import DERIVED_SUFFIXES, PACKET_ID_RE, PATH_RE
+from .sanitize import screen_artifact
+from .scenarios.oracles import oracle_for
 
-RUN_ARTIFACTS = ("run-manifest.json", "checks.jsonl", "summary.json")
-CHAIN_FILE = "privacy-chain.jsonl"
+MANIFEST = "run-manifest.json"
+CHECKS = "checks.jsonl"
+SUMMARY = "summary.json"
 SCREEN_FILE = "privacy-screen.json"
+CHAIN_FILE = "privacy-chain.jsonl"
+MANDATORY = (MANIFEST, CHECKS, SUMMARY, SCREEN_FILE, CHAIN_FILE)
 
-# Mode for receipt files once sealed.
 _SEALED_MODE = 0o444
 
 
-def _redacted_or_none(value: str | None) -> str | None:
-    """Redact an optional free-text manifest field; None passes through."""
-    return redact_text(value) if value is not None else None
-
-
-def _safe_endpoint_label(endpoint: str) -> str:
-    """Host[:port] of a loopback endpoint, or a redaction placeholder.
-
-    The raw endpoint never enters a receipt: userinfo, query strings and
-    non-loopback hostnames are all excluded. Loopback is decided by
-    ipaddress (a lookalike hostname like 127.0.0.1.evil.com is excluded).
-    """
-    try:
-        parts = urllib.parse.urlsplit(endpoint)
-        port = parts.port
-    except ValueError:
-        return "<redacted:endpoint>"
-    host = (parts.hostname or "").lower()
-    recordable = host == "localhost" or host.endswith(".localhost")
-    if not recordable:
-        try:
-            recordable = ipaddress.ip_address(host).is_loopback
-        except ValueError:
-            recordable = False
-    if not host or not recordable:
-        return "<redacted:endpoint>"
-    return f"{host}:{port}" if port else host
-
-
-class ChecksSink:
-    """The one sink interface scenarios and vocabulary helpers write to.
-
-    Anything with ``.append(line_dict)`` is a sink; this class is the
-    receipt-backed implementation the runner uses. It validates the enums
-    and writes each line as it is recorded, so a crashed run still leaves
-    every check that decided before the crash.
-    """
-
-    def __init__(self, writer: ChecksWriter) -> None:
-        self._writer = writer
-        self.checks: list[Check] = []
-
-    def append(self, line: dict) -> Check:
-        check = Check(
-            id=line["id"],
-            transport=Transport(line["transport"]),
-            oracle=line["oracle"],
-            expected=line["expected"],
-            observed=line["observed"],
-            status=Status(line["status"]),
-            evidence=line.get("evidence"),
-            observation=line.get("observation"),
-        )
-        self.checks.append(check)
-        self._writer.write(check)
-        return check
+def utc_now() -> str:
+    return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 @dataclasses.dataclass
 class Check:
     id: str
     transport: Transport
-    oracle: str
-    expected: str
-    observed: str
     status: Status
-    evidence: str | None = None
-    # In-process only: the raw Observation behind `observed`. Never serialized.
-    observation: object | None = dataclasses.field(
-        default=None, repr=False, compare=False
-    )
+    observed: dict
+    # In-process only: the Observation that decided the check. Never serialized.
+    observation: Observation | None = dataclasses.field(default=None, repr=False, compare=False)
+
+    @classmethod
+    def from_line(cls, line: dict) -> Check:
+        return cls(
+            id=line["id"],
+            transport=Transport(line["transport"]),
+            status=Status(line["status"]),
+            observed=line["observed"],
+            observation=line.get("observation"),
+        )
 
     def as_json(self) -> dict:
-        out = {
+        oracle, expected = oracle_for(self.id)
+        return {
             "id": self.id,
             "transport": self.transport.value,
-            "oracle": self.oracle,
-            "expected": self.expected,
-            # observed is data-driven (scenario strings, server-influenced
-            # detail); it passes the same redaction as every artifact.
-            "observed": redact_text(self.observed),
             "status": self.status.value,
-            "ts": datetime.now(UTC).isoformat(timespec="milliseconds"),
+            "oracle": oracle,
+            "expected": expected,
+            "observed": self.observed,
+            "ts": utc_now(),
         }
-        if self.evidence:
-            out["evidence"] = self.evidence
-        return out
 
 
-def fresh_run_dir(root: Path, label: str) -> Path:
-    """A fresh run directory; replay never overwrites an existing one."""
+def fresh_run_dir(root: Path, label: str) -> tuple[Path, str]:
+    """A new run directory and its run id. Never reuses or merges a directory."""
+    root.mkdir(parents=True, exist_ok=True)
+    run_id = secrets.token_hex(8)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    run_dir = root / f"{label}-{stamp}"
-    if run_dir.exists():
-        raise SystemExit(
-            f"refusing to overwrite existing run directory {run_dir}; replay into a new --out"
-        )
-    run_dir.mkdir(parents=True)
-    return run_dir
+    run_dir = root / f"{label}-{stamp}-{run_id}"
+    run_dir.mkdir()  # FileExistsError rather than reuse
+    return run_dir, run_id
 
 
-def _chain_append(run_dir: Path, name: str) -> bool:
-    """Append one digest-chain entry for ``name``; False if already sealed.
+def context_for(paths: frozenset[str], packet_id: str) -> ExportContext:
+    """The export context of a plan: its paths and its derived packet ids."""
+    if not PACKET_ID_RE.match(packet_id) or not all(PATH_RE.match(p) for p in paths):
+        raise ExportError(MANIFEST, "/fixture", "undeclared-identity")
+    ids = {packet_id, *(f"{packet_id}-{s}" for s in DERIVED_SUFFIXES)}
+    return ExportContext(paths=frozenset(paths), packet_ids=frozenset(ids))
 
-    The chain links every artifact digest to the previous entry, so removing
-    or rewriting any earlier record breaks every later link. Post-seal the
-    chain file is read-only; write_summary has already chained the final
-    bytes of every artifact by then, so a late close() call is a no-op by
-    protocol, not an error to swallow silently.
-    """
-    path = run_dir / name
-    if not path.exists():
-        return False
-    data = path.read_bytes()
+
+def _write_exclusive(path: Path, text: str) -> None:
+    with path.open("x", encoding="utf-8") as fh:
+        fh.write(text)
+
+
+def _chain_append(run_dir: Path, name: str) -> None:
+    """Link the artifact's current bytes to the previous chain entry."""
+    data = (run_dir / name).read_bytes()
     digest = hashlib.sha256(data).hexdigest()
     chain_path = run_dir / CHAIN_FILE
-    if chain_path.exists() and not os.access(chain_path, os.W_OK):
-        return False
     prev = ""
     if chain_path.exists():
         lines = chain_path.read_text(encoding="utf-8").splitlines()
@@ -178,211 +138,236 @@ def _chain_append(run_dir: Path, name: str) -> bool:
         "sha256": digest,
         "bytes": len(data),
         "chain_sha256": hashlib.sha256((prev + name + digest).encode()).hexdigest(),
-        "at": utc_now_iso(),
+        "at": utc_now(),
     }
+    validate_chain_entry(entry)
     with chain_path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry, sort_keys=True) + "\n")
-    return True
+
+
+def chain_head(run_dir: Path) -> str | None:
+    chain_path = run_dir / CHAIN_FILE
+    if not chain_path.exists():
+        return None
+    lines = chain_path.read_text(encoding="utf-8").splitlines()
+    return str(json.loads(lines[-1])["chain_sha256"]) if lines else None
 
 
 def write_run_manifest(
-    run_dir: Path,
-    *,
-    endpoint: str,
-    backend_ref: str | None,
-    backend_mode: str,
-    client_ref: str,
-    adapter_interface: str,
-    fixture_identity: str,
-    seed: int,
-    commands: list[str],
-    label: str,
-    origin_note: str,
+    run_dir: Path, manifest: dict, ctx: ExportContext, known_flags: Mapping[str, str]
 ) -> None:
-    manifest = {
-        "label": redact_text(label),
-        "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),
-        # host/label only — never the raw URL (userinfo/query/token excluded)
-        "endpoint": _safe_endpoint_label(endpoint),
-        "backend_ref": _redacted_or_none(backend_ref),
-        "backend_mode": redact_text(backend_mode),
-        "client_ref": _redacted_or_none(client_ref),
-        "adapter_interface": redact_text(adapter_interface),
-        "fixture_identity": redact_text(fixture_identity),
-        "seed": seed,
-        # the caller's command lines, screened through the same redaction as
-        # every artifact (credential flag values, URL material, endpoints)
-        "commands": [redact_text(command) for command in commands],
-        "runtime": {
-            "python": sys.version.split()[0],
-            "platform": platform.platform(),
-            "machine": platform.machine(),
-            "cpus": os.cpu_count(),
-        },
-        "origin_note": redact_text(origin_note),
-        "sanitization": (
-            "receipts carry statuses, field names, digests, timings, synthetic ids and "
-            "allowlisted scalar values only; no private source, schemas, specs, raw logs, "
-            "signed URLs or credentials"
-        ),
-    }
-    (run_dir / "run-manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    _chain_append(run_dir, "run-manifest.json")
+    validate_manifest(manifest, ctx, known_flags)
+    _write_exclusive(run_dir / MANIFEST, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    _chain_append(run_dir, MANIFEST)
 
 
 class ChecksWriter:
-    """Append-only checks.jsonl."""
+    """checks.jsonl, created exclusively; each line validated, then flushed."""
 
-    def __init__(self, run_dir: Path) -> None:
-        self._path = run_dir / "checks.jsonl"
-        self._handle = self._path.open("a", encoding="utf-8")
+    def __init__(self, run_dir: Path, ctx: ExportContext) -> None:
+        self._run_dir = run_dir
+        self._ctx = ctx
+        self._handle = (run_dir / CHECKS).open("x", encoding="utf-8")
+        self.closed = False
 
     def write(self, check: Check) -> None:
-        self._handle.write(json.dumps(check.as_json(), sort_keys=True) + "\n")
+        line = check.as_json()
+        validate_check_line(line, self._ctx)
+        self._handle.write(json.dumps(line, sort_keys=True) + "\n")
         self._handle.flush()
 
     def close(self) -> None:
+        if self.closed:
+            return
         self._handle.close()
-        _chain_append(self._path.parent, "checks.jsonl")
+        self.closed = True
+        _chain_append(self._run_dir, CHECKS)
 
 
-def _chain_names(run_dir: Path) -> set[str]:
-    chain_path = run_dir / CHAIN_FILE
-    if not chain_path.exists():
-        return set()
-    names: set[str] = set()
-    for line in chain_path.read_text(encoding="utf-8").splitlines():
-        try:
-            names.add(str(json.loads(line)["artifact"]))
-        except (json.JSONDecodeError, KeyError):
+class ChecksSink:
+    """The receipt-backed sink: converts, validates and writes each line."""
+
+    def __init__(self, writer: ChecksWriter) -> None:
+        self._writer = writer
+        self.checks: list[Check] = []
+
+    def append(self, line: dict) -> Check:
+        check = Check.from_line(line)
+        self._writer.write(check)
+        self.checks.append(check)
+        return check
+
+
+@dataclasses.dataclass(frozen=True)
+class RunReport:
+    verdict: str
+    screen_findings: tuple[str, ...]
+    missing: tuple[str, ...]
+    integrity: tuple[str, ...]
+    chain_head: str | None
+
+    @property
+    def receipts_ok(self) -> bool:
+        return not (self.screen_findings or self.missing or self.integrity)
+
+
+def verdict_of(checks: list[Check]) -> str:
+    statuses = {c.status for c in checks}
+    if Status.FAIL in statuses:
+        return "FAIL"
+    if Status.BLOCKED in statuses or not checks:
+        return "BLOCKED"
+    return "PASS"
+
+
+def write_summary(
+    run_dir: Path,
+    run_id: str,
+    checks: list[Check],
+    *,
+    declared_backend: str,
+    lead_questions: tuple[str, ...],
+    ctx: ExportContext,
+) -> RunReport:
+    """Write the summary, screen every artifact, chain, seal and verify.
+
+    The manifest and checks must already exist; a missing one is reported
+    as ``missing-artifact`` and makes the report not ok. Nothing is
+    deleted or rewritten when the screen finds something: the evidence
+    stays, sealed, and the report says what is wrong with it.
+    """
+    present = {name: (run_dir / name).exists() for name in (MANIFEST, CHECKS)}
+    counts: dict[str, dict[str, int]] = {}
+    for check in checks:
+        bucket = counts.setdefault(check.transport.value, {})
+        bucket[check.status.value] = bucket.get(check.status.value, 0) + 1
+    summary = {
+        "schema": SUMMARY_SCHEMA,
+        "run_id": run_id,
+        "finished_utc": utc_now(),
+        "verdict": verdict_of(checks),
+        "total": len(checks),
+        "counts_by_transport": counts,
+        "failed": [c.id for c in checks if c.status is Status.FAIL],
+        "blocked": [c.id for c in checks if c.status is Status.BLOCKED],
+        "not_run": [c.id for c in checks if c.status is Status.NOT_RUN],
+        "mode": {
+            "declared_backend": declared_backend,
+            "backend_verified": False,
+            "real_mirror_cpu": "NOT_ESTABLISHED",
+            "gpu_arms": "NOT_RUN",
+        },
+        "lead_questions": list(lead_questions),
+        "artifacts": {
+            name: hashlib.sha256((run_dir / name).read_bytes()).hexdigest() if ok else None
+            for name, ok in present.items()
+        },
+    }
+    validate_summary(summary, ctx)
+    _write_exclusive(run_dir / SUMMARY, json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    _chain_append(run_dir, SUMMARY)
+
+    findings: list[str] = []
+    screened: list[str] = []
+    missing: list[str] = []
+    for name in SCREENED_ARTIFACTS:
+        path = run_dir / name
+        if not path.exists():
+            missing.append(name)
+            findings.append(f"{name}: missing-artifact")
             continue
-    return names
+        screened.append(name)
+        findings.extend(screen_artifact(str(path)))
+    record = {
+        "schema": SCREEN_SCHEMA,
+        "finished_utc": utc_now(),
+        "screened": screened,
+        "missing": missing,
+        "clean": not findings,
+        "findings": findings,
+    }
+    validate_screen(record, ctx)
+    _write_exclusive(run_dir / SCREEN_FILE, json.dumps(record, indent=2, sort_keys=True) + "\n")
+    _chain_append(run_dir, SCREEN_FILE)
+    seal_run(run_dir)
+    return RunReport(
+        verdict=summary["verdict"],
+        screen_findings=tuple(findings),
+        missing=tuple(missing),
+        integrity=tuple(verify_run_integrity(run_dir)),
+        chain_head=chain_head(run_dir),
+    )
 
 
 def seal_run(run_dir: Path) -> None:
-    """Make every receipt file read-only (best-effort over missing files)."""
-    for name in (*RUN_ARTIFACTS, CHAIN_FILE, SCREEN_FILE):
+    """Make every present receipt file read-only. A tamper signal, not a lock."""
+    for name in MANDATORY:
         path = run_dir / name
         if path.exists():
             path.chmod(_SEALED_MODE)
 
 
 def verify_run_integrity(run_dir: Path) -> list[str]:
-    """Replay the receipt digest chain; empty list = intact run dir."""
-    chain_path = run_dir / CHAIN_FILE
-    if not chain_path.exists():
-        return [f"missing {CHAIN_FILE}"]
+    """Problems with a sealed run directory; empty means none were found.
+
+    Every mandatory file must exist, independently of whether the chain
+    mentions it. The chain must replay, every chained artifact's latest
+    entry must match its bytes, the summary's recorded digests must match
+    the manifest and checks, every file must be read-only, and no other
+    file may be present.
+    """
     problems: list[str] = []
-    prev = ""
-    latest: dict[str, dict] = {}
-    for lineno, line in enumerate(
-        chain_path.read_text(encoding="utf-8").splitlines(), 1
-    ):
-        try:
-            entry = json.loads(line)
-            name = str(entry["artifact"])
-            digest = str(entry["sha256"])
-            chain_sha = str(entry["chain_sha256"])
-        except (json.JSONDecodeError, KeyError):
-            problems.append(f"{CHAIN_FILE}:{lineno}: unreadable chain entry")
-            continue
-        expected = hashlib.sha256((prev + name + digest).encode()).hexdigest()
-        if chain_sha != expected:
-            problems.append(f"{CHAIN_FILE}:{lineno}: chain break")
-        latest[name] = entry
-        prev = chain_sha
-    for name in (*RUN_ARTIFACTS, CHAIN_FILE, SCREEN_FILE):
+    for name in MANDATORY:
+        if not (run_dir / name).exists():
+            problems.append(f"{name}: missing-artifact")
+    extra = sorted(p.name for p in run_dir.iterdir() if p.name not in MANDATORY)
+    if extra:
+        problems.append(f"run-dir: {len(extra)} unexpected file(s)")
+
+    latest: dict[str, str] = {}
+    chain_path = run_dir / CHAIN_FILE
+    if chain_path.exists():
+        prev = ""
+        for lineno, line in enumerate(chain_path.read_text(encoding="utf-8").splitlines(), 1):
+            try:
+                entry = json.loads(line)
+                validate_chain_entry(entry)
+            except (json.JSONDecodeError, ExportError):
+                problems.append(f"{CHAIN_FILE}:{lineno}: unreadable chain entry")
+                continue
+            expected = hashlib.sha256(
+                (prev + entry["artifact"] + entry["sha256"]).encode()
+            ).hexdigest()
+            if entry["chain_sha256"] != expected:
+                problems.append(f"{CHAIN_FILE}:{lineno}: chain break")
+            latest[entry["artifact"]] = entry["sha256"]
+            prev = entry["chain_sha256"]
+
+    for name in CHAINED_ARTIFACTS:
         path = run_dir / name
         if not path.exists():
-            if name in latest or name == CHAIN_FILE:
-                problems.append(f"{name}: chained but missing")
             continue
-        if name not in latest and name != CHAIN_FILE:
+        if name not in latest:
             problems.append(f"{name}: no chain entry")
-            continue
-        if name in latest:
-            current = hashlib.sha256(path.read_bytes()).hexdigest()
-            if current != latest[name]["sha256"]:
-                problems.append(f"{name}: modified after chain entry")
-        if path.stat().st_mode & 0o222:
+        elif hashlib.sha256(path.read_bytes()).hexdigest() != latest[name]:
+            problems.append(f"{name}: modified after chain entry")
+
+    summary_path = run_dir / SUMMARY
+    if summary_path.exists():
+        try:
+            recorded = json.loads(summary_path.read_text(encoding="utf-8")).get("artifacts", {})
+        except json.JSONDecodeError:
+            recorded = None
+            problems.append(f"{SUMMARY}: unreadable")
+        if isinstance(recorded, dict):
+            for name in (MANIFEST, CHECKS):
+                path = run_dir / name
+                actual = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+                if recorded.get(name) != actual:
+                    problems.append(f"{name}: differs from the digest in the summary")
+
+    for name in MANDATORY:
+        path = run_dir / name
+        if path.exists() and path.stat().st_mode & 0o222:
             problems.append(f"{name}: not sealed (writable)")
     return problems
-
-
-def write_summary(
-    run_dir: Path,
-    checks: list[Check],
-    *,
-    lead_questions: list[str],
-    blocked: list[str],
-    notes: list[str] | None = None,
-) -> list[str]:
-    """Write summary.json, screen all artifacts, chain and seal the run.
-
-    Returns the privacy-screen findings (empty list = clean). The screen
-    runs AFTER the summary is written, over every artifact that exists;
-    nothing is deleted on findings — failed evidence survives, sealed, for
-    the operator to inspect.
-    """
-    summary_path = run_dir / "summary.json"
-    if summary_path.exists():
-        raise SystemExit(
-            f"refusing to rewrite existing {summary_path}; use a fresh --out"
-        )
-    counts: dict[str, dict[str, int]] = {}
-    for check in checks:
-        counts.setdefault(check.transport.value, {})
-        counts[check.transport.value][check.status.value] = (
-            counts[check.transport.value].get(check.status.value, 0) + 1
-        )
-    summary = {
-        "finished_utc": datetime.now(UTC).isoformat(timespec="seconds"),
-        "total": len(checks),
-        "counts_by_transport": counts,
-        "lead_questions": lead_questions,
-        "blocked": [redact_text(entry) for entry in blocked],
-        "notes": [redact_text(entry) for entry in (notes or [])],
-        "wall_clock_note": (
-            "elapsed_ms fields in observations are per step; "
-            "run wall time is the manifest-to-summary span"
-        ),
-    }
-    summary_path.write_text(
-        json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    _chain_append(run_dir, "summary.json")
-
-    # Post-write screen over every artifact, then record the outcome.
-    findings: list[str] = []
-    screened: list[str] = []
-    for name in (*RUN_ARTIFACTS, SCREEN_FILE):
-        path = run_dir / name
-        if not path.exists():
-            continue
-        screened.append(name)
-        findings.extend(screen_artifact(str(path)))
-    screen_record = {
-        "finished_utc": utc_now_iso(),
-        "screened": screened,
-        "clean": not findings,
-        "findings": findings,
-    }
-    (run_dir / SCREEN_FILE).write_text(
-        json.dumps(screen_record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    _chain_append(run_dir, SCREEN_FILE)
-
-    # Failure-path ordering: the ChecksWriter may still be open (runner
-    # closes after summary); chain any artifact that has no entry yet so
-    # the sealed state covers every receipt file.
-    for name in RUN_ARTIFACTS:
-        if name not in _chain_names(run_dir):
-            _chain_append(run_dir, name)
-    seal_run(run_dir)
-    return findings
-
-
-def utc_now_iso() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())

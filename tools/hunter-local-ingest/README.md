@@ -1,147 +1,112 @@
 # hunter-local-ingest
 
-A real-client evaluation harness for the local Hunter capture API. It drives the
-published HouseScanKit client behavior (create → register → signed upload →
-commit → finalize → events → result) against a live local endpoint, decides
-PASS/FAIL/BLOCKED/NOT_RUN per check, and writes sanitized receipts.
+Runs the published HouseScanKit upload lifecycle against one capture-API
+endpoint and records what happened. It creates a capture, registers and
+uploads files, commits them, finalizes with a packet, follows events to a
+terminal status and reads the result, then runs controls that tamper with
+uploads, replay a create and read a capture that does not exist. Every check
+ends PASS, FAIL, BLOCKED or NOT_RUN and names how it ran.
 
-The frozen public surface is the adapter protocol in
-`src/hunter_local_ingest/adapter.py` (`AdapterInterface` v1). Backends are
-exercised through that interface only; nothing here imports backend code.
+The request bodies, response types, retry rules and header handling come from
+`ios/HouseScanKit/Sources/HouseScanKit` at alpha `263827ef`
+(`Upload/CaptureAPI.swift`, `Upload/CaptureUploader.swift`,
+`Upload/ScopedCaptureHTTP.swift`, `CaptureResult/CaptureResult.swift`,
+`Processing/FixtureCaptureHTTP.swift`). No backend code, schema or test is
+copied here.
 
-## Privacy posture
-
-Everything the harness sends and records is synthetic by construction:
-
-- Fixtures are seeded noise under `fixtures/` (`gen_synthetic_packet.py`); the
-  same seed reproduces the same plan byte for byte.
-- Receipts carry statuses, field names, digest prefixes, timings, synthetic ids
-  and allowlisted scalar values only. No private source, schemas, specs, raw
-  logs, signed URLs or credentials appear in any receipt.
-- A self-check sweeps its own receipts for leaks (`https://`, `Signature=`,
-  `Authorization`, raw content) before reporting green.
-
-## Layout
-
-- `adapter.py` — `AdapterInterface` v1 + sanitized `Observation`/`StepResult`.
-  `context` is transient and never serialized.
-- `http_client.py` — the direct HTTP client implementing the interface.
-- `modes.py` — `Transport` (REAL_MIRROR_CPU | FAKE_HUNTER | GPU_STUB) and
-  `Status` (PASS | FAIL | BLOCKED | NOT_RUN).
-- `scenarios/` — the only place PASS/FAIL is decided. Each check's oracle names
-  its public derivation; expectations refined from local observations are
-  marked `provisional` until a real backend baseline confirms them.
-- `controls.py` — negative controls: idempotent create replay, corrupt upload,
-  truncated upload, wrong-capture isolation.
-- `faultproxy.py` — labeled FAKE_HUNTER fault injection (latency, canned
-  statuses, truncation, aborts) with `harness_*` codes that can never collide
-  with published contract codes. Fault results never substitute for a passing
-  real check.
-- `receipts.py` — `run-manifest.json`, append-only `checks.jsonl`,
-  `summary.json`. Run directories are never overwritten or merged.
-- `traces.py` + `traces/expected-lifecycle-v1.jsonl` — versioned, frozen
-  expected traces (status class + required field names, subset semantics).
-  New contract versions get a new file; v1 is never edited.
-- `selfcheck.py` — in-process plumbing fake (explicitly NOT backend evidence)
-  that exercises the full lifecycle, controls, fault round, receipt writing,
-  trace comparison and leak sweep.
-- `runner.py` — the CLI entry point against a live endpoint.
-
-## Install
-
-Two supported installs:
+## Install and run
 
 ```bash
-# repo-prescribed editable install (development; unit tests use this)
-python -m venv .venv && .venv/bin/pip install -e '.[dev]'
+python -m venv .venv && .venv/bin/pip install -e '.[dev]'   # development
+python -m venv .venv && .venv/bin/pip install .             # what a user gets
 
-# non-editable install (what a downstream user gets)
-python -m venv .venv && .venv/bin/pip install .
-```
-
-A non-editable install ships the frozen traces as package data (the
-`traces/*.jsonl` glob in `pyproject.toml`), so `hunter-selfcheck` can run
-without the repo checkout once the trace lives under the installed package.
-Status gate:
-`tests/test_packaging.py::TestInstalledSelfcheck::test_installed_selfcheck_exits_zero`
-pins that end state; at this head it is xfail because the self-check still
-resolves the trace only at the tool root (`parents[2]`), which a
-non-editable install does not have — that loader change is coordinated
-separately. The installed `hunter-local-ingest` runner has no such dependency
-and works from a plain install today (the packaging tests prove it over
-subprocesses). The fixture generator stays a repo script: the installed
-package reads only plan files passed with `--plan-file`.
-
-## Usage
-
-```bash
-python -m venv .venv && .venv/bin/pip install -e '.[dev]'
-
-# 1. deterministic synthetic plan
-python fixtures/gen_synthetic_packet.py --seed 1 --out runs/fixtures/synthetic-plan.json
-
-# 2. run against a live local endpoint (…/v1 base URL)
-hunter-local-ingest \
-  --endpoint http://127.0.0.1:8000/v1 \
-  --plan-file runs/fixtures/synthetic-plan.json \
-  --backend-mode REAL_MIRROR_CPU --backend-ref <sha> --client-ref <sha> \
-  --seed 1 --out runs --label real-local --with-faults
-
-# 3. plumbing self-check (no endpoint needed)
-hunter-selfcheck --out runs/selfcheck
-
-# 4. unit tests
+hunter-gen-plan --seed 1 --out plan.json        # or: python fixtures/gen_synthetic_packet.py
+hunter-local-ingest --endpoint http://127.0.0.1:8000/v1 --plan-file plan.json \
+    --backend-mode REAL_API --backend-ref <sha> --out runs --with-faults
+hunter-verify-run runs/<run-dir>                # re-check a finished run on its own
+hunter-selfcheck                                # everything above against the in-process fake
 pytest -q
 ```
 
-Runner exit codes: 0 all pass; 1 at least one FAIL; 2 usage/argument error
-(argparse) or a BLOCKED run (e.g. unreachable endpoint); 3 the plan file does
-not match the generator schema. Plan-file diagnostics are converted to the
-exit code and are not currently printed.
+`--restart-argv-json '["cmd", "arg"]'` adds a restart-recovery check: the
+harness runs the command without a shell, waits for the endpoint, and reads
+the baseline capture again. Without it that check is NOT_RUN.
 
-## Receipt contract
+Exit codes: 0 every executed check passed; 1 a check failed; 2 usage error;
+3 the plan was refused; 4 nothing failed but something was blocked; 5 the
+receipts themselves failed (schema, privacy screen, missing file, integrity),
+which outranks the others.
 
-Each `checks.jsonl` line: `id`, `transport`, `oracle`, `expected`, `observed`
-(sanitized), `status`, optional `evidence`, `ts`. The summary aggregates counts
-by transport, carries lead questions and blocked notes. `summary.json` never
-restate raw response bodies — digest prefixes (`body_sha256=…`) are the audit
-trail.
+## What a label means
 
-Mechanics, per run directory:
+- `REAL_API`: the client exchanged HTTP with an endpoint the operator declared
+  real. The harness cannot see whether the backend ran its CPU stages, which
+  models it used or which ref it is; the summary always records
+  `real_mirror_cpu: NOT_ESTABLISHED` and `backend_verified: false`.
+- `FAKE_HUNTER`: the in-process fake (`fakeapi.py`) or the fault proxy
+  (`faultproxy.py`). It shows the client reacts to a condition and is never
+  evidence about a backend.
+- `GPU_STUB`: the `objects`, `vlm` and `dense` arms, named and always NOT_RUN.
 
-- `run-manifest.json` — label, declared backend mode, refs, fixture identity
-  and seed, and the full command line. Written once, before any check runs.
-- `checks.jsonl` — append-only, one JSON object per check, flushed per line;
-  a second writer appends, never truncates.
-- `summary.json` — counts by transport, lead questions, blocked notes and
-  notes; rewritten at the end of the run.
+BLOCKED means the check could not be decided, and NOT_RUN means it was
+deliberately skipped. Neither counts as a pass, and the frozen-trace check
+reports such rows as not comparable rather than agreeing.
 
-Run directories are second-resolution stamps under `--out` and are never
-overwritten or merged: a name collision refuses to run (exit 3), and absent
-`--out` parents are created. Observations never carry raw response bodies —
-digest prefixes, field names and allowlisted scalar values only.
+## The synthetic plan
 
-## Label vocabulary (what a receipt row may claim)
+`fixturegen.py` writes seeded noise files, two seeded CSV streams, the
+published `CreateRequest`, and a Packet04 packet whose `source.kind` is
+`synthetic` with no keyframes. A different seed changes every file's bytes.
+The runner's loader (`plan.py`) refuses any plan whose digests do not
+recompute from the bytes it read, whose paths are not the generator's, or
+whose create body or packet differ from the published shapes. Each control
+and fault check uses its own derived packet id, so none of them can land on
+the baseline capture.
 
-Every check row carries a `transport` label:
+## Receipts
 
-- `REAL_MIRROR_CPU` — the operator's declaration for the endpoint under test
-  (`--backend-mode`). The harness never verifies the declaration: run against
-  any endpoint with `--backend-mode REAL_MIRROR_CPU` and every main-round row
-  claims REAL_MIRROR_CPU. The label records what was declared, not what the
-  endpoint is.
-- `FAKE_HUNTER` — the self-check's plumbing fake and the `--with-faults`
-  fault-proxy round. These rows are never evidence of real backend behavior,
-  and fault results never substitute for a passing real check.
-- `GPU_STUB` — named arms (`objects`, `vlm`, `dense`) recorded NOT_RUN; they
-  execute only under explicit operator authorization.
+Each run gets a new directory (exclusive `mkdir`, random run id) holding
+exactly five files:
 
-Statuses are PASS / FAIL / BLOCKED / NOT_RUN. The summary aggregates counts
-per transport, so a fake-backed run is always distinguishable from a
-real-declared one by its rows.
+| File | Contents |
+| --- | --- |
+| `run-manifest.json` | declared backend mode and ref; digest of the package source that ran, plus git HEAD and a digest of the uncommitted diff when run from a checkout; fixture digests; the command with every value rendered by type; runtime; settings |
+| `checks.jsonl` | one line per check: id, transport, status, the oracle and expectation (package constants looked up by id), and the observed record |
+| `summary.json` | verdict, counts, failed/blocked/not-run ids, digests of the manifest and checks |
+| `privacy-screen.json` | the pattern screen's findings over the three files above, run after the summary exists |
+| `privacy-chain.jsonl` | a SHA-256 chain over every artifact's final bytes |
 
-## GPU arms
+Values reach these files only through typed schemas (`export.py`). A string
+must be a published enum word, a package constant, a digest, or a path or
+packet id the plan declared. Server identifiers become `id:<12 hex>`, unknown
+words `unrecognized:<12 hex>`, and unexpected paths and keys become digests,
+so a disagreement stays visible without its content. Homeowner messages,
+prompts, signed URLs and raw bodies are never recorded. Recorded commands
+keep this program's flags typed (an endpoint as `host:port` only when it is
+loopback, paths as `<path>`) and turn every other value into `<value>`, or
+`***` after a credential-named flag. A value outside its schema stops the run
+with exit 5 before it is written.
 
-GPU-stubbed arms (`objects`, `vlm`, `dense`) are recorded as named NOT_RUN
-checks. They execute only under explicit operator authorization; no run in
-this package claims GPU, phone, or safety accuracy.
+The pattern screen (`sanitize.py`) is the second layer. It cannot recognize a
+bare word-shaped secret, which is why the schemas come first.
+
+What the integrity check proves: the chain, the read-only modes and
+`hunter-verify-run` detect an edit made after the run, such as a changed
+byte, a broken link, a writable, extra or missing file. They do not stop the
+directory's owner from rewriting a file, recomputing the chain and sealing
+it again. The chain head is printed when the run ends; recording it
+somewhere the run cannot write is the only anchor.
+
+## Layout
+
+| Module | Role |
+| --- | --- |
+| `netpolicy.py` | the one rule for which hosts are loopback and which URLs may be used |
+| `contract.py` | published vocabularies and one strict decoder per response |
+| `http_client.py` | the client: transient retries, API-only credential, exact signed PUT headers |
+| `scenarios/` | lifecycle, controls, fault round; the only place PASS/FAIL is decided |
+| `scenarios/oracles.py` | every check id with its oracle and expectation |
+| `traces/` | frozen expectations; v2 is current, v1 is kept unedited |
+| `export.py`, `receipts.py`, `verify.py` | schemas, writing and sealing, independent re-check |
+| `fakeapi.py`, `faultproxy.py` | FAKE_HUNTER plumbing with knobs to misbehave |
+| `provenance.py` | source digest, git state, runtime |

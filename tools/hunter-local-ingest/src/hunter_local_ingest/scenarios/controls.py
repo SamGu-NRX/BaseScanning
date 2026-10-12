@@ -1,235 +1,255 @@
-"""Control scenarios: does the client harness catch what it claims to catch.
+"""Controls: prepared wrong conditions the client must detect.
 
-Every check here has a deliberately prepared wrong condition. The control
-PASSES when the harness (client + this scenario logic) detects the wrong
-condition, and FAILS when it sails through — a FAIL means the harness is
-blind, whatever the backend did.
+A control PASSes when the wrong condition is detected and the rest of the
+capture behaves as the contract says. Each control runs under its own
+derived packet id (plan.derive), so it never touches the baseline capture.
 
-`captureId` values for wrong-capture reads are minted in-harness (prefixed
-`bogus-`), never scraped from any real system.
+The integrity controls tamper with one file and leave the others intact.
+They require the intact files to come back committed and the tampered one
+to be refused, so a server that commits nothing cannot pass.
 """
 
 from __future__ import annotations
 
-import hashlib
+import subprocess
+from collections.abc import Callable, Sequence
 
 from ..adapter import HunterIngestAdapter
+from ..contract import (
+    decode_commit,
+    decode_create,
+    decode_errors,
+    decode_events,
+    decode_register,
+    decode_result,
+    digest12,
+    pub_id,
+)
 from ..modes import Status, Transport
-from . import CapturePlan, record, step_observed
-
-
-def _safe_list(result, key: str) -> list:
-    if result.observation and result.observation.safe_values:
-        value = result.observation.safe_values.get(key)
-        return value if isinstance(value, list) else []
-    return []
-
-
-def _safe_value(result, key: str):
-    if result.observation and result.observation.safe_values:
-        return result.observation.safe_values.get(key)
-    return None
+from ..plan import CapturePlan, PlanFile
+from . import is_2xx, record, step_view
+from .lifecycle import LifecycleOutcome
 
 
 def run_controls(
-    adapter: HunterIngestAdapter,
-    plan_a: CapturePlan,
-    transport: Transport,
-    sink: list,
-    *,
-    restart_command: str | None = None,
+    adapter: HunterIngestAdapter, plan: CapturePlan, transport: Transport, sink
 ) -> None:
-    """Client-harness controls around idempotency, byte integrity, capture isolation."""
-
-    # -- control: idempotent create -----------------------------------------
-    res1 = adapter.create(plan_a.create_request, plan_a.packet_id)
-    res2 = (
-        adapter.create(plan_a.create_request, plan_a.packet_id)
-        if not res1.error
-        else res1
-    )
-    first_id = _safe_value(res1, "captureId")
-    second_id = _safe_value(res2, "captureId")
-    if res1.error or res2.error:
-        observed = res1.error or res2.error or ""
-        record(
-            sink,
-            transport,
-            "control.idempotent-create",
-            "published CaptureUploader: create runs once per packetId under "
-            "Idempotency-Key=packetId; a repeated create must not mint a second capture "
-            "(provisional until backend baseline confirms answer codes)",
-            "same captureId (or the published replay code) on repeat",
-            f"transport: {observed}",
-            Status.BLOCKED,
-        )
-    elif first_id and second_id and first_id == second_id:
-        record(
-            sink,
-            transport,
-            "control.idempotent-create",
-            "published CaptureUploader: create runs once per packetId under "
-            "Idempotency-Key=packetId; a repeated create must not mint a second capture "
-            "(provisional until backend baseline confirms answer codes)",
-            "same captureId (or the published replay code) on repeat",
-            f"both creates returned captureId (identical: {first_id == second_id}); "
-            f"second create status {res2.http_status}",
-            Status.PASS,
-        )
-    else:
-        record(
-            sink,
-            transport,
-            "control.idempotent-create",
-            "published CaptureUploader: create runs once per packetId under "
-            "Idempotency-Key=packetId; a repeated create must not mint a second capture "
-            "(provisional until backend baseline confirms answer codes)",
-            "same captureId (or the published replay code) on repeat",
-            f"create #1 -> {first_id}, create #2 -> {second_id} (status {res2.http_status})",
-            Status.FAIL,
-        )
-
-    # -- control: corrupted upload rejected at commit -------------------------
-    status_val, observed = _integrity_control(adapter, plan_a, corrupt=True)
-    record(
-        sink,
+    _idempotent_create(adapter, plan.derive("idem"), transport, sink)
+    _integrity(
+        adapter,
+        plan.derive("corrupt"),
         transport,
+        sink,
         "control.corrupt-upload",
-        "CommitResponse separates committed from mismatch/notFound; flipped bytes "
-        "must never be reported committed",
-        "corrupt file NOT committed (mismatch/notFound/error)",
-        observed,
-        status_val,
+        lambda b: bytes([b[0] ^ 0xFF]) + b[1:],
     )
+    _integrity(
+        adapter,
+        plan.derive("truncated"),
+        transport,
+        sink,
+        "control.truncated-upload",
+        lambda b: b[:-1],
+    )
+    _wrong_capture(adapter, plan, transport, sink)
 
-    # -- control: truncated upload rejected at commit -------------------------
-    status_val, observed = _integrity_control(adapter, plan_a, corrupt=False, truncate=True)
+
+def _idempotent_create(adapter, plan: CapturePlan, transport, sink) -> None:
+    first = adapter.create(plan.create_body, plan.packet_id)
+    second = adapter.create(plan.create_body, plan.packet_id) if not first.error else first
+    if first.error or second.error:
+        record(
+            sink,
+            transport,
+            "control.idempotent-create",
+            Status.BLOCKED,
+            {"first": step_view(first), "second": step_view(second)},
+        )
+        return
+    d1 = decode_create(first.parsed) if is_2xx(first) else None
+    d2 = decode_create(second.parsed) if is_2xx(second) else None
+    id1 = d1.data["captureId"] if d1 is not None and d1.ok else None
+    id2 = d2.data["captureId"] if d2 is not None and d2.ok else None
+    same = id1 is not None and id1 == id2
     record(
         sink,
         transport,
-        "control.truncated-upload",
-        "CommitResponse separates committed from mismatch/notFound; a truncated "
-        "upload must never be reported committed",
-        "truncated file NOT committed (mismatch/notFound/error)",
-        observed,
-        status_val,
+        "control.idempotent-create",
+        Status.PASS if same else Status.FAIL,
+        {"first": step_view(first, d1), "second": step_view(second, d2), "same_capture": same},
+        second.observation,
     )
 
-    # -- control: wrong-capture isolation -------------------------------------
-    bogus = f"bogus-{plan_a.packet_id[-8:]}"
+
+def _integrity(
+    adapter, plan: CapturePlan, transport, sink, check_id: str, tamper: Callable[[bytes], bytes]
+) -> None:
+    def blocked(view: dict) -> None:
+        record(sink, transport, check_id, Status.BLOCKED, view)
+
+    res = adapter.create(plan.create_body, plan.packet_id)
+    dec = decode_create(res.parsed) if is_2xx(res) else None
+    capture_id = dec.data["captureId"] if dec is not None and dec.ok else None
+    if not capture_id:
+        blocked({"step": "create", **step_view(res, dec)})
+        return
+    declared = plan.declared_paths
+    paths = [f.path for f in plan.files]
+    # Registration promises the ORIGINAL bytes; the PUT carries tampered ones.
+    res = adapter.register(capture_id, [f.register_entry() for f in plan.files])
+    dec = decode_register(res.parsed, paths, declared) if is_2xx(res) else None
+    if dec is None or not dec.ok or dec.data["committed"]:
+        blocked({"step": "register", **step_view(res, dec)})
+        return
+    victim: PlanFile = plan.files[0]
+    tampered_status = None
+    for f in plan.files:
+        target = dec.data["targets"][f.path]
+        body = tamper(f.content) if f is victim else f.content
+        put = adapter.upload(target["url"], body, target["headers"])
+        if put.error:
+            blocked({"step": "upload", **step_view(put)})
+            return
+        if f is victim:
+            tampered_status = put.http_status
+        elif not is_2xx(put):
+            blocked({"step": "upload", **step_view(put)})
+            return
+    res = adapter.commit(capture_id, [f.commit_entry() for f in plan.files])
+    if res.error:
+        blocked({"step": "commit", **step_view(res)})
+        return
+    dec = decode_commit(res.parsed, paths, declared) if is_2xx(res) else None
+    committed = set(dec.data["committed"]) if dec is not None else set()
+    reported = dec is not None and victim.path in set(dec.data["mismatch"]) | set(
+        dec.data["notFound"]
+    )
+    put_refused = tampered_status is not None and not (200 <= tampered_status < 300)
+    intact = {f.path for f in plan.files if f is not victim}
+    ok = (
+        dec is not None
+        and dec.ok
+        and intact <= committed
+        and victim.path not in committed
+        and (reported or put_refused)
+    )
+    record(
+        sink,
+        transport,
+        check_id,
+        Status.PASS if ok else Status.FAIL,
+        {
+            **step_view(res, dec),
+            "tampered": victim.path,
+            "tampered_put_status": tampered_status,
+            "tampered_committed": victim.path in committed,
+            "tampered_reported": reported,
+            "intact_committed": intact <= committed,
+        },
+        res.observation,
+    )
+
+
+def _wrong_capture(adapter, plan: CapturePlan, transport, sink) -> None:
+    # An id the harness invents: it has never been sent to any server.
+    bogus = f"bogus-{digest12(plan.packet_id + ':wrong-capture')}"
     res = adapter.result(bogus)
-    res_status = res.http_status
-    ok = res.error is None and res_status is not None and res_status >= 400
     if res.error:
-        record(
-            sink,
-            transport,
-            "control.wrong-capture",
-            "CaptureAPI.captureGone handling: reads against a nonexistent capture "
-            "return a non-2xx answer, never data (provisional)",
-            "non-2xx on result read for a bogus id",
-            f"transport: {res.error}",
-            Status.BLOCKED,
-        )
-    else:
-        record(
-            sink,
-            transport,
-            "control.wrong-capture",
-            "CaptureAPI.captureGone handling: reads against a nonexistent capture "
-            "return a non-2xx answer, never data (provisional)",
-            "non-2xx on result read for a bogus id",
-            f"result read returned {res_status}",
-            Status.PASS if ok else Status.FAIL,
-        )
-
-    # -- control: restart recovery ----------------------------------------------
-    if restart_command:
-        record(
-            sink,
-            transport,
-            "control.restart-recovery",
-            "published run guidance: a restarted local backend must still answer "
-            "for existing captures",
-            "post-restart events read answers 2xx for the earlier capture",
-            "not exercised in this run: restart harness lands with the baseline run",
-            Status.NOT_RUN,
-        )
-    else:
-        record(
-            sink,
-            transport,
-            "control.restart-recovery",
-            "published run guidance: a restarted local backend must still answer "
-            "for existing captures",
-            "post-restart events read answers 2xx for the earlier capture",
-            "not run: no --restart-command given",
-            Status.NOT_RUN,
-        )
+        record(sink, transport, "control.wrong-capture", Status.BLOCKED, step_view(res))
+        return
+    codes = decode_errors(res.parsed).data["codes"]
+    ok = res.http_status == 404 and "capture_not_found" in codes
+    record(
+        sink,
+        transport,
+        "control.wrong-capture",
+        Status.PASS if ok else Status.FAIL,
+        {**step_view(res), "capture": pub_id(bogus)},
+        res.observation,
+    )
 
 
-def _integrity_control(
+def run_restart_control(
     adapter: HunterIngestAdapter,
-    plan: CapturePlan,
+    baseline: LifecycleOutcome,
+    transport: Transport,
+    sink,
     *,
-    corrupt: bool,
-    truncate: bool = False,
-) -> tuple[Status, str]:
-    """Full mini-lifecycle for one tampered file; decision made at commit."""
-    res = adapter.create(plan.create_request, plan.packet_id)
-    capture_id = _safe_value(res, "captureId")
-    if res.error or not capture_id:
-        return Status.BLOCKED, f"create step unavailable: {step_observed(res)}"
+    restart_argv: Sequence[str] | None,
+    timeout_s: float,
+    wait_ready: Callable[[], bool],
+) -> None:
+    """Restart the backend with the operator's command, then re-read the baseline.
 
-    descriptors = []
-    contents: dict[str, bytes] = {}
-    for path, content in plan.files:
-        # Descriptors describe the ORIGINAL content (what registration
-        # promised); the PUT carries tampered bytes — the network-corruption
-        # simulation the control exists for.
-        tampered = content
-        if corrupt:
-            tampered = bytes([content[0] ^ 0xFF]) + content[1:]
-        if truncate:
-            tampered = tampered[:-1]
-        contents[path] = tampered
-        descriptors.append(
-            {
-                "path": path,
-                "role": plan.roles.get(path, "mesh"),
-                "sha256": hashlib.sha256(content).hexdigest(),
-                "bytes": len(content),
-            }
+    The command runs without a shell, with stdin, stdout and stderr
+    discarded: its output is never evidence. Only its exit code is kept.
+    """
+    check_id = "control.restart-recovery"
+    if not restart_argv:
+        record(sink, transport, check_id, Status.NOT_RUN, {"note": "restart-not-configured"})
+        return
+    if not (baseline.result_passed and baseline.capture_id and baseline.terminal_status):
+        record(sink, transport, check_id, Status.BLOCKED, {"note": "baseline-incomplete"})
+        return
+    try:
+        proc = subprocess.run(  # noqa: S603 - argv list, no shell
+            list(restart_argv),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout_s,
+            check=False,
         )
-
-    res = adapter.register(capture_id, descriptors)
-    ctx = res.context or {}
-    targets = ctx.get("upload_targets") or []
-    if res.error or not targets:
-        return Status.BLOCKED, f"register step unavailable: {step_observed(res)}"
-
-    for (path, _), target in zip(
-            plan.files, targets, strict=False
-        ):  # a count mismatch fails at commit  # a count mismatch fails at commit
-        res = adapter.upload(
-            capture_id, path, contents[path], target.get("url", ""), target.get("headers")
+    except subprocess.TimeoutExpired:
+        record(sink, transport, check_id, Status.BLOCKED, {"note": "restart-timeout"})
+        return
+    except OSError:
+        record(sink, transport, check_id, Status.BLOCKED, {"note": "restart-failed"})
+        return
+    if proc.returncode != 0:
+        record(
+            sink,
+            transport,
+            check_id,
+            Status.BLOCKED,
+            {"note": "restart-failed", "exit_code": proc.returncode},
         )
-        if res.error or not (res.http_status and 200 <= res.http_status < 300):
-            return Status.BLOCKED, f"upload step unavailable for {path}: {step_observed(res)}"
-
-    res = adapter.commit(capture_id, descriptors)
-    if res.error:
-        return Status.BLOCKED, f"commit transport error: {res.error}"
-    committed = _safe_list(res, "committed")
-    mismatch = _safe_list(res, "mismatch")
-    not_found = _safe_list(res, "notFound")
-    res_status = res.http_status
-    if res_status and 400 <= res_status < 500:
-        return Status.PASS, f"commit answered {res_status} for the tampered file"
-    if not committed:
-        return Status.PASS, f"commit answered {res_status}, committed={committed}, " \
-            f"mismatch={mismatch}, notFound={not_found}"
-    return Status.FAIL, (
-        f"tampered file reported committed={committed} "
-        f"(mismatch={mismatch}, notFound={not_found})"
+        return
+    if not wait_ready():
+        record(
+            sink, transport, check_id, Status.BLOCKED, {"note": "endpoint-not-back", "exit_code": 0}
+        )
+        return
+    events = adapter.events(baseline.capture_id, 0, 0)
+    edec = decode_events(events.parsed, after=0, run_id=baseline.run_id) if is_2xx(events) else None
+    result = adapter.result(baseline.capture_id)
+    rdec = decode_result(result.parsed) if is_2xx(result) else None
+    if events.error or result.error:
+        record(
+            sink,
+            transport,
+            check_id,
+            Status.BLOCKED,
+            {"exit_code": 0, "after_restart": [step_view(events), step_view(result)]},
+        )
+        return
+    status_ok = edec is not None and edec.ok and edec.data["status"] == baseline.terminal_status
+    run_ok = (
+        rdec is not None
+        and rdec.ok
+        and rdec.data["runId"] == baseline.run_id
+        and rdec.data["status"] == baseline.terminal_status
+    )
+    record(
+        sink,
+        transport,
+        check_id,
+        Status.PASS if status_ok and run_ok else Status.FAIL,
+        {
+            "exit_code": 0,
+            "status_matches": status_ok,
+            "run_matches": run_ok,
+            "after_restart": [step_view(events, edec), step_view(result, rdec)],
+        },
+        result.observation,
     )

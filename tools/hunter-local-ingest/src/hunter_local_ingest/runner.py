@@ -1,228 +1,410 @@
-"""Runner: end-to-end harness execution with full receipts.
+"""hunter-local-ingest: run the published-client checks against one endpoint.
 
-Usage (against a live local endpoint):
-  python -m hunter_local_ingest.runner \\
-      --endpoint http://127.0.0.1:8000/v1 \\
-      --plan-file runs/fixtures/synthetic-plan.json \\
-      --backend-mode REAL_MIRROR_CPU \\
-      --backend-ref <commit-sha> \\
-      --client-ref <harness-sha> \\
-      --seed 1 --out runs --label real-local
+  hunter-local-ingest --endpoint http://127.0.0.1:8000/v1 \\
+      --plan-file plan.json --backend-mode REAL_API --out runs
 
-Exit codes: 0 all checks passed; 1 at least one FAIL (or BLOCKED on a
-passing-capable check); 2 endpoint unreachable / harness blocked; 3 bad
-invocation.
+Exit codes:
+  0  every executed check passed and none was blocked (NOT_RUN rows, such
+     as the GPU arms, are listed in the summary)
+  1  at least one check failed
+  2  usage error
+  3  the plan file was refused
+  4  no check failed, but at least one was blocked (an unreachable
+     endpoint, a step that never answered)
+  5  the receipts themselves failed: a value outside the export schema, a
+     privacy-screen finding, a missing artifact or an integrity problem.
+     This outranks every other code.
+
+Earlier versions used 2 for both a usage error and a blocked run, so a
+caller could not tell a typo from an unreachable backend.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
+import re
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
+from . import __version__
 from .adapter import INTERFACE_VERSION
-from .faultproxy import serve, wait_tcp
+from .export import LEAD_QUESTIONS, MANIFEST_SCHEMA, ORIGIN_NOTE, SANITIZATION_NOTE, ExportError
+from .faultproxy import wait_tcp
 from .http_client import DirectHttpClient
 from .modes import Status, Transport
+from .netpolicy import EndpointError, parse_api_base
+from .plan import LoadedPlan, PlanError, load_plan
+from .provenance import git_state, runtime, source_sha256
 from .receipts import (
     ChecksSink,
     ChecksWriter,
+    context_for,
     fresh_run_dir,
+    utc_now,
     write_run_manifest,
     write_summary,
 )
-from .scenarios import (
-    CapturePlan,
-    PrefixedSink,
-    gpu_stub_lines,
-    unreachable_lines,
-)
-from .scenarios.controls import run_controls
-from .scenarios.lifecycle import run_lifecycle
+from .sanitize import redact_argv, safe_failure
+from .scenarios import gpu_stub_lines, record, unreachable_lines
+from .scenarios.controls import run_controls, run_restart_control
+from .scenarios.faults import run_fault_round
+from .scenarios.lifecycle import LifecycleOutcome, run_lifecycle
+from .traces import compare_trace, load_trace
 
-ORIGIN_NOTE = (
-    "Derived from published client behavior in HouseScanKit upload sources @ alpha "
-    "263827ef and public result-schema documentation; refined only by sanitized "
-    "local-run observations. No private source, schema, spec, log or credential "
-    "material appears in this package or its receipts."
-)
+PROGRAM = "hunter-local-ingest"
+EXIT_PASS, EXIT_FAIL, EXIT_USAGE, EXIT_PLAN, EXIT_BLOCKED, EXIT_RECEIPTS = 0, 1, 2, 3, 4, 5
 
-LEAD_QUESTIONS = [
-    "Amendment semantics: does the published contract allow amending a registered "
-    "capture, and with which route/headers? (open question, no invented field or enum)",
-    "Local-run auth mode: which credential form does the local backend expect from the "
-    "published client? (open question, no invented header)",
-    "Clock/expiry authority: whose clock governs capture expiry on the local backend? "
-    "(open question, no invented retry budget)",
-    "Homeowner-text redaction: confirm the receipts' value allowlist matches the "
-    "privacy bar for any homeowner-adjacent response fields. (open question)",
-]
+# Every flag and the type of its value, for argv redaction and its re-check.
+FLAG_KINDS = {
+    "--endpoint": "endpoint",
+    "--plan-file": "path",
+    "--out": "path",
+    "--label": "label",
+    "--backend-mode": "enum:REAL_API|FAKE_HUNTER",
+    "--backend-ref": "ref",
+    "--client-ref": "ref",
+    "--seed": "int",
+    "--result-budget-s": "float",
+    "--poll-interval-s": "float",
+    "--events-wait-s": "int",
+    "--max-retries": "int",
+    "--retry-backoff-s": "float",
+    "--restart-argv-json": "argv-json",
+    "--restart-timeout-s": "float",
+    "--with-faults": "flag",
+    "-h": "flag",
+    "--help": "flag",
+}
+_REQUIRED = ("--endpoint", "--plan-file", "--backend-mode")
+_LABEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")
+_REF_RE = re.compile(r"^[0-9a-f]{7,40}$")
 
 
-def _load_plan(path: Path, seed: int) -> CapturePlan:
-    raw = json.loads(path.read_text(encoding="utf-8"))
+def _bounded(kind, low, high):
+    def parse(text: str):
+        try:
+            value = kind(text)
+        except ValueError:
+            raise argparse.ArgumentTypeError("invalid") from None
+        if isinstance(value, float) and not math.isfinite(value):
+            raise argparse.ArgumentTypeError("invalid")
+        if not (low <= value <= high):
+            raise argparse.ArgumentTypeError("invalid")
+        return value
+
+    return parse
+
+
+def _pattern(regex: re.Pattern[str]):
+    def parse(text: str) -> str:
+        if not regex.match(text):
+            raise argparse.ArgumentTypeError("invalid")
+        return text
+
+    return parse
+
+
+def _argv_json(text: str) -> list[str]:
     try:
-        plan_raw = raw["plan"]
-        files = [(f["path"], bytes.fromhex(f["content_hex"])) for f in plan_raw["files"]]
-        return CapturePlan(
-            packet_id=plan_raw["packet_id"],
-            create_request=plan_raw["create_request"],
-            files=files,
-            roles=plan_raw.get("roles", {}),
-            packet=bytes.fromhex(plan_raw["packet_hex"]),
-        )
-    except (KeyError, TypeError, ValueError) as exc:
-        raise SystemExit(
-            f"3: plan file {path} does not match the generator schema ({exc}); "
-            "produce it with fixtures/gen_synthetic_packet.py"
-        ) from exc
+        value = json.loads(text)
+    except json.JSONDecodeError:
+        raise argparse.ArgumentTypeError("invalid") from None
+    if (
+        not isinstance(value, list)
+        or not 1 <= len(value) <= 32
+        or not all(isinstance(v, str) and v and "\0" not in v and len(v) <= 4096 for v in value)
+    ):
+        raise argparse.ArgumentTypeError("invalid")
+    return value
 
 
-def run(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="hunter-local-ingest", description=__doc__)
-    parser.add_argument("--endpoint", required=True, help="capture API base URL (…/v1)")
-    parser.add_argument("--plan-file", required=True, help="plan JSON from the fixture generator")
-    parser.add_argument("--out", default="runs", help="output root for run directories")
-    parser.add_argument("--label", default="run", help="label for the run directory")
+class _Parser(argparse.ArgumentParser):
+    """argparse whose errors never quote the offending value."""
+
+    def __init__(self, argv: Sequence[str], **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._argv = list(argv)
+
+    def error(self, message: str):  # argparse override
+        self.print_usage(sys.stderr)
+        category = _usage_category(message, self._argv)
+        print(f"{PROGRAM}: {safe_failure(self._argv, category, FLAG_KINDS)}", file=sys.stderr)
+        raise SystemExit(EXIT_USAGE)
+
+
+def _usage_category(message: str, argv: Sequence[str]) -> str:
+    if message.startswith("the following arguments are required"):
+        present = {tok.partition("=")[0] for tok in argv}
+        missing = [flag for flag in _REQUIRED if flag not in present]
+        return f"usage:missing:{missing[0]}" if missing else "usage:missing"
+    if message.startswith("unrecognized arguments"):
+        return "usage:unrecognized-arguments"
+    match = re.match(r"^argument (--?[a-z][a-z0-9-]*)", message)
+    if match and match.group(1) in FLAG_KINDS:
+        return f"usage:invalid-value:{match.group(1)}"
+    return "usage:invalid"
+
+
+def build_parser(argv: Sequence[str]) -> argparse.ArgumentParser:
+    parser = _Parser(
+        argv, prog=PROGRAM, description="Published-client checks against one endpoint."
+    )
+    parser.add_argument(
+        "--endpoint", required=True, help="capture API base URL, e.g. http://127.0.0.1:8000/v1"
+    )
+    parser.add_argument(
+        "--plan-file", required=True, help="plan from fixtures/gen_synthetic_packet.py"
+    )
+    parser.add_argument(
+        "--out", default="runs", help="root for run directories (created if absent)"
+    )
+    parser.add_argument(
+        "--label",
+        default="run",
+        type=_pattern(_LABEL_RE),
+        help="run directory label: letters, digits, . _ -",
+    )
     parser.add_argument(
         "--backend-mode",
         required=True,
-        choices=[m.value for m in (Transport.REAL_MIRROR_CPU, Transport.FAKE_HUNTER)],
-        help=(
-            "honest transport class of the endpoint under test; the operator declares it "
-            "and every receipt row of the main round carries it"
-        ),
+        choices=["REAL_API", "FAKE_HUNTER"],
+        help="what the operator declares the endpoint to be; recorded as declared, never verified",
     )
-    parser.add_argument("--backend-ref", default=None, help="commit SHA of the backend under test")
-    parser.add_argument("--client-ref", default=None, help="commit SHA of the harness client")
-    parser.add_argument("--seed", type=int, default=1, help="fixture seed for reproducibility")
-    parser.add_argument("--result-budget-s", type=float, default=1500.0, help="polling budget")
-    parser.add_argument("--poll-interval-s", type=float, default=2.0)
+    parser.add_argument("--backend-ref", type=_pattern(_REF_RE), help="backend commit (hex)")
+    parser.add_argument("--client-ref", type=_pattern(_REF_RE), help="client commit (hex)")
     parser.add_argument(
-        "--restart-command", default=None, help="command that restarts the local backend"
+        "--seed",
+        type=_bounded(int, 0, 2**31 - 1),
+        help="if given, must equal the plan's generator seed",
     )
+    parser.add_argument("--result-budget-s", type=_bounded(float, 0.1, 86400), default=1500.0)
+    parser.add_argument("--poll-interval-s", type=_bounded(float, 0.0, 3600), default=2.0)
     parser.add_argument(
-        "--with-faults", action="store_true", help="also run the FAKE_HUNTER fault round"
+        "--events-wait-s",
+        type=_bounded(int, 0, 3600),
+        default=20,
+        help="events long-poll wait; 20 is CaptureUploader.Policy.eventsWait",
     )
-    args = parser.parse_args(argv)
-
-    plan = _load_plan(Path(args.plan_file), args.seed)
-    round_transport = Transport(args.backend_mode)
-
-    run_dir = fresh_run_dir(Path(args.out), args.label)
-    commands = [
-        "hunter-local-ingest " + " ".join(argv or sys.argv[1:]),
-    ]
-    write_run_manifest(
-        run_dir,
-        endpoint=args.endpoint,
-        backend_ref=args.backend_ref,
-        backend_mode=args.backend_mode,
-        client_ref=args.client_ref,
-        adapter_interface=INTERFACE_VERSION,
-        fixture_identity=f"gen_synthetic_packet seed={args.seed}",
-        seed=args.seed,
-        commands=commands,
-        label=args.label,
-        origin_note=ORIGIN_NOTE,
+    parser.add_argument("--max-retries", type=_bounded(int, 0, 10), default=2)
+    parser.add_argument("--retry-backoff-s", type=_bounded(float, 0.0, 600), default=1.0)
+    parser.add_argument(
+        "--restart-argv-json",
+        type=_argv_json,
+        help='restart command as a JSON array, run without a shell: ["cmd", "arg"]',
     )
+    parser.add_argument("--restart-timeout-s", type=_bounded(float, 1.0, 3600), default=120.0)
+    parser.add_argument(
+        "--with-faults",
+        action="store_true",
+        help="also run the FAKE_HUNTER fault round through a local proxy",
+    )
+    return parser
 
-    writer = ChecksWriter(run_dir)
+
+def _manifest(args, argv: Sequence[str], loaded: LoadedPlan, run_id: str, label: str) -> dict:
+    plan = loaded.plan
+    return {
+        "schema": MANIFEST_SCHEMA,
+        "run_id": run_id,
+        "label": label,
+        "created_utc": utc_now(),
+        "endpoint": parse_api_base(args.endpoint).label,
+        "backend": {
+            "declared_mode": args.backend_mode,
+            "verified": False,
+            "declared_ref": args.backend_ref,
+        },
+        "client": {
+            "package_version": __version__,
+            "interface": INTERFACE_VERSION,
+            "source_sha256": source_sha256(),
+            "git": git_state(),
+            "declared_ref": args.client_ref,
+        },
+        "fixture": {
+            "generator": "gen_synthetic_packet",
+            "format_version": loaded.format_version,
+            "seed": loaded.seed,
+            "plan_file_sha256": loaded.plan_file_sha256,
+            "plan_sha256": loaded.plan_sha256,
+            "packet_id": plan.packet_id,
+            "packet_sha256": loaded.packet_sha256,
+            "create_sha256": loaded.create_sha256,
+            "files": [
+                {
+                    "path": f.path,
+                    "bytes": len(f.content),
+                    "sha256": f.sha256,
+                    "role": f.role,
+                    "contentType": f.content_type,
+                }
+                for f in plan.files
+            ],
+        },
+        "command": redact_argv(argv, FLAG_KINDS),
+        "restart": {
+            "configured": bool(args.restart_argv_json),
+            "argv": redact_argv(args.restart_argv_json or []),
+            "timeout_s": args.restart_timeout_s,
+        },
+        "runtime": runtime(),
+        "settings": {
+            "result_budget_s": args.result_budget_s,
+            "poll_interval_s": args.poll_interval_s,
+            "events_wait_s": args.events_wait_s,
+            "max_retries": args.max_retries,
+            "retry_backoff_s": args.retry_backoff_s,
+            "with_faults": args.with_faults,
+        },
+        "origin_note": ORIGIN_NOTE,
+        "sanitization": SANITIZATION_NOTE,
+    }
+
+
+def _exception_category(exc: BaseException) -> str:
+    name = type(exc).__name__
+    known = {"AssertionError", "KeyError", "TypeError", "ValueError", "OSError", "RuntimeError"}
+    return f"exception:{name}" if name in known else "exception:other"
+
+
+def run(argv: Sequence[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    args = build_parser(argv).parse_args(argv)
+
+    try:
+        parse_api_base(args.endpoint)
+    except EndpointError as exc:
+        print(
+            f"{PROGRAM}: {safe_failure(argv, f'endpoint:{exc.code}', FLAG_KINDS)}", file=sys.stderr
+        )
+        return EXIT_USAGE
+    try:
+        loaded = load_plan(Path(args.plan_file), args.seed)
+    except PlanError as exc:
+        # field and problem are this package's fixed text; never the value
+        print(f"{PROGRAM}: error: plan refused: {exc.field}: {exc.problem}", file=sys.stderr)
+        return EXIT_PLAN
+    plan = loaded.plan
+    ctx = context_for(plan.declared_paths, plan.packet_id)
+    transport = Transport(args.backend_mode)
+
+    run_dir, run_id = fresh_run_dir(Path(args.out), args.label)
+    receipts_error: str | None = None
+    try:
+        write_run_manifest(
+            run_dir, _manifest(args, argv, loaded, run_id, args.label), ctx, FLAG_KINDS
+        )
+    except ExportError as exc:
+        receipts_error = f"export {exc.artifact}{exc.pointer}: {exc.category}"
+
+    writer = ChecksWriter(run_dir, ctx)
     sink = ChecksSink(writer)
 
-    # endpoint reachability gate
-    if not wait_tcp(args.endpoint, timeout_s=10.0):
-        detail = f"endpoint {args.endpoint} unreachable (TCP) within 10s"
-        for line in unreachable_lines(detail, round_transport):
-            sink.append(line)
-        gpu_stub_lines(sink)
-        write_summary(run_dir, sink.checks, lead_questions=LEAD_QUESTIONS, blocked=[detail])
-        writer.close()
-        print(f"BLOCKED: {detail}")
-        return 2
-
-    client = DirectHttpClient(args.endpoint)
-
-    # Main round: the endpoint under test, at the transport class the
-    # operator declared for it.
-    run_lifecycle(
-        client,
-        plan,
-        round_transport,
-        sink,
-        result_budget_s=args.result_budget_s,
-        poll_interval_s=args.poll_interval_s,
-    )
-    run_controls(
-        client,
-        plan,
-        round_transport,
-        sink,
-        restart_command=args.restart_command,
-    )
-
-    # GPU_STUB vocabulary lines: named arms, never executed unless authorized.
-    gpu_stub_lines(sink)
-
-    # FAKE_HUNTER fault round through the proxy, same client, labeled. A
-    # distinct packet id keeps it an independent capture rather than an
-    # accidental replay of the real round; the prefixed sink keeps its
-    # receipt lines distinct from the main round's.
-    if args.with_faults:
-        plan_fh = CapturePlan(
-            packet_id=plan.packet_id + "-fh",
-            create_request=dict(plan.create_request),
-            files=list(plan.files),
-            roles=dict(plan.roles),
-            packet=plan.packet,
+    def client_for(url: str, **overrides) -> DirectHttpClient:
+        return DirectHttpClient(
+            url,
+            max_retries=overrides.get("max_retries", args.max_retries),
+            retry_backoff_s=overrides.get("retry_backoff_s", args.retry_backoff_s),
         )
-        proxy = serve(args.endpoint, {"create": {"kind": "delay", "ms": 300}})
+
+    if receipts_error is None:
         try:
-            proxied = DirectHttpClient(proxy.base_url)
-            run_lifecycle(
-                proxied,
-                plan_fh,
-                Transport.FAKE_HUNTER,
-                PrefixedSink(sink, "fault."),
-                result_budget_s=min(args.result_budget_s, 120.0),
-                poll_interval_s=args.poll_interval_s,
+            _run_checks(args, plan, transport, sink, client_for)
+        except ExportError as exc:
+            receipts_error = f"export {exc.artifact}{exc.pointer}: {exc.category}"
+        except Exception as exc:  # a harness bug: recorded, never swallowed
+            record(
+                sink,
+                transport,
+                "harness.internal-error",
+                Status.FAIL,
+                {"note": "harness-exception", "exception": _exception_category(exc)},
             )
         finally:
-            proxy.stop()
+            writer.close()
+    else:
+        writer.close()
 
-    writer.close()
-
-    checks = sink.checks
-    any_fail = any(c.status is Status.FAIL for c in checks)
-    any_blocked = any(c.status is Status.BLOCKED for c in checks)
-    blocked_notes = [
-        f"{c.id}: {c.observed}" for c in checks if c.status is Status.BLOCKED
-    ]
-    write_summary(
+    report = write_summary(
         run_dir,
-        checks,
+        run_id,
+        sink.checks,
+        declared_backend=args.backend_mode,
         lead_questions=LEAD_QUESTIONS,
-        blocked=blocked_notes,
+        ctx=ctx,
     )
-    print(f"run complete: {run_dir}")
-    counts = {}
-    for c in checks:
-        counts[c.status.value] = counts.get(c.status.value, 0) + 1
-    print("counts: " + json.dumps(counts, sort_keys=True))
-    if any_fail:
-        return 1
-    if any_blocked:
-        return 2
-    return 0
+    counts: dict[str, int] = {}
+    for check in sink.checks:
+        counts[check.status.value] = counts.get(check.status.value, 0) + 1
+    print(f"run dir: {run_dir}")
+    print(f"verdict: {report.verdict} counts: {json.dumps(counts, sort_keys=True)}")
+    print(f"chain head: {report.chain_head}")
+    if receipts_error or not report.receipts_ok:
+        problems = [receipts_error] if receipts_error else []
+        problems += [f"screen {f}" for f in report.screen_findings]
+        problems += [f"integrity {p}" for p in report.integrity]
+        print(f"receipts: FAILED ({len(problems)} problem(s))", file=sys.stderr)
+        for problem in problems[:20]:
+            print(f"  {problem}", file=sys.stderr)
+        return EXIT_RECEIPTS
+    print("receipts: screened clean, chained, sealed")
+    if report.verdict == "FAIL":
+        return EXIT_FAIL
+    if report.verdict == "BLOCKED":
+        return EXIT_BLOCKED
+    return EXIT_PASS
+
+
+def _run_checks(args, plan, transport: Transport, sink, client_for) -> None:
+    baseline = LifecycleOutcome()
+    if not wait_tcp(args.endpoint, timeout_s=10.0):
+        unreachable_lines(sink, transport)
+    else:
+        client = client_for(args.endpoint)
+        baseline = run_lifecycle(
+            client,
+            plan,
+            transport,
+            sink,
+            result_budget_s=args.result_budget_s,
+            poll_interval_s=args.poll_interval_s,
+            events_wait_s=args.events_wait_s,
+        )
+        run_controls(client, plan, transport, sink)
+        if args.with_faults:
+            run_fault_round(
+                args.endpoint,
+                plan,
+                sink,
+                client_factory=client_for,
+                result_budget_s=min(args.result_budget_s, 120.0),
+                poll_interval_s=args.poll_interval_s,
+                events_wait_s=args.events_wait_s,
+            )
+    comparison = compare_trace(sink.checks, load_trace(), transport)
+    record(sink, transport, "trace.expected-lifecycle-v2", comparison.status, comparison.public())
+    if baseline.capture_id is not None:
+        run_restart_control(
+            client_for(args.endpoint),
+            baseline,
+            transport,
+            sink,
+            restart_argv=args.restart_argv_json,
+            timeout_s=args.restart_timeout_s,
+            wait_ready=lambda: wait_tcp(args.endpoint, timeout_s=60.0),
+        )
+    else:
+        note = "restart-not-configured" if not args.restart_argv_json else "baseline-incomplete"
+        status = Status.NOT_RUN if not args.restart_argv_json else Status.BLOCKED
+        record(sink, transport, "control.restart-recovery", status, {"note": note})
+    gpu_stub_lines(sink)
 
 
 def main() -> int:
-    try:
-        return run()
-    except SystemExit as exc:  # argparse + plan errors
-        code = exc.code if isinstance(exc.code, int) else 3
-        return code
+    return run()
 
 
 if __name__ == "__main__":

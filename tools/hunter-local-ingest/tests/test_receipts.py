@@ -1,488 +1,439 @@
-"""Unit tests for receipts, trace comparison, sanitization and fixtures.
-
-The decisive test is the planted-drift mutation: the frozen-trace
-comparator must flag a deliberately wrong expectation, proving the
-self-check's trace gate actually bites.
-"""
+"""Receipts, integrity, traces, fixtures, the plan loader and runner exit codes."""
 
 from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
-import sys
+import socket
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
+from conftest import FAST, only_run_dir, read_checks, run_cli
 
-from hunter_local_ingest.adapter import Observation, StepResult
+from hunter_local_ingest import receipts
+from hunter_local_ingest.fixturegen import build, write_plan
 from hunter_local_ingest.modes import Status, Transport
-from hunter_local_ingest.receipts import Check, ChecksWriter, fresh_run_dir, write_summary
-from hunter_local_ingest.scenarios import record, step_observed
-from hunter_local_ingest.traces import compare_trace
+from hunter_local_ingest.observations import Observation
+from hunter_local_ingest.plan import PlanError, canonical_digest, load_plan
+from hunter_local_ingest.receipts import Check, fresh_run_dir, verify_run_integrity
+from hunter_local_ingest.traces import compare_trace, load_trace
 
-TOOL_ROOT = Path(__file__).resolve().parents[1]
-TRACE_V1 = TOOL_ROOT / "traces" / "expected-lifecycle-v1.jsonl"
-
-
-def _check(check_id: str, http_status: int, fields: tuple, status: Status = Status.PASS):
-    return Check(
-        id=check_id,
-        transport=Transport.REAL_MIRROR_CPU,
-        oracle="test oracle",
-        expected="test expectation",
-        observed="http 200; fields=…",
-        status=status,
-        observation=Observation(
-            http_status=http_status,
-            field_names=fields,
-            safe_values={"status": "ok"},
-            body_sha256="ab" * 32,
-            body_bytes=10,
-            elapsed_ms=3,
-            detail=None,
-        ),
-    )
+# -- run directories ----------------------------------------------------------
 
 
-def _run_checks() -> list[Check]:
-    """A minimal run consistent with the frozen trace's lifecycle lines."""
-    return [
-        _check("lifecycle.health", 200, ("status",)),
-        _check("lifecycle.create", 201, ("captureId", "status")),
-        _check("lifecycle.register", 200, ("files",)),
-        _check("lifecycle.upload", 200, ()),
-        _check("lifecycle.commit", 200, ("committed",)),
-        _check("lifecycle.finalize", 202, ("status",)),
-        _check("lifecycle.events", 200, ("next",)),
-        _check(
-            "lifecycle.result",
-            200,
-            ("schema_version",),
-        ),
-        _check("control.idempotent-create", 201, ()),
-        _check("control.corrupt-upload", 200, ()),
-        _check("control.truncated-upload", 200, ()),
-        _check("control.wrong-capture", 200, ()),
-    ]
+def test_run_dirs_are_unique_within_one_second(tmp_path):
+    first, id1 = fresh_run_dir(tmp_path, "run")
+    second, id2 = fresh_run_dir(tmp_path, "run")
+    assert first != second and id1 != id2
 
 
-class TestTraceComparison:
-    def test_conforming_run_has_no_problems(self):
-        problems = compare_trace(
-            _run_checks(), TRACE_V1, Transport.REAL_MIRROR_CPU
-        )
-        # only advisory-capable lines may still disagree; assert none do here
-        assert [p for p in problems if not p.startswith("advisory:")] == []
-        assert not any("lifecycle.create" in p for p in problems)
-
-    def test_planted_field_drift_is_caught(self):
-        """Decisive: a planted wrong expectation must be flagged, not absorbed."""
-        checks = _run_checks()
-        # remove captureId from the create observation's fields
-        checks[1].observation = Observation(
-            http_status=201,
-            field_names=("captureId",),  # drift: 'status' missing
-            safe_values={"captureId": "cap-0001"},
-            body_sha256="ab" * 32,
-            body_bytes=10,
-            elapsed_ms=1,
-            detail=None,
-        )
-        problems = compare_trace(checks, TRACE_V1, Transport.REAL_MIRROR_CPU)
-        assert any("lifecycle.create" in p and "missing" in p for p in problems)
-
-    def test_planted_status_drift_is_caught(self):
-        checks = _run_checks()
-        checks[4].observation = Observation(
-            http_status=404,  # drift: commit answered 4xx
-            field_names=("committed",),
-            safe_values={},
-            body_sha256="ab" * 32,
-            body_bytes=10,
-            elapsed_ms=1,
-            detail=None,
-        )
-        problems = compare_trace(checks, TRACE_V1, Transport.REAL_MIRROR_CPU)
-        assert any("lifecycle.commit" in p and "not in class" in p for p in problems)
-
-    def test_failing_check_is_flagged(self):
-        checks = _run_checks()
-        checks[2].status = Status.FAIL
-        problems = compare_trace(checks, TRACE_V1, Transport.REAL_MIRROR_CPU)
-        assert any("lifecycle.register" in p and "FAILs" in p for p in problems)
-
-    def test_missing_check_is_flagged(self):
-        checks = [c for c in _run_checks() if c.id != "lifecycle.result"]
-        problems = compare_trace(checks, TRACE_V1, Transport.REAL_MIRROR_CPU)
-        assert any("lifecycle.result missing from run" in p for p in problems)
-
-    def test_provisional_mismatch_is_advisory_only(self):
-        checks = _run_checks()
-        # lifecycle.result is provisional: even a hard field mismatch stays advisory
-        checks[7].observation = Observation(
-            http_status=200,
-            field_names=(),
-            safe_values={},
-            body_sha256="ab" * 32,
-            body_bytes=10,
-            elapsed_ms=1,
-            detail=None,
-        )
-        problems = compare_trace(checks, TRACE_V1, Transport.REAL_MIRROR_CPU)
-        assert any(p.startswith("advisory: ") and "lifecycle.result" in p for p in problems)
-        assert not any(
-            "lifecycle.result" in p and not p.startswith("advisory: ") for p in problems
-        )
-
-    def test_other_transport_checks_are_ignored(self):
-        """FAKE_HUNTER lines must not satisfy REAL_MIRROR_CPU trace lines."""
-        checks = [c for c in _run_checks()]
-        for c in checks:
-            c.transport = Transport.FAKE_HUNTER
-        problems = compare_trace(checks, TRACE_V1, Transport.REAL_MIRROR_CPU)
-        assert any("missing from run" in p for p in problems)
+def test_run_dir_is_never_reused(tmp_path, monkeypatch):
+    monkeypatch.setattr(receipts.secrets, "token_hex", lambda n: "0" * 16)
+    fresh_run_dir(tmp_path, "run")
+    with pytest.raises(FileExistsError):
+        fresh_run_dir(tmp_path, "run")
 
 
-class TestReceipts:
-    def test_fresh_run_dir_refuses_replay_into_existing_dir(self, tmp_path):
-        run_dir = fresh_run_dir(tmp_path, "run")
-        assert run_dir.exists()
-        with pytest.raises(SystemExit, match="refusing to overwrite"):
-            fresh_run_dir(tmp_path, "run")
+def test_checks_file_is_created_exclusively(tmp_path):
+    (tmp_path / "checks.jsonl").write_text("earlier\n")
+    with pytest.raises(FileExistsError):
+        receipts.ChecksWriter(tmp_path, receipts.ExportContext())
+    assert (tmp_path / "checks.jsonl").read_text() == "earlier\n"
 
-    def test_check_json_never_carries_raw_observation(self):
-        check = _check("lifecycle.create", 201, ("captureId", "status"))
-        out = check.as_json()
-        assert "observation" not in out
-        assert set(out) == {"id", "transport", "oracle", "expected", "observed", "status", "ts"}
-        # reserialized shape is stable for the receipt contract
-        assert out["status"] == "PASS"
-        assert out["transport"] == "REAL_MIRROR_CPU"
 
-    def test_evidence_field_only_when_present(self):
-        none = _check("lifecycle.health", 200, ("status",)).as_json()
-        assert "evidence" not in none
-        with_ev = _check("lifecycle.health", 200, ("status",))
-        with_ev.evidence = "steps/health.json"
-        assert with_ev.as_json()["evidence"] == "steps/health.json"
-
-    def test_summary_counts_by_transport(self, tmp_path):
-        checks = _run_checks() + [
-            Check(
-                id="gpu-stub.vlm",
-                transport=Transport.GPU_STUB,
-                oracle="task vocabulary",
-                expected="not run",
-                observed="not run",
-                status=Status.NOT_RUN,
+@pytest.fixture()
+def finished_run(fake, plan_path, tmp_path) -> Path:
+    out = tmp_path / "runs"
+    with fake() as api:
+        assert (
+            run_cli(
+                [
+                    "--endpoint",
+                    api.base_url,
+                    "--plan-file",
+                    str(plan_path),
+                    "--out",
+                    str(out),
+                    "--backend-mode",
+                    "FAKE_HUNTER",
+                    *FAST,
+                ]
             )
-        ]
-        write_summary(tmp_path, checks, lead_questions=[], blocked=[])
-        summary = json.loads((tmp_path / "summary.json").read_text())
-        assert summary["counts_by_transport"]["GPU_STUB"] == {"NOT_RUN": 1}
-        assert summary["counts_by_transport"]["REAL_MIRROR_CPU"]["PASS"] == 12
-
-    def test_fresh_run_dir_creates_absent_parents(self, tmp_path):
-        """Absent --out parents are created (mkdir parents=True), not a crash."""
-        root = tmp_path / "deep" / "nested"
-        run_dir = fresh_run_dir(root, "run")
-        assert run_dir.is_dir()
-        assert run_dir.parent == root
-
-    def test_checks_writer_appends_across_instances(self, tmp_path):
-        """checks.jsonl is append-only: a second writer must not truncate."""
-        writer_a = ChecksWriter(tmp_path)
-        writer_a.write(_check("lifecycle.health", 200, ("status",)))
-        writer_a.close()
-        writer_b = ChecksWriter(tmp_path)
-        writer_b.write(_check("lifecycle.create", 201, ("captureId", "status")))
-        writer_b.close()
-        lines = [
-            json.loads(line)
-            for line in (tmp_path / "checks.jsonl").read_text().splitlines()
-            if line.strip()
-        ]
-        assert [line["id"] for line in lines] == ["lifecycle.health", "lifecycle.create"]
-
-    def test_summary_carries_blocked_notes_and_questions(self, tmp_path):
-        write_summary(
-            tmp_path,
-            [],
-            lead_questions=["q1"],
-            blocked=["lifecycle.health: endpoint unreachable"],
-            notes=["advisory note"],
+            == 0
         )
-        summary = json.loads((tmp_path / "summary.json").read_text())
-        assert summary["blocked"] == ["lifecycle.health: endpoint unreachable"]
-        assert summary["lead_questions"] == ["q1"]
-        assert summary["notes"] == ["advisory note"]
+    run_dir = only_run_dir(out)
+    assert verify_run_integrity(run_dir) == []
+    return run_dir
 
 
-class TestSanitization:
-    def test_step_observed_only_carries_allowlisted_pieces(self):
-        obs = Observation(
-            http_status=201,
-            field_names=("captureId", "status"),
-            safe_values={"captureId": "cap-0001", "status": "capturing"},
-            body_sha256="ab" * 32,
-            body_bytes=42,
-            elapsed_ms=7,
-            detail=None,
-        )
-        text = step_observed(StepResult(step="health", ok=True, observation=obs))
-        assert "http 201" in text and "captureId" in text
-        assert "body_sha256=abababababab" in text  # 12-char digest prefix
-        # no raw body bytes, no full digest, no signed URL shape
-        assert "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" not in text.replace("body_sha256=", "", 1)
-        assert "https://" not in text and "Signature=" not in text
-
-    def test_step_observed_prefers_transport_error(self):
-        text = step_observed(StepResult(step="health", ok=False, error="RemoteDisconnected"))
-        assert text == "RemoteDisconnected"
-
-    def test_record_accepts_stepresult_and_keeps_observation_in_process(self):
-        sink: list = []
-        obs = Observation(
-            http_status=200,
-            field_names=("status",),
-            safe_values={"status": "ok"},
-            body_sha256="cd" * 32,
-            body_bytes=5,
-            elapsed_ms=2,
-            detail=None,
-        )
-        status = record(
-            sink,
-            Transport.REAL_MIRROR_CPU,
-            "lifecycle.health",
-            "oracle",
-            "expected",
-            StepResult(step="health", ok=True, observation=obs),
-            Status.PASS,
-        )
-        assert status is Status.PASS
-        line = sink[0]
-        assert line["observation"] is obs  # in-process only
-        assert "body_sha256=" in line["observed"]
-        # ...but the serialized receipt never carries it
-        check = Check(
-            id=line["id"],
-            transport=Transport(line["transport"]),
-            oracle=line["oracle"],
-            expected=line["expected"],
-            observed=line["observed"],
-            status=Status(line["status"]),
-            evidence=line.get("evidence"),
-            observation=line.get("observation"),
-        )
-        assert "observation" not in check.as_json()
+def test_tamper_after_seal_is_detected(finished_run):
+    checks = finished_run / "checks.jsonl"
+    checks.chmod(0o644)
+    checks.write_text(checks.read_text() + "{}\n")
+    problems = verify_run_integrity(finished_run)
+    assert "checks.jsonl: modified after chain entry" in problems
+    assert "checks.jsonl: differs from the digest in the summary" in problems
+    assert "checks.jsonl: not sealed (writable)" in problems
 
 
-class TestProxyStepRouting:
-    def test_step_for_maps_paths_to_steps(self):
-        from hunter_local_ingest.faultproxy import step_for
+def test_extra_file_and_broken_chain_are_detected(finished_run):
+    (finished_run / "notes.txt").write_text("x")
+    chain = finished_run / "privacy-chain.jsonl"
+    lines = chain.read_text().splitlines()
+    first = json.loads(lines[0])
+    first["sha256"] = "0" * 64
+    chain.chmod(0o644)
+    chain.write_text("\n".join([json.dumps(first, sort_keys=True), *lines[1:]]) + "\n")
+    chain.chmod(0o444)
+    problems = verify_run_integrity(finished_run)
+    assert "run-dir: 1 unexpected file(s)" in problems
+    assert any("chain break" in p for p in problems)
 
-        assert step_for("GET", "/healthz") == "health"
-        assert step_for("POST", "/captures") == "create"
-        assert step_for("POST", "/captures/cap-1/files") == "register"
-        assert step_for("PUT", "/uploads/token") == "upload"
-        assert step_for("POST", "/captures/cap-1/files:commit") == "commit"
-        assert step_for("POST", "/captures/cap-1/finalize") == "finalize"
-        assert step_for("GET", "/captures/cap-1/events") == "events"
-        assert step_for("GET", "/captures/cap-1/result") == "result"
-        assert step_for("GET", "/nonsense") == "unknown"
+
+def test_receipt_digests_match_the_files(finished_run):
+    summary = json.loads((finished_run / "summary.json").read_text())
+    for name, digest in summary["artifacts"].items():
+        assert hashlib.sha256((finished_run / name).read_bytes()).hexdigest() == digest
 
 
-class TestFixtureDeterminism:
-    def test_same_seed_reproduces_identical_plan(self, tmp_path):
-        gen = TOOL_ROOT / "fixtures" / "gen_synthetic_packet.py"
-        outs = []
-        for i in (1, 2):
-            out = tmp_path / f"plan-{i}.json"
-            subprocess.run(
-                [sys.executable, str(gen), "--seed", "7", "--out", str(out)],
-                check=True,
-                cwd=TOOL_ROOT,
-            )
-            import hashlib
+# -- frozen traces ---------------------------------------------------------------
 
-            outs.append(hashlib.sha256(out.read_bytes()).hexdigest())
-        assert outs[0] == outs[1], "same seed must reproduce the plan byte for byte"
 
-    def test_different_seed_changes_content(self, tmp_path):
-        gen = TOOL_ROOT / "fixtures" / "gen_synthetic_packet.py"
-        digests = set()
+def _check(check_id, status=Status.PASS, http=200, fields=()):
+    obs = Observation(http_status=http, field_names=tuple(fields))
+    return Check(check_id, Transport.REAL_API, status, {}, obs)
 
-        for seed in ("1", "2"):
-            out = tmp_path / f"plan-{seed}.json"
-            subprocess.run(
-                [sys.executable, str(gen), "--seed", seed, "--out", str(out)],
-                check=True,
-                cwd=TOOL_ROOT,
-            )
-            plan = json.loads(out.read_text())
-            digests.add(plan["plan"]["packet_id"])
-        assert len(digests) == 2
 
-    def test_different_seed_keeps_same_paths_and_sizes(self, tmp_path):
-        """Seed variation must not perturb the plan's shape - only content."""
-        plans = [
-            json.loads(_generate_plan(tmp_path, seed=seed).read_text())
-            for seed in ("1", "2")
-        ]
-        shape1 = [(f["path"], f["bytes"], f["role"]) for f in plans[0]["plan"]["files"]]
-        shape2 = [(f["path"], f["bytes"], f["role"]) for f in plans[1]["plan"]["files"]]
-        assert shape1 == shape2, "seed variation must not change paths, sizes or roles"
-        assert plans[0]["plan"]["packet_id"] != plans[1]["plan"]["packet_id"]
+def _conforming():
+    fields = {line["id"]: line["field_names"] or () for line in load_trace()}
+    http = {"control.wrong-capture": 404}
+    return [_check(i, http=http.get(i, 200), fields=f) for i, f in fields.items()]
 
-    @pytest.mark.xfail(
-        reason=(
-            "gen_synthetic_packet.noise_bytes reseeds from sha256(path-tag) alone, so "
-            "different --seed values produce identical file bytes; only packet_id "
-            "varies (recon S3r) and the manifest's fixture_identity seed=N overstates "
-            "content variation. The fix belongs to the generator (protocol child's "
-            "file - cross-file ask). XPASS(strict) once it lands: remove this marker."
+
+def test_trace_is_package_data_and_v1_is_kept():
+    assert len(load_trace()) == 12
+    assert load_trace("expected-lifecycle-v1.jsonl")[0]["id"] == "lifecycle.health"
+
+
+def test_conforming_run_agrees_with_the_trace():
+    result = compare_trace(_conforming(), load_trace(), Transport.REAL_API)
+    assert result.status is Status.PASS and result.compared == 12
+
+
+@pytest.mark.parametrize(
+    ("mutate", "kind"),
+    [
+        (lambda cs: cs.pop(1), "missing-from-run"),
+        (lambda cs: setattr(cs[2], "status", Status.FAIL), "status-fail"),
+        (
+            lambda cs: setattr(
+                cs[4],
+                "observation",
+                Observation(http_status=404, field_names=("committed", "mismatch", "notFound")),
+            ),
+            "http-class",
         ),
-        strict=True,
-    )
-    def test_different_seed_changes_file_bytes(self, tmp_path):
-        """Decisive recon S3r check: file bytes must be derived from --seed."""
-        plans = [
-            json.loads(_generate_plan(tmp_path, seed=seed).read_text())
-            for seed in ("1", "2")
-        ]
-        hex1 = {f["path"]: f["content_hex"] for f in plans[0]["plan"]["files"]}
-        hex2 = {f["path"]: f["content_hex"] for f in plans[1]["plan"]["files"]}
-        assert hex1 != hex2, "fixture file bytes must vary with --seed, not just packet_id"
-
-    def test_generator_digest_binds_plan_bytes(self, tmp_path):
-        """The recorded plan digest must bind the emitted plan bytes."""
-        plan = json.loads(_generate_plan(tmp_path, seed="5").read_text())
-        recorded = plan["generator"]["sha256_of_plan"]
-        plan["generator"]["sha256_of_plan"] = None
-        blob = json.dumps(plan, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        assert hashlib.sha256(blob).hexdigest() == recorded
+        (
+            lambda cs: setattr(
+                cs[1], "observation", Observation(http_status=201, field_names=("captureId",))
+            ),
+            "fields-missing",
+        ),
+        (lambda cs: setattr(cs[0], "observation", None), "no-observation"),
+    ],
+)
+def test_trace_disagreements_are_caught(mutate, kind):
+    checks = _conforming()
+    mutate(checks)
+    result = compare_trace(checks, load_trace(), Transport.REAL_API)
+    assert result.status is Status.FAIL
+    assert kind in {k for _i, k in result.disagreements}
 
 
-def _generate_plan(tmp_path: Path, seed: str = "3") -> Path:
-    gen = TOOL_ROOT / "fixtures" / "gen_synthetic_packet.py"
-    out = tmp_path / "plan.json"
-    subprocess.run(
-        [sys.executable, str(gen), "--seed", seed, "--out", str(out)],
-        check=True,
-        cwd=TOOL_ROOT,
-    )
-    return out
+@pytest.mark.parametrize("status", [Status.BLOCKED, Status.NOT_RUN])
+def test_blocked_or_not_run_never_reads_as_agreement(status):
+    checks = _conforming()
+    checks[5].status = status
+    result = compare_trace(checks, load_trace(), Transport.REAL_API)
+    assert result.status is Status.BLOCKED
+    assert result.not_comparable == (("lifecycle.finalize", status.value),)
 
 
-class TestRunnerAgainstReachableEndpoint:
-    """The full runner CLI against a reachable local endpoint.
+def test_fake_rows_never_satisfy_a_real_trace():
+    checks = _conforming()
+    for check in checks:
+        check.transport = Transport.FAKE_HUNTER
+    result = compare_trace(checks, load_trace(), Transport.REAL_API)
+    assert result.status is Status.FAIL and result.compared == 0
 
-    The self-check drives scenarios in-process; these tests drive the actual
-    runner (argparse → receipts → exit codes) over real HTTP so the
-    reachable path — not just the unreachable probe — is exercised.
-    """
 
-    @pytest.fixture()
-    def fake_server(self):
-        import threading
-        from http.server import ThreadingHTTPServer
+# -- fixtures and the plan loader ------------------------------------------------
 
-        from hunter_local_ingest.selfcheck import _FakeState, build_fake_handler
 
-        holder = {"base": ""}
-        state = _FakeState()
-        handler = build_fake_handler(holder)
-        server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
-        server.state = state  # type: ignore[attr-defined]
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        host, port = server.server_address[:2]
-        holder["base"] = f"http://127.0.0.1:{port}"
-        yield holder["base"]
-        server.shutdown()
-        thread.join(timeout=5)
+def test_same_seed_same_bytes_and_different_seed_different_file_bytes(tmp_path):
+    a1, a2 = tmp_path / "a1.json", tmp_path / "a2.json"
+    write_plan(a1, seed=1)
+    write_plan(a2, seed=1)
+    assert a1.read_bytes() == a2.read_bytes()
+    one, two = build(1, 3, 4), build(2, 3, 4)
+    files1 = {f["path"]: f for f in one["plan"]["files"]}
+    files2 = {f["path"]: f for f in two["plan"]["files"]}
+    assert files1.keys() == files2.keys()
+    for path in files1:
+        assert files1[path]["bytes"] == files2[path]["bytes"] or path.startswith("streams/")
+        assert files1[path]["content_hex"] != files2[path]["content_hex"], path
+    assert one["plan"]["packet_sha256"] != two["plan"]["packet_sha256"]
 
-    def test_full_runner_exit_zero_with_fake_labeled_rows(self, fake_server, tmp_path):
-        from hunter_local_ingest.runner import run as runner_run
 
-        plan = _generate_plan(tmp_path)
+def test_fixture_digest_binds_the_emitted_bytes(tmp_path, plan_path):
+    loaded = load_plan(plan_path)
+    assert loaded.plan_file_sha256 == hashlib.sha256(plan_path.read_bytes()).hexdigest()
+    document = json.loads(plan_path.read_text())
+    assert canonical_digest(document) == loaded.plan_sha256
+    for f in loaded.plan.files:
+        assert f.sha256 == hashlib.sha256(f.content).hexdigest()
+    assert loaded.packet_sha256 == hashlib.sha256(loaded.plan.packet).hexdigest()
+
+
+def _flip(content_hex: str) -> str:
+    data = bytes.fromhex(content_hex)
+    return (bytes([data[0] ^ 0xFF]) + data[1:]).hex()
+
+
+def _rewrite(path: Path, mutate) -> None:
+    document = json.loads(path.read_text())
+    mutate(document)
+    document["generator"]["sha256_of_plan"] = canonical_digest(document)
+    path.write_text(json.dumps(document))
+
+
+@pytest.mark.parametrize(
+    ("mutate", "field"),
+    [
+        (
+            lambda d: d["plan"]["files"][0].update(
+                content_hex=_flip(d["plan"]["files"][0]["content_hex"])
+            ),
+            "plan.files[0].sha256",
+        ),
+        (
+            lambda d: d["plan"]["files"][0].update(path="CANARY-path-0123/x.bin"),
+            "plan.files[0].path",
+        ),
+        (lambda d: d["plan"].update(packet_id="synthetic-000008"), "plan.packet_id"),
+        (lambda d: d["plan"]["create_request"].update(flow="free"), "plan.create_request.flow"),
+        (lambda d: d["plan"]["create_request"].update(extra=1), "plan.create_request"),
+        (lambda d: d["plan"].update(packet_sha256="0" * 64), "plan.packet_sha256"),
+        (lambda d: d["plan"]["files"].pop(), "packet.files"),
+    ],
+)
+def test_plan_loader_refuses(plan_path, mutate, field):
+    _rewrite(plan_path, mutate)
+    with pytest.raises(PlanError) as exc:
+        load_plan(plan_path)
+    assert exc.value.field == field
+
+
+def test_plan_digest_must_match(plan_path):
+    document = json.loads(plan_path.read_text())
+    document["plan"]["files"][0]["role"] = "keyframe"
+    plan_path.write_text(json.dumps(document))
+    with pytest.raises(PlanError) as exc:
+        load_plan(plan_path)
+    assert exc.value.field == "generator.sha256_of_plan"
+
+
+def test_seed_must_match_the_plan(plan_path):
+    with pytest.raises(PlanError) as exc:
+        load_plan(plan_path, expected_seed=8)
+    assert exc.value.problem == "differs from --seed"
+
+
+# -- runner exit codes -------------------------------------------------------------
+
+
+class _Always500(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, *args) -> None:
+        pass
+
+    def _reply(self) -> None:
+        body = b'{"errors":[{"code":"harness_forced_500"}]}'
+        self.send_response(500)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    do_GET = do_POST = do_PUT = _reply
+
+
+def test_exit_one_on_fail(plan_path, tmp_path):
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _Always500)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
         out = tmp_path / "runs"
-        code = runner_run(
+        code = run_cli(
             [
                 "--endpoint",
-                fake_server,
+                f"http://127.0.0.1:{server.server_address[1]}/v1",
                 "--plan-file",
-                str(plan),
+                str(plan_path),
                 "--out",
                 str(out),
-                "--label",
-                "runner-fake",
                 "--backend-mode",
-                "FAKE_HUNTER",
-                "--seed",
-                "3",
+                "REAL_API",
+                "--max-retries",
+                "0",
+                *FAST,
             ]
         )
-        assert code == 0, "runner must complete green against a reachable endpoint"
-        run_dir = next(out.iterdir())
-        lines = [
-            json.loads(line)
-            for line in (run_dir / "checks.jsonl").read_text().splitlines()
+    finally:
+        server.shutdown()
+        server.server_close()
+    assert code == 1
+    rows = read_checks(only_run_dir(out))
+    assert rows["lifecycle.health"]["status"] == "FAIL"
+    assert rows["lifecycle.create"]["status"] == "FAIL"
+    assert rows["lifecycle.register"]["status"] == "BLOCKED"
+
+
+def test_exit_four_when_blocked(plan_path, tmp_path):
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    out = tmp_path / "runs"
+    code = run_cli(
+        [
+            "--endpoint",
+            f"http://127.0.0.1:{port}/v1",
+            "--plan-file",
+            str(plan_path),
+            "--out",
+            str(out),
+            "--backend-mode",
+            "REAL_API",
+            *FAST,
         ]
-        # honest labeling: the fake endpoint may never produce a
-        # REAL_MIRROR_CPU row
-        assert all(line["transport"] != "REAL_MIRROR_CPU" for line in lines)
-        by_id = {line["id"]: line for line in lines}
-        for cid in (
-            "lifecycle.health",
-            "lifecycle.create",
-            "lifecycle.register",
-            "lifecycle.upload",
-            "lifecycle.commit",
-            "lifecycle.finalize",
-            "lifecycle.events",
-            "lifecycle.result",
-        ):
-            assert by_id[cid]["status"] == "PASS", (cid, by_id[cid]["observed"])
-        # GPU arms: named, never executed
-        for arm in ("objects", "vlm", "dense"):
-            assert by_id[f"gpu-stub.{arm}"]["status"] == "NOT_RUN"
+    )
+    assert code == 4
+    run_dir = only_run_dir(out)
+    summary = json.loads((run_dir / "summary.json").read_text())
+    assert summary["verdict"] == "BLOCKED" and "lifecycle.create" in summary["blocked"]
+    rows = read_checks(run_dir)
+    assert rows["trace.expected-lifecycle-v2"]["status"] == "BLOCKED"
+    assert rows["trace.expected-lifecycle-v2"]["observed"]["compared"] == 0
+    assert verify_run_integrity(run_dir) == []
 
-    def test_backend_mode_is_required(self, fake_server, tmp_path):
-        from hunter_local_ingest.runner import run as runner_run
 
-        plan = _generate_plan(tmp_path)
-        with pytest.raises(SystemExit) as excinfo:
-            runner_run(
+def test_exit_three_on_a_refused_plan(tmp_path, capsys):
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps({"plan": {}}))
+    assert (
+        run_cli(
+            [
+                "--endpoint",
+                "http://127.0.0.1:9/v1",
+                "--plan-file",
+                str(bad),
+                "--backend-mode",
+                "FAKE_HUNTER",
+                "--out",
+                str(tmp_path / "o"),
+            ]
+        )
+        == 3
+    )
+    assert "plan refused: plan-file: unexpected or missing keys" in capsys.readouterr().err
+    assert not (tmp_path / "o").exists()
+
+
+def test_exit_two_on_usage_errors(plan_path, capsys):
+    with pytest.raises(SystemExit) as exc:
+        run_cli(["--plan-file", str(plan_path), "--backend-mode", "FAKE_HUNTER"])
+    assert exc.value.code == 2
+    assert "usage:missing:--endpoint" in capsys.readouterr().err
+    assert (
+        run_cli(
+            [
+                "--endpoint",
+                "http://api.example/v1",
+                "--plan-file",
+                str(plan_path),
+                "--backend-mode",
+                "FAKE_HUNTER",
+            ]
+        )
+        == 2
+    )
+    assert "endpoint:base_insecure" in capsys.readouterr().err
+
+
+def test_exit_five_when_an_unsafe_value_reaches_the_receipt_boundary(
+    fake, plan_path, tmp_path, monkeypatch, capsys
+):
+    """Mutation control: break the decoder's redaction and the validator must stop it."""
+    from hunter_local_ingest import contract
+
+    monkeypatch.setattr(contract, "pub_id", lambda value: str(value))
+    out = tmp_path / "runs"
+    with fake() as api:
+        code = run_cli(
+            [
+                "--endpoint",
+                api.base_url,
+                "--plan-file",
+                str(plan_path),
+                "--out",
+                str(out),
+                "--backend-mode",
+                "FAKE_HUNTER",
+                *FAST,
+            ]
+        )
+    assert code == 5
+    err = capsys.readouterr().err
+    assert "receipts: FAILED" in err and "unsafe-string" in err
+    run_dir = only_run_dir(out)
+    assert "cap_fake" not in (run_dir / "checks.jsonl").read_text()
+
+
+def test_real_api_label_is_a_declaration(fake, plan_path, tmp_path):
+    out = tmp_path / "runs"
+    with fake() as api:
+        assert (
+            run_cli(
                 [
                     "--endpoint",
-                    fake_server,
+                    api.base_url,
                     "--plan-file",
-                    str(plan),
+                    str(plan_path),
                     "--out",
-                    str(tmp_path / "runs2"),
-                ]
-            )
-        # argparse usage error: the operator must declare the transport class
-        assert excinfo.value.code == 2
-
-    def test_backend_mode_rejects_unknown_class(self, fake_server, tmp_path):
-        from hunter_local_ingest.runner import run as runner_run
-
-        plan = _generate_plan(tmp_path)
-        with pytest.raises(SystemExit) as excinfo:
-            runner_run(
-                [
-                    "--endpoint",
-                    fake_server,
-                    "--plan-file",
-                    str(plan),
-                    "--out",
-                    str(tmp_path / "runs3"),
+                    str(out),
                     "--backend-mode",
-                    "unverified",
+                    "REAL_API",
+                    *FAST,
                 ]
             )
-        assert excinfo.value.code == 2
+            == 0
+        )
+    run_dir = only_run_dir(out)
+    manifest = json.loads((run_dir / "run-manifest.json").read_text())
+    summary = json.loads((run_dir / "summary.json").read_text())
+    assert manifest["backend"] == {
+        "declared_mode": "REAL_API",
+        "verified": False,
+        "declared_ref": None,
+    }
+    assert summary["mode"]["real_mirror_cpu"] == "NOT_ESTABLISHED"
+    assert summary["mode"]["gpu_arms"] == "NOT_RUN"
+    assert sorted(summary["not_run"]) == [
+        "control.restart-recovery",
+        "gpu-stub.dense",
+        "gpu-stub.objects",
+        "gpu-stub.vlm",
+    ]

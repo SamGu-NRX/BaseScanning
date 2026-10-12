@@ -1,31 +1,18 @@
-"""Installed-CLI and packaging tests: wheel -> temp venv -> subprocess.
+"""The shipped artifact: wheel -> scratch venv -> console scripts over subprocess.
 
-The unit suites import the package from the source tree (editable
-install). These tests prove the *shipped* artifact instead: build the
-wheel, install it into a scratch venv with no editable path and no
-index, then drive the installed console scripts over real subprocesses.
+The other suites import the source tree. These build the wheel, install it
+non-editable with no index into a scratch venv, and run the installed
+console scripts from a directory outside the source tree with PYTHONPATH
+removed, so nothing can resolve back to the checkout.
 
-Covered here (recon §5 gaps):
-  - installed ``hunter-selfcheck`` exits 0 on a non-editable install
-    (end state; xfail until the trace loader resolves package resources —
-    coordinated change in selfcheck.py, outside this child's scope)
-  - installed ``hunter-local-ingest`` arms a ``--with-faults`` round
-    against a reachable local endpoint
-  - exit-code propagation over subprocess: 2 usage error, 3 plan-file
-    schema error, 2 unreachable endpoint (BLOCKED), 1 forced FAIL
-  - absent ``--out`` parents are created, not a crash
-  - honest labeling survives the installed path: a fake endpoint under a
-    FAKE_HUNTER declaration never produces REAL_MIRROR_CPU rows
-
-Heavy by nature: ONE wheel build and ONE venv per pytest session
-(module-scoped fixtures), tests run serially by design (shared sandbox).
-The first wheel build may fetch setuptools from PyPI (build isolation);
-the wheel install itself is offline (``--no-index``).
+One wheel build and one venv per session. The wheel build may fetch
+setuptools (build isolation); the install itself is offline.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import socket
 import subprocess
 import sys
@@ -35,71 +22,306 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
+from conftest import canary
+
+from hunter_local_ingest.fakeapi import FakeApi
 
 TOOL_ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ("hunter-local-ingest", "hunter-selfcheck", "hunter-verify-run", "hunter-gen-plan")
+FAST = [
+    "--poll-interval-s",
+    "0.01",
+    "--events-wait-s",
+    "0",
+    "--retry-backoff-s",
+    "0",
+    "--result-budget-s",
+    "10",
+]
 
 
-# --------------------------------------------------------------------------
-# module-scoped fixtures: one wheel, one venv, two tiny in-process servers
-# --------------------------------------------------------------------------
+def _env() -> dict[str, str]:
+    env = {k: v for k, v in os.environ.items() if k not in {"PYTHONPATH", "PYTHONHOME"}}
+    env["PYTHONNOUSERSITE"] = "1"
+    return env
 
 
-@pytest.fixture(scope="module")
-def built_wheel(tmp_path_factory):
+@pytest.fixture(scope="session")
+def built_wheel(tmp_path_factory) -> Path:
     dist = tmp_path_factory.mktemp("wheel-dist")
     subprocess.run(
         [sys.executable, "-m", "pip", "wheel", "-q", "--no-deps", "-w", str(dist), str(TOOL_ROOT)],
         check=True,
-        cwd=TOOL_ROOT,
+        cwd=dist,
+        env=_env(),
+        timeout=300,
     )
     wheels = list(dist.glob("hunter_local_ingest-*.whl"))
-    assert wheels, "wheel build must produce the package wheel"
+    assert len(wheels) == 1
     return wheels[0]
 
 
-@pytest.fixture(scope="module")
-def installed_venv(tmp_path_factory, built_wheel):
-    root = tmp_path_factory.mktemp("pkg-venv")
-    venv_dir = root / "venv"
-    subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True, cwd=TOOL_ROOT)
+@pytest.fixture(scope="session")
+def venv(tmp_path_factory, built_wheel) -> Path:
+    root = tmp_path_factory.mktemp("pkg-venv") / "venv"
+    subprocess.run([sys.executable, "-m", "venv", str(root)], check=True, timeout=120)
     subprocess.run(
-        [
-            str(venv_dir / "bin" / "pip"),
-            "install",
-            "-q",
-            "--no-deps",
-            "--no-index",
-            str(built_wheel),
-        ],
+        [str(root / "bin" / "pip"), "install", "-q", "--no-deps", "--no-index", str(built_wheel)],
         check=True,
-        cwd=TOOL_ROOT,
+        cwd=root.parent,
+        env=_env(),
+        timeout=300,
     )
-    return venv_dir
+    return root
 
 
-@pytest.fixture(scope="module")
-def fake_endpoint():
-    """The self-check's plumbing fake, served over real HTTP on loopback."""
-    from hunter_local_ingest.selfcheck import _FakeState, build_fake_handler
+@pytest.fixture()
+def outside(tmp_path) -> Path:
+    """A working directory with no source tree in it."""
+    work = tmp_path / "work"
+    work.mkdir()
+    return work
 
-    holder = {"base": ""}
-    handler = build_fake_handler(holder)
-    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    server.state = _FakeState()  # type: ignore[attr-defined]
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    host, port = server.server_address[:2]
-    holder["base"] = f"http://{host}:{port}"
-    yield holder["base"]
-    server.shutdown()
-    thread.join(timeout=5)
+
+def _cli(venv: Path, script: str, argv: list[str], cwd: Path) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [str(venv / "bin" / script), *argv],
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+        env=_env(),
+        timeout=180,
+    )
+
+
+def _plan(venv: Path, cwd: Path, seed: str = "11") -> Path:
+    out = cwd / "plan.json"
+    proc = _cli(venv, "hunter-gen-plan", ["--seed", seed, "--mesh-kb", "4", "--out", str(out)], cwd)
+    assert proc.returncode == 0, proc.stderr
+    return out
+
+
+def _run_dir(out: Path) -> Path:
+    dirs = list(out.iterdir())
+    assert len(dirs) == 1, dirs
+    return dirs[0]
+
+
+def _rows(run_dir: Path) -> list[dict]:
+    return [json.loads(line) for line in (run_dir / "checks.jsonl").read_text().splitlines()]
+
+
+# -- the wheel ----------------------------------------------------------------
+
+
+def test_wheel_ships_modules_traces_and_scripts(built_wheel):
+    with zipfile.ZipFile(built_wheel) as zf:
+        names = set(zf.namelist())
+        entry_points = zf.read(next(n for n in names if n.endswith("entry_points.txt"))).decode()
+    for required in (
+        "hunter_local_ingest/runner.py",
+        "hunter_local_ingest/fixturegen.py",
+        "hunter_local_ingest/traces/expected-lifecycle-v1.jsonl",
+        "hunter_local_ingest/traces/expected-lifecycle-v2.jsonl",
+    ):
+        assert required in names, required
+    for script in SCRIPTS:
+        assert f"{script} = " in entry_points, script
+
+
+def test_installed_package_resolves_inside_the_venv(venv, outside):
+    proc = subprocess.run(
+        [
+            str(venv / "bin" / "python"),
+            "-c",
+            "import hunter_local_ingest, hunter_local_ingest.traces as t; "
+            "print(hunter_local_ingest.__file__); print(len(t.load_trace()))",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=outside,
+        env=_env(),
+        timeout=60,
+    )
+    assert proc.returncode == 0, proc.stderr
+    location, count = proc.stdout.split()
+    assert Path(location).resolve().is_relative_to(venv.resolve())
+    assert not Path(location).resolve().is_relative_to(TOOL_ROOT)
+    assert count == "12"
+
+
+# -- console scripts ------------------------------------------------------------
+
+
+def test_installed_selfcheck_exits_zero(venv, outside):
+    proc = _cli(venv, "hunter-selfcheck", ["--out", str(outside / "sc")], outside)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "selfcheck: PASS" in proc.stdout
+
+
+def test_installed_runner_with_faults_and_verify(venv, outside):
+    plan = _plan(venv, outside)
+    out = outside / "deep" / "absent" / "runs"
+    with FakeApi() as api:
+        proc = _cli(
+            venv,
+            "hunter-local-ingest",
+            [
+                "--endpoint",
+                api.base_url,
+                "--plan-file",
+                str(plan),
+                "--out",
+                str(out),
+                "--label",
+                "pkg",
+                "--backend-mode",
+                "FAKE_HUNTER",
+                "--with-faults",
+                *FAST,
+            ],
+            outside,
+        )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    run_dir = _run_dir(out)
+    rows = _rows(run_dir)
+    by_id = {row["id"]: row for row in rows}
+    assert all(
+        row["status"] == "PASS"
+        for row in rows
+        if not row["id"].startswith("gpu-stub.") and row["id"] != "control.restart-recovery"
+    ), proc.stdout
+    assert {row["transport"] for row in rows} == {"FAKE_HUNTER", "GPU_STUB"}
+    assert by_id["fault.truncated-response"]["status"] == "PASS"
+    verified = _cli(venv, "hunter-verify-run", [str(run_dir)], outside)
+    assert verified.returncode == 0, verified.stdout
+    checks = run_dir / "checks.jsonl"
+    checks.chmod(0o644)
+    checks.write_text(checks.read_text().replace('"PASS"', '"FAIL"', 1))
+    tampered = _cli(venv, "hunter-verify-run", [str(run_dir)], outside)
+    assert tampered.returncode == 5
+    assert "checks.jsonl: modified after chain entry" in tampered.stdout
+
+
+def test_installed_usage_error_exits_two_without_echoing(venv, outside):
+    secret = canary("tok")
+    plan = _plan(venv, outside)
+    proc = _cli(
+        venv,
+        "hunter-local-ingest",
+        [
+            "--endpoint",
+            "http://127.0.0.1:9/v1",
+            "--plan-file",
+            str(plan),
+            "--backend-mode",
+            "FAKE_HUNTER",
+            "--out",
+            str(outside / "o"),
+            "--token",
+            secret,
+        ],
+        outside,
+    )
+    assert proc.returncode == 2
+    assert "usage:" in proc.stderr and "usage:unrecognized-arguments" in proc.stderr
+    assert secret not in proc.stdout + proc.stderr
+    assert not (outside / "o").exists()
+
+
+def test_installed_malformed_flag_value_exits_two(venv, outside):
+    plan = _plan(venv, outside)
+    proc = _cli(
+        venv,
+        "hunter-local-ingest",
+        [
+            "--endpoint",
+            "http://127.0.0.1:9/v1",
+            "--plan-file",
+            str(plan),
+            "--backend-mode",
+            "FAKE_HUNTER",
+            "--poll-interval-s",
+            "nan",
+        ],
+        outside,
+    )
+    assert proc.returncode == 2
+    assert "usage:invalid-value:--poll-interval-s" in proc.stderr
+
+
+def test_installed_insecure_endpoint_exits_two(venv, outside):
+    plan = _plan(venv, outside)
+    proc = _cli(
+        venv,
+        "hunter-local-ingest",
+        [
+            "--endpoint",
+            "http://127.0.0.1.evil.com:8000/v1",
+            "--plan-file",
+            str(plan),
+            "--backend-mode",
+            "REAL_API",
+        ],
+        outside,
+    )
+    assert proc.returncode == 2
+    assert "endpoint:base_insecure" in proc.stderr and "evil" not in proc.stderr
+
+
+def test_installed_malformed_plan_exits_three(venv, outside):
+    bad = outside / "bad.json"
+    bad.write_text("{not json")
+    proc = _cli(
+        venv,
+        "hunter-local-ingest",
+        [
+            "--endpoint",
+            "http://127.0.0.1:9/v1",
+            "--plan-file",
+            str(bad),
+            "--backend-mode",
+            "FAKE_HUNTER",
+        ],
+        outside,
+    )
+    assert proc.returncode == 3
+    assert "plan refused: plan-file: not JSON" in proc.stderr
+
+
+def test_installed_unreachable_endpoint_exits_four(venv, outside):
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    plan = _plan(venv, outside)
+    out = outside / "runs"
+    proc = _cli(
+        venv,
+        "hunter-local-ingest",
+        [
+            "--endpoint",
+            f"http://127.0.0.1:{port}/v1",
+            "--plan-file",
+            str(plan),
+            "--out",
+            str(out),
+            "--backend-mode",
+            "REAL_API",
+            *FAST,
+        ],
+        outside,
+    )
+    assert proc.returncode == 4, proc.stdout + proc.stderr
+    run_dir = _run_dir(out)
+    assert {row["status"] for row in _rows(run_dir)} == {"BLOCKED", "NOT_RUN"}
+    assert json.loads((run_dir / "summary.json").read_text())["verdict"] == "BLOCKED"
 
 
 class _Always500(BaseHTTPRequestHandler):
-    """A reachable but misbehaving endpoint: every answer is a 500 reply."""
+    protocol_version = "HTTP/1.1"
 
-    def log_message(self, format: str, *args) -> None:  # noqa: A002 - stdlib signature
-        return
+    def log_message(self, *args) -> None:
+        pass
 
     def _reply(self) -> None:
         body = b'{"errors":[{"code":"harness_forced_500"}]}'
@@ -112,318 +334,34 @@ class _Always500(BaseHTTPRequestHandler):
     do_GET = do_POST = do_PUT = _reply
 
 
-@pytest.fixture(scope="module")
-def broken_endpoint():
+def test_installed_forced_fail_exits_one(venv, outside):
     server = ThreadingHTTPServer(("127.0.0.1", 0), _Always500)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    host, port = server.server_address[:2]
-    yield f"http://{host}:{port}"
-    server.shutdown()
-    thread.join(timeout=5)
-
-
-# --------------------------------------------------------------------------
-# helpers
-# --------------------------------------------------------------------------
-
-
-def _generate_plan(tmp_path: Path, seed: str = "3") -> Path:
-    out = tmp_path / "plan.json"
-    subprocess.run(
-        [
-            sys.executable,
-            str(TOOL_ROOT / "fixtures" / "gen_synthetic_packet.py"),
-            "--seed",
-            seed,
-            "--out",
-            str(out),
-        ],
-        check=True,
-        cwd=TOOL_ROOT,
-    )
-    return out
-
-
-def _run_cli(venv_dir: Path, argv: list[str]) -> subprocess.CompletedProcess:
-    """Run the *installed* console script; timeout guards any hang."""
-    return subprocess.run(
-        [str(venv_dir / "bin" / "hunter-local-ingest"), *argv],
-        capture_output=True,
-        text=True,
-        cwd=TOOL_ROOT,
-        timeout=120,
-    )
-
-
-def _read_checks(run_dir: Path) -> list[dict]:
-    lines = (run_dir / "checks.jsonl").read_text().splitlines()
-    return [json.loads(line) for line in lines if line.strip()]
-
-
-def _single_run_dir(out_root: Path) -> Path:
-    run_dirs = list(out_root.iterdir())
-    assert len(run_dirs) == 1, f"expected exactly one run dir under {out_root}"
-    return run_dirs[0]
-
-
-# --------------------------------------------------------------------------
-# wheel contents
-# --------------------------------------------------------------------------
-
-
-class TestWheelContents:
-    def test_wheel_ships_package_modules_and_console_scripts(self, built_wheel):
-        with zipfile.ZipFile(built_wheel) as zf:
-            names = zf.namelist()
-            entry_points_name = next(n for n in names if n.endswith("dist-info/entry_points.txt"))
-            entry_points = zf.read(entry_points_name).decode()
-        for required in (
-            "hunter_local_ingest/runner.py",
-            "hunter_local_ingest/selfcheck.py",
-            "hunter_local_ingest/traces.py",
-            "hunter_local_ingest/scenarios/lifecycle.py",
-        ):
-            assert required in names, required
-        # both console scripts must be declared, or the installed arms below
-        # would test nothing
-        assert "hunter-local-ingest" in entry_points
-        assert "hunter-selfcheck" in entry_points
-
-
-# --------------------------------------------------------------------------
-# installed selfcheck
-# --------------------------------------------------------------------------
-
-
-class TestInstalledSelfcheck:
-    def test_installed_selfcheck_writes_receipts(self, installed_venv, tmp_path):
-        """Selfcheck runs from a non-editable install and emits its artifacts.
-
-        Exit 1 with problems is contractual (same as the runner); the
-        end-state "exits 0" gate is the dedicated test below.
-        """
-        out = tmp_path / "sc"
-        proc = subprocess.run(
-            [str(installed_venv / "bin" / "hunter-selfcheck"), "--out", str(out)],
-            capture_output=True,
-            text=True,
-            cwd=TOOL_ROOT,
-            timeout=120,
-        )
-        assert proc.returncode in (0, 1), proc.stdout + proc.stderr
-        run_dir = _single_run_dir(out)
-        artifacts = {p.name for p in run_dir.iterdir()}
-        assert {"run-manifest.json", "checks.jsonl", "summary.json"} <= artifacts
-
-    @pytest.mark.xfail(
-        reason=(
-            "selfcheck.py resolves the frozen trace at parents[2], which in a "
-            "non-editable install is outside the installed package, so the "
-            "trace never ships and the installed selfcheck exits 1 with "
-            "'frozen trace missing at .../lib/python3.x/traces/'. The "
-            "pyproject package-data glob (traces/*.jsonl) is in place; the "
-            "trace must move under src/hunter_local_ingest/traces/ and the "
-            "loader must resolve package resources first — coordinated "
-            "selfcheck.py change owned by the writer (cross-file ask). "
-            "XPASS(strict) once it lands: remove this marker."
-        ),
-        strict=True,
-    )
-    def test_installed_selfcheck_exits_zero(self, installed_venv, tmp_path):
-        out = tmp_path / "sc"
-        proc = subprocess.run(
-            [str(installed_venv / "bin" / "hunter-selfcheck"), "--out", str(out)],
-            capture_output=True,
-            text=True,
-            cwd=TOOL_ROOT,
-            timeout=120,
-        )
-        assert proc.returncode == 0, proc.stdout + proc.stderr
-        assert "selfcheck: PASS" in proc.stdout
-
-
-# --------------------------------------------------------------------------
-# installed runner arms
-# --------------------------------------------------------------------------
-
-
-class TestInstalledRunner:
-    def test_installed_runner_arms_with_faults_round(
-        self, installed_venv, fake_endpoint, tmp_path
-    ):
-        plan = _generate_plan(tmp_path, seed="11")
-        out = tmp_path / "runs"
-        proc = _run_cli(
-            installed_venv,
+    plan = _plan(venv, outside)
+    out = outside / "runs"
+    try:
+        proc = _cli(
+            venv,
+            "hunter-local-ingest",
             [
                 "--endpoint",
-                fake_endpoint,
+                f"http://127.0.0.1:{server.server_address[1]}/v1",
                 "--plan-file",
                 str(plan),
                 "--out",
                 str(out),
-                "--label",
-                "pkg-faults",
                 "--backend-mode",
-                "FAKE_HUNTER",
-                "--poll-interval-s",
-                "0.2",
-                "--with-faults",
+                "REAL_API",
+                "--max-retries",
+                "0",
+                *FAST,
             ],
+            outside,
         )
-        assert proc.returncode == 0, proc.stdout + proc.stderr
-        run_dir = _single_run_dir(out)
-        artifacts = {p.name for p in run_dir.iterdir()}
-        assert {"run-manifest.json", "checks.jsonl", "summary.json"} <= artifacts
-        lines = _read_checks(run_dir)
-        by_id = {line["id"]: line for line in lines}
-        for cid in (
-            "lifecycle.health",
-            "lifecycle.create",
-            "lifecycle.register",
-            "lifecycle.upload",
-            "lifecycle.commit",
-            "lifecycle.finalize",
-            "lifecycle.events",
-            "lifecycle.result",
-        ):
-            assert by_id[cid]["status"] == "PASS", (cid, by_id[cid]["observed"])
-        # the fault round ran through the prefixed sink and is labeled fake
-        fault_ids = [i for i in by_id if i.startswith("fault.")]
-        assert fault_ids, "a --with-faults round must append fault.* receipt rows"
-        assert all(by_id[i]["transport"] == "FAKE_HUNTER" for i in fault_ids)
-        # honest labeling over the installed path: the endpoint is the
-        # plumbing fake, so no row may claim the real-mirror class
-        assert all(line["transport"] != "REAL_MIRROR_CPU" for line in lines)
-        # GPU arms: named, never executed
-        for arm in ("objects", "vlm", "dense"):
-            assert by_id[f"gpu-stub.{arm}"]["status"] == "NOT_RUN"
-
-    def test_installed_runner_creates_absent_output_parents(
-        self, installed_venv, fake_endpoint, tmp_path
-    ):
-        plan = _generate_plan(tmp_path)
-        out = tmp_path / "deep" / "nested" / "runs"
-        assert not out.exists()
-        proc = _run_cli(
-            installed_venv,
-            [
-                "--endpoint",
-                fake_endpoint,
-                "--plan-file",
-                str(plan),
-                "--out",
-                str(out),
-                "--label",
-                "pkg-nested",
-                "--backend-mode",
-                "FAKE_HUNTER",
-                "--poll-interval-s",
-                "0.2",
-            ],
-        )
-        assert proc.returncode == 0, proc.stdout + proc.stderr
-        assert _single_run_dir(out).is_dir()
-
-    def test_installed_runner_usage_error_exits_two(self, installed_venv, fake_endpoint, tmp_path):
-        plan = _generate_plan(tmp_path)
-        proc = _run_cli(
-            installed_venv,
-            [
-                "--endpoint",
-                fake_endpoint,
-                "--plan-file",
-                str(plan),
-                "--out",
-                str(tmp_path / "runs-usage"),
-                "--backend-mode",
-                "FAKE_HUNTER",
-                "--no-such-flag",
-            ],
-        )
-        assert proc.returncode == 2
-        assert "usage:" in proc.stderr
-
-    def test_installed_runner_bad_plan_file_exits_three(
-        self, installed_venv, fake_endpoint, tmp_path
-    ):
-        bad = tmp_path / "bad-plan.json"
-        bad.write_text(json.dumps({"plan": {"packet_id": "synthetic-000003"}}))
-        proc = _run_cli(
-            installed_venv,
-            [
-                "--endpoint",
-                fake_endpoint,
-                "--plan-file",
-                str(bad),
-                "--out",
-                str(tmp_path / "runs-bad-plan"),
-                "--backend-mode",
-                "FAKE_HUNTER",
-            ],
-        )
-        assert proc.returncode == 3
-        # The "3: ... does not match the generator schema" diagnostic string is
-        # swallowed by main()'s SystemExit -> int conversion (observed: empty
-        # stderr, exit 3); only the code is contractual at this head.
-
-    def test_installed_runner_unreachable_endpoint_exits_two(self, installed_venv, tmp_path):
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            dead_port = probe.getsockname()[1]
-        plan = _generate_plan(tmp_path)
-        out = tmp_path / "runs-dead"
-        proc = _run_cli(
-            installed_venv,
-            [
-                "--endpoint",
-                f"http://127.0.0.1:{dead_port}/v1",
-                "--plan-file",
-                str(plan),
-                "--out",
-                str(out),
-                "--label",
-                "pkg-dead",
-                "--backend-mode",
-                "REAL_MIRROR_CPU",
-            ],
-        )
-        assert proc.returncode == 2
-        run_dir = _single_run_dir(out)
-        summary = json.loads((run_dir / "summary.json").read_text())
-        assert summary["blocked"], "an unreachable endpoint must name its block"
-        assert any(
-            line["status"] == "BLOCKED" for line in _read_checks(run_dir)
-        ), "unreachable runs must record BLOCKED vocabulary rows"
-
-    def test_installed_runner_forced_fail_exits_one(
-        self, installed_venv, broken_endpoint, tmp_path
-    ):
-        plan = _generate_plan(tmp_path)
-        out = tmp_path / "runs-fail"
-        proc = _run_cli(
-            installed_venv,
-            [
-                "--endpoint",
-                broken_endpoint,
-                "--plan-file",
-                str(plan),
-                "--out",
-                str(out),
-                "--label",
-                "pkg-fail",
-                "--backend-mode",
-                "FAKE_HUNTER",
-                "--poll-interval-s",
-                "0.2",
-            ],
-        )
-        assert proc.returncode == 1
-        run_dir = _single_run_dir(out)
-        lines = _read_checks(run_dir)
-        assert any(line["status"] == "FAIL" for line in lines), (
-            "a misbehaving endpoint must produce at least one FAIL row"
-        )
-        summary = json.loads((run_dir / "summary.json").read_text())
-        assert summary["counts_by_transport"]["FAKE_HUNTER"]["FAIL"] >= 1
+    finally:
+        server.shutdown()
+        server.server_close()
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    summary = json.loads((_run_dir(out) / "summary.json").read_text())
+    assert summary["verdict"] == "FAIL" and summary["counts_by_transport"]["REAL_API"]["FAIL"] >= 1
