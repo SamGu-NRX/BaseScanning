@@ -115,7 +115,11 @@ directory's owner from rewriting a file, recomputing the chain and sealing
 it again. The chain head is printed when the run ends; recording it
 somewhere the run cannot write is the only anchor. A file `hunter-verify-run`
 cannot read, decode or parse, or one of the wrong JSON shape, is reported by
-file name and category with exit 5; its content is never printed.
+file name and category with exit 5; its content is never printed. Screen
+findings never delete evidence: failed artifacts survive, sealed, for
+inspection. Sealing and a clean screen make receipts tamper-evident, not
+publishable — the guarantees above govern when a receipt may leave the
+machine.
 
 ## Layout
 
