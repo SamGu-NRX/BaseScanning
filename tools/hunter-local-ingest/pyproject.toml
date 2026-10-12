@@ -18,6 +18,13 @@ hunter-selfcheck = "hunter_local_ingest.selfcheck:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# Frozen expected traces ship as package data so a non-editable install's
+# hunter-selfcheck can load them from inside the installed package. The
+# glob (not a filename) lets future trace versions (e.g.
+# expected-lifecycle-v2.jsonl) ship without a second packaging edit.
+[tool.setuptools.package-data]
+hunter_local_ingest = ["traces/*.jsonl"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
