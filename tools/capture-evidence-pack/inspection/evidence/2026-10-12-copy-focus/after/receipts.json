@@ -1,0 +1,1483 @@
+{
+  "browser": {
+    "engine": "chromium headless",
+    "version": "156.0.8078.4",
+    "playwright": "1.64.0"
+  },
+  "served_sha256": {
+    "tools/capture-evidence-pack/inspection/index.html": "aacff09c2308150e11b44561d54220e977108ea05e6418210dd11c2a32b56da9",
+    "tools/capture-evidence-pack/inspection/serve.py": "d496750e9a0760f0eb4847708349bfad67fcd85275711aa94ab5a1a9d9709bd0",
+    "tools/capture-evidence-pack/read.py": "db94ede4e3f3b60059a3d72c4f72d2bf9c5498d5ba3e492dfb0371d65855569c",
+    "tools/capture-evidence-pack/evidence/example.zip": "623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2",
+    "capture-copy-focus-evidence.mjs (this driver)": "5c04a5b50517ecd994242b1ea413270912ed46bdaed5b13fa32dd6a7faec7fd6"
+  },
+  "totals": {
+    "PASS": 96
+  },
+  "receipts": [
+    {
+      "case": "reject-exec-false",
+      "kind": "simulated",
+      "simulation": "writeText rejects; execCommand returns false",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 145.515625
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copy failed; select the command text instead.",
+        "copy_path": "failed",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          },
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "reject-exec-false-1440.png",
+        "sha256": "f2fa773409301d180f53804f66136a3beb80f02efd77074ebff56b16ba9fa4eb"
+      },
+      "next_tab": "report-text",
+      "video": {
+        "path": "keyboard-denial-1440.webm",
+        "sha256": "d7ac70688b08ba601b8ded396e42ed5305fa45e6914f94a04c4868a0a70d1b64"
+      },
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "reject-exec-true",
+      "kind": "simulated",
+      "simulation": "writeText rejects; execCommand returns true",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 145.515625
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copied.",
+        "copy_path": "exec-command",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          },
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "reject-exec-true-1440.png",
+        "sha256": "c9e89c1e73ccc63969b062019179643c257cca05c750249754ce450ec15b9c3b"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "throw-exec-true",
+      "kind": "simulated",
+      "simulation": "writeText throws synchronously; execCommand returns true",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 145.515625
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copied.",
+        "copy_path": "exec-command",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          },
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "throw-exec-true-1440.png",
+        "sha256": "c9e89c1e73ccc63969b062019179643c257cca05c750249754ce450ec15b9c3b"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "absent-exec-false",
+      "kind": "simulated",
+      "simulation": "navigator.clipboard is undefined; execCommand returns false",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 145.515625
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copy failed; select the command text instead.",
+        "copy_path": "failed",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "absent-exec-false-1440.png",
+        "sha256": "f2fa773409301d180f53804f66136a3beb80f02efd77074ebff56b16ba9fa4eb"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "reject-exec-throws",
+      "kind": "simulated",
+      "simulation": "writeText rejects; execCommand throws",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 145.515625
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copy failed; select the command text instead.",
+        "copy_path": "failed",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          },
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "reject-exec-throws-1440.png",
+        "sha256": "f2fa773409301d180f53804f66136a3beb80f02efd77074ebff56b16ba9fa4eb"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "resolve",
+      "kind": "simulated",
+      "simulation": "writeText resolves; the fallback must not run",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 145.515625
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copied.",
+        "copy_path": "clipboard-api",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "resolve-1440.png",
+        "sha256": "c9e89c1e73ccc63969b062019179643c257cca05c750249754ce450ec15b9c3b"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "slow-reject-user-moves",
+      "kind": "simulated",
+      "simulation": "writeText rejects after 600 ms; the user presses Tab before that; execCommand returns false",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 145.515625
+      },
+      "focus_after_user_tab": "report-text",
+      "after_enter": {
+        "focus": "report-text",
+        "focus_visible": true,
+        "outline": "auto 1px",
+        "feedback": "Copy failed; select the command text instead.",
+        "copy_path": "failed",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          },
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "slow-reject-user-moves-1440.png",
+        "sha256": "2dd2f8cfdb310532e0fd457401798460f0954b18fa75d36d68e468a879a27d35"
+      },
+      "next_tab": "BODY",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "native-granted",
+      "kind": "native",
+      "simulation": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "native clipboard readback equals the command",
+          "observed": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "feedback",
+          "observed": [
+            "Copied.",
+            "clipboard-api"
+          ],
+          "expected": [
+            "Copied.",
+            "clipboard-api"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 145.515625
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copied.",
+        "copy_path": "clipboard-api",
+        "textareas_left": 0,
+        "calls": null,
+        "horizontal_overflow": false
+      },
+      "readback": {
+        "ok": true,
+        "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+      },
+      "screenshot": {
+        "path": "native-granted-1440.png",
+        "sha256": "c9e89c1e73ccc63969b062019179643c257cca05c750249754ce450ec15b9c3b"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "reject-exec-false",
+      "kind": "simulated",
+      "simulation": "writeText rejects; execCommand returns false",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 138.34375
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copy failed; select the command text instead.",
+        "copy_path": "failed",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          },
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "reject-exec-false-390.png",
+        "sha256": "2dcdc23eb11753df218bb200000079d414bdd22623fc4d7ab42ffc7e692d0e2d"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "reject-exec-true",
+      "kind": "simulated",
+      "simulation": "writeText rejects; execCommand returns true",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 138.34375
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copied.",
+        "copy_path": "exec-command",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          },
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "reject-exec-true-390.png",
+        "sha256": "b1eafdd42b8041156109b6b09a04bbc1f11aba9c05ceae1077770bc26638cfb0"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "throw-exec-true",
+      "kind": "simulated",
+      "simulation": "writeText throws synchronously; execCommand returns true",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 138.34375
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copied.",
+        "copy_path": "exec-command",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          },
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "throw-exec-true-390.png",
+        "sha256": "b1eafdd42b8041156109b6b09a04bbc1f11aba9c05ceae1077770bc26638cfb0"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "absent-exec-false",
+      "kind": "simulated",
+      "simulation": "navigator.clipboard is undefined; execCommand returns false",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 138.34375
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copy failed; select the command text instead.",
+        "copy_path": "failed",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "absent-exec-false-390.png",
+        "sha256": "2dcdc23eb11753df218bb200000079d414bdd22623fc4d7ab42ffc7e692d0e2d"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "reject-exec-throws",
+      "kind": "simulated",
+      "simulation": "writeText rejects; execCommand throws",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 138.34375
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copy failed; select the command text instead.",
+        "copy_path": "failed",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          },
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "reject-exec-throws-390.png",
+        "sha256": "2dcdc23eb11753df218bb200000079d414bdd22623fc4d7ab42ffc7e692d0e2d"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "resolve",
+      "kind": "simulated",
+      "simulation": "writeText resolves; the fallback must not run",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 138.34375
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copied.",
+        "copy_path": "clipboard-api",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "resolve-390.png",
+        "sha256": "b1eafdd42b8041156109b6b09a04bbc1f11aba9c05ceae1077770bc26638cfb0"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "slow-reject-user-moves",
+      "kind": "simulated",
+      "simulation": "writeText rejects after 600 ms; the user presses Tab before that; execCommand returns false",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 138.34375
+      },
+      "focus_after_user_tab": "report-text",
+      "after_enter": {
+        "focus": "report-text",
+        "focus_visible": true,
+        "outline": "auto 1px",
+        "feedback": "Copy failed; select the command text instead.",
+        "copy_path": "failed",
+        "textareas_left": 0,
+        "calls": [
+          {
+            "name": "writeText",
+            "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          },
+          {
+            "name": "execCommand",
+            "command": "copy",
+            "focused": "TEXTAREA"
+          }
+        ],
+        "horizontal_overflow": false
+      },
+      "screenshot": {
+        "path": "slow-reject-user-moves-390.png",
+        "sha256": "ffe64316c6b28b7383e5bbfa8d042b3fb48d2692c72953579bb4c1cdd4269ce6"
+      },
+      "next_tab": "BODY",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    },
+    {
+      "case": "native-granted",
+      "kind": "native",
+      "simulation": null,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "0"
+      ],
+      "assertions": [
+        {
+          "assertion": "copy button is at least 44 CSS px tall",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "focus after the copy settles",
+          "observed": "copy-command",
+          "expected": "copy-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no temporary textarea left",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "restored focus shows the focus ring",
+          "observed": [
+            true,
+            "solid 3px"
+          ],
+          "expected": [
+            true,
+            "solid 3px"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "native clipboard readback equals the command",
+          "observed": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "feedback",
+          "observed": [
+            "Copied.",
+            "clipboard-api"
+          ],
+          "expected": [
+            "Copied.",
+            "clipboard-api"
+          ],
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "next Tab continues to the report text, not the skip link",
+          "observed": "report-text",
+          "expected": "report-text",
+          "outcome": "PASS"
+        }
+      ],
+      "tab_presses_to_copy": 4,
+      "copy_button": {
+        "height": 44,
+        "width": 138.34375
+      },
+      "after_enter": {
+        "focus": "copy-command",
+        "focus_visible": true,
+        "outline": "solid 3px",
+        "feedback": "Copied.",
+        "copy_path": "clipboard-api",
+        "textareas_left": 0,
+        "calls": null,
+        "horizontal_overflow": false
+      },
+      "readback": {
+        "ok": true,
+        "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+      },
+      "screenshot": {
+        "path": "native-granted-390.png",
+        "sha256": "b1eafdd42b8041156109b6b09a04bbc1f11aba9c05ceae1077770bc26638cfb0"
+      },
+      "next_tab": "report-text",
+      "server_stopped": {
+        "exit": null,
+        "signal": "SIGTERM"
+      }
+    }
+  ]
+}
