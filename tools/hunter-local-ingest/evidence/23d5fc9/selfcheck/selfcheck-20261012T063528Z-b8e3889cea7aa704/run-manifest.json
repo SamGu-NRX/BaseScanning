@@ -1,0 +1,114 @@
+{
+  "backend": {
+    "declared_mode": "FAKE_HUNTER",
+    "declared_ref": null,
+    "verified": false
+  },
+  "client": {
+    "declared_ref": null,
+    "git": null,
+    "interface": "2.0.0",
+    "package_version": "0.2.0",
+    "source_sha256": "a3df65c9ef00ded7ec00a6a43d6d5f08d27154d147ee49af0837cb554cfc54bc"
+  },
+  "command": [
+    "--endpoint",
+    "127.0.0.1:61431",
+    "--plan-file",
+    "<path>",
+    "--out",
+    "<path>",
+    "--label",
+    "selfcheck",
+    "--backend-mode",
+    "FAKE_HUNTER",
+    "--poll-interval-s",
+    "0.05",
+    "--events-wait-s",
+    "0",
+    "--retry-backoff-s",
+    "0.0",
+    "--with-faults",
+    "--restart-argv-json",
+    "<argv>"
+  ],
+  "created_utc": "2026-10-12T06:35:28.756Z",
+  "endpoint": "127.0.0.1:61431",
+  "fixture": {
+    "create_sha256": "9c2dd5f33bb70b7199e85f165e87602986faa7f6b5beaee6f55db4f1f9edce97",
+    "files": [
+      {
+        "bytes": 65536,
+        "contentType": "application/octet-stream",
+        "path": "synthetic/scan00.bin",
+        "role": "other",
+        "sha256": "a1ca0aa5e471b98beddf42738d706871542520398ced6f3ed81008e8c9812d85"
+      },
+      {
+        "bytes": 65536,
+        "contentType": "application/octet-stream",
+        "path": "synthetic/scan01.bin",
+        "role": "other",
+        "sha256": "ef4380c88a7e0a2df7506640f6b435b153122e01070d7570870ebd2d3367d4be"
+      },
+      {
+        "bytes": 65536,
+        "contentType": "application/octet-stream",
+        "path": "synthetic/scan02.bin",
+        "role": "other",
+        "sha256": "3fda1dfcabd6f77b655435c16a6c7b75d5f2f2b4ef9dccd814fede0f2b69e1f1"
+      },
+      {
+        "bytes": 9793,
+        "contentType": "application/gzip",
+        "path": "streams/arkit_poses.csv.gz",
+        "role": "stream",
+        "sha256": "a23bcec6f6829c053e7bc1871999ca7b1a5e88639b5a6cde56afc655d3447388"
+      },
+      {
+        "bytes": 9443,
+        "contentType": "application/gzip",
+        "path": "streams/imu_raw.csv.gz",
+        "role": "stream",
+        "sha256": "ae96d9008b71882aeb0dbc1c5463897aa9c316fbda28d5503b4676e0bd85a161"
+      }
+    ],
+    "format_version": 2,
+    "generator": "gen_synthetic_packet",
+    "packet_id": "synthetic-000001",
+    "packet_sha256": "9ab561f503ef3dc0c0e5b007157ab40c803d5b43dc38136285a72ab77acd17d1",
+    "plan_file_sha256": "eabf28a3f818ee22d38cec91ad6d85af6921f5cb45156378a007475368ab692f",
+    "plan_sha256": "50f73a67aeb28e5e0c41f40946958a2806024f75ae56dda1384025ccd0a8e4ac",
+    "seed": 1
+  },
+  "label": "selfcheck",
+  "origin_note": "Derived from published client behavior in HouseScanKit upload and result sources at alpha 263827ef. No private source, schema, spec, log or credential material appears in this package or its receipts.",
+  "restart": {
+    "argv": [
+      "<value>",
+      "-c",
+      "<value>"
+    ],
+    "configured": true,
+    "timeout_s": 120.0
+  },
+  "run_id": "b8e3889cea7aa704",
+  "runtime": {
+    "cpus": 12,
+    "implementation": "CPython",
+    "machine": "arm64",
+    "python": "3.13.12",
+    "release": "25.6.0",
+    "system": "Darwin"
+  },
+  "sanitization": "Every value here passed the typed export schema before it was written: published enum words, package constants, digests, bounded numbers, and the plan's own synthetic paths and packet ids. A pattern screen then ran over the written files.",
+  "schema": "hunter-local-ingest/run-manifest/2",
+  "settings": {
+    "events_wait_s": 0,
+    "max_retries": 2,
+    "poll_interval_s": 0.05,
+    "result_budget_s": 1500.0,
+    "retry_backoff_s": 0.0,
+    "with_faults": true
+  }
+}

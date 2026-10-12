@@ -1,0 +1,156 @@
+{
+  "committed_source_sha256": "a3df65c9ef00ded7ec00a6a43d6d5f08d27154d147ee49af0837cb554cfc54bc",
+  "installed_package_under_venv": true,
+  "installed_source_sha256": "a3df65c9ef00ded7ec00a6a43d6d5f08d27154d147ee49af0837cb554cfc54bc",
+  "plan_sha256": "eabf28a3f818ee22d38cec91ad6d85af6921f5cb45156378a007475368ab692f",
+  "runs": {
+    "canary-responses": {
+      "artifacts": {
+        "checks.jsonl": "1e6431f219597647b4e30c07e1707b93f9db65fe5a14e6f0edf537ad50825a27",
+        "privacy-chain.jsonl": "c444901f140d49f001335a2298d2ec2d3dbe34e9d85a18568ac7621ac02bed2d",
+        "privacy-screen.json": "0a5c8284f7f4409a8a92e96d49c546eac39937185b75106224dbae5727b569a6",
+        "run-manifest.json": "5a08eacd1a928ebe7c6d30232bef7bbd29148fe61211433661e9888ea77d056e",
+        "summary.json": "bc9feea390cb4dfe421fe1f35186254dcbd8079cab146281406dfe5c04b5e572"
+      },
+      "blocked": [],
+      "canary": "CANARY-evidence-c792c56c7cf1",
+      "canary_occurrences": 0,
+      "chain_head": "eb0784747aec6ea4982b5602442bbc01c517176e5e3e3ad292dfbf75de7fa8bf",
+      "counts_by_transport": {
+        "FAKE_HUNTER": {
+          "NOT_RUN": 1,
+          "PASS": 13
+        },
+        "GPU_STUB": {
+          "NOT_RUN": 3
+        }
+      },
+      "exit_code": 0,
+      "failed": [],
+      "not_run": [
+        "control.restart-recovery",
+        "gpu-stub.objects",
+        "gpu-stub.vlm",
+        "gpu-stub.dense"
+      ],
+      "run_dir": "canary-20261012T063545Z-6057c5af4f034318",
+      "verdict": "PASS",
+      "verify_exit": 0,
+      "verify_last_line": "verify: OK"
+    },
+    "mutation-commits-tampered": {
+      "artifacts": {
+        "checks.jsonl": "d0f2a5f2b85c1a2dddcd406c463af1d9af1bd8b3ba748fed568e00da97267b14",
+        "privacy-chain.jsonl": "634a21076a15ef42c27f10a9777d1f72438ff388659d3c27f50d79c81ab9f5a9",
+        "privacy-screen.json": "80cfbeab2565b3ca214ec7cb790734f9b31dede98b1d1a88458b56e79510282a",
+        "run-manifest.json": "c5304fd90f0710b11a8010f31ef4a44d1d4e959f2ce897796c07605edd041095",
+        "summary.json": "efa3892645cd476d2a316659e14410acd0b18bb2daf81bbfc4ef905eb2a41c7e"
+      },
+      "blocked": [],
+      "chain_head": "01c87977bb2841a287db0af6d4afedf1656cfb11ec5031dfa5e994937b6258ab",
+      "counts_by_transport": {
+        "FAKE_HUNTER": {
+          "FAIL": 3,
+          "NOT_RUN": 1,
+          "PASS": 22
+        },
+        "GPU_STUB": {
+          "NOT_RUN": 3
+        }
+      },
+      "exit_code": 1,
+      "failed": [
+        "control.corrupt-upload",
+        "control.truncated-upload",
+        "trace.expected-lifecycle-v2"
+      ],
+      "not_run": [
+        "control.restart-recovery",
+        "gpu-stub.objects",
+        "gpu-stub.vlm",
+        "gpu-stub.dense"
+      ],
+      "run_dir": "mutation-20261012T063542Z-8079f0541bad6349",
+      "verdict": "FAIL",
+      "verify_exit": 0,
+      "verify_last_line": "verify: OK"
+    },
+    "real-api-unreachable": {
+      "artifacts": {
+        "checks.jsonl": "f312e869a4d928920c8379720a6b55f2b6e7ae1a664bacac893198e0a431f36e",
+        "privacy-chain.jsonl": "7d14a255d744f1e642ac74f48120d83fc0a8afd0dd63830c3c59365514935fbb",
+        "privacy-screen.json": "3d27e7b4924bb18891da18e85cd1014c363123f1af9dbfc0a46c02a619a16279",
+        "run-manifest.json": "a664736c3c8a9732439a0d7cb6d8d16d6255bfb0d6f93fd082147955b8a8e87c",
+        "summary.json": "a4ddb441b513a0c292aeac860dcfa6319242aa33036974daef88f24a66c068a2"
+      },
+      "blocked": [
+        "lifecycle.health",
+        "lifecycle.create",
+        "lifecycle.register",
+        "lifecycle.upload",
+        "lifecycle.commit",
+        "lifecycle.finalize",
+        "lifecycle.events",
+        "lifecycle.result",
+        "control.idempotent-create",
+        "control.corrupt-upload",
+        "control.truncated-upload",
+        "control.wrong-capture",
+        "trace.expected-lifecycle-v2"
+      ],
+      "chain_head": "2cd622b2d41fc39946dd979ff3b8636095e968b802c1c2e841c22204c928ce0f",
+      "counts_by_transport": {
+        "GPU_STUB": {
+          "NOT_RUN": 3
+        },
+        "REAL_API": {
+          "BLOCKED": 13,
+          "NOT_RUN": 1
+        }
+      },
+      "exit_code": 4,
+      "failed": [],
+      "not_run": [
+        "control.restart-recovery",
+        "gpu-stub.objects",
+        "gpu-stub.vlm",
+        "gpu-stub.dense"
+      ],
+      "run_dir": "real-api-unreachable-20261012T063532Z-76788276ac9cc42a",
+      "verdict": "BLOCKED",
+      "verify_exit": 0,
+      "verify_last_line": "verify: OK"
+    },
+    "selfcheck": {
+      "artifacts": {
+        "checks.jsonl": "13646460c99be9aba9b2ad4cd8ed16e2666b0a0553ff9142c2cac66a6aa15880",
+        "privacy-chain.jsonl": "577c1de283d96cdbc64d158233bfe418fe4ad2b82b796ffb5fc86d9b017018eb",
+        "privacy-screen.json": "539f956be1187ac5df7a83175bcff0a82128f88f1ffba8c3911edaef4b6f8490",
+        "run-manifest.json": "38149b47418ff557717f90319f64a392d5344a90c7e085127bf3cb0c3bd00fc5",
+        "summary.json": "f2e35d9f0a711dfd96e777d089fc19dbee266e8c0d53c46b21fe3c0c304f8ed5"
+      },
+      "blocked": [],
+      "chain_head": "5ba0524216350e67402232b202308ff2a842911b9f50d76da15388df55eae00c",
+      "counts_by_transport": {
+        "FAKE_HUNTER": {
+          "PASS": 26
+        },
+        "GPU_STUB": {
+          "NOT_RUN": 3
+        }
+      },
+      "exit_code": 0,
+      "failed": [],
+      "not_run": [
+        "gpu-stub.objects",
+        "gpu-stub.vlm",
+        "gpu-stub.dense"
+      ],
+      "run_dir": "selfcheck-20261012T063528Z-b8e3889cea7aa704",
+      "stdout_last": "selfcheck: PASS",
+      "verdict": "PASS",
+      "verify_exit": 0,
+      "verify_last_line": "verify: OK"
+    }
+  }
+}

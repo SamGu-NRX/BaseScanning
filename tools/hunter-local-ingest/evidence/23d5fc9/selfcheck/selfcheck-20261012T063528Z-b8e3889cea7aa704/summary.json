@@ -1,0 +1,38 @@
+{
+  "artifacts": {
+    "checks.jsonl": "13646460c99be9aba9b2ad4cd8ed16e2666b0a0553ff9142c2cac66a6aa15880",
+    "run-manifest.json": "38149b47418ff557717f90319f64a392d5344a90c7e085127bf3cb0c3bd00fc5"
+  },
+  "blocked": [],
+  "counts_by_transport": {
+    "FAKE_HUNTER": {
+      "PASS": 26
+    },
+    "GPU_STUB": {
+      "NOT_RUN": 3
+    }
+  },
+  "failed": [],
+  "finished_utc": "2026-10-12T06:35:31.457Z",
+  "lead_questions": [
+    "Amendment semantics: does the published contract allow amending a registered capture, and with which route and headers?",
+    "Local-run auth mode: which credential form does the local backend expect from the published client? The client can send a bearer token on API routes only; no CLI flag supplies one yet.",
+    "Clock and expiry authority: whose clock governs capture expiry on the local backend?",
+    "Homeowner text: confirm that receipts may carry outcome kinds and counts but never messages, prompts or reasons."
+  ],
+  "mode": {
+    "backend_verified": false,
+    "declared_backend": "FAKE_HUNTER",
+    "gpu_arms": "NOT_RUN",
+    "real_mirror_cpu": "NOT_ESTABLISHED"
+  },
+  "not_run": [
+    "gpu-stub.objects",
+    "gpu-stub.vlm",
+    "gpu-stub.dense"
+  ],
+  "run_id": "b8e3889cea7aa704",
+  "schema": "hunter-local-ingest/summary/2",
+  "total": 29,
+  "verdict": "PASS"
+}

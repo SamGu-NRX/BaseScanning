@@ -1,4 +1,9 @@
-"""The frozen client adapter interface, version 1.1.0.
+"""The client adapter interface, version 2.0.0.
+
+2.0.0 changed two signatures from 1.0.0. ``create`` takes the encoded body
+bytes, because the published client encodes the create body once and
+sends those exact bytes on every retry (CaptureUploader.start). ``upload``
+dropped ``capture_id`` and ``path``, which 1.0.0 accepted and ignored.
 
 Public client code and public scenarios code against this seam, never
 against one backend's implementation.
@@ -11,26 +16,20 @@ answer types come from that public source, not from any private repository.
 
 Published semantics carried over deliberately:
 - No redirects: a 3xx is returned as its own reply, never followed.
-- HTTP error statuses come back as observations; only transport failures
-  raise (and are reported as StepResult errors, not exceptions).
-- ``Idempotency-Key: <packetId>`` on create and on finalize;
+- HTTP error statuses come back as observations; transport failures and
+  client-side refusals come back as a StepResult ``error`` category.
+- ``Idempotency-Key: <packetId>`` on create and finalize;
   ``X-Packet-Sha256`` on finalize.
-- A storage PUT goes out with exactly the headers the register answer
-  signed, and never carries the API's own credentials.
-- Bounded same-body retries, only where the published uploader retries
-  (commit, finalize, on read timeout or 503).
+- A storage PUT carries exactly the headers the register answer signed.
+  It never carries the API's credential, and a signed set that holds
+  ``Authorization`` is refused before anything is sent
+  (``auth_storage_authorization``).
+- A transient answer (no answer, 408, 429, or 5xx other than 501) is
+  retried with the same body a bounded number of times, as
+  ``CaptureUploader.isTransient`` defines it.
 
-The interface is frozen: new steps arrive as new methods with a bumped
-INTERFACE_VERSION, never as edits to existing method signatures.
-
-Version history
----------------
-1.0.0  Baseline step surface returning StepResult observations.
-1.1.0  Optional ``credential`` construction argument — an RFC 6750 bearer
-       token for the capture-API steps only (implementations refuse it on
-       storage PUTs) — and ``StepResult.retry_after_s`` (the server-advised
-       delay when a transient reply carried Retry-After, capped at the
-       published 120 s ceiling).
+New steps arrive as new methods with a bumped INTERFACE_VERSION, never as
+edits to existing method signatures.
 """
 
 from __future__ import annotations
@@ -40,67 +39,58 @@ import typing
 
 from .observations import Observation
 
-INTERFACE_VERSION = "1.1.0"
+INTERFACE_VERSION = "2.0.0"
+
+# Refusals the client makes without sending anything.
+CLIENT_REFUSALS = frozenset(
+    {
+        "auth_storage_authorization",
+        "auth_destination_refused",
+        "upload_url_invalid",
+        "upload_url_insecure",
+    }
+)
 
 
 @dataclasses.dataclass(frozen=True)
 class StepResult:
-    """One adapter step's outcome: an observation, or a transport error.
-
-    ``context`` carries transient working values between steps (e.g. the
-    signed upload target the register answer granted). It is NEVER
-    serialized: as_json() omits it, and receipts carry only observations.
-    """
+    """One adapter step: an observation, or an error category with no answer."""
 
     step: str
-    ok: bool
     observation: Observation | None = None
     error: str | None = None
-    context: dict | None = None
-    retry_after_s: float | None = None
+    attempts: int = 1
 
     @property
     def http_status(self) -> int | None:
         return self.observation.http_status if self.observation else None
 
-    def as_json(self) -> dict:
-        out: dict = {"step": self.step, "ok": self.ok}
-        if self.observation:
-            out["observation"] = self.observation.as_json()
-        if self.error:
-            out["error"] = self.error
-        return out
+    @property
+    def parsed(self) -> object:
+        return self.observation.parsed if self.observation else None
+
+    def public(self) -> dict:
+        if self.observation is not None:
+            return self.observation.public()
+        return {"error": self.error, "attempts": self.attempts}
 
 
 @typing.runtime_checkable
 class HunterIngestAdapter(typing.Protocol):
-    """One capture's lifecycle against the capture API, over HTTP.
-
-    Implementations ship in this package: the direct HTTP client (the real
-    local mirror backend) and the fault-proxy wrapper (labeled
-    FAKE_HUNTER). Each step returns a StepResult; scenarios decide
-    PASS/FAIL from observations plus the published contract.
-
-    ``credential`` is optional; implementations validate it as an RFC 6750
-    b64token at construction and scope it to capture-API requests.
-    """
-
-    def __init__(
-        self, base_url: str, *, credential: str | None = None
-    ) -> None: ...
+    """One capture's lifecycle against the capture API, over HTTP."""
 
     def health(self) -> StepResult: ...
-    def create(self, request: dict, idempotency_key: str) -> StepResult: ...
+
+    def create(self, body: bytes, idempotency_key: str) -> StepResult: ...
+
     def register(self, capture_id: str, files: list[dict]) -> StepResult: ...
-    def upload(
-        self,
-        capture_id: str,
-        path: str,
-        body: bytes,
-        url: str,
-        headers: dict[str, str] | None,
-    ) -> StepResult: ...
+
+    def upload(self, url: str, body: bytes, headers: dict[str, str]) -> StepResult: ...
+
     def commit(self, capture_id: str, files: list[dict]) -> StepResult: ...
+
     def finalize(self, capture_id: str, packet: bytes, idempotency_key: str) -> StepResult: ...
+
     def events(self, capture_id: str, after: int, wait_s: int) -> StepResult: ...
+
     def result(self, capture_id: str) -> StepResult: ...
