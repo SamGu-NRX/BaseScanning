@@ -160,9 +160,10 @@ struct WayfindingOverlay: View {
         return (placement: placement(for: target, in: size, band: band, entryMargin: targetEntryMargin), progress: progress)
     }
 
-    /// No margin while the target's ring is up: it keeps its place to the edge.
+    /// No margin while the target's ring is up, so it keeps its place to the edge, and none off
+    /// an aim step, whose marker the card doesn't follow.
     private var targetEntryMargin: CGFloat {
-        reported == .ring ? 0 : Self.ringEntryMargin
+        progress == nil || reported == .ring ? 0 : Self.ringEntryMargin
     }
 
     /// What `marker` draws for an aim step's filling target, for the card (`onAimMarker`). Nil
