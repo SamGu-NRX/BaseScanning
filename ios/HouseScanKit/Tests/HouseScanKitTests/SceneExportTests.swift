@@ -168,7 +168,7 @@ import simd
         var input = Self.input()
         input.wall = wall
         input.baselineS = -3...5
-        input.features = [.pointObject(kind: kind, tap: wall.world(s: s, height: 0), bottom: nil, top: nil)]
+        input.features = [.pointObject(kind: kind, tap: wall.world(s: s, height: 0, out: 0), bottom: nil, top: nil)]
         let value = try Value.parse(SceneExport.jsonData(input))
         let polygon = try #require(value["objects"]?[0]?["footprint"]?.array).compactMap(\.numbers)
         try #require(polygon.count == 4)
