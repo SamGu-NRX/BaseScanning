@@ -32,17 +32,19 @@ for the `B-` numbers. "Known bug" means the triage already predicts the failure.
 
 ## Run 1: full flow, clean wall
 
+O-3 Skip, F-3 a premature tap and F-2 a successful tap can leave their screens. Run each in a separate attempt, then restart before continuing the full flow.
+
 | ID | Screen | Do | Expect |
 |---|---|---|---|
-| O-1 | Onboarding | Page through with Next, tap Allow camera, then Allow | The iOS camera prompt appears. Note when |
 | O-2 | Onboarding | VoiceOver on, swipe the pages | Unknown: is the page number announced? |
 | O-3 | Onboarding | Reduce Motion on, tap Next and Skip | Known: Skip still slides |
-| F-2 | Find meter | Tap the meter the moment the camera opens, then again | "Step a little closer to the wall"; known: no haptic on the second refusal |
-| F-1 | Find meter | Pan across the wall and ground for 5 s, tap the meter | A ring blooms, a success haptic, then the close-up |
+| O-1 | Onboarding | Page through with Next, tap Allow camera, then Allow | The iOS camera prompt appears. Note when |
 | F-3 | Find meter | Tap before the wall is detected | Question: does it pin at the wrong depth? |
 | F-4 | Find meter | Point at the sky until relocalizing | Question: "Point at the meter like this." shows no picture |
-| C-1 | Close-up | Hold the meter in the circle | The ring fills in about 0.6 s, a light haptic, the walk begins 1.2 s later |
+| F-2 | Find meter | Tap the meter the moment the camera opens, then again | "Step a little closer to the wall"; known: no haptic on the second refusal |
+| F-1 | Find meter | Pan across the wall and ground for 5 s, tap the meter | A ring blooms, a success haptic, then the close-up |
 | C-2 | Close-up | Put the meter at the circle's edge | The drawn circle matches the captured area (device-only check) |
+| C-1 | Close-up | Hold the meter in the circle | The ring fills in about 0.6 s, a light haptic, the walk begins 1.2 s later |
 | W-1 | Walk | Follow each instruction | "Walk slowly to your left", "Tilt down…", "Take a step back". Is the fog readable? |
 | W-2 | Walk | Watch the photo counter | It flashes green with no haptic |
 | W-3 | Walk | Mark something, pick a kind, tap | A firm haptic on accept |
@@ -102,6 +104,8 @@ every scan on it, so export scans first.
 | O-4 | Last: delete, reinstall, tap Don't Allow at the camera prompt | Known B-03: stuck on Find the meter with no Settings button |
 
 ## After the run
+
+- Share the scan off the phone before closing the app. Relaunching deletes the local scan, so confirm the exported file exists first.
 
 - Save the scan's `scene.json` and replay its coverage:
 

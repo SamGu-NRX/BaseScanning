@@ -5,7 +5,7 @@
 """Replay a House Scan scene.json's kept photos through the app's coverage rules.
 
 For each kept photo, in order, prints how far the covered wall reaches on each side of the
-meter: the same `reach` that "Can't get there" uses to place a wall end. Then prints, for
+meter under the simplified no-depth/no-skip rules below. Then prints, for
 the cells either side of the meter, which photos saw each sample row.
 
 The rules mirror `CoverageMap` and `GuidancePlanner.reach` on `t3/ios-mvf` at ff95f1c:
@@ -16,7 +16,9 @@ The rules mirror `CoverageMap` and `GuidancePlanner.reach` on `t3/ios-mvf` at ff
 - a cell is covered when every row was seen from two positions at least 0.25 m apart.
 
 Limits: it uses the exported (refined) wall line and meter for every photo, cannot see
-tracking state, and ignores marked ends, so it shows what coverage would have been with no ends.
+tracking state, ignores per-photo depth and explicitly skipped cells, and ignores marked ends.
+The app accepts covered OR skipped cells for reach and uses depth when supplied. This replay
+therefore does not establish reach equivalence in those states.
 
     uv run coverage_replay.py path/to/scene.json
 """
@@ -58,11 +60,22 @@ def load(path: Path):
     return origin, along, outward, cameras
 
 
+def reach(covered: set[int], step: int) -> float:
+    index, cells = (0 if step > 0 else -1), 0
+    while index in covered:
+        cells, index = cells + 1, index + step
+    return cells * CELL / FT
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("scene", type=Path)
-    parser.add_argument("--cells", type=int, default=45, help="cells to track on the right; 3 are tracked on the left")
+    parser.add_argument("--cells", type=int, default=45, help="cells to track on the right")
+    # Match the existing right extent so left reach is not capped at 1.5 ft.
+    parser.add_argument("--left-cells", type=int, default=45, help="cells to track on the left")
     args = parser.parse_args()
+    if args.cells <= 0 or args.left_cells <= 0:
+        parser.error("cell counts must be positive")
 
     origin, along, outward, cameras = load(args.scene)
     up = np.array([0.0, 1.0, 0.0])
@@ -89,15 +102,9 @@ def main() -> None:
         normal = outward if band == "wall" else up
         return [r for r, offset in enumerate(ROWS[band]) if all(sees(camera, point(band, s, offset), normal) for s in samples)]
 
-    indices = range(-3, args.cells)
+    indices = range(-args.left_cells, args.cells)
     positions = {(band, i): [[] for _ in ROWS[band]] for band in ROWS for i in indices}
     covered: set[int] = set()
-
-    def reach(step: int) -> float:
-        index, cells = (0 if step > 0 else -1), 0
-        while index in covered:
-            cells, index = cells + 1, index + step
-        return cells * CELL / FT
 
     print("photo   x (ft)  reach left  reach right")
     for camera in cameras:
@@ -113,7 +120,7 @@ def main() -> None:
                 if all(len(row) >= 2 for band in ROWS for row in positions[(band, i)]):
                     covered.add(i)
         x = np.dot(position - origin, along) / FT
-        print(f"{camera[0]}  {x:7.2f}  {reach(-1):8.1f} ft  {reach(1):9.1f} ft")
+        print(f"{camera[0]}  {x:7.2f}  {reach(covered, -1):8.1f} ft  {reach(covered, 1):9.1f} ft")
 
     print("\nPhotos that saw each row of the cells either side of the meter")
     for i in (-1, 0):

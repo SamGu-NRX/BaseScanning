@@ -75,8 +75,9 @@ The 20 ft "Is this the … end of the wall?" prompt never appeared.
 `reach`
 ([`GuidancePlanner.swift`](https://github.com/SamGu-NRX/house-scanning-master/blob/ff95f1cb571e2f3ef56d9faae85880665ad0ca30/ios/HouseScanKit/Sources/HouseScanKit/Guidance/GuidancePlanner.swift#L101-L117))
 counts 6-inch cells outward from the meter. It stops at the first cell whose wall and ground are not both
-covered. A cell is covered when each of its three sample rows has been seen from two positions: the wall
-at 0, 3.25 and 6.5 ft up, and the ground at 0, 2 and 4 ft out. So if the ground right in front of the
+covered or explicitly skipped. The replay ignores skipped cells and depth, so it cannot establish the
+app's reach in every state. A cell is covered when each of its three sample rows has been seen from two
+positions: the wall at 0, 3.25 and 6.5 ft up, and the ground at 0, 2 and 4 ft out. So if the ground right in front of the
 meter hasn't been seen twice, the tap puts the end at the meter.
 
 After that, the coverage map ignores everything past the ends:
@@ -93,8 +94,8 @@ which is the ±0.328 ft the server echoes. This code is unchanged between the bu
 branch head `ff95f1c`.
 
 The replay shows how long the scan was exposed to this. Replaying the 44 photos in order through the
-coverage rules, with no ends marked, the covered stretch next to the meter stays at 0 ft on both sides
-until photo 43:
+simplified no-depth, no-skip coverage rules, with no ends marked, the covered stretch next to the meter
+stays at 0 ft on both sides until photo 43:
 
 ```
 photo   x (ft)  reach left  reach right
@@ -143,7 +144,7 @@ These were visible:
 |---|---|---|
 | O-1 | Not reached | The camera opened with no iOS prompt; permission was granted in an earlier run |
 | F-2 | Pass | "Step a little closer to the wall" after an early tap |
-| C-1 | Pass | The ring filled in under a second; the meter-number question followed |
+| C-1 | Partially verified, haptic unverified | The ring filled in under a second; the meter-number question followed |
 | W-1 | Pass | Left, right, "Tilt down…" and "Take a step back" all appeared; the fog cleared after about 3 s |
 | W-2 | Pass | The photo counter flashes |
 | W-5 | Fail, B-16 | "Tap the ac unit" |
@@ -269,7 +270,7 @@ The tester said the build and run, and "no haptic" once, but no test IDs. The ot
 |---|---|---|
 | O-1 | Not reached | No camera prompt; permission was granted earlier. A new Motion & Fitness prompt appeared on "Find your electric meter" (#43) |
 | F-2 | Unclear | Early taps were narrated, but no "Step a little closer to the wall" appeared |
-| C-1 | Pass | The ring filled in about a second; "Meter number saved" followed |
+| C-1 | Partially verified, haptic unverified | The ring filled in about a second; "Meter number saved" followed |
 | W-1 | Pass, confusing | All instructions appeared. After the right end was set, "Around 7 ft right" requests couldn't be met |
 | W-2 | Pass | The counter flashes; "there is no haptic" |
 | W-5 | Fail, B-16 | "Tap the ac unit" (#25) |
@@ -278,7 +279,7 @@ The tester said the build and run, and "no haptic" once, but no test IDs. The ot
 | G-2 | Pass, copy bug | "I can't get there" uploaded at once, but "2 more views to finish" showed only one (#39) |
 | U-1 | Measured | 0.7 s for the first upload, 1.2 s after the gap request |
 | U-2 | Fail, known | The final upload stayed on "Sending measurements, 99%"; "Check clearances" never ticked (#31) |
-| R-1 | Pass (haptic unverified) | First result with a spot: "An installer will take a look", 13 check lines |
+| R-1 | Partially verified, haptic unverified | First result with a spot: "An installer will take a look", 13 check lines |
 | R-3 | Stayed put, wrong spot | Steady relative to the meter; drawn through the post at the wall's end |
 | R-4 | Fail, known | The battery is drawn over a person (#41) |
 
