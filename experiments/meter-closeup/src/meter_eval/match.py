@@ -10,6 +10,7 @@ reveal the numbers, and scoring a read needs the key.
 import functools
 import hashlib
 import hmac
+import itertools
 import os
 import re
 from collections.abc import Sequence
@@ -64,11 +65,28 @@ def digest(normalized: str) -> str:
     return hmac.new(key(), normalized.encode(), hashlib.sha256).hexdigest()
 
 
+# Boxes in one row join only across a horizontal gap of at most this many character widths
+# (a box's width over its non-space characters, averaged over the two boxes). It is measured in
+# the image's own x units, so it needs no aspect ratio. On the cached Vision reads of the 75
+# labelled photos (clean and locate runs, every configuration), a limit of 2 to 6 widths leaves
+# every number match as it was and 1.5 loses three; 3 keeps a margin. The limit does split
+# unrelated fields there (a model code from a serial on the same row), but no read depended on
+# that join, so these photos show no false read it prevents.
+MAX_JOIN_GAP_CHARS = 3.0
+
+
+def _char_width(line: dict) -> float:
+    return line["box"][2] / max(1, len(line["text"].replace(" ", "")))
+
+
 def rows_of_text(lines: Sequence[dict]) -> list[tuple[str, list[list[float]]]]:
-    """Each line's (text, [box]), plus lines sharing a row joined left to right.
+    """Each line's (text, [box]), plus neighbouring lines in one row joined left to right.
 
     Vision sometimes splits one printed number into two observations ("123 45" and "678").
-    Two boxes share a row when their vertical overlap is at least half the shorter box.
+    Two boxes share a row when their vertical overlap is at least half the shorter box, and
+    they join only when the gap between them is at most MAX_JOIN_GAP_CHARS character widths,
+    so digits from an unrelated field further along the same row are not read as part of the
+    number.
     """
     texts = [(line["text"], [line["box"]]) for line in lines]
     rows: list[list[dict]] = []
@@ -83,9 +101,17 @@ def rows_of_text(lines: Sequence[dict]) -> list[tuple[str, list[list[float]]]]:
         else:
             rows.append([line])
     for row in rows:
-        if len(row) > 1:
-            ordered = sorted(row, key=lambda item: item["box"][0])
-            texts.append((" ".join(item["text"] for item in ordered), [i["box"] for i in ordered]))
+        ordered = sorted(row, key=lambda item: item["box"][0])
+        chains = [[ordered[0]]]
+        for left, right in itertools.pairwise(ordered):
+            gap = right["box"][0] - (left["box"][0] + left["box"][2])
+            if gap <= MAX_JOIN_GAP_CHARS * (_char_width(left) + _char_width(right)) / 2:
+                chains[-1].append(right)
+            else:
+                chains.append([right])
+        for chain in chains:
+            if len(chain) > 1:
+                texts.append((" ".join(i["text"] for i in chain), [i["box"] for i in chain]))
     return texts
 
 

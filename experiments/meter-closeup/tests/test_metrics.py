@@ -80,10 +80,25 @@ def test_number_with_one_wrong_digit_is_not_read():
 
 
 def test_number_split_across_two_boxes_on_one_row_is_joined():
-    lines = [line("5678", 0.5, 0.52), line("123", 0.3, 0.5)]
+    lines = [line("5678", 0.45, 0.52), line("123", 0.3, 0.5)]
     joined = dict(rows_of_text(lines))
-    assert joined["123 5678"] == [[0.3, 0.5, 0.1, 0.05], [0.5, 0.52, 0.1, 0.05]]
+    assert joined["123 5678"] == [[0.3, 0.5, 0.1, 0.05], [0.45, 0.52, 0.1, 0.05]]
     assert number_boxes(lines, digest("1235678"), 7, lenient=False) == joined["123 5678"]
+
+
+def test_a_field_further_along_the_row_is_not_joined_to_the_number():
+    # Same row, but the second field starts 0.4 to the right: about ten character widths of
+    # these 0.1-wide boxes, where a printed space is about one.
+    lines = [line("123", 0.1, 0.5), line("5678", 0.6, 0.5)]
+    assert "123 5678" not in dict(rows_of_text(lines))
+    assert not number_read(lines, digest("1235678"), 7, lenient=False)
+
+
+def test_a_far_field_does_not_stop_the_adjacent_split_number_joining():
+    lines = [line("MM26", 0.0, 0.5), line("123", 0.5, 0.5), line("5678", 0.62, 0.5)]
+    joined = dict(rows_of_text(lines))
+    assert "123 5678" in joined and "MM26 123 5678" not in joined
+    assert number_read(lines, digest("1235678"), 7, lenient=False)
 
 
 def test_boxes_on_different_rows_are_not_joined():
