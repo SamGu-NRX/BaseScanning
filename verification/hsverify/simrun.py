@@ -8,7 +8,9 @@ The app is launched with the contract C4 arguments (`-replay <path>`, `-autopilo
 a screenshot once it has been on screen for `--settle` seconds; a state replaced sooner is
 captured immediately and flagged `transient`, because its image may already show the next
 state. The run ends at `--until`, after `--idle` seconds without a new state, or at
-`--timeout`. A state named with `--require` that never appeared makes the run fail. If the app
+`--timeout`. A state named with `--require` that never appeared makes the run fail, as do
+states missing from a `--require-order` sequence or out of its order, and a FIRST state of a
+`--require-then FIRST:THEN` pair that no THEN state came after. If the app
 logged a scan bundle, it is copied into the report as scan.zip (required with `--require-export`)
 and named in report.json's
 `app_export`, so the report folder can be replayed as an app export. Reports go outside git
@@ -329,6 +331,35 @@ def missing_required(required: list[str], states: list[ShotRecord]) -> list[str]
     return [f"required state {name} never appeared" for name in required if name not in seen]
 
 
+def out_of_order(order: list[str], states: list[ShotRecord]) -> list[str]:
+    """`order` must appear among the run's states in that order; other states may come between.
+    Reaching the last one is not enough: a run that skips the steps before it did not walk them."""
+    names = iter(s.state for s in states)
+    for i, want in enumerate(order):
+        if want not in names:  # consumes `names` up to the match, so order is enforced
+            after = f"after {order[i - 1]}" if i else "at all"
+            return [f"required order {' > '.join(order)}: no {want} {after}"]
+    return []
+
+
+def unanswered(pairs: list[tuple[str, str]], states: list[ShotRecord]) -> list[str]:
+    """For each (first, then): every `first` state must be followed later by a `then` state."""
+    names = [s.state for s in states]
+    return [
+        f"state {i + 1} {first} was never followed by {then}"
+        for first, then in pairs
+        for i, name in enumerate(names)
+        if name == first and then not in names[i + 1 :]
+    ]
+
+
+def state_pair(text: str) -> tuple[str, str]:
+    first, sep, then = text.partition(":")
+    if not (sep and first and then):
+        raise argparse.ArgumentTypeError(f"expected FIRST:THEN, got {text!r}")
+    return first, then
+
+
 def logged_message(line: str) -> str:
     """The message of one ndjson log line, or "" for the banner and anything unreadable."""
     try:
@@ -551,6 +582,22 @@ def main(argv: list[str] | None = None) -> int:
         help="a state the run must reach; one that never appears is a problem (exit 1)",
     )
     parser.add_argument(
+        "--require-order",
+        action="append",
+        default=[],
+        type=lambda text: text.split(","),
+        metavar="STATE,STATE,...",
+        help="states the run must pass through in this order (others may come between)",
+    )
+    parser.add_argument(
+        "--require-then",
+        action="append",
+        default=[],
+        type=state_pair,
+        metavar="FIRST:THEN",
+        help="every FIRST state must be followed later in the run by a THEN state",
+    )
+    parser.add_argument(
         "--require-export",
         action="store_true",
         help="fail unless the app logs a scan bundle, which is copied into the report as scan.zip",
@@ -648,6 +695,9 @@ def main(argv: list[str] | None = None) -> int:
             print("Running...", flush=True)
             follow(args, udid, bundle_id, out, rep)
             rep.problems += missing_required(args.require, rep.states)
+            for order in args.require_order:
+                rep.problems += out_of_order(order, rep.states)
+            rep.problems += unanswered(args.require_then, rep.states)
             rep.app_export, export_problems = app_export(out, args.require_export)
             rep.problems += export_problems
         rep.crash_reports = collect_crashes(started, out)
