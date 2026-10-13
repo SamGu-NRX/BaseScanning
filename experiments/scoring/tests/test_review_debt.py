@@ -86,8 +86,15 @@ def test_unknown_survey_missing_evidence_has_justified_abstention(missing):
 def test_table_keeps_backslashes_before_pipes(backslashes):
     value = "p" + "\\" * backslashes + "|x"
     rendered = _table(["Pipeline"], [[_table_code(value)]])[-1]
-    assert rendered == "| <code>p" + "\\" * (2 * backslashes) + "&#124;x</code> |"
+    assert rendered == "| <code>&#112;" + "&#92;" * backslashes + "&#124;&#120;</code> |"
     assert rendered.count("|") == 2
+
+
+def test_backslash_code_cell_cannot_inject_inline_markdown():
+    rendered = _table(["Pipeline"], [[_table_code("\\`x`*y*_z_<b>")]])[-1]
+    assert rendered == (
+        "| <code>&#92;&#96;&#120;&#96;&#42;&#121;&#42;&#95;&#122;&#95;&#60;&#98;&#62;</code> |"
+    )
 
 
 @pytest.mark.parametrize("link_kind", ["symlink", "hardlink"])

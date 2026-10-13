@@ -9,7 +9,6 @@ import csv
 import re
 from collections.abc import Iterable
 from decimal import ROUND_HALF_UP, Decimal
-from html import escape
 from pathlib import Path
 
 from scoring.inputs import Study
@@ -289,10 +288,10 @@ def _cell(value: str) -> str:
 
 
 def _table_code(value: str) -> str:
-    # Code spans preserve backslashes. HTML keeps the displayed identifier intact while
-    # preventing a backslash before a pipe from changing the table's column boundaries.
+    # Code spans preserve backslashes. Entities prevent Markdown from parsing the identifier
+    # inside the HTML code tag, including paired backticks or emphasis punctuation.
     if "\\" in value:
-        return "<code>" + escape(_one_line(value)).replace("|", "&#124;") + "</code>"
+        return "<code>" + "".join(f"&#{ord(char)};" for char in _one_line(value)) + "</code>"
     return _code(value)
 
 
