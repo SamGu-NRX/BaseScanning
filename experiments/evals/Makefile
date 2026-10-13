@@ -75,6 +75,8 @@ SCORING_CHECKOUT := $(DATA)/evals/scoring-77ce830
 SCORING ?= $(SCORING_CHECKOUT)/experiments/scoring
 STAMPED_MAP = $(FIELD_OUT)/inputs/map.json
 field:
+	@# Resolve once here: result-dir validates and hashes the capture's contents.
+	$(eval FIELD_OUT := $(FIELD_OUT))
 	@# The default checkout is created at the pinned commit and, when reused, must still be there
 	@# with the harness unmodified. An overridden SCORING is the caller's choice and must exist.
 	@if [ -z "$(TRUTH)" ]; then :; \
