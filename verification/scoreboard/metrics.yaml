@@ -162,6 +162,8 @@ metrics:
       glob: ~/house-scanning-data/reports/e2e/*/report.json
       # True only when at least one scene was answered and checked and none broke the contract.
       key: contract_ok
+      # A failed or incomplete run cannot establish the advertised black-box acceptance.
+      valid_key: all_passed
       equals: true
       require_current_sha: true
 

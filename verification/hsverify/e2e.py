@@ -151,9 +151,12 @@ def read_bundle(path: Path) -> tuple[bytes, dict[str, bytes]]:
         declared = sum(i.file_size for i in infos)
         if declared > MAX_BUNDLE_BYTES:
             raise SystemExit(f"{path}: declares {declared} bytes, limit {MAX_BUNDLE_BYTES}")
-        scene = next((i for i in infos if i.filename.endswith("scene.json")), None)
-        if scene is None:
-            raise SystemExit(f"{path}: no scene.json in the bundle")
+        scenes = [i for i in infos if i.filename == "scene.json"]
+        if len(scenes) != 1:
+            raise SystemExit(
+                f"{path}: expected exactly one canonical scene.json, found {len(scenes)}"
+            )
+        scene = scenes[0]
         raw = read_bounded(bundle, scene, MAX_SCENE_BYTES)
         images = {
             Path(i.filename).name: read_bounded(bundle, i, MAX_IMAGE_BYTES)
@@ -467,7 +470,7 @@ def judge(
     contract += property_problems(url, endpoint, item, result, schemas, rules)
     if item.real and ms > LATENCY_BUDGET_MS:
         contract.append(f"real-derived scene took {ms:.0f} ms, budget {LATENCY_BUDGET_MS:.0f}")
-    mismatches = assumption_mismatches(item.rules_assumed, result)
+    mismatches = assumption_mismatches(item.rules_assumed, result, rules)
     expected = expectation_problems(item.expect, result) if item.expect and not mismatches else []
     problems = contract + expected
 
@@ -491,7 +494,8 @@ def property_problems(
     problems: list[str] = []
 
     def resend(name: str, scene: dict) -> dict | None:
-        other, failure = answer(url, endpoint, variant(item, name, scene))
+        transformed = variant(item, name, scene)
+        other, failure = answer(url, endpoint, transformed)
         if failure:
             problems.append(f"{name}: {failure}")
             return None
@@ -499,7 +503,10 @@ def property_problems(
         if errors:
             problems.append(f"{name}: result schema: {errors[0]}")
             return None
-        problems.extend(f"{name}: {p}" for p in invariant_problems(scene, other, rules=rules))
+        problems.extend(
+            f"{name}: {p}"
+            for p in invariant_problems(scene, other, sent=transformed.raw, rules=rules)
+        )
         return other
 
     # 1. Same input, same answer.
@@ -661,8 +668,11 @@ def judge_hostile(
         and not (endpoint.accepts_zip)
     ):
         return {
-            "status": "skipped",
-            "skip_reason": "the endpoint takes neither a zip nor an upload",
+            "status": "fail",
+            "problems": ["large-input probe was not exercised: endpoint accepts no archive"],
+            "contract_problems": [
+                "large-input probe was not exercised: endpoint accepts no archive"
+            ],
         }
     before = limit.reset() if limit else 0.0
     status, payload, ms = post(url, endpoint, item, timeout_s=HOSTILE_BUDGET_MS / 1000 + 5)
@@ -712,9 +722,8 @@ def write_report(out: Path, meta: dict, records: list[dict]) -> dict:
     killed = bool(meta["peak_memory"].get("server_killed"))
     report = meta | {
         "counts": counts,
-        "all_passed": all(r["status"] in ("pass", "skipped") for r in records)
-        and bool(checked)
-        and not killed,
+        # A missing listed scene leaves the run incomplete, even when other scenes passed.
+        "all_passed": all(r["status"] == "pass" for r in records) and bool(checked) and not killed,
         "latency_ms": max(real) if real else None,
         "scenes_answered": sum(1 for r in records if "decision" in r),
         "scenes_checked": len(checked),
