@@ -15,6 +15,7 @@ import json
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from statistics import NormalDist
 
 import numpy as np
 
@@ -104,10 +105,10 @@ PARAMS: dict[str, P] = {
     ),
     # The app's wall plane: one raycast normal at the meter
     "anchor_yaw_deg": P(
-        2.15,
-        6.72,
+        2.15 / NormalDist().inv_cdf(0.75),
+        6.72 / NormalDist().inv_cdf(0.95),
         "deg",
-        "added after the run: median and p90 yaw of a 0.3 m depth-patch plane on ETH3D electro (experiments/edge-geometry), a proxy for one ARKit raycast normal; the first run assumed 1 to 5",
+        "Gaussian sigmas inferred separately from median absolute yaw and p90 absolute yaw of a 0.3 m depth-patch plane on ETH3D electro (experiments/edge-geometry), a proxy for one ARKit raycast normal; the first run assumed 1 to 5; Gaussian shape is assumed, not measured",
     ),
     "tap_view_deg": P(
         35.0,

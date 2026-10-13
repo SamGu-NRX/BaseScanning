@@ -1,5 +1,7 @@
 # Sensor budget
 
+The tracked budget tables predate the conversion of empirical yaw quantiles to Gaussian sigmas. Their anchor-plane estimates and verdict need a new budget run before use.
+
 ## Question
 
 What error does physics allow each signal we can't test on data, at the range it would be used? The signals are dual-camera disparity, focus distance, the barometer, UWB, known-size objects, one photo per span, and the phone as a probe. Each gets a formula and sourced optimistic and conservative parameters; [METHODS.md](METHODS.md) and [results/budget.md](results/budget.md) list them.

@@ -1,5 +1,7 @@
 """Strict checks of the closed-form models: each has one correct answer."""
 
+from statistics import NormalDist
+
 import numpy as np
 import pytest
 
@@ -74,3 +76,9 @@ def test_one_photo_yaw_term_matches_first_order():
 )
 def test_verdict_boundaries(kind, opt, cons, want):
     assert b.verdict(kind, opt, cons) == want
+
+
+def test_empirical_yaw_endpoints_are_converted_to_gaussian_sigmas():
+    parameter = b.PARAMS["anchor_yaw_deg"]
+    assert parameter.opt * NormalDist().inv_cdf(.75) == pytest.approx(2.15)
+    assert parameter.cons * NormalDist().inv_cdf(.95) == pytest.approx(6.72)
