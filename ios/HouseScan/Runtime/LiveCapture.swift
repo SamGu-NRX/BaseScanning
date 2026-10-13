@@ -49,8 +49,6 @@ final class LiveCapture {
     /// True when the mesh can carry ARKit's per-face classification (wall, floor, door, ...),
     /// which the packet's mesh records.
     static var supportsClassifiedMesh: Bool { ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) }
-    /// True when this phone can hide virtual content behind a person standing in front of it.
-    static var supportsPeopleOcclusion: Bool { ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentationWithDepth) }
 
     /// The AR result in the camera view, while one is shown (`showResult`).
     private var result: AnchorEntity?
@@ -82,7 +80,10 @@ final class LiveCapture {
             configuration.sceneReconstruction = .mesh
         }
         if supportsDepth { configuration.frameSemantics.insert(.sceneDepth) }
-        if occludingPeople, supportsPeopleOcclusion { configuration.frameSemantics.insert(.personSegmentationWithDepth) }
+        // Asked of the set that will run, not of people occlusion alone: a phone could support
+        // each semantic by itself and not both with scene depth (review of #51).
+        let withPeople = configuration.frameSemantics.union(.personSegmentationWithDepth)
+        if occludingPeople, ARWorldTrackingConfiguration.supportsFrameSemantics(withPeople) { configuration.frameSemantics = withPeople }
         return configuration
     }
 

@@ -190,6 +190,8 @@ final class ScanEngine {
     /// your wall" is up on the live camera.
     private var resultWatch: Task<Void, Never>?
     /// The wall the model in the AR scene was built from; nil when none is in it.
+    /// The wall the AR result's model was built from, in the frame of the meter's anchor at the
+    /// time (`ScanEngine.inAnchorFrame`).
     private var resultBuiltFor: WallGeometry?
 
     // Upload
@@ -1822,10 +1824,12 @@ final class ScanEngine {
         guard LiveCapture.supportsMesh, let live, let wall = state.wall, let result = state.result,
               let pose = meterTracking?.pose, state.spatialResultAvailable else { return }
         if rising || resultWatch == nil { watchResultInCamera() }
-        // Each rebuild takes the model out of the scene and puts a new one in, so a wall that
-        // moved by a centimeter or two (the ground or the meter's anchor refined) keeps the one
-        // it has. It hangs on the meter's anchor, so it follows the anchor's corrections anyway.
-        if !rising, let built = resultBuiltFor, Self.movedLittle(from: built, to: wall) { return }
+        // Each rebuild takes the model out of the scene and puts a new one in, cutting short its
+        // rise. It hangs on the meter's anchor, so it follows the anchor's corrections anyway:
+        // the wall is compared in the anchor's frame, and only a change to the wall itself (the
+        // ground or an end refined by more than a few centimeters) rebuilds it (review of #51).
+        let local = Self.inAnchorFrame(wall, pose: pose)
+        if !rising, let built = resultBuiltFor, Self.movedLittle(from: built, to: local) { return }
         let model = ResultARModel.build(wall: wall, result: result)
         // The battery's middle (the outline's, on the ground, for a spot that isn't clean), or the
         // meter without a spot, in the model's coordinates.
@@ -1834,7 +1838,7 @@ final class ScanEngine {
             resultBuiltFor = nil
             return
         }
-        resultBuiltFor = wall
+        resultBuiltFor = local
         live.setResultVisible(state.tracking == .normal)
         if rising { ResultARModel.rise(model) }
     }
@@ -1876,6 +1880,37 @@ final class ScanEngine {
     /// within what the ground and the meter's anchor are known to. Display choices, not measured.
     private static let resultRebuildDistance: Float = 0.05
     private static let resultRebuildTurnCosine: Float = cos(2 * Float.pi / 180)
+
+    /// `wall` in the frame of the meter's anchor at `pose`: what the result's model is built
+    /// from, less the anchor's own place and heading, which the model follows anyway. The ends
+    /// and spans are already measured along the wall. A corner piece's anchor is an offset from
+    /// the meter's foot, so it turns like a direction.
+    static func inAnchorFrame(_ wall: WallGeometry, pose: simd_float4x4) -> WallGeometry {
+        let inverse = pose.inverse
+        func point(_ p: SIMD3<Float>) -> SIMD3<Float> {
+            let v = inverse * SIMD4(p, 1)
+            return SIMD3(v.x, v.y, v.z)
+        }
+        func direction(_ d: SIMD3<Float>) -> SIMD3<Float> {
+            let v = inverse * SIMD4(d, 0)
+            return SIMD3(v.x, v.y, v.z)
+        }
+        var local = wall
+        local.meter = point(wall.meter)
+        local.along = direction(wall.along)
+        local.outward = direction(wall.outward)
+        // Under .gravity alignment the anchor's corrections turn about the vertical, so height
+        // above the anchor is the ground's place in its frame.
+        local.groundY = wall.groundY - pose.columns.3.y
+        local.cornerSegments = wall.cornerSegments.map { piece in
+            var piece = piece
+            piece.anchor = direction(piece.anchor)
+            piece.along = direction(piece.along)
+            piece.outward = direction(piece.outward)
+            return piece
+        }
+        return local
+    }
 
     /// True when `new` is `old` moved by less than `resultRebuildDistance` and turned by less
     /// than 2° in every part the model is built from: the meter, the ground, the ends and each
