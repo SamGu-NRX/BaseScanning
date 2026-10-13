@@ -138,10 +138,10 @@ def main(argv: list[str] | None = None) -> None:
     stage = Path(tempfile.mkdtemp(prefix=args.out.name + ".staging-", dir=args.out.parent))
     try:
         run_into(args, stage, images, intrinsics, poses, caches, module, device, torch)
+        publish(stage, args.out)
     except BaseException:
         shutil.rmtree(stage, ignore_errors=True)
         raise
-    publish(stage, args.out)
     print(f"wrote the run's npz files and run.json to {args.out}", file=sys.stderr)
 
 

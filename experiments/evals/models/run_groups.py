@@ -58,10 +58,10 @@ def write_group(out: Path, results, summary: dict) -> None:
             )
         summary = {**summary, "outputs": {p.name: file_hash(p) for p in stage.glob("*.npz")}}
         (stage / "run.json").write_text(json.dumps(summary, indent=1) + "\n")
+        publish(stage, out)
     except BaseException:
         shutil.rmtree(stage, ignore_errors=True)
         raise
-    publish(stage, out)
 
 
 def file_hash(path: Path) -> str:

@@ -466,3 +466,47 @@ def test_group_cache_hit_does_not_load_the_model(tmp_path, monkeypatch):
         ["run_groups", "--scene-dir", str(tmp_path), "--out", str(tmp_path / "outputs")],
     )
     run_groups.main()
+
+
+@pytest.mark.parametrize("writer", ["single", "group"])
+@pytest.mark.parametrize("failure", ["existing-backup", "rename"])
+def test_publication_failure_removes_only_owned_staging(tmp_path, monkeypatch, writer, failure):
+    from models import run_groups
+
+    if writer == "single":
+        invoke, out = _fake_model_run(tmp_path, monkeypatch, fail_on=None)
+    else:
+        out = tmp_path / "out"
+
+        def invoke():
+            run_groups.write_group(out, [], {"run": "new"})
+
+    _complete_run(out, "previous")
+    before = _snapshot(out)
+    sibling = out.with_name(out.name + ".staging")
+    _complete_run(sibling, "caller-owned")
+    sibling_before = _snapshot(sibling)
+    backup = out.with_name(out.name + ".previous")
+    if failure == "existing-backup":
+        _complete_run(backup, "caller-owned-backup")
+        backup_before = _snapshot(backup)
+        error, message = RuntimeError, "existing backup"
+    else:
+        rename = Path.rename
+
+        def refuse_staging(self, target):
+            if self.name.startswith(out.name + ".staging-"):
+                raise OSError("injected publication failure")
+            return rename(self, target)
+
+        monkeypatch.setattr(Path, "rename", refuse_staging)
+        error, message = OSError, "injected publication failure"
+    with pytest.raises(error, match=message):
+        invoke()
+    assert not list(tmp_path.glob(out.name + ".staging-*"))
+    assert _snapshot(out) == before
+    assert _snapshot(sibling) == sibling_before
+    if failure == "existing-backup":
+        assert _snapshot(backup) == backup_before
+    else:
+        assert not backup.exists()
