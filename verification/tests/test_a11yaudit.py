@@ -1,3 +1,7 @@
+import argparse
+import subprocess
+
+from hsverify import a11yaudit
 from hsverify.a11yaudit import audit_problems, audited_screens, parse_output, symbol_name_labels
 
 
@@ -51,7 +55,7 @@ def test_zero_screens_is_not_evidence():
 
 def test_harness_that_did_not_run_is_not_evidence():
     problems = audit_problems(NINE, harness_ran=False, min_screens=9)
-    assert problems == ["the audit harness did not run (no TEST SUCCEEDED or TEST FAILED line)"]
+    assert problems == ["the audit harness did not finish successfully"]
 
 
 def test_too_few_distinct_screens():
@@ -79,3 +83,18 @@ def test_error_lines_from_the_harness_are_parsed_as_screens():
         "screen 1: app not running",
         "no screen was audited",
     ]
+
+
+def test_failed_xctest_cannot_be_clean_evidence(tmp_path, monkeypatch):
+    output = "\n".join(f'A11Y_SCREEN={{"index":{i},"issues":0}}' for i in range(1, 10))
+    output += "\n** TEST SUCCEEDED **"
+    monkeypatch.setattr(a11yaudit.simrun, "wait_for_other_builds", lambda _: None)
+    monkeypatch.setattr(
+        a11yaudit.subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess([], 65, output, "failed"),
+    )
+    args = argparse.Namespace(build_wait=0, seconds=1, idle=1)
+    text, code = a11yaudit.run_harness("mock", "mock", args, [], tmp_path)
+    screens, _ = parse_output(text)
+    assert audit_problems(screens, harness_ran=code == 0, min_screens=9)
