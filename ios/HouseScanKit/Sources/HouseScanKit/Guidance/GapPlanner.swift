@@ -296,8 +296,8 @@ public struct GapPlanner: Sendable {
 
     /// Whether an unseen stretch from `start` to `end`, feet, counts as missing rather than as
     /// rounding: at least the server's COVERAGE_TOLERANCE_FT, 0.01 ft (server/scene.py `missing`
-    /// at t3/server 930e8e5). Only progress applies it, against the coverage actually seen; the
-    /// same-view rule (`GapPlan.asksForSameView`) compares requests exactly.
+    /// at t3/server 930e8e5). Progress and marked-end planning apply it to exported coverage;
+    /// the same-view rule (`GapPlan.asksForSameView`) compares requests exactly.
     static func countsAsMissing(from start: Double, to end: Double) -> Bool {
         // Compare endpoints so subtracting two rounded scene values cannot turn an exact
         // tolerance gap into 0.0099999999999998 ft (review of #47).
