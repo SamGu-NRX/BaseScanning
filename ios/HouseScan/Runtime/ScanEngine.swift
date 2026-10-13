@@ -1259,11 +1259,11 @@ final class ScanEngine {
         let output = planner.cues(for: task, coverage: map, camera: camera)
         state.target = output.target
         state.path = output.path
-        // The card follows the target on the frame shown, as the ring does.
-        if var hint = state.guidanceHint {
-            let previous = hint.aim.map(Self.aimHint)
-            hint.aim = output.target.map { Self.direction(AimHint.classify(target: $0, camera: camera, previous: previous)) }
-            state.guidanceHint = hint
+        // The card follows the frame shown, as the ring does: its direction (sticky near the
+        // view's edges, as on live frames) and whether to step back or aside from where this
+        // frame was taken (review of #120).
+        if let hint = state.guidanceHint {
+            state.guidanceHint = Self.hint(output, camera: camera, previous: hint.aim)
         }
     }
 

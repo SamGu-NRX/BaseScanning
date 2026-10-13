@@ -188,10 +188,6 @@ public struct GuidancePlanner: Sendable {
         var output = cues(for: task, coverage: coverage, camera: camera)
         output.switched = switched
         output.stalled = stalled
-        if let aim = Self.aim(task), let camera {
-            output.stepBack = coverage.wall.wallPoint(camera.position).out < config.tooClose
-            output.needsSecondPosition = coverage.needsSecondPosition(band: aim.band, range: Self.stretch(around: aim.s), from: camera.position)
-        }
         return output
     }
 
@@ -203,11 +199,18 @@ public struct GuidancePlanner: Sendable {
         lastProgressAt = time
     }
 
-    /// The target and path of `task` seen from `camera`, without choosing a task. The engine calls
-    /// this for frames that must not move the task (a replay frame shown for a tap) so the cues
-    /// never lag behind the camera the screen shows.
+    /// The target, path and aim advice (`stepBack`, `needsSecondPosition`) of `task` seen from
+    /// `camera`, without choosing a task. The engine calls this for frames that must not move the
+    /// task (a replay frame shown for a tap) so the cues never lag behind the camera the screen
+    /// shows. The advice is worked out here rather than in `update` so such a frame can't keep the
+    /// step-back or step-aside line from where the phone was before (review of #120).
     public func cues(for task: GuidanceTask, coverage: CoverageMap, camera: CameraFrame?) -> GuidanceOutput {
-        GuidanceOutput(task: task, target: target(for: task, coverage: coverage, camera: camera), path: path(for: task, coverage: coverage, camera: camera))
+        var output = GuidanceOutput(task: task, target: target(for: task, coverage: coverage, camera: camera), path: path(for: task, coverage: coverage, camera: camera))
+        if let aim = Self.aim(task), let camera {
+            output.stepBack = coverage.wall.wallPoint(camera.position).out < config.tooClose
+            output.needsSecondPosition = coverage.needsSecondPosition(band: aim.band, range: Self.stretch(around: aim.s), from: camera.position)
+        }
+        return output
     }
 
     // MARK: Choosing
