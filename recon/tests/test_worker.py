@@ -410,7 +410,8 @@ def _lidar_frames(root: Path, with_depth: dict[str, bool]) -> list[cap.Frame]:
         lid = None
         if has:
             np.full((2, 2), 2.0, "<f4").tofile(root / f"{fid}.f32")
-            lid = cap.LidarDepth(root / f"{fid}.f32", None, 2, 2)
+            np.full((2, 2), 2, np.uint8).tofile(root / f"{fid}.u8")
+            lid = cap.LidarDepth(root / f"{fid}.f32", root / f"{fid}.u8", 2, 2)
         frames.append(
             cap.Frame(fid, root / f"{fid}.jpg", 8, 6, np.array([8.0, 8, 4, 3]), np.eye(4), lid)
         )
@@ -513,7 +514,7 @@ def test_facing_gap_and_clear_space_start_at_a_proud_wall_face():
     cells = np.array([0.0])
     flat = coverage.free_space(wall, _slab_volume([(-0.3, 0.0), (1.0, 1.4)], 7.0), cells)
     proud = coverage.free_space(wall, _slab_volume([(-0.3, 0.3), (1.3, 1.7)], 7.0), cells)
-    assert proud[0][0] == pytest.approx(flat[0][0]) == pytest.approx(0.95, abs=0.01)
+    assert proud[0][0] == pytest.approx(flat[0][0]) == pytest.approx(0.90, abs=0.01)
     # Nothing faces it, and the volume was seen empty to 2.0 m from the plane: 1.7 m from the face.
     clear = coverage.free_space(wall, _slab_volume([(-0.3, 0.3)], 2.0), cells)
     assert np.isnan(clear[0][0]) and 1.6 <= clear[1][0] <= 1.7

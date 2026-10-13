@@ -26,6 +26,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
+import struct
+import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -94,6 +97,10 @@ class Capture:
 
 ROTATION_TOL = 1e-2  # scene.json rounds poses to 4 decimals; anything further off is not a pose
 
+# Existing bundle admission policy in verification/hsverify/e2e.py, not measured capture maxima.
+MAX_BUNDLE_ENTRIES = 2000
+MAX_BUNDLE_BYTES = 512 * 2**20
+
 
 def column_major(pose: list[float]) -> np.ndarray:
     """A 4x4 from 16 column-major numbers, its rotation snapped to the nearest proper rotation.
@@ -119,16 +126,99 @@ def unpack(path: Path, work: Path) -> Path:
     """A folder as is; a zip extracted once under `work`, keyed by its sha256."""
     if path.is_dir():
         return path
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+    if path.stat().st_size > MAX_BUNDLE_BYTES:
+        raise ValueError(f"{path}: archive exceeds {MAX_BUNDLE_BYTES} bytes")
+    with path.open("rb") as f:
+        digest = hashlib.file_digest(f, "sha256").hexdigest()[:16]
     out = work / "bundles" / digest
     if not out.exists():
+        _zip_directory_limits(path)
         with zipfile.ZipFile(path) as z:
-            names = [n for n in z.namelist() if not n.startswith("__MACOSX/")]
-            for n in names:
+            infos = z.infolist()
+            if len(infos) > MAX_BUNDLE_ENTRIES:
+                raise ValueError(f"{path}: {len(infos)} entries, limit {MAX_BUNDLE_ENTRIES}")
+            if sum(i.file_size for i in infos) > MAX_BUNDLE_BYTES:
+                raise ValueError(f"{path}: expanded archive exceeds {MAX_BUNDLE_BYTES} bytes")
+            members = [i for i in infos if not i.filename.startswith("__MACOSX/")]
+            for info in members:
+                n = info.filename
                 if n.startswith("/") or ".." in Path(n).parts:
                     raise ValueError(f"{path}: unsafe entry {n!r}")
-            z.extractall(out, members=names)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            # Extraction stays private until every CRC-checked member finishes. Failed extraction
+            # cannot leave a partial cache directory that a later run mistakes for a complete one.
+            stage = Path(tempfile.mkdtemp(dir=out.parent, prefix=f".{digest}-"))
+            try:
+                written = 0
+                for info in members:
+                    dest = stage / info.filename
+                    if info.is_dir():
+                        dest.mkdir(parents=True, exist_ok=True)
+                        continue
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    with z.open(info) as src, dest.open("wb") as dst:
+                        while chunk := src.read(2**20):
+                            written += len(chunk)
+                            if written > MAX_BUNDLE_BYTES:
+                                raise ValueError(f"{path}: expanded archive exceeds byte limit")
+                            dst.write(chunk)
+                try:
+                    stage.rename(out)
+                except OSError:
+                    # Another run of this exact content may have finished first.
+                    if not out.is_dir():
+                        raise
+            finally:
+                if stage.exists():
+                    shutil.rmtree(stage)
     return out
+
+
+def _zip_directory_limits(path: Path) -> None:
+    """Check central-directory records in bounded reads before ZipFile allocates their metadata.
+    ZIP64 and split archives exceed this worker's ordinary ZIP admission format and are refused.
+    The record layouts are PKWARE APPNOTE sections 4.3.12 and 4.3.16."""
+    with path.open("rb") as f:
+        size = path.stat().st_size
+        f.seek(max(0, size - 22 - 65535))
+        tail = f.read(22 + 65535)
+        end = len(tail)
+        while True:
+            pos = tail.rfind(b"PK\x05\x06", 0, end)
+            if pos < 0:
+                raise ValueError(f"{path}: missing ZIP end record")
+            if pos + 22 <= len(tail):
+                record = struct.unpack("<4s4H2IH", tail[pos : pos + 22])
+                if pos + 22 + record[-1] == len(tail):
+                    break
+            end = pos
+        _, disk, central_disk, disk_entries, total_entries, length, offset, _ = record
+        if disk or central_disk or disk_entries != total_entries:
+            raise ValueError(f"{path}: split ZIP archives are not supported")
+        if total_entries > MAX_BUNDLE_ENTRIES:
+            raise ValueError(f"{path}: {total_entries} entries, limit {MAX_BUNDLE_ENTRIES}")
+        directory_end = offset + length
+        end_offset = size - len(tail) + pos
+        if length == 0xFFFFFFFF or offset == 0xFFFFFFFF or directory_end != end_offset:
+            raise ValueError(f"{path}: ZIP64 or inconsistent ZIP directory")
+        f.seek(offset)
+        count, expanded = 0, 0
+        while f.tell() < directory_end:
+            header = f.read(46)
+            if len(header) != 46 or header[:4] != b"PK\x01\x02":
+                raise ValueError(f"{path}: invalid ZIP central-directory record")
+            fields = struct.unpack("<4s6H3I5H2I", header)
+            count += 1
+            expanded += fields[9]
+            if count > MAX_BUNDLE_ENTRIES:
+                raise ValueError(f"{path}: {count} entries, limit {MAX_BUNDLE_ENTRIES}")
+            if expanded > MAX_BUNDLE_BYTES:
+                raise ValueError(f"{path}: expanded archive exceeds {MAX_BUNDLE_BYTES} bytes")
+            f.seek(sum(fields[10:13]), 1)
+            if f.tell() > directory_end:
+                raise ValueError(f"{path}: ZIP central-directory record exceeds directory")
+        if count != total_entries:
+            raise ValueError(f"{path}: inconsistent ZIP entry count")
 
 
 def _find(root: Path, name: str) -> Path | None:
