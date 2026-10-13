@@ -135,11 +135,17 @@ def cam_dirs(K: np.ndarray, uv: np.ndarray) -> np.ndarray:
     return np.c_[(uv[:, 0] - K[0, 2]) / K[0, 0], (uv[:, 1] - K[1, 2]) / K[1, 1], np.ones(len(uv))]
 
 
+EVALS_COMMIT = "190ed339f41924ae0244e0b88c5ebe647ddd9eb4"
+
+
 def evals_commit() -> str:
     out = subprocess.run(
         ["git", "-C", str(EVALS_DIR), "rev-parse", "HEAD"], capture_output=True, text=True
     )
-    return out.stdout.strip() or "unknown"
+    head = out.stdout.strip()
+    if out.returncode or head != EVALS_COMMIT:
+        raise SystemExit(f"evals harness at {EVALS_DIR} is at {head or 'unknown'}, expected {EVALS_COMMIT}")
+    return head
 
 
 def plane_members(cands, normals, planes) -> np.ndarray:
@@ -744,7 +750,7 @@ def summarise_multi(m: dict) -> dict:
                 },
                 "M3": {
                     "pairs": int(pair.sum()),
-                    "match_rate": round(float(matched.sum() / max(pair.sum(), 1)), 3),
+                    "match_rate": round(float(matched.sum() / max(len(pair), 1)), 3),
                     "match_px": pct(r["m3_px"][c][matched]),
                     "frame_3d": stats.summary(m3_frame["3d"], j),
                     "frame_along": stats.summary(m3_frame["along"], j),
@@ -829,7 +835,7 @@ def grade(single: dict, multi: dict) -> dict:
     m2 = p90_in(ma["m2_span"][ma["in_plane"], 0])
     pair = ma["m3_pair"]
     matched = pair & (ma["m3_ncc"] >= NCC_MIN) & np.isfinite(ma["m3_frame"]).all(axis=1)
-    rate = float(matched.sum() / max(pair.sum(), 1))
+    rate = float(matched.sum() / max(len(pair), 1))
     m3 = p90_in(np.linalg.norm(ma["m3_span"], axis=1))
     return {
         "P1": {"m0_along_p90_in_0_15": near, "m0_along_p90_in_over_30": wide, "pass": bool(near <= 0.5 * wide)},
