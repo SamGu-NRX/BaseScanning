@@ -1298,28 +1298,59 @@ def probe_starts(*results: dict) -> list[tuple[str, float]]:
     return sorted(points)
 
 
+def outcomes_near(result: dict, wall_id: str, start_ft: float) -> tuple[set[str], str]:
+    """The outcomes a sweep allows at a start, and how they were read.
+
+    A run containing the start gives its outcome. A start no run contains, which a changed
+    scene's new boundary can land on, gets its neighbouring runs' outcomes on that wall: the
+    server evaluates every start where some check can change its outcome, plus the midpoints
+    between those (server/solver.py module docstring, t3/server 1d1e7e1), so between two
+    evaluated starts the outcome is the outcome at one of them. Past the last run on one side
+    only the nearest run is left; on a wall with no run there is nothing to compare with."""
+    if (inside := outcome_at(result, wall_id, start_ft)) is not None:
+        return {inside}, inside
+    runs = [run for run in result.get("sweep", []) if run["wall_id"] == wall_id]
+    left = max(
+        (r for r in runs if r["start_ft"][1] < start_ft),
+        key=lambda r: r["start_ft"][1],
+        default=None,
+    )
+    right = min(
+        (r for r in runs if r["start_ft"][0] > start_ft),
+        key=lambda r: r["start_ft"][0],
+        default=None,
+    )
+    near = [r["outcome"] for r in (left, right) if r is not None]
+    if not near:
+        return set(), "no run on its wall"
+    return set(near), f"unswept beside {' and '.join(near)}"
+
+
 def more_error_problems(before: dict, after: dict, change: str) -> list[str]:
     """With more error, a start may only move toward UNSURE: UNSURE stays, PASS and FAIL stay
-    or become UNSURE."""
+    or become UNSURE. A start the original sweep never evaluated is read as `outcomes_near`."""
     problems = []
     for wall_id, s in probe_starts(before, after):
-        a, b = outcome_at(before, wall_id, s), outcome_at(after, wall_id, s)
-        if a is None or b is None or a == b or b == "unsure":
+        b = outcome_at(after, wall_id, s)
+        allowed, was = outcomes_near(before, wall_id, s)
+        if b is None or b == "unsure" or b in allowed:
             continue
-        problems.append(f"{change}: start {wall_id} {s:.3f} went from {a} to {b}")
+        problems.append(f"{change}: start {wall_id} {s:.3f} went from {was} to {b}")
     if before["decision"] != "pass" and after["decision"] == "pass":
         problems.append(f"{change}: the decision became pass")
     return problems
 
 
 def less_coverage_problems(before: dict, after: dict, change: str) -> list[str]:
-    """With less observed, no start may newly PASS."""
-    problems = [
-        f"{change}: start {wall_id} {s:.3f} went from {outcome_at(before, wall_id, s)} to pass"
-        for wall_id, s in probe_starts(before, after)
-        if outcome_at(after, wall_id, s) == "pass"
-        and outcome_at(before, wall_id, s) not in (None, "pass")
-    ]
+    """With less observed, no start may newly PASS. A start the original sweep never evaluated
+    is read as `outcomes_near`, so a boundary that moved is not taken for a new pass."""
+    problems = []
+    for wall_id, s in probe_starts(before, after):
+        if outcome_at(after, wall_id, s) != "pass":
+            continue
+        allowed, was = outcomes_near(before, wall_id, s)
+        if "pass" not in allowed:
+            problems.append(f"{change}: start {wall_id} {s:.3f} went from {was} to pass")
     if before["decision"] != "pass" and after["decision"] == "pass":
         problems.append(f"{change}: the decision became pass")
     return problems
