@@ -3,6 +3,7 @@
 
 import { CloudView } from "./cloud.js";
 import { Conduit } from "./conduit.js";
+import { createCountTimers } from "./count-timers.js";
 import { followCapture } from "./live.js";
 import { connectionView, hasPreview, initialState, reduce, stageRows, stageTimingUninterpretable, viewsToShow } from "./model.js";
 import { REPLAY_CAPTURE_ID, ReplayPlayer } from "./replay.js";
@@ -50,7 +51,7 @@ let follower = null;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 let motionPaused = reducedMotion.matches;
 let shownArrival = 0;
-const countTimers = new Set();
+const countTimers = createCountTimers({ write: writeCounts, current: () => state });
 let shownCounts = { session: -1, value: 0 };
 let clockStalled = false;
 let renderQueued = false;
@@ -74,7 +75,6 @@ function dispatch(action) {
 // ---- modes ----
 
 function stopAll() {
-  for (const timer of countTimers) clearTimeout(timer);
   countTimers.clear();
   player?.stop();
   player = null;
@@ -226,19 +226,10 @@ function renderArrivals() {
   if (fresh.length > 0) {
     shownArrival = fresh.at(-1).id;
     const landsIn = Math.max(...fresh.map((a) => conduit.send(a, { motion: motionOn() })));
-    if (landsIn > 0) {
-      // The counts change as the marks land. A timer does the update, so the counts stay current
-      // even where the marks' animations cannot run.
-      // Each timer shows the totals as of its own batch, so a counter never runs ahead of its marks.
-      const snapshot = state;
-      const timer = setTimeout(() => {
-        countTimers.delete(timer);
-        writeCounts(snapshot);
-      }, landsIn);
-      countTimers.add(timer);
-    }
+    // The counts change as the marks land.
+    if (landsIn > 0) countTimers.afterMarks(landsIn);
   }
-  if (countTimers.size === 0) writeCounts();
+  countTimers.settle();
   const backlog = counts.backlog;
   const parts = [];
   if (counts.registered != null) parts.push(`of ${counts.registered} registered`);

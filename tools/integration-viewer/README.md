@@ -75,7 +75,7 @@ Sources are fixed at startup. The relay refuses other methods and paths, and any
 | `public/live.js` | Long-poll loop: catch-up reads until history is drained, then long polls that end by the next 5 s status refresh, with a 1 s floor, backoff up to 5 s that honors `Retry-After`, result and preview reads when events call for them |
 | `public/replay.js`, `public/scenario.js` | Illustrative replay and the synthetic scenarios both sources share |
 | `public/ply.js`, `public/cloud.js` | PLY reader (ascii and binary) and the canvas renderer |
-| `public/conduit.js`, `public/app.js` | The file line and the page wiring. Counts update on timers, never on an animation finishing, and a probe turns motion and transitions off when the browser's animation clock is stopped. |
+| `public/conduit.js`, `public/count-timers.js`, `public/app.js` | The file line, the timers that update the counts, and the page wiring. Counts update on timers, never on an animation finishing, and a probe turns motion and transitions off when the browser's animation clock is stopped. |
 
 ## Tests
 
@@ -84,7 +84,7 @@ cd tools/integration-viewer
 node --test "test/*.test.js"
 ```
 
-The tests cover the reducer (duplicates, ordering, cursor, stale sessions, unknown events, offline, no claimed result), the PLY reader, the relay through real HTTP requests (allowlist, traversal, Host check, signed-URL handling), and the live loop against the relay and a sped-up synthetic API, including a dropped connection. CI does not run them yet, because no workflow covers `tools/`.
+The tests cover the reducer (duplicates, ordering, cursor, stale sessions, unknown events, offline, no claimed result), the PLY reader, the relay through real HTTP requests (allowlist, traversal, Host check, signed-URL handling), the count timers (a batch that draws no marks while older marks travel still reaches the counters), and the live loop against the relay and a sped-up synthetic API, including a dropped connection. CI does not run them yet, because no workflow covers `tools/`.
 
 `test/browser.test.js` runs the page in headless Chrome with the animation clock stopped and frames drawn only on request, which is how an embedded preview panel behaved. It checks that the file counts match the events drawn in the same frame and that finished stages show their marker. It skips when no Chrome is found; set `CHROME_PATH` to point at one.
 
