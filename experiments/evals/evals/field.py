@@ -111,6 +111,14 @@ def file_sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def zip_member_sha256(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> str:
+    h = hashlib.sha256()
+    with archive.open(info) as src:
+        while block := src.read(1 << 20):
+            h.update(block)
+    return h.hexdigest()
+
+
 def check_zip_directory(session: Path) -> None:
     """Refuse a zip whose central directory is too large or lists too many entries, reading only
     its end record. `zipfile.ZipFile` reads the whole directory and builds every entry while it is
@@ -171,7 +179,12 @@ def unpack(session: Path) -> tuple[Path, str | None]:
         if len(roots) != 1:
             raise ValueError(f"{session}: expected one session.json, found {roots}")
         root = out / roots[0]
-        if not root.exists():
+        intact = root.exists() and all(
+            (out.joinpath(*rel.parts)).is_file()
+            and file_sha256(out.joinpath(*rel.parts)) == zip_member_sha256(z, info)
+            for info, rel in members
+        )
+        if not intact:
             FIELD_DIR.mkdir(parents=True, exist_ok=True)
             free = shutil.disk_usage(FIELD_DIR).free
             if free - declared < MIN_FREE_AFTER_UNPACK:
@@ -261,6 +274,9 @@ def safe_id(value: str, what: str) -> str:
     return value
 
 
+# A 1 MiB header budget bounds malformed JPEG work. No dataset calibration supports this limit.
+MAX_JPEG_HEADER_BYTES = 1024 * 1024
+
 # JPEG start-of-frame markers carry the image size; C4 (DHT), C8 (JPG) and CC (DAC) share the range
 # but are not frames.
 _JPEG_SOF = set(range(0xC0, 0xD0)) - {0xC4, 0xC8, 0xCC}
@@ -276,14 +292,14 @@ def image_size(path: Path) -> tuple[int, int]:
         if head[:2] != b"\xff\xd8":
             raise ValueError(f"{path}: not a JPEG or PNG image")
         f.seek(2)
-        while True:
+        while f.tell() < MAX_JPEG_HEADER_BYTES:
             byte = f.read(1)
             if not byte:
                 break
             if byte != b"\xff":
-                continue
+                break
             marker = f.read(1)
-            while marker == b"\xff":  # fill bytes before a marker
+            while marker == b"\xff" and f.tell() < MAX_JPEG_HEADER_BYTES:  # bounded fill bytes
                 marker = f.read(1)
             if not marker:
                 break
@@ -309,9 +325,11 @@ def read_session_image(path: Path, flags: int = cv2.IMREAD_COLOR) -> np.ndarray:
     w, h = image_size(path)
     if w <= 0 or h <= 0 or w * h > MAX_IMAGE_PIXELS:
         raise ValueError(f"{path}: {w} x {h} pixels, more than {MAX_IMAGE_PIXELS} or empty")
-    img = cv2.imread(str(path), flags)
+    img = cv2.imread(str(path), flags | cv2.IMREAD_IGNORE_ORIENTATION)
     if img is None:
         raise ValueError(f"{path}: OpenCV could not decode it")
+    if img.shape[:2] != (h, w):
+        raise ValueError(f"{path}: decoded size differs from header {w} x {h}")
     return img
 
 
@@ -764,6 +782,8 @@ def score(
     out_dir.mkdir(parents=True, exist_ok=True)
     for name in ROW_FILES:
         (out_dir / name).unlink(missing_ok=True)
+    (out_dir / "field_report.md").unlink(missing_ok=True)
+    shutil.rmtree(out_dir / "scored", ignore_errors=True)
     folder, capture = unpack(session_path)
     session = load_session(folder)
     out = work_dir(folder)
@@ -829,8 +849,10 @@ def score(
             f"{map_path}: map is for session {mapping.get('session')!r}, the capture is "
             f"{session['session']['id']!r}; run `stamp` first"
         )
-    if capture not in truth.get("captures", []):
-        raise ValueError(f"{truth_path}: survey does not list capture {capture}; run `stamp` first")
+    if set(truth.get("captures", [])) != {capture}:
+        raise ValueError(
+            f"{truth_path}: survey captures must contain only {capture}; run `stamp` first"
+        )
     rules_sha = hashlib.sha256(Path(rules_path).read_bytes()).hexdigest()
     ref = mapping["measurements"].get(truth["scale_reference"])
     tape = {m["id"]: m for m in truth["measurements"]}.get(truth["scale_reference"])
@@ -880,11 +902,16 @@ def score(
     return "\n".join(lines) + "\n"
 
 
+def result_dir(session: Path) -> Path:
+    folder, digest = unpack(session)
+    return FIELD_DIR / "results" / capture_id(folder, digest)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument("step", choices=["stamp", "prepare", "score"])
+    ap.add_argument("step", choices=["stamp", "prepare", "score", "result-dir"])
     ap.add_argument("session", type=Path, help="session zip shared from Measure Lab, or its folder")
     ap.add_argument("--truth", type=Path)
     ap.add_argument("--map", type=Path)
@@ -892,7 +919,10 @@ def main() -> None:
     ap.add_argument("--out-dir", type=Path, help="default: a folder per session under the data dir")
     ap.add_argument("--tap-error-in", type=float, default=TAP_ERROR_IN)
     args = ap.parse_args()
-    out_dir = args.out_dir or FIELD_DIR / "results" / args.session.stem
+    if args.step == "result-dir":
+        print(result_dir(args.session))
+        return
+    out_dir = args.out_dir or result_dir(args.session)
     if args.step == "stamp":
         print(stamp(args.session, args.truth, args.map, out_dir))
         return

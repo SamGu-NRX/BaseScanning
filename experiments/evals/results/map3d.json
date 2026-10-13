@@ -53,7 +53,7 @@
  "facing_3cm_truth": {
   "claimed_ft": 0.5,
   "false_observed_ft": 0.5,
-  "passes": 1.0,
+  "passes": true,
   "spans_with_unseen_ft": [
    [
     8.5,
@@ -76,7 +76,7 @@
  "facing": {
   "claimed_ft": 0.5,
   "false_observed_ft": 0.5,
-  "passes": 1.0,
+  "passes": true,
   "spans_with_unseen_ft": [
    [
     8.5,

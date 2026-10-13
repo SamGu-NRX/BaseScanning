@@ -243,7 +243,9 @@ def pose_methods(scene: Scene, fits: FitCache) -> dict[str, list[Method]]:
         label = mapanything_label(
             root / f"ma392_{setting}", setting, pose_file(scene.name, setting)
         )
-        methods[f"mapanything@392 + {label}"] = [model_frame_method(root / f"ma392_{setting}")]
+        methods[f"mapanything@392 + {label}"] = [
+            model_frame_method(root / f"ma392_{setting}", centred=True)
+        ]
     for setting in SETTINGS:
         draws = noise_draws(setting)
         methods[f"MoGe-2 placed with {setting} poses"] = [

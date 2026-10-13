@@ -387,7 +387,7 @@ def true_pose_methods(scene: Scene) -> dict[str, Method]:
     return methods
 
 
-def model_frame_method(root: Path) -> Method:
+def model_frame_method(root: Path, centred: bool = False) -> Method:
     """A multi-view model's own output per group, in the frame and scale it chose."""
 
     def method(gid, members):
@@ -397,7 +397,7 @@ def model_frame_method(root: Path) -> Method:
 
         def pv(name):
             d, K, T = load_prediction(run / f"{name}.npz")
-            return d, K, T, False
+            return d, K, T, centred
 
         return pv
 

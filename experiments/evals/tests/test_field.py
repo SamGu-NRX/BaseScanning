@@ -651,3 +651,72 @@ def test_stamp_refuses_a_survey_already_bound_to_another_capture(case):
     survey["captures"] = [capture]  # its own capture, stamped before: accepted again
     paths["truth"].write_text(json.dumps(survey))
     field.stamp(archive, paths["truth"], paths["map"], out)
+
+
+def test_cached_extraction_recreates_modified_files(tmp_path, monkeypatch):
+    monkeypatch.setattr(field, "FIELD_DIR", tmp_path / "cache")
+    archive = tmp_path / "session.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("session.json", "original")
+        z.writestr("keyframe.jpg", b"photo")
+    folder, _ = field.unpack(archive)
+    (folder / "session.json").write_text("modified")
+    (folder / "keyframe.jpg").write_bytes(b"other")
+    again, _ = field.unpack(archive)
+    assert (again / "session.json").read_text() == "original"
+    assert (again / "keyframe.jpg").read_bytes() == b"photo"
+
+
+def test_score_refuses_a_survey_with_another_capture(case):
+    archive, paths, _capture, out = case
+    truth = json.loads(paths["truth"].read_text())
+    truth["captures"].append("another capture")
+    paths["truth"].write_text(json.dumps(truth))
+    with pytest.raises(ValueError, match="survey captures must contain only"):
+        field.score(archive, paths["truth"], paths["map"], paths["rules"], out)
+
+
+def test_image_decoder_keeps_sensor_orientation(tmp_path):
+    from PIL import Image
+
+    path = tmp_path / "oriented.jpg"
+    im = Image.new("RGB", (12, 8))
+    exif = im.getexif()
+    exif[274] = 6
+    im.save(path, exif=exif)
+    assert field.read_session_image(path).shape[:2] == (8, 12)
+
+
+def test_jpeg_header_does_not_scan_non_header_payload(tmp_path):
+    path = tmp_path / "invalid.jpg"
+    path.write_bytes(b"\xff\xd8" + b"a" * 1024)
+    with pytest.raises(ValueError, match="frame header"):
+        field.image_size(path)
+
+
+def test_score_clears_old_reports_before_a_failure(case):
+    archive, paths, _capture, out = case
+    out.mkdir()
+    (out / "field_report.md").write_text("stale report")
+    (out / "scored").mkdir()
+    (out / "scored" / "scores.json").write_text("stale scores")
+    truth = json.loads(paths["truth"].read_text())
+    truth["captures"] = ["wrong capture"]
+    paths["truth"].write_text(json.dumps(truth))
+    with pytest.raises(ValueError):
+        field.score(archive, paths["truth"], paths["map"], paths["rules"], out)
+    assert not (out / "field_report.md").exists()
+    assert not (out / "scored").exists()
+
+
+def test_equal_archive_basenames_get_distinct_result_directories(tmp_path, monkeypatch):
+    monkeypatch.setattr(field, "FIELD_DIR", tmp_path / "cache")
+    archives = []
+    for name in ("a", "b"):
+        folder = tmp_path / name
+        folder.mkdir()
+        archive = folder / "session.zip"
+        with zipfile.ZipFile(archive, "w") as z:
+            z.writestr("session.json", name)
+        archives.append(archive)
+    assert field.result_dir(archives[0]) != field.result_dir(archives[1])

@@ -178,7 +178,11 @@ def record_path(archive: Archive) -> Path:
 def write_record(archive: Archive, names: list[str]) -> None:
     """Record the unpacked files once every expected one is present: the marker, and at least one
     file under each requested member."""
-    files = {n: (archive.dest / n).stat().st_size for n in names if (archive.dest / n).is_file()}
+    files = {
+        n: {"bytes": (archive.dest / n).stat().st_size, "sha256": sha256_of(archive.dest / n)}
+        for n in names
+        if (archive.dest / n).is_file()
+    }
     missing = [m for m in archive.members if not any(n.startswith(m) for n in files)]
     if not (archive.dest / archive.marker).exists():
         missing.append(archive.marker)
@@ -191,17 +195,21 @@ def write_record(archive: Archive, names: list[str]) -> None:
 
 def is_complete(archive: Archive) -> bool:
     """True when this archive's record matches its pinned sha256 and every recorded file exists at
-    its recorded size. Sizes catch a truncated or partly deleted copy without rehashing gigabytes;
-    an edit that keeps a file's size is not caught."""
+    its recorded size and content hash. Old size-only records require a fresh verified extraction."""
     path = record_path(archive)
     if not path.exists():
         return False
     record = json.loads(path.read_text())
     if record.get("sha256") != archive.sha256 or not record.get("files"):
         return False
-    for name, size in record["files"].items():
+    for name, identity in record["files"].items():
         f = archive.dest / name
-        if not f.is_file() or f.stat().st_size != size:
+        if (
+            not isinstance(identity, dict)
+            or not f.is_file()
+            or f.stat().st_size != identity["bytes"]
+            or sha256_of(f) != identity["sha256"]
+        ):
             return False
     return True
 

@@ -66,7 +66,7 @@ pose-priors:
 # (the tape survey, the team's map for `score import-measure-lab`, the rules file) it also writes
 # the learned-depth results files, imports the rig's own row with the scoring harness at SCORING
 # (experiments/scoring, PR #4) and scores every row in one table.
-FIELD_OUT ?= $(DATA)/evals/field/results/$(basename $(notdir $(SESSION)))
+FIELD_OUT ?= $(shell uv run python -m evals.field result-dir "$(SESSION)")
 RULES ?= field/rules.json
 # PR #4's harness, checked out read-only at a pinned commit outside the repo. The full SHA is
 # fetched by name first, because a shallow or single-branch clone doesn't have it.
@@ -77,7 +77,8 @@ STAMPED_MAP = $(FIELD_OUT)/inputs/map.json
 field:
 	@# The default checkout is created at the pinned commit and, when reused, must still be there
 	@# with the harness unmodified. An overridden SCORING is the caller's choice and must exist.
-	@if [ "$(SCORING)" = "$(SCORING_CHECKOUT)/experiments/scoring" ]; then \
+	@if [ -z "$(TRUTH)" ]; then :; \
+	elif [ "$(SCORING)" = "$(SCORING_CHECKOUT)/experiments/scoring" ]; then \
 	  if [ ! -d "$(SCORING_CHECKOUT)" ]; then \
 	    { git -C ../.. cat-file -e $(SCORING_COMMIT)^{commit} 2>/dev/null || \
 	      git -C ../.. fetch --no-tags origin $(SCORING_COMMIT); } && \

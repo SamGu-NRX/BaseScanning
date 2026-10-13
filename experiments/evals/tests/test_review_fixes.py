@@ -337,3 +337,73 @@ def test_score_groups_refuses_a_run_missing_one_group(monkeypatch):
 
     with pytest.raises(recon.PartialRun, match="n2-b"):
         recon.score_groups(scene, {"model": factory}, sizes=(1, 2))
+
+
+def test_dataset_cache_rejects_same_size_edits(tmp_path):
+    from evals import datasets
+
+    archive = _archive(tmp_path, members=("d/a.csv",))
+    (tmp_path / "d").mkdir()
+    path = tmp_path / "d/a.csv"
+    path.write_bytes(b"original")
+    datasets.write_record(archive, ["d/a.csv"])
+    path.write_bytes(b"modified")
+    assert not datasets.is_complete(archive)
+
+
+def test_within_bar_returns_a_python_boolean():
+    assert type(within_bar(np.float64(0.5))) is bool
+
+
+def test_nested_groups_share_camera_pose_errors():
+    from types import SimpleNamespace
+
+    from evals.ar_poses import group_poses
+
+    views = {}
+    for i, name in enumerate("abcd"):
+        T = np.eye(4)
+        T[0, 3] = i
+        views[name] = SimpleNamespace(cam_to_world=T)
+    groups = {"2": [["a", "b"]], "4": [["a", "b", "c", "d"]]}
+    for setting in ("advio_2018", "modern_assumed"):
+        for draw in range(5):
+            poses = group_poses(views, groups, setting, draw)
+            assert poses["n2-a"]["scale"] == poses["n4-a"]["scale"]
+            for name in "ab":
+                np.testing.assert_array_equal(
+                    poses["n2-a"]["poses"][name], poses["n4-a"]["poses"][name]
+                )
+
+
+def test_photo_geometry_excludes_edge_candidates(monkeypatch):
+    from types import SimpleNamespace
+
+    from evals import frames
+
+    scene = SimpleNamespace(
+        views={"v": SimpleNamespace(R_wc=np.eye(3), t_wc=np.zeros(3))},
+        cands=np.array([[0, 0, 3.0], [0, 0, 100.0]]),
+        visible=lambda name: (
+            np.array([0, 1]),
+            np.array([[2, 2], [2, 2]]),
+            np.array([False, True]),
+        ),
+        oracle_depth=lambda name: (np.full((5, 5), 3.0), np.eye(3)),
+    )
+    monkeypatch.setattr(frames, "WIDTH", 5)
+    monkeypatch.setattr(frames, "_height", lambda view: 5)
+    distance, _angle = frames.view_geometry(scene, "v")
+    assert distance == 3.0
+
+
+def test_pose_conditioned_method_keeps_camera_centres(tmp_path, monkeypatch):
+    from evals import recon
+
+    (tmp_path / "g").mkdir()
+    (tmp_path / "g" / "run.json").write_text("{}")
+    pose = np.eye(4)
+    pose[0, 3] = 5
+    monkeypatch.setattr(recon, "load_prediction", lambda path: (np.ones((2, 2)), np.eye(3), pose))
+    assert recon.model_frame_method(tmp_path, centred=True)("g", ["a"])("a")[3] is True
+    assert recon.model_frame_method(tmp_path)("g", ["a"])("a")[3] is False
