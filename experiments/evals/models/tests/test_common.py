@@ -349,34 +349,51 @@ def test_a_publication_that_fails_twice_keeps_the_previous_run(tmp_path, monkeyp
         shutil.rmtree(stage)
 
 
-def test_a_run_left_aside_by_a_killed_publication_is_restored_not_deleted(tmp_path, monkeypatch):
+def test_publication_refuses_an_existing_backup_directory(tmp_path):
     from models import run
 
-    # A kill between setting the old run aside and moving the new one in leaves only .previous.
-    _complete_run(tmp_path / "out.previous", "previous")
+    _complete_run(tmp_path / "out.previous", "caller-owned")
     before = _snapshot(tmp_path / "out.previous")
-    stage = tmp_path / "out.staging"
+    stage = tmp_path / "stage"
     _complete_run(stage, "new")
-    run.publish(stage, tmp_path / "out")
-    assert json.loads((tmp_path / "out" / "run.json").read_text()) == {"run": "new"}
-    assert not (tmp_path / "out.previous").exists()
-    # Restored first, then superseded by a complete publication: never deleted while alone.
-    _complete_run(tmp_path / "out.previous", "previous")
-    shutil.rmtree(tmp_path / "out")
-    stage = tmp_path / "out.staging"
-    _complete_run(stage, "new again")
-
-    real = Path.rename
-
-    def refuse_staging(self, target):
-        if self.name == "out.staging":
-            raise OSError("injected")
-        return real(self, target)
-
-    monkeypatch.setattr(Path, "rename", refuse_staging)
-    with pytest.raises(OSError, match="injected"):
+    with pytest.raises(RuntimeError, match="existing backup"):
         run.publish(stage, tmp_path / "out")
-    assert _snapshot(tmp_path / "out") == before
+    assert _snapshot(tmp_path / "out.previous") == before
+    assert stage.exists()
+
+
+def test_run_preserves_a_caller_owned_staging_sibling(tmp_path, monkeypatch):
+    main, _out = _fake_model_run(tmp_path, monkeypatch, fail_on=None)
+    sibling = tmp_path / "out.staging"
+    _complete_run(sibling, "caller-owned")
+    before = _snapshot(sibling)
+    main()
+    assert _snapshot(sibling) == before
+
+
+def test_read_poses_refuses_a_reflection(tmp_path):
+    from models.common import read_poses
+
+    pose = np.eye(4)
+    pose[0, 0] = -1
+    path = tmp_path / "poses.json"
+    path.write_text(json.dumps({"a": pose.tolist()}))
+    with pytest.raises(ValueError, match="rigid transform"):
+        read_poses(path, [tmp_path / "a.jpg"])
+
+
+def test_group_cache_requires_unchanged_member_outputs(tmp_path):
+    from models.run_groups import cached_group, file_hash
+
+    output = tmp_path / "a.npz"
+    output.write_bytes(b"prediction")
+    record = {"fingerprint": "k", "outputs": {"a.npz": file_hash(output)}}
+    (tmp_path / "run.json").write_text(json.dumps(record))
+    assert cached_group(tmp_path, "k", ["a"])
+    output.write_bytes(b"substitute")
+    assert not cached_group(tmp_path, "k", ["a"])
+    output.unlink()
+    assert not cached_group(tmp_path, "k", ["a"])
 
 
 def test_a_group_write_that_fails_midway_keeps_the_previous_outputs(tmp_path, monkeypatch):
@@ -414,4 +431,38 @@ def test_a_group_write_that_fails_midway_keeps_the_previous_outputs(tmp_path, mo
     monkeypatch.setattr(run_groups, "write_npz", real_write)
     run_groups.write_group(out, results, {"run": "new"})
     assert sorted(p.name for p in out.iterdir()) == ["a.npz", "b.npz", "run.json"]
-    assert json.loads((out / "run.json").read_text()) == {"run": "new"}
+    assert json.loads((out / "run.json").read_text())["run"] == "new"
+
+
+def test_group_cache_hit_does_not_load_the_model(tmp_path, monkeypatch):
+    import sys
+
+    from models import run_groups
+    from models.common import fingerprint
+
+    (tmp_path / "images_1024").mkdir()
+    image = tmp_path / "images_1024" / "a.jpg"
+    image.write_bytes(b"image")
+    (tmp_path / "model_inputs").mkdir()
+    (tmp_path / "model_inputs" / "intrinsics.json").write_text(json.dumps({"a": [1, 1, 0, 0]}))
+    (tmp_path / "subsets.json").write_text(json.dumps({"1": [["a"]]}))
+    out = tmp_path / "outputs" / "n1-a"
+    out.mkdir(parents=True)
+    prediction = out / "a.npz"
+    prediction.write_bytes(b"prediction")
+    key = fingerprint(["a"], [image], [[1, 1, 0, 0]], None, None, run_groups.map_anything.SHA256)
+    (out / "run.json").write_text(
+        json.dumps({"fingerprint": key, "outputs": {"a.npz": run_groups.file_hash(prediction)}})
+    )
+
+    def refuse(*args):
+        raise AssertionError("cached group tried to load a model")
+
+    monkeypatch.setattr(run_groups, "load", refuse)
+    monkeypatch.setattr(run_groups, "require_free_space_for_download", refuse)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_groups", "--scene-dir", str(tmp_path), "--out", str(tmp_path / "outputs")],
+    )
+    run_groups.main()

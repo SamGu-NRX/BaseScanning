@@ -18,6 +18,7 @@ import json
 import platform
 import shutil
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -133,9 +134,8 @@ def main(argv: list[str] | None = None) -> None:
     # Everything is written to a staging folder and swapped in only when the whole run succeeds,
     # so a run that stops midway (out of memory, cancelled) leaves the previous run whole instead of
     # a mix of its depth maps and new ones under the old run.json.
-    stage = args.out.with_name(args.out.name + ".staging")
-    shutil.rmtree(stage, ignore_errors=True)
-    stage.mkdir(parents=True)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    stage = Path(tempfile.mkdtemp(prefix=args.out.name + ".staging-", dir=args.out.parent))
     try:
         run_into(args, stage, images, intrinsics, poses, caches, module, device, torch)
     except BaseException:
@@ -146,22 +146,10 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def publish(stage: Path, out: Path) -> None:
-    """Replace `out` with the complete run in `stage`, all or nothing.
-
-    The previous run is set aside as `out.previous` and put back if the swap fails. A
-    `.previous` is deleted only when a complete run (with its run.json) is published at `out`. A
-    `.previous` with nothing at `out` is a run a killed publication set aside, and is restored
-    before anything else, so a failed publication never loses the last complete run."""
+    """Publish a complete run, preserving the old directory if its replacement fails."""
     previous = out.with_name(out.name + ".previous")
     if previous.exists():
-        if (out / "run.json").exists():
-            shutil.rmtree(previous)  # a later publication completed; this one is superseded
-        elif not out.exists():
-            previous.rename(out)
-        else:
-            raise RuntimeError(
-                f"both {out} (without run.json) and {previous} exist; inspect them by hand"
-            )
+        raise RuntimeError(f"refusing to modify existing backup directory {previous}")
     if out.exists():
         out.rename(previous)
     try:

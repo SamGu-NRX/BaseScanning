@@ -162,8 +162,10 @@ def read_poses(path: Path, images: list[Path]) -> list[np.ndarray]:
         T = np.asarray(entry, dtype=np.float64)
         if T.shape != (4, 4) or not np.all(np.isfinite(T)):
             raise ValueError(f"{path}: pose for {p.stem} must be a 4x4 matrix")
-        if not np.allclose(T[3], [0, 0, 0, 1]) or not np.allclose(
-            T[:3, :3].T @ T[:3, :3], np.eye(3), atol=1e-4
+        if (
+            not np.allclose(T[3], [0, 0, 0, 1])
+            or not np.allclose(T[:3, :3].T @ T[:3, :3], np.eye(3), atol=1e-4)
+            or not np.isclose(np.linalg.det(T[:3, :3]), 1.0, atol=1e-4)
         ):
             raise ValueError(f"{path}: pose for {p.stem} is not a rigid transform: {T.tolist()}")
         out.append(T)
