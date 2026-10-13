@@ -677,13 +677,16 @@ def test_score_refuses_a_survey_with_another_capture(case):
 
 
 def test_image_decoder_keeps_sensor_orientation(tmp_path):
-    from PIL import Image
+    import struct
 
     path = tmp_path / "oriented.jpg"
-    im = Image.new("RGB", (12, 8))
-    exif = im.getexif()
-    exif[274] = 6
-    im.save(path, exif=exif)
+    assert cv2.imwrite(str(path), np.zeros((8, 12, 3), dtype=np.uint8))
+    # A little-endian TIFF directory with one SHORT orientation tag, rotate 90 degrees.
+    exif = b"Exif\0\0" + struct.pack("<2sHIH", b"II", 42, 8, 1)
+    exif += struct.pack("<HHIHHI", 274, 3, 1, 6, 0, 0)
+    jpeg = path.read_bytes()
+    path.write_bytes(jpeg[:2] + b"\xff\xe1" + struct.pack(">H", len(exif) + 2) + exif + jpeg[2:])
+    assert cv2.imread(str(path)).shape[:2] == (12, 8)
     assert field.read_session_image(path).shape[:2] == (8, 12)
 
 
