@@ -52,6 +52,8 @@ The criteria (e.g. the distance the battery must be from the gas meter) exist in
 Below, one wall makes the whole trip, from photos to a checked spot. The models build the wall and name what's on it. The last step, the rule checks, is that deterministic evaluation.
 
 <picture>
+  <source media="(prefers-color-scheme: dark) and (prefers-reduced-motion: reduce)" srcset="docs/readme/rebuild-dark-still.webp">
+  <source media="(prefers-color-scheme: light) and (prefers-reduced-motion: reduce)" srcset="docs/readme/rebuild-light-still.webp">
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/rebuild-dark.webp">
   <img alt="An animated drawing of one wall in six steps. Photos arrive, each with the phone's position. Points are matched between them. A ruler marks feet out from the meter. Dots fill in the wall and the ground, while the left side nobody filmed stays hatched and reads Not seen. The window, meter, AC unit and gravel get labels. Last, a battery appears 12 ft right of the meter with its cable, beside a card where wall behind it, ground under it, open space in front and a 13.6 ft cable run all pass." src="docs/readme/rebuild-light.webp" width="100%">
 </picture>
@@ -75,6 +77,8 @@ Here's where each piece runs. The phone uploads the capture to Google Cloud Stor
 ## Unseen? Then Unsure
 
 <picture>
+  <source media="(prefers-color-scheme: dark) and (prefers-reduced-motion: reduce)" srcset="docs/readme/unseen-dark-still.webp">
+  <source media="(prefers-color-scheme: light) and (prefers-reduced-motion: reduce)" srcset="docs/readme/unseen-light-still.webp">
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/unseen-dark.webp">
   <img alt="A wall with the left side hazed over. Three checks read Not seen. The haze sweeps away, the checks turn Unsure, then settle: wall and ground pass, clear space fails, and the spot reads Not here." src="docs/readme/unseen-light.webp" width="100%">
 </picture>
