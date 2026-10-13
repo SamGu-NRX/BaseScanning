@@ -1118,7 +1118,7 @@ final class ScanEngine {
         }
         let screenTime = Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000
         let output = planner.update(coverage: map, camera: camera, time: screenTime,
-                                    aimActionable: state.coaching == nil && state.marking == nil)
+                                    aimActionable: state.marking == nil && !(state.coaching.map(ScanCopy.coachingReplacesTask) ?? false))
         logPlannerSwitch(output)
         if let hidden = hiddenBlock(output.task, map, camera: camera) {
             seeBehindBands = hidden.bands

@@ -473,6 +473,18 @@ import Testing
         #expect(planner.update(coverage: map, camera: camera, time: 40).task == .walk(.right))
     }
 
+    @Test func anActionableAimStillStallsWithoutCoverageProgress() {
+        let map = CoverageMap(wall: standardWall())
+        let camera = Self.homeowner()
+        var planner = GuidancePlanner()
+        let first = planner.update(coverage: map, camera: camera, time: 0, aimActionable: true)
+        #expect(first.task == .aimAtGround(s: 0))
+        for time in [5.0, 10, 15, 19.9] {
+            #expect(planner.update(coverage: map, camera: camera, time: time, aimActionable: true).stalled == nil)
+        }
+        #expect(planner.update(coverage: map, camera: camera, time: 20, aimActionable: true).stalled == first.task)
+    }
+
     @Test func hiddenAimTimeDoesNotConsumeTheStallBudget() {
         let map = CoverageMap(wall: standardWall())
         let camera = Self.homeowner()
