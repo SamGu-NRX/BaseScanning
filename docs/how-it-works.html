@@ -11,6 +11,10 @@
     --sky:#e2edf8; --wall:#e8dcc4; --eave:#6b5a4a; --ground:#c9dcb0; --bush:#6f9a52;
     --tape:#f3cf4b; --tape-ink:#3d3106;
     --phone:#2a78d6; --server:#eb6834; --fog:#8d8d86; --battery:#2f3e4e;
+    /* Text in the phone and server colours. The fills above are 4.0:1 and 2.9:1 on --bg, too
+       faint for small text; these keep the hue with OKLCH lightness lowered until text clears
+       4.5:1 on --bg (4.63 and 4.61) and on --card (5.06 and 5.03). */
+    --phone-ink:#1e6ecb; --server-ink:#c44400;
     --meterbox:#6f7680; --meter:#a9d3f2; --gas:#b9b3a6; --glass:#bfe0f5;
     --zone:rgba(208,59,59,.14); --zone-line:#d03b3b;
     --pass:#107a2a; --fail:#b83232; --fail-ink:#a12b2b; --unsure:#fab219;
@@ -24,6 +28,8 @@
       --sky:#1c2734; --wall:#4a4033; --eave:#8a7562; --ground:#2f4128; --bush:#5d8a45;
       --tape:#7a6016; --tape-ink:#fff3c4;
       --phone:#3987e5; --server:#e8683a; --fog:#6e6e68; --battery:#cfd8e3;
+      /* The dark fills already read as text: 4.69:1 and 5.26:1 on --card. */
+      --phone-ink:#3987e5; --server-ink:#e8683a;
       --meterbox:#8f97a3; --meter:#5c8fb8; --gas:#7d786d; --glass:#6f9fbf;
       --zone:rgba(230,103,103,.22); --zone-line:#e66767;
       --pass:#107a2a; --fail:#b83232; --fail-ink:#f28b8b; --unsure:#fab219;
@@ -42,7 +48,7 @@
   .prose{max-width:58ch}
   .meta{font-family:var(--sans);color:var(--muted);font-size:15px}
   .lede{font-size:20px;line-height:1.45;max-width:60ch}
-  a{color:var(--phone);text-underline-offset:3px}
+  a{color:var(--phone-ink);text-underline-offset:3px}
   a:focus-visible,summary:focus-visible{outline:2px solid var(--phone);outline-offset:3px;border-radius:2px}
   code{font-family:var(--mono);font-size:.86em;background:var(--code-bg);padding:1px 5px;border-radius:3px;overflow-wrap:anywhere}
   ul,ol{padding-left:1.3em}
@@ -99,8 +105,8 @@
   .lab.s{font-size:16px}
   .lab.b{font-weight:600}
   /* Colour utilities come after .lab and .t so they win at equal specificity. */
-  .lab.blue,.t.blue{fill:var(--phone)}
-  .lab.orange,.t.orange{fill:var(--server)}
+  .lab.blue,.t.blue{fill:var(--phone-ink)}
+  .lab.orange,.t.orange{fill:var(--server-ink)}
   .lab.red,.t.red{fill:var(--fail-ink)}
   .lab.mu,.t.mu{fill:var(--muted)}
   .tp{font-family:var(--sans);font-size:15px;fill:var(--tape-ink);font-weight:600}
