@@ -299,9 +299,9 @@ public struct GapPlanner: Sendable {
     /// at t3/server 930e8e5). Progress and marked-end planning apply it to exported coverage;
     /// the same-view rule (`GapPlan.asksForSameView`) compares requests exactly.
     static func countsAsMissing(from start: Double, to end: Double) -> Bool {
-        // Compare endpoints so subtracting two rounded scene values cannot turn an exact
-        // tolerance gap into 0.0099999999999998 ft (review of #47).
-        end >= start + 0.01
+        // Match server/scene.py's subtraction, including decimal floating-point effects:
+        // 5.00 - 4.99 falls below 0.01, although 5.00 >= 4.99 + 0.01 (review of #237).
+        end - start >= 0.01
     }
 
     private func distanceToMeter(_ run: ClosedRange<Float>) -> Float {
