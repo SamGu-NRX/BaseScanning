@@ -51,6 +51,7 @@ final class ScreenStatesUITests: XCTestCase {
         ("markFeatures-lostPlace", ["-uiDemoPhase", "markFeatures", "-uiDemoCoaching", "relocalizing"], "markFeatures"),
         ("markFeatures-groundQuestion", ["-uiDemoGroundQuestion"], "markFeatures"),
         ("markFeatures-groundAnswered", ["-uiDemoGroundAnswer", "mulch"], "markFeatures"),
+        ("markFeatures-pastEnd", ["-uiDemoPhase", "markFeatures", "-uiDemoMarkPastEnd"], "markFeatures"),
         ("gapRequest", ["-uiDemoPhase", "gapRequest"], "gapRequest"),
         ("gapRequest-groundOut", ["-uiDemoPhase", "gapRequest", "-uiDemoGap", "groundOut"], "gapRequest"),
         ("gapRequest-walkOut", ["-uiDemoPhase", "gapRequest", "-uiDemoGap", "walkOut"], "gapRequest"),
@@ -116,6 +117,8 @@ final class ScreenStatesUITests: XCTestCase {
         "markFeatures-groundQuestion": [(nil, "What's on the ground along this wall?")],
         "markFeatures-groundAnswered": [("ground.answered", "Mulch")],
         "markFeatures-lostPlace": [("review.lostPlace", "Your phone lost its place")],
+        // Review of #53: a mark wholly past a marked end says so on its row.
+        "markFeatures-pastEnd": [(nil, "Past the end of your scan")],
         // #80, #26: the gate's coaching rides on the task card.
         "wallWalk-slowDown": [("instruction", "Walk slowly to your right")],
         "wallWalk-tooDark": [("instruction", "It's dark here")],

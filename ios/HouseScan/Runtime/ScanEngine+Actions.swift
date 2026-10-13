@@ -470,6 +470,7 @@ extension ScanEngine: ScanActions {
 
     func deleteFeature(_ id: UUID) {
         state.features.removeAll { $0.id == id }
+        publishFeaturesPastEnds()
     }
 
     func setWindowOpens(_ id: UUID, opens: Bool?) {

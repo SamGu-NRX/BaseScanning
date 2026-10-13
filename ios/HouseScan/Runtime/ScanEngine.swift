@@ -1672,6 +1672,7 @@ final class ScanEngine {
         state.target = nil
         state.path = []
         state.features = []
+        state.featuresPastEnds = []
         // A mark half placed holds taps in the old frame's wall coordinates.
         state.marking = nil
         pendingTaps = []
@@ -2426,6 +2427,7 @@ final class ScanEngine {
         state.wall = nil
         state.coverage = .empty
         state.features = []
+        state.featuresPastEnds = []
         state.groundAnswer = nil
         state.marking = nil
         state.gap = nil

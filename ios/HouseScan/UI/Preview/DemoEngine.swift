@@ -236,6 +236,12 @@ final class DemoEngine: ScanActions {
         if arguments.contains("-uiDemoFollowUp") {
             enterFollowUp(at: state.phase)
         }
+        // A mark past a marked end: flagged on the review, and on the result set aside by the
+        // server (`objects_not_used`), as for run 2's window (#42, review of #53).
+        if arguments.contains("-uiDemoMarkPastEnd") {
+            if let first = state.features.first { state.featuresPastEnds = [first.id] }
+            state.result?.marksNotUsed = [Self.markNotUsedSample]
+        }
         if arguments.contains("-uiDemoNoFeed") {
             state.feed = .none
         }
@@ -1305,6 +1311,9 @@ final class DemoEngine: ScanActions {
     }
 
     /// The offline sample result. Placeholder rules, so the decision is manual review.
+    /// The server's sentence for a mark it set aside (solver.py `objects_not_used`).
+    static let markNotUsedSample = "The window marked 12 ft left of the meter is past the left end of the scan, where the wall may turn, so it was not used."
+
     static let reviewSample = ResultPresentation(
         decision: .manualReview,
         summary: "The best spot, 3 ft right of your meter, is close to a window, so it needs an installer's review.",

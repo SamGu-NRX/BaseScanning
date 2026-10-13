@@ -349,6 +349,11 @@ enum ScanCopy {
     /// (review of #131).
     static let reviewLostPlace = "Your phone lost its place. Point it back at the wall to add more, or finish with Looks complete."
 
+    /// Over the result's list of marks the server set aside (`ResultPresentation.marksNotUsed`).
+    static let marksNotUsedTitle = "Not counted"
+    /// Under that list: how a set-aside mark comes to count (result.schema.json `objects_not_used`).
+    static let marksNotUsedHint = "To count them, scan again and walk on past that end of the wall."
+
     /// Under a reviewed mark that lies wholly past a marked end (`ScanViewState.featuresPastEnds`).
     static let featurePastEnd = "Past the end of your scan"
 
