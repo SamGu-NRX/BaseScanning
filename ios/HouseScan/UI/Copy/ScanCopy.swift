@@ -76,9 +76,12 @@ enum ScanCopy {
             )
         case .aimAtGround(let s):
             // A cell counts once seen from two places at least 0.25 m apart (`coveringBaseline`),
-            // so tilting down without moving never clears it.
+            // so tilting down without moving never clears it. A whole step, not a small one: a
+            // frame is kept for its place only 0.5 m from the last (`AutoCaptureConfig
+            // .spacingMeters`), and a shuffle can stop short of both (review of #117). The legend
+            // and the second-position title say the same step (`aimRingLegend`, `aim`).
             aim(
-                Instruction(title: "Tilt down to show the ground", detail: "The strip along the wall, \(Distance.fromMeter(s)). Take a small step sideways as you look."),
+                Instruction(title: "Tilt down to show the ground", detail: "The strip along the wall, \(Distance.fromMeter(s)). Take a step to the side as you look."),
                 ground: true, hint: hint
             )
         case .aimAtWall(let s):
@@ -232,10 +235,10 @@ enum ScanCopy {
     /// its stretch is captured (#81).
     /// A stretch counts only once it is seen from two places a step apart
     /// (`CoverageConfig.coveringBaseline`), so holding still never fills the ring: the line asks
-    /// for a step, in the tilt-down card's own words ("Take a small step sideways as you look."),
+    /// for a step, in the tilt-down card's own words ("Take a step to the side as you look."),
     /// so the two lines on screen together ask for the same thing. If the card's wording
     /// changes, change this with it.
-    static let aimRingLegend = "Keep the ring in view and take a small step sideways. It fills as your phone captures this spot."
+    static let aimRingLegend = "Keep the ring in view and take a step to the side. It fills as your phone captures this spot."
 
     // MARK: Wall ends
 
