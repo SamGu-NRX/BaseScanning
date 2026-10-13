@@ -198,6 +198,17 @@ final class DemoEngine: ScanActions {
         }
         if (arguments.contains("-uiDemoAim") || arguments.contains("-uiDemoAimOffScreen")), state.phase == .wallWalk {
             enterAim(offScreen: arguments.contains("-uiDemoAimOffScreen"))
+            // The engine's direction to the target, which can disagree with what the overlay
+            // draws near the card or an edge (review of #120): the card must follow the drawing.
+            let hint: AimDirection? = switch value("-uiDemoAimHint") {
+            case "onScreen": .onScreen
+            case "above": .above
+            case "below": .below
+            case "left": .left
+            case "right": .right
+            default: nil
+            }
+            if let hint { state.guidanceHint = GuidanceHint(aim: hint) }
         }
         if arguments.contains("-uiDemoCorner") {
             // The walk followed an outside corner right of the meter, between the battery spot and

@@ -718,6 +718,33 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertTrue(element(app, "screen.gapRequest").waitForExistence(timeout: 10), "the second tap must still send")
     }
 
+    /// Review of #120: the card names what the overlay draws. The engine's angle to the target
+    /// and the open camera between the card and the actions can disagree; planted here as the
+    /// engine's hint, the card must still follow the ring or the arrow on screen.
+    @MainActor
+    func testTheAimCardNamesWhatIsDrawn() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        // A drawn ring, though the engine's angle says the target is above the view.
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAim", "-uiDemoAimHint", "above"]
+        app.launch()
+        XCTAssertTrue(element(app, "aim.ring").waitForExistence(timeout: 15))
+        let card = element(app, "instruction")
+        XCTAssertTrue(card.label.contains("Put the ring on the strip"), "with the ring drawn the card reads \(card.label)")
+        attach(app, name: "wallWalk-aimHint-ring")
+        app.terminate()
+
+        // An arrow, though the engine's angle says the target is on screen.
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAimOffScreen", "-uiDemoAimHint", "onScreen"]
+        app.launch()
+        XCTAssertTrue(element(app, "screen.wallWalk").waitForExistence(timeout: 15))
+        XCTAssertFalse(element(app, "aim.ring").exists, "off screen, the arrow stands in for the ring")
+        let offCard = element(app, "instruction")
+        XCTAssertTrue(offCard.waitForExistence(timeout: 5))
+        XCTAssertFalse(offCard.label.contains("ring"), "with an arrow drawn the card must not name the ring: \(offCard.label)")
+        attach(app, name: "wallWalk-aimHint-arrow")
+    }
+
     /// #81: the first aim ring comes with a line under the card saying what it is for, clear of
     /// the card at every text size, and reads its progress to VoiceOver. Off screen, the edge
     /// arrow stands in for the ring, and neither shows.

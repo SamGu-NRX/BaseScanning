@@ -1,3 +1,4 @@
+import HouseScanKit
 import simd
 import SwiftUI
 
@@ -29,6 +30,17 @@ struct WayfindingOverlay: View {
     /// shows only inside it and the edge arrows keep to it. Until the chrome has been laid out,
     /// fixed bands stand in.
     var cameraWindow: CameraWindow? = nil
+    /// Called with what stands for an aim step's filling target on screen: its ring, or an arrow
+    /// and the way it points; nil when neither is drawn. The card's title follows it, so the
+    /// words name what is drawn: the camera's angle to the target and the open part of the
+    /// screen disagree near the card and the screen's edges (review of #120).
+    var onAimMarker: ((AimMarker?) -> Void)? = nil
+
+    /// The marker last reported (`onAimMarker`). A ring stays a ring up to the edge of where it
+    /// can be drawn, but an arrow becomes a ring only `ringEntryMargin` inside it, so a hand-held
+    /// phone with the target near that edge doesn't swap the two, or the card's title, several
+    /// times a second.
+    @State private var reported: AimMarker? = nil
 
     var body: some View {
         // Read here, in this view's body, so a change redraws this overlay alone.
@@ -52,6 +64,13 @@ struct WayfindingOverlay: View {
                         .onAppear { onFillingRingShown?(true) }
                         .onDisappear { onFillingRingShown?(false) }
                 }
+                Color.clear
+                    .frame(width: 0, height: 0)
+                    .onChange(of: aimMarker(in: size, band: band), initial: true) { _, marker in
+                        reported = marker
+                        onAimMarker?(marker)
+                    }
+                    .onDisappear { onAimMarker?(nil) }
             }
             .frame(width: size.width, height: size.height)
         }
@@ -70,6 +89,9 @@ struct WayfindingOverlay: View {
 
     /// The edge arrow's disc (`TargetMarker`).
     static let arrowDiameter: CGFloat = 52
+    /// How far inside the ring's bounds an arrow's target must come before the ring replaces it
+    /// (`reported`). A display choice, about a fingertip; not measured on a phone.
+    static let ringEntryMargin: CGFloat = 12
     /// How far inside the band the edge arrows sit: half the arrow's disc and a margin.
     static let arrowInset: CGFloat = 32
 
@@ -135,21 +157,58 @@ struct WayfindingOverlay: View {
             if case .onScreen = held { return (placement: held, progress: 1.0) }
         }
         guard let target else { return nil }
-        return (placement: placement(for: target, in: size, band: band), progress: progress)
+        return (placement: placement(for: target, in: size, band: band, entryMargin: targetEntryMargin), progress: progress)
     }
 
-    private func placement(for target: SIMD3<Float>, in size: CGSize, band: Band?) -> TargetMarker.Placement {
+    /// No margin while the target's ring is up: it keeps its place to the edge.
+    private var targetEntryMargin: CGFloat {
+        reported == .ring ? 0 : Self.ringEntryMargin
+    }
+
+    /// What `marker` draws for an aim step's filling target, for the card (`onAimMarker`). Nil
+    /// while a completed ring holds the screen, off an aim step, or with nothing drawn.
+    private func aimMarker(in size: CGSize, band: Band?) -> AimMarker? {
+        guard progress != nil, let target else { return nil }
+        // A completed ring holding the screen belongs to the step before (`marker`).
+        if let completed, case .onScreen = placement(for: completed, in: size, band: band) { return nil }
+        switch placement(for: target, in: size, band: band, entryMargin: targetEntryMargin) {
+        case .onScreen:
+            return .ring
+        case .offScreen(_, let angle):
+            let previous: AimDirection? = if case .arrow(let direction)? = reported { direction } else { nil }
+            return .arrow(Self.direction(of: angle, previous: previous))
+        case .hidden:
+            return nil
+        }
+    }
+
+    /// The way an arrow at `angle` (screen, y down) points, in the card's terms. With the
+    /// direction named before, the other axis must be `AimHint.axisBias` times larger to change
+    /// it, as for the hint itself.
+    static func direction(of angle: Angle, previous: AimDirection?) -> AimDirection {
+        let dx = cos(angle.radians), dy = sin(angle.radians)
+        let bias = Double(AimHint.axisBias)
+        let vertical = switch previous {
+        case .above?, .below?: abs(dy) * bias >= abs(dx)
+        case .left?, .right?: abs(dy) > abs(dx) * bias
+        default: abs(dy) >= abs(dx)
+        }
+        if vertical { return dy < 0 ? .above : .below }
+        return dx < 0 ? .left : .right
+    }
+
+    private func placement(for target: SIMD3<Float>, in size: CGSize, band: Band?, entryMargin: CGFloat = 0) -> TargetMarker.Placement {
         // Less of the open camera on screen than an arrow's disc: at the largest text sizes the
         // chrome has scrolled it away, and anything drawn would sit on the card or the actions.
         if let band, band.bottom - band.top < Self.arrowDiameter { return .hidden }
         if let point = projection.viewPoint(for: target, in: size) {
             let scale = wall.flatMap { WallProjection(projection: projection, wall: $0, size: size).pointsPerMeter(at: target) }
             let radius = min(64, max(30, (scale ?? 90) * 0.28))
-            if Self.ringBounds(in: size, band: band, radius: radius).contains(point) {
+            if Self.ringBounds(in: size, band: band, radius: radius).insetBy(dx: entryMargin, dy: entryMargin).contains(point) {
                 return .onScreen(point, radius: radius)
             }
             // Near the card or the actions a smaller ring can still fit whole.
-            if let band, let fitted = Self.fittedRadius(at: point, in: size, band: band), fitted < radius {
+            if let band, let fitted = Self.fittedRadius(at: point, in: size, band: band, margin: entryMargin), fitted < radius {
                 return .onScreen(point, radius: fitted)
             }
             // On screen but under the card or the actions: the arrow in the open camera points
@@ -198,9 +257,10 @@ struct WayfindingOverlay: View {
     }
 
     /// The largest ring radius, down to the smallest ring's 30 pt, that fits whole at `point` in
-    /// the band and on screen, pulse included. Nil when not even that fits.
-    static func fittedRadius(at point: CGPoint, in size: CGSize, band: Band) -> CGFloat? {
-        let clearance = min(point.y - band.top, band.bottom - point.y, point.x, size.width - point.x)
+    /// the band and on screen, pulse included, `margin` clear of their edges. Nil when not even
+    /// that fits.
+    static func fittedRadius(at point: CGPoint, in size: CGSize, band: Band, margin: CGFloat = 0) -> CGFloat? {
+        let clearance = min(point.y - band.top, band.bottom - point.y, point.x, size.width - point.x) - margin
         let radius = clearance / 1.08
         return radius >= 30 ? radius : nil
     }
@@ -228,6 +288,12 @@ struct WayfindingOverlay: View {
         let t = min(tx, ty)
         return CGPoint(x: center.x + direction.dx * t, y: center.y + direction.dy * t)
     }
+}
+
+/// What stands for an aim step's target on screen (`WayfindingOverlay.onAimMarker`).
+enum AimMarker: Equatable {
+    case ring
+    case arrow(AimDirection)
 }
 
 /// The aim ring, or an arrow at the screen edge pointing toward it. Also the arrow toward the

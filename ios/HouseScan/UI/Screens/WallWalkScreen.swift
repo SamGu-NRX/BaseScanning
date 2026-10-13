@@ -18,13 +18,15 @@ struct WallWalkScreen: View {
     @State private var taps: [TapRipple.Ripple] = []
     /// The aim ring's legend while it shows, drawn under the card (#81).
     @State private var cardLegend: String? = nil
+    /// What the overlay draws for the aim step's target (`WayfindingOverlay.onAimMarker`).
+    @State private var aimMarker: AimMarker? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         ZStack {
             CameraSizeReader(size: $cameraSize)
-            CameraOverlays(state: state, highlight: nil, cardLegend: $cardLegend, cameraWindow: cameraWindow)
+            CameraOverlays(state: state, highlight: nil, cardLegend: $cardLegend, cameraWindow: cameraWindow, aimMarker: $aimMarker)
             if showsMeterPhoto, let meterPhoto {
                 // "Point at the meter like this.": the saved close-up shows what to aim at.
                 SavedMeterPhoto(image: meterPhoto)
@@ -117,7 +119,26 @@ struct WallWalkScreen: View {
             let folded = Instruction.Folded(title: ScanCopy.wallTooShortLead, detail: "\(ScanCopy.wallTooShort) \(step)")
             return ScanCopy.withCoaching(Instruction(title: ScanCopy.wallTooShort, detail: step, folded: folded), coaching)
         }
-        return ScanCopy.withCoaching(ScanCopy.guidance(state.guidance, hint: state.guidanceHint), coaching)
+        return ScanCopy.withCoaching(ScanCopy.guidance(state.guidance, hint: shownHint), coaching)
+    }
+
+    /// The engine's hint, with its direction made to agree with what the overlay draws (review
+    /// of #120). The engine judges on screen by the camera's angle to the target; the overlay
+    /// by the open camera between the card and the actions, which changes with the text size.
+    /// A drawn ring is on screen whatever the angle says. An arrow standing in for a target the
+    /// angle calls on screen (under the card, or near an edge) gives its own direction. Off
+    /// screen and behind keep the engine's direction, which the edge arrow follows too.
+    private var shownHint: GuidanceHint? {
+        guard var hint = state.guidanceHint, let engine = hint.aim, let aimMarker else { return state.guidanceHint }
+        switch aimMarker {
+        case .ring:
+            hint.aim = .onScreen
+        case .arrow(let direction) where engine == .onScreen:
+            hint.aim = direction
+        case .arrow:
+            break
+        }
+        return hint
     }
 
     /// "Slow down", "Turn more slowly" and "Hold steady" are for walking and aiming. With the tray
