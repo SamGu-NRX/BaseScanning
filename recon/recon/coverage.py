@@ -18,8 +18,9 @@ face is a flat, full-height surface in front of the fitted plane (a pilaster), a
 otherwise, so a bush in front of the wall hides the wall instead of standing in for it.
 
 Facing and overhead space needs no surface: it is observed where the fused volume shows it seen
-empty (every voxel observed, none occupied), up to the first occupied voxel (a measured gap or
-clearance) or the first unobserved one (seen clear only that far).
+empty (every voxel observed, none occupied) and two camera positions at least 0.25 m apart each
+saw through it (`SeenFromTwo`), up to the first occupied voxel (a measured gap or clearance) or
+the first sample short of that (seen clear only that far).
 """
 
 from __future__ import annotations
@@ -104,6 +105,66 @@ def two_positions(saw: np.ndarray, centres: np.ndarray) -> np.ndarray:
     )
     s = saw.astype(np.float32)
     return ((s @ far) * s).sum(axis=-1) > 0
+
+
+class SeenFromTwo:
+    """The fused volume for free space, with `observed` narrowed to samples that two camera
+    positions at least BASELINE_M apart each saw: the frame's own depth at the sample's pixel
+    reaches the sample (lies no nearer than it, less the tolerance), so its ray passed through.
+
+    The volume's weight alone says only that some frame's ray reached a voxel, so one view could
+    vouch for a clearance; wall and ground already need two positions, and so does free space.
+    Frames are stacked so each query is one pass over all of them."""
+
+    def __init__(self, vol: Volume, frames: list[Frame], depths: dict[str, Depth]):
+        self.vol, self.voxel = vol, vol.voxel
+        self.centres = np.array([f.center for f in frames]).reshape(-1, 3)
+        T = np.array([f.cam_to_world for f in frames]).reshape(-1, 4, 4)
+        self.R, self.C = T[:, :3, :3], T[:, :3, 3]
+        self.K = np.array([f.intrinsics for f in frames], float).reshape(-1, 4)
+        self.size = np.array([(f.width, f.height) for f in frames], float).reshape(-1, 2)
+        self.groups: list[tuple[np.ndarray, np.ndarray, np.ndarray]] = []
+        by_shape: dict[tuple[int, int], list[int]] = {}
+        for j, f in enumerate(frames):
+            by_shape.setdefault(depths[f.id].depth.shape, []).append(j)
+        for idx in by_shape.values():
+            stack = np.stack([depths[frames[j].id].depth for j in idx])
+            scale = stack.shape[2] / self.size[idx, 0]
+            self.groups.append((np.array(idx), stack, scale))
+
+    def occupied(self, points: np.ndarray) -> np.ndarray:
+        return self.vol.occupied(points)
+
+    def seen_through(self, points: np.ndarray) -> np.ndarray:
+        """(N, frames) bool: frame j's ray reached point i."""
+        out = np.zeros((len(points), len(self.C)), bool)
+        for idx, stack, scale in self.groups:
+            d = points[None] - self.C[idx, None]  # (F, N, 3)
+            dist = np.linalg.norm(d, axis=2)
+            p = np.einsum("fnk,fkc->fnc", d, self.R[idx])  # camera axes, as in seen_by
+            z = -p[..., 2]
+            fx, fy, cx, cy = (self.K[idx, k, None] for k in range(4))
+            w, h = self.size[idx, 0, None], self.size[idx, 1, None]
+            with np.errstate(divide="ignore", invalid="ignore"):
+                u = cx + fx * p[..., 0] / z
+                v = cy - fy * p[..., 1] / z
+            ok = (dist > 0.1) & (dist <= MAX_RANGE_M) & (z > 0.05)
+            ok &= (u >= w * IMAGE_MARGIN) & (u <= w * (1 - IMAGE_MARGIN))
+            ok &= (v >= h * IMAGE_MARGIN) & (v <= h * (1 - IMAGE_MARGIN))
+            dh, dw = stack.shape[1:]
+            f_i, n_i = np.nonzero(ok)
+            du = np.clip((u[f_i, n_i] * scale[f_i]).astype(np.int64), 0, dw - 1)
+            dv = np.clip((v[f_i, n_i] * scale[f_i]).astype(np.int64), 0, dh - 1)
+            measured = stack[f_i, dv, du]
+            reached = np.isfinite(measured) & (measured >= z[f_i, n_i] - tolerance(dist[f_i, n_i]))
+            out[n_i[reached], idx[f_i[reached]]] = True
+        return out
+
+    def observed(self, points: np.ndarray) -> np.ndarray:
+        seen = self.vol.observed(points)
+        if not seen.any():
+            return seen
+        return seen & two_positions(self.seen_through(points), self.centres)
 
 
 def face_offsets(wall: WallFrame, mesh: Mesh, cells: np.ndarray) -> np.ndarray:
@@ -249,7 +310,7 @@ def compute(
     lo, hi = wall.s_range
     cells = np.arange(np.floor(lo / CELL_M) * CELL_M, hi - 1e-9, CELL_M)
     wall_ok, ground_out, _ = wall_and_ground(wall, frames, depths, vol, mesh, cells)
-    fg, fc, og, oc = free_space(wall, vol, cells)
+    fg, fc, og, oc = free_space(wall, SeenFromTwo(vol, frames, depths), cells)
     return CellCoverage(cells, wall_ok, ground_out, fg, fc, og, oc)
 
 
