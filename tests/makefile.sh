@@ -27,10 +27,10 @@ EOF
 done
 export PATH="$work/bin:$PATH"
 
-suites="scoring measure-lab evals recon meter-closeup"
+suites="scoring measure-lab evals recon meter-closeup verification"
 folder() {
 	case $1 in
-	recon) echo recon ;;
+	recon | verification) echo "$1" ;;
 	*) echo "experiments/$1" ;;
 	esac
 }
@@ -66,8 +66,8 @@ fail() {
 }
 
 # 1. `make check` runs server, web and ios, then exactly the experiment suites present, in order,
-#    for all 32 combinations. "." is the ios build, which runs from the root.
-for mask in $(seq 0 31); do
+#    for all 64 combinations. "." is the ios build, which runs from the root.
+for mask in $(seq 0 63); do
 	present=()
 	expected="server web ."
 	i=0
@@ -106,6 +106,7 @@ expect_commands evals "experiments/evals uv sync --locked
 experiments/evals make test"
 expect_commands recon "recon make test"
 expect_commands meter-closeup "experiments/meter-closeup make check"
+expect_commands verification "verification make test"
 
 # 3. Naming a missing suite fails loudly and runs nothing.
 for suite in $suites; do
@@ -119,7 +120,7 @@ done
 
 # 4. A failing command inside a present suite fails `make check`, and nothing runs after it.
 for FAIL_AT in "experiments/scoring uv" "experiments/measure-lab make" "experiments/evals uv" \
-	"experiments/evals make" "recon make" "experiments/meter-closeup make"; do
+	"experiments/evals make" "recon make" "experiments/meter-closeup make" "verification make"; do
 	make_tree $suites
 	if run_make check; then
 		fail "check passed although $FAIL_AT failed"
