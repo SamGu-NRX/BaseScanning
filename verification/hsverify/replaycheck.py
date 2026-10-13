@@ -46,7 +46,11 @@ def numbers(value: Any, count: int) -> list[float] | None:
         return None
     if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in value):
         return None
-    return [float(v) for v in value] if all(math.isfinite(v) for v in value) else None
+    try:
+        converted = [float(v) for v in value]
+    except OverflowError:
+        return None
+    return converted if all(math.isfinite(v) for v in converted) else None
 
 
 def rigid_problems(m: np.ndarray, tol: float = 1e-3) -> list[str]:
@@ -246,7 +250,7 @@ def main(argv: list[str] | None = None) -> int:
     errors, summary = check_format(folder, session)
     report: dict = {"session": str(folder), "format_errors": errors, "summary": summary}
     truth_path = folder / "ground_truth.json"
-    if truth_path.exists():
+    if truth_path.exists() and not errors:
         report["pose_accuracy"] = accuracy(session, json.loads(truth_path.read_text()))
     if args.json:
         print(json.dumps(report, indent=2))

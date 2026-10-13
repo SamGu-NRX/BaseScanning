@@ -92,3 +92,12 @@ def test_an_unseen_probe_leaves_the_stretch_out():
 
     entries, _ = build_scene.band_coverage("wall", [wall("w", 0.0, 2.0)], [], ["kf"], only_low)
     assert entries == []
+
+
+@pytest.mark.parametrize("length", [2.2, 2.3, 0.05])
+def test_non_grid_wall_has_no_excess_or_missing_tail(length):
+    entries, spans = build_scene.band_coverage(
+        "wall", [wall("w", 0.0, length)], [], ["kf"], seen_everywhere
+    )
+    assert entries[0]["span_ft"] == [0.0, length]
+    assert spans == [[0.0, length]]

@@ -487,12 +487,13 @@ def band_coverage(band, walls, facing, kfs, seen=visible):
     down so it never claims more. `seen(kf, wall, X, walls)` is `visible`; tests replace it."""
     samples = []  # (s0, s1, reach) per sample seen
     for w in walls:
-        for s in np.arange(w.s0 + COVERAGE_STEP_FT / 2, w.s0 + w.length, COVERAGE_STEP_FT):
+        for a in np.arange(w.s0, w.s0 + w.length, COVERAGE_STEP_FT):
+            b = min(a + COVERAGE_STEP_FT, w.s0 + w.length)
+            s = (a + b) / 2
             fd = next((v for (wid, a, b, v) in facing if wid == w.id and a <= s < b), None)
             probes = band_probes(band, w, s, fd)
             if probes is not None and any(all(seen(k, w, X, walls) for X in probes) for k in kfs):
-                half = COVERAGE_STEP_FT / 2
-                samples.append([s - half, s + half, band_reach(band, fd)])
+                samples.append([a, b, band_reach(band, fd)])
     merged = []  # consecutive samples, also across a corner, keep the smaller reach
     for a, b, reach in samples:
         if merged and abs(merged[-1][1] - a) < 1e-6:

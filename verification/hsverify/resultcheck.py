@@ -91,6 +91,7 @@ class RuleSet:
     battery_height_ft: float | None = None
     # the rules' headroom.min_ft: how high a wall view without out_ft reached
     headroom_ft: float | None = None
+    corner_allowance_ft: float | None = None
 
     @classmethod
     def from_yaml(cls, text: str) -> RuleSet:
@@ -150,6 +151,7 @@ class RuleSet:
             value("sweep", "wall_join_ft"),
             value("battery", "height_ft"),
             headroom,
+            value("route", "corner_allowance_ft"),
         )
 
 
@@ -450,10 +452,11 @@ def footprint_problems(scene: dict, result: dict, rules: RuleSet) -> list[str]:
     for run in result.get("sweep", []):
         if run["outcome"] not in ("pass", "unsure"):
             continue
-        for start in dict.fromkeys(run["start_ft"]):  # a run's two ends bound all its starts
+        for start in run_starts(run["start_ft"], rules.step_ft):
             battery = (start, start + rules.width_ft)
             if (why := off_wall(*battery, run["outcome"], run["wall_id"])) is not None:
                 problems.append(f"sweep {run['outcome']} start {start:.2f} {why}")
+                break
     return problems
 
 
@@ -1109,8 +1112,19 @@ def with_past_ends_asked(scene: dict, requests: list[dict], rules: RuleSet) -> d
 # --- Case expectations -----------------------------------------------------------------------
 
 
-def assumption_mismatches(assumed: dict[str, float], result: dict) -> list[str]:
+def assumption_mismatches(
+    assumed: dict[str, float], result: dict, rules: RuleSet | None = None
+) -> list[str]:
     out = []
+    configured = (
+        {"battery_width": rules.width_ft, "corner_allowance": rules.corner_allowance_ft}
+        if rules
+        else {}
+    )
+    for key, value in assumed.items():
+        actual = configured.get(key)
+        if actual is not None and abs(actual - value) > EPS:
+            out.append(f"case assumes {key} {value}, rules use {actual}")
     for key, value in assumed.items():
         for check in result.get("checks", []):
             threshold = check.get("threshold_ft")
@@ -1394,7 +1408,7 @@ def with_ground_short_of(scene: dict, rules: RuleSet, margin_ft: float = 0.1) ->
     m = copy.deepcopy(scene)
     for entry in m["coverage"]["observed"]:
         if entry["band"] == "ground":
-            entry["out_ft"] = min(entry["out_ft"], reach)
+            entry["out_ft"] = min(entry.get("out_ft", 0.0), reach)
     return m
 
 
