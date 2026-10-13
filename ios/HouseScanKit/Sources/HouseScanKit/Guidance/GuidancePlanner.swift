@@ -102,6 +102,7 @@ public struct GuidancePlanner: Sendable {
     /// The current aim task's covered share when it last grew, and when: the stall clock.
     private var lastFraction: Double = 0
     private var lastProgressAt: Double = 0
+    private var pausedAt: Double?
     /// Aim stretches that stalled. The requests chosen from the camera (the ground by the meter
     /// and a lagging band) leave them out for the rest of the scan, until `reset()`; `firstHole`
     /// still asks for them once both ends are marked.
@@ -130,6 +131,7 @@ public struct GuidancePlanner: Sendable {
     public mutating func reset() {
         current = nil
         deferred = []
+        pausedAt = nil
     }
 
     /// The task for this moment.
@@ -144,7 +146,15 @@ public struct GuidancePlanner: Sendable {
     /// - Any other task gives way to the preferred one once held for `minDwell`.
     ///
     /// Deterministic in `time`.
-    public mutating func update(coverage: CoverageMap, camera: CameraFrame?, time: Double) -> GuidanceOutput {
+    public mutating func update(coverage: CoverageMap, camera: CameraFrame?, time: Double, aimActionable: Bool = true) -> GuidanceOutput {
+        // Coaching and marking replace the aim instruction. Time spent there cannot stall
+        // that hidden task (reviews of #120). A resumed task keeps its remaining time.
+        if let pausedAt {
+            lastProgressAt += max(0, time - pausedAt)
+            self.pausedAt = aimActionable ? nil : time
+        } else if !aimActionable {
+            pausedAt = time
+        }
         var preferred = preferredTask(coverage: coverage, camera: camera)
         var switched: GuidanceSwitch?
         var stalled: GuidanceTask?
@@ -159,7 +169,7 @@ public struct GuidancePlanner: Sendable {
                     lastProgressAt = time
                 }
             }
-            if let aim, !satisfied, time - lastProgressAt >= config.stallTimeout {
+            if let aim, aimActionable, !satisfied, time - lastProgressAt >= config.stallTimeout {
                 let range = Self.stretch(around: aim.s)
                 if !deferred.contains(where: { $0.band == aim.band && $0.range == range }) {
                     deferred.append(DeferredStretch(band: aim.band, range: range))
@@ -409,7 +419,11 @@ public struct GuidancePlanner: Sendable {
             }
             return runs.filter { $0.count >= needed }
                 .compactMap { middle($0, coverage) }
-                .filter { canSatisfy(band, at: $0, coverage) }
+                .filter { target in
+                    let window = Self.stretch(around: target)
+                    return !deferred.contains { $0.band == band && $0.range.overlaps(window) }
+                        && canSatisfy(band, at: target, coverage)
+                }
                 .min { abs($0 - s) < abs($1 - s) }
         }
         if let mid = nearestRun(.ground, lags: { done(coverage.level(.wall, $0)) && !done(coverage.level(.ground, $0)) }) {
