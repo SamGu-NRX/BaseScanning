@@ -1,13 +1,16 @@
 """Regression cases for unresolved scoring comments on merged PR #4."""
 
 import json
+import lzma
 import os
+import struct
 import zipfile
+import zlib
 from decimal import Decimal
 
 import pytest
 from helpers import FIXTURES, SESSION_ZIP, reported, survey, threshold
-from test_measure_lab import Setup
+from test_measure_lab import Setup, listed_truth
 
 from scoring.cli import main
 from scoring.inputs import Check, InputError, load_rules, load_truth
@@ -64,6 +67,39 @@ def test_unreadable_zip_member_is_input_error(tmp_path, monkeypatch, failure):
     out = tmp_path / "out.json"
     assert main(["import-measure-lab", *args, "--out", str(out)]) == 2
     assert not out.exists()
+
+
+@pytest.mark.parametrize(
+    ("compression", "decompression_error"),
+    [(zipfile.ZIP_DEFLATED, zlib.error), (zipfile.ZIP_LZMA, lzma.LZMAError)],
+)
+def test_corrupt_compressed_member_is_input_error(
+    tmp_path, capsys, compression, decompression_error
+):
+    path = tmp_path / "corrupt.zip"
+    with zipfile.ZipFile(path, "w", compression=compression) as archive:
+        archive.writestr("session.json", b"{}")
+    raw = bytearray(path.read_bytes())
+    name_length, extra_length = struct.unpack_from("<HH", raw, 26)
+    payload = 30 + name_length + extra_length
+    if compression == zipfile.ZIP_DEFLATED:
+        raw[payload] = (raw[payload] & ~6) | 6  # reserved deflate block type
+    else:
+        raw[payload + 4] = 255  # invalid LZMA filter properties
+    path.write_bytes(raw)
+    with zipfile.ZipFile(path) as archive, pytest.raises(decompression_error):
+        archive.read("session.json")
+    truth_path = listed_truth(tmp_path, path)
+    truth = load_truth(truth_path, load_rules(RULES))
+    with pytest.raises(InputError, match=r"cannot read session\.json"):
+        load_session(path, truth)
+    out = tmp_path / "out.json"
+    out.write_bytes(b"previous result")
+    args = [str(path), "--map", str(MAP), "--rules", str(RULES), "--truth", str(truth_path)]
+    assert main(["import-measure-lab", *args, "--out", str(out)]) == 2
+    assert "cannot read session.json" in capsys.readouterr().err
+    assert out.read_bytes() == b"previous result"
+    assert path.read_bytes() == raw
 
 
 @pytest.mark.parametrize("missing", ["failed", "unsupported"])

@@ -10,9 +10,11 @@ including each measurement's endpoints and the value keys they allow.
 import argparse
 import hashlib
 import json
+import lzma
 import sys
 import tempfile
 import zipfile
+import zlib
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal, localcontext
 from pathlib import Path
@@ -228,7 +230,14 @@ def load_session(path: Path, truth: Truth) -> Session:
                 raw = handle.read(MAX_SESSION_JSON_BYTES + 1)
     except zipfile.BadZipFile:
         raise InputError(f"{path}: not a zip file") from None
-    except (NotImplementedError, RuntimeError, OSError, EOFError) as error:
+    except (
+        NotImplementedError,
+        RuntimeError,
+        OSError,
+        EOFError,
+        zlib.error,
+        lzma.LZMAError,
+    ) as error:
         raise InputError(f"{path}: cannot read session.json: {error}") from None
     where = f"{path}!{member}"
     if len(raw) > MAX_SESSION_JSON_BYTES:
