@@ -167,6 +167,25 @@ def along_across(err: np.ndarray, ref_disp: np.ndarray) -> tuple[np.ndarray, np.
     return along, across
 
 
+def chord_deviation(ref: np.ndarray, i: np.ndarray, j: np.ndarray) -> np.ndarray:
+    """Per window, the largest horizontal distance of the reference path from the straight line
+    through its start ref[i] and its (fractional) end at(ref, j). A wall plane removes the error
+    along the wall's normal, which is the across-travel axis only while the walk runs straight
+    along the wall; this measures how far a window strays from that."""
+    out = np.empty(len(i))
+    for k, (a, b) in enumerate(zip(i, j, strict=True)):
+        start = ref[a, [0, 2]]
+        end = at(ref, np.array([b]))[0, [0, 2]]
+        pts = np.vstack([ref[a : int(np.floor(b)) + 1, [0, 2]], end]) - start
+        chord = end - start
+        n = np.linalg.norm(chord)
+        if n == 0:
+            raise ValueError(f"window {a}..{b} ends where it starts and has no travel line")
+        u = chord / n
+        out[k] = np.abs(u[1] * pts[:, 0] - u[0] * pts[:, 1]).max()
+    return out
+
+
 # A4: a range to the meter
 
 

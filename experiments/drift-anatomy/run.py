@@ -17,6 +17,7 @@ from scipy.stats import norm, spearmanr
 from metrics import (
     along_across,
     at,
+    chord_deviation,
     find_loops,
     local_scale,
     loop_errors,
@@ -56,6 +57,11 @@ WINDOW_FT = (10, 20, 30)
 RANGE_SIGMAS_M = (0.05, 0.10, 0.20)
 GRADED_SIGMA_M = 0.10
 RANGE_DRAWS = 20
+# A3, added after review: the across-travel axis is a wall's normal only while the walk runs
+# straight along the wall, and the walks carry no wall annotations. Windows whose reference path
+# stays within this distance of its own start-to-end line stand in for a walk along a wall. Both
+# widths are untuned guesses at how straight a homeowner keeps to a wall, reported side by side.
+WALL_PARALLEL_M = (0.25, 0.5)
 SEED = 0
 
 
@@ -236,15 +242,31 @@ def a2(walks: list[Walk]) -> dict:
 # A3 and A4
 
 
-def window_errors(ws: list[Walk], ft: int, window_pairs) -> tuple[np.ndarray, np.ndarray]:
-    """ARKit's displacement turned by the heading offset at each window's start, and the
-    reference's, pooled over walks; the evals' windows (every start sample, exactly ft of path)."""
-    est, ref = [], []
+def window_errors(
+    ws: list[Walk], ft: int, window_pairs
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """ARKit's displacement turned by the heading offset at each window's start, the reference's,
+    and how far the reference path strays from its start-to-end line, pooled over walks; the
+    evals' windows (every start sample, exactly ft of path)."""
+    est, ref, dev = [], [], []
     for w in ws:
         i, j = window_pairs(w.ref, ft * FEET, w.start_step)
         est.append(turn(at(w.ark, j) - w.ark[i], w.delta[i]))
         ref.append(at(w.ref, j) - w.ref[i])
-    return np.concatenate(est), np.concatenate(ref)
+        dev.append(chord_deviation(w.ref, i, j))
+    return np.concatenate(est), np.concatenate(ref), np.concatenate(dev)
+
+
+def split_p90(err: np.ndarray, ref: np.ndarray) -> dict:
+    along, across = along_across(err, ref)
+    horiz = np.hypot(along, across)
+    return {
+        "windows": len(err),
+        "p90_along_in": p90(np.abs(along)) / INCH,
+        "p90_across_in": p90(np.abs(across)) / INCH,
+        "p90_horizontal_in": p90(horiz) / INCH,
+        "along_share_of_total_p90": p90(np.abs(along)) / p90(horiz),
+    }
 
 
 def a3_a4(walks: list[Walk]) -> tuple[dict, dict]:
@@ -254,19 +276,21 @@ def a3_a4(walks: list[Walk]) -> tuple[dict, dict]:
     for dataset, ws in by_dataset(walks).items():
         a3[dataset], a4[dataset] = {}, {}
         for ft in WINDOW_FT:
-            est, ref = window_errors(ws, ft, drift.window_pairs)
+            est, ref, dev = window_errors(ws, ft, drift.window_pairs)
             err = est - ref
             along, across = along_across(err, ref)
             horiz = np.hypot(along, across)
             a3[dataset][ft] = {
-                "windows": len(err),
-                "p90_along_in": p90(np.abs(along)) / INCH,
-                "p90_across_in": p90(np.abs(across)) / INCH,
-                "p90_horizontal_in": p90(horiz) / INCH,
+                **split_p90(err, ref),
                 "median_horizontal_in": float(np.median(horiz)) / INCH,
                 "p90_vertical_in": p90(np.abs(err[:, 1])) / INCH,
                 "p90_3d_in": p90(np.linalg.norm(err, axis=1)) / INCH,
-                "along_share_of_total_p90": p90(np.abs(along)) / p90(horiz),
+                "wall_parallel": {
+                    f"{m:.2f}": split_p90(err[dev <= m], ref[dev <= m])
+                    if (dev <= m).any()
+                    else None
+                    for m in WALL_PARALLEL_M
+                },
             }
             true_range = np.linalg.norm(ref, axis=1)
             a4[dataset][ft] = {"before_p90_in": p90(horiz) / INCH}
@@ -458,9 +482,33 @@ def markdown(meta: dict, r1: dict, r2: dict, r3: dict, r4: dict, r5: dict) -> st
         )
         + ".",
         "",
+        "Added after review: a wall plane removes the error along the wall's normal, and that is "
+        "the across-travel axis only while the walk runs straight along the wall. In windows that "
+        "turn, across holds some along-wall error and along holds some error a plane would remove, "
+        "so the graded split above cannot by itself say whether a plane helps. The walks have no "
+        "wall annotations, so the windows below stand in for a walk along a wall: those whose "
+        "reference path stays within the given distance of its own start-to-end line. The widths "
+        "are untuned and not pre-registered.",
+        "",
+        "| Data | Walked | Within | Windows | Along | Across | Horizontal total | Along / total |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for d, x in r3.items():
+        for ft, y in x.items():
+            for m, z in y["wall_parallel"].items():
+                if z is None:
+                    L.append(f"| {names[d]} | {ft} ft | {m} m | 0 | | | | |")
+                    continue
+                L.append(
+                    f"| {names[d]} | {ft} ft | {m} m | {z['windows']} | {z['p90_along_in']:.1f} | "
+                    f"{z['p90_across_in']:.1f} | {z['p90_horizontal_in']:.1f} | "
+                    f"{z['along_share_of_total_p90']:.2f} |"
+                )
+    L += [
+        "",
         "## A4, a range to the meter",
         "",
-        f"A simulated range from each window's start to its end: the reference's 3-D distance plus "
+        f"Each window is a session that starts at the meter, where the second phone stays. A simulated range from each window's start to its end: the reference's 3-D distance plus "
         f"N(0, sigma), {RANGE_DRAWS} draws per window (seed {SEED}). ARKit's end moves radially in "
         "the horizontal plane about the start, keeping its height, onto the range. p90 horizontal "
         "error, inches. sigma 0.10 m is graded; 0.05 and 0.20 m are not.",

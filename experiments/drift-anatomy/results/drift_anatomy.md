@@ -132,9 +132,26 @@ The evals' windows: from every image (MARViN) or every 0.5 s (ADVIO) until the r
 
 Criterion at 20 ft: along p90 at most 0.60 of the horizontal total p90. MARViN 0.92, FAIL; ADVIO 0.76, FAIL.
 
+Added after review: a wall plane removes the error along the wall's normal, and that is the across-travel axis only while the walk runs straight along the wall. In windows that turn, across holds some along-wall error and along holds some error a plane would remove, so the graded split above cannot by itself say whether a plane helps. The walks have no wall annotations, so the windows below stand in for a walk along a wall: those whose reference path stays within the given distance of its own start-to-end line. The widths are untuned and not pre-registered.
+
+| Data | Walked | Within | Windows | Along | Across | Horizontal total | Along / total |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| MARViN | 10 ft | 0.25 m | 3601 | 5.8 | 2.1 | 6.2 | 0.95 |
+| MARViN | 10 ft | 0.50 m | 4489 | 5.9 | 2.3 | 6.3 | 0.94 |
+| MARViN | 20 ft | 0.25 m | 1416 | 9.6 | 2.7 | 9.8 | 0.98 |
+| MARViN | 20 ft | 0.50 m | 2735 | 9.7 | 3.0 | 10.3 | 0.95 |
+| MARViN | 30 ft | 0.25 m | 556 | 11.5 | 3.0 | 11.7 | 0.98 |
+| MARViN | 30 ft | 0.50 m | 1506 | 12.3 | 3.7 | 12.5 | 0.98 |
+| ADVIO | 10 ft | 0.25 m | 1831 | 38.8 | 40.4 | 54.1 | 0.72 |
+| ADVIO | 10 ft | 0.50 m | 1905 | 39.7 | 41.0 | 55.3 | 0.72 |
+| ADVIO | 20 ft | 0.25 m | 1572 | 66.4 | 73.9 | 88.9 | 0.75 |
+| ADVIO | 20 ft | 0.50 m | 1720 | 70.0 | 77.1 | 93.0 | 0.75 |
+| ADVIO | 30 ft | 0.25 m | 1421 | 93.1 | 102.8 | 124.5 | 0.75 |
+| ADVIO | 30 ft | 0.50 m | 1549 | 99.1 | 107.3 | 129.2 | 0.77 |
+
 ## A4, a range to the meter
 
-A simulated range from each window's start to its end: the reference's 3-D distance plus N(0, sigma), 20 draws per window (seed 0). ARKit's end moves radially in the horizontal plane about the start, keeping its height, onto the range. p90 horizontal error, inches. sigma 0.10 m is graded; 0.05 and 0.20 m are not.
+Each window is a session that starts at the meter, where the second phone stays. A simulated range from each window's start to its end: the reference's 3-D distance plus N(0, sigma), 20 draws per window (seed 0). ARKit's end moves radially in the horizontal plane about the start, keeping its height, onto the range. p90 horizontal error, inches. sigma 0.10 m is graded; 0.05 and 0.20 m are not.
 
 | Data | Walked | Before | After, 0.05 m | After, 0.10 m | After, 0.20 m |
 | --- | --- | --- | --- | --- | --- |

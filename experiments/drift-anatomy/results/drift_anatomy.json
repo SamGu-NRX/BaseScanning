@@ -1357,30 +1357,78 @@
     "p90_along_in": 5.93244053666383,
     "p90_across_in": 2.383144858716218,
     "p90_horizontal_in": 6.356644425002893,
+    "along_share_of_total_p90": 0.9332660661857188,
     "median_horizontal_in": 2.6181875496018105,
     "p90_vertical_in": 1.9654002913094888,
     "p90_3d_in": 6.796782660764225,
-    "along_share_of_total_p90": 0.9332660661857188
+    "wall_parallel": {
+     "0.25": {
+      "windows": 3601,
+      "p90_along_in": 5.826966988094975,
+      "p90_across_in": 2.111570110459862,
+      "p90_horizontal_in": 6.152786774170161,
+      "along_share_of_total_p90": 0.9470451686310665
+     },
+     "0.50": {
+      "windows": 4489,
+      "p90_along_in": 5.877316441113764,
+      "p90_across_in": 2.256740731176376,
+      "p90_horizontal_in": 6.281388835683555,
+      "along_share_of_total_p90": 0.9356714884016857
+     }
+    }
    },
    "20": {
     "windows": 4956,
     "p90_along_in": 9.614029066697613,
     "p90_across_in": 3.8201651149007376,
     "p90_horizontal_in": 10.416259256830854,
+    "along_share_of_total_p90": 0.9229828895044881,
     "median_horizontal_in": 4.395873486077264,
     "p90_vertical_in": 2.9551007554751285,
     "p90_3d_in": 10.87021034634674,
-    "along_share_of_total_p90": 0.9229828895044881
+    "wall_parallel": {
+     "0.25": {
+      "windows": 1416,
+      "p90_along_in": 9.604249774006092,
+      "p90_across_in": 2.6576477424629545,
+      "p90_horizontal_in": 9.791322826235511,
+      "along_share_of_total_p90": 0.9808939960872128
+     },
+     "0.50": {
+      "windows": 2735,
+      "p90_along_in": 9.735246181368389,
+      "p90_across_in": 2.9849409636746014,
+      "p90_horizontal_in": 10.254954545799945,
+      "along_share_of_total_p90": 0.9493212415412987
+     }
+    }
    },
    "30": {
     "windows": 4866,
     "p90_along_in": 12.50959372814818,
     "p90_across_in": 5.464582640836947,
     "p90_horizontal_in": 13.628585737497145,
+    "along_share_of_total_p90": 0.917893754282206,
     "median_horizontal_in": 6.016112751925093,
     "p90_vertical_in": 3.6388989773814653,
     "p90_3d_in": 14.139117730080716,
-    "along_share_of_total_p90": 0.917893754282206
+    "wall_parallel": {
+     "0.25": {
+      "windows": 556,
+      "p90_along_in": 11.52265233012735,
+      "p90_across_in": 3.0105234637262224,
+      "p90_horizontal_in": 11.707672299015773,
+      "along_share_of_total_p90": 0.9841966904980782
+     },
+     "0.50": {
+      "windows": 1506,
+      "p90_along_in": 12.273519598588699,
+      "p90_across_in": 3.6974588667790194,
+      "p90_horizontal_in": 12.509892612405189,
+      "along_share_of_total_p90": 0.981105112478576
+     }
+    }
    }
   },
   "advio": {
@@ -1389,30 +1437,78 @@
     "p90_along_in": 40.16740160527824,
     "p90_across_in": 41.217205108912495,
     "p90_horizontal_in": 55.603313400377814,
+    "along_share_of_total_p90": 0.7223922307659694,
     "median_horizontal_in": 26.202438486533016,
     "p90_vertical_in": 3.697033252704125,
     "p90_3d_in": 55.7048750882303,
-    "along_share_of_total_p90": 0.7223922307659694
+    "wall_parallel": {
+     "0.25": {
+      "windows": 1831,
+      "p90_along_in": 38.817104640899515,
+      "p90_across_in": 40.40824203776524,
+      "p90_horizontal_in": 54.051646176045516,
+      "along_share_of_total_p90": 0.7181484263119888
+     },
+     "0.50": {
+      "windows": 1905,
+      "p90_along_in": 39.71706496159873,
+      "p90_across_in": 40.95345003105173,
+      "p90_horizontal_in": 55.31558133196048,
+      "along_share_of_total_p90": 0.7180086334670921
+     }
+    }
    },
    "20": {
     "windows": 1903,
     "p90_along_in": 72.05520337403567,
     "p90_across_in": 77.9870905225656,
     "p90_horizontal_in": 94.28551696290192,
+    "along_share_of_total_p90": 0.76422345334742,
     "median_horizontal_in": 50.231545101074694,
     "p90_vertical_in": 6.375715770353499,
     "p90_3d_in": 94.60404389848367,
-    "along_share_of_total_p90": 0.76422345334742
+    "wall_parallel": {
+     "0.25": {
+      "windows": 1572,
+      "p90_along_in": 66.36786396952603,
+      "p90_across_in": 73.94467380934859,
+      "p90_horizontal_in": 88.94005061866382,
+      "along_share_of_total_p90": 0.7462089745606566
+     },
+     "0.50": {
+      "windows": 1720,
+      "p90_along_in": 70.01436124445905,
+      "p90_across_in": 77.12953122417956,
+      "p90_horizontal_in": 93.0226402125133,
+      "along_share_of_total_p90": 0.7526593642634624
+     }
+    }
    },
    "30": {
     "windows": 1889,
     "p90_along_in": 97.37446063335635,
     "p90_across_in": 110.39001216955775,
     "p90_horizontal_in": 132.53687138322834,
+    "along_share_of_total_p90": 0.7346971421394095,
     "median_horizontal_in": 73.64854529941651,
     "p90_vertical_in": 9.174807119748339,
     "p90_3d_in": 132.57989402774612,
-    "along_share_of_total_p90": 0.7346971421394095
+    "wall_parallel": {
+     "0.25": {
+      "windows": 1421,
+      "p90_along_in": 93.12387571665461,
+      "p90_across_in": 102.7530290645741,
+      "p90_horizontal_in": 124.45301489257115,
+      "along_share_of_total_p90": 0.7482653256495223
+     },
+     "0.50": {
+      "windows": 1549,
+      "p90_along_in": 99.08655440233662,
+      "p90_across_in": 107.2678362551467,
+      "p90_horizontal_in": 129.17438173809424,
+      "along_share_of_total_p90": 0.7670758943769378
+     }
+    }
    }
   }
  },
