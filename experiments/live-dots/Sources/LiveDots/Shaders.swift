@@ -86,8 +86,9 @@ enum Shaders {
     constant float3 emberHalo = float3(0xFF, 0xC9, 0x78) / 255.0f;
 
     // Constellation hides flat dots, so a dot that turns edge is born then, not at its voxel's birth.
+    // Feature points never become edges, and their edge time of 1e6 s would hide them for good.
     static float visibleBirth(Sprite s, int scheme) {
-        return scheme == 1 ? max(s.b.x, s.c.x) : s.b.x;
+        return scheme == 1 && s.a.w < 0.5f ? max(s.b.x, s.c.x) : s.b.x;
     }
 
     struct DotOut {

@@ -60,6 +60,8 @@ final class DotRenderer {
     private var linkBuffer: MTLBuffer?
     private var linkVertexCount = 0
     private var cachedKey: (mode: CaptureMode, keyframe: Int, scheme: DotScheme)?
+    /// The view the fog mask was last built for; nil while the fog is not drawn.
+    private var fogView: (mode: CaptureMode, keyframe: Int)?
     /// Replaces the timeline's sprites, for the 6,000-dot benchmark.
     var spriteOverride: [DotSprite]? {
         didSet { cachedKey = nil }
@@ -121,10 +123,18 @@ final class DotRenderer {
 
         var clip = projection.clipMatrix
         if request.fog == .on {
+            // The lag eases the mask only between frames of one playback (same keyframe or the
+            // next). After a jump, a mode switch or the fog coming back on, the old mask belongs
+            // to another view and would leave unmeasured regions clear.
+            let continues = fogView.map { $0.mode == request.mode && (0...1).contains(request.keyframe - $0.keyframe) } ?? false
             fog.encodeMask(
                 into: commandBuffer, splats: splatBuffer, splatCount: splatCount, clip: clip,
                 pixelsPerMetre: keyframe.intrinsics.x * projection.scale * Float(FogLayer.maskWidth) / pixelSize.x,
-                time: request.time, dt: request.frameInterval, reduceMotion: request.reduceMotion, reset: request.isSettled)
+                time: request.time, dt: request.frameInterval, reduceMotion: request.reduceMotion,
+                reset: request.isSettled || !continues)
+            fogView = (request.mode, request.keyframe)
+        } else {
+            fogView = nil
         }
 
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return }

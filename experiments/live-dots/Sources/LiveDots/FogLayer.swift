@@ -86,7 +86,7 @@ final class FogLayer {
     }
 
     /// Splats, blurs and eases the reveal mask. `reset` snaps the lag to the new mask (a scrub, a
-    /// still, the first frame).
+    /// mode switch, the fog turned back on, a still); the first frame always snaps.
     func encodeMask(
         into commandBuffer: MTLCommandBuffer, splats: MTLBuffer?, splatCount: Int, clip: simd_float4x4,
         pixelsPerMetre: Float, time: Float, dt: Float, reduceMotion: Bool, reset: Bool

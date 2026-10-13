@@ -51,13 +51,21 @@ enum Exporter {
     }
 
     /// One keyframe as a PNG. Without `at`, the keyframe settled: every animation finished and
-    /// the fog lag caught up. With `at`, the moment `at` seconds after the keyframe appears,
-    /// reached by playing the replay from the start at 30 fps, so the fog's lag is what the
-    /// video shows.
+    /// the fog lag caught up. With `at`, the moment `at` seconds after the keyframe appears, before
+    /// the next one replaces it, reached by playing the replay from the start at 30 fps, so the
+    /// fog's lag is what the video shows.
     static func exportStill(keyframe number: Int, at offset: Float?, to path: String, options: Command.RenderOptions) throws {
         let data = try ReplayData.loadNow(folder: FixtureLocator.folder(options.fixture))
         guard number <= data.keyframeCount else {
             throw Failure(description: "--still \(number) is past the last keyframe, \(data.keyframeCount)")
+        }
+        // Stills are named and compared by keyframe, so an offset that plays into the next
+        // keyframe would label one keyframe's image with another's number.
+        if let offset, Schedule.keyframe(at: Schedule.start(of: number - 1) + offset, count: data.keyframeCount) != number - 1 {
+            let slot = Schedule.start(of: number) - Schedule.start(of: number - 1)
+            throw Failure(description: String(
+                format: "--at %g is past keyframe %d, which is on screen for %g s; use a smaller --at or --still %d",
+                offset, number, slot, number + 1))
         }
         let renderer = try DotRenderer(data: data)
         let target = try OffscreenTarget(renderer: renderer)
