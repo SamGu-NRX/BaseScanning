@@ -14,8 +14,9 @@ struct ResultARScreen: View {
     @State private var appeared = false
     /// The open camera between the card and Done, for the chevron (`CameraChrome`).
     @State private var cameraWindow = CameraWindow()
-    /// The spot is off screen and the open camera can't hold the chevron (`SpotDirection`).
-    @State private var spotUnshown = false
+    /// Which way the spot lies while it is off screen and the open camera can't hold the
+    /// chevron (`SpotDirection`); nil otherwise.
+    @State private var spotUnshown: AimDirection? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -49,7 +50,7 @@ struct ResultARScreen: View {
                 isReplay: state.isReplay,
                 isAutopilot: state.isAutopilot,
                 // With no room for the chevron, the card's legend line says where the spot is.
-                legend: spotUnshown && showsSpot ? ScanCopy.proposedSpotOffScreen : nil,
+                legend: showsSpot ? spotUnshown.map(ScanCopy.proposedSpotOffScreen(turn:)) : nil,
                 cameraWindow: cameraWindow,
                 aims: showsSpot
             ) {
@@ -123,14 +124,23 @@ private struct SpotDirection: View {
     /// The open camera between the card and Done (`CameraChrome`). The spot counts as in view
     /// only there, and the chevron keeps to it. Fixed bands stand in until the chrome reports it.
     var cameraWindow: CameraWindow
-    /// Called with true while the spot is off screen and the open camera is too short to hold the
-    /// chevron and its words, so the card can say it instead.
-    var onUnshown: (Bool) -> Void
+    /// Called with the way to turn while the spot is off screen and the open camera is too short
+    /// to hold the chevron and its words, so the card can say it instead; nil otherwise.
+    var onUnshown: (AimDirection?) -> Void
+
+    /// The chevron's words as laid out at the current text size. Measured from an unseen copy
+    /// that is always laid out, so the chevron can be placed before it first shows; the guess
+    /// stands in for the first layout pass only.
+    @State private var labelHeight: CGFloat = 36
 
     enum Layout: Equatable {
         case none
         case chevron(CGPoint, angle: Angle, label: CGPoint)
-        case unshown
+        case unshown(AimDirection)
+
+        var unshownDirection: AimDirection? {
+            if case .unshown(let direction) = self { direction } else { nil }
+        }
     }
 
     var body: some View {
@@ -139,22 +149,18 @@ private struct SpotDirection: View {
         GeometryReader { proxy in
             let size = proxy.size
             let band = WayfindingOverlay.verticalBand(clearArea, origin: proxy.frame(in: .global).origin, height: size.height)
-            let layout = Self.layout(projection: projection, spot: spot, in: size, band: band)
+            let layout = Self.layout(projection: projection, spot: spot, in: size, band: band, labelHeight: labelHeight)
             ZStack {
+                label
+                    .hidden()
+                    .accessibilityHidden(true)
+                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
+                        if abs(height - labelHeight) > 0.5 { labelHeight = height }
+                    }
                 if case let .chevron(point, angle, label) = layout {
                     ZStack {
                         TargetMarker(placement: .offScreen(point, angle: angle))
-                        Text(ScanCopy.proposedSpotThisWay)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Palette.chalk)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            // Solid, as the aim ring's legend: see-through black over a bright wall
-                            // failed the accessibility audit's contrast check there.
-                            .background(ScrimShape.capsule)
-                            .frame(maxWidth: 220)
-                            .fixedSize(horizontal: false, vertical: true)
+                        self.label
                             .position(label)
                     }
                     .frame(width: size.width, height: size.height)
@@ -164,35 +170,58 @@ private struct SpotDirection: View {
                 }
                 Color.clear
                     .frame(width: 0, height: 0)
-                    .onChange(of: layout == .unshown, initial: true) { _, unshown in onUnshown(unshown) }
-                    .onDisappear { onUnshown(false) }
+                    .onChange(of: layout.unshownDirection, initial: true) { _, direction in onUnshown(direction) }
+                    .onDisappear { onUnshown(nil) }
             }
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
     }
 
-    /// Room under the chevron's centre for its words: they sit 50 pt below it, and a two-line
-    /// label reaches about 22 pt further at the default text size. A layout choice.
-    static let labelRoom: CGFloat = 72
+    private var label: some View {
+        Text(ScanCopy.proposedSpotThisWay)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Palette.chalk)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            // Solid, as the aim ring's legend: see-through black over a bright wall failed the
+            // accessibility audit's contrast check there.
+            .background(ScrimShape.capsule)
+            .frame(maxWidth: 220)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// The gap between the chevron's disc and its words.
+    static let labelGap: CGFloat = 6
 
     /// Where the chevron goes, which way it points and where its words sit; `.none` while the
-    /// spot is in view, `.unshown` when the open camera can't hold them.
+    /// spot is in view, `.unshown` with the way to turn when the open camera can't hold them.
+    /// `labelHeight` is the words' measured height: at the accessibility sizes they wrap to
+    /// several lines, and a fixed allowance let them run under Done (review of #241).
     ///
     /// In view means in the open camera between the card and Done, as measured
     /// (`CameraWindow`): a spot under the card or the button can't be seen, so it gets the
     /// chevron. The fixed bands before the chrome reports were right only at the default text
     /// size; from xxxLarge up the card passes them and covered both the spot and the chevron
     /// (review of #132 and #137). The chevron keeps to the same window, inset as the walk's
-    /// edge arrows are (`WayfindingOverlay.lane`), with `labelRoom` left under it.
-    static func layout(projection: CameraProjection, spot: SIMD3<Float>, in size: CGSize, band: WayfindingOverlay.Band?) -> Layout {
+    /// edge arrows are (`WayfindingOverlay.lane`), with room for its words left under it.
+    static func layout(
+        projection: CameraProjection, spot: SIMD3<Float>, in size: CGSize, band: WayfindingOverlay.Band?, labelHeight: CGFloat
+    ) -> Layout {
+        let disc = WayfindingOverlay.arrowDiameter
+        let labelRoom = labelGap + labelHeight
         let clear = band.map { CGRect(x: 24, y: $0.top, width: size.width - 48, height: $0.bottom - $0.top) }
             ?? CGRect(x: 24, y: 260, width: size.width - 48, height: max(size.height - 260 - 160, 80))
         if let point = projection.viewPoint(for: spot, in: size), clear.contains(point) { return .none }
         guard let direction = projection.screenDirection(toward: spot) else { return .none }
         let lane: CGRect
         if let band {
-            guard band.bottom - band.top >= WayfindingOverlay.arrowDiameter + labelRoom else { return .unshown }
+            guard band.bottom - band.top >= disc + labelRoom else {
+                return .unshown(WayfindingOverlay.direction(of: .radians(atan2(direction.dy, direction.dx)), previous: nil))
+            }
+            // The words end by the band's bottom. A band too short for the inset lane leaves its
+            // middle line, where the guard above still fits the disc and the words.
             let bottomLimit = band.bottom - labelRoom
             let middle = (band.top + bottomLimit) / 2
             let top = min(band.top + WayfindingOverlay.arrowInset, middle)
@@ -205,7 +234,7 @@ private struct SpotDirection: View {
         let ty = direction.dy == 0 ? CGFloat.infinity : lane.height / 2 / abs(direction.dy)
         let t = min(tx, ty)
         let point = CGPoint(x: lane.midX + direction.dx * t, y: lane.midY + direction.dy * t)
-        let label = CGPoint(x: min(max(point.x, 120), max(size.width - 120, 120)), y: point.y + 50)
+        let label = CGPoint(x: min(max(point.x, 120), max(size.width - 120, 120)), y: point.y + disc / 2 + labelGap + labelHeight / 2)
         return .chevron(point, angle: .radians(atan2(direction.dy, direction.dx)), label: label)
     }
 }

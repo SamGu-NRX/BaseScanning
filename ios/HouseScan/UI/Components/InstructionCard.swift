@@ -141,10 +141,20 @@ struct InstructionCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 2)
                 }
-                Text(title)
-                    .font(Typeface.instruction)
-                    .foregroundStyle(Palette.chalk)
-                    .fixedSize(horizontal: false, vertical: true)
+                ZStack(alignment: .topLeading) {
+                    // As tall as the tallest title this card may swap to (`Instruction.titleReserve`).
+                    ForEach(foldsDetail && instruction.folded != nil ? [] : instruction.titleReserve, id: \.self) { reserved in
+                        Text(reserved)
+                            .font(Typeface.instruction)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .hidden()
+                            .accessibilityHidden(true)
+                    }
+                    Text(title)
+                        .font(Typeface.instruction)
+                        .foregroundStyle(Palette.chalk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 // Folded, only the coaching stays under the title; the detail is in `details`.
                 if let line = foldsDetail ? instruction.note : instruction.detailAndNote {
                     Text(line)

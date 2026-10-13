@@ -14,6 +14,12 @@ struct Instruction: Hashable {
     /// situation and the detail holds what to do: the doing leads, and the situation moves under
     /// Details. Nil keeps the title and folds the detail.
     var folded: Folded? = nil
+    /// Other titles this card may swap to while it stays up, laid out unseen behind the title so
+    /// the card keeps one height whichever shows (`InstructionCard`). On an aim step the title
+    /// follows the marker the overlay draws, and the overlay draws within the camera the card
+    /// leaves open: a title that wrapped to a different height moved that camera, which could
+    /// flip the marker and the title back (review of #241).
+    var titleReserve: [String] = []
 
     struct Folded: Hashable {
         /// What to do now, in place of `title`.
@@ -132,20 +138,26 @@ enum ScanCopy {
         } else {
             switch hint.aim {
             case .above? where ground:
-                copy.title = "Tilt up a little"
+                copy.title = aimTiltUp
             case .below? where !ground:
-                copy.title = "Tilt down a little"
+                copy.title = aimTiltDown
             case .onScreen? where ground:
-                copy.title = "Put the ring on the strip"
+                copy.title = aimRingOnStrip
             default:
                 break
             }
+            // Every title the direction can swap this one to.
+            copy.titleReserve = ground ? [base.title, aimTiltUp, aimRingOnStrip] : [base.title, aimTiltDown]
         }
         if hint.stepBack {
             copy.detail = [copy.detail, "Step back a little."].compactMap { $0 }.joined(separator: " ")
         }
         return copy
     }
+
+    private static let aimTiltUp = "Tilt up a little"
+    private static let aimTiltDown = "Tilt down a little"
+    private static let aimRingOnStrip = "Put the ring on the strip"
 
     // MARK: Coaching
 
@@ -802,6 +814,18 @@ enum ScanCopy {
     static let proposedSpotOverlay = "A proposed battery spot, drawn on your wall"
     static let proposedSpotThisWay = "The proposed spot is this way"
     static let proposedSpotOffScreen = "The proposed spot is off screen. Turn the phone toward the arrow."
+    /// The card's legend line when the open camera is too short for the chevron, so there is no
+    /// arrow to turn toward (review of #241).
+    static func proposedSpotOffScreen(turn direction: AimDirection) -> String {
+        let turn = switch direction {
+        case .above: "Tilt the phone up"
+        case .below: "Tilt the phone down"
+        case .left: "Turn the phone left"
+        case .right: "Turn the phone right"
+        case .onScreen, .behind: "Turn the phone around"
+        }
+        return "The proposed spot is off screen. \(turn) to find it."
+    }
 
     static let seeOnWall = "See this spot on your wall"
     /// For a spot an installer still has to confirm against the meter's working space.
