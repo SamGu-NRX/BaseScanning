@@ -222,12 +222,19 @@ TEMPLATE = """<!doctype html>
 <script type="application/json" id="items">__ITEMS__</script>
 <script>
 const items = JSON.parse(document.getElementById("items").textContent);
-// Answers already ingested ship with the page, so a new browser starts from them; answers
-// saved in this browser since then take precedence.
+// Answers already ingested ship with the page, so a new browser starts from them. An answer
+// saved in this browser since then takes precedence only while the page still shows the number
+// it was given for: after a label correction or dataset update the photo is open again, so a
+// stale Keep is neither shown as done nor exported. Answers saved before `shown` was recorded
+// cannot be checked and are dropped the same way.
 function startingAnswers(items, stored) {
   const answers = {};
-  for (const item of items) if (item.answer) answers[item.id] = item.answer;
-  return Object.assign(answers, stored);
+  for (const item of items) {
+    const mine = stored[item.id];
+    if (mine && mine.shown === item.number) answers[item.id] = mine;
+    else if (item.answer) answers[item.id] = item.answer;
+  }
+  return answers;
 }
 
 const saved = startingAnswers(items, JSON.parse(localStorage.getItem("meter-check") || "{}"));
@@ -304,7 +311,7 @@ function select(i, scroll = true) {
 }
 
 function store(i, answer) {
-  saved[items[i].id] = answer;
+  saved[items[i].id] = { ...answer, shown: items[i].number };
   localStorage.setItem("meter-check", JSON.stringify(saved));
   const el = document.getElementById(items[i].id);
   el.dataset.verdict = answer.verdict;

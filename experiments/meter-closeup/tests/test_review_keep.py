@@ -46,6 +46,36 @@ def test_keep_in_a_new_browser_confirms_an_ingested_correction():
     assert keep_answer(None, item) == {"verdict": "keep", "number": "7654321"}
 
 
+def test_a_browser_keep_given_for_a_number_the_page_no_longer_shows_is_dropped():
+    items = [
+        {
+            "id": "m01",
+            "number": "7654321",
+            "corrected": True,
+            "answer": {"verdict": "fix", "number": "7654321"},
+        },
+        {"id": "m02", "number": "2222222", "corrected": False, "answer": None},
+        {"id": "m03", "number": "3333333", "corrected": False, "answer": None},
+    ]
+    stored = {
+        # Kept while the page showed the readers' 1111111, before the correction was ingested.
+        "m01": {"verdict": "keep", "number": "", "shown": "1111111"},
+        # Kept for a number the dataset update changed.
+        "m02": {"verdict": "keep", "number": "", "shown": "2220000"},
+        # Kept for the number still shown.
+        "m03": {"verdict": "keep", "number": "", "shown": "3333333"},
+        # Saved before answers recorded what they were given for.
+        "m04": {"verdict": "keep", "number": ""},
+    }
+    saved = on_page("startingAnswers(items, stored)", items=items, stored=stored)
+    assert saved == {
+        "m01": {"verdict": "fix", "number": "7654321"},
+        "m03": {"verdict": "keep", "number": "", "shown": "3333333"},
+    }
+    rows = on_page("answerRows(items, startingAnswers(items, stored))", items=items, stored=stored)
+    assert rows[1:] == [["m01", "fix", "7654321"], ["m02", "", ""], ["m03", "keep", ""]]
+
+
 def write(path, rows):
     with path.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
