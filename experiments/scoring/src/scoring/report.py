@@ -9,6 +9,7 @@ import csv
 import re
 from collections.abc import Iterable
 from decimal import ROUND_HALF_UP, Decimal
+from html import escape
 from pathlib import Path
 
 from scoring.inputs import Study
@@ -284,7 +285,15 @@ def _text(value: str) -> str:
 
 def _cell(value: str) -> str:
     # GitHub splits a table row at every unescaped pipe, even inside a code span.
-    return value.replace("|", "\\|")
+    return value.replace("\\", "\\\\").replace("|", "\\|")
+
+
+def _table_code(value: str) -> str:
+    # Code spans preserve backslashes. HTML keeps the displayed identifier intact while
+    # preventing a backslash before a pipe from changing the table's column boundaries.
+    if "\\" in value:
+        return "<code>" + escape(_one_line(value)).replace("|", "&#124;") + "</code>"
+    return _code(value)
 
 
 def _table(header: list[str], rows: list[list[str]]) -> list[str]:
@@ -343,7 +352,7 @@ def _distances(runs: list[RunScore]) -> list[str]:
         within, with_uncertainty = run.within_reported
         rows.append(
             [
-                _code(run.results.pipeline),
+                _table_code(run.results.pipeline),
                 run.results.scale_source,
                 f"{run.count('scored')}/{denominator}",
                 inches(run.median_abs_error_in),
@@ -355,6 +364,7 @@ def _distances(runs: list[RunScore]) -> list[str]:
                 str(run.count("phantom")),
                 str(run.count("absent_agreed")),
                 str(run.count("not_surveyed")),
+                _table_code(run.results.capture),
             ]
         )
     header = [
@@ -370,6 +380,7 @@ def _distances(runs: list[RunScore]) -> list[str]:
         "Phantom",
         "Absent, agreed",
         "Not surveyed",
+        "Capture",
     ]
     return [
         "",
@@ -402,7 +413,14 @@ def _checks(runs: list[RunScore]) -> list[str]:
             ]
         else:
             decided = ["no decisions", "", "", "", "", "", "", ""]
-        rows.append([_code(run.results.pipeline), *decided, str(run.could_flip)])
+        rows.append(
+            [
+                _table_code(run.results.pipeline),
+                *decided,
+                str(run.could_flip),
+                _table_code(run.results.capture),
+            ]
+        )
     header = [
         "Pipeline",
         "Agree",
@@ -414,6 +432,7 @@ def _checks(runs: list[RunScore]) -> list[str]:
         "Unsure, justified",
         "Unsure, avoidable",
         "Error could flip",
+        "Capture",
     ]
     return [
         "",
@@ -440,13 +459,19 @@ def _checks(runs: list[RunScore]) -> list[str]:
 def _timing(runs: list[RunScore]) -> list[str]:
     rows = [
         [
-            _code(run.results.pipeline),
+            _table_code(run.results.pipeline),
             seconds(run.results.capture_seconds) or "not recorded",
             seconds(run.results.processing_seconds) or "not recorded",
+            _table_code(run.results.capture),
         ]
         for run in runs
     ]
-    return ["", "### Timing", "", *_table(["Pipeline", "Capture (s)", "Processing (s)"], rows)]
+    return [
+        "",
+        "### Timing",
+        "",
+        *_table(["Pipeline", "Capture (s)", "Processing (s)", "Capture"], rows),
+    ]
 
 
 def _survey_text(score: CheckScore) -> str:
@@ -469,7 +494,8 @@ def _wrong_pass(run: RunScore, score: CheckScore) -> str:
     run_value = f"{feet(reported.value_ft)} ft" if has_value else "no value"
     return (
         f"- {_code(run.results.pipeline)} passed {_code(score.check.check)} at "
-        f"{_code(score.check.candidate)}; {_survey_text(score)} (run measured {run_value})."
+        f"{_code(score.check.candidate)}; {_survey_text(score)} (run measured {run_value}). "
+        f"Capture {_code(run.results.capture)}."
     )
 
 
@@ -480,7 +506,7 @@ def _decision_without_measurement(run: RunScore, score: CheckScore) -> str:
         f"- {_code(run.results.pipeline)} reported {score.reported} for "
         f"{_code(score.check.check)} at {_code(score.check.candidate)} with measurement "
         f"{_code(score.check.measurement)} missing "
-        f"({reported.missing}); {_survey_text(score)}."
+        f"({reported.missing}); {_survey_text(score)}. Capture {_code(run.results.capture)}."
     )
 
 
