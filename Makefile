@@ -71,7 +71,9 @@ measure-lab:
 	$(call require,$(MEASURE_LAB),#7)
 	$(MAKE) -C experiments/measure-lab project XCODEGEN="$(XCODEGEN)"
 	git diff --exit-code -- experiments/measure-lab/MeasureLab.xcodeproj
-	@test -z "$$(git ls-files --others --exclude-standard -- experiments/measure-lab/MeasureLab.xcodeproj)" || { echo "MeasureLab.xcodeproj contains uncommitted generated files." >&2; exit 1; }
+	# A failed listing must not look like a clean generated project.
+	@untracked="$$(git ls-files --others --exclude-standard -- experiments/measure-lab/MeasureLab.xcodeproj)" || exit 1; \
+	test -z "$$untracked" || { echo "MeasureLab.xcodeproj contains uncommitted generated files." >&2; exit 1; }
 	$(MAKE) -C experiments/measure-lab check
 
 # The folder's `make test` lints and tests but leaves out the `uv sync --locked` that
