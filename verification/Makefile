@@ -22,12 +22,17 @@ sim:
 	uv run python -m hsverify.simrun --ref $(REF) $(ARGS)
 
 # The app at REF on the real ADVIO replay (C3), driven by its autopilot, uploading to the server
-# started from SERVER_REF (or at SERVER_URL): a screenshot per STATE in ~/house-scanning-data/reports/sim/. Fails
-# unless the run reaches the result state; the scan bundle is copied into the report as scan.zip.
+# started from SERVER_REF (or at SERVER_URL): a screenshot per STATE in ~/house-scanning-data/reports/sim/.
+# Fails unless the run walks the flow in order (meter, close-up, wall walk, feature review,
+# upload, result) and uploads after every gap request it shows, so each recapture round ends in
+# an upload. Reaching `result` alone would also pass an app that showed a cached answer. A round
+# the app never opens leaves no STATE to check. The scan bundle is copied into the report as
+# scan.zip. State names are ScanPhase in ios/HouseScan/Contract/ScanContract.swift.
 sim-app:
 	uv run python -m hsverify.simrun --ref $(REF) --replay $(REPLAY) --autopilot \
-		$(SERVER) --extra-arg=-autopilotHold --extra-arg=3 \
-		--idle 60 --timeout 900 --require result --require-export --label replay $(ARGS)
+		$(SERVER) --extra-arg=-autopilotHold --extra-arg=3 --idle 60 --timeout 900 \
+		--require-order findMeter,meterCloseUp,wallWalk,markFeatures,uploading,result \
+		--require-then gapRequest:uploading --require-export --label replay $(ARGS)
 
 # Every case in e2e/cases/ plus the ETH3D facade scene through the server's API at SERVER_REF;
 # each result is validated against server/schemas/result.schema.json at the same ref.

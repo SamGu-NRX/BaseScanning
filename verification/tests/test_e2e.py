@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 import io
 import json
@@ -5,7 +6,7 @@ import re
 import threading
 import time
 import zipfile
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from typing import ClassVar
 
 import pytest
@@ -356,6 +357,70 @@ def test_a_slow_refusal_or_a_hang_fails(refusing_url, monkeypatch):
     RefusingServer.delay = 6.0  # longer than budget + 5 s: the request times out
     record = judge_hostile(refusing_url, Endpoint("/p", "application/json"), hostile, SCHEMAS)
     assert record["status"] == "fail" and record["problems"][0].startswith("no answer within")
+
+
+class UnendingServer(BaseHTTPRequestHandler):
+    """Answers `status` with a body that never ends: written as fast as the client takes it
+    (`flood`), one byte at a time (`trickle`), or never reached because the headers come one
+    byte at a time (`slow headers`). Each answer stops on its own after 5 s."""
+
+    status = 200
+    mode = "flood"
+
+    def do_POST(self):
+        self.rfile.read(int(self.headers["Content-Length"]))
+        head = f"HTTP/1.0 {self.status} X\r\nContent-Type: application/json\r\n".encode()
+        until = time.monotonic() + 5
+        with contextlib.suppress(OSError):
+            if self.mode == "slow headers":
+                self.wfile.write(head)
+                while time.monotonic() < until:
+                    for byte in b"X-Pad: a\r\n":
+                        self.wfile.write(bytes([byte]))
+                        self.wfile.flush()
+                        time.sleep(0.02)
+                return
+            self.wfile.write(head + b"\r\n")
+            while time.monotonic() < until:
+                self.wfile.write(b" " * 4096 if self.mode == "flood" else b" ")
+                self.wfile.flush()
+                if self.mode == "trickle":
+                    time.sleep(0.02)
+
+    def log_message(self, *args):
+        pass
+
+
+@pytest.fixture
+def unending_url():
+    class Server(ThreadingHTTPServer):
+        block_on_close = False  # an answer still running must not hold up the next test
+
+    server = Server(("127.0.0.1", 0), UnendingServer)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_port}"
+    server.shutdown()
+    server.server_close()
+
+
+@pytest.mark.parametrize("status", [200, 500])
+def test_an_endless_body_is_cut_at_the_byte_cap(unending_url, monkeypatch, status):
+    monkeypatch.setattr(e2e, "MAX_RESPONSE_BYTES", 2**14)
+    monkeypatch.setattr(UnendingServer, "status", status)
+    got, payload, ms = e2e.post(unending_url, Endpoint("/p", "application/json"), item(), 5)
+    assert got is None and payload == f"HTTP {status} body over 16384 bytes".encode()
+    assert ms < 4000
+
+
+@pytest.mark.parametrize("status", [200, 500])
+@pytest.mark.parametrize("mode", ["trickle", "slow headers"])
+def test_a_trickled_answer_stops_at_the_overall_deadline(unending_url, monkeypatch, status, mode):
+    """Every byte arrives well inside the 0.5 s socket timeout; only the deadline ends it."""
+    monkeypatch.setattr(UnendingServer, "status", status)
+    monkeypatch.setattr(UnendingServer, "mode", mode)
+    got, payload, ms = e2e.post(unending_url, Endpoint("/p", "application/json"), item(), 0.5)
+    assert (got, payload) == (None, b"no answer within 0.5 s")
+    assert 500 <= ms < 2500
 
 
 def test_hostile_inputs_are_small_to_send():

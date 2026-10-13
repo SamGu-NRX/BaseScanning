@@ -21,7 +21,9 @@ changed, and the answers must stay ordered: again (identical apart from timing),
 decision and outcome lengths), without or with less coverage, with ground trimmed just short
 of the largest clearance, with more error or tape re-measured by tap (nothing improves), and
 with every requested view added, up to three rounds (no check left unsure for coverage). Five
-hostile inputs must be refused or answered within 10 s and 500 MB of server growth.
+hostile inputs must be refused or answered within 10 s and 500 MB of server growth. Every
+answer, a result or an error, must arrive whole within its deadline and within 4 MB, or it
+counts as no answer.
 
 A run claims the contract (`contract_ok`) only when at least one scene was answered and
 checked and none broke it, and real-scene latency only from an HTTP 200 result.
@@ -36,6 +38,7 @@ import argparse
 import contextlib
 import datetime as dt
 import hashlib
+import http.client
 import io
 import json
 import os
@@ -44,6 +47,7 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -354,10 +358,22 @@ def bundle_zip(item: SceneInput) -> bytes:
     return buf.getvalue()
 
 
+# The most of any response body the harness reads, a result or an error. Not derived from any
+# requirement: the largest result in the 20260927-102101 run against t3/server 1d1e7e1 was 16 KB
+# (eth3d-facade), so this leaves room for 250 times that.
+MAX_RESPONSE_BYTES = 4 * 2**20
+READ_CHUNK_BYTES = 2**16
+
+
 def post(
     url: str, endpoint: Endpoint, item: SceneInput, timeout_s: float = 60
 ) -> tuple[int | None, bytes, float]:
-    """Send one scene. A timeout or a dropped connection comes back as status None."""
+    """Send one scene and read the whole answer within `timeout_s`, headers and body together.
+
+    Status None means no complete answer, and the payload then says why: the deadline passed,
+    the body ran past MAX_RESPONSE_BYTES, or the connection failed. A socket timeout alone bounds
+    each read, not the response, so a server trickling bytes would never trip it; a timer shuts
+    the socket down at the deadline instead, which wakes any read in progress."""
     if item.bundle is not None and endpoint.accepts_zip:
         body, ctype = item.bundle, "application/zip"
     elif endpoint.content_type == "application/json":
@@ -373,18 +389,54 @@ def post(
             + f"\r\n--{boundary}--\r\n".encode()
         )
         ctype = f"multipart/form-data; boundary={boundary}"
-    request = urllib.request.Request(
-        url + endpoint.path, data=body, headers={"Content-Type": ctype}, method="POST"
+    target = urllib.parse.urlsplit(url + endpoint.path)
+    https = target.scheme == "https"
+    conn = (http.client.HTTPSConnection if https else http.client.HTTPConnection)(
+        target.netloc, timeout=timeout_s
     )
+    expired = threading.Event()
+    # Held here, not read from conn.sock: http.client drops that once the headers say the
+    # connection will close, while the body is still being read from the same socket.
+    sockets: list[socket.socket] = []
+
+    def expire() -> None:
+        expired.set()
+        for sock in sockets:
+            with contextlib.suppress(OSError):
+                sock.shutdown(socket.SHUT_RDWR)
+
+    timer = threading.Timer(timeout_s, expire)
+    timer.daemon = True
     start = time.perf_counter()
+    timer.start()
+    status: int | None = None
+    payload = bytearray()
     try:
-        with urllib.request.urlopen(request, timeout=timeout_s) as response:
-            status, payload = response.status, response.read()
-    except urllib.error.HTTPError as exc:
-        status, payload = exc.code, exc.read()
-    except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
-        status, payload = None, str(exc).encode()
-    return status, payload, (time.perf_counter() - start) * 1000
+        conn.connect()
+        sockets.append(conn.sock)
+        if expired.is_set():  # the timer fired before there was a socket to shut down
+            raise TimeoutError
+        path = target.path + (f"?{target.query}" if target.query else "")
+        conn.request("POST", path, body=body, headers={"Content-Type": ctype})
+        response = conn.getresponse()
+        while len(payload) <= MAX_RESPONSE_BYTES and (chunk := response.read(READ_CHUNK_BYTES)):
+            payload += chunk
+        status = response.status
+    except TimeoutError:
+        # One socket operation waited the whole timeout_s, so the deadline has passed too.
+        expired.set()
+    except (OSError, http.client.HTTPException) as exc:
+        status, payload = None, bytearray(f"{type(exc).__name__}: {exc}".encode())
+    finally:
+        timer.cancel()
+        conn.close()
+    ms = (time.perf_counter() - start) * 1000
+    if expired.is_set():
+        # A read cut short by the shutdown can look like a complete body; the deadline decides.
+        return None, f"no answer within {timeout_s:g} s".encode(), ms
+    if len(payload) > MAX_RESPONSE_BYTES:
+        return None, f"HTTP {status} body over {MAX_RESPONSE_BYTES} bytes".encode(), ms
+    return status, bytes(payload), ms
 
 
 # --- Judging ---------------------------------------------------------------------------------
@@ -412,7 +464,7 @@ def answer(url: str, endpoint: Endpoint, item: SceneInput) -> tuple[dict | None,
     """The server's result for a scene, or why there is none."""
     status, payload, _ = post(url, endpoint, item)
     if status is None:
-        return None, f"no answer: {payload.decode(errors='replace')[:200]}"
+        return None, payload.decode(errors="replace")[:200]
     if status != 200:
         return None, f"HTTP {status}: {payload[:300]!r}"
     result = parse_result(payload)
@@ -450,7 +502,7 @@ def judge(
         failure = [
             f"HTTP {status} for a scene that validates: {payload[:500]!r}"
             if status is not None
-            else f"no answer within 60 s: {payload[:200]!r}"
+            else payload.decode(errors="replace")[:200]
         ]
         return record | {"status": "fail", "problems": failure, "contract_problems": failure}
     result = parse_result(payload)
@@ -673,7 +725,7 @@ def judge_hostile(
     if grew > HOSTILE_MEMORY_MB:
         failure = f"the server grew by {grew:.0f} MB, budget {HOSTILE_MEMORY_MB} MB"
     elif status is None:
-        failure = f"no answer within {HOSTILE_BUDGET_MS / 1000 + 5:.0f} s"
+        failure = payload.decode(errors="replace")[:200]
     elif ms > HOSTILE_BUDGET_MS:
         failure = f"answered HTTP {status} after {ms:.0f} ms, budget {HOSTILE_BUDGET_MS:.0f}"
     elif status in (400, 413, 422):

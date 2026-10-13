@@ -3,9 +3,10 @@ import XCTest
 /// Launches the app under test by bundle id with the launch arguments it is given, then runs
 /// `performAccessibilityAudit` once per distinct screen until the app stops changing.
 ///
-/// A screen is identified by the labels of its static texts and buttons, so a new instruction
-/// counts as a new screen. Each issue is printed as one `A11Y_ISSUE=<json>` line and each
-/// screen as `A11Y_SCREEN=<json>`, which hsverify.a11yaudit reads from the test output.
+/// A screen is identified by every element in its accessibility tree (see `screenIdentity`), so
+/// a new instruction or a new control counts as a new screen. Each issue is printed as one
+/// `A11Y_ISSUE=<json>` line and each screen as `A11Y_SCREEN=<json>`, which hsverify.a11yaudit
+/// reads from the test output.
 /// Screenshots go to AUDIT_OUT on the host.
 ///
 /// Inputs arrive as environment variables (set on the xcodebuild command line with the
@@ -34,39 +35,58 @@ final class AccessibilityAuditTests: XCTestCase {
                 emit("A11Y_SCREEN", ["index": seen.count + 1, "error": "app not running"])
                 break
             }
-            guard let labels = screenLabels(app) else {
+            guard let screen = screenIdentity(app) else {
                 RunLoop.current.run(until: Date().addingTimeInterval(0.5))
                 continue
             }
-            let key = labels.joined(separator: "\n")
-            if !seen.contains(key) {
-                seen.append(key)
+            if !seen.contains(screen.key) {
+                seen.append(screen.key)
                 lastChange = Date()
-                audit(app, index: seen.count, labels: labels, out: out,
+                audit(app, index: seen.count, labels: screen.labels, out: out,
                       at: Date().timeIntervalSince(start))
             }
             RunLoop.current.run(until: Date().addingTimeInterval(0.5))
         }
     }
 
-    /// Labels from one snapshot of the accessibility tree. Querying elements and then reading
-    /// each label is two round trips, and a button that disappears in between (the screen
-    /// changing) fails the whole test.
+    /// Containers that only group other elements. Without a label or identifier they show
+    /// nothing a person or the audit would notice, so they stay out of a screen's identity,
+    /// which then does not depend on how the views happen to be nested.
+    private static let grouping: Set<XCUIElement.ElementType> = [
+        .application, .window, .other, .group, .layoutArea, .layoutItem, .scrollView,
+    ]
+
+    /// One snapshot of the accessibility tree: the screen's identity, and the static-text and
+    /// button labels the report shows. Querying elements and then reading each label is two
+    /// round trips, and a button that disappears in between (the screen changing) fails the
+    /// whole test.
+    ///
+    /// The identity lists every element in tree order by type, identifier and label, so two
+    /// screens with the same texts and buttons still differ when one adds a text field, toggle,
+    /// image or link, labelled or not. It leaves out what changes while the screen stays the
+    /// same: values (typed text, a toggle's state, a slider's position) and frames (animations,
+    /// the keyboard). Each change of those would otherwise start another audit of one screen
+    /// and keep resetting the idle timer.
     @MainActor
-    private func screenLabels(_ app: XCUIApplication) -> [String]? {
+    private func screenIdentity(_ app: XCUIApplication) -> (key: String, labels: [String])? {
         guard let root = try? app.snapshot() else { return nil }
+        var elements: [String] = []
         var texts: [String] = []
         var buttons: [String] = []
         func walk(_ node: any XCUIElementSnapshot) {
-            switch node.elementType {
+            let type = node.elementType
+            switch type {
             case .staticText: texts.append("text:" + node.label)
             case .button: buttons.append("button:" + node.label)
             default: break
             }
+            if !Self.grouping.contains(type) || !node.label.isEmpty || !node.identifier.isEmpty {
+                elements.append("\(type.rawValue)|\(node.identifier)|\(node.label)")
+            }
             node.children.forEach(walk)
         }
         walk(root)
-        return texts + buttons
+        return (elements.joined(separator: "\n"), texts + buttons)
     }
 
     @MainActor

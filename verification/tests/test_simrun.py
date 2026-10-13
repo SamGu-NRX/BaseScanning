@@ -105,12 +105,6 @@ def test_missing_required_state_is_a_problem():
     assert missing_required([], []) == []
 
 
-def test_sim_app_requires_the_result_state():
-    makefile = (Path(__file__).resolve().parents[1] / "Makefile").read_text()
-    recipe = makefile.split("\nsim-app:\n", 1)[1].split("\n\n", 1)[0]
-    assert "--require result" in recipe
-
-
 # --- app export ------------------------------------------------------------------------------
 
 

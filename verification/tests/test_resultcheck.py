@@ -620,6 +620,50 @@ def test_less_coverage_never_creates_a_pass():
     assert msgs and all("went from unsure to pass" in m for m in msgs)
 
 
+def split():
+    """An original sweep: fail up to 2.0, then pass from 2.1, nothing evaluated between."""
+    return swept(run(0.0, 2.0, "fail"), run(2.1, 5.0, "pass"))
+
+
+def test_less_coverage_may_move_a_boundary_into_an_unswept_gap():
+    """A coverage edge that moved adds evaluated starts; one inside the original's gap between
+    a fail run and a pass run may pass, because the original allows either outcome there."""
+    after = swept(run(0.0, 2.04, "fail"), run(2.05, 5.0, "pass"))
+    assert less_coverage_problems(split(), after, "x") == []
+
+
+def test_less_coverage_cannot_pass_a_gap_between_runs_that_did_not():
+    before = swept(run(0.0, 2.0, "fail"), run(2.1, 5.0, "unsure"))
+    after = swept(run(0.0, 2.0, "fail"), run(2.05, 2.05, "pass"), run(2.1, 5.0, "unsure"))
+    assert less_coverage_problems(before, after, "x") == [
+        "x: start w1 2.050 went from unswept beside fail and unsure to pass"
+    ]
+
+
+def test_less_coverage_cannot_pass_where_the_original_swept_nothing():
+    """The decision guard does not catch this when the original already passed elsewhere."""
+    before = swept(run(0.0, 4.0, "pass"), decision="pass")
+    after = swept(run(0.0, 4.0, "pass"), run(10.0, 12.0, "pass", wall="w2"), decision="pass")
+    assert less_coverage_problems(before, after, "x") == [
+        f"x: start w2 {s:.3f} went from no run on its wall to pass" for s in (10.0, 11.0, 12.0)
+    ]
+    past_end = swept(run(0.0, 4.0, "pass"), run(4.1, 6.0, "fail"), decision="pass")
+    longer = swept(run(0.0, 4.0, "pass"), run(4.1, 6.0, "fail"), run(6.1, 6.1, "pass"))
+    assert less_coverage_problems(past_end, longer, "x") == [
+        "x: start w1 6.100 went from unswept beside fail to pass"
+    ]
+
+
+def test_more_error_reads_an_unswept_start_from_its_neighbours():
+    moved = swept(run(0.0, 2.04, "fail"), run(2.05, 5.0, "pass"))
+    assert more_error_problems(split(), moved, "x") == []
+    flipped = swept(run(0.0, 2.0, "fail"), run(2.05, 2.05, "pass"), run(2.1, 5.0, "fail"))
+    before = swept(run(0.0, 2.0, "fail"), run(2.1, 5.0, "fail"))
+    assert more_error_problems(before, flipped, "x") == [
+        "x: start w1 2.050 went from unswept beside fail and fail to pass"
+    ]
+
+
 def test_transforms():
     scene = copy.deepcopy(SCENE)
     scene["objects"].append({"type": "ac", "wall_id": "w1", "span_ft": [5, 6], "source": "tape"})

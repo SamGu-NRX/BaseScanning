@@ -1,11 +1,14 @@
 """The ETH3D facade scene builder replaces only its own outputs."""
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
 import numpy as np
 import pytest
+
+from hsverify.resultcheck import assumption_mismatches
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scenes" / "eth3d-facade" / "build_scene.py"
 spec = importlib.util.spec_from_file_location("build_scene", SCRIPT)
@@ -66,15 +69,49 @@ def seen_everywhere(kf, w, X, walls):
     [
         ("wall", 3.29),  # up to the battery's height, not the headroom an omitted view claims
         ("ground", build_scene.GROUND_OUT_FT),
-        ("overhead", build_scene.HEADROOM_FT),  # not clear all the way up
+        ("overhead", 7.25),  # the rules' headroom below, not clear all the way up
     ],
 )
 def test_every_band_claims_only_the_reach_its_probes_showed(band, out_ft):
     entries, spans = build_scene.band_coverage(
-        band, [wall("w", 0.0, 2.0)], [], ["kf"], seen_everywhere
+        band, [wall("w", 0.0, 2.0)], [], ["kf"], seen_everywhere, headroom_ft=7.25
     )
     assert entries == [{"band": band, "span_ft": [0.0, 2.0], "out_ft": out_ft}]
     assert spans == [[0.0, 2.0]]
+
+
+def test_the_overhead_band_is_probed_at_the_rules_headroom():
+    heights = set()
+
+    def record(kf, w, X, walls):
+        heights.add(round(float(X[1]), 6))
+        return True
+
+    build_scene.band_coverage("overhead", [wall("w", 0.0, 1.0)], [], ["kf"], record, 7.25)
+    assert max(heights) == 7.25
+    with pytest.raises(ValueError, match=r"headroom\.min_ft"):
+        build_scene.band_coverage("overhead", [wall("w", 0.0, 1.0)], [], ["kf"], record)
+
+
+def test_headroom_comes_from_rules_yaml_and_a_missing_one_is_loud():
+    text = 'headroom:\n  min_ft: {value: 7.0, source: "override"}\n'
+    assert build_scene.rules_headroom_ft(text, "rules.yaml") == 7.0
+    with pytest.raises(SystemExit, match=r"rules\.yaml has no headroom\.min_ft\.value"):
+        build_scene.rules_headroom_ft("battery: {}\n", "rules.yaml")
+
+
+def test_the_case_pins_the_headroom_the_scene_was_built_with():
+    """A server applying another headroom (changed rules or a private override) reports it as
+    the headroom check's threshold, and the case then stops judging a scene probed elsewhere."""
+    case = json.loads((SCRIPT.parent / "case.json").read_text())
+    assumed = case["rules_assumed"]
+    assert assumed["headroom"] == 6.5
+    same = {"checks": [{"id": "headroom", "threshold_ft": 6.5}]}
+    assert assumption_mismatches(assumed, same) == []
+    moved = {"checks": [{"id": "headroom", "threshold_ft": 7.0}]}
+    assert assumption_mismatches(assumed, moved) == [
+        "case assumes headroom threshold 6.5, server's headroom uses 7.0"
+    ]
 
 
 def test_facing_claims_the_smallest_depth_probed_and_nothing_past_20_ft():

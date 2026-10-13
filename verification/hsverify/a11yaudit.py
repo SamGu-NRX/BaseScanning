@@ -6,8 +6,9 @@
 The app is built and installed exactly as `hsverify.simrun` does. Then the UI test bundle in
 `fixtures/a11y-audit` launches it by bundle id with the same launch arguments, and runs
 `performAccessibilityAudit(for: .all)` on each distinct screen: contrast, Dynamic Type, hit
-areas, clipped text, element descriptions and traits. A screen is new when the labels of its
-texts and buttons change.
+areas, clipped text, element descriptions and traits. A screen is new when any element in its
+accessibility tree is added, removed or relabelled; values and positions don't count. Each
+screen's `labels` in the report are still only its texts and buttons.
 
 Apple's audit accepts a button whose label SwiftUI took from an SF Symbol name, which
 VoiceOver then reads aloud ("gearshape"). Those labels are flagged here as well.
