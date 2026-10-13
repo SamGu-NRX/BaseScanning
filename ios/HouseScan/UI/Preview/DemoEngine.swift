@@ -338,6 +338,7 @@ final class DemoEngine: ScanActions {
         state.guidance = .holdOnMeter
         state.closeUp = .aiming(hold: 0, problem: nil)
         state.meterNumber = nil
+        state.meterBrand = nil
         run { engine in await engine.closeUpScript() }
     }
 
@@ -876,6 +877,7 @@ final class DemoEngine: ScanActions {
     func skipCloseUp() {
         state.closeUp = .skipped
         state.meterNumber = .skipped
+        state.meterBrand = nil
         enterWalk()
     }
 
@@ -889,6 +891,7 @@ final class DemoEngine: ScanActions {
         guard let candidate else {
             // "None of these": another photo, with the advice the reader gives for small text.
             state.meterNumber = nil
+            state.meterBrand = nil
             state.closeUpFailedAttempts += 1
             state.closeUp = .aiming(hold: 0, problem: .numberTooSmall)
             run { engine in await engine.closeUpScript() }
@@ -1195,6 +1198,7 @@ final class DemoEngine: ScanActions {
         state.lastCapture = nil
         state.closeUpFailedAttempts = 0
         state.meterNumber = nil
+        state.meterBrand = nil
         state.upload = .idle
         state.shareableScan = nil
         state.marking = nil

@@ -359,7 +359,9 @@ final class ScanEngine {
             closeUpRetake = nil
             meterReadout = nil
             closeUpCredit = CloseUpCredit()
+            // The brand belongs to the number it was read with, so it goes with it (review of #89).
             state.meterNumber = nil
+            state.meterBrand = nil
             state.closeUpFailedAttempts = 0
             live?.setMode(.closeUp)
             if let replay { replay.play(range: 0..<replay.frames.count, speed: replaySpeed) }
@@ -847,6 +849,7 @@ final class ScanEngine {
         closeUpRetake = (problem, screenTime)
         meterReadout = nil
         state.meterNumber = nil
+        state.meterBrand = nil
         state.closeUp = .aiming(hold: 0, problem: problem)
     }
 
@@ -2421,6 +2424,7 @@ final class ScanEngine {
         state.closeUp = .aiming(hold: 0, problem: nil)
         state.closeUpFailedAttempts = 0
         state.meterNumber = nil
+        state.meterBrand = nil
         closeUpRetake = nil
         meterReadout = nil
         state.isPracticeScan = false
