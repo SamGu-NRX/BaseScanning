@@ -169,11 +169,16 @@ final class LiveCapture {
     /// without the view: the AR scene still has the result, whether or not it is in view
     /// (`ResultOverlayPolicy.update(drawn:held:time:)`). `anchored` leaves out whether it is
     /// enabled: the engine disables it while tracking is limited (`setResultVisible`).
+    ///
+    /// Anchored counts only while the meter's anchor is still in the session. An anchor entity
+    /// can report itself anchored after ARKit has dropped the anchor it follows, and the screen's
+    /// own drawing should take over then rather than wait on a scene that lost its place
+    /// (review of #132 and #137).
     func resultIsDrawn() -> (drawn: Bool, held: Bool, anchored: Bool) {
         guard let result, let resultFocus else { return (false, false, false) }
         let id = delegate.shared.withLock { $0.meterAnchorID }
         let inSession = id.map { id in arView.session.currentFrame?.anchors.contains(where: { $0.identifier == id }) == true } ?? false
-        let anchored = result.isAnchored
+        let anchored = result.isAnchored && inSession
         let enabled = result.isEnabledInHierarchy
         let world = resultFocus.position(relativeTo: nil)
         let inCamera = arView.cameraTransform.matrix.inverse * SIMD4(world, 1)

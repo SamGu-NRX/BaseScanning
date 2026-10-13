@@ -97,7 +97,7 @@ struct WayfindingOverlay: View {
 
     /// The measured window in this view's coordinates, cut to the part on screen: scrolling the
     /// chrome at large text sizes can carry the window partly past an edge.
-    private static func verticalBand(_ clearArea: CGRect?, origin: CGPoint, height: CGFloat) -> Band? {
+    static func verticalBand(_ clearArea: CGRect?, origin: CGPoint, height: CGFloat) -> Band? {
         clearArea.map {
             let top = min(max($0.minY - origin.y, 0), height)
             return Band(top: top, bottom: max(min($0.maxY - origin.y, height), top))

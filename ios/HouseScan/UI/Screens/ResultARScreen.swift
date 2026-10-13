@@ -12,6 +12,10 @@ struct ResultARScreen: View {
     let actions: any ScanActions
 
     @State private var appeared = false
+    /// The open camera between the card and Done, for the chevron (`CameraChrome`).
+    @State private var cameraWindow = CameraWindow()
+    /// The spot is off screen and the open camera can't hold the chevron (`SpotDirection`).
+    @State private var spotUnshown = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -35,13 +39,18 @@ struct ResultARScreen: View {
                         .accessibilityIdentifier("ar.overlay")
                 }
                 if let spot = result.spotCenter(on: wall) {
-                    SpotDirection(projection: projection, spot: spot)
+                    SpotDirection(projection: projection, spot: spot, cameraWindow: cameraWindow) { unshown in
+                        if spotUnshown != unshown { spotUnshown = unshown }
+                    }
                 }
             }
             CameraChrome(
                 instruction: instruction,
                 isReplay: state.isReplay,
                 isAutopilot: state.isAutopilot,
+                // With no room for the chevron, the card's legend line says where the spot is.
+                legend: spotUnshown && showsSpot ? ScanCopy.proposedSpotOffScreen : nil,
+                cameraWindow: cameraWindow,
                 aims: showsSpot
             ) {
                 Button("Done") { actions.closeAR() }
@@ -107,56 +116,97 @@ extension ResultPresentation {
 }
 
 /// An edge chevron toward the battery spot while its middle is off screen, with words saying
-/// what it points at. Nothing while the spot is on screen.
+/// what it points at. Nothing while the spot is in view.
 private struct SpotDirection: View {
     var projection: CameraProjection
     var spot: SIMD3<Float>
+    /// The open camera between the card and Done (`CameraChrome`). The spot counts as in view
+    /// only there, and the chevron keeps to it. Fixed bands stand in until the chrome reports it.
+    var cameraWindow: CameraWindow
+    /// Called with true while the spot is off screen and the open camera is too short to hold the
+    /// chevron and its words, so the card can say it instead.
+    var onUnshown: (Bool) -> Void
+
+    enum Layout: Equatable {
+        case none
+        case chevron(CGPoint, angle: Angle, label: CGPoint)
+        case unshown
+    }
 
     var body: some View {
+        // Read here, so a scroll of the chrome redraws this view alone.
+        let clearArea = cameraWindow.frame
         GeometryReader { proxy in
             let size = proxy.size
-            if let chevron = chevronPlacement(in: size) {
-                ZStack {
-                    TargetMarker(placement: .offScreen(chevron.point, angle: chevron.angle))
-                    Text(ScanCopy.proposedSpotThisWay)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Palette.chalk)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        // Solid, as the aim ring's legend: see-through black over a bright wall
-                        // failed the accessibility audit's contrast check there.
-                        .background(ScrimShape.capsule)
-                        .frame(maxWidth: 220)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .position(x: min(max(chevron.point.x, 120), max(size.width - 120, 120)), y: chevron.point.y + 50)
+            let band = WayfindingOverlay.verticalBand(clearArea, origin: proxy.frame(in: .global).origin, height: size.height)
+            let layout = Self.layout(projection: projection, spot: spot, in: size, band: band)
+            ZStack {
+                if case let .chevron(point, angle, label) = layout {
+                    ZStack {
+                        TargetMarker(placement: .offScreen(point, angle: angle))
+                        Text(ScanCopy.proposedSpotThisWay)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Palette.chalk)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            // Solid, as the aim ring's legend: see-through black over a bright wall
+                            // failed the accessibility audit's contrast check there.
+                            .background(ScrimShape.capsule)
+                            .frame(maxWidth: 220)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .position(label)
+                    }
+                    .frame(width: size.width, height: size.height)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(ScanCopy.proposedSpotOffScreen)
+                    .accessibilityIdentifier("ar.spotDirection")
                 }
-                .frame(width: size.width, height: size.height)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(ScanCopy.proposedSpotOffScreen)
-                .accessibilityIdentifier("ar.spotDirection")
+                Color.clear
+                    .frame(width: 0, height: 0)
+                    .onChange(of: layout == .unshown, initial: true) { _, unshown in onUnshown(unshown) }
+                    .onDisappear { onUnshown(false) }
             }
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
     }
 
-    /// Where the chevron goes and which way it points, or nil while the spot is in view. In view
-    /// means in the part of the screen the chrome leaves clear: a spot under the instruction card
-    /// (its bottom edge is about 220 pt down with a two-line detail) or under the Done button
-    /// (its top edge is about 100 pt up) can't be seen, so it gets the chevron too. The chevron
-    /// sits in the same lane as the walk's aim chevron (`WayfindingOverlay`), clear of the card
-    /// above and the buttons below.
-    private func chevronPlacement(in size: CGSize) -> (point: CGPoint, angle: Angle)? {
-        let clear = CGRect(x: 24, y: 260, width: size.width - 48, height: max(size.height - 260 - 160, 80))
-        if let point = projection.viewPoint(for: spot, in: size), clear.contains(point) { return nil }
-        guard let direction = projection.screenDirection(toward: spot) else { return nil }
-        let lane = CGRect(x: 40, y: 260, width: size.width - 80, height: max(size.height - 260 - 300, 80))
+    /// Room under the chevron's centre for its words: they sit 50 pt below it, and a two-line
+    /// label reaches about 22 pt further at the default text size. A layout choice.
+    static let labelRoom: CGFloat = 72
+
+    /// Where the chevron goes, which way it points and where its words sit; `.none` while the
+    /// spot is in view, `.unshown` when the open camera can't hold them.
+    ///
+    /// In view means in the open camera between the card and Done, as measured
+    /// (`CameraWindow`): a spot under the card or the button can't be seen, so it gets the
+    /// chevron. The fixed bands before the chrome reports were right only at the default text
+    /// size; from xxxLarge up the card passes them and covered both the spot and the chevron
+    /// (review of #132 and #137). The chevron keeps to the same window, inset as the walk's
+    /// edge arrows are (`WayfindingOverlay.lane`), with `labelRoom` left under it.
+    static func layout(projection: CameraProjection, spot: SIMD3<Float>, in size: CGSize, band: WayfindingOverlay.Band?) -> Layout {
+        let clear = band.map { CGRect(x: 24, y: $0.top, width: size.width - 48, height: $0.bottom - $0.top) }
+            ?? CGRect(x: 24, y: 260, width: size.width - 48, height: max(size.height - 260 - 160, 80))
+        if let point = projection.viewPoint(for: spot, in: size), clear.contains(point) { return .none }
+        guard let direction = projection.screenDirection(toward: spot) else { return .none }
+        let lane: CGRect
+        if let band {
+            guard band.bottom - band.top >= WayfindingOverlay.arrowDiameter + labelRoom else { return .unshown }
+            let bottomLimit = band.bottom - labelRoom
+            let middle = (band.top + bottomLimit) / 2
+            let top = min(band.top + WayfindingOverlay.arrowInset, middle)
+            let bottom = max(bottomLimit - WayfindingOverlay.arrowInset, middle)
+            lane = CGRect(x: 40, y: top, width: max(size.width - 80, 0), height: bottom - top)
+        } else {
+            lane = CGRect(x: 40, y: 260, width: size.width - 80, height: max(size.height - 260 - 300, 80))
+        }
         let tx = direction.dx == 0 ? CGFloat.infinity : lane.width / 2 / abs(direction.dx)
         let ty = direction.dy == 0 ? CGFloat.infinity : lane.height / 2 / abs(direction.dy)
         let t = min(tx, ty)
         let point = CGPoint(x: lane.midX + direction.dx * t, y: lane.midY + direction.dy * t)
-        return (point, .radians(atan2(direction.dy, direction.dx)))
+        let label = CGPoint(x: min(max(point.x, 120), max(size.width - 120, 120)), y: point.y + 50)
+        return .chevron(point, angle: .radians(atan2(direction.dy, direction.dx)), label: label)
     }
 }
 
