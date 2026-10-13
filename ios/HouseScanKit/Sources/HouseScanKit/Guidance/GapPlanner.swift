@@ -299,7 +299,9 @@ public struct GapPlanner: Sendable {
     /// at t3/server 930e8e5). Only progress applies it, against the coverage actually seen; the
     /// same-view rule (`GapPlan.asksForSameView`) compares requests exactly.
     static func countsAsMissing(from start: Double, to end: Double) -> Bool {
-        end - start >= 0.01
+        // Compare endpoints so subtracting two rounded scene values cannot turn an exact
+        // tolerance gap into 0.0099999999999998 ft (review of #47).
+        end >= start + 0.01
     }
 
     private func distanceToMeter(_ run: ClosedRange<Float>) -> Float {
@@ -326,14 +328,17 @@ extension GapPlanner {
     /// nothing, so no capture can meet it (issue #35): past any end for the wall, facing and
     /// overhead bands, and past an unexplored end for the ground. Ground past an end in
     /// `limitEnds` is recorded (`CoverageMap.groundDepthSpans`), and the server asks for it there.
-    /// A span within the server's COVERAGE_TOLERANCE_FT (0.01 ft) of an end reaches it, not past.
+    /// Only a shortfall under COVERAGE_TOLERANCE_FT (0.01 ft) is rounding. Compare with the
+    /// inward-rounded coverage end the server reads, as settlement does (review of #47).
     public func reachesPastEnd(_ item: PlacementMissingEvidence, leftEnd: Float?, rightEnd: Float?, limitEnds: Set<WalkSide>) -> Bool {
         guard item.kind == .band, let span = item.spanFt else { return false }
-        let tolerance = 0.01
-        let feet = { (meters: Float) in Double(meters) * SceneUnits.feetPerMeter }
         var past: [WalkSide] = []
-        if let leftEnd, min(span.x, span.y) < feet(leftEnd) - tolerance { past.append(.left) }
-        if let rightEnd, max(span.x, span.y) > feet(rightEnd) + tolerance { past.append(.right) }
+        if let leftEnd, Self.countsAsMissing(from: min(span.x, span.y), to: SceneExport.feetInward(leftEnd, rounding: .up)) {
+            past.append(.left)
+        }
+        if let rightEnd, Self.countsAsMissing(from: SceneExport.feetInward(rightEnd, rounding: .down), to: max(span.x, span.y)) {
+            past.append(.right)
+        }
         return past.contains { !(item.band == .ground && limitEnds.contains($0)) }
     }
 

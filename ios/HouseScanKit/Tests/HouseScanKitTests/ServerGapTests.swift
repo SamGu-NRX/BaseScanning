@@ -237,6 +237,21 @@ import Testing
         #expect(planner.plan(for: toEnd, leftEnd: -1, rightEnd: 1) != nil)
     }
 
+    @Test(arguments: [WalkSide.left, .right])
+    func anExactToleranceBeyondTheWrittenEndCannotBeCaptured(side: WalkSide) throws {
+        let planner = GapPlanner()
+        let end: Float = side == .left ? -1 : 1
+        let written = try #require(SceneExport.spanInward(-1...1))
+        let edge = written[side == .left ? 0 : 1]
+        for excess in [0.0099, 0.01, 0.0101] {
+            let span = side == .left ? [edge - excess, 0] : [0, edge + excess]
+            let request = try item("{\"kind\":\"band\",\"band\":\"wall\",\"span_ft\":\(span),\"message\":\"m\"}")
+            let left: Float? = side == .left ? end : nil
+            let right: Float? = side == .right ? end : nil
+            #expect((planner.plan(for: request, leftEnd: left, rightEnd: right) == nil) == (excess >= 0.01))
+        }
+    }
+
     @Test func pastEndAsksForTheGroundBeyondThatEnd() throws {
         // Left end at s = -3 m: ask for -5...-3. Right end at 4 m: ask for 4...6.
         let left = try #require(GapPlanner().plan(for: item(#"{"kind":"past_end","side":"left","message":"m"}"#), leftEnd: -3, rightEnd: 4))
