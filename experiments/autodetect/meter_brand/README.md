@@ -1,5 +1,7 @@
 # Meter brand
 
+The tracked brand scores predate token-boundary fixes in the reader and scorer. They need a new scoring run before use.
+
 Can the phone read the meter's maker from the close-up it already reads the number from? It reuses #16's photos and #16's cached Vision output (`~/house-scanning-data/meter/ocr/clean.jsonl`, revision 3, `accurate`, no language correction), so its numbers compare directly with #16's.
 
 `brands.py` lists 36 meter makers and matches each recognised line against them. `score.py` picks the listed maker on the tallest line that names one. No pass bar was set before the run.
