@@ -343,7 +343,7 @@ final class FullFlowUITests: XCTestCase {
     /// A single audit reports those passing frames as contrast failures; a real contrast or
     /// clipping problem is still there later. The walk is audited strictly once the autopilot
     /// holds it, and in motion only to report (`auditedOnceHeld`). With `reportOnly`, or
-    /// HOUSESCAN_AUDIT_REPORT_ONLY=1, the issues found twice are attached as `audit-<screen>`
+    /// HOUSESCAN_AUDIT_REPORT_ONLY=1, every issue read in any pass is attached as `audit-<screen>`
     /// and printed, not failed on. A screen that rebuilds parts of itself while it is audited can
     /// lose an issue's element before it is read: that one is attached, not failed on. Every
     /// screen state is also audited frozen by ScreenStatesUITests.
@@ -359,9 +359,13 @@ final class FullFlowUITests: XCTestCase {
             note.lifetime = .keepAlways
             add(note)
         }
-        for (_, finding) in outcome.persistent {
+        let reporting = reportOnly || Self.environment["HOUSESCAN_AUDIT_REPORT_ONLY"] == "1"
+        // A moving transition can be gone by the next pass. Keep its finding in report-only
+        // output without changing which repeated findings fail a settled-screen audit (#172/#182).
+        let findings = outcome.persistent + (reporting ? outcome.transient : [])
+        for (_, finding) in findings {
             let text = "screen.\(screen): \(finding.message)"
-            if reportOnly || Self.environment["HOUSESCAN_AUDIT_REPORT_ONLY"] == "1" {
+            if reporting {
                 let note = XCTAttachment(string: text)
                 note.name = "audit-\(screen)"
                 note.lifetime = .keepAlways

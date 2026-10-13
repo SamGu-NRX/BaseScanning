@@ -22,6 +22,11 @@ enum AuditIssueKey {
         return "\(auditType)|no element"
     }
 
+    /// Every key read in any pass, for report-only audits of moving screens.
+    static func observed<Value>(in passes: [[String: Value]]) -> [String] {
+        Set(passes.flatMap { $0.keys }).sorted()
+    }
+
     /// The keys found in at least two of the passes, sorted.
     static func repeated<Value>(in passes: [[String: Value]]) -> [String] {
         var counts: [String: Int] = [:]
@@ -75,6 +80,8 @@ enum AccessibilityAudit {
     struct Outcome {
         /// Found and read in at least two passes: these fail the test.
         var persistent: [(key: String, finding: Finding)]
+        /// Read in one pass only. Moving-screen reports retain these transition findings.
+        var transient: [(key: String, finding: Finding)] = []
         /// Issues whose element had gone before it could be read, from every pass: attached to
         /// the result, never failed on, since nothing says which element they were.
         var unread: [String]
@@ -128,7 +135,11 @@ enum AccessibilityAudit {
         let persistent = AuditIssueKey.repeated(in: passes.map(\.findings)).compactMap { key in
             latest.lazy.compactMap { $0.findings[key] }.first.map { (key: key, finding: $0) }
         }
-        return Outcome(persistent: persistent, unread: passes.flatMap(\.unread))
+        let repeated = Set(persistent.map(\.key))
+        let transient = AuditIssueKey.observed(in: passes.map(\.findings)).filter { !repeated.contains($0) }.compactMap { key in
+            latest.lazy.compactMap { $0.findings[key] }.first.map { (key: key, finding: $0) }
+        }
+        return Outcome(persistent: persistent, transient: transient, unread: passes.flatMap(\.unread))
     }
 }
 
@@ -161,6 +172,12 @@ final class AuditIssueKeyTests: XCTestCase {
             AuditIssueKey.key(auditType: contrast, identifier: "Done", label: nil),
             AuditIssueKey.key(auditType: contrast, identifier: nil, label: "Done"))
         XCTAssertEqual(AuditIssueKey.key(auditType: contrast, identifier: nil, label: nil), "\(contrast)|no element")
+    }
+
+    func testMovingReportsRetainAnIssueThatDisappearsAfterTheFirstPass() {
+        let passes = [["contrast|id:instruction": 1], [:], ["contrast|id:photoCount": 1]]
+        XCTAssertEqual(AuditIssueKey.observed(in: passes), ["contrast|id:instruction", "contrast|id:photoCount"])
+        XCTAssertTrue(AuditIssueKey.repeated(in: passes).isEmpty)
     }
 
     func testAnIssueFoundOnlyOnceIsNotRepeated() {
