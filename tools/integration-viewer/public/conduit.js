@@ -50,14 +50,14 @@ export class Conduit {
    * stopped, such as a hidden embedded preview.
    */
   send(arrival, { motion }) {
-    const groups = Object.entries(arrival.groups).flatMap(([group, n]) => Array(n).fill(group));
-    const marks = Math.min(groups.length, MAX_MARKS_PER_ARRIVAL, Math.max(0, MAX_IN_FLIGHT - this.inFlight));
-    if (!motion || arrival.backlog || marks === 0 || this.samples.length === 0) return 0;
-    const step = groups.length / marks;
+    if (!motion || arrival.backlog || this.samples.length === 0) return 0;
+    const groups = markGroups(arrival.groups, Math.min(MAX_MARKS_PER_ARRIVAL, MAX_IN_FLIGHT - this.inFlight));
+    const marks = groups.length;
+    if (marks === 0) return 0;
     for (let i = 0; i < marks; i += 1) {
       const chip = document.createElement("span");
       chip.className = "chip";
-      chip.dataset.group = groups[Math.floor(i * step)];
+      chip.dataset.group = groups[i];
       this.layer.append(chip);
       this.inFlight += 1;
       const frames = this.samples.map((pt, k) => ({
@@ -82,4 +82,27 @@ export class Conduit {
       chip.hidden = true;
     }
   }
+}
+
+/**
+ * The group of each mark for a batch with `counts` files per group, at most `max` marks. The
+ * marks sample the batch evenly: list every file in group order, then take every
+ * (files / marks)-th. This walks the group totals instead of building that list, so a batch of
+ * any size costs a handful of steps.
+ * @param {Record<string, number>} counts
+ * @param {number} max
+ * @returns {string[]}
+ */
+export function markGroups(counts, max) {
+  let files = 0;
+  for (const group in counts) files += counts[group];
+  const marks = Math.max(0, Math.min(files, max));
+  const picked = [];
+  const step = files / marks;
+  let end = 0;
+  for (const group in counts) {
+    end += counts[group];
+    while (picked.length < marks && Math.floor(picked.length * step) < end) picked.push(group);
+  }
+  return picked;
 }
