@@ -17,12 +17,18 @@ Data: `facade_dslr_undistorted.7z` and `facade_dslr_scan_eval.7z` from eth3d.net
 `~/house-scanning-data/verify/eth3d/` (it creates `facade/`). Then, from `verification/`:
 
 ```
-uv run python scenes/eth3d-facade/build_scene.py [--schema path/to/scene.schema.json] [--overlays]
+uv run python scenes/eth3d-facade/build_scene.py [--schema path/to/scene.schema.json] [--overlays] [--rules-ref origin/t3/server]
 ```
 
 This writes `~/house-scanning-data/verify/scenes/eth3d-facade/`: `scene.json`, `scene.zip`
 (scene.json plus 7 keyframes at the top level), `bundle/`, and `build_report.json` with every fit
-statistic. `--overlays` also draws the wall chain and the annotations on each keyframe. The run
+statistic and the rules ref, commit and headroom the scene was built with. The overhead probe
+height is `headroom.min_ft` from `server/rules.yaml` at `--rules-ref` (default
+`origin/t3/server`, the e2e harness's default server). `case.json` pins that value in
+`rules_assumed.headroom`. When the server under test applies another headroom, because its
+rules changed or a private override sets one, its `headroom` check reports that threshold and
+the e2e run marks the case `assumption mismatch` instead of judging it. Rebuild the scene
+against that ref, then update the pin. `--overlays` also draws the wall chain and the annotations on each keyframe. The run
 takes about 10 s and is deterministic (fixed RANSAC seed). The output validates against
 `server/schemas/scene.schema.json` from `origin/t3/server` (44607e0).
 
@@ -64,7 +70,8 @@ takes about 10 s and is deterministic (fixed RANSAC seed). The output validates 
   probe points. A point counts as seen when it is inside the image, on the camera side of its
   wall, not behind another wall of the chain, and within 75 degrees of the wall's normal. The
   75-degree limit is my judgement, not a measured value. The probes are: wall, ground line and
-  battery height (3.29 ft); ground, out to 6 ft; overhead, 6.5 ft up at 0 and 3 ft out; facing,
+  battery height (3.29 ft); ground, out to 6 ft; overhead, at the rules' headroom (6.5 ft at
+  `origin/t3/server` 1d1e7e1) at 0 and 3 ft out; facing,
   3 ft up, straight out. No camera sees w2 at better than grazing, so w2 is in no band.
 - **Overheads and facing** come from the scan. An overhead is anything within 3 ft of the wall,
   lower than 12 ft, whose underside is above 4 ft. With a 2 ft floor, the tops of the two bins by
