@@ -124,6 +124,9 @@ final class ScanEngine {
     private var gapCounter = 0
     /// Keyframes stored when the current gap request began: a request is closed only by new views.
     private var keyframesAtGapStart = 0
+    /// The walk-out request's "the space ends" reading, with the request it belongs to
+    /// (`noteWalkOut`).
+    private var spaceEndsShown: (request: Int, reading: SlowRelease<GapRequest.SpaceEnds>)?
     /// Tilt-up views kept when the current gap request began: an overhead request is closed by a
     /// new one (`keepOverheadView`); counting keyframes would not do, since the walk keeps them too.
     private var overheadViewsAtGapStart = 0
@@ -1456,23 +1459,30 @@ final class ScanEngine {
     /// card then gives the distance that counts where the phone is, or says the space ends
     /// before the line and "I can't get there" is the answer. The reading is rounded to 3 in, its
     /// out down and what counts up, so it changes every few strides rather than every frame and
-    /// never asks for less than counts; a guess at what reads calmly. Where the space ends is
-    /// kept for the request once shown: ARKit refines its planes about ten times a second, and a
-    /// headline that moved or came and went with them would re-arm the reply's lock each time
-    /// (`InstructionCard.replyLock`).
+    /// never asks for less than counts; a guess at what reads calmly. Where the space ends holds
+    /// still once shown: ARKit refines its planes about ten times a second, and a headline that
+    /// moved or came and went with them would re-arm the reply's lock each time
+    /// (`InstructionCard.replyLock`). It clears once no blocking plane has been found for
+    /// `spaceEndsRelease`, so a plane ARKit moves or removes gives the walk and its dotted line
+    /// back (review of #168).
     private func noteWalkOut(_ plan: GapPlan, _ map: CoverageMap, camera: CameraFrame?, into request: inout GapRequest) {
         guard case .walkOut = plan.need else { return }
         let step: Float = 0.0762
         let block = gapPlanner.walkOutBlock(plan, map)
         let ends = block.map { GapRequest.SpaceEnds(at: ($0.spaceEnds / step).rounded(.down) * step, needed: ($0.needed / step).rounded(.up) * step) }
-        if request.spaceEnds == nil, let block, let ends {
+        let id = request.id
+        var shown = spaceEndsShown.flatMap { $0.request == id ? $0.reading : nil } ?? SlowRelease(release: Self.spaceEndsRelease)
+        let before = shown.value
+        request.spaceEnds = shown.update(ends, time: screenTime)
+        spaceEndsShown = (id, shown)
+        // The log's message is an escaping autoclosure, which can't capture `request`.
+        if before == nil, let block, request.spaceEnds != nil {
             let found = String(
                 format: "the space ends %.2f m out over s %.2f...%.2f, short of the line at up to %.2f m",
                 block.spaceEnds, block.span.lowerBound, block.span.upperBound, block.needed)
-            // The log's message is an escaping autoclosure, which can't capture `request`.
-            let id = request.id
             RuntimeLog.engine.info("gap \(id) walk-out: \(found, privacy: .public)")
-            request.spaceEnds = ends
+        } else if before != nil, request.spaceEnds == nil {
+            RuntimeLog.engine.info("gap \(id) walk-out: no longer blocked for \(Self.spaceEndsRelease, privacy: .public) s; the walk is back")
         }
         request.walkOut = camera.flatMap { camera in
             let at = map.wall.wallPoint(camera.position)
@@ -1481,6 +1491,12 @@ final class ScanEngine {
             }
         }
     }
+
+    /// How long no plane may block a walk-out request's line before its "the space ends" line
+    /// clears: 2 s, twenty of ARKit's plane updates. Long enough that a plane being refined
+    /// doesn't flicker the card, short enough that the walk comes back while the homeowner is
+    /// still reading. A guess at what reads calmly, not measured on a phone.
+    static let spaceEndsRelease: Double = 2
 
     /// Where a gap request points the camera, and how far out from the wall to walk for it.
     private func gapCue(_ plan: GapPlan, _ map: CoverageMap, center: Float) -> (target: SIMD3<Float>, standOut: Float) {
@@ -1982,6 +1998,7 @@ final class ScanEngine {
         gapPlan = plan
         keyframesAtGapStart = store.keyframes.count
         overheadViewsAtGapStart = coverage?.overheadCameras.count ?? 0
+        spaceEndsShown = nil
         let progress = coverage.map { gapPlanner.progress(of: plan, $0) } ?? 0
         state.gap = GapRequest(
             id: gapCounter, origin: origin, reason: reason, band: plan.band == .ground ? .ground : .wall, span: plan.span,
