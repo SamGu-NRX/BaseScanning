@@ -111,7 +111,7 @@ export function createViewerServer({ upstreams, publicDir, log = () => {} }) {
   async function relayPreview(res, upstream, resultPath, runId, signal) {
     const result = await upstreamGet(`${upstream.base}${resultPath}/result`, signal);
     if (result.failure) return refuse(res, result.failure.status, result.failure.code, result.failure.message);
-    if (result.status !== 200) return refuse(res, result.status, "result_unavailable", "the result could not be read");
+    if (result.status !== 200) return refuse(res, result.status, "result_unavailable", "the result could not be read", result.retryAfter ? { "retry-after": result.retryAfter } : {});
     if (result.json?.runId !== runId) return refuse(res, 409, "preview_run_changed", "the latest result belongs to another run");
     const signed = result.json?.previewUrl;
     if (typeof signed !== "string" || signed === "") return refuse(res, 404, "preview_not_available", "the result has no preview");
@@ -130,7 +130,11 @@ export function createViewerServer({ upstreams, publicDir, log = () => {} }) {
     } catch (error) {
       return refuse(res, 502, "preview_unreachable", error?.name === "TimeoutError" ? "preview fetch timed out" : "preview fetch failed");
     }
-    if (!reply.ok) return refuse(res, 502, "preview_fetch_failed", `storage answered ${reply.status}`);
+    if (!reply.ok) {
+      const retryAfter = reply.headers.get("retry-after");
+      await reply.body?.cancel();
+      return refuse(res, 502, "preview_fetch_failed", `storage answered ${reply.status}`, retryAfter ? { "retry-after": retryAfter } : {});
+    }
     const declared = Number(reply.headers.get("content-length") ?? "0");
     if (declared > PREVIEW_MAX_BYTES) return refuse(res, 502, "preview_too_large", "the preview is larger than the viewer reads");
     const chunks = [];
@@ -220,8 +224,8 @@ async function upstreamGet(url, signal) {
   return { status: reply.status, json, etag: reply.headers.get("etag"), retryAfter: reply.headers.get("retry-after") };
 }
 
-function refuse(res, status, code, message) {
-  send(res, status, { errors: [{ code, message }] });
+function refuse(res, status, code, message, headers = {}) {
+  send(res, status, { errors: [{ code, message }] }, headers);
   return `refused ${code}`;
 }
 

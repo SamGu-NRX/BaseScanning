@@ -203,3 +203,74 @@ test("health and a failed preview are read again after a transient failure", asy
   assert.ok(healthCalls >= 2);
   assert.equal(previewCalls, 2);
 });
+
+function stubFollower(fetchReply) {
+  let clock = 0;
+  let state = reduce(initialState(), { type: "select", mode: "live", source: { key: "s", kind: "synthetic" }, captureId: "cap_STUB_3" });
+  const follower = followCapture({
+    sourceKey: "s", captureId: "cap_STUB_3", session: state.session,
+    dispatch: (a) => { state = reduce(state, a); }, getState: () => state,
+    fetchImpl: (path) => fetchReply(path, clock), now: () => clock,
+    sleep: (ms) => new Promise((resolve) => { clock += ms; setTimeout(resolve, 1); }),
+    online: () => true,
+  });
+  return { follower, get state() { return state; } };
+}
+
+const stubJson = (body, status = 200, headers = {}) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
+const stubStatus = () => stubJson({ runId: "run_s", status: "complete" });
+const stubEvents = () => stubJson({ events: [], next: 0, status: "complete" });
+const stubResult = (previewUrl = "") => stubJson({ runId: "run_s", status: "complete", outcome: { kind: "eligible" }, previewUrl });
+
+test("terminal results are read even while every events request fails", async () => {
+  let resultReads = 0;
+  const h = stubFollower((path) => {
+    if (path.includes("/events")) return stubJson({ errors: [{ code: "busy" }] }, 503);
+    if (path.endsWith("/result")) { resultReads += 1; return stubResult(); }
+    return stubStatus();
+  });
+  try {
+    await until(() => h.state.result.phase === "ready");
+    assert.equal(resultReads, 1);
+    assert.equal(h.state.connection.phase, "reconnecting");
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+test("preview retries wait for Retry-After", async () => {
+  const previewAt = [];
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) return stubEvents();
+    if (path.endsWith("/result")) return stubResult("withheld");
+    if (path.includes("/preview")) {
+      previewAt.push(clock);
+      return previewAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "19" }) : new Response(ply);
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => h.state.preview.phase === "ready");
+    assert.equal(previewAt.length, 2);
+    assert.ok(previewAt[1] - previewAt[0] >= 19_000);
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+test("a preview removed by a result revision triggers a fresh result read", async () => {
+  let resultReads = 0;
+  let previewReads = 0;
+  const h = stubFollower((path) => {
+    if (path.includes("/events")) return stubEvents();
+    if (path.endsWith("/result")) { resultReads += 1; return stubResult(resultReads === 1 ? "withheld" : ""); }
+    if (path.includes("/preview")) {
+      previewReads += 1;
+      return stubJson({ errors: [{ code: "preview_not_available" }] }, 404);
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => resultReads >= 2 && h.state.result.body.previewUrl === "");
+    assert.equal(resultReads, 2);
+    assert.equal(previewReads, 1);
+    assert.equal(h.state.preview.phase, "none");
+  } finally { h.follower.stop(); await h.follower.done; }
+});

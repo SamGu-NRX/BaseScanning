@@ -217,6 +217,26 @@ describe("refusals", () => {
     }
   });
 
+  test("preview result and storage failures preserve Retry-After", async () => {
+    for (const failingPath of ["/result", "/v1/throttled.ply"]) {
+      hostileHandler = (req, res) => {
+        if (req.url.endsWith(failingPath)) {
+          res.writeHead(503, { "content-type": "application/json", "retry-after": "19" });
+          return res.end(JSON.stringify({ errors: [{ code: "busy" }] }));
+        }
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ runId: "r", previewUrl: "/v1/throttled.ply" }));
+      };
+      try {
+        const reply = await raw("/relay/hostile/captures/cap_HOSTILE_1/preview?run=r");
+        assert.equal(reply.status, failingPath === "/result" ? 503 : 502);
+        assert.equal(reply.headers["retry-after"], "19");
+      } finally {
+        hostileHandler = null;
+      }
+    }
+  });
+
   test("an oversized API reply is refused, not buffered", async () => {
     hostileHandler = (req, res) => {
       res.writeHead(200, { "content-type": "application/json" });

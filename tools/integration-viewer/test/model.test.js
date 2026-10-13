@@ -157,6 +157,9 @@ describe("results", () => {
   test("a minimal result while processing stays pending", () => {
     const s = run(selected(), { type: "result", body: { runId: "run_a", status: "processing", outcome: null, viewsNeeded: [], memberActions: [] } });
     assert.equal(s.result.phase, "pending");
+    const refreshing = run(s, { type: "result-loading" });
+    assert.equal(refreshing.result.phase, "pending");
+    assert.equal(refreshing.result.body, s.result.body);
   });
 
   test("a model with zero points is empty, not ready", () => {
@@ -341,9 +344,19 @@ describe("run identity: the status names the run shown", () => {
   });
 
   test("a delayed status naming a retired run does not bring it back", () => {
-    const s = run(selected(), status("run_a"), status("run_b"), eligible("run_b"), status("run_a"));
+    const current = run(selected(), status("run_a"), status("run_b"), eligible("run_b"));
+    const s = run(current, { type: "status", body: { runId: "run_a", status: "failed", filesRegistered: 99 } });
     assert.equal(s.currentRunId, "run_b");
     assert.equal(s.result.phase, "ready");
+    assert.equal(s, current, "no retired-run status fields are applied");
+  });
+
+  test("a result without a nonempty run identity is deferred", () => {
+    const current = run(selected(), status("run_a"), status("run_b"), eligible("run_b"));
+    for (const runId of [undefined, null, 42, ""]) {
+      const s = run(current, { type: "result", body: { runId, status: "complete", outcome: { kind: "not_eligible" } } });
+      assert.equal(s, current);
+    }
   });
 
   test("reproduced: a run the status named without events, then retired, cannot return through a late event", () => {

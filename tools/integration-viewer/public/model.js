@@ -117,7 +117,7 @@ export function reduce(state, action) {
       return applyEvents(state, action.body, action.at, action.catchUp);
     case "result-loading":
       // Refreshing a result already shown keeps showing it until the new one arrives.
-      return { ...state, result: { ...state.result, phase: state.result.phase === "ready" ? "ready" : "loading", error: null } };
+      return { ...state, result: { ...state.result, phase: ["ready", "pending"].includes(state.result.phase) ? state.result.phase : "loading", error: null } };
     case "result":
       return applyResult(state, action.body);
     case "result-error":
@@ -157,6 +157,7 @@ function select(state, action) {
 
 function applyStatus(state, body) {
   if (!isObject(body) || (body.captureId && body.captureId !== state.captureId)) return state;
+  if (typeof body.runId === "string" && state.retiredRuns.has(body.runId)) return state;
   const next = {
     ...state,
     status: typeof body.status === "string" ? body.status : state.status,
@@ -167,7 +168,7 @@ function applyStatus(state, body) {
   };
   // The status reports the capture's latest run, so it alone decides which run is shown.
   const named = { ...next, statusRefreshWanted: false };
-  if (typeof body.runId !== "string" || named.retiredRuns.has(body.runId)) return named;
+  if (typeof body.runId !== "string") return named;
   return setCurrentRun(named, body.runId);
 }
 
@@ -331,13 +332,13 @@ const NO_OUTCOME_STATUSES = new Set(["failed", "expired"]);
 
 function applyResult(state, body) {
   if (!isObject(body)) return { ...state, result: { ...state.result, phase: "error", body: null, error: "Result was not a JSON object" } };
+  // An outcome without run identity cannot be attributed to the capture's current run.
+  if (typeof body.runId !== "string" || body.runId === "") return state;
   // A result for a run other than the one shown is not accepted: a retired run's is dropped, and
   // an unknown run's asks for a status refresh first. The result read is retried either way.
-  if (typeof body.runId === "string") {
-    if (state.retiredRuns.has(body.runId)) return state;
-    state = sawRun(state, body.runId);
-    if (body.runId !== state.currentRunId) return state;
-  }
+  if (state.retiredRuns.has(body.runId)) return state;
+  state = sawRun(state, body.runId);
+  if (body.runId !== state.currentRunId) return state;
   const ready = body.outcome != null || NO_OUTCOME_STATUSES.has(body.status);
   // A refreshed result that no longer offers a preview takes the earlier model with it.
   const preview = !hasPreview(body) && state.preview.runId === body.runId ? { phase: "none", runId: null, cloud: null, error: null } : state.preview;

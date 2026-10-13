@@ -1,4 +1,4 @@
-// Follows one capture through the loopback relay: health once, then an events long-poll loop,
+// Follows one capture through the loopback relay: health until it answers, then an events long-poll loop,
 // with status refreshes and the result and preview fetched when the events say they exist.
 // Every dispatch carries the session it started under; the reducer ignores it after a switch,
 // and stop() aborts whatever request is in flight.
@@ -74,6 +74,7 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
     let waitS = 0;
 
     while (!signal.aborted) {
+      let contactRetryMs = 0;
       try {
         // An event or result named a run the status has not named yet: ask the status now.
         if (getState().statusRefreshWanted) statusAt = -Infinity;
@@ -105,9 +106,8 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
         send({ type: "contact-failed", error: detail, offline: !online() });
         const backoff = BACKOFF_MS[Math.min(failures, BACKOFF_MS.length - 1)];
         const asked = error instanceof HttpError && error.retryAfterS ? Math.min(error.retryAfterS * 1000, RETRY_AFTER_CAP_MS) : 0;
-        await sleep(Math.max(backoff, asked), signal).catch(() => {});
+        contactRetryMs = Math.max(backoff, asked);
         failures += 1;
-        continue;
       }
 
       const state = getState();
@@ -149,8 +149,8 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
           send({ type: "preview", runId, cloud });
         } catch (error) {
           if (signal.aborted) return;
-          if (error instanceof HttpError && error.status === 409) {
-            previewKey = null; // the run moved on; the next result read decides what to show
+          if (error instanceof HttpError && (error.status === 409 || error.code === "preview_not_available")) {
+            previewKey = revisionKey; // do not retry this artifact until a fresh result is accepted
             readyKey = null;
             continue;
           }
@@ -159,10 +159,12 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
             // A fetch failure may pass; an unreadable file will not. Only the first is retried.
             send({ type: "preview-error", runId, error: error instanceof HttpError ? error.message : "network error" });
             previewKey = null;
-            previewRetryAt = now() + PREVIEW_RETRY_MS;
+            const asked = error instanceof HttpError && error.retryAfterS ? Math.min(error.retryAfterS * 1000, RETRY_AFTER_CAP_MS) : 0;
+            previewRetryAt = now() + Math.max(PREVIEW_RETRY_MS, asked);
           }
         }
       }
+      if (contactRetryMs > 0) await sleep(contactRetryMs, signal).catch(() => {});
     }
   }
 
