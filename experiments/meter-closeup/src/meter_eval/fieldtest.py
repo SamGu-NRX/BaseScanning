@@ -19,7 +19,7 @@ from PIL import Image, ImageOps
 
 from meter_eval import retake
 from meter_eval.locate import candidates, ranked, top_candidate
-from meter_eval.match import core, digest, normalize, number_boxes
+from meter_eval.match import core, normalize, rows_of_text
 from meter_eval.ocr import Reader
 from meter_eval.quality import gray
 
@@ -54,8 +54,10 @@ def main() -> None:
     parser.add_argument("--number", required=True, help="the meter number as printed")
     args = parser.parse_args()
 
-    target, length = digest(normalize(args.number)), len(normalize(args.number))
-    target_core = digest(core(args.number))
+    target = normalize(args.number)
+    if not target:
+        parser.error("--number must contain letters or digits")
+    target_core = core(args.number)
     photos = sorted(p for p in args.folder.iterdir() if p.suffix.lower() in SUFFIXES)
     if not photos:
         raise SystemExit(f"no .jpg, .png or .heic photos in {args.folder}")
@@ -77,9 +79,9 @@ def main() -> None:
             image.save(upright)
             g = gray(image)
             result = reader.read(upright, barcodes=True)
-            read = number_boxes(result["lines"], target, length, lenient=False) is not None
+            read = any(target in normalize(text) for text, _ in rows_of_text(result["lines"]))
             order = ranked(candidates(result))
-            rank = next((i + 1 for i, c in enumerate(order) if digest(c) == target_core), None)
+            rank = next((i + 1 for i, c in enumerate(order) if c == target_core), None)
             guess = top_candidate(result)
             box = guess and guess["box"]
             why = retake.reasons(g, box)

@@ -41,7 +41,8 @@ def evaluate(row: dict, results: dict[str, dict]) -> dict:
             if config == PRIMARY and strict is not None:
                 out["number_box"] = json.dumps([round(v, 5) for v in union_box(strict)])
                 # Is the tallest line with 4+ digits, the phone's guess at the label, the number?
-                out["tallest_is_number"] = int(tallest_digit_line(lines)["box"] in strict)
+                tallest = tallest_digit_line(lines)
+                out["tallest_is_number"] = int(tallest is not None and tallest["box"] in strict)
         if row["class_label"]:
             out[f"class_{config}"] = int(class_read(lines, row["class_label"]))
     return out

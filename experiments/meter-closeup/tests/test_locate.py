@@ -126,3 +126,25 @@ def test_a_single_closest_payload_is_still_promoted():
     }
     [only] = candidates(result)
     assert only["core"] == "12345678" and only["barcode_confirmed"]
+
+
+def test_scan_creates_its_output_directory(tmp_path, monkeypatch):
+    import json
+
+    from meter_eval import locate
+
+    class Reader:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            pass
+
+        def read(self, path, barcodes):
+            return {"lines": [], "barcodes": []}
+
+    monkeypatch.setattr(locate, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(locate, "Reader", Reader)
+    result = locate.scan([{"id": "m01"}])
+    assert result == {"m01": {"lines": [], "barcodes": []}}
+    assert json.loads((tmp_path / "ocr" / "scan.jsonl").read_text()) == result["m01"]

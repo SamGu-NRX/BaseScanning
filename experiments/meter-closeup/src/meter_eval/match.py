@@ -109,7 +109,15 @@ def number_read(lines: Sequence[dict], target_digest: str, length: int, lenient:
 
 def class_read(lines: Sequence[dict], label: str) -> bool:
     target = normalize_class(label)
-    return any(target in normalize_class(text) for text, _ in rows_of_text(lines))
+    if not target:
+        return False
+    # Keep token boundaries before dropping separators: CL20 must not match CL200.
+    pattern = r"(?<![A-Z0-9])" + r"[^A-Z0-9()]*".join(re.escape(c) for c in target)
+    pattern += r"(?![A-Z0-9])"
+    return any(
+        re.search(pattern, text.upper().replace("×", "X")) is not None
+        for text, _ in rows_of_text(lines)
+    )
 
 
 def lenient_digest(number: str) -> str:

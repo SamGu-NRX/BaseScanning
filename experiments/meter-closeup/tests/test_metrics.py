@@ -170,3 +170,45 @@ def test_scrub_catches_digits_split_by_letters_and_keeps_short_codes():
     assert scrub("utility plate No. 1234") == "utility plate No. ####"
     # Fewer than four digits within the leak check's window stay readable.
     assert scrub("a CL200 meter, two plates") == "a CL200 meter, two plates"
+
+
+@pytest.mark.parametrize("text", ["CL200", "CL2000", "XCL20", "CL20A", "1200 CL"])
+def test_class_label_does_not_match_a_longer_token(text):
+    label = "200 CL" if text == "1200 CL" else "CL20"
+    assert not class_read([line(text, 0.1, 0.1)], label)
+
+
+def test_class_label_can_be_one_token_on_a_specification_line():
+    assert class_read([line("240V CL 20 60Hz", 0.1, 0.1)], "CL20")
+    assert not class_read([], "")
+
+
+def test_clean_scores_a_number_split_into_short_observations():
+    from meter_eval import clean
+    from meter_eval.ocr import PRIMARY
+
+    target = digest("123456")
+    row = {
+        "id": "m01",
+        "number_agreed": "yes",
+        "number_agreed_strict": "yes",
+        "class_kind": "",
+        "class_label": "",
+        "number_hmac": target,
+        "number_hmac_lenient": target,
+        "number_len": "6",
+    }
+    result = clean.evaluate(
+        row,
+        {
+            PRIMARY: {
+                "lines": [
+                    line("123", 0.3, 0.5),
+                    line("456", 0.4, 0.5),
+                ]
+            }
+        },
+    )
+    assert result[f"number_{PRIMARY}"] == 1
+    assert result["number_box"]
+    assert result["tallest_is_number"] == 0

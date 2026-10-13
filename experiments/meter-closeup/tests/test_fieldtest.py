@@ -53,3 +53,30 @@ def test_the_orientation_tag_is_applied(tmp_path):
     exif[0x0112] = 6  # rotate 90 degrees clockwise to display
     Image.new("RGB", (300, 100), "white").save(tmp_path / "turned.jpg", exif=exif.tobytes())
     assert upright_pixels(tmp_path / "turned.jpg", tmp_path).size == (100, 300)
+
+
+def test_fieldtest_scores_reads_and_ranks_without_a_dataset_key(tmp_path, monkeypatch, capsys):
+    import sys
+
+    from meter_eval import fieldtest, match
+
+    class Reader:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            pass
+
+        def read(self, path, barcodes):
+            return {"lines": [{"text": "No. 1234567", "box": BOX}], "barcodes": []}
+
+    def no_key():
+        raise AssertionError("field test must not load the dataset key")
+
+    Image.new("RGB", (256, 256), "white").save(tmp_path / "photo.jpg")
+    monkeypatch.setattr(fieldtest, "Reader", Reader)
+    monkeypatch.setattr(sys, "argv", ["fieldtest", str(tmp_path), "--number", "12-34567"])
+    with monkeypatch.context() as without_key:
+        without_key.setattr(match, "key", no_key)
+        fieldtest.main()
+    assert "| photo.jpg | yes | 1 | yes |" in capsys.readouterr().out

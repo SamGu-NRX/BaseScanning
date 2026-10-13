@@ -4,7 +4,7 @@ The thresholds in [PORTING.md](PORTING.md) come from processed Commons JPEGs, no
 
 1. Take the photos below with the app's capture path, or the iPhone camera if the app is not ready.
 2. Copy them into one folder. JPEG and HEIC both work. The command measures each photo's own pixels and never re-encodes them, because a JPEG round trip can lift sharpness across the threshold.
-3. From this folder, run:
+3. From `experiments/meter-closeup` in the repository, run with the absolute path to the photo folder:
 
 	```sh
 	uv run python -m meter_eval.fieldtest PHOTO_DIR --number "<number as printed>"
