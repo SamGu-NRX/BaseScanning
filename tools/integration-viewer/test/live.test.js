@@ -236,7 +236,7 @@ test("terminal results are read even while every events request fails", async ()
   } finally { h.follower.stop(); await h.follower.done; }
 });
 
-test("preview retries wait for Retry-After", async () => {
+for (const form of ["seconds", "date"]) test(`preview retries wait for ${form}-form Retry-After`, async () => {
   const previewAt = [];
   const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
   const h = stubFollower((path, clock) => {
@@ -244,7 +244,7 @@ test("preview retries wait for Retry-After", async () => {
     if (path.endsWith("/result")) return stubResult("withheld");
     if (path.includes("/preview")) {
       previewAt.push(clock);
-      return previewAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "19" }) : new Response(ply);
+      return previewAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": form === "date" ? new Date(clock + 19_000).toUTCString() : "19" }) : new Response(ply);
     }
     return stubStatus();
   });
@@ -272,5 +272,26 @@ test("a preview removed by a result revision triggers a fresh result read", asyn
     assert.equal(resultReads, 2);
     assert.equal(previewReads, 1);
     assert.equal(h.state.preview.phase, "none");
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+for (const response of [
+  { status: 409, code: "preview_run_changed" },
+  { status: 404, code: "preview_not_available" },
+]) test(`events backoff survives preview ${response.code}`, async () => {
+  const eventsAt = [];
+  let resultReads = 0;
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) {
+      eventsAt.push(clock);
+      return eventsAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "15" }) : stubEvents();
+    }
+    if (path.endsWith("/result")) { resultReads += 1; return stubResult(resultReads === 1 ? "withheld" : ""); }
+    if (path.includes("/preview")) return stubJson({ errors: [{ code: response.code }] }, response.status);
+    return stubStatus();
+  });
+  try {
+    await until(() => eventsAt.length >= 2);
+    assert.ok(eventsAt[1] - eventsAt[0] >= 15_000, `event reads at ${eventsAt}`);
   } finally { h.follower.stop(); await h.follower.done; }
 });

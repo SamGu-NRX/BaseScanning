@@ -52,7 +52,9 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
     if (!reply.ok) {
       const body = await reply.json().catch(() => null);
       const error = body?.errors?.[0];
-      const retryAfter = Number(reply.headers.get("retry-after"));
+      const retryHeader = reply.headers.get("retry-after") ?? "";
+      let retryAfter = Number(retryHeader);
+      if (!/^\d+$/.test(retryHeader)) retryAfter = /[A-Za-z]/.test(retryHeader) ? (Date.parse(retryHeader) - now()) / 1000 : NaN;
       throw new HttpError(reply.status, error?.code ?? `http_${reply.status}`, error?.message ?? `HTTP ${reply.status}`, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null);
     }
     return as === "json" ? reply.json() : reply.arrayBuffer();
@@ -152,9 +154,7 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
           if (error instanceof HttpError && (error.status === 409 || error.code === "preview_not_available")) {
             previewKey = revisionKey; // do not retry this artifact until a fresh result is accepted
             readyKey = null;
-            continue;
-          }
-          if (error instanceof PlyError) send({ type: "preview-error", runId, unsupported: true, error: error.message });
+          } else if (error instanceof PlyError) send({ type: "preview-error", runId, unsupported: true, error: error.message });
           else {
             // A fetch failure may pass; an unreadable file will not. Only the first is retried.
             send({ type: "preview-error", runId, error: error instanceof HttpError ? error.message : "network error" });

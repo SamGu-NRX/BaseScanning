@@ -13,8 +13,8 @@ import { DROPOUT, RUN_ID, encodePly, resultBody, syntheticCloud, timeline } from
 
 const ID = /^cap_SYNTH_(COMPLETE|FAILED|DROPOUT)_[A-Za-z0-9_]{1,40}$/;
 
-/** @param {{ speed?: number, clock?: () => number }} [options] speed > 1 plays scenarios faster; tests use it. */
-export function createSyntheticApi({ speed = 1, clock = Date.now } = {}) {
+/** @param {{ speed?: number, clock?: () => number, sleep?: (ms: number) => Promise<void> }} [options] speed > 1 plays scenarios faster; tests use it. */
+export function createSyntheticApi({ speed = 1, clock = Date.now, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) } = {}) {
   const t0 = clock();
   const now = () => t0 + (clock() - t0) * speed;
   const captures = new Map();
@@ -93,7 +93,7 @@ export function createSyntheticApi({ speed = 1, clock = Date.now } = {}) {
       while (!state.events.some((e) => e.seq > after) && now() < deadline && state.nextAt != null) {
         const outageAt = entry.scenario === "dropout" && state.elapsed < DROPOUT.from ? entry.startedAt + DROPOUT.from : Infinity;
         const pause = Math.max(1, (Math.min(deadline, state.nextAt, outageAt) - now()) / speed);
-        await new Promise((resolve) => setTimeout(resolve, pause));
+        await sleep(pause);
         if (res.destroyed) return;
         if (inOutage()) {
           req.socket.destroy();
