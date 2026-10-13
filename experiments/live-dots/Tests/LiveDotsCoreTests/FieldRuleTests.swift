@@ -45,6 +45,47 @@ struct FieldRuleTests {
         #expect(!field.free.contains(VoxelKey(4, 4, 0)))
     }
 
+    /// One keyframe square on to a flat wall at z = 0 from 2.5 m, with depth columns 39 and 40
+    /// (the strip over voxel column x = 0) replaced by `stripDepth` at `stripConfidence`.
+    func wallWithStrip(stripDepth: Float, stripConfidence: UInt8) -> VoxelField {
+        let width = 80, height = 60
+        var meters = [Float](repeating: 2.5, count: width * height)
+        var confidence = [UInt8](repeating: 2, count: width * height)
+        for j in 0..<height {
+            for i in 39...40 {
+                meters[j * width + i] = stripDepth
+                confidence[j * width + i] = stripConfidence
+            }
+        }
+        // 100 px focal at 2.5 m puts two depth pixels in each 5 cm voxel.
+        let intrinsics = SIMD4<Float>(100, 100, 40, 30)
+        let depth = DepthMap(meters: meters, confidence: confidence, width: width, height: height, intrinsics: intrinsics)
+        let pose = simd_float4x4(columns: (SIMD4(1, 0, 0, 0), SIMD4(0, 1, 0, 0), SIMD4(0, 0, 1, 0), SIMD4(0, 0, 2.5, 1)))
+        let keyframe = Keyframe(
+            id: "k", imagePath: "k.jpg", width: width, height: height, intrinsics: intrinsics,
+            cameraToWorld: pose, timestamp: 0, depth: nil)
+        let image = RGBImage(width: width, height: height, rgba: [UInt8](repeating: 128, count: width * height * 4))
+        var field = VoxelField()
+        field.integrate(FrameInput(index: 0, keyframe: keyframe, depth: depth, gradient: GradientPyramid(image: image)))
+        return field
+    }
+
+    @Test func `a confident hole in the wall carves free space and makes boundary edges`() {
+        let field = wallWithStrip(stripDepth: 0, stripConfidence: 2)
+        #expect(field.voxels[VoxelKey(0, 0, 0)] == nil)
+        #expect(field.free.contains(VoxelKey(0, 0, 0)))
+        #expect(field.voxels[VoxelKey(1, 0, 0)]?.isEdge == true)
+        #expect(field.voxels[VoxelKey(-1, 0, 0)]?.isEdge == true)
+    }
+
+    @Test(arguments: [Float(0), 9])
+    func `low-confidence depth carves no free space`(stripDepth: Float) {
+        let field = wallWithStrip(stripDepth: stripDepth, stripConfidence: 0)
+        #expect(field.voxels[VoxelKey(0, 0, 0)] == nil, "fusion skips the strip")
+        #expect(!field.free.contains(VoxelKey(0, 0, 0)))
+        #expect(field.voxels.values.allSatisfy { !$0.isEdge }, "a flat wall with no confident hole has no edges")
+    }
+
     @Test func `the gradient threshold makes an image edge`() {
         var field = VoxelField()
         for x in Int32(0)..<3 {

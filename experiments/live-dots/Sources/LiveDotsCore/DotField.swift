@@ -13,8 +13,9 @@
 //   (a) a face neighbour's normal differs by more than 35 degrees (the wall-to-ground corner,
 //       the bin's corners);
 //   (b) it has surface along one side and seen-empty space along another (the wall's top against
-//       the sky, the bin's silhouette). Seen-empty means a depth ray passed the neighbour with
-//       10 cm to spare, so the edge of what has been scanned so far is never an edge; or
+//       the sky, the bin's silhouette). Seen-empty means a depth ray of medium or high confidence
+//       passed the neighbour with 10 cm to spare, so the edge of what has been scanned so far is
+//       never an edge; or
 //   (c) the colour gradient at its samples reaches 0.2 (painted outlines). The gradient is read
 //       from a pyramid level whose pixel spans about one voxel, and ignored near a depth
 //       silhouette, where the colour step is occlusion rather than paint. On the fixture
@@ -226,7 +227,9 @@ public struct VoxelField: Sendable {
     /// Tests the empty in-plane neighbours of occupied voxels against this keyframe's depth: a
     /// neighbour is seen-empty when the ray through it hit nothing or hit something farther by
     /// `Tuning.freeSpaceMargin`. A neighbour outside the view or behind something stays unknown,
-    /// which is why the edge of what has been scanned so far never counts as a boundary.
+    /// which is why the edge of what has been scanned so far never counts as a boundary. So does
+    /// one whose depth pixel is below `Tuning.minimumConfidence`: fusion ignores that pixel, and
+    /// free space is never forgotten, so one bad zero or far reading would leave a lasting edge.
     mutating func carveFreeSpace(_ frame: FrameInput) {
         let depth = frame.depth
         let worldToCamera = frame.keyframe.cameraToWorld.inverse
@@ -239,7 +242,9 @@ public struct VoxelField: Sendable {
                 let camera = CameraMath.transform(worldToCamera, centre(of: neighbour))
                 guard let pixel = CameraMath.project(camera, intrinsics: depth.intrinsics),
                       pixel.depth >= Tuning.depthRange.lowerBound,
-                      let measured = depth.depth(atU: pixel.u, v: pixel.v)
+                      let measured = depth.depth(atU: pixel.u, v: pixel.v),
+                      let confidence = depth.confidence(atU: pixel.u, v: pixel.v),
+                      confidence >= Tuning.minimumConfidence
                 else { continue }
                 if measured == 0 || measured > pixel.depth + Tuning.freeSpaceMargin { found.insert(neighbour) }
             }

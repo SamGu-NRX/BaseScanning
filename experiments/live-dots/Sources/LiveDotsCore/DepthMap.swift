@@ -43,10 +43,19 @@ public struct DepthMap: Sendable {
 
     /// Depth at the pixel containing continuous coordinate (u, v), or nil outside the map.
     public func depth(atU u: Float, v: Float) -> Float? {
+        index(atU: u, v: v).map { meters[$0] }
+    }
+
+    /// Confidence at the pixel containing continuous coordinate (u, v), or nil outside the map.
+    public func confidence(atU u: Float, v: Float) -> UInt8? {
+        index(atU: u, v: v).map { confidence[$0] }
+    }
+
+    private func index(atU u: Float, v: Float) -> Int? {
         guard u >= 0, v >= 0 else { return nil }
         let i = Int(u), j = Int(v)
         guard i < width, j < height else { return nil }
-        return meters[j * width + i]
+        return j * width + i
     }
 }
 
