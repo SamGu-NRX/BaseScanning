@@ -620,6 +620,12 @@ def measured_noise(setup) -> float:
     return float(np.median([noise_sigma(load_gray(v)) for v in setup.views]))
 
 
+def peak_rss_mb() -> float:
+    # getrusage reports bytes on macOS and KiB on Linux.
+    divisor = 2**20 if sys.platform == "darwin" else 1024
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / divisor
+
+
 def main() -> None:
     started = time.time()
     check_evals()
@@ -682,8 +688,7 @@ def main() -> None:
         "wall_ft": (setup.wall.right - setup.wall.left) / cov.FEET,
         "runs": runs,
         "seconds": round(time.time() - started),
-        # ru_maxrss is bytes on macOS.
-        "peak_rss_mb": round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**20),
+        "peak_rss_mb": round(peak_rss_mb()),
     }
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / "plane_consistency.json").write_text(json.dumps(res, indent=1, default=_json))
