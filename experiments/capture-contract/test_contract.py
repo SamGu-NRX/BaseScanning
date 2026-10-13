@@ -6,9 +6,10 @@ import tempfile
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 
 from capture_contract import (camera_pose, crop_resize_intrinsics,
-                              no_duplicates, ray_for_pixel, validate_session)
+                              no_duplicates, ray_for_pixel, validate_session, write_result)
 
 ROOT = Path(__file__).parent
 
@@ -103,7 +104,7 @@ class CameraContractTests(unittest.TestCase):
             json.loads('{"format": 1, "format": 2}',object_pairs_hook=no_duplicates)
 
     def test_taps_outside_saved_image_are_rejected(self):
-        for pixel in [[-100,10000],[-1,400],[500,801]]:
+        for pixel in [[-100,10000],[-1,400],[500,801],[1000,400],[500,800]]:
             session=deepcopy(self.session)
             session["taps"][0]["pixel"]=pixel
             with self.assertRaisesRegex(ValueError,"outside its saved image"):
@@ -122,6 +123,32 @@ class CameraContractTests(unittest.TestCase):
         self.session["keyframes"][1]["intrinsics"][0]=10**400
         with self.assertRaisesRegex(ValueError,"floating-point range"):
             validate_session(self.session)
+
+    def test_missing_and_duplicate_tap_ids_are_rejected(self):
+        for invalid in [None, "", 1]:
+            session = deepcopy(self.session)
+            session["taps"][0]["id"] = invalid
+            with self.assertRaisesRegex(ValueError, "missing id"):
+                validate_session(session)
+        self.session["taps"].append(deepcopy(self.session["taps"][0]))
+        with self.assertRaisesRegex(ValueError, "duplicate tap id"):
+            validate_session(self.session)
+
+    def test_resizing_overflow_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "resized intrinsics.*finite"):
+            crop_resize_intrinsics([1e200, 1, 0, 0], [0, 0], [1e200, 1])
+
+    def test_failed_output_write_preserves_previous_result(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp) / "converted.json"
+            out.write_text("previous result")
+            with patch("capture_contract.os.fsync", side_effect=OSError("disk full")):
+                with self.assertRaisesRegex(OSError, "disk full"):
+                    write_result(out, {"new": "result"})
+            self.assertEqual(out.read_text(), "previous result")
+            self.assertEqual(list(Path(temp).iterdir()), [out])
+            write_result(out, {"new": "result"})
+            self.assertEqual(json.loads(out.read_text()), {"new": "result"})
 
     def test_cli_writes_only_after_validation(self):
         with tempfile.TemporaryDirectory() as temp:
