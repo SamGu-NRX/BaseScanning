@@ -195,7 +195,27 @@ def corrupt_compressed_npz() -> bytes:
     return bytes(raw)
 
 
-@pytest.mark.parametrize("bad", [b"PK\x03\x04truncated", b"not an npz", corrupt_compressed_npz()])
+def unsupported_compression_npz() -> bytes:
+    archive = io.BytesIO()
+    np.savez(archive, depth=np.ones((2, 2), np.float32))
+    raw = bytearray(archive.getvalue())
+    central = raw.index(b"PK\x01\x02")
+    # Both ZIP headers agree on an unsupported method, so the failure occurs on member read.
+    struct.pack_into("<H", raw, 8, 99)
+    struct.pack_into("<H", raw, central + 10, 99)
+    return bytes(raw)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        b"PK\x03\x04truncated",
+        b"not an npz",
+        corrupt_compressed_npz(),
+        unsupported_compression_npz(),
+    ],
+    ids=["truncated_zip", "not_npz", "damaged_deflate", "unsupported_compression"],
+)
 def test_corrupt_moge_cache_is_recomputed(tmp_path, monkeypatch, bad):
     capture = _capture_named_scan(tmp_path, 10)
     work = tmp_path / "work"
@@ -203,6 +223,8 @@ def test_corrupt_moge_cache_is_recomputed(tmp_path, monkeypatch, bad):
     (cache / "k.moge2.npz").write_bytes(bad)
     calls = []
     monkeypatch.setattr(depth.subprocess, "run", _fake_moge(calls))
+    assert np.allclose(depth.moge(capture, work)["k"].depth, 10)
+    assert calls == [1]
     assert np.allclose(depth.moge(capture, work)["k"].depth, 10)
     assert calls == [1]
 
