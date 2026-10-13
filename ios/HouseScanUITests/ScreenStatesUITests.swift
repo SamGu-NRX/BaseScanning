@@ -686,6 +686,35 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertTrue(element(app, "screen.gapRequest").waitForExistence(timeout: 10), "the second tap must send anyway")
     }
 
+    /// Review of #131: once every question has an answer the gate re-arms. A window added after
+    /// that is pointed to by the next "Looks complete", not sent past.
+    @MainActor
+    func testAWindowAddedAfterEveryAnswerIsPointedToAgain() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoPhase", "markFeatures"]
+        app.launch()
+        XCTAssertTrue(element(app, "screen.markFeatures").waitForExistence(timeout: 15))
+        tap(app, "action.confirmFeatures")
+        XCTAssertTrue(element(app, "review.unanswered").waitForExistence(timeout: 5))
+        tap(app, "ground.answer.gravel")
+        tap(app, "window.opens.notSure")
+        XCTAssertTrue(element(app, "review.unanswered").waitForNonExistence(timeout: 5))
+
+        // A window takes two marks: bottom-left corner, then top-right.
+        tap(app, "feature.window")
+        tap(app, "action.markPoint", timeout: 5)
+        tap(app, "action.markPoint", timeout: 5)
+        XCTAssertTrue(element(app, "action.confirmFeatures").waitForExistence(timeout: 5), "the review must come back after the mark")
+        XCTAssertFalse(element(app, "review.unanswered").exists, "the warning must wait for a tap")
+
+        tap(app, "action.confirmFeatures")
+        XCTAssertTrue(element(app, "review.unanswered").waitForExistence(timeout: 5), "the new window's question must be pointed to")
+        XCTAssertFalse(element(app, "screen.gapRequest").exists, "the first tap after re-arming must not send")
+        tap(app, "action.confirmFeatures")
+        XCTAssertTrue(element(app, "screen.gapRequest").waitForExistence(timeout: 10), "the second tap must still send")
+    }
+
     /// #81: the first aim ring comes with a line under the card saying what it is for, clear of
     /// the card at every text size, and reads its progress to VoiceOver. Off screen, the edge
     /// arrow stands in for the ring, and neither shows.

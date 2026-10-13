@@ -344,6 +344,11 @@ enum ScanCopy {
     /// Over "Looks complete" after its first tap found a question unanswered (#65).
     static let reviewUnanswered = "A question above has no answer yet. Answer it, or tap Looks complete again to send."
 
+    /// In place of the review's "Add something" chips while the phone has lost its place. It says
+    /// "finish with", not "tap to send": with a question unanswered, that tap first points to it
+    /// (review of #131).
+    static let reviewLostPlace = "Your phone lost its place. Point it back at the wall to add more, or finish with Looks complete."
+
     /// Under a reviewed mark that lies wholly past a marked end (`ScanViewState.featuresPastEnds`).
     static let featurePastEnd = "Past the end of your scan"
 
