@@ -1,4 +1,5 @@
 """Fault controls for the protocol, not perception or installation tests."""
+
 from dataclasses import replace
 import hashlib
 import json
@@ -16,8 +17,14 @@ from admission import Conflict, Ledger, ReturnedStill
 
 
 def still(**changes):
-    base = ReturnedStill("actual-frame-107", 10.7, "epoch-a", "normal", True,
-                         (("detail-a", 1), ("wall-a", 1)))
+    base = ReturnedStill(
+        "actual-frame-107",
+        10.7,
+        "epoch-a",
+        "normal",
+        True,
+        (("detail-a", 1), ("wall-a", 1)),
+    )
     return replace(base, **changes)
 
 
@@ -43,7 +50,10 @@ class AdmissionControls(unittest.TestCase):
     def test_good_preview_bad_returned_still(self):
         # The request itself represents an eligible preview, never an admission.
         self.assertFalse(self.db.progress()["detail-a"]["captured"])
-        self.assertEqual(self.db.receive("capture-1", b"blurry source", still(usable=False)), "rejected")
+        self.assertEqual(
+            self.db.receive("capture-1", b"blurry source", still(usable=False)),
+            "rejected",
+        )
         self.assertFalse(any(v["captured"] for v in self.db.progress().values()))
         self.assertEqual(len(self.db.snapshot()["assets"]), 1)
 
@@ -59,24 +69,34 @@ class AdmissionControls(unittest.TestCase):
     def test_save_exception_rolls_back_and_retry_admits_once(self):
         def fail():
             raise OSError("injected storage failure before commit")
+
         with self.assertRaises(OSError):
             self.db.receive("capture-1", b"actual source", still(), fail)
         self.reopen()
         self.assertEqual(self.db.snapshot()["assets"], [])
         self.assertEqual(self.db.snapshot()["requests"][0][1], "pending")
         self.assertFalse(self.db.progress()["detail-a"]["captured"])
-        self.assertEqual(self.db.receive("capture-1", b"actual source", still()), "admitted")
+        self.assertEqual(
+            self.db.receive("capture-1", b"actual source", still()), "admitted"
+        )
         self.assertEqual(self.db.progress()["detail-a"]["unique_assets"], 1)
 
     def test_owned_process_killed_before_commit(self):
         self.db.close()
         marker = Path(self.tmp.name) / "transaction-entered"
-        proc = subprocess.Popen([sys.executable, __file__, "--crash-worker", str(self.path), str(marker)],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(
+            [sys.executable, __file__, "--crash-worker", str(self.path), str(marker)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         try:
             deadline = time.monotonic() + 10
-            while not marker.exists() and proc.poll() is None and time.monotonic() < deadline:
-                time.sleep(.02)
+            while (
+                not marker.exists()
+                and proc.poll() is None
+                and time.monotonic() < deadline
+            ):
+                time.sleep(0.02)
             self.assertTrue(marker.exists(), "Owned child never reached precommit seam")
             proc.kill()
             proc.communicate(timeout=3)
@@ -94,15 +114,23 @@ class AdmissionControls(unittest.TestCase):
         self.db.receive("capture-1", b"actual source", still())
         self.reopen()
         before = self.db.snapshot()
-        self.assertEqual(self.db.receive("capture-1", b"actual source", still()), "duplicate_callback")
-        for payload, frame in [(b"different source", still()), (b"actual source", still(timestamp=10.8))]:
+        self.assertEqual(
+            self.db.receive("capture-1", b"actual source", still()),
+            "duplicate_callback",
+        )
+        for payload, frame in [
+            (b"different source", still()),
+            (b"actual source", still(timestamp=10.8)),
+        ]:
             with self.assertRaises(Conflict):
                 self.db.receive("capture-1", payload, frame)
         self.assertEqual(self.db.snapshot(), before)
 
     def test_other_current_requirement_does_not_inherit_requested_target(self):
         # Actual assessment supports B even though preview/request was for A.
-        self.db.receive("capture-1", b"actual B detail", still(supports=(("detail-b", 1),)))
+        self.db.receive(
+            "capture-1", b"actual B detail", still(supports=(("detail-b", 1),))
+        )
         self.assertFalse(self.db.progress()["detail-a"]["captured"])
         self.assertTrue(self.db.progress()["detail-b"]["captured"])
 
@@ -121,11 +149,17 @@ class AdmissionControls(unittest.TestCase):
         self.assertTrue(self.db.progress()["detail-a"]["captured"])
         self.assertFalse(self.db.progress()["wall-a"]["captured"])
         self.db.request("capture-2", "wall-a", "preview-b")
-        self.db.receive("capture-2", b"limited still", still(epoch="epoch-b", tracking="limited"))
+        self.db.receive(
+            "capture-2", b"limited still", still(epoch="epoch-b", tracking="limited")
+        )
         self.assertFalse(self.db.progress()["wall-a"]["captured"])
 
     def test_requirement_revision_and_unknown_target_do_not_reuse_support(self):
-        self.db.receive("capture-1", b"actual source", still(supports=(("detail-a", 1), ("future-detail", 1))))
+        self.db.receive(
+            "capture-1",
+            b"actual source",
+            still(supports=(("detail-a", 1), ("future-detail", 1))),
+        )
         self.db.require("detail-a", 2, "detail")
         self.db.require("future-detail", 1, "detail")
         self.assertFalse(self.db.progress()["detail-a"]["captured"])
@@ -141,7 +175,11 @@ class AdmissionControls(unittest.TestCase):
         data = b"actual source"
         self.db.receive("capture-1", data, still())
         digest = hashlib.sha256(data).hexdigest()
-        for key, size in [("0" * 64, len(data)), (digest, len(data) + 1), (digest, True)]:
+        for key, size in [
+            ("0" * 64, len(data)),
+            (digest, len(data) + 1),
+            (digest, True),
+        ]:
             with self.assertRaises(Conflict):
                 self.db.acknowledge(key, size)
             self.assertEqual(self.db.snapshot()["assets"][0][2], 0)
@@ -152,7 +190,11 @@ class AdmissionControls(unittest.TestCase):
     def test_identical_asset_under_two_requests_has_one_unique_asset(self):
         self.db.receive("capture-1", b"same bytes", still())
         self.db.request("capture-2", "detail-a", "preview-frame-200")
-        self.db.receive("capture-2", b"same bytes", still(frame_id="actual-frame-207", timestamp=20.7))
+        self.db.receive(
+            "capture-2",
+            b"same bytes",
+            still(frame_id="actual-frame-207", timestamp=20.7),
+        )
         self.assertEqual(len(self.db.snapshot()["assets"]), 1)
         self.assertEqual(self.db.progress()["detail-a"]["unique_assets"], 1)
         self.assertEqual(len(self.db.snapshot()["requests"]), 2)
@@ -176,7 +218,11 @@ class AdmissionControls(unittest.TestCase):
         self.db.set_epoch("epoch-b")  # Current-epoch assignment is idempotent.
 
     def test_unknown_future_epoch_does_not_gain_spatial_support_later(self):
-        self.db.receive("capture-1", b"unregistered future-epoch source", still(epoch="future-epoch"))
+        self.db.receive(
+            "capture-1",
+            b"unregistered future-epoch source",
+            still(epoch="future-epoch"),
+        )
         self.assertFalse(self.db.progress()["wall-a"]["captured"])
         self.db.set_epoch("future-epoch")
         self.assertFalse(self.db.progress()["wall-a"]["captured"])
@@ -184,8 +230,14 @@ class AdmissionControls(unittest.TestCase):
 
     def test_malformed_metadata_cannot_use_sqlite_affinity_to_match_task(self):
         self.db.require("1", 1, "detail")
-        bad = [still(frame_id=["frame"]), still(timestamp=True), still(timestamp=float("nan")),
-               still(epoch=1), still(supports=((True, 1),)), still(supports=(("1", True),))]
+        bad = [
+            still(frame_id=["frame"]),
+            still(timestamp=True),
+            still(timestamp=float("nan")),
+            still(epoch=1),
+            still(supports=((True, 1),)),
+            still(supports=(("1", True),)),
+        ]
         before = self.db.snapshot()
         for frame in bad:
             with self.assertRaises(ValueError):
@@ -198,9 +250,12 @@ class AdmissionControls(unittest.TestCase):
 
     def test_two_writers_cannot_regress_requirement_revision(self):
         self.db.require("detail-a", 2, "detail")
-        self.db.receive("capture-1", b"revision2 evidence", still(supports=(("detail-a", 2),)))
+        self.db.receive(
+            "capture-1", b"revision2 evidence", still(supports=(("detail-a", 2),))
+        )
         ready, go, done = threading.Event(), threading.Event(), threading.Event()
         failures = []
+
         def writer_b():
             other = None
             try:
@@ -215,16 +270,19 @@ class AdmissionControls(unittest.TestCase):
                 if other:
                     other.close()
                 done.set()
+
         worker = threading.Thread(target=writer_b)
         worker.start()
         self.assertTrue(ready.wait(3))
+
         def before_insert(sql):
             if sql.startswith("INSERT OR REPLACE INTO requirements"):
                 # A has already read rev2. Old separate autocommits allowed B to
                 # install rev3 here, then A overwrote it with rev2. BEGIN IMMEDIATE
                 # now holds the write reservation through the validated write.
                 go.set()
-                done.wait(.3)
+                done.wait(0.3)
+
         self.db.db.set_trace_callback(before_insert)
         try:
             self.db.require("detail-a", 2, "detail")
@@ -243,13 +301,17 @@ class AdmissionControls(unittest.TestCase):
                 self.db.progress()
             with self.assertRaises(Conflict):
                 self.db.snapshot()
+
         self.db.receive("capture-1", b"actual source", still(), before_commit)
         self.assertTrue(self.db.progress()["detail-a"]["captured"])
 
-    def test_snapshot_is_one_read_view_during_concurrent_epoch_and_revision_changes(self):
+    def test_snapshot_is_one_read_view_during_concurrent_epoch_and_revision_changes(
+        self,
+    ):
         self.db.receive("capture-1", b"actual source", still())
         ready, go, done = threading.Event(), threading.Event(), threading.Event()
         errors = []
+
         def change_state():
             other = None
             try:
@@ -265,13 +327,16 @@ class AdmissionControls(unittest.TestCase):
                 if other:
                     other.close()
                 done.set()
+
         worker = threading.Thread(target=change_state)
         worker.start()
         self.assertTrue(ready.wait(3))
+
         def change_after_epoch_read(sql):
             if sql.startswith("SELECT id,revision,kind FROM requirements"):
                 go.set()
                 done.wait(2)
+
         self.db.db.set_trace_callback(change_after_epoch_read)
         try:
             old_view = self.db.snapshot()
@@ -293,15 +358,25 @@ class AdmissionControls(unittest.TestCase):
 if __name__ == "__main__":
     if len(sys.argv) == 4 and sys.argv[1] == "--crash-worker":
         ledger = Ledger(Path(sys.argv[2]))
+
         def freeze_before_commit():
             Path(sys.argv[3]).write_text("inside uncommitted admission transaction")
             signal.pause()
+
         ledger.receive("capture-1", b"actual source", still(), freeze_before_commit)
         raise SystemExit("The owned worker should be killed before commit")
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(AdmissionControls)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
-    receipt = {"tests_run": result.testsRun, "failures": len(result.failures), "errors": len(result.errors),
-               "passed": result.wasSuccessful(), "scope": "synthetic admission protocol and SQLite process-crash rollback, no camera/perception/physical accuracy",
-               "python": sys.version, "sqlite": sqlite3.sqlite_version}
-    Path(__file__).with_name("test-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    receipt = {
+        "tests_run": result.testsRun,
+        "failures": len(result.failures),
+        "errors": len(result.errors),
+        "passed": result.wasSuccessful(),
+        "scope": "synthetic admission protocol and SQLite process-crash rollback, no camera/perception/physical accuracy",
+        "python": sys.version,
+        "sqlite": sqlite3.sqlite_version,
+    }
+    Path(__file__).with_name("test-receipt.json").write_text(
+        json.dumps(receipt, indent=2) + "\n"
+    )
     raise SystemExit(0 if result.wasSuccessful() else 1)

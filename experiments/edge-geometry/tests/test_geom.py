@@ -54,7 +54,14 @@ def test_view_angle_and_bins():
     rays = np.array([[0.0, -1.0, 0.0], [np.sin(np.radians(20)), np.cos(np.radians(20)), 0.0]])
     np.testing.assert_allclose(view_angle_deg(rays, n), [0.0, 20.0], atol=1e-9)
     assert list(angle_bin([0.0, 14.999, 15.0, 29.9, 30.0, 45.0, 89.0, 90.0])) == [
-        0, 0, 1, 1, 2, 3, 3, 3,
+        0,
+        0,
+        1,
+        1,
+        2,
+        3,
+        3,
+        3,
     ]
     with pytest.raises(ValueError):
         angle_bin([91.0])
@@ -103,14 +110,21 @@ def test_midpoint_triangulation():
 def test_midpoint_of_skew_rays_is_the_middle_of_their_common_perpendicular():
     # x-axis ray from (-1, 0, 0) and a ray along -y from (0, 1, 1): closest at (0,0,0) and (0,0,1).
     got, angle = midpoint_triangulate(
-        np.array([-1.0, 0, 0]), np.array([1.0, 0, 0]), np.array([0, 1.0, 1.0]), np.array([0, -1.0, 0])
+        np.array([-1.0, 0, 0]),
+        np.array([1.0, 0, 0]),
+        np.array([0, 1.0, 1.0]),
+        np.array([0, -1.0, 0]),
     )
     np.testing.assert_allclose(got, [0.0, 0.0, 0.5], atol=1e-12)
     assert angle == pytest.approx(90.0)
 
 
 def test_midpoint_triangulation_rejects_parallel_and_behind():
-    got, _ = midpoint_triangulate(np.zeros(3), np.array([0, 0, 1.0]), np.ones(3), np.array([0, 0, 1.0]))
+    got, _ = midpoint_triangulate(
+        np.zeros(3), np.array([0, 0, 1.0]), np.ones(3), np.array([0, 0, 1.0])
+    )
     assert np.isnan(got).all()
-    got, _ = midpoint_triangulate(np.zeros(3), np.array([0, 0, -1.0]), np.array([1.0, 0, 0]), np.array([-1.0, 0, 1.0]))
+    got, _ = midpoint_triangulate(
+        np.zeros(3), np.array([0, 0, -1.0]), np.array([1.0, 0, 0]), np.array([-1.0, 0, 1.0])
+    )
     assert np.isnan(got).all()

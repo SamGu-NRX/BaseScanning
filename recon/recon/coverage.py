@@ -209,7 +209,9 @@ def _two_positions_packed(
     return result
 
 
-def face_offsets(wall: WallFrame, mesh: Mesh, cells: np.ndarray) -> np.ndarray:
+def face_offsets(
+    wall: WallFrame, mesh: Mesh, cells: np.ndarray, ground: Ground | None = None
+) -> np.ndarray:
     """Per cell, how far a flat, full-height face stands in front of the fitted plane (0 if none).
     Flat: in at least 75% of the 10 cm height bins from 0.3 to 1.9 m, the front-most surface within
     0.6 m lies within 3 cm of their median. A bush or bin is neither, so it stays an occluder."""
@@ -217,6 +219,8 @@ def face_offsets(wall: WallFrame, mesh: Mesh, cells: np.ndarray) -> np.ndarray:
         return np.zeros(0)
     loc = wall.local(mesh.vertices.astype(np.float64))
     s, h, out = loc[:, 0], loc[:, 1], loc[:, 2]
+    if ground is not None:
+        h = mesh.vertices[:, 1] - ground.height_at(mesh.vertices[:, 0], mesh.vertices[:, 2])
     keep = (out > -0.15) & (out < 0.6) & (h > 0.3) & (h < 1.9)
     col = np.floor((s[keep] - cells[0]) / CELL_M).astype(np.int64)
     row = np.floor((h[keep] - 0.3) / 0.1).astype(np.int64)
@@ -254,13 +258,15 @@ def wall_and_ground(
     ground: Ground | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     centres = np.array([f.center for f in frames])
-    faces = face_offsets(wall, mesh, cells)
+    faces = face_offsets(wall, mesh, cells, ground)
     alongs = np.stack([cells + 0.25 * CELL_M, cells + 0.75 * CELL_M], axis=1)  # (C, 2)
     heights = np.linspace(0.05, WALL_TOP_M, WALL_ROWS)
     S = np.broadcast_to(alongs[:, :, None], (len(cells), 2, WALL_ROWS))
     Hh = np.broadcast_to(heights[None, None, :], S.shape)
     offs = np.broadcast_to(faces[:, None, None], S.shape)
     wpts = wall.world(S, Hh, offs).reshape(-1, 3)
+    if ground is not None:
+        wpts[:, 1] = Hh.ravel() + ground.height_at(wpts[:, 0], wpts[:, 2])
     wseen = two_positions(seen_by(wpts, wall.outward, frames, depths, vol), centres)
     wall_ok = wseen.reshape(len(cells), 2, WALL_ROWS).all(axis=(1, 2))
 
@@ -289,21 +295,27 @@ OCCUPIED_SHARE = 0.2  # of a slab's voxels, over two consecutive steps, to count
 WALL_SEARCH_M = (-0.3, 1.0)
 
 
-def _slab(wall: WallFrame, vol: Volume, across, heights, outs) -> tuple[float, bool]:
+def _slab(
+    wall: WallFrame, vol: Volume, across, heights, outs, ground: Ground | None = None
+) -> tuple[float, bool]:
     """Occupied share and whether every voxel was observed, over a grid of wall coordinates."""
     S, Hh, Oo = np.meshgrid(across, heights, outs, indexing="ij")
     pts = wall.world(S, Hh, Oo).reshape(-1, 3)
+    if ground is not None:
+        pts[:, 1] = Hh.ravel() + ground.height_at(pts[:, 0], pts[:, 2])
     return float(vol.occupied(pts).mean()), bool(vol.observed(pts).all())
 
 
-def wall_front(wall: WallFrame, vol: Volume, across: np.ndarray) -> float:
+def wall_front(
+    wall: WallFrame, vol: Volume, across: np.ndarray, ground: Ground | None = None
+) -> float:
     """Where the reconstructed wall surface ends toward the homeowner: marching out from behind
     the fitted plane, the first step past the wall's occupied voxels. A noisy reconstruction
     smears a wall several inches thick; space inside that smear is neither free nor an obstacle."""
     heights = np.arange(0.5, FACING_BAND_M[1] + 1e-9, vol.voxel)
     front, inside = 0.0, False
     for out in np.arange(WALL_SEARCH_M[0], WALL_SEARCH_M[1], vol.voxel):
-        share, _ = _slab(wall, vol, across, heights, [out])
+        share, _ = _slab(wall, vol, across, heights, [out], ground)
         if share >= OCCUPIED_SHARE:
             inside, front = True, out
         elif inside:
@@ -316,19 +328,24 @@ def wall_front(wall: WallFrame, vol: Volume, across: np.ndarray) -> float:
 SLABS_PER_BATCH = 16
 
 
-def _slabs(wall: WallFrame, vol, across, heights, outs, *, axis: int):
+def _slabs(wall: WallFrame, vol, across, heights, outs, *, axis: int, ground: Ground | None = None):
     """Occupied and observed flags per facing step (axis=2) or overhead step (axis=1)."""
     if axis not in (1, 2):
         raise ValueError("slab axis must be height (1) or outward distance (2)")
     S, Hh, Oo = np.meshgrid(across, heights, outs, indexing="ij")
     points = wall.world(S, Hh, Oo).reshape(-1, 3)
+    if ground is not None:
+        # Clearance is above each sample's ground, including slope away from the wall.
+        points[:, 1] = Hh.ravel() + ground.height_at(points[:, 0], points[:, 2])
     reduce = (0, 1) if axis == 2 else (0, 2)
     occupied = vol.occupied(points).reshape(S.shape).any(axis=reduce)
     seen = vol.observed(points).reshape(S.shape).all(axis=reduce)
     return occupied, seen
 
 
-def free_space(wall: WallFrame, vol: Volume | SeenFromTwo, cells: np.ndarray):
+def free_space(
+    wall: WallFrame, vol: Volume | SeenFromTwo, cells: np.ndarray, ground: Ground | None = None
+):
     """Per cell: (facing gap or NaN, facing clear, overhead clearance or NaN, overhead clear).
     The facing gap and clear distance are measured out from the wall's reconstructed front, not
     from the fitted plane: in front of a pilaster 0.3 m proud, something 1.3 m out of the plane
@@ -344,11 +361,11 @@ def free_space(wall: WallFrame, vol: Volume | SeenFromTwo, cells: np.ndarray):
     raw = vol.vol if isinstance(vol, SeenFromTwo) else vol
     for c in range(n):
         across = cells[c] + CELL_M * np.array([0.25, 0.5, 0.75])
-        front = wall_front(wall, raw, across)
+        front = wall_front(wall, raw, across, ground)
         outs = np.arange(front + step, front + FACING_MAX_M, step)
         for start in range(0, len(outs), SLABS_PER_BATCH):
             chunk = outs[start : start + SLABS_PER_BATCH]
-            occupied, seen = _slabs(wall, vol, across, fh, chunk, axis=2)
+            occupied, seen = _slabs(wall, vol, across, fh, chunk, axis=2, ground=ground)
             stopped = False
             for out, hit, observed in zip(chunk, occupied, seen, strict=True):
                 # Any occupied sampled voxel stops clearance, including one-step thin rails.
@@ -372,7 +389,7 @@ def free_space(wall: WallFrame, vol: Volume | SeenFromTwo, cells: np.ndarray):
         heights = np.arange(0.3, OVERHEAD_MAX_M, step)
         for start in range(0, len(heights), SLABS_PER_BATCH):
             chunk = heights[start : start + SLABS_PER_BATCH]
-            occupied, seen = _slabs(wall, vol, across, chunk, oo, axis=1)
+            occupied, seen = _slabs(wall, vol, across, chunk, oo, axis=1, ground=ground)
             stopped = False
             for h, hit, observed in zip(chunk, occupied, seen, strict=True):
                 if hit:
@@ -403,7 +420,7 @@ def compute(
     start = np.ceil(lo / CELL_M - 1e-9) * CELL_M
     cells = np.arange(start, hi - CELL_M + 1e-9, CELL_M)
     wall_ok, ground_out, _ = wall_and_ground(wall, frames, depths, vol, mesh, cells, ground)
-    fg, fc, og, oc = free_space(wall, SeenFromTwo(vol, frames, depths), cells)
+    fg, fc, og, oc = free_space(wall, SeenFromTwo(vol, frames, depths), cells, ground)
     return CellCoverage(cells, wall_ok, ground_out, fg, fc, og, oc)
 
 

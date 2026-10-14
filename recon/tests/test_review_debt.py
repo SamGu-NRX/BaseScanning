@@ -64,7 +64,7 @@ def test_coverage_exports_only_cells_inside_fitted_extent(monkeypatch):
     # This test isolates cell bounds; the two-view wrapper has separate real-depth regressions.
     monkeypatch.setattr(coverage, "SeenFromTwo", lambda vol, frames, depths: vol)
     monkeypatch.setattr(
-        coverage, "free_space", lambda wall, vol, cells: (np.zeros(len(cells)),) * 4
+        coverage, "free_space", lambda wall, vol, cells, ground=None: (np.zeros(len(cells)),) * 4
     )
     wall = replace(wall, s_range=(0.9 * CELL_M, 2.1 * CELL_M))
     cov = coverage.compute(wall, frames, depths, vol, surface)

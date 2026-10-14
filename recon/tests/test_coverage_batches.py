@@ -8,7 +8,7 @@ from test_coverage_views import views
 from test_worker import _slab_volume
 
 from recon import coverage
-from recon.geometry import WallFrame
+from recon.geometry import Ground, WallFrame
 
 WALL = WallFrame(
     np.array([0.0, 1.0, 0.0]), np.array([1.0, 0, 0]), np.array([0, 0, 1.0]), 0.0, (0, 0.3)
@@ -81,10 +81,10 @@ def test_wall_front_gets_raw_volume_and_uses_no_visibility(monkeypatch):
     calls = []
     real_front = coverage.wall_front
 
-    def wall_front(wall, volume, across):
+    def wall_front(wall, volume, across, ground=None):
         assert volume is raw
         calls.append(len(across))
-        return real_front(wall, volume, across)
+        return real_front(wall, volume, across, ground)
 
     monkeypatch.setattr(coverage, "wall_front", wall_front)
     coverage.free_space(WALL, view, np.array([0.0, coverage.CELL_M]))
@@ -128,7 +128,7 @@ def test_compute_retains_ground_and_complete_cells_after_combining_prs(monkeypat
     raw = _slab_volume([], 7.0)
     frames, depths = views(2)
     wall = replace(WALL, s_range=(0.9 * coverage.CELL_M, 2.1 * coverage.CELL_M))
-    ground = object()
+    ground = Ground(np.zeros(3), np.array([0.0, 1.0, 0.0]), 0.0, 100)
 
     def wall_and_ground(wall, frames, depths, volume, mesh, cells, fitted_ground):
         assert fitted_ground is ground

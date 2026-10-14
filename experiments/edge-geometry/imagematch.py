@@ -87,7 +87,9 @@ def epipolar_match(
     fail = (np.full(2, np.nan), -1.0)
     if not (half <= uv1[0] <= w1 - 1 - half and half <= uv1[1] <= h1 - 1 - half):
         return fail
-    template = cv2.getRectSubPix(img1.astype(np.float32), (patch, patch), (float(uv1[0]), float(uv1[1])))
+    template = cv2.getRectSubPix(
+        img1.astype(np.float32), (patch, patch), (float(uv1[0]), float(uv1[1]))
+    )
 
     # The depths whose projection lands inside img2, in front of it: an interval along the ray,
     # so its two ends bound a straight segment in img2.

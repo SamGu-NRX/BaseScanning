@@ -88,7 +88,7 @@ def test_real_case_rule_override_skips_stale_expectation(tmp_path, monkeypatch, 
     )
     monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
     monkeypatch.setattr(e2e, "invariant_problems", lambda *args, **kwargs: [])
-    monkeypatch.setattr(e2e, "property_problems", lambda *args: [])
+    monkeypatch.setattr(e2e, "property_problems", lambda *args, **kwargs: [])
 
     def forbidden(*args):
         pytest.fail("a mismatched case must not apply its stale expectations")
