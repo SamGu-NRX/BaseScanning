@@ -68,9 +68,14 @@ def payload_tokens(barcodes: list[dict]) -> set[str]:
     """Cores of the digit-bearing parts of every decoded payload."""
     parts = set()
     for barcode in barcodes:
-        for part in re.split(r"[\s;*,{}]+", barcode.get("payload") or ""):
+        payload = barcode.get("payload") or ""
+        if number_core(payload) is None:
+            continue
+        for part in re.split(r"[\s;*,{}]+", payload):
             if digits(part) >= 4:
-                parts.add(number_core(part))
+                token = number_core(part)
+                if token:
+                    parts.add(token)
     return parts
 
 
@@ -186,9 +191,10 @@ def barcode_stats(row: dict, result: dict) -> dict:
     target = row["number_core_hmac"]
     length = int(row["number_core_len"] or 0)
     has_number = any(
-        digest(number_core(p)[i : i + length]) == target
+        digest(token[i : i + length]) == target
         for p in payloads
-        for i in range(len(number_core(p)) - length + 1)
+        if (token := number_core(p))
+        for i in range(len(token) - length + 1)
     )
     return {
         "barcode_found": int(bool(barcodes)),

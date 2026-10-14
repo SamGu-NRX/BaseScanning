@@ -60,10 +60,9 @@ def main() -> None:
     parser.add_argument("--number", required=True, help="the meter number as printed")
     args = parser.parse_args()
 
-    try:
-        target_core = number_core(args.number)
-    except ValueError as error:
-        parser.error(str(error))
+    target_core = number_core(args.number)
+    if target_core is None:
+        parser.error("--number contains unsupported non-ASCII letters or digits")
     if not target_core:
         parser.error("--number must contain letters or digits")
     photos = sorted(p for p in args.folder.iterdir() if p.suffix.lower() in SUFFIXES)

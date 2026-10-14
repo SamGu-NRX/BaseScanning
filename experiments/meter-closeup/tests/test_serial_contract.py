@@ -280,3 +280,93 @@ def test_complete_ratings_at_label_and_punctuation_boundaries(text):
 @pytest.mark.parametrize("serial", ["12345V", "1234.5A", "CL1234", "FM12345"])
 def test_long_rating_shaped_tokens_remain_serials(serial):
     assert reads_number(observations(f"SN {serial}"), serial)
+
+
+@pytest.mark.parametrize("unsupported,ascii_serial", [("ß1234", "SS1234"), ("ﬀ1234", "FF1234")])
+def test_unicode_expansions_are_invalid_as_targets_and_ocr(unsupported, ascii_serial):
+    from meter_eval.match import read_target
+
+    assert number_core(unsupported) is None
+    assert read_target(unsupported) is None
+    assert not reads_number(observations(ascii_serial), unsupported)
+    assert not candidates({"lines": observations(ascii_serial), "barcodes": []}, unsupported)
+    assert not reads_number(observations(unsupported), ascii_serial)
+    assert not candidates({"lines": observations(unsupported), "barcodes": []}, ascii_serial)
+
+
+@pytest.mark.parametrize(
+    "target,text",
+    [
+        ("1234567", "１２３４５６７"),
+        ("１２３４５６７", "1234567"),
+        ("ABC1234567", "ＡＢＣ１２３４５６７"),
+        ("ａｂｃ１２３４５６７", "ABC1234567"),
+    ],
+)
+def test_only_fullwidth_ascii_is_mapped(target, text):
+    assert reads_number(observations(text), target)
+    assert ranked(candidates({"lines": observations(text), "barcodes": []}, target))[
+        0
+    ] == number_core(target)
+
+
+@pytest.mark.parametrize("payload", ["é1234567", "序號1234", "ß1234", "ﬀ1234"])
+def test_invalid_barcodes_do_not_abort_photo_scoring(tmp_path, monkeypatch, capsys, payload):
+    import sys
+
+    from PIL import Image
+
+    from meter_eval import fieldtest
+    from meter_eval.locate import barcode_stats, payload_tokens
+
+    result = {
+        "lines": observations("1234567"),
+        "barcodes": [{"payload": payload, "box": [0.1, 0.5, 0.4, 0.1]}],
+    }
+    row = {
+        "id": "synthetic",
+        "class_kind": "",
+        "number_agreed_strict": "yes",
+        "number_agreed": "yes",
+        "number_hmac": digest("1234567"),
+        "number_core_hmac": digest("1234567"),
+        "number_core_len": 7,
+    }
+    assert payload_tokens(result["barcodes"]) == set()
+    assert barcode_stats(row, result) == {
+        "barcode_found": 1,
+        "barcode_decoded": 1,
+        "barcode_has_number": 0,
+    }
+    offline = evaluate(row, result, "test")
+    assert offline["read"] == 1
+    assert offline["rank"] == 1
+
+    class Reader:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            pass
+
+        def read(self, path, barcodes):
+            return result
+
+    Image.new("RGB", (128, 128), "white").save(tmp_path / "photo.jpg")
+    monkeypatch.setattr(fieldtest, "Reader", Reader)
+    monkeypatch.setattr(sys, "argv", ["fieldtest", str(tmp_path), "--number", "1234567"])
+    fieldtest.main()
+    assert "| photo.jpg | yes | 1 |" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("target", ["ß1234", "ﬀ1234"])
+def test_unicode_expansion_target_is_a_cli_argument_error(tmp_path, monkeypatch, capsys, target):
+    import sys
+
+    from meter_eval import fieldtest
+
+    monkeypatch.setattr(sys, "argv", ["fieldtest", str(tmp_path), "--number", target])
+    with pytest.raises(SystemExit) as error:
+        fieldtest.main()
+    assert error.value.code == 2
+    assert "--number contains unsupported non-ASCII" in capsys.readouterr().err

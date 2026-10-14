@@ -12,7 +12,6 @@ import hashlib
 import hmac
 import os
 import re
-import unicodedata
 from collections.abc import Sequence
 
 from meter_eval.paths import KEY_PATH
@@ -53,16 +52,31 @@ KEYWORD = re.compile(
 _SERIAL_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 
-def read_target(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text).upper()
-    text = KEYWORD.sub("", text, count=1)
+def serial_text(text: str) -> str:
+    """Map only ASCII and fullwidth ASCII letters/digits, preserving invalid groups."""
+    mapped = []
+    for character in text:
+        code = ord(character)
+        if 0xFF10 <= code <= 0xFF19 or 0xFF21 <= code <= 0xFF3A or 0xFF41 <= code <= 0xFF5A:
+            character = chr(code - 0xFEE0)
+        if "a" <= character <= "z":
+            character = chr(ord(character) - 32)
+        mapped.append(character)
+    return "".join(mapped)
+
+
+def read_target(text: str) -> str | None:
+    """Label-stripped serial text, or None for an unsupported letter or digit."""
+    text = serial_text(text)
     if any(character.isalnum() and character not in _SERIAL_ALPHABET for character in text):
-        raise ValueError("--number contains unsupported non-ASCII letters or digits after NFKC")
+        return None
+    text = KEYWORD.sub("", text, count=1)
     return "".join(character for character in text if character in _SERIAL_ALPHABET).lower()
 
 
-def number_core(text: str) -> str:
-    return read_target(text).upper()
+def number_core(text: str) -> str | None:
+    target = read_target(text)
+    return target.upper() if target is not None else None
 
 
 # Ratings are boundaries, never serial groups: plate units and class/form prefixes.
@@ -126,18 +140,20 @@ def match_serial(
         else:
             rows.append([line])
     wanted = number_core(target) if target is not None else None
+    if target is not None and wanted is None:
+        return []
     found = []
     label_groups = [
         tuple(re.findall(r"N°|№|#|[A-Z0-9]+", label.upper())) for label in NUMBER_LABELS
     ]
     for row_id, row in enumerate(rows):
         row_box = union_box([piece["box"] for piece in row])
-        # NFKC and uppercase only: no O/0, I/1 or Cyrillic/Latin confusable mapping.
+        # No Unicode normalization/case folding or O/0, I/1, Cyrillic/Latin mapping.
         ordered = sorted(row, key=lambda piece: piece["box"][0])
         normalized = []
         owners = []
         for piece in ordered:
-            text = unicodedata.normalize("NFKC", piece["text"]).upper()
+            text = serial_text(piece["text"])
             if normalized:
                 owners.append(None)
             normalized.append(text)
