@@ -51,7 +51,7 @@ A user's instruction outranks a skill.
 
 ## Working in the repository
 
-- `make check` runs every suite on the branch. `make ios`, `make server`, `make web`, `make scoring`, `make measure-lab`, `make evals`, `make recon` and `make meter-closeup` run one each.
+- `make check` runs every suite on the branch. `make ios`, `make server`, `make web`, `make scoring`, `make measure-lab`, `make evals`, `make recon`, `make meter-closeup` and `make integration-viewer` run one each.
 - Branch from `main`, keep one writer per branch, and open a pull request. People merge, and agents never push to `main` or merge, so a person sees every change before it lands.
 - Several agents share one Mac. Exit code 137 means the system killed the process, usually for memory. Find the large allocation before rerunning, because one runaway process can freeze the whole machine.
 - Put `DEVELOPMENT_TEAM` in `ios/Config/Local.xcconfig` (copy `Local.xcconfig.example`), not in Xcode's Signing & Capabilities pane. The pane writes into `project.pbxproj`, and CI fails on that drift.

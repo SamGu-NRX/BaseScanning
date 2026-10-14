@@ -13,10 +13,10 @@ import { DROPOUT, RUN_ID, encodePly, resultBody, syntheticCloud, timeline } from
 
 const ID = /^cap_SYNTH_(COMPLETE|FAILED|DROPOUT)_[A-Za-z0-9_]{1,40}$/;
 
-/** @param {{ speed?: number }} [options] speed > 1 plays scenarios faster; tests use it. */
-export function createSyntheticApi({ speed = 1 } = {}) {
-  const t0 = Date.now();
-  const now = () => t0 + (Date.now() - t0) * speed;
+/** @param {{ speed?: number, clock?: () => number, sleep?: (ms: number) => Promise<void> }} [options] speed > 1 plays scenarios faster; tests use it. */
+export function createSyntheticApi({ speed = 1, clock = Date.now, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) } = {}) {
+  const t0 = clock();
+  const now = () => t0 + (clock() - t0) * speed;
   const captures = new Map();
   let ply = null;
   let origin = "";
@@ -75,8 +75,11 @@ export function createSyntheticApi({ speed = 1 } = {}) {
     const entry = m ? capture(m[1]) : null;
     if (!entry) return send(404, { errors: [{ code: "capture_not_found", pointer: "/", message: "capture not found" }] });
 
-    const elapsed = now() - entry.startedAt;
-    if (entry.scenario === "dropout" && elapsed >= DROPOUT.from && elapsed < DROPOUT.to) {
+    const inOutage = () => {
+      const elapsed = now() - entry.startedAt;
+      return entry.scenario === "dropout" && elapsed >= DROPOUT.from && elapsed < DROPOUT.to;
+    };
+    if (inOutage()) {
       req.socket.destroy(); // a dropped connection, not an HTTP error
       return;
     }
@@ -88,9 +91,14 @@ export function createSyntheticApi({ speed = 1 } = {}) {
       const deadline = now() + waitS * 1000;
       let state = stateAt(entry);
       while (!state.events.some((e) => e.seq > after) && now() < deadline && state.nextAt != null) {
-        const pause = Math.max(10, (Math.min(deadline, state.nextAt) - now()) / speed);
-        await new Promise((resolve) => setTimeout(resolve, pause));
+        const outageAt = entry.scenario === "dropout" && state.elapsed < DROPOUT.from ? entry.startedAt + DROPOUT.from : Infinity;
+        const pause = Math.max(1, (Math.min(deadline, state.nextAt, outageAt) - now()) / speed);
+        await sleep(pause);
         if (res.destroyed) return;
+        if (inOutage()) {
+          req.socket.destroy();
+          return;
+        }
         state = stateAt(entry);
       }
       const fresh = state.events.filter((e) => e.seq > after).slice(0, 100);
