@@ -308,6 +308,8 @@ def margin_problem(check: dict) -> str | None:
 def invariant_problems(
     scene: dict, result: dict, sent: bytes | None = None, rules: RuleSet | None = None
 ) -> list[str]:
+    if dimensions := reported_dimension_problems(result, rules):
+        return dimensions
     if rules is not None and (sampling := sweep_sampling_problems(scene, result, rules)):
         return sampling
     problems: list[str] = []
@@ -1171,11 +1173,78 @@ def reported_assumption_values(key: str, result: dict) -> list[tuple[str, float]
 
 def reported_rules(result: dict, rules: RuleSet) -> RuleSet:
     """Use reported geometry for invariants too, so public defaults cannot reject an override."""
+    if problems := reported_dimension_problems(result, rules):
+        raise ValueError("; ".join(problems))
     changes = {}
     for key, field in (("battery_width", "width_ft"), ("corner_allowance", "corner_allowance_ft")):
         if values := reported_assumption_values(key, result):
             changes[field] = values[0][1]
     return replace(rules, **changes)
+
+
+def reported_dimension_problems(result: dict, rules: RuleSet | None) -> list[str]:
+    """Reject inconsistent C2 geometry before its dimensions can override public rules."""
+    problems = []
+
+    def finite(value: Any) -> bool:
+        return (
+            isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+        )
+
+    spots = [(name, result.get(name)) for name in ("spot", "nearest_considered")]
+    for name, spot in spots:
+        if spot is None:
+            continue
+        for field in ("width_ft", "depth_ft", "height_ft"):
+            if field in spot and (not finite(spot[field]) or spot[field] <= 0):
+                problems.append(f"{name}.{field} must be finite and positive")
+        span = spot.get("span_ft")
+        if span is not None:
+            if len(span) != 2 or not all(finite(v) for v in span) or span[0] >= span[1]:
+                problems.append(f"{name}.span_ft must be finite and increasing")
+            elif (
+                finite(spot.get("width_ft"))
+                and abs(span[1] - span[0] - spot["width_ft"]) > OFFSET_TOL_FT
+            ):
+                problems.append(f"{name}.width_ft does not match span_ft")
+        corners = spot.get("footprint")
+        if corners is None:
+            continue
+        if len(corners) != 4 or any(
+            len(point) != 2 or not all(finite(v) for v in point) for point in corners
+        ):
+            problems.append(f"{name}.footprint must have four finite plan corners")
+            continue
+        # C2 orders back-left, back-right, front-right, front-left. Use the verifier's existing
+        # hundredth-foot position tolerance when comparing its rounded plan edges and spans.
+        for field, edges in (("width_ft", ((0, 1), (2, 3))), ("depth_ft", ((1, 2), (3, 0)))):
+            if finite(spot.get(field)) and any(
+                abs(math.dist(corners[a], corners[b]) - spot[field]) > OFFSET_TOL_FT
+                for a, b in edges
+            ):
+                problems.append(f"{name}.{field} does not match footprint")
+
+    widths = reported_assumption_values("battery_width", result)
+    for source, width in widths:
+        if not finite(width) or width <= 0:
+            message = f"{source} must be finite and positive"
+            if message not in problems:
+                problems.append(message)
+    valid_widths = [(source, width) for source, width in widths if finite(width) and width > 0]
+    if valid_widths and any(
+        abs(width - valid_widths[0][1]) > NUMBER_TOL_FT for _, width in valid_widths
+    ):
+        problems.append("reported battery widths disagree")
+    first, second = (spot for _, spot in spots)
+    if first is not None and second is not None:
+        for field in ("depth_ft", "height_ft"):
+            if (
+                finite(first.get(field))
+                and finite(second.get(field))
+                and abs(first[field] - second[field]) > NUMBER_TOL_FT
+            ):
+                problems.append(f"spot and nearest_considered {field} disagree")
+    return problems
 
 
 def assumption_mismatches(assumed: dict[str, float], result: dict) -> list[str]:
@@ -1414,12 +1483,14 @@ def outcomes_near(result: dict, wall_id: str, start_ft: float) -> tuple[set[str]
 
 def more_error_problems(before: dict, after: dict, change: str) -> list[str]:
     """With more error, a start may only move toward UNSURE: UNSURE stays, PASS and FAIL stay
-    or become UNSURE. A start the original sweep never evaluated is read as `outcomes_near`."""
+    or become UNSURE. A start the original sweep never evaluated is read as `outcomes_near`.
+    A wall with no original run has no outcome to contradict a new FAIL, but cannot newly PASS.
+    """
     problems = []
     for wall_id, s in probe_starts(before, after):
         b = outcome_at(after, wall_id, s)
         allowed, was = outcomes_near(before, wall_id, s)
-        if b is None or b == "unsure" or b in allowed:
+        if b is None or b == "unsure" or b in allowed or (not allowed and b == "fail"):
             continue
         problems.append(f"{change}: start {wall_id} {s:.3f} went from {was} to {b}")
     if before["decision"] != "pass" and after["decision"] == "pass":

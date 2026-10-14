@@ -997,3 +997,27 @@ def test_judge_distinguishes_reported_override_mismatch_and_unverified_defaults(
     if reported_width is None:
         assert not report["contract_ok"]
         assert "assumed public rules; server may override" in (tmp_path / "report.md").read_text()
+
+
+@pytest.mark.parametrize("width", [-1, 0, float("nan"), float("inf")])
+def test_vet_judge_rejects_invalid_width_before_rule_consumers(monkeypatch, width):
+    answer = {
+        "decision": "reject",
+        "spot": None,
+        "sweep": [],
+        "checks": [{"id": "width", "threshold_ft": width, "rule": {"key": "battery.width_ft"}}],
+    }
+    monkeypatch.setattr(e2e, "post", lambda *args: (200, json.dumps(answer).encode(), 1))
+    monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
+    consumers = []
+    monkeypatch.setattr(
+        e2e, "invariant_problems", lambda *args, **kwargs: consumers.append("invariants") or []
+    )
+    monkeypatch.setattr(
+        e2e, "property_problems", lambda *args: consumers.append("properties") or []
+    )
+    item = SceneInput("invalid-width", SCENE, b"{}")
+    record = judge("unused", Endpoint("/place", "application/json"), item, SCHEMAS, RULES)
+    assert record["status"] == "fail"
+    assert record["contract_problems"] == ["width must be finite and positive"]
+    assert consumers == []

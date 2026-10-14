@@ -73,6 +73,7 @@ from hsverify.resultcheck import (
     more_error_problems,
     outcome_lengths,
     public_assumption_warnings,
+    reported_dimension_problems,
     reported_rules,
     schema_errors,
     tape_to_tap,
@@ -577,6 +578,10 @@ def judge(
     if problems:
         return record | {"status": "fail", "problems": problems[:20], "contract_problems": problems}
 
+    dimensions = reported_dimension_problems(result, rules)
+    if dimensions:
+        return record | {"status": "fail", "problems": dimensions, "contract_problems": dimensions}
+
     # Unreported overrides cannot establish rule-dependent geometry or case expectations.
     mismatches = assumption_mismatches(item.rules_assumed, result)
     warnings = public_assumption_warnings(item.rules_assumed, result, rules)
@@ -635,6 +640,9 @@ def property_problems(
         errors = schema_errors(other, schemas["result"])
         if errors:
             problems.append(f"{name}: result schema: {errors[0]}")
+            return None
+        if dimensions := reported_dimension_problems(other, rules):
+            problems.extend(f"{name}: {p}" for p in dimensions)
             return None
         problems.extend(
             f"{name}: {p}"

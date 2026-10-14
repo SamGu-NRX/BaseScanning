@@ -1707,3 +1707,73 @@ def test_reported_override_prevents_a_false_footprint_failure():
     backing["rule"]["key"] = "battery.width_ft"
     assert footprint_problems(SCENE, answer, public)
     assert footprint_problems(SCENE, answer, reported_rules(answer, public)) == []
+
+
+@pytest.mark.parametrize("field", ["width_ft", "depth_ft", "height_ft"])
+@pytest.mark.parametrize("value", [-1, 0, float("nan"), float("inf")])
+def test_vet_reported_dimensions_refuse_invalid_numbers(field, value):
+    answer = result()
+    answer["spot"][field] = value
+    with pytest.raises(ValueError, match=f"spot.{field} must be finite and positive"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("source", ["spot", "nearest_considered", "check"])
+def test_vet_reported_width_sources_must_agree(source):
+    answer = result()
+    answer["nearest_considered"] = copy.deepcopy(answer["spot"])
+    answer["checks"].append(
+        {"id": "width", "threshold_ft": RULES.width_ft, "rule": {"key": "battery.width_ft"}}
+    )
+    if source == "check":
+        answer["checks"][-1]["threshold_ft"] = 4
+    else:
+        answer[source]["width_ft"] = 4
+    with pytest.raises(ValueError, match="reported battery widths disagree"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("source", ["spot", "nearest_considered"])
+@pytest.mark.parametrize("value", [4, 1e9])
+def test_vet_reported_width_must_match_span_and_footprint(source, value):
+    answer = result()
+    answer[source] = copy.deepcopy(answer["spot"])
+    answer[source]["width_ft"] = value
+    if source == "nearest_considered":
+        answer["spot"] = None
+    with pytest.raises(ValueError, match="does not match"):
+        reported_rules(answer, RULES)
+
+
+def test_vet_reported_depth_must_match_footprint():
+    answer = result()
+    answer["spot"]["depth_ft"] = 4
+    with pytest.raises(ValueError, match="depth_ft does not match footprint"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("value", [-1, 0, float("nan"), float("inf")])
+def test_vet_reported_width_threshold_must_be_finite_positive(value):
+    answer = {
+        "checks": [{"id": "width", "threshold_ft": value, "rule": {"key": "battery.width_ft"}}]
+    }
+    with pytest.raises(ValueError, match="width must be finite and positive"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("outcome", ["fail", "unsure"])
+@pytest.mark.parametrize("old_wall_has_run", [False, True])
+def test_vet_more_error_may_add_nonpassing_run_on_previously_unswept_wall(
+    outcome, old_wall_has_run
+):
+    before = swept(run(0, 4, "fail")) if old_wall_has_run else swept()
+    after = swept(*before["sweep"], run(10, 12, outcome, wall="w2"))
+    assert more_error_problems(before, after, "more error") == []
+
+
+def test_vet_more_error_cannot_add_pass_on_previously_unswept_wall():
+    before = swept(run(0, 4, "pass"), decision="pass")
+    after = swept(*before["sweep"], run(10, 12, "pass", wall="w2"), decision="pass")
+    assert more_error_problems(before, after, "more error") == [
+        f"more error: start w2 {s:.3f} went from no run on its wall to pass" for s in (10, 11, 12)
+    ]
