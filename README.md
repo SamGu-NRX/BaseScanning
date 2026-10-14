@@ -113,7 +113,7 @@ The battery measures 31 × 22 × 39.5 in, a bit bigger than a dishwasher. It sta
 | Cable route | Can't cross a door, a garage or a gap in the wall | Demo choice |
 | Driveway | At least 5 ft away | Placeholder, no public value |
 | Pool | At least 10 ft away | Placeholder, no public value |
-| Existing battery, when the scene marks one or its configured clearance exceeds the AC clearance | At least 3 ft away with shipped rules; the cable also detours around it | Base's help page; IRC 2021 R328, cited in `server/rules.yaml` |
+| Existing battery, when the scene marks one or its configured clearance exceeds the AC clearance | At least 3 ft away with shipped rules; the cable detours over it | Base's help page; IRC 2021 R328, cited in `server/rules.yaml` |
 
 Each check comes back PASS, FAIL or UNSURE, along with what the server measured, how far off that measurement could be and a reason in plain English. NEC is the National Electrical Code and IRC is the International Residential Code, the two building codes behind several of these rules. The first 13 checks run at each spot. `battery_clearance` also runs when the scene marks an existing battery or the configured battery clearance exceeds the AC clearance. The shipped public rules give both a 3 ft limit, so a scene without a battery omits that extra check. The numbers themselves live in `server/rules.yaml`, each one next to its source, and [docs/04](docs/04-prior-art-and-codes.md) has the full citations.
 
