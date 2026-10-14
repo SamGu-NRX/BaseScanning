@@ -298,6 +298,22 @@ describe("refusals", () => {
     }
   });
 
+  for (const bodyKind of ["non-JSON", "truncated"]) test(`${bodyKind} result errors preserve deadlines on direct and preview routes`, async () => {
+    hostileHandler = (_req, res) => {
+      res.writeHead(503, { "content-type": "text/html", "retry-after": "120", ...(bodyKind === "truncated" ? { "content-length": "1000" } : {}) });
+      if (bodyKind === "non-JSON") return res.end("<html>busy</html>");
+      res.write("<html>", () => res.destroy());
+    };
+    try {
+      for (const leaf of ["result", "preview?run=r"]) {
+        const reply = await raw(`/relay/hostile/captures/cap_HOSTILE_1/${leaf}`);
+        assert.equal(reply.status, 502);
+        assert.equal(reply.headers["retry-after"], "120");
+        assert.equal(reply.json.errors[0].code, leaf === "result" ? (bodyKind === "non-JSON" ? "upstream_not_json" : "upstream_unreachable") : "result_unavailable");
+      }
+    } finally { hostileHandler = null; }
+  });
+
   test("an errored storage body cannot replace the preview 502 or Retry-After", async (t) => {
     const storageUrl = `http://127.0.0.1:${hostile.address().port}/v1/errored.ply`;
     hostileBody = { runId: "r", previewUrl: storageUrl };

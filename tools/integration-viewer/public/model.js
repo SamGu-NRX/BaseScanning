@@ -122,7 +122,7 @@ export function reduce(state, action) {
       return applyResult(state, action.body);
     case "result-error":
       // A failed refresh keeps a result already shown; it is still what the server last said.
-      return { ...state, result: { ...state.result, phase: state.result.phase === "ready" ? "ready" : "error", error: action.error } };
+      return resultError(state, action.error);
     case "preview-loading":
       // Re-reading the same run's model keeps the one on screen until the new one arrives.
       if (state.preview.phase === "ready" && state.preview.runId === action.runId) return state;
@@ -333,8 +333,12 @@ function stage(state, data, base) {
 /** Statuses after which no outcome will come, so a result without one is final. */
 const NO_OUTCOME_STATUSES = new Set(["failed", "expired"]);
 
+function resultError(state, error) {
+  return { ...state, result: { ...state.result, phase: state.result.phase === "ready" ? "ready" : "error", error } };
+}
+
 function applyResult(state, body) {
-  if (!isObject(body)) return { ...state, result: { ...state.result, phase: "error", body: null, error: "Result was not a JSON object" } };
+  if (!isObject(body)) return resultError(state, "Result was not a JSON object");
   // An outcome without run identity cannot be attributed to the capture's current run.
   if (typeof body.runId !== "string" || body.runId === "") return state;
   // A result for a run other than the one shown is not accepted: a retired run's is dropped, and

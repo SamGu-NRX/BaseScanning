@@ -539,3 +539,52 @@ test("a forced refresh answered by a retired-run replica returns to normal polli
     assert.deepEqual(statusAt.slice(0, 5), [0, 0, 5_000, 10_000, 15_000]);
   } finally { follower.stop(); await follower.done; }
 });
+
+for (const bodyKind of ["non-JSON", "truncated"]) for (const failureRoute of ["result", "preview prerequisite"])
+test(`${bodyKind} ${failureRoute} errors retain the result Retry-After`, async () => {
+  let clock = 0;
+  const resultAt = [];
+  const failureIndex = failureRoute === "result" ? 0 : 1;
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const upstream = createServer((req, res) => {
+    if (req.url.endsWith("/result")) {
+      resultAt.push(clock);
+      if (resultAt.length === failureIndex + 1) {
+        res.writeHead(503, { "retry-after": "120", "content-type": "text/html", ...(bodyKind === "truncated" ? { "content-length": "1000" } : {}) });
+        if (bodyKind === "non-JSON") return res.end("<html>busy</html>");
+        return res.write("<html>", () => res.destroy());
+      }
+      return res.end(JSON.stringify({ runId: "run_s", status: "complete", outcome: { kind: "eligible" }, previewUrl: failureRoute === "result" ? "" : "/model.ply" }));
+    }
+    if (req.url === "/model.ply") return res.end(ply);
+    if (req.url.includes("/events")) {
+      const after = new URL(req.url, "http://x").searchParams.get("after");
+      const changed = clock >= 6_000;
+      return res.end(JSON.stringify({ status: "complete", next: changed ? 1 : 0, events: changed && after === "0"
+        ? [{ seq: 1, type: "verdict_ready", data: { runId: "run_s", kind: "eligible" } }] : [] }));
+    }
+    res.end(JSON.stringify({ runId: "run_s", status: "complete" }));
+  });
+  await new Promise((resolve) => upstream.listen(0, "127.0.0.1", resolve));
+  const relay = createViewerServer({ upstreams: { s: { base: `http://127.0.0.1:${upstream.address().port}/v1`, label: "Malformed errors", kind: "synthetic" } },
+    publicDir: join(dirname(fileURLToPath(import.meta.url)), "..", "public") });
+  let follower;
+  try {
+    const origin = `http://127.0.0.1:${await relay.listen(0)}`;
+    let state = reduce(initialState(), { type: "select", mode: "live", source: { key: "s", kind: "synthetic" }, captureId: "cap_BAD_ERROR" });
+    follower = followCapture({ sourceKey: "s", captureId: "cap_BAD_ERROR", session: state.session,
+      dispatch: (a) => { state = reduce(state, a); }, getState: () => state,
+      fetchImpl: (path, init) => fetch(origin + path, init), now: () => clock,
+      sleep: async (ms) => { clock += ms; }, online: () => true });
+    await until(() => failureRoute === "result" ? state.result.phase === "ready" : state.preview.phase === "ready");
+    assert.ok(resultAt.length > failureIndex + 1);
+    const deadline = resultAt[failureIndex] + 120_000;
+    assert.ok(resultAt.slice(failureIndex + 1).every((at) => at >= deadline), `result reads at ${resultAt}, deadline ${deadline}`);
+    assert.equal(state.result.body.outcome.kind, "eligible");
+  } finally {
+    follower?.stop(); await follower?.done;
+    await relay.close();
+    upstream.closeAllConnections();
+    await new Promise((resolve) => upstream.close(resolve));
+  }
+});

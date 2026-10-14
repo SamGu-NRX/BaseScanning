@@ -115,7 +115,7 @@ export function createViewerServer({ upstreams, publicDir, log = () => {} }) {
     if (leaf === "preview") return relayPreview(res, upstream, upstreamPath, params.get("run"), params.get("artifact"), signal);
 
     const reply = await upstreamGet(upstream.base + upstreamPath, signal);
-    if (reply.failure) return refuse(res, reply.failure.status, reply.failure.code, reply.failure.message);
+    if (reply.failure) return refuse(res, reply.failure.status, reply.failure.code, reply.failure.message, reply.retryAfter ? { "retry-after": reply.retryAfter } : {});
     let body = reply.json;
     if (leaf === "result" && body && typeof body === "object") {
       body = { ...body };
@@ -134,7 +134,7 @@ export function createViewerServer({ upstreams, publicDir, log = () => {} }) {
 
   async function relayPreview(res, upstream, resultPath, runId, artifactId, signal) {
     const result = await upstreamGet(`${upstream.base}${resultPath}/result`, signal);
-    if (result.failure) return refuse(res, result.failure.status, result.failure.code, result.failure.message);
+    if (result.failure) return refuse(res, result.failure.status, "result_unavailable", result.failure.message, result.retryAfter ? { "retry-after": result.retryAfter } : {});
     if (result.status !== 200) return refuse(res, result.status, "result_unavailable", "the result could not be read", result.retryAfter ? { "retry-after": result.retryAfter } : {});
     if (result.json?.runId !== runId) return refuse(res, 409, "preview_run_changed", "the latest result belongs to another run");
     const signed = result.json?.previewUrl;
@@ -221,10 +221,12 @@ async function upstreamGet(url, signal) {
     const timedOut = error?.name === "TimeoutError";
     return { failure: { status: timedOut ? 504 : 502, code: timedOut ? "upstream_timeout" : "upstream_unreachable", message: timedOut ? "the API did not answer in time" : "the API could not be reached" } };
   }
+  // Backpressure belongs to the HTTP response, even when its body is unreadable.
+  const retryAfter = reply.headers.get("retry-after");
   const declared = Number(reply.headers.get("content-length") ?? "0");
   if (declared > JSON_MAX_BYTES) {
     await reply.body?.cancel().catch(() => {});
-    return { failure: { status: 502, code: "upstream_too_large", message: "the API reply is larger than the viewer reads" } };
+    return { retryAfter, failure: { status: 502, code: "upstream_too_large", message: "the API reply is larger than the viewer reads" } };
   }
   let text = "";
   try {
@@ -234,21 +236,21 @@ async function upstreamGet(url, signal) {
       size += chunk.length;
       if (size > JSON_MAX_BYTES) {
         await reply.body.cancel().catch(() => {});
-        return { failure: { status: 502, code: "upstream_too_large", message: "the API reply is larger than the viewer reads" } };
+        return { retryAfter, failure: { status: 502, code: "upstream_too_large", message: "the API reply is larger than the viewer reads" } };
       }
       chunks.push(chunk);
     }
     text = Buffer.concat(chunks).toString("utf8");
   } catch {
-    return { failure: { status: 502, code: "upstream_unreachable", message: "the API reply was cut off" } };
+    return { retryAfter, failure: { status: 502, code: "upstream_unreachable", message: "the API reply was cut off" } };
   }
   let json;
   try {
     json = text === "" ? null : JSON.parse(text);
   } catch {
-    return { failure: { status: 502, code: "upstream_not_json", message: `the API answered ${reply.status} with a body that is not JSON` } };
+    return { retryAfter, failure: { status: 502, code: "upstream_not_json", message: `the API answered ${reply.status} with a body that is not JSON` } };
   }
-  return { status: reply.status, json, etag: reply.headers.get("etag"), retryAfter: reply.headers.get("retry-after") };
+  return { status: reply.status, json, etag: reply.headers.get("etag"), retryAfter };
 }
 
 function refuse(res, status, code, message, headers = {}) {

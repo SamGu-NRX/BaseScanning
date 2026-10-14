@@ -261,6 +261,17 @@ test("a failed refresh keeps the result already shown", () => {
   assert.equal(s.result.error, "network error");
 });
 
+test("a null result refresh keeps the accepted eligible result and shows a refresh error", () => {
+  const accepted = run(selected(), { type: "result", body: { runId: "run_a", status: "complete", outcome: { kind: "eligible" } } });
+  const refreshed = run(accepted, { type: "result-loading" }, { type: "result", body: null });
+  assert.equal(refreshed.result.phase, "ready");
+  assert.equal(refreshed.result.body, accepted.result.body);
+  assert.equal(refreshed.result.revision, accepted.result.revision);
+  assert.equal(refreshed.preview, accepted.preview);
+  assert.equal(refreshed.result.error, "Result was not a JSON object");
+  assert.equal(run(selected(), { type: "result", body: null }).result.phase, "error");
+});
+
 test("the eligible illustration leaves no check unsure", async () => {
   const { resultBody } = await import("../public/scenario.js");
   const body = resultBody("complete", "complete");
