@@ -63,10 +63,12 @@ from hsverify.resultcheck import (
     WorkLimitExceeded,
     WorkMeter,
     assumption_mismatches,
+    case_metadata_problems,
     comparable,
     coverage_blocks,
     expectation_problems,
     geometry_admission_problems,
+    ingestion_problems,
     invariant_problems,
     less_coverage_problems,
     mirror_scene,
@@ -501,7 +503,11 @@ def judge(
         return record | {"status": "skipped", "problems": [], "skip_reason": item.skip_reason}
     if item.hostile:
         return record | {"hostile": True} | judge_hostile(url, endpoint, item, schemas, limit)
-    input_errors = schema_errors(item.scene, schemas["scene"])
+    input_errors = (
+        case_metadata_problems(item.rules_assumed, item.expect)
+        or ingestion_problems(item.scene, "scene")
+        or schema_errors(item.scene, schemas["scene"])
+    )
     if input_errors:
         return record | {"status": "bad input", "problems": input_errors[:20]}
 
@@ -530,7 +536,12 @@ def judge(
 
     problems = check(
         "result schema",
-        lambda: [f"result schema: {e}" for e in schema_errors(result, schemas["result"])],
+        lambda: [
+            f"result schema: {e}"
+            for e in (
+                ingestion_problems(result, "result") or schema_errors(result, schemas["result"])
+            )
+        ],
     )
     if problems:
         return record | {"status": "fail", "problems": problems[:20], "contract_problems": problems}
@@ -608,6 +619,9 @@ def property_problems(
     problems: list[str] = []
 
     def resend(name: str, scene: dict) -> dict | None:
+        if admission := ingestion_problems(scene, "scene"):
+            problems.extend(f"{name}: scene ingestion: {p}" for p in admission)
+            return None
         transformed = variant(item, name, scene)
         other, failure = answer(url, endpoint, transformed)
         if failure:
@@ -615,7 +629,7 @@ def property_problems(
             return None
         check_name = "result schema"
         try:
-            errors = schema_errors(other, schemas["result"])
+            errors = ingestion_problems(other, "result") or schema_errors(other, schemas["result"])
             if errors:
                 problems.append(f"{name}: result schema: {errors[0]}")
                 return None
@@ -641,7 +655,9 @@ def property_problems(
     # 1. Same input, same answer.
     status, payload, _ = post(url, endpoint, item)
     again = parse_result(payload) if status == 200 else None
-    if again is None or comparable(again) != comparable(result):
+    if again is not None and (admission := ingestion_problems(again, "result")):
+        problems.extend(f"identical resend: {p}" for p in admission)
+    elif again is None or comparable(again) != comparable(result):
         problems.append("sending the same scene twice gave different results")
 
     # 2. Mirrored left to right: same decision, same amount of each outcome along the wall.

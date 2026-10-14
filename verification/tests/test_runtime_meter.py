@@ -78,12 +78,14 @@ def test_reach_cache_includes_geometry_and_parameters():
 
 
 def test_ground_grid_stops_at_shared_runtime_limit():
-    meter = WorkMeter(30)
+    meter = WorkMeter()
     plan = GroundPlan(SCENE, RULES, meter=meter)
+    setup = meter.samples
+    meter.limit = setup + 30
     with pytest.raises(WorkLimitExceeded) as caught:
         plan.covers(2, 1, 3, 0, lambda _: 2)
-    assert caught.value.samples == meter.samples == 31
-    assert str(caught.value) == "verification work limit exceeded (31 samples)"
+    assert caught.value.samples == meter.samples == setup + 31
+    assert str(caught.value) == f"verification work limit exceeded ({setup + 31} samples)"
 
 
 def test_valid_wide_direct_coverage_uses_only_visited_work():
