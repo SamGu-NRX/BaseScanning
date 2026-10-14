@@ -3,6 +3,7 @@ import json
 import re
 import subprocess
 
+import pytest
 from PIL import Image
 
 from meter_eval import labels, review
@@ -75,10 +76,10 @@ def test_a_browser_keep_given_for_a_number_the_page_no_longer_shows_is_dropped()
     }
     rows = on_page("answerRows(items, startingAnswers(items, stored))", items=items, stored=stored)
     assert rows[1:] == [
-        ["m01", "fix", "7654321"],
-        ["m02", "", ""],
-        ["m03", "keep", ""],
-        ["m04", "", ""],
+        ["m01", "fix", "7654321", "", ""],
+        ["m02", "", "", "", ""],
+        ["m03", "keep", "", "3333333", "yes"],
+        ["m04", "", "", "", ""],
     ]
 
 
@@ -94,7 +95,10 @@ def test_a_browser_correction_survives_a_label_change_and_the_upgrade():
         "m02": {"verdict": "fix", "number": "2223333", "shown": "2220000"},
     }
     rows = on_page("answerRows(items, startingAnswers(items, stored))", items=items, stored=stored)
-    assert rows[1:] == [["m01", "fix", "ABC 7654321"], ["m02", "fix", "2223333"]]
+    assert rows[1:] == [
+        ["m01", "fix", "ABC 7654321", "", ""],
+        ["m02", "fix", "2223333", "2220000", "yes"],
+    ]
 
 
 def test_a_kept_correction_survives_a_label_change():
@@ -105,7 +109,7 @@ def test_a_kept_correction_survives_a_label_change():
     stored = {"m01": {**kept, "shown": "1111111"}}
     after = [{"id": "m01", "number": "1112222", "corrected": False, "answer": None}]
     rows = on_page("answerRows(items, startingAnswers(items, stored))", items=after, stored=stored)
-    assert rows[1:] == [["m01", "keep", "ABC 7654321"]]
+    assert rows[1:] == [["m01", "keep", "ABC 7654321", "1111111", "yes"]]
 
 
 def write(path, rows):
@@ -209,7 +213,7 @@ def test_a_correction_survives_rebuild_keep_in_a_new_browser_and_ingest(tmp_path
         " saved.m01 = keepAnswer(saved.m01, items[0]); return answerRows(items, saved); })()",
         items=items,
     )
-    assert rows[1] == ["m01", "keep", "7654321"]
+    assert rows[1] == ["m01", "keep", "7654321", "", ""]
     download = tmp_path / "answers.csv"
     with download.open("w", newline="") as handle:
         csv.writer(handle).writerows(rows)
@@ -221,13 +225,148 @@ def test_a_correction_survives_rebuild_keep_in_a_new_browser_and_ingest(tmp_path
     assert row["human_check"] == "keep"
 
 
-def test_ingest_keeps_earlier_answers_and_a_bare_keep_keeps_the_correction():
+def test_unbound_legacy_keep_preserves_the_earlier_correction_verdict():
     earlier = {
         "m01": {"verdict": "fix", "number": "7654321"},
         "m02": {"verdict": "keep", "number": ""},
     }
     new = {"m01": {"verdict": "keep", "number": ""}}
     assert review.merge(earlier, new) == {
-        "m01": {"verdict": "keep", "number": "7654321"},
+        "m01": {"verdict": "fix", "number": "7654321"},
         "m02": {"verdict": "keep", "number": ""},
+    }
+
+
+@pytest.mark.parametrize("legacy_csv", [False, True])
+@pytest.mark.parametrize("new_number", ["2222222", "", "NONE"])
+def test_download_ingest_label_change_and_reload_reopens_a_bare_keep(
+    tmp_path, monkeypatch, legacy_csv, new_number
+):
+    reader = {
+        "id": "m01",
+        "meter_number": "1111111",
+        "other_numbers": "",
+        "number_sure": "sure",
+        "class_label": "NONE",
+        "class_sure": "",
+        "notes": "",
+    }
+    source = {
+        "id": "m01",
+        "title": "t",
+        "page_url": "p",
+        "image_url": "i",
+        "license": "CC0",
+        "license_url": "",
+        "author": "a",
+    }
+    for name in ("labels_reader1.csv", "labels_reader2a.csv", "labels_reader2b.csv"):
+        write(tmp_path / name, [reader])
+    write(tmp_path / "src.csv", [source])
+    write(tmp_path / "clean_per_image.csv", [{"id": "m01", "number_box": ""}])
+    (tmp_path / "images").mkdir()
+    Image.new("RGB", (40, 30), "white").save(tmp_path / "images" / "m01.jpg")
+    human = tmp_path / "labels_human.csv"
+    monkeypatch.setattr(labels, "READER1", tmp_path / "labels_reader1.csv")
+    monkeypatch.setattr(labels, "READER2", [tmp_path / "labels_reader2a.csv"])
+    monkeypatch.setattr(labels, "SOURCES", tmp_path / "src.csv")
+    monkeypatch.setattr(labels, "HUMAN", human)
+    for name, value in {
+        "DATA_DIR": tmp_path,
+        "RESULTS_DIR": tmp_path,
+        "REVIEW_DIR": tmp_path / "review",
+        "MANIFEST": tmp_path / "manifest.csv",
+        "HUMAN_LABELS": human,
+    }.items():
+        monkeypatch.setattr(review, name, value)
+
+    def reload():
+        [row] = labels.build()
+        with (tmp_path / "manifest.csv").open("w", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=labels.FIELDS, restval="")
+            writer.writeheader()
+            writer.writerow(row)
+        review.build()
+        page = (tmp_path / "review" / "review.html").read_text()
+        items = json.loads(re.search(r'id="items">(.*?)</script>', page, re.DOTALL).group(1))
+        return row, items
+
+    _, items = reload()
+    stored = {"m01": {**keep_answer(None, items[0]), "shown": items[0]["number"]}}
+    rows = on_page("answerRows(items, stored)", items=items, stored=stored)
+    assert rows == [
+        ["id", "verdict", "number", "shown", "shown_known"],
+        ["m01", "keep", "", "1111111", "yes"],
+    ]
+    if legacy_csv:
+        rows = [row[:3] for row in rows]
+    download = tmp_path / "answers.csv"
+    with download.open("w", newline="") as handle:
+        csv.writer(handle).writerows(rows)
+    review.ingest(str(download))
+    imported = review.read_answers(human)["m01"]
+    assert imported.get("shown", "") == ("" if legacy_csv else "1111111")
+    if not legacy_csv:
+        before, items = reload()
+        assert before["human_check"] == "keep"
+        assert on_page("startingAnswers(items, {})", items=items) == {"m01": imported}
+
+    write(tmp_path / "labels_reader1.csv", [{**reader, "meter_number": new_number}])
+    after, items = reload()
+    assert items[0]["number"] == ("" if new_number == "NONE" else new_number)
+    assert after.get("human_check", "") == ""
+    assert after.get("number_agreed", "no") == after.get("number_agreed_strict", "no") == "no"
+    # Both a fresh browser and the stale original browser must reopen the changed label.
+    assert on_page("startingAnswers(items, {})", items=items) == {}
+    assert on_page("startingAnswers(items, stored)", items=items, stored=stored) == {}
+    assert on_page("answerRows(items, startingAnswers(items, stored))", items=items, stored=stored)[
+        1
+    ] == [
+        "m01",
+        "",
+        "",
+        "",
+        "",
+    ]
+
+
+def test_a_keep_for_a_different_shown_number_does_not_inherit_an_earlier_correction():
+    old = {"m01": {"verdict": "fix", "number": "1111111"}}
+    new = {"m01": {"verdict": "keep", "number": "", "shown": "2222222"}}
+    assert review.merge(old, new) == new
+
+
+@pytest.mark.parametrize("legacy_csv", [False, True])
+def test_csv_distinguishes_a_reviewed_empty_label_from_missing_binding(
+    tmp_path, monkeypatch, legacy_csv
+):
+    items = [{"id": "m01", "number": "", "corrected": False, "answer": None}]
+    kept = {"m01": {"verdict": "keep", "number": "", "shown": ""}}
+    rows = on_page("answerRows(items, kept)", items=items, kept=kept)
+    if legacy_csv:
+        rows = [row[:3] for row in rows]
+    download = tmp_path / "download.csv"
+    with download.open("w", newline="") as handle:
+        csv.writer(handle).writerows(rows)
+    human = tmp_path / "human.csv"
+    monkeypatch.setattr(review, "HUMAN_LABELS", human)
+    review.ingest(str(download))
+    imported = review.read_answers(human)
+    items[0]["answer"] = imported["m01"]
+    if legacy_csv:
+        assert "shown" not in imported["m01"]
+        assert on_page("startingAnswers(items, {})", items=items) == {}
+    else:
+        assert imported == kept
+        assert on_page("startingAnswers(items, {})", items=items) == kept
+    # Writing and re-ingesting the human file must not invent a binding on a second pass.
+    review.ingest(str(human))
+    assert review.read_answers(human) == imported
+
+
+def test_a_bound_keep_of_the_prior_correction_retains_its_label_binding():
+    old = {"m01": {"verdict": "fix", "number": "1111111"}}
+    new = {"m01": {"verdict": "keep", "number": "", "shown": "1111111"}}
+    assert review.merge(old, new) == {
+        "m01": {"verdict": "keep", "number": "1111111", "shown": "1111111"}
     }

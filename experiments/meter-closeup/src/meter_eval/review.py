@@ -96,30 +96,50 @@ def read_answers(path) -> dict[str, dict]:
         rows = list(csv.DictReader(handle))
     if rows and (missing := {"id", "verdict", "number"} - set(rows[0])):
         raise SystemExit(f"{path} lacks columns {sorted(missing)}; export it from review.html")
-    return {r["id"]: {"verdict": r["verdict"], "number": r["number"]} for r in rows if r["verdict"]}
+    return {
+        r["id"]: {
+            "verdict": r["verdict"],
+            "number": r["number"],
+            **(
+                {"shown": r["shown"]}
+                if r.get("shown_known") == "yes" or ("shown_known" not in r and r.get("shown"))
+                else {}
+            ),
+        }
+        for r in rows
+        if r["verdict"]
+    }
 
 
 def merge(earlier: dict[str, dict], new: dict[str, dict]) -> dict[str, dict]:
     """New answers replace earlier ones photo by photo; photos not answered again keep theirs.
 
-    A Keep that carries no number confirms what the page showed, which is the earlier
-    correction when there is one, so it keeps that number rather than dropping it.
+    A bare Keep confirms an earlier correction only when its recorded label matches.
+    An unbound legacy Keep retains the earlier correction without upgrading its verdict.
     """
     merged = dict(earlier)
     for image_id, answer in new.items():
         before = earlier.get(image_id, {})
         if answer["verdict"] == "keep" and not answer["number"] and before.get("number"):
-            answer = {"verdict": "keep", "number": before["number"]}
+            if "shown" not in answer:
+                # An unbound legacy Keep cannot confirm a new number or erase a prior correction.
+                answer = before
+            elif answer["shown"] == before["number"]:
+                answer = {**answer, "number": before["number"]}
         merged[image_id] = answer
     return merged
 
 
 def ingest(path: str) -> None:
     merged = merge(read_answers(HUMAN_LABELS), read_answers(Path(path)))
+    # CSV empty cells cannot distinguish a reviewed empty label from missing legacy metadata.
     with HUMAN_LABELS.open("w", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["id", "verdict", "number"])
-        writer.writerows([i, a["verdict"], a["number"]] for i, a in sorted(merged.items()))
+        writer.writerow(["id", "verdict", "number", "shown", "shown_known"])
+        writer.writerows(
+            [i, a["verdict"], a["number"], a.get("shown", ""), "yes" if "shown" in a else ""]
+            for i, a in sorted(merged.items())
+        )
     fixed = [i for i, a in merged.items() if a["verdict"] == "fix"]
     print(f"{len(merged)} answers, {len(fixed)} corrections -> {HUMAN_LABELS}")
     for image_id in sorted(fixed):
@@ -233,8 +253,9 @@ function startingAnswers(items, stored) {
   const answers = {};
   for (const item of items) {
     const mine = stored[item.id];
-    if (mine && (mine.number || mine.shown === item.number)) answers[item.id] = mine;
-    else if (item.answer) answers[item.id] = item.answer;
+    const valid = (answer) => answer && (answer.number || answer.shown === item.number);
+    if (valid(mine)) answers[item.id] = mine;
+    else if (valid(item.answer)) answers[item.id] = item.answer;
   }
   return answers;
 }
@@ -333,8 +354,9 @@ function keepAnswer(previous, item) {
 function keep(i) { store(i, keepAnswer(saved[items[i].id], items[i])); select(i + 1); }
 
 function answerRows(items, saved) {
-  return [["id", "verdict", "number"]].concat(
-    items.map((item) => [item.id, saved[item.id]?.verdict || "", saved[item.id]?.number || ""])
+  return [["id", "verdict", "number", "shown", "shown_known"]].concat(
+    items.map((item) => [item.id, saved[item.id]?.verdict || "", saved[item.id]?.number || "",
+      saved[item.id]?.shown || "", saved[item.id]?.shown !== undefined ? "yes" : ""])
   );
 }
 
