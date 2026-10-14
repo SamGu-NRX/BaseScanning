@@ -1,6 +1,6 @@
-# Each suite target runs the commands of its CI job in .github/workflows/.
+# Suite targets follow their CI jobs where one exists. The viewer has no CI job yet.
 # `make check` runs server, web and ios, then scoring, measure-lab, evals, recon
-# meter-closeup and verification where the branch has them.
+# meter-closeup, verification and the integration viewer where the branch has them.
 # tests/makefile.sh checks this dispatch with stub suites.
 
 XCODEGEN ?= xcodegen
@@ -9,20 +9,21 @@ XCODEGEN_VERSION := 2.46.0
 
 # The file each optional suite's target needs. These suites arrive in separate pull requests, so
 # `check` includes one only when its file exists and the Makefile works before and after each
-# merge. Once all six are on main, list them in `check` directly so a deleted folder fails.
+# merge. Once all seven are on main, list them in `check` directly so a deleted folder fails.
 SCORING := experiments/scoring/pyproject.toml
 MEASURE_LAB := experiments/measure-lab/Makefile
 EVALS := experiments/evals/Makefile
 RECON := recon/Makefile
 METER_CLOSEUP := experiments/meter-closeup/Makefile
 VERIFICATION := verification/Makefile
+INTEGRATION_VIEWER := tools/integration-viewer/package.json
 
 # $(call present,FILE,TARGET) is TARGET when FILE exists, otherwise nothing.
 present = $(if $(wildcard $(1)),$(2))
 # $(call require,FILE,PR): stop before any command runs when the suite's file is missing.
 require = @test -f $(1) || { echo "make $@: $(1) is missing; the suite arrives with pull request $(2)." >&2; exit 1; }
 
-.PHONY: check server web ios ios-project smoke scoring measure-lab evals recon meter-closeup verification
+.PHONY: check server web ios ios-project smoke scoring measure-lab evals recon meter-closeup verification integration-viewer
 
 check: server web ios \
 	$(call present,$(SCORING),scoring) \
@@ -30,7 +31,8 @@ check: server web ios \
 	$(call present,$(EVALS),evals) \
 	$(call present,$(RECON),recon) \
 	$(call present,$(METER_CLOSEUP),meter-closeup) \
-	$(call present,$(VERIFICATION),verification)
+	$(call present,$(VERIFICATION),verification) \
+	$(call present,$(INTEGRATION_VIEWER),integration-viewer)
 
 server:
 	cd server && uv sync --locked
@@ -66,9 +68,14 @@ scoring:
 	cd experiments/scoring && uv run ruff format --check .
 	cd experiments/scoring && uv run pytest -q
 
-# The Geometry package's tests, then the app build.
+# Regenerate and check the committed project before Geometry tests and the app build.
 measure-lab:
 	$(call require,$(MEASURE_LAB),#7)
+	$(MAKE) -C experiments/measure-lab project XCODEGEN="$(XCODEGEN)"
+	git diff --exit-code -- experiments/measure-lab/MeasureLab.xcodeproj
+	# A failed listing must not look like a clean generated project.
+	@untracked="$$(git ls-files --others --exclude-standard -- experiments/measure-lab/MeasureLab.xcodeproj)" || exit 1; \
+	test -z "$$untracked" || { echo "MeasureLab.xcodeproj contains uncommitted generated files." >&2; exit 1; }
 	$(MAKE) -C experiments/measure-lab check
 
 # The folder's `make test` lints and tests but leaves out the `uv sync --locked` that
@@ -82,9 +89,11 @@ recon:
 	$(call require,$(RECON),#20)
 	$(MAKE) -C recon test
 
+# Locked sync matches the metric CI job and rejects stale locks before uv run can rewrite them.
 # Lint and unit tests only. The separate leak scan needs a private key and must not run here.
 meter-closeup:
 	$(call require,$(METER_CLOSEUP),#16)
+	cd experiments/meter-closeup && uv sync --locked
 	$(MAKE) -C experiments/meter-closeup check
 
 # Match verification CI's locked sync so a stale lockfile cannot pass the local check.
@@ -92,6 +101,10 @@ verification:
 	$(call require,$(VERIFICATION),#13)
 	cd verification && uv sync --locked
 	$(MAKE) -C verification test
+
+integration-viewer:
+	$(call require,$(INTEGRATION_VIEWER),#124)
+	cd tools/integration-viewer && node --test "test/*.test.js"
 
 # Posts each scene in server/examples to a placement server and prints its decision:
 # make smoke URL=https://house-scanning-server.vercel.app [KEY_FILE=server/.env.private.local]

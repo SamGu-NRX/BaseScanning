@@ -334,6 +334,8 @@ function renderResult() {
 
   const box = $("outcome");
   const body = result.body;
+  $("outcome-note").hidden = !body || !result.error;
+  $("outcome-note").textContent = body && result.error ? `Refreshing the result failed (${plainError(result.error)}). This is the last result received.` : "";
   if (result.phase === "error" && !body) {
     box.hidden = false;
     setOutcome("", "Could not read the result", `${result.error}. The viewer will try again while connected.`);
@@ -341,15 +343,13 @@ function renderResult() {
     $("review-link").hidden = true;
     return;
   }
-  if (!body || (result.phase !== "ready" && result.phase !== "loading")) {
+  if (!body || (result.phase !== "ready" && result.phase !== "loading" && !result.error)) {
     box.hidden = true;
     $("criteria").replaceChildren();
     $("criteria").dataset.key = "";
     return;
   }
   box.hidden = false;
-  $("outcome-note").hidden = !result.error;
-  $("outcome-note").textContent = result.error ? `Refreshing the result failed (${plainError(result.error)}). This is the last result received.` : "";
   const outcome = body.outcome;
   if (outcome && typeof outcome.kind === "string") {
     setOutcome(outcome.kind, OUTCOME_WORDS[outcome.kind] ?? outcome.kind, typeof outcome.message === "string" ? outcome.message : "");

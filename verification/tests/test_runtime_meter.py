@@ -44,11 +44,12 @@ def test_unknown_nearest_wall_is_rejected_before_geometry():
     assert meter.samples == 0
 
 
-def test_identical_unsure_checks_do_not_repeat_geometry():
+@pytest.mark.parametrize("has_unobserved_reason", [False, True])
+def test_identical_unsure_checks_do_not_repeat_geometry(has_unobserved_reason):
     unsure = check(outcome="unsure", measured=None, cause="unobserved") | {"id": "pool_clearance"}
     answer = result(checks=[unsure], complete=False)
     answer["spot"]["outcome"] = "unsure"
-    answer["reasons"] = [{"code": "unobserved_area"}]
+    answer["reasons"] = [{"code": "unobserved_area"}] if has_unobserved_reason else []
     answer["missing_evidence"] = [{"kind": "band", "band": "ground", "checks": ["pool_clearance"]}]
     rules = replace(RULES, needs={"pool_clearance": (Need("ground", 10),)})
     meter = WorkMeter(100_000)
@@ -129,6 +130,31 @@ def test_valid_wide_direct_coverage_uses_only_visited_work():
     assert geometry_admission_problems(scene, answer, rules) == []
     assert invariant_problems(scene, answer, rules=rules, meter=meter) == []
     assert 0 < meter.samples < 100_000
+
+
+def test_public_solver_80_foot_wall_uses_direct_coverage(monkeypatch):
+    # Recorded from public server/rules.yaml with solve(parse_scene(...)) on 2026-10-14.
+    # Elapsed time is normalized to zero. Keep the response here so verification
+    # needs no solver or Shapely dependency.
+    fixture = json.loads((Path(__file__).parent / "fixtures/wide-public-pass.json").read_text())
+    scene, answer = fixture["scene"], fixture["result"]
+    rules = RuleSet.from_yaml((Path(__file__).parents[2] / "server/rules.yaml").read_text())
+    for kind, value in (("scene", scene), ("result", answer)):
+        schema = json.loads(
+            (Path(__file__).parents[2] / "server/schemas" / f"{kind}.schema.json").read_text()
+        )
+        assert schema_errors(value, schema) == []
+    assert answer["decision"] == "pass"
+    assert answer["stats"]["candidates"] == 683
+
+    def unexpected_grid(*args, **kwargs):
+        pytest.fail("complete direct coverage must not sample the ground grid")
+
+    monkeypatch.setattr(GroundPlan, "_samples", unexpected_grid)
+    meter = WorkMeter()
+    assert invariant_problems(scene, answer, rules=rules, meter=meter) == []
+    # Actual footprint, interval and metadata visits are below 1% of the shared limit.
+    assert 0 < meter.samples < checks.MAX_WORK_SAMPLES // 100
 
 
 def test_invariant_geometry_exception_names_its_check(monkeypatch):

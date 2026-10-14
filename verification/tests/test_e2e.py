@@ -742,7 +742,36 @@ def test_bundle_uses_exact_canonical_scene(tmp_path):
     assert e2e.read_bundle(archive)[0] == b"canonical"
 
 
-@pytest.mark.parametrize("names", [["old-scene.json"], ["scene.json", "scene.json"]])
+def test_bundle_reads_one_wrapped_capture_and_ignores_macos_metadata(tmp_path):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("capture/", b"")
+        z.writestr("capture/scene.json", b"canonical")
+        z.writestr("capture/frame.jpg", b"photo")
+        z.writestr("__MACOSX/capture/._scene.json", b"metadata")
+        z.writestr("__MACOSX/capture/frame.jpg", b"metadata")
+    assert e2e.read_bundle(archive) == (b"canonical", {"frame.jpg": b"photo"})
+
+
+def test_bundle_root_scene_takes_precedence_over_wrapped_scene(tmp_path):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("scene.json", b"canonical")
+        z.writestr("capture/scene.json", b"other")
+    assert e2e.read_bundle(archive)[0] == b"canonical"
+
+
+@pytest.mark.parametrize(
+    "names",
+    [
+        ["old-scene.json"],
+        ["scene.json", "scene.json"],
+        ["capture/scene.json", "capture/scene.json"],
+        ["first/scene.json", "second/scene.json"],
+        ["capture/scene.json", "other/frame.jpg"],
+        ["capture/nested/scene.json"],
+    ],
+)
 def test_bundle_rejects_missing_or_duplicate_canonical_scene(tmp_path, names):
     archive = tmp_path / "scene.zip"
     with zipfile.ZipFile(archive, "w") as z:
