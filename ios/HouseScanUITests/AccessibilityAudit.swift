@@ -136,14 +136,21 @@ enum AccessibilityAudit {
             Thread.sleep(forTimeInterval: 1)
             passes.append(try pass(app))
         }
-        let latest = passes.reversed()
-        let persistent = AuditIssueKey.repeated(in: passes.map(\.findings)).compactMap { key in
-            latest.lazy.compactMap { $0.findings[key] }.first.map { (key: key, finding: $0) }
+        return outcome(from: passes)
+    }
+
+    static func outcome(from passes: [Pass]) -> Outcome {
+        let newestFirst = passes.reversed()
+        func findings(for keys: [String]) -> [(key: String, finding: Finding)] {
+            keys.compactMap { key in
+                newestFirst.lazy.compactMap { $0.findings[key] }.first.map { (key: key, finding: $0) }
+            }
         }
-        let transient = AuditIssueKey.transient(in: passes.map(\.findings)).compactMap { key in
-            latest.lazy.compactMap { $0.findings[key] }.first.map { (key: key, finding: $0) }
-        }
-        return Outcome(persistent: persistent, transient: transient, unread: passes.flatMap(\.unread))
+        let keyedPasses = passes.map(\.findings)
+        return Outcome(
+            persistent: findings(for: AuditIssueKey.repeated(in: keyedPasses)),
+            transient: findings(for: AuditIssueKey.transient(in: keyedPasses)),
+            unread: passes.flatMap(\.unread))
     }
 }
 
@@ -185,6 +192,30 @@ final class AuditIssueKeyTests: XCTestCase {
         XCTAssertEqual(AuditIssueKey.transient(in: passes), ["contrast|id:instruction", "contrast|id:photoCount"])
         let repeated = passes + [["contrast|id:instruction": 1]]
         XCTAssertEqual(AuditIssueKey.transient(in: repeated), ["contrast|id:photoCount"])
+    }
+
+    @MainActor
+    func testFirstPassOnlyFindingRetainsItsMessage() {
+        let key = AuditIssueKey.key(auditType: contrast, identifier: "instruction", label: "Slow down")
+        let outcome = AccessibilityAudit.outcome(from: [
+            .init(findings: [key: .init(message: "pass 1")]),
+            .init()
+        ])
+        XCTAssertTrue(outcome.persistent.isEmpty)
+        XCTAssertEqual(outcome.transient.map(\.key), [key])
+        XCTAssertEqual(outcome.transient.first?.finding.message, "pass 1")
+    }
+
+    @MainActor
+    func testRepeatedFindingKeepsOnlyTheNewestMessage() {
+        let key = AuditIssueKey.key(auditType: contrast, identifier: "instruction", label: "Slow down")
+        let outcome = AccessibilityAudit.outcome(from: [
+            .init(findings: [key: .init(message: "pass 1")]),
+            .init(findings: [key: .init(message: "pass 2")])
+        ])
+        XCTAssertEqual(outcome.persistent.map(\.key), [key])
+        XCTAssertEqual(outcome.persistent.first?.finding.message, "pass 2")
+        XCTAssertTrue(outcome.transient.isEmpty)
     }
 
     func testAnIssueFoundOnlyOnceIsNotRepeated() {
