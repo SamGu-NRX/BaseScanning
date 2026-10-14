@@ -20,7 +20,7 @@ from PIL import Image, ImageOps
 
 from meter_eval import retake
 from meter_eval.locate import candidates, ranked, top_candidate
-from meter_eval.match import match_serial, normalize, number_core
+from meter_eval.match import match_serial, number_core
 from meter_eval.ocr import Reader
 from meter_eval.quality import gray
 
@@ -60,10 +60,12 @@ def main() -> None:
     parser.add_argument("--number", required=True, help="the meter number as printed")
     args = parser.parse_args()
 
-    target = normalize(args.number)
-    if not target:
+    try:
+        target_core = number_core(args.number)
+    except ValueError as error:
+        parser.error(str(error))
+    if not target_core:
         parser.error("--number must contain letters or digits")
-    target_core = number_core(args.number)
     photos = sorted(p for p in args.folder.iterdir() if p.suffix.lower() in SUFFIXES)
     if not photos:
         raise SystemExit(f"no .jpg, .png or .heic photos in {args.folder}")

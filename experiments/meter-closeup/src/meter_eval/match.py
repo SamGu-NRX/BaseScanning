@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import os
 import re
+import unicodedata
 from collections.abc import Sequence
 
 from meter_eval.paths import KEY_PATH
@@ -49,8 +50,15 @@ KEYWORD = re.compile(
 )
 
 
+_SERIAL_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+
 def read_target(text: str) -> str:
-    return "".join(re.findall(r"[^\W_]+", KEYWORD.sub("", text, count=1))).casefold()
+    text = unicodedata.normalize("NFKC", text).upper()
+    text = KEYWORD.sub("", text, count=1)
+    if any(character.isalnum() and character not in _SERIAL_ALPHABET for character in text):
+        raise ValueError("--number contains unsupported non-ASCII letters or digits after NFKC")
+    return "".join(character for character in text if character in _SERIAL_ALPHABET).lower()
 
 
 def number_core(text: str) -> str:
@@ -75,8 +83,26 @@ SERIAL_RATINGS = {
         "PH",
         "WIRE",
     ),
-    "classes": ("CL", "FM", "2S", "3W"),
+    "classes": (r"CL\s*[0-9]{1,3}", r"FM\s*[0-9]{1,3}[A-Z]?", "2S", "3W"),
 }
+
+
+# Ratings are short because voltage/current/frequency/Kh/class values have at most
+# four digits; longer digit-bearing strings remain possible serials.
+_SMALL_RATING_NUMBER = (
+    r"(?:[0-9]{1,3}\.[0-9]|[0-9]{1,2}\.[0-9]{2}|[0-9]\.[0-9]{3}|\.[0-9]{1,4}|[0-9]{1,4})"
+)
+_RATING = re.compile(
+    r"(?<!\w)(?<![0-9]\.)(?:"
+    + _SMALL_RATING_NUMBER
+    + r"\s*(?:"
+    + "|".join(sorted(SERIAL_RATINGS["units"], key=len, reverse=True))
+    + r")|KH\s*"
+    + _SMALL_RATING_NUMBER
+    + "|"
+    + "|".join(SERIAL_RATINGS["classes"])
+    + r")(?!\w)(?!\.[0-9])"
+)
 
 
 def match_serial(
@@ -86,6 +112,8 @@ def match_serial(
 
     Labels and ratings split runs. Numeric neighbours disallow a partial number;
     alphabetic neighbours permit a serial inside surrounding printed words.
+    A separately printed label word always splits a run, so AB SN 12345 cannot
+    represent ABSN12345; the same serial printed as one group is supported.
     """
     rows = []
     for line in sorted(lines, key=lambda item: item["box"][1]):
@@ -102,18 +130,46 @@ def match_serial(
     label_groups = [
         tuple(re.findall(r"N°|№|#|[A-Z0-9]+", label.upper())) for label in NUMBER_LABELS
     ]
-    units = set(SERIAL_RATINGS["units"])
-    classes = set(SERIAL_RATINGS["classes"])
     for row_id, row in enumerate(rows):
-        row_text = " ".join(piece["text"] for piece in sorted(row, key=lambda p: p["box"][0]))
         row_box = union_box([piece["box"] for piece in row])
-        groups = [
-            (token.group(), piece["box"])
-            for piece in sorted(row, key=lambda p: p["box"][0])
-            for token in re.finditer(r"N°|№|#|[A-Z0-9]+", piece["text"].upper())
-        ]
+        # NFKC and uppercase only: no O/0, I/1 or Cyrillic/Latin confusable mapping.
+        ordered = sorted(row, key=lambda piece: piece["box"][0])
+        normalized = []
+        owners = []
+        for piece in ordered:
+            text = unicodedata.normalize("NFKC", piece["text"]).upper()
+            if normalized:
+                owners.append(None)
+            normalized.append(text)
+            owners.extend([piece["box"]] * len(text))
+        row_text = " ".join(normalized)
+        masked = list(row_text)
+        for rating in _RATING.finditer(row_text):
+            # Preserve offsets for source boxes while making the entire rating a boundary.
+            masked[rating.start() : rating.end()] = ["\0"] + [" "] * (
+                rating.end() - rating.start() - 1
+            )
+        groups = []
+        for token in re.finditer(r"N°|№|#|\x00|[^\W_]+", "".join(masked)):
+            boxes = []
+            for box in owners[token.start() : token.end()]:
+                if box is not None and box not in boxes:
+                    boxes.append(box)
+            groups.append((token.group(), boxes))
         words = [word for word, _ in groups]
-        kinds = ["numeric" if word.isdigit() else "text" for word in words]
+        kinds = []
+        for word in words:
+            if word == "\0":
+                kind = "boundary"
+            elif any(
+                character.isalnum() and character not in _SERIAL_ALPHABET for character in word
+            ):
+                kind = "invalid"
+            elif word.isdigit():
+                kind = "numeric"
+            else:
+                kind = "text"
+            kinds.append(kind)
         i = 0
         while i < len(words):
             label = next(
@@ -124,33 +180,21 @@ def match_serial(
                 i += len(label)
             else:
                 i += 1
-        for i, word in enumerate(words):
-            if kinds[i] == "boundary":
-                continue
-            attached = re.fullmatch(r"([0-9]+)([A-Z]+)", word)
-            if (
-                word in units
-                or word in classes
-                or re.fullmatch(r"CL[0-9]+", word)
-                or (attached and attached[2] in units)
-            ):
-                kinds[i] = "boundary"
-                if word in units and i and kinds[i - 1] == "numeric":
-                    kinds[i - 1] = "boundary"
-                if word in ("CL", "FM") and i + 1 < len(words) and kinds[i + 1] == "numeric":
-                    kinds[i + 1] = "boundary"
         for start in range(len(words)):
-            if kinds[start] == "boundary" or (start and kinds[start - 1] == "numeric"):
+            if kinds[start] in ("boundary", "invalid") or (
+                start and kinds[start - 1] in ("numeric", "invalid")
+            ):
                 continue
             joined = ""
             boxes = []
             for end in range(start, len(words)):
-                if kinds[end] == "boundary":
+                if kinds[end] in ("boundary", "invalid"):
                     break
                 joined += words[end]
-                if groups[end][1] not in boxes:
-                    boxes.append(groups[end][1])
-                if end + 1 < len(words) and kinds[end + 1] == "numeric":
+                for box in groups[end][1]:
+                    if box not in boxes:
+                        boxes.append(box)
+                if end + 1 < len(words) and kinds[end + 1] in ("numeric", "invalid"):
                     continue
                 # Alphabetic fragments can join a serial; a maker word alone is not one.
                 if not any(character.isdigit() for character in joined):

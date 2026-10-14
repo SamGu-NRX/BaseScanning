@@ -28,6 +28,17 @@ CASES = [
     ("N° 1234567", "1234567", True),
     ("S/N: AB-12345", "AB12345", True),
     ("S/N: AB-12345", "ab 12345", True),
+    ("A1234567", "SN A 1234567", True),
+    ("1234567A", "SN 1234567A", True),
+    ("1234567", "1234567 240.0V", True),
+    ("1234567", "240.0V 1234567", True),
+    ("1234567", "٩1234567", False),
+    ("1234567", "1234567８", False),
+    ("1234567", "А1234567", False),
+    ("１２３４５６７", "１２３４５６７", True),
+    ("１２３４５６７", "1234567", True),
+    ("ABSN12345", "AB SN 12345", False),
+    ("ABSN12345", "ABSN12345", True),
 ]
 
 
@@ -108,9 +119,9 @@ def test_other_rows_do_not_complete_a_serial():
     assert not reads_number(lines, "ABC1234567")
 
 
-@pytest.mark.parametrize("text", ["CL 1234567", "FM 1234567", "1234567V"])
+@pytest.mark.parametrize("text", ["CL 200", "FM 2S", "240V"])
 def test_class_or_unit_number_is_not_a_serial(text):
-    assert not reads_number(observations(text), "1234567")
+    assert not candidates({"lines": observations(text), "barcodes": []})
 
 
 @pytest.mark.parametrize("target,text,expected", CASES)
@@ -208,3 +219,64 @@ def test_keyword_scope_is_the_row_prefix_not_a_later_group():
     assert all(
         not candidate["keyword"] for candidate in candidates({"lines": lines, "barcodes": []})
     )
+
+
+@pytest.mark.parametrize("rating", ["240.0V", "240.0 V", "2.5A", "KH 7.2", "KH7.2", "CL200"])
+def test_complete_decimal_ratings_leave_no_partial_candidate(rating):
+    for text in (f"1234567 {rating}", f"{rating} 1234567"):
+        found = candidates({"lines": observations(text), "barcodes": []}, "1234567")
+        assert {candidate["core"] for candidate in found} == {"1234567"}
+
+
+@pytest.mark.parametrize("text", ["٩ 1234567", "1234567 А", "Α 1234567"])
+def test_invalid_ocr_groups_are_numeric_like_neighbours(text):
+    assert not reads_number(observations(text), "1234567")
+
+
+@pytest.mark.parametrize("target", ["٩1234567", "А1234567", "Α1234567"])
+def test_invalid_target_is_a_loud_argument_error(tmp_path, monkeypatch, capsys, target):
+    import sys
+
+    from meter_eval import fieldtest
+
+    monkeypatch.setattr(sys, "argv", ["fieldtest", str(tmp_path), "--number", target])
+    with pytest.raises(SystemExit) as error:
+        fieldtest.main()
+    assert error.value.code == 2
+    assert "unsupported non-ASCII" in capsys.readouterr().err
+
+
+def test_standalone_label_shape_inside_a_split_serial_is_unsupported():
+    # SN is always a label boundary when printed separately, even within a serial.
+    assert not reads_number(observations("AB SN 12345"), "ABSN12345")
+    assert reads_number(observations("ABSN12345"), "ABSN12345")
+
+
+@pytest.mark.parametrize(
+    "target,text",
+    [
+        ("ABO123456", "AB0123456"),
+        ("ABI123456", "AB1123456"),
+        ("A1234567", "А1234567"),
+    ],
+)
+def test_confusable_characters_are_not_mapped(target, text):
+    assert not reads_number(observations(text), target)
+
+
+def test_decimal_rating_spanning_observations_keeps_the_serial_box():
+    lines = observations("1234567|240.0|V")
+    found = candidates({"lines": lines, "barcodes": []}, "1234567")
+    assert {candidate["core"] for candidate in found} == {"1234567"}
+    assert found[0]["boxes"] == [lines[0]["box"]]
+
+
+@pytest.mark.parametrize("text", ["SN.240V 1234567", "240V. 1234567", "SN:2.5A 1234567"])
+def test_complete_ratings_at_label_and_punctuation_boundaries(text):
+    found = candidates({"lines": observations(text), "barcodes": []}, "1234567")
+    assert {candidate["core"] for candidate in found} == {"1234567"}
+
+
+@pytest.mark.parametrize("serial", ["12345V", "1234.5A", "CL1234", "FM12345"])
+def test_long_rating_shaped_tokens_remain_serials(serial):
+    assert reads_number(observations(f"SN {serial}"), serial)

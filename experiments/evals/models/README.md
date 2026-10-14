@@ -53,7 +53,7 @@ Network outputs are resampled to the input grid bilinearly. A pixel is valid onl
 
 | `--model` | Checkpoint (revision) | License | Code (commit) |
 | --- | --- | --- | --- |
-| `moge2` | [`Ruicheng/moge-2-vitl-normal`](https://huggingface.co/Ruicheng/moge-2-vitl-normal) (`cb0e8bb`) | weights unverified; code MIT | microsoft/MoGe `0744441` |
+| `moge2` | [`Ruicheng/moge-2-vitl-normal`](https://huggingface.co/Ruicheng/moge-2-vitl-normal) (`cb0e8bb`) | weights unverified; MoGe code MIT; DINOv2 code Apache-2.0 | [microsoft/MoGe `0744441`](https://github.com/microsoft/MoGe/blob/07444410f1e33f402353b99d6ccd26bd31e469e8/README.md#license) |
 | `da3metric` | [`depth-anything/DA3METRIC-LARGE`](https://huggingface.co/depth-anything/DA3METRIC-LARGE) (`4010e39`) | Apache-2.0 | ByteDance-Seed/Depth-Anything-3 `3d835ec` |
 | `mapanything` | [`facebook/map-anything-apache`](https://huggingface.co/facebook/map-anything-apache) (`00f9c24`) | Apache-2.0 | facebookresearch/map-anything `3d10cf7` |
 
