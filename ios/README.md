@@ -54,6 +54,7 @@ Every screen change is logged as `STATE=<phase>` under subsystem `dev.housescann
 | `Config/Local.xcconfig.example` | Template for per-person signing |
 | `Config/Info.plist` | Camera prompt, `arkit` capability, portrait only, HTTP to local-network servers |
 | `HouseScanKit/` | Capture logic package with its tests |
+| `HouseScanTests/` | Engine unit tests in the Simulator, with explicit screen times for guidance pauses. |
 | `HouseScanUITests/` | Full-flow UI tests on a replay, and an accessibility audit of every screen state in demo mode. `Fixtures/` holds two synthetic replays, one with LiDAR depth; the tests read them from the source tree, and `project.yml` keeps them out of the test bundle. |
 | `Tools/make-synthetic-replay.swift` | Renders the synthetic fixture |
 | `Tools/check-app-scene.sh` | Checks a scan bundle's scene.json against the server schema |
@@ -80,7 +81,8 @@ Test the capture logic, then run the whole flow in the Simulator on the syntheti
 ```sh
 swift test --package-path ios/HouseScanKit
 xcodebuild -project ios/HouseScan.xcodeproj -scheme HouseScan \
-  -destination "platform=iOS Simulator,name=iPhone 17" -only-testing:HouseScanUITests test
+  -destination "platform=iOS Simulator,name=iPhone 17" \
+  -only-testing:HouseScanTests -only-testing:HouseScanUITests test
 ```
 
 To run the flow on a local recording, set `TEST_RUNNER_HOUSESCAN_REPLAY=<session folder>` for that `xcodebuild` command. Keep such recordings and their screenshots out of git.

@@ -498,6 +498,19 @@ import Testing
         #expect(planner.update(coverage: map, camera: camera, time: 55).stalled == first.task)
     }
 
+    @Test func aPauseWithoutPlannerUpdatesKeepsTheRemainingStallBudget() {
+        let map = CoverageMap(wall: standardWall())
+        let camera = Self.homeowner()
+        var planner = GuidancePlanner()
+        let first = planner.update(coverage: map, camera: camera, time: 0)
+        planner.recordAimActionability(false, time: 5)
+        planner.recordAimActionability(false, time: 35)
+        #expect(planner.current == first.task)
+        #expect(planner.update(coverage: map, camera: camera, time: 40).task == first.task)
+        #expect(planner.update(coverage: map, camera: camera, time: 54.9).stalled == nil)
+        #expect(planner.update(coverage: map, camera: camera, time: 55).stalled == first.task)
+    }
+
     @Test func aReplacementAimWindowDoesNotOverlapADeferredStretch() {
         var map = Self.meterGroundSkipped()
         map.setEnd(.left, at: -0.5)

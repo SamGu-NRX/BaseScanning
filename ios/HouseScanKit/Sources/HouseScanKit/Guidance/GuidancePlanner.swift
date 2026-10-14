@@ -134,6 +134,17 @@ public struct GuidancePlanner: Sendable {
         pausedAt = nil
     }
 
+    /// Records whether the aim can be acted on, without choosing or settling a task. The engine
+    /// calls this even when a question or another instruction bypasses `update` (review of #237).
+    public mutating func recordAimActionability(_ actionable: Bool, time: Double) {
+        if let pausedAt {
+            lastProgressAt += max(0, time - pausedAt)
+            self.pausedAt = actionable ? nil : time
+        } else if !actionable {
+            pausedAt = time
+        }
+    }
+
     /// The task for this moment.
     ///
     /// - A satisfied task gives way at once.
@@ -147,14 +158,7 @@ public struct GuidancePlanner: Sendable {
     ///
     /// Deterministic in `time`.
     public mutating func update(coverage: CoverageMap, camera: CameraFrame?, time: Double, aimActionable: Bool = true) -> GuidanceOutput {
-        // Coaching and marking replace the aim instruction. Time spent there cannot stall
-        // that hidden task (reviews of #120). A resumed task keeps its remaining time.
-        if let pausedAt {
-            lastProgressAt += max(0, time - pausedAt)
-            self.pausedAt = aimActionable ? nil : time
-        } else if !aimActionable {
-            pausedAt = time
-        }
+        recordAimActionability(aimActionable, time: time)
         var preferred = preferredTask(coverage: coverage, camera: camera)
         var switched: GuidanceSwitch?
         var stalled: GuidanceTask?

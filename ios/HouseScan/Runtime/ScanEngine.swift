@@ -1095,9 +1095,15 @@ final class ScanEngine {
     /// reads. Live, the two clocks agree; a replay at 3x speed on frame time changed the card
     /// every second or so, which the verify lane's wall-clock check (I6) and the accessibility
     /// audit both caught.
-    private func updateGuidance(camera: CameraFrame, time _: Double) {
+    func updateGuidance(camera: CameraFrame, time _: Double,
+                        screenTime: Double = Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000) {
+        // Every exit records visibility without selecting another task. Questions, tilt-up and
+        // next-wall instructions bypass the planner but still hide its aim (review of #237).
+        var aimActionable = false
+        defer { planner.recordAimActionability(aimActionable, time: screenTime) }
         // A question is on screen: the next step waits for its answer.
-        guard let map = coverage, state.endQuestion == nil, !state.overheadQuestion else { return }
+        guard let map = coverage, state.endQuestion == nil, !state.overheadQuestion,
+              !state.endScanQuestion else { return }
         if let side = nextWallSide {
             state.guidance = .markNextWall(side: side, refusal: nextWallRefusal)
             state.guidanceHint = nil
@@ -1108,6 +1114,7 @@ final class ScanEngine {
             logGuidance()
             return
         }
+        guard state.nextWallConfirm == nil else { return }
         if let span = tiltUpSpanIfDue(map, camera: camera) {
             state.guidance = .tiltUp(span: span)
             state.guidanceHint = nil
@@ -1116,9 +1123,10 @@ final class ScanEngine {
             logGuidance()
             return
         }
-        let screenTime = Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000
+        aimActionable = canActOnAim(planner.current, map, camera: camera)
         let output = planner.update(coverage: map, camera: camera, time: screenTime,
-                                    aimActionable: state.marking == nil && !(state.coaching.map(ScanCopy.coachingReplacesTask) ?? false))
+                                    aimActionable: aimActionable)
+        aimActionable = canActOnAim(output.task, map, camera: camera)
         logPlannerSwitch(output)
         if let hidden = hiddenBlock(output.task, map, camera: camera) {
             seeBehindBands = hidden.bands
@@ -1142,6 +1150,11 @@ final class ScanEngine {
             state.path = output.path
         }
         logGuidance()
+    }
+
+    private func canActOnAim(_ task: GuidanceTask?, _ map: CoverageMap, camera: CameraFrame) -> Bool {
+        state.marking == nil && !(state.coaching.map(ScanCopy.coachingReplacesTask) ?? false)
+            && (task.map { hiddenBlock($0, map, camera: camera) == nil } ?? true)
     }
 
     /// What the card of an aim step says beside the step (`GuidanceHint`); nil for other steps.

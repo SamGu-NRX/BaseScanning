@@ -7,10 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9E49C1F7413055A20144DE46 /* HouseScanKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0ABEFA6225E5C53B13278F33 /* HouseScanKit */; };
 		A08E1583C6EBA84CB5619CD2 /* HouseScanKit in Frameworks */ = {isa = PBXBuildFile; productRef = 19E9E07688F7D0E710D21D89 /* HouseScanKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		3FBEA85B221B2F02240EE7A5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0BC33671F32C9E42F1E3A643 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C5240AAFE2CE18E751FB21F9;
+			remoteInfo = HouseScan;
+		};
 		A0652F9B03D0AB543FDB519D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 0BC33671F32C9E42F1E3A643 /* Project object */;
@@ -22,6 +30,7 @@
 
 /* Begin PBXFileReference section */
 		0C4096780A5627C9A53A29B2 /* HouseScan.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HouseScan.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1CBE54EEDCE0F73FCDB039DD /* HouseScanTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HouseScanTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B959F2AE1DD15E7A99C500EF /* HouseScanUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HouseScanUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E5448723EC7099F74C7CCBEC /* HouseScanKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = HouseScanKit; path = HouseScanKit; sourceTree = SOURCE_ROOT; };
 		EEAA26E1BB7E90A7AD7923C7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -319,6 +328,15 @@
 			path = HouseScanUITests;
 			sourceTree = "<group>";
 		};
+		CC4781ECBCFC11DDDCE7EB52 /* HouseScanTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = HouseScanTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -330,6 +348,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C88C3BD86E7ED261DAF8F394 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9E49C1F7413055A20144DE46 /* HouseScanKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -337,6 +363,7 @@
 			isa = PBXGroup;
 			children = (
 				0C4096780A5627C9A53A29B2 /* HouseScan.app */,
+				1CBE54EEDCE0F73FCDB039DD /* HouseScanTests.xctest */,
 				B959F2AE1DD15E7A99C500EF /* HouseScanUITests.xctest */,
 			);
 			name = Products;
@@ -364,6 +391,7 @@
 			children = (
 				8AD6B37B63CD5C86504E5E20 /* Config */,
 				050A16F154C46B951098B8C8 /* HouseScan */,
+				CC4781ECBCFC11DDDCE7EB52 /* HouseScanTests */,
 				AA23F1E57E4893FBA0800AFF /* HouseScanUITests */,
 				8885F681E8E6766935603C4F /* Packages */,
 				15857B17057201C5A1934D04 /* Products */,
@@ -373,6 +401,30 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		521C57D77FE0C548313D119B /* HouseScanTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D381E537976E9B221A2DD29C /* Build configuration list for PBXNativeTarget "HouseScanTests" */;
+			buildPhases = (
+				1BD17A31941512B1A28DA8AB /* Sources */,
+				D6D2E0FC3862C4B0757BDD69 /* Resources */,
+				C88C3BD86E7ED261DAF8F394 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E025096C6C8DAC4D39073E41 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CC4781ECBCFC11DDDCE7EB52 /* HouseScanTests */,
+			);
+			name = HouseScanTests;
+			packageProductDependencies = (
+				0ABEFA6225E5C53B13278F33 /* HouseScanKit */,
+			);
+			productName = HouseScanTests;
+			productReference = 1CBE54EEDCE0F73FCDB039DD /* HouseScanTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		C5240AAFE2CE18E751FB21F9 /* HouseScan */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = BC75D335CF0AD12595EFD903 /* Build configuration list for PBXNativeTarget "HouseScan" */;
@@ -454,6 +506,7 @@
 			projectRoot = "";
 			targets = (
 				C5240AAFE2CE18E751FB21F9 /* HouseScan */,
+				521C57D77FE0C548313D119B /* HouseScanTests */,
 				EF941BB37D13A698579DF2A6 /* HouseScanUITests */,
 			);
 		};
@@ -461,6 +514,13 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		1B7B501579D25B4A33756562 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D6D2E0FC3862C4B0757BDD69 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -477,6 +537,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		1BD17A31941512B1A28DA8AB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		535AA09D0DE15B25D4976AD1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -499,9 +566,32 @@
 			target = C5240AAFE2CE18E751FB21F9 /* HouseScan */;
 			targetProxy = A0652F9B03D0AB543FDB519D /* PBXContainerItemProxy */;
 		};
+		E025096C6C8DAC4D39073E41 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C5240AAFE2CE18E751FB21F9 /* HouseScan */;
+			targetProxy = 3FBEA85B221B2F02240EE7A5 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		03329D030368FF71323BF8D1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F30ACBC67A4159A449077AF5 /* Shared.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).housescan.tests";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HouseScan.app/HouseScan";
+			};
+			name = Debug;
+		};
 		1D9A3F7F45102D23B342FD47 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F30ACBC67A4159A449077AF5 /* Shared.xcconfig */;
@@ -634,6 +724,24 @@
 			};
 			name = Release;
 		};
+		D4EED2D37599FB8F4913A7D7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F30ACBC67A4159A449077AF5 /* Shared.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).housescan.tests";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HouseScan.app/HouseScan";
+			};
+			name = Release;
+		};
 		EDBBEE1A17A6FC582D27DB71 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F30ACBC67A4159A449077AF5 /* Shared.xcconfig */;
@@ -741,6 +849,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		D381E537976E9B221A2DD29C /* Build configuration list for PBXNativeTarget "HouseScanTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				03329D030368FF71323BF8D1 /* Debug */,
+				D4EED2D37599FB8F4913A7D7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -751,6 +868,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0ABEFA6225E5C53B13278F33 /* HouseScanKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HouseScanKit;
+		};
 		19E9E07688F7D0E710D21D89 /* HouseScanKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = HouseScanKit;
