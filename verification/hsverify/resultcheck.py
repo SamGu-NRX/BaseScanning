@@ -37,8 +37,10 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from .diagnostics import MAX_EXPECTATION_EXAMPLES, DiagnosticMessages
 from .intervalindex import (
     SweepIndex,
+    numeric_key,
 )
 from .intervalindex import (
     less_coverage_problems as indexed_less_coverage_problems,
@@ -57,6 +59,7 @@ NUMBER_TOL_FT = 1e-5
 # vertices per wall (C1's existing limits), 30,000 sweep runs, 16,000 checks and
 # 16,000 requests, 1,000,000 numeric leaves, 2,000,000 JSON nodes, depth 32, and
 # 4 MiB of string/key characters per document, and 64 case rule queries.
+# Diagnostic output has a separate shared report budget in diagnostics.py.
 # Case queries may scan the bounded response; their count is fixed. Other metadata
 # passes are linear or
 # O(n log n); geometry comparisons and samples charge the meter. These operational
@@ -147,6 +150,8 @@ def _input_key(value: Any, meter: WorkMeter | None = None) -> Any:
         return _input_key({k: v for k, v in vars(value).items() if k != "rules_sha256"}, meter)
     if isinstance(value, Need):
         return _input_key(vars(value), meter)
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return numeric_key(value).encode("ascii")
     return value
 
 
@@ -413,7 +418,14 @@ def observed(
     this category default at 6200098 (server/scene.py `observed_intervals`). None keeps the
     old reading, all the way up."""
     meter = meter if meter is not None else WorkMeter()
-    key = ("observed", meter.input_key(scene), band, min_out_ft, beyond, wall_default_ft)
+    key = (
+        "observed",
+        meter.input_key(scene),
+        band,
+        numeric_key(min_out_ft),
+        beyond,
+        None if wall_default_ft is None else numeric_key(wall_default_ft),
+    )
     if key in meter.cache:
         return meter.cache[key]
     spans = []
@@ -855,7 +867,13 @@ def slide(
     other wall between the meter and the battery's near edge, at its far end, times the same
     difference for that wall. 0 on the meter's own wall."""
     meter = meter if meter is not None else WorkMeter()
-    key = ("slide", meter.input_key(scene), meter.input_key(rules), lo, hi)
+    key = (
+        "slide",
+        meter.input_key(scene),
+        meter.input_key(rules),
+        numeric_key(lo),
+        numeric_key(hi),
+    )
     if key in meter.cache:
         return meter.cache[key]
     segments = segments_s(scene, rules, meter=meter)
@@ -929,7 +947,15 @@ def reach_gaps(
       the check's distance unless measured.
     """
     meter = meter if meter is not None else WorkMeter()
-    key = ("reach_gaps", meter.input_key(scene), meter.input_key(rules), check, wall_id, lo, hi)
+    key = (
+        "reach_gaps",
+        meter.input_key(scene),
+        meter.input_key(rules),
+        check,
+        wall_id,
+        numeric_key(lo),
+        numeric_key(hi),
+    )
     if key in meter.cache:
         return meter.cache[key]
     gaps = []
@@ -993,8 +1019,11 @@ def measured_band_gap(
             if m.get("wall_id", wall_id) == wall_id
         ],
     )
-    edges = {x for e in entries for x in e[:2]} | {x for m in measured for x in m}
-    cuts = sorted({lo, hi} | {x for x in edges if lo < x < hi})
+    edges = itertools.chain((x for e in entries for x in e[:2]), (x for m in measured for x in m))
+    cuts = [
+        value
+        for value, _ in itertools.groupby(sorted([lo, hi, *(x for x in edges if lo < x < hi)]))
+    ]
     for p, q in itertools.pairwise(cuts):
         meter.charge()
         if q - p <= EPS:
@@ -1019,7 +1048,7 @@ def measured_band_gap(
 
 
 def run_start_count(span: list[float], step_ft: float | None) -> int:
-    """Validate eagerly, then sample a run lazily: first, every step after it, and last.
+    """Count pre-end starts; run_starts appends the final endpoint separately.
 
     A sample, not the server's own list: the server also evaluates boundaries and midpoints
     that a run reports only as its two ends. Oversized runs fail rather than lose coverage
@@ -1036,13 +1065,13 @@ def run_start_count(span: list[float], step_ft: float | None) -> int:
     count = max(int(a < b), math.ceil(steps - EPS))
     if count + 1 > MAX_SWEEP_SAMPLES:
         raise ValueError(f"sweep sampling exceeds the {MAX_SWEEP_SAMPLES} sample limit")
-    return count + 1
+    return count
 
 
 def run_starts(span: list[float], step_ft: float | None) -> Iterator[float]:
     count = run_start_count(span, step_ft)
     a, b = span
-    return itertools.chain((a + k * step_ft for k in range(count - 1)), (b,))
+    return itertools.chain((a + k * step_ft for k in range(count)), (b,))
 
 
 def deduplicate_result_runs(result: dict) -> dict:
@@ -1323,7 +1352,12 @@ def ground_gap(
     meter = meter if meter is not None else WorkMeter()
     entries = band_entries(scene, "ground", meter)
     a, b = lo - radius, hi + radius
-    cuts = sorted({a, lo, hi, b} | {x for e in entries for x in e[:2] if a < x < b})
+    cuts = [
+        value
+        for value, _ in itertools.groupby(
+            sorted([a, lo, hi, b, *(x for e in entries for x in e[:2] if a < x < b)])
+        )
+    ]
     for p, q in itertools.pairwise(cuts):
         meter.charge()
         if q - p <= EPS:
@@ -1897,17 +1931,17 @@ def public_assumption_warnings(
 def expectation_problems(expect: dict, result: dict, meter: WorkMeter | None = None) -> list[str]:
     if admission := case_metadata_problems({}, expect):
         return admission
-    problems: list[str] = []
+    problems = DiagnosticMessages()
     decision = result["decision"]
     if "decision_in" in expect and decision not in expect["decision_in"]:
-        problems.append(f"decision {decision}, expected one of {expect['decision_in']}")
+        problems.append("decision {}, expected one of {}", decision, expect["decision_in"])
     if decision in expect.get("decision_not", []):
-        problems.append(f"decision {decision} is ruled out for this case")
+        problems.append("decision {} is ruled out for this case", decision)
 
     if "spot" in expect:
         want, spot = expect["spot"], result.get("spot")
         if want is None and spot is not None:
-            problems.append(f"expected no spot, got {spot['wall_id']} {spot['span_ft']}")
+            problems.append("expected no spot, got {} {}", spot["wall_id"], spot["span_ft"])
         if want is not None:
             if spot is None:
                 problems.append("expected a spot, got none")
@@ -1916,8 +1950,11 @@ def expectation_problems(expect: dict, result: dict, meter: WorkMeter | None = N
                 s0, s1 = spot["span_ft"]
                 if spot["wall_id"] != want["wall_id"] or s0 < a - 1 / 12 or s1 > b + 1 / 12:
                     problems.append(
-                        f"spot {spot['wall_id']} {spot['span_ft']} outside expected "
-                        f"{want['wall_id']} {want['span_within']}"
+                        "spot {} {} outside expected {} {}",
+                        spot["wall_id"],
+                        spot["span_ft"],
+                        want["wall_id"],
+                        want["span_within"],
                     )
 
     for rule in expect.get("sweep_runs", []):
@@ -1928,43 +1965,84 @@ def expectation_problems(expect: dict, result: dict, meter: WorkMeter | None = N
             if r["wall_id"] == rule["wall_id"] and r["start_ft"][0] < b and r["start_ft"][1] > a
         ]
         if not runs and "outcome" in rule:
-            problems.append(f"no sweep run overlaps {rule['wall_id']} starts ({a}, {b})")
+            problems.append("no sweep run overlaps {} starts ({}, {})", rule["wall_id"], a, b)
+        failed = 0
+        examples = []
         for run in runs:
-            if "outcome" in rule and run["outcome"] != rule["outcome"]:
-                problems.append(
-                    f"sweep {run['wall_id']} starts {run['start_ft']} is {run['outcome']}, "
-                    f"expected {rule['outcome']}"
+            wrong = (
+                ("outcome" in rule and run["outcome"] != rule["outcome"])
+                or ("outcome_not" in rule and run["outcome"] == rule["outcome_not"])
+                or any(
+                    key in rule and not any(rule[key] in check for check in run[field])
+                    for field, key in (("failing", "failing_match"), ("unsure", "unsure_match"))
                 )
-            if "outcome_not" in rule and run["outcome"] == rule["outcome_not"]:
-                why = f" ({rule['reason']})" if "reason" in rule else ""
-                problems.append(
-                    f"sweep {run['wall_id']} starts {run['start_ft']} is {run['outcome']}, "
-                    f"which this case rules out{why}"
-                )
-            for field, key in (("failing", "failing_match"), ("unsure", "unsure_match")):
-                if key in rule and not any(rule[key] in c for c in run[field]):
-                    problems.append(
-                        f"sweep {run['wall_id']} starts {run['start_ft']}: no {field} check "
-                        f"matching {rule[key]!r} (has {run[field]})"
+            )
+            if wrong:
+                failed += 1
+                if len(examples) < MAX_EXPECTATION_EXAMPLES:
+                    examples.append(
+                        f"{run['wall_id']} starts {run['start_ft']} is {run['outcome']}"
                     )
+        if failed:
+            required = {
+                key: rule[key]
+                for key in ("outcome", "outcome_not", "failing_match", "unsure_match")
+                if key in rule
+            }
+            why = f"; reason: {rule['reason']}" if "reason" in rule else ""
+            problems.append(
+                "sweep expectation {} starts ({}, {}) failed for {} runs; "
+                "expected {}; examples: {}{}",
+                rule["wall_id"],
+                a,
+                b,
+                failed,
+                required,
+                "; ".join(examples),
+                why,
+            )
 
     for rule in expect.get("checks", []):
         matching = [c for c in result.get("checks", []) if rule["match"] in c["id"]]
         if not matching:
-            problems.append(f"no check matching {rule['match']!r}")
+            problems.append("no check matching {!r}", rule["match"])
+        failed = 0
+        examples = []
         for check in matching:
-            for field in ("outcome", "unsure_cause"):
-                if field in rule and check.get(field) != rule[field]:
-                    problems.append(
-                        f"check {check['id']}: {field} {check.get(field)}, expected {rule[field]}"
+            wrong = [
+                field
+                for field in ("outcome", "unsure_cause")
+                if field in rule and check.get(field) != rule[field]
+            ]
+            # The public solver rounds measurements to six decimals.
+            wrong += [
+                field
+                for field in ("measured_ft", "plus_minus_ft")
+                if field in rule
+                and (check.get(field) is None or abs(check[field] - rule[field]) > NUMBER_TOL_FT)
+            ]
+            if wrong:
+                failed += 1
+                if len(examples) < MAX_EXPECTATION_EXAMPLES:
+                    examples.append(
+                        "; ".join(
+                            f"check {check['id']}: {field} {check.get(field)}, "
+                            f"expected {rule[field]}"
+                            for field in wrong
+                        )
                     )
-            # Pinned numbers catch a server that measures from somewhere else (for example
-            # another battery depth) and lands on the right outcome by accident. The server
-            # rounds to 6 decimals.
-            for field in ("measured_ft", "plus_minus_ft"):
-                got = check.get(field)
-                if field in rule and (got is None or abs(got - rule[field]) > NUMBER_TOL_FT):
-                    problems.append(f"check {check['id']}: {field} {got}, expected {rule[field]}")
+        if failed:
+            why = f"; reason: {rule['reason']}" if "reason" in rule else ""
+            if failed == 1:
+                problems.append("{}{}", examples[0], why)
+            else:
+                problems.append(
+                    "check expectation {!r} failed for {} checks; examples: {}{}",
+                    rule["match"],
+                    failed,
+                    "; ".join(examples),
+                    why,
+                )
 
     starts = expect.get("start_outcomes", [])
     index = SweepIndex(result, meter=meter) if starts else None
@@ -1973,19 +2051,23 @@ def expectation_problems(expect: dict, result: dict, meter: WorkMeter | None = N
         if got != rule["outcome"]:
             why = f" ({rule['why']})" if "why" in rule else ""
             problems.append(
-                f"start {rule['wall_id']} {rule['start_ft']} is {got or 'not evaluated'}, "
-                f"expected {rule['outcome']}{why}"
+                "start {} {} is {}, expected {}{}",
+                rule["wall_id"],
+                rule["start_ft"],
+                got or "not evaluated",
+                rule["outcome"],
+                why,
             )
 
     if "missing_evidence_empty" in expect:
         empty = not result.get("missing_evidence")
         if empty != expect["missing_evidence_empty"]:
             problems.append(
-                "missing_evidence "
-                + ("is empty" if empty else "is not empty")
-                + f", expected {'empty' if expect['missing_evidence_empty'] else 'requests'}"
+                "missing_evidence {}, expected {}",
+                "is empty" if empty else "is not empty",
+                "empty" if expect["missing_evidence_empty"] else "requests",
             )
-    return problems
+    return problems.finish()
 
 
 # --- Transforms for black-box properties -----------------------------------------------------
