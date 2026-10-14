@@ -122,21 +122,15 @@ struct WallWalkScreen: View {
         return ScanCopy.withCoaching(ScanCopy.guidance(state.guidance, hint: shownHint), coaching)
     }
 
-    /// The engine's hint, with its direction made to agree with what the overlay draws (review
-    /// of #120). The engine judges on screen by the camera's angle to the target; the overlay
-    /// by the open camera between the card and the actions, which changes with the text size.
-    /// A drawn ring is on screen whatever the angle says. An arrow standing in for a target the
-    /// angle calls on screen (under the card, or near an edge) gives its own direction. Off
-    /// screen and behind keep the engine's direction, which the edge arrow follows too.
+    /// The card follows every marker the overlay draws. For a target behind the camera the
+    /// overlay reports the horizontal turn direction, which the card follows too.
     private var shownHint: GuidanceHint? {
-        guard var hint = state.guidanceHint, let engine = hint.aim, let aimMarker else { return state.guidanceHint }
+        guard var hint = state.guidanceHint, let aimMarker else { return state.guidanceHint }
         switch aimMarker {
         case .ring:
             hint.aim = .onScreen
-        case .arrow(let direction) where engine == .onScreen:
+        case .arrow(let direction):
             hint.aim = direction
-        case .arrow:
-            break
         }
         return hint
     }

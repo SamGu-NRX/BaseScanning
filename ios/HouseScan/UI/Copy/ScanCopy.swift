@@ -20,6 +20,14 @@ struct Instruction: Hashable {
     /// leaves open: a title that wrapped to a different height moved that camera, which could
     /// flip the marker and the title back (review of #241).
     var titleReserve: [String] = []
+    /// A planner aim keeps its identity while its marker, coaching and rounded distance change.
+    /// Exact coordinates distinguish adjacent targets whose displayed distances can be equal.
+    var aimTarget: AimTarget? = nil
+
+    enum AimTarget: Hashable {
+        case ground(s: Float)
+        case wall(s: Float)
+    }
 
     struct Folded: Hashable {
         /// What to do now, in place of `title`.
@@ -87,13 +95,13 @@ enum ScanCopy {
             // .spacingMeters`), and a shuffle can stop short of both (review of #117). The legend
             // and the second-position title say the same step (`aimRingLegend`, `aim`).
             aim(
-                Instruction(title: "Tilt down to show the ground", detail: "The strip along the wall, \(Distance.fromMeter(s)). Take a step to the side as you look."),
+                Instruction(title: "Tilt down to show the ground", detail: "The strip along the wall, \(Distance.fromMeter(s)). Take a step to the side as you look.", aimTarget: .ground(s: s)),
                 ground: true, hint: hint
             )
         case .aimAtWall(let s):
             // "Around at your meter" read wrong once the walk starts at the meter.
             aim(
-                Instruction(title: "Tilt up to show more wall", detail: abs(s) < Distance.metersPerInch * 3 ? "At your meter." : "Around \(Distance.fromMeter(s))."),
+                Instruction(title: "Tilt up to show more wall", detail: abs(s) < Distance.metersPerInch * 3 ? "At your meter." : "Around \(Distance.fromMeter(s)).", aimTarget: .wall(s: s)),
                 ground: false, hint: hint
             )
         case .stepBack:

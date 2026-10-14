@@ -1,5 +1,6 @@
 import HouseScanKit
 import SwiftUI
+import simd
 
 /// A fake engine for the UI demo: implements `ScanActions` by scripting `ScanViewState` over
 /// the made-up wall in `DemoScene`. It mimics the real engine's phases and timing closely enough
@@ -201,12 +202,13 @@ final class DemoEngine: ScanActions {
             // The engine's direction to the target, which can disagree with what the overlay
             // draws near the card or an edge (review of #120): the card must follow the drawing.
             if let hint = value("-uiDemoAimHint").flatMap(Self.aimDirection) { state.guidanceHint = GuidanceHint(aim: hint) }
-            // The engine's direction changing once, when a UI test says so: the card's title then
-            // swaps between titles it reserved room for (review of #241). The test sends
-            // `aimHintNotification` once it has read the card as it was; a timer from launch
-            // raced the test on a slow simulator.
+            // A UI test changes the camera direction or advances the target after reading the
+            // card. A timer from launch raced that baseline on a slow simulator (#241).
             if let later = value("-uiDemoAimHintLater").flatMap(Self.aimDirection) {
                 laterAimHint = later
+            }
+            laterAimTarget = value("-uiDemoAimTargetLater").flatMap(Float.init)
+            if laterAimHint != nil || laterAimTarget != nil {
                 Self.listeningForAimHint = self
                 CFNotificationCenterAddObserver(
                     CFNotificationCenterGetDarwinNotifyCenter(), nil,
@@ -411,12 +413,32 @@ final class DemoEngine: ScanActions {
     static let aimHintNotification = "dev.housescanning.uiDemo.aimHintLater"
     /// The demo waiting for `aimHintNotification`; the notification's C callback can't capture.
     private static weak var listeningForAimHint: DemoEngine?
-    /// The direction `-uiDemoAimHintLater` turns the engine's hint to.
+    /// The direction `-uiDemoAimHintLater` makes the same target's drawn marker take.
     private var laterAimHint: AimDirection?
+    private var laterAimTarget: Float?
 
     private func applyLaterAimHint() {
-        guard let laterAimHint else { return }
-        state.guidanceHint?.aim = laterAimHint
+        if let s = laterAimTarget {
+            state.guidance = .aimAtGround(s: s)
+            state.target = DemoScene.wall.world(s: s, height: 0, out: state.coverage.groundBandDepth / 2)
+            state.path = DemoScene.path(toward: s)
+        }
+        if let laterAimHint, let target = state.target, var projection = state.projection {
+            // Move the camera while retaining the planner's target. The card now follows the
+            // drawn marker, so changing only the engine's hint would not exercise a title swap.
+            let local: SIMD4<Float> = switch laterAimHint {
+            case .left: SIMD4(0, -5, -3, 0)
+            case .right: SIMD4(0, 5, -3, 0)
+            case .above: SIMD4(-5, 0, -3, 0)
+            case .below: SIMD4(5, 0, -3, 0)
+            case .onScreen: SIMD4(0, 0, -3, 0)
+            case .behind: SIMD4(0, 1, 3, 0)
+            }
+            let offset = projection.cameraToWorld * local
+            projection.cameraToWorld.columns.3 = SIMD4(target, 1) - offset
+            state.projection = projection
+            state.guidanceHint?.aim = laterAimHint
+        }
     }
 
     static func aimDirection(_ raw: String) -> AimDirection? {

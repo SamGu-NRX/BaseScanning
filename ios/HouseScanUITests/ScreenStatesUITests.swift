@@ -745,6 +745,23 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertTrue(offCard.waitForExistence(timeout: 5))
         XCTAssertFalse(offCard.label.contains("ring"), "with an arrow drawn the card must not name the ring: \(offCard.label)")
         attach(app, name: "wallWalk-aimHint-arrow")
+        app.terminate()
+
+        // The engine already calls the target off screen to the left, but the tall card puts
+        // its drawn arrow above. The card must follow the arrow, not that engine classification.
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk",
+                               "-uiDemoAim", "-uiDemoAimHint", "left"] + Self.largestText
+        app.launch()
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
+        tap(app, "instruction.details")
+        XCTAssertTrue(element(app, "instruction.detail").waitForExistence(timeout: 5))
+        let arrow = element(app, "aim.arrow")
+        XCTAssertTrue(arrow.waitForExistence(timeout: 5))
+        XCTAssertTrue(arrow.label.contains("above"), arrow.label)
+        let aboveCard = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "Tilt up a little")).firstMatch
+        XCTAssertTrue(aboveCard.waitForExistence(timeout: 5), "the card ignored an arrow that disagrees with an off-screen hint")
+        attach(app, name: "wallWalk-aimHint-offScreenMismatch-AX5")
     }
 
     /// Review of #241: an aim card's title follows the marker the overlay draws, and the overlay
@@ -779,8 +796,8 @@ final class ScreenStatesUITests: XCTestCase {
         let near = card(["-uiDemoAim", "-uiDemoAimHint", "above"])
         attach(app, name: "wallWalk-aimCard-near-AX5")
         app.terminate()
-        // ...against an edge arrow, which keeps the step's own title. Every live aim step has
-        // a hint, and with it the reserved titles.
+        // ...against a left edge arrow, which keeps the step's own title. Every live aim step
+        // has a hint, and with it the reserved titles.
         let away = card(["-uiDemoAimOffScreen", "-uiDemoAimHint", "left"])
         attach(app, name: "wallWalk-aimCard-away-AX5")
         app.terminate()
@@ -789,7 +806,7 @@ final class ScreenStatesUITests: XCTestCase {
 
         // Stationary at the card's edge, with Details open: the card is at its tallest and the
         // open camera at its shortest. Sampled for 4 s, nothing may change. Then the test tells
-        // the demo to turn the engine's direction from above to left (`-uiDemoAimHintLater`, by
+        // the demo to move the camera until the same target's arrow points left (`-uiDemoAimHintLater`, by
         // Darwin notification), so the title swaps from "Tilt up a little" to the step's own,
         // both reserved: Details must stay open and the card must not move (2d67632). The test
         // sends it only after reading the card as it was, so no timer can outrun it.
@@ -824,7 +841,7 @@ final class ScreenStatesUITests: XCTestCase {
             nil, nil, true)
         let swapped = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier == 'instruction' AND label != %@", held.title)).firstMatch
-        XCTAssertTrue(swapped.waitForExistence(timeout: 10), "the engine's new direction never reached the card")
+        XCTAssertTrue(swapped.waitForExistence(timeout: 10), "the drawn marker's new direction never reached the card")
         Thread.sleep(forTimeInterval: 1)
         var after: [String] = []
         for _ in 0..<5 {
@@ -836,6 +853,30 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertNotEqual(sample().title, held.title)
         XCTAssertEqual(sample().line, held.line, "a swap between reserved titles closed Details or moved the card")
         attach(app, name: "wallWalk-aimCard-detailsOpen-AX5")
+    }
+
+    /// A new target closes Details even when it shares the old target's reserved titles or
+    /// rounds to the same displayed distance. The notification advances the actual demo aim.
+    @MainActor
+    func testANewAimTargetClosesDetailsEvenWithReservedTitles() throws {
+        continueAfterFailure = false
+        for target in ["-2.4", "0.401"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAim",
+                                   "-uiDemoAimHint", "above", "-uiDemoAimTargetLater", target] + Self.largestText
+            app.launch()
+            XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
+            tap(app, "instruction.details")
+            let detail = element(app, "instruction.detail")
+            XCTAssertTrue(detail.waitForExistence(timeout: 5), "Details must open before the task changes")
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("dev.housescanning.uiDemo.aimHintLater" as CFString),
+                nil, nil, true)
+            XCTAssertTrue(detail.waitForNonExistence(timeout: 5), "Details stayed open for the new aim at \(target)")
+            XCTAssertTrue(element(app, "instruction.details").exists, "the disclosure itself must remain available")
+            attach(app, name: "wallWalk-newAim-detailsClosed-\(target)-AX5")
+            app.terminate()
+        }
     }
 
     /// #81: the first aim ring comes with a line under the card saying what it is for, clear of

@@ -54,8 +54,8 @@ struct InstructionCard: View {
     /// The task whose reply has been on screen for `replyLock`. Compared with the current task
     /// in the same update that changes it, so a new reply is locked from its first frame.
     @State private var unlockedTask: Instruction?
-    /// Whether the folded details are open. Closed again for each new step (a new title), so the
-    /// camera opens up again; the distance to go and coaching change within a step and keep it.
+    /// Whether the folded details are open. Each new aim target closes them; marker titles
+    /// within that target and ride-along coaching keep them.
     @State private var detailsShown = false
 
     private var replyTask: Instruction { reply?.task ?? instruction }
@@ -113,9 +113,8 @@ struct InstructionCard: View {
         // Only the scrim's height eases. Reduce Motion asks for no size changes, so it snaps.
         .animation(reduceMotion ? nil : Motion.text, value: instruction)
         .animation(reduceMotion ? nil : Motion.text, value: reply == nil)
-        // A new task's words close Details. A swap between titles the card already reserved
-        // room for (`Instruction.titleReserve`) is the same step: closing Details there changed
-        // the card's height, which an aim card's title must not do (review of #241).
+        // Every aim uses the same reserved titles, so those words alone cannot identify a task.
+        .onChange(of: instruction.aimTarget) { _, _ in detailsShown = false }
         .onChange(of: instruction.title) { old, new in
             let reserved = instruction.titleReserve
             if !(reserved.contains(old) && reserved.contains(new)) { detailsShown = false }
