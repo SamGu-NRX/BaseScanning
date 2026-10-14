@@ -1,37 +1,52 @@
-// Decides when the acknowledged-file counters change. A batch that draws marks shows its totals
-// when its last mark lands; a batch that draws none shows them at once, unless older marks are
-// still travelling, in which case it waits for them. Timers do the work, never an animation
-// finishing, because an animation never finishes where the animation clock is stopped.
+// Decides when the acknowledged-file counters change. Each render hands over the state it drew
+// and when that render's marks land. A render's totals show once its own marks and the marks of
+// every earlier render have landed, so the counters never run ahead of a mark still on the line,
+// even when a later, shorter batch lands first. Totals reach the counters only from a render: the
+// reducer's state can already hold an arrival whose marks have not started yet.
+// Timers do the work, never an animation finishing, because an animation never finishes where
+// the animation clock is stopped.
 
 /**
  * @template S
- * @param {{ write: (from: S) => void, current: () => S, setTimer?: typeof setTimeout, clearTimer?: typeof clearTimeout }} options
- *   `write` shows the totals in a state; `current` returns the latest state.
+ * @param {{ write: (from: S) => void, setTimer?: typeof setTimeout, clearTimer?: typeof clearTimeout }} options
+ *   `write` shows the totals in a state.
  */
-export function createCountTimers({ write, current, setTimer = setTimeout, clearTimer = clearTimeout }) {
-  const pending = new Set();
+export function createCountTimers({ write, setTimer = setTimeout, clearTimer = clearTimeout }) {
+  /** Renders not shown yet, oldest first: { from, landed, timer }. */
+  const queue = [];
+
+  function release() {
+    let latest = null;
+    while (queue.length > 0 && queue[0].landed) latest = queue.shift();
+    if (latest) write(latest.from);
+  }
+
   return {
-    /** Shows the current totals once marks that land in `landsIn` ms have arrived. */
-    afterMarks(landsIn) {
-      // Each timer shows the totals as of its own batch, so a counter never runs ahead of its marks.
-      const snapshot = current();
-      const timer = setTimer(() => {
-        pending.delete(timer);
-        // The last timer shows the latest totals: batches that drew no marks while it waited (motion
-        // paused, clock stopped, too many marks in flight) skipped their own update. Every batch
-        // that drew marks has its own timer, so with none pending, no mark is still on its way.
-        write(pending.size === 0 ? current() : snapshot);
-      }, landsIn);
-      pending.add(timer);
-    },
-    /** Shows the current totals now, unless marks are still travelling. */
-    settle() {
-      if (pending.size === 0) write(current());
+    /**
+     * Records the state a render drew. `landsIn` is the milliseconds until its last mark lands,
+     * or 0 when it sent no marks (motion paused, clock stopped, mark cap reached, nothing new).
+     */
+    rendered(from, landsIn) {
+      const tail = queue.at(-1);
+      if (landsIn > 0) {
+        const entry = { from, landed: false, timer: null };
+        entry.timer = setTimer(() => {
+          entry.landed = true;
+          release();
+        }, landsIn);
+        queue.push(entry);
+      } else if (tail?.landed) {
+        // Waiting behind the same marks as the previous render, so only the newest totals matter.
+        tail.from = from;
+      } else {
+        queue.push({ from, landed: true, timer: null });
+      }
+      release();
     },
     /** Drops pending updates, for a capture switch. */
     clear() {
-      for (const timer of pending) clearTimer(timer);
-      pending.clear();
+      for (const entry of queue) if (!entry.landed) clearTimer(entry.timer);
+      queue.length = 0;
     },
   };
 }
