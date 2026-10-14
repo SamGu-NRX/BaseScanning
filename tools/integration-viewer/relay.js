@@ -20,7 +20,21 @@ const PREVIEW_MAX_BYTES = 64 * 1024 * 1024;
 const JSON_MAX_BYTES = 8 * 1024 * 1024;
 const RUN_ID = /^[A-Za-z0-9_-]{1,80}$/;
 const WITHHELD = "withheld-by-viewer-relay";
-const previewArtifactId = (url) => createHash("sha256").update(url.split(/[?#]/, 1)[0]).digest("hex");
+const PREVIEW_CREDENTIAL_PARAM = /^(?:signature|sig|secret|token|access_token|expires|expiry|expiration|googleaccessid|x-(?:goog|amz)-(?:algorithm|credential|date|expires|signedheaders|signature|security-token))$/i;
+
+function previewArtifactId(url) {
+  const withoutFragment = url.split("#", 1)[0];
+  const queryAt = withoutFragment.indexOf("?");
+  const path = queryAt < 0 ? withoutFragment : withoutFragment.slice(0, queryAt);
+  const query = queryAt < 0 ? "" : withoutFragment.slice(queryAt + 1);
+  const params = new URLSearchParams(query);
+  // Versions such as generation/versionId select the file. Unknown parameters stay too;
+  // only known signing fields are removed so renewed credentials keep the retry deadline.
+  for (const name of [...params.keys()]) if (PREVIEW_CREDENTIAL_PARAM.test(name)) params.delete(name);
+  params.sort();
+  const resource = params.size === 0 ? path : `${path}?${params}`;
+  return createHash("sha256").update(resource).digest("hex");
+}
 
 /**
  * @param {object} options
@@ -105,8 +119,7 @@ export function createViewerServer({ upstreams, publicDir, log = () => {} }) {
     let body = reply.json;
     if (leaf === "result" && body && typeof body === "object") {
       body = { ...body };
-      // A renewed signed query is not a new file. The digest distinguishes files without
-      // exposing their URL; query-only changes conservatively keep the same retry delay.
+      // The digest distinguishes resource versions without exposing the signed URL.
       body.previewArtifactId = typeof body.previewUrl === "string" && body.previewUrl !== ""
         ? previewArtifactId(body.previewUrl) : null;
       // Only a real URL is replaced; an empty value still means "no preview" to the page.

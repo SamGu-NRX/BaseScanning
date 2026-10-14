@@ -120,6 +120,16 @@ describe("allowed reads", () => {
     const first = await read("https://storage.example/model-a.ply?secret=first");
     assert.equal(await read("https://storage.example/model-a.ply?secret=renewed"), first);
     assert.notEqual(await read("https://storage.example/model-b.ply?secret=renewed"), first);
+    const credentialNames = ["signature", "sig", "token", "access_token", "expires", "expiry", "expiration", "GoogleAccessId",
+      "X-Goog-Algorithm", "X-Goog-Credential", "X-Goog-Date", "X-Goog-Expires", "X-Goog-SignedHeaders", "X-Goog-Signature", "X-Goog-Security-Token",
+      "X-Amz-Algorithm", "X-Amz-Credential", "X-Amz-Date", "X-Amz-Expires", "X-Amz-SignedHeaders", "X-Amz-Signature", "X-Amz-Security-Token"];
+    const signed = (value) => new URLSearchParams(credentialNames.map((name) => [name, value])).toString();
+    const version1 = await read(`https://storage.example/model-a.ply?generation=1&${signed("first")}`);
+    assert.equal(await read(`https://storage.example/model-a.ply?${signed("renewed")}&generation=1#new-fragment`), version1);
+    assert.notEqual(await read(`https://storage.example/model-a.ply?generation=2&${signed("renewed")}`), version1);
+    assert.notEqual(await read("https://storage.example/model-a.ply?generation=1&versionId=2"), version1);
+    assert.notEqual(await read("https://storage.example/model-a.ply?generation=1&custom=2"), version1, "unknown parameters remain part of resource identity");
+    assert.notEqual(await read("https://storage.example/model-a.ply?custom=one?two"), await read("https://storage.example/model-a.ply?custom=one"));
     hostileBody = { runId: "run_s", previewUrl: "" };
     assert.equal((await raw("/relay/hostile/captures/cap_ARTIFACT/result")).json.previewArtifactId, null);
   });
