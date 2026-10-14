@@ -133,3 +133,32 @@ def test_diagnostic_budget_stops_formatting_after_exhaustion():
 
     messages.append("{}", ForbiddenFormat())
     assert messages.finish() == ["further problems omitted (2)"]
+
+
+@pytest.mark.parametrize("field", ["contract_problems", "expectation_problems"])
+def test_markdown_keeps_first_explanation_when_duplicate_fields_fill_budget(tmp_path, field):
+    problems = [f"explanation {i}" for i in range(1_000)]
+    record = {
+        "name": "many failures",
+        "status": "fail",
+        "decision": "reject",
+        "problems": problems,
+        field: problems,
+    }
+    report = e2e.write_report(tmp_path, META, [record])
+    row = next(
+        line
+        for line in (tmp_path / "report.md").read_text().splitlines()
+        if line.startswith("| many failures |")
+    )
+    assert "explanation 0" in row
+    retained = [
+        message
+        for item in report["records"]
+        for key in ("problems", field)
+        for message in item[key]
+    ]
+    retained += report["diagnostic_summary"]
+    assert len(retained) <= MAX_DIAGNOSTIC_COUNT
+    assert sum(len(json.dumps(message)) for message in retained) <= MAX_DIAGNOSTIC_CHARACTERS
+    assert not report["all_passed"]
