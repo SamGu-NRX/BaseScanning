@@ -139,3 +139,72 @@ def test_field_cli_reports_the_contract_table(
     fieldtest.main()
     output = capsys.readouterr().out
     assert f"| photo.jpg | {'yes' if expected else 'no'} | {'1' if expected else '–'} |" in output
+
+
+def test_maker_only_observation_requires_a_number_retake():
+    import numpy as np
+
+    from meter_eval import retake
+    from meter_eval.locate import top_candidate
+
+    lines = observations("ITRON")
+    result = {"lines": lines, "barcodes": []}
+    assert top_candidate(result) is None
+    assert not reads_number(lines, "1234567")
+    sharp = np.random.default_rng(0).integers(0, 256, (128, 128), dtype=np.uint8)
+    assert retake.reasons(sharp, None) == ["no number found"]
+
+
+def test_maker_on_another_row_cannot_be_the_number_candidate():
+    from meter_eval.locate import top_candidate
+
+    lines = [
+        {"text": "ITRON", "box": [0.1, 0.1, 0.7, 0.2]},
+        {"text": "1234567", "box": [0.1, 0.6, 0.4, 0.1]},
+    ]
+    found = candidates({"lines": lines, "barcodes": []})
+    assert [candidate["core"] for candidate in found] == ["1234567"]
+    assert top_candidate({"lines": lines, "barcodes": []})["core"] == "1234567"
+
+
+def test_two_number_rows_are_each_alone_and_keep_the_prior_rule_pick():
+    from meter_eval.locate import rules
+
+    lines = [
+        {"text": "1234567", "box": [0.1, 0.1, 0.4, 0.1]},
+        {"text": "7654321", "box": [0.1, 0.6, 0.4, 0.2]},
+    ]
+    found = candidates({"lines": lines, "barcodes": []})
+    assert all(candidate["alone"] for candidate in found)
+    assert len({candidate["row_id"] for candidate in found}) == 2
+    pick = rules(found, [])["alone on its line, 6-14 characters, not a spec line"]
+    assert pick["core"] == "7654321"
+
+
+def test_row_features_use_the_source_row_and_keep_candidate_box_separate():
+    from meter_eval.locate import near_barcode
+
+    lines = [
+        {"text": "SN", "box": [0.1, 0.2, 0.1, 0.1]},
+        {"text": "ABC", "box": [0.25, 0.2, 0.1, 0.1]},
+        {"text": "1234567", "box": [0.4, 0.2, 0.2, 0.1]},
+    ]
+    found = candidates({"lines": lines, "barcodes": []}, "ABC1234567")
+    assert {candidate["core"] for candidate in found} == {"ABC1234567", "1234567"}
+    assert all(not candidate["alone"] for candidate in found)
+    assert all(candidate["keyword"] and not candidate["spec"] for candidate in found)
+    assert all(
+        candidate["height"] == pytest.approx(0.1) and not candidate["vertical"]
+        for candidate in found
+    )
+    exact = next(candidate for candidate in found if candidate["matches_target"])
+    assert exact["row_box"] == pytest.approx([0.1, 0.2, 0.5, 0.1])
+    assert exact["box"] == pytest.approx([0.25, 0.2, 0.35, 0.1])
+    assert near_barcode(exact, [{"payload": "x", "box": [0.1, 0.31, 0.1, 0.03]}])
+
+
+def test_keyword_scope_is_the_row_prefix_not_a_later_group():
+    lines = observations("MADE SN 1234567")
+    assert all(
+        not candidate["keyword"] for candidate in candidates({"lines": lines, "barcodes": []})
+    )

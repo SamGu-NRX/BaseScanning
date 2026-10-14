@@ -18,6 +18,7 @@ import argparse
 import csv
 import json
 import re
+from collections import Counter
 
 from meter_eval.match import KEYWORD, digest, match_serial, number_core
 from meter_eval.ocr import Reader
@@ -79,13 +80,15 @@ def candidates(
     """Admissible OCR candidates under the shared serial contract, with ranking features."""
     payloads = payload_tokens(result.get("barcodes") or [])
     found = match_serial(result["lines"], target, target_digest=target_digest)
+    # Ranking features describe the source row; retake checks use the candidate's own box.
+    row_counts = Counter(candidate["row_id"] for candidate in found)
     for candidate in found:
         token = candidate["core"]
-        _, _, width, height = candidate["box"]
+        _, _, width, height = candidate["row_box"]
         candidate.update(
             {
                 "barcode_confirmed": token in payloads,
-                "alone": len(found) == 1,
+                "alone": row_counts[candidate["row_id"]] == 1,
                 "spec": bool(SPEC.search(candidate["text"])),
                 "vertical": height > width,
                 "zeros": set(token) <= {"0"},
@@ -98,7 +101,7 @@ def candidates(
 
 def near_barcode(candidate: dict, barcodes: list[dict]) -> bool:
     """The candidate's line sits within 1.5 line heights above or below a barcode it overlaps."""
-    x, y, w, h = candidate["box"]
+    x, y, w, h = candidate.get("row_box", candidate["box"])
     for b in barcodes:
         bx, by, bw, bh = b["box"]
         overlaps = min(x + w, bx + bw) - max(x, bx) > 0.3 * min(w, bw)

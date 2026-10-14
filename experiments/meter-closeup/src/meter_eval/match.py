@@ -104,7 +104,9 @@ def match_serial(
     ]
     units = set(SERIAL_RATINGS["units"])
     classes = set(SERIAL_RATINGS["classes"])
-    for row in rows:
+    for row_id, row in enumerate(rows):
+        row_text = " ".join(piece["text"] for piece in sorted(row, key=lambda p: p["box"][0]))
+        row_box = union_box([piece["box"] for piece in row])
         groups = [
             (token.group(), piece["box"])
             for piece in sorted(row, key=lambda p: p["box"][0])
@@ -122,7 +124,6 @@ def match_serial(
                 i += len(label)
             else:
                 i += 1
-        label_positions = {i for i, kind in enumerate(kinds) if kind == "boundary"}
         for i, word in enumerate(words):
             if kinds[i] == "boundary":
                 continue
@@ -151,13 +152,18 @@ def match_serial(
                     boxes.append(groups[end][1])
                 if end + 1 < len(words) and kinds[end + 1] == "numeric":
                     continue
+                # Alphabetic fragments can join a serial; a maker word alone is not one.
+                if not any(character.isdigit() for character in joined):
+                    continue
                 found.append(
                     {
                         "core": joined,
                         "boxes": boxes.copy(),
                         "box": union_box(boxes),
-                        "keyword": any(i < start for i in label_positions),
-                        "text": " ".join(piece["text"] for piece in row),
+                        "row_id": row_id,
+                        "row_box": row_box,
+                        "keyword": bool(KEYWORD.match(row_text)),
+                        "text": row_text,
                         "matches_target": joined == wanted
                         if wanted is not None
                         else target_digest is not None and digest(joined) == target_digest,
