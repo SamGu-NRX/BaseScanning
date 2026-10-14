@@ -1305,8 +1305,11 @@ def outcomes_near(result: dict, wall_id: str, start_ft: float) -> tuple[set[str]
     scene's new boundary can land on, gets its neighbouring runs' outcomes on that wall: the
     server evaluates every start where some check can change its outcome, plus the midpoints
     between those (server/solver.py module docstring, t3/server 1d1e7e1), so between two
-    evaluated starts the outcome is the outcome at one of them. Past the last run on one side
-    only the nearest run is left; on a wall with no run there is nothing to compare with."""
+    evaluated starts the outcome is the outcome at one of them. Past the original's first or
+    last run on a wall nothing brackets the start: the sweep stops where no battery fits on the
+    wall or where its route fails the maximum length whatever else is true (solver.reach_limit,
+    which more error only widens), so FAIL is the only outcome consistent with the original
+    there. On a wall with no run there is nothing to compare with."""
     if (inside := outcome_at(result, wall_id, start_ft)) is not None:
         return {inside}, inside
     runs = [run for run in result.get("sweep", []) if run["wall_id"] == wall_id]
@@ -1320,10 +1323,13 @@ def outcomes_near(result: dict, wall_id: str, start_ft: float) -> tuple[set[str]
         key=lambda r: r["start_ft"][0],
         default=None,
     )
-    near = [r["outcome"] for r in (left, right) if r is not None]
-    if not near:
+    if left is None and right is None:
         return set(), "no run on its wall"
-    return set(near), f"unswept beside {' and '.join(near)}"
+    if left is None or right is None:
+        return {"fail"}, "past the original sweep"
+    return {left["outcome"], right["outcome"]}, (
+        f"unswept beside {left['outcome']} and {right['outcome']}"
+    )
 
 
 def more_error_problems(before: dict, after: dict, change: str) -> list[str]:

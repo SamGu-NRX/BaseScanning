@@ -650,8 +650,22 @@ def test_less_coverage_cannot_pass_where_the_original_swept_nothing():
     past_end = swept(run(0.0, 4.0, "pass"), run(4.1, 6.0, "fail"), decision="pass")
     longer = swept(run(0.0, 4.0, "pass"), run(4.1, 6.0, "fail"), run(6.1, 6.1, "pass"))
     assert less_coverage_problems(past_end, longer, "x") == [
-        "x: start w1 6.100 went from unswept beside fail to pass"
+        "x: start w1 6.100 went from past the original sweep to pass"
     ]
+
+
+def test_a_new_pass_past_the_original_sweep_is_not_read_from_its_last_run():
+    """The original ends on a pass run; nothing it evaluated brackets 4.1 to 6.0."""
+    before = swept(run(0.0, 4.0, "pass"), decision="pass")
+    after = swept(run(0.0, 4.0, "pass"), run(4.1, 6.0, "pass"), decision="pass")
+    expected = [
+        f"x: start w1 {s:.3f} went from past the original sweep to pass" for s in (4.1, 5.05, 6.0)
+    ]
+    assert less_coverage_problems(before, after, "x") == expected
+    assert more_error_problems(before, after, "x") == expected
+    # More error widens the reach limit, so a longer sweep may fail or turn unsure out there.
+    wider = swept(run(0.0, 4.0, "unsure"), run(4.1, 5.0, "fail"), run(5.1, 6.0, "unsure"))
+    assert more_error_problems(before, wider, "x") == []
 
 
 def test_more_error_reads_an_unswept_start_from_its_neighbours():
