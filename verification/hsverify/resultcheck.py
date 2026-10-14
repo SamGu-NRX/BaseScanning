@@ -52,15 +52,36 @@ from .intervalindex import (
 
 EPS = 1e-6
 NUMBER_TOL_FT = 1e-5
+# Geometry loops share WorkMeter. Metadata traversal, hashing, copying and interval
+# sorting are bounded separately before schema validation: 50 walls, 500 baseline
+# vertices per wall (C1's existing limits), 30,000 sweep runs, 16,000 checks and
+# 16,000 requests, 1,000,000 numeric leaves, 2,000,000 JSON nodes, depth 32, and
+# 4 MiB of string/key characters per document, and 64 case rule queries.
+# Case queries may scan the bounded response; their count is fixed. Other metadata
+# passes are linear or
+# O(n log n); geometry comparisons and samples charge the meter. These operational
+# limits retain the 30,000-run and 12,000-distinct-check regressions. They are not
+# measured scan maxima; the node/numeric limits also bound otherwise uncapped C2
+# arrays and C1's combined polygons/keyframes before recursive library traversal.
+MAX_RESULT_RUNS = 30_000
+MAX_RESULT_CHECKS = 16_000
+MAX_EVIDENCE_REQUESTS = 16_000
+MAX_NUMERIC_LEAVES = 1_000_000
+MAX_METADATA_NODES = 2_000_000
+MAX_METADATA_DEPTH = 32
+MAX_METADATA_CHARACTERS = 4 * 1024 * 1024
+MAX_SCHEMA_PROBLEMS = 100
+MAX_CASE_RULE_QUERIES = 64
 # Bound verifier work even when a server span or rules step requests billions of samples.
 MAX_SWEEP_SAMPLES = 10_000
-# On 2026-10-14, 35 public fixture judgments without contract problems, including
-# property variants, peaked at 80,788 units for pass-clear-side-wall. Another 468
-# distinct saved responses matched to current fixtures peaked at 392,115 invariant
-# units for ETH3D facade. Allow 20 times that larger recorded peak for other scans
-# and their property variants. This is an operational bound, not a calibration of
-# measurement accuracy or evidence that the samples prove physical clearance.
-MAX_WORK_SAMPLES = 20 * 392_115
+# On 2026-10-14, after caching scene derivatives and deferring ground fallback,
+# 35 valid public fixture judgments including property variants peaked at 31,649
+# units. Twenty measurements of 20 four-foot walls at 1/4/12/13/20 subdivisions,
+# original and mirrored, including full-judge resends, peaked at 88,999 units.
+# Another 468 distinct saved responses peaked at 391,700 invariant units on ETH3D
+# facade. Allow 20 times that largest measured valid workload for other scans and
+# their variants. This is an operational margin, not physical-error calibration.
+MAX_WORK_SAMPLES = 20 * 391_700
 
 
 class WorkLimitExceeded(Exception):
@@ -85,6 +106,14 @@ class WorkMeter:
         self.samples += n
         if self.samples > self.limit:
             raise WorkLimitExceeded(self.samples)
+
+    def derived(
+        self, name: str, scene: dict, rules: RuleSet | None, build: Callable[[], Any]
+    ) -> Any:
+        key = (name, self.input_key(scene), self.input_key(rules))
+        if key not in self.cache:
+            self.cache[key] = build()
+        return self.cache[key]
 
     def input_key(self, value: Any) -> Any:
         # judge's scenes and rule sets are immutable during a response's checks. Keep the
@@ -115,7 +144,7 @@ def _input_key(value: Any, meter: WorkMeter | None = None) -> Any:
     if isinstance(value, (tuple, list)):
         return tuple(_input_key(item, meter) for item in value)
     if isinstance(value, RuleSet):
-        return _input_key(vars(value), meter)
+        return _input_key({k: v for k, v in vars(value).items() if k != "rules_sha256"}, meter)
     if isinstance(value, Need):
         return _input_key(vars(value), meter)
     return value
@@ -175,6 +204,7 @@ class RuleSet:
     # the rules' headroom.min_ft: how high a wall view without out_ft reached
     headroom_ft: float | None = None
     corner_allowance_ft: float | None = None
+    rules_sha256: str | None = None
 
     @classmethod
     def from_yaml(cls, text: str) -> RuleSet:
@@ -235,12 +265,117 @@ class RuleSet:
             value("battery", "height_ft"),
             headroom,
             value("route", "corner_allowance_ft"),
+            public_rules_fingerprint(data),
         )
 
 
+def public_rules_fingerprint(data: dict) -> str:
+    """Mirror public rules_from_dict's normalized JSON hash without importing the server."""
+
+    def normalize(value: Any) -> Any:
+        if isinstance(value, dict):
+            normalized = {key: normalize(item) for key, item in value.items()}
+            if "value" in normalized and "source" in normalized:
+                normalized["value"] = float(normalized["value"])
+                normalized.setdefault("placeholder", False)
+            return normalized
+        if isinstance(value, list):
+            return [normalize(item) for item in value]
+        return value
+
+    canonical = normalize(data)
+    canonical.get("policy", {}).setdefault("notice", None)
+    openings = canonical.get("openings", {})
+    if openings.get("exempt_bottom_above_ft") is not None:
+        openings["exempt_bottom_above_ft"] = float(openings["exempt_bottom_above_ft"])
+    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def ingestion_problems(instance: Any, kind: str | None = None) -> list[str]:
+    """Bound metadata before validation or copies, using a depth-sized iterator stack."""
+    if kind is None and isinstance(instance, dict):
+        kind = "scene" if "walls" in instance else "result"
+    label = kind or "document"
+    if isinstance(instance, dict):
+        limits = (
+            {"walls": 50}
+            if kind == "scene"
+            else {
+                "sweep": MAX_RESULT_RUNS,
+                "checks": MAX_RESULT_CHECKS,
+                "missing_evidence": MAX_EVIDENCE_REQUESTS,
+            }
+        )
+        for field, limit in limits.items():
+            items = instance.get(field)
+            if isinstance(items, (list, tuple)) and len(items) > limit:
+                return [f"{label} ingestion limit exceeded: {field} exceeds {limit} entries"]
+        if kind == "scene":
+            for wall in (
+                instance.get("walls", []) if isinstance(instance.get("walls"), list) else []
+            ):
+                points = wall.get("baseline") if isinstance(wall, dict) else None
+                if isinstance(points, (list, tuple)) and len(points) > 500:
+                    return [f"{label} ingestion limit exceeded: baseline exceeds 500 vertices"]
+
+    nodes = numeric = characters = 0
+    stack = [iter((instance,))]
+    while stack:
+        try:
+            value = next(stack[-1])
+        except StopIteration:
+            stack.pop()
+            continue
+        nodes += 1
+        if nodes > MAX_METADATA_NODES:
+            return [f"{label} ingestion limit exceeded: more than {MAX_METADATA_NODES} JSON nodes"]
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            numeric += 1
+            if numeric > MAX_NUMERIC_LEAVES:
+                return [
+                    f"{label} ingestion limit exceeded: more than "
+                    f"{MAX_NUMERIC_LEAVES} numeric leaves"
+                ]
+        elif isinstance(value, str):
+            characters += len(value)
+        elif isinstance(value, dict):
+            if len(value) > MAX_METADATA_NODES - nodes:
+                return [
+                    f"{label} ingestion limit exceeded: more than {MAX_METADATA_NODES} JSON nodes"
+                ]
+            characters += sum(len(key) for key in value if isinstance(key, str))
+            if len(stack) > MAX_METADATA_DEPTH:
+                return [f"{label} ingestion limit exceeded: nesting exceeds {MAX_METADATA_DEPTH}"]
+            stack.append(iter(value.values()))
+        elif isinstance(value, (list, tuple)):
+            if len(value) > MAX_METADATA_NODES - nodes:
+                return [
+                    f"{label} ingestion limit exceeded: more than {MAX_METADATA_NODES} JSON nodes"
+                ]
+            if len(stack) > MAX_METADATA_DEPTH:
+                return [f"{label} ingestion limit exceeded: nesting exceeds {MAX_METADATA_DEPTH}"]
+            stack.append(iter(value))
+        if characters > MAX_METADATA_CHARACTERS:
+            return [
+                f"{label} ingestion limit exceeded: strings/keys exceed "
+                f"{MAX_METADATA_CHARACTERS} characters"
+            ]
+    return []
+
+
 def schema_errors(instance: Any, schema: dict) -> list[str]:
+    properties = schema.get("properties", {})
+    kind = "scene" if "walls" in properties else "result" if "sweep" in properties else None
+    if problems := ingestion_problems(instance, kind):
+        return problems
     validator = Draft202012Validator(schema)
-    errors = sorted(validator.iter_errors(instance), key=lambda e: list(e.absolute_path))
+    # A malformed document may produce a diagnostic per node. Stop after enough
+    # diagnostics to fail it; valid documents still complete schema validation.
+    errors = sorted(
+        itertools.islice(validator.iter_errors(instance), MAX_SCHEMA_PROBLEMS),
+        key=lambda e: tuple(str(part) for part in e.absolute_path),
+    )
     return [f"{'/'.join(map(str, e.absolute_path)) or '(root)'}: {e.message}" for e in errors]
 
 
@@ -278,6 +413,9 @@ def observed(
     this category default at 6200098 (server/scene.py `observed_intervals`). None keeps the
     old reading, all the way up."""
     meter = meter if meter is not None else WorkMeter()
+    key = ("observed", meter.input_key(scene), band, min_out_ft, beyond, wall_default_ft)
+    if key in meter.cache:
+        return meter.cache[key]
     spans = []
     for entry in scene.get("coverage", {}).get("observed", []):
         meter.charge()
@@ -303,7 +441,8 @@ def observed(
             merged[-1][1] = max(merged[-1][1], b)
         else:
             merged.append([a, b])
-    return [(a, b) for a, b in merged]
+    meter.cache[key] = [(a, b) for a, b in merged]
+    return meter.cache[key]
 
 
 def covers(
@@ -522,6 +661,9 @@ def straight_pieces(
     segments joined where the next one starts at the previous one's end and continues its line,
     within a wall or across two walls that meet."""
     meter = meter if meter is not None else WorkMeter()
+    key = ("straight_pieces", meter.input_key(scene), meter.input_key(rules))
+    if key in meter.cache:
+        return meter.cache[key]
     pieces: list[list] = []  # [s0, s1, start point, end point]
     for _, s0, s1, a, b in segments_s(scene, rules, meter=meter) or []:
         meter.charge()
@@ -536,7 +678,8 @@ def straight_pieces(
                     prev[1], prev[3] = s1, b
                     continue
         pieces.append([s0, s1, a, b])
-    return [(p[0], p[1]) for p in pieces]
+    meter.cache[key] = [(p[0], p[1]) for p in pieces]
+    return meter.cache[key]
 
 
 def footprint_problems(
@@ -625,7 +768,7 @@ def spot_position_problems(
                 f"[{fx:.2f}, {fz:.2f}]"
             )
     lo, hi = spot["span_ft"]
-    plan = GroundPlan(scene, rules, meter=meter)
+    plan = ground_plan(scene, rules, meter)
     want = plan.point((lo + hi) / 2, (lo + hi) / 2, rules.depth_ft / 2)
     if want is not None and math.dist((cx, cz), want) > COLLINEAR_FT:
         problems.append(
@@ -670,7 +813,7 @@ def battery_error(
     its checks (solver.py _errors): its wall's error at its far edge from the meter, plus the
     larger of the meter's error in plan and the battery's slide along the walls (slide)."""
     meter = meter if meter is not None else WorkMeter()
-    wall = next((w for w in scene["walls"] if w["id"] == wall_id), None)
+    wall = wall_lookup(scene, meter).get(wall_id)
     if wall is None:
         raise ValueError(f"the result names wall {wall_id!r}, which the scene does not have")
     return wall_error_at(wall, rules, max(abs(lo), abs(hi))) + max(
@@ -684,7 +827,7 @@ def along_error(
     """The battery's error against spans measured along the walls: its wall's at its far edge
     plus its slide, without the meter's plan error (server 3baa338 _errors, along_err)."""
     meter = meter if meter is not None else WorkMeter()
-    wall = next(w for w in scene["walls"] if w["id"] == wall_id)
+    wall = wall_lookup(scene, meter)[wall_id]
     return wall_error_at(wall, rules, max(abs(lo), abs(hi))) + slide(
         scene, rules, lo, hi, meter=meter
     )
@@ -712,10 +855,13 @@ def slide(
     other wall between the meter and the battery's near edge, at its far end, times the same
     difference for that wall. 0 on the meter's own wall."""
     meter = meter if meter is not None else WorkMeter()
+    key = ("slide", meter.input_key(scene), meter.input_key(rules), lo, hi)
+    if key in meter.cache:
+        return meter.cache[key]
     segments = segments_s(scene, rules, meter=meter)
     if not segments:
         return 0.0
-    walls = {w["id"]: w for w in scene["walls"]}
+    walls = wall_lookup(scene, meter)
 
     def along(seg) -> Point:
         _, _, _, p, q = seg
@@ -749,6 +895,7 @@ def slide(
         if b - a <= EPS:
             continue
         total += wall_error_at(walls[seg[0]], rules, max(abs(a), abs(b))) * turn(seg)
+    meter.cache[key] = total
     return total
 
 
@@ -796,7 +943,11 @@ def reach_gaps(
             error = battery_error(scene, rules, wall_id, lo, hi, meter=meter)
         reach = need.radius + error
         if need.band == "ground":
-            plan = GroundPlan(scene, rules, meter=meter) if rules.wall_join_ft is not None else None
+            plan = (
+                (lambda: ground_plan(scene, rules, meter))
+                if rules.wall_join_ft is not None
+                else None
+            )
             gap = ground_gap(scene, lo, hi, rules.depth_ft, reach, plan, meter=meter)
         elif need.band == "wall":
             a, b = required_span(lo, hi, reach)
@@ -831,17 +982,17 @@ def measured_band_gap(
     """The first stretch of [lo, hi] the facing or overhead band leaves unsettled: not observed,
     or observed short of `need` where no measurement covers it."""
     meter = meter if meter is not None else WorkMeter()
-    meter.charge(len(scene.get("coverage", {}).get("observed", [])))
-    entries = [
-        (*sorted(e["span_ft"]), reached(e))
-        for e in scene.get("coverage", {}).get("observed", [])
-        if e["band"] == band
-    ]
-    measured = [
-        tuple(sorted(m["span_ft"]))
-        for m in scene.get(MEASUREMENTS[band], [])
-        if m.get("wall_id", wall_id) == wall_id
-    ]
+    entries = band_entries(scene, band, meter)
+    measured = meter.derived(
+        f"measurements:{band}:{wall_id}",
+        scene,
+        None,
+        lambda: [
+            tuple(sorted(m["span_ft"]))
+            for m in scene.get(MEASUREMENTS[band], [])
+            if m.get("wall_id", wall_id) == wall_id
+        ],
+    )
     edges = {x for e in entries for x in e[:2]} | {x for m in measured for x in m}
     cuts = sorted({lo, hi} | {x for x in edges if lo < x < hi})
     for p, q in itertools.pairwise(cuts):
@@ -952,8 +1103,7 @@ def reported_dimension_problems(result: dict, rules: RuleSet | None) -> list[str
     for source, width in widths:
         if not finite(width) or width <= 0:
             message = f"{source} must be finite and positive"
-            if message not in problems:
-                problems.append(message)
+            problems.append(message)
     for check in result.get("checks", []):
         if check.get("rule", {}).get("key") == "route.corner_allowance_ft":
             allowance = check.get("threshold_ft")
@@ -973,7 +1123,12 @@ def reported_dimension_problems(result: dict, rules: RuleSet | None) -> list[str
                 and abs(first[field] - second[field]) > NUMBER_TOL_FT
             ):
                 problems.append(f"spot and nearest_considered {field} disagree")
-    return problems
+    return _unique_messages(problems)
+
+
+def _unique_messages(messages: list[str]) -> list[str]:
+    """Preserve diagnostic order without comparing each message to every predecessor."""
+    return list(dict.fromkeys(messages))
 
 
 def geometry_admission_problems(
@@ -981,6 +1136,8 @@ def geometry_admission_problems(
 ) -> list[str]:
     """Validate response numbers and references before geometry. Work is counted as it runs."""
     meter = meter if meter is not None else WorkMeter()
+    if problems := ingestion_problems(scene, "scene") + ingestion_problems(result, "result"):
+        return problems
     problems = reported_dimension_problems(result, rules)
 
     def numbers(value: Any, path: str) -> None:
@@ -1157,19 +1314,14 @@ def ground_gap(
     hi: float,
     depth: float,
     radius: float,
-    plan: GroundPlan | None = None,
+    plan: GroundPlan | Callable[[], GroundPlan] | None = None,
     meter: WorkMeter | None = None,
 ) -> str | None:
     """The first stretch of ground seen less far out than a battery over [lo, hi] needs (see
     coverage_problems), or None. With `plan`, ground not seen in the battery's own wall's band
     still counts where it lies in another wall's observed band in plan (GroundPlan)."""
     meter = meter if meter is not None else WorkMeter()
-    meter.charge(len(scene.get("coverage", {}).get("observed", [])))
-    entries = [
-        (*sorted(e["span_ft"]), e.get("out_ft", 0.0))
-        for e in scene.get("coverage", {}).get("observed", [])
-        if e["band"] == "ground"
-    ]
+    entries = band_entries(scene, "ground", meter)
     a, b = lo - radius, hi + radius
     cuts = sorted({a, lo, hi, b} | {x for e in entries for x in e[:2] if a < x < b})
     for p, q in itertools.pairwise(cuts):
@@ -1187,6 +1339,8 @@ def ground_gap(
         meter.charge(len(entries))
         seen = max((out for x, y, out in entries if x <= p + EPS and q - EPS <= y), default=None)
         if seen is None or seen + SEEN_GROWTH_FT < need:
+            if callable(plan):
+                plan = plan()
             if plan is not None and plan.covers((lo + hi) / 2, p, q, seen or 0.0, need_at):
                 continue
             where = f"ground [{p:.2f}, {q:.2f}] observed"
@@ -1241,10 +1395,11 @@ def missing_evidence_problems(
         return ["reason unobserved_area but missing_evidence is empty"]
     problems: list[str] = []
     named = {(r.get("band"), c) for r in requests for c in r.get("checks", [])}
+    requested_ids = {check for _, check in named}
     problems += [
         f"check {c} is unsure (unobserved) but no missing_evidence entry names it"
         for c in unseen
-        if not any(check == c for _, check in named)
+        if c not in requested_ids
     ]
     if rules is None or spot is None:
         return problems
@@ -1268,6 +1423,15 @@ END_TOL_FT = 0.1
 Point = tuple[float, float]
 
 
+def band_entries(scene: dict, band: str, meter: WorkMeter) -> list[tuple[float, float, float]]:
+    def build() -> list[tuple[float, float, float]]:
+        entries = scene.get("coverage", {}).get("observed", [])
+        meter.charge(len(entries))
+        return [(*sorted(e["span_ft"]), reached(e)) for e in entries if e["band"] == band]
+
+    return meter.derived(f"coverage_entries:{band}", scene, None, build)
+
+
 def segments_s(
     scene: dict, rules: RuleSet, meter: WorkMeter | None = None
 ) -> list[tuple[str, float, float, Point, Point]] | None:
@@ -1279,6 +1443,9 @@ def segments_s(
     sweep.wall_join_ft. Narrower, the walls meet and s skips the space (server/scene.py at
     7133283, `meets`)."""
     meter = meter if meter is not None else WorkMeter()
+    key = ("segments_s", meter.input_key(scene), meter.input_key(rules))
+    if key in meter.cache:
+        return meter.cache[key]
     if rules.wall_join_ft is None:
         raise ValueError("laying out the walls needs the rules' sweep.wall_join_ft")
     walls = scene.get("walls", [])
@@ -1309,7 +1476,26 @@ def segments_s(
         prev = (pts[-1], wall_error(wall, rules))
     if meter_s is None:
         return None
-    return [(wid, a - meter_s[1], b - meter_s[1], p, q) for wid, a, b, p, q in raw]
+    merged: list[tuple[str, float, float, Point, Point]] = []
+    # Only redundant vertices on the same straight wall are removed. Keep wall IDs,
+    # s distances and real turns, since wall errors and corner slides depend on them.
+    for wid, a, b, p, q in raw:
+        if b - a <= SERVER_EPS:
+            continue
+        if merged and merged[-1][0] == wid:
+            prev_wid, prev_a, _, start, end = merged[-1]
+            ux, uz = end[0] - start[0], end[1] - start[1]
+            vx, vz = q[0] - p[0], q[1] - p[1]
+            cross = abs(ux * vz - uz * vx)
+            if (
+                cross <= SERVER_EPS * math.hypot(ux, uz) * math.hypot(vx, vz)
+                and ux * vx + uz * vz > 0
+            ):
+                merged[-1] = (prev_wid, prev_a, b, start, q)
+                continue
+        merged.append((wid, a, b, p, q))
+    meter.cache[key] = [(wid, a - meter_s[1], b - meter_s[1], p, q) for wid, a, b, p, q in merged]
+    return meter.cache[key]
 
 
 def wall_spans_s(
@@ -1317,6 +1503,9 @@ def wall_spans_s(
 ) -> dict[str, tuple[float, float]] | None:
     """Each wall's stretch of s (see segments_s), or None without a meter wall."""
     meter = meter if meter is not None else WorkMeter()
+    key = ("wall_spans_s", meter.input_key(scene), meter.input_key(rules))
+    if key in meter.cache:
+        return meter.cache[key]
     segments = segments_s(scene, rules, meter=meter)
     if segments is None:
         return None
@@ -1325,7 +1514,16 @@ def wall_spans_s(
         meter.charge()
         lo, hi = spans.get(wid, (a, b))
         spans[wid] = (min(lo, a), max(hi, b))
+    meter.cache[key] = spans
     return spans
+
+
+def wall_lookup(scene: dict, meter: WorkMeter) -> dict[str, dict]:
+    return meter.derived("wall_lookup", scene, None, lambda: {w["id"]: w for w in scene["walls"]})
+
+
+def ground_plan(scene: dict, rules: RuleSet, meter: WorkMeter) -> GroundPlan:
+    return meter.derived("ground_plan", scene, rules, lambda: GroundPlan(scene, rules, meter=meter))
 
 
 class GroundPlan:
@@ -1341,18 +1539,29 @@ class GroundPlan:
     def __init__(self, scene: dict, rules: RuleSet, meter: WorkMeter | None = None) -> None:
         self.meter = meter if meter is not None else WorkMeter()
         self.segments = segments_s(scene, rules, meter=self.meter) or []
-        self.strips = []  # (origin, along, outward, from s, to s, out)
-        for e in scene.get("coverage", {}).get("observed", []):
-            self.meter.charge()
-            if e["band"] != "ground":
-                continue
-            a, b = sorted(e["span_ft"])
-            for _, s0, s1, p, q in self.segments:
+        self.scene = scene
+        self.rules = rules
+
+    @property
+    def strips(self) -> list:
+        # Direct s-coverage and spot positioning need no ground polygons. Construct
+        # these strips only when an uncovered reach actually needs the plan fallback.
+        def build() -> list:
+            strips = []  # (origin, along, outward, from s, to s, out)
+            for e in self.scene.get("coverage", {}).get("observed", []):
                 self.meter.charge()
-                if min(b, s1) - max(a, s0) > EPS and s1 - s0 > EPS:
-                    along, outward = self._frame(p, q)
-                    strip = (p, along, outward, max(a, s0) - s0, min(b, s1) - s0)
-                    self.strips.append((*strip, e.get("out_ft", 0.0)))
+                if e["band"] != "ground":
+                    continue
+                a, b = sorted(e["span_ft"])
+                for _, s0, s1, p, q in self.segments:
+                    self.meter.charge()
+                    if min(b, s1) - max(a, s0) > EPS and s1 - s0 > EPS:
+                        along, outward = self._frame(p, q)
+                        strip = (p, along, outward, max(a, s0) - s0, min(b, s1) - s0)
+                        strips.append((*strip, e.get("out_ft", 0.0)))
+            return strips
+
+        return self.meter.derived("ground_strips", self.scene, self.rules, build)
 
     @staticmethod
     def _frame(p: Point, q: Point) -> tuple[Point, Point]:
@@ -1450,10 +1659,14 @@ def chain_ends_s(
 ) -> tuple[float, float] | None:
     """s of the wall chain's left and right ends, or None without a meter wall."""
     meter = meter if meter is not None else WorkMeter()
+    key = ("chain_ends_s", meter.input_key(scene), meter.input_key(rules))
+    if key in meter.cache:
+        return meter.cache[key]
     spans = wall_spans_s(scene, rules, meter=meter)
     if spans is None:
         return None
-    return min(a for a, _ in spans.values()), max(b for _, b in spans.values())
+    meter.cache[key] = min(a for a, _ in spans.values()), max(b for _, b in spans.values())
+    return meter.cache[key]
 
 
 def declared_height_problems(
@@ -1539,6 +1752,17 @@ def with_past_ends_asked(
 # --- Case expectations -----------------------------------------------------------------------
 
 
+def case_metadata_problems(assumed: dict, expect: dict | None = None) -> list[str]:
+    """Bound local case queries too: substring expectations scan the response once each."""
+    expect = expect or {}
+    queries = len(assumed) + sum(
+        len(expect.get(field, [])) for field in ("sweep_runs", "checks", "start_outcomes")
+    )
+    if queries > MAX_CASE_RULE_QUERIES:
+        return [f"case ingestion limit exceeded: more than {MAX_CASE_RULE_QUERIES} rule queries"]
+    return ingestion_problems({"assumed": assumed, "expect": expect}, "case")
+
+
 def reported_assumption_values(key: str, result: dict) -> list[tuple[str, float]]:
     """Rule values carried by C2 spots or check thresholds, without reading server files."""
     values = []
@@ -1571,6 +1795,8 @@ def reported_rules(result: dict, rules: RuleSet) -> RuleSet:
 
 
 def assumption_mismatches(assumed: dict[str, float], result: dict) -> list[str]:
+    if problems := case_metadata_problems(assumed):
+        return problems
     return [
         f"case assumes {key} threshold {value}, server's {source} uses {actual}"
         for key, value in assumed.items()
@@ -1582,7 +1808,15 @@ def assumption_mismatches(assumed: dict[str, float], result: dict) -> list[str]:
 def public_assumption_warnings(
     assumed: dict[str, float], result: dict, rules: RuleSet
 ) -> list[str]:
+    if problems := case_metadata_problems(assumed):
+        return problems
     configured = {"battery_width": rules.width_ft, "corner_allowance": rules.corner_allowance_ft}
+    policy = result.get("policy", {})
+    nonpublic = "private" in policy.get("sources", []) or (
+        rules.rules_sha256 is not None
+        and policy.get("rules_sha256") is not None
+        and policy["rules_sha256"] != rules.rules_sha256
+    )
     return [
         f"case assumes {key} {value}, public rules use {configured[key]}; "
         "assumed public rules; server may override; result does not report this value, "
@@ -1590,11 +1824,13 @@ def public_assumption_warnings(
         for key, value in assumed.items()
         if configured.get(key) is not None
         and not reported_assumption_values(key, result)
-        and abs(configured[key] - value) > EPS
+        and (nonpublic or abs(configured[key] - value) > EPS)
     ]
 
 
 def expectation_problems(expect: dict, result: dict, meter: WorkMeter | None = None) -> list[str]:
+    if admission := case_metadata_problems({}, expect):
+        return admission
     problems: list[str] = []
     decision = result["decision"]
     if "decision_in" in expect and decision not in expect["decision_in"]:
