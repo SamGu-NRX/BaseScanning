@@ -79,6 +79,7 @@ from hsverify.resultcheck import (
     more_error_problems,
     outcome_lengths,
     public_assumption_warnings,
+    public_dimension_problems,
     reported_rules,
     schema_errors,
     tape_to_tap,
@@ -651,6 +652,8 @@ def judge(
 
         contract += check("reported rules", check_reported_rules)
         admitted = not contract
+        if admitted:
+            contract += check("public dimensions", lambda: public_dimension_problems(result, rules))
     if warnings:
         record["rule_checks_unverified"] = True
     if admitted:
@@ -676,6 +679,7 @@ def judge(
                 active_rules,
                 meter=meter,
                 rule_checks=not warnings,
+                public_rules=rules,
             ),
         )
     if item.real and ms > LATENCY_BUDGET_MS:
@@ -724,11 +728,13 @@ def property_problems(
     *,
     meter: WorkMeter | None = None,
     rule_checks: bool = True,
+    public_rules: RuleSet | None = None,
 ) -> list[str]:
     """The same scene resent unchanged and transformed. Every answer to a transformed scene must
     also satisfy the invariants, and the transforms that only lose information must not make
     the server surer."""
     meter = meter if meter is not None else WorkMeter()
+    public_rules = public_rules if public_rules is not None else rules
     checked_rules = rules if rule_checks else None
     if admission := geometry_admission_problems(item.scene, result, checked_rules, meter=meter):
         return admission
@@ -755,8 +761,9 @@ def property_problems(
                 problems.extend(f"{name}: {p}" for p in admission)
                 return None
             check_name = "invariants"
-            variant_rules = reported_rules(other, rules) if rule_checks else None
-            invariants = invariant_problems(
+            variant_rules = reported_rules(other, public_rules) if rule_checks else None
+            dimensions = public_dimension_problems(other, public_rules) if rule_checks else []
+            invariants = dimensions + invariant_problems(
                 scene, other, sent=transformed.raw, rules=variant_rules, meter=meter
             )
             if invariants:

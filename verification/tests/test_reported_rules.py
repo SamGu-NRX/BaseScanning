@@ -49,6 +49,7 @@ def test_judge_compares_reported_width_with_case_assumption(monkeypatch, matches
     def post(url, endpoint, item):
         answer = copy.deepcopy(answers[item.name])
         answer["stats"]["input_sha256"] = hashlib.sha256(item.raw).hexdigest()
+        answer["policy"].update(sources=["public", "private"], rules_sha256="f" * 64)
         return 200, json.dumps(answer).encode(), 0
 
     monkeypatch.setattr(e2e, "post", post)

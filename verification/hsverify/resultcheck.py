@@ -1754,7 +1754,15 @@ def with_past_ends_asked(
 
 def case_metadata_problems(assumed: dict, expect: dict | None = None) -> list[str]:
     """Bound local case queries too: substring expectations scan the response once each."""
-    expect = expect or {}
+    if not isinstance(assumed, dict):
+        return ["case rules_assumed must be an object"]
+    if expect is None:
+        expect = {}
+    if not isinstance(expect, dict):
+        return ["case expect must be an object"]
+    for field in ("sweep_runs", "checks", "start_outcomes"):
+        if field in expect and not isinstance(expect[field], list):
+            return [f"case expect.{field} must be an array"]
     queries = len(assumed) + sum(
         len(expect.get(field, [])) for field in ("sweep_runs", "checks", "start_outcomes")
     )
@@ -1783,10 +1791,68 @@ def reported_assumption_values(key: str, result: dict) -> list[tuple[str, float]
     return values
 
 
+def reported_policy_overrides(result: dict, rules: RuleSet) -> bool:
+    """A reported fingerprint must identify a policy other than the loaded public rules."""
+    policy = result.get("policy", {})
+    fingerprint = policy.get("rules_sha256")
+    if not isinstance(fingerprint, str):
+        return False
+    if rules.rules_sha256 is not None:
+        return fingerprint != rules.rules_sha256
+    return "private" in policy.get("sources", [])
+
+
+def public_dimension_problems(result: dict, rules: RuleSet) -> list[str]:
+    if reported_policy_overrides(result, rules):
+        return []
+    values = []
+    for name in ("spot", "nearest_considered"):
+        spot = result.get(name)
+        if spot is not None:
+            for field, expected in (
+                ("width_ft", rules.width_ft),
+                ("depth_ft", rules.depth_ft),
+                ("height_ft", rules.battery_height_ft),
+            ):
+                if field in spot and expected is not None:
+                    values.append((f"{name}.{field}", spot[field], expected))
+    for key, expected in (
+        ("battery_width", rules.width_ft),
+        ("corner_allowance", rules.corner_allowance_ft),
+    ):
+        if expected is not None:
+            values.extend(
+                (source, actual, expected)
+                for source, actual in reported_assumption_values(key, result)
+            )
+    if result.get("route") is not None and "height_ft" in result["route"]:
+        values.append(("route.height_ft", result["route"]["height_ft"], rules.route_height_ft))
+    configured = {
+        "battery.depth_ft": rules.depth_ft,
+        "battery.height_ft": rules.battery_height_ft,
+        "route.height_ft": rules.route_height_ft,
+    }
+    for check in result.get("checks", []):
+        expected = configured.get(check.get("rule", {}).get("key"))
+        actual = check.get("threshold_ft")
+        if expected is not None and actual is not None:
+            values.append((check["id"], actual, expected))
+    # C2 rounds dimensions to six decimals; preserve that representation tolerance.
+    return _unique_messages(
+        [
+            f"{source} {actual} does not match loaded public rules {expected}"
+            for source, actual, expected in values
+            if abs(actual - expected) > NUMBER_TOL_FT
+        ]
+    )
+
+
 def reported_rules(result: dict, rules: RuleSet) -> RuleSet:
-    """Use reported geometry for invariants too, so public defaults cannot reject an override."""
+    """Use validated reported geometry only for an explicitly different policy."""
     if problems := reported_dimension_problems(result, rules):
         raise ValueError("; ".join(problems))
+    if not reported_policy_overrides(result, rules):
+        return rules
     changes = {}
     for key, field in (("battery_width", "width_ft"), ("corner_allowance", "corner_allowance_ft")):
         if values := reported_assumption_values(key, result):
