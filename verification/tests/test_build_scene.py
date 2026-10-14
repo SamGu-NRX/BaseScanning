@@ -101,3 +101,19 @@ def test_non_grid_wall_has_no_excess_or_missing_tail(length):
     )
     assert entries[0]["span_ft"] == [0.0, length]
     assert spans == [[0.0, length]]
+
+
+@pytest.mark.parametrize("length", [2.2, 2.3, 0.05])
+def test_clipped_tail_probes_stay_within_the_wall(length):
+    probes = []
+
+    def within_wall(kf, w, point, walls):
+        probes.append(float(point[0]))
+        return 0.0 <= point[0] <= length
+
+    entries, spans = build_scene.band_coverage(
+        "wall", [wall("w", 0.0, length)], [], ["kf"], within_wall
+    )
+    assert probes and all(0.0 <= p <= length for p in probes)
+    assert spans == [[0.0, length]]
+    assert entries[0]["span_ft"] == [0.0, length]
