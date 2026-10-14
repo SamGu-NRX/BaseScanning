@@ -59,6 +59,66 @@ const READ_PAGE = `(() => {
   };
 })()`;
 
+for (const phase of ["pending", "ready"]) {
+  test(`${phase} result followed by null shows the error in the page`, { skip: chromePath ? false : "no Chrome found; set CHROME_PATH" }, async () => {
+    const chrome = await launchChrome(chromePath);
+    try {
+      await chrome.send("Page.enable");
+      await chrome.send("Page.addScriptToEvaluateOnNewDocument", { source: RARE_FRAMES + `
+        const originalFetch = window.fetch;
+        window.__resultReads = 0;
+        window.__refreshResult = false;
+        window.fetch = async (input, init) => {
+          const path = new URL(input, location.href).pathname;
+          const json = (body) => new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } });
+          if (path.endsWith("/result")) {
+            window.__resultReads += 1;
+            return json(window.__resultReads > 1 ? null : {
+              runId: "run_a", status: "complete",
+              outcome: ${phase === "ready" ? '{ kind: "eligible", message: "Accepted result" }' : 'null'},
+            });
+          }
+          if (path.endsWith("/events")) return json({ status: "complete", events: window.__refreshResult ? [
+            { seq: 1, type: "verdict_ready", data: { runId: "run_a", kind: "eligible" } },
+          ] : [] });
+          if (path.includes("/captures/")) return json({ runId: "run_a", status: "complete" });
+          return originalFetch(input, init);
+        };
+      ` });
+      await chrome.send("Page.navigate", { url: `${origin}/?mode=live&source=synthetic&capture=cap_TEST_REFRESH` });
+      let page;
+      const started = Date.now();
+      while (Date.now() - started < 10_000) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        page = await chrome.evaluate(`(() => {
+          if (!window.__flushFrames || !document.getElementById("outcome")) return null;
+          window.__flushFrames();
+          if (window.__resultReads === 1) window.__refreshResult = true;
+          const box = document.getElementById("outcome");
+          const note = document.getElementById("outcome-note");
+          return { reads: window.__resultReads, visible: !box.hidden,
+            kind: document.getElementById("outcome-kind").textContent,
+            message: document.getElementById("outcome-msg").textContent,
+            note: note.hidden ? "" : note.textContent };
+        })()`);
+        if (page?.reads >= 2 && /Result was not a JSON object/.test(page.message + page.note)) break;
+      }
+      assert.ok(page?.reads >= 2, "the follower did not refresh the result");
+      assert.equal(page.visible, true, "the error must be visible");
+      if (phase === "ready") {
+        assert.equal(page.kind, "A battery fits");
+        assert.equal(page.message, "Accepted result");
+        assert.match(page.note, /Refreshing the result failed.*Result was not a JSON object/);
+      } else {
+        assert.equal(page.kind, "Could not read the result");
+        assert.match(page.message, /Result was not a JSON object/);
+      }
+    } finally {
+      await chrome.close();
+    }
+  });
+}
+
 test("with the animation clock stopped, counts and stage marks still follow the server", { skip: chromePath ? false : "no Chrome found; set CHROME_PATH" }, async () => {
   const chrome = await launchChrome(chromePath);
   try {

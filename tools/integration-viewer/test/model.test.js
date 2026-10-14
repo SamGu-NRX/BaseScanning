@@ -272,6 +272,26 @@ test("a null result refresh keeps the accepted eligible result and shows a refre
   assert.equal(run(selected(), { type: "result", body: null }).result.phase, "error");
 });
 
+for (const body of [null, [], "invalid"]) {
+  test(`a pending result followed by ${JSON.stringify(body)} clears the body so its error can render`, () => {
+    const pending = run(selected(), { type: "result", body: { runId: "run_a", status: "processing", outcome: null } });
+    assert.equal(pending.result.phase, "pending");
+    const failed = run(pending, { type: "result-loading" }, { type: "result", body });
+    assert.equal(failed.result.phase, "error");
+    assert.equal(failed.result.body, null);
+    assert.equal(failed.result.error, "Result was not a JSON object");
+    assert.equal(failed.result.revision, pending.result.revision);
+  });
+}
+
+test("a pending result followed by a fetch failure clears the body so its error can render", () => {
+  const pending = run(selected(), { type: "result", body: { runId: "run_a", status: "processing", outcome: null } });
+  const failed = run(pending, { type: "result-loading" }, { type: "result-error", error: "network error" });
+  assert.equal(failed.result.phase, "error");
+  assert.equal(failed.result.body, null);
+  assert.equal(failed.result.error, "network error");
+});
+
 test("the eligible illustration leaves no check unsure", async () => {
   const { resultBody } = await import("../public/scenario.js");
   const body = resultBody("complete", "complete");

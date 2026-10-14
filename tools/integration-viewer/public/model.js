@@ -121,7 +121,7 @@ export function reduce(state, action) {
     case "result":
       return applyResult(state, action.body);
     case "result-error":
-      // A failed refresh keeps a result already shown; it is still what the server last said.
+      // A failed refresh retains only a ready result.
       return resultError(state, action.error);
     case "preview-loading":
       // Re-reading the same run's model keeps the one on screen until the new one arrives.
@@ -334,7 +334,8 @@ function stage(state, data, base) {
 const NO_OUTCOME_STATUSES = new Set(["failed", "expired"]);
 
 function resultError(state, error) {
-  return { ...state, result: { ...state.result, phase: state.result.phase === "ready" ? "ready" : "error", error } };
+  const ready = state.result.phase === "ready";
+  return { ...state, result: { ...state.result, phase: ready ? "ready" : "error", body: ready ? state.result.body : null, error } };
 }
 
 function applyResult(state, body) {
