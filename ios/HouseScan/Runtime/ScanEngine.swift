@@ -370,6 +370,7 @@ final class ScanEngine {
         case .wallWalk:
             live?.setMode(.walk)
             planner.reset()
+            state.resetAimSpans()
             if let replay, let map = coverage {
                 // The recording's closing tilt-up frames wait for the tilt-up step.
                 let walkEnd = Self.tiltUpFrames(in: replay, map: map).lowerBound
@@ -1132,6 +1133,9 @@ final class ScanEngine {
         let output = planner.update(coverage: map, camera: camera, time: screenTime,
                                     aimActionable: aimActionable)
         logPlannerSwitch(output)
+        if let span = planner.aimWindow(for: output.task, coverage: map) {
+            state.recordAimSpan(for: Self.step(output.task), range: span)
+        }
         if let hidden = hiddenBlock(output.task, map, camera: camera) {
             seeBehindBands = hidden.bands
             state.guidance = .seeBehind(s: hidden.s)
@@ -1727,6 +1731,7 @@ final class ScanEngine {
         gateCoaching = CoachingDebouncer()
         autoCapture.reset()
         planner.reset()
+        state.resetAimSpans()
         go(.findMeter)
     }
 
@@ -2414,6 +2419,7 @@ final class ScanEngine {
         autoCapture.reset()
         gateCoaching = CoachingDebouncer()
         planner.reset()
+        state.resetAimSpans()
         cameraInterrupted = false
         interruptionEndedAt = nil
         closeUpGate = CloseUpGate()
@@ -2767,6 +2773,33 @@ extension ScanEngine {
             engine.coverage = CoverageMap(wall: wall)
             update()
             return aimHeld()
+        case "trimmedProgress":
+            var map = CoverageMap(wall: wall)
+            for band in SurfaceBand.allCases { map.markSkipped(band, -0.3...0.3) }
+            map.setEnd(.left, at: -0.5)
+            map.markSkipped(.wall, 1...4)
+            engine.coverage = map
+            engine.planner.reset()
+            engine.state.resetAimSpans()
+            var transform = camera.cameraToWorld
+            transform.columns.3.x = 2
+            let alongWall = CameraFrame(cameraToWorld: transform, intrinsics: camera.intrinsics, imageSize: camera.imageSize)
+            now = 0
+            engine.updateGuidance(camera: alongWall, time: now)
+            now = 20
+            engine.updateGuidance(camera: alongWall, time: now)
+            let left = engine.state.guidance
+            guard case .aimAtGround = left, let span = engine.state.aimSpan?.range,
+                  span.upperBound < 2.1 else { return "trimmed span was not published" }
+            engine.state.coverage = CoverageStrip(cellWidth: map.config.cellWidth, firstCellS: map.cellRange(10).lowerBound,
+                wall: Array(repeating: .covered, count: 11), ground: (10...20).map { $0 == 11 ? .covered : .unseen },
+                wallBandHeight: map.config.wallWalkHeight, groundBandDepth: map.config.groundBandDepth,
+                visibleRange: 1.5...3.2, revision: 1)
+            guard engine.state.aimProgress == 0.3125 else { return "ring used the full window instead of four requested cells" }
+            now = 40
+            engine.updateGuidance(camera: alongWall, time: now)
+            guard engine.state.guidance != left else { return "fixture did not request the other run" }
+            return engine.state.aimProgress(for: left) == 0.3125 ? "passed" : "previous aim lost its requested span"
         case "endScanFreeze", "endScanReviewFreeze":
             let guidance = engine.state.guidance
             let target = engine.state.target

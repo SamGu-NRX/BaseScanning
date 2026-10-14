@@ -830,6 +830,14 @@ final class ScanViewState {
     var tracking: TrackingQuality = .notAvailable
     var coaching: Coaching?
     var guidance: GuidanceStep = .findMeter
+    struct AimSpan: Equatable, Sendable {
+        let step: GuidanceStep
+        let range: ClosedRange<Float>
+    }
+    /// The current and previous aim's requested span, including any trimmed deferred boundary.
+    /// The previous span lets the completion ring score the aim that just left the screen.
+    var aimSpan: AimSpan?
+    var previousAimSpan: AimSpan?
     /// Set with an aim step (`GuidanceStep.aimAtGround`, `.aimAtWall`); nil with any other.
     var guidanceHint: GuidanceHint?
     /// A world point to aim at (ring when on screen, edge chevron when not).

@@ -22,6 +22,7 @@ final class EngineGuidanceTests: XCTestCase {
     @MainActor func testAnEndQuestionPausesTheAim() { check("question") }
     @MainActor func testTheNextWallScreenPausesTheAim() { check("nextWall") }
     @MainActor func testTwoHiddenCellsPauseWithoutCoaching() { check("hidden") }
+    @MainActor func testTheRingUsesTheTrimmedCurrentAndPreviousAimSpans() { check("trimmedProgress") }
     @MainActor func testTheEndScanQuestionFreezesReviewCues() { check("endScanReviewFreeze") }
     @MainActor func testTheEndScanQuestionFreezesGuidanceTargetAndPath() { check("endScanFreeze") }
 }
