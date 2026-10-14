@@ -404,3 +404,91 @@ def test_only_defined_separators_split_serial_groups(separator):
 @pytest.mark.parametrize("text", ["240V\u200b", "\u0301240V", "240V😀"])
 def test_invalid_rating_shaped_group_is_not_extracted_as_a_boundary(text):
     assert not reads_number(observations(f"1234567 {text}"), "1234567")
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "#",
+        "№",
+        "N°",
+        "No",
+        "No.",
+        "Nr",
+        "Nr.",
+        "S/N",
+        "SN",
+        "Serial",
+        "Meter",
+        "Serial No",
+        "Meter No",
+        "Meter #",
+    ],
+)
+def test_attached_label_prefix_is_a_boundary_before_validating_the_suffix(label):
+    text = f"{label}1234567"
+    lines = observations(text)
+    assert reads_number(lines, "1234567")
+    assert number_core(text) == "1234567"
+    found = candidates({"lines": lines, "barcodes": []}, "1234567")
+    assert ranked(found)[0] == "1234567"
+    assert next(candidate for candidate in found if candidate["core"] == "1234567")["boxes"] == [
+        lines[0]["box"]
+    ]
+
+
+@pytest.mark.parametrize(
+    "text", ["#é1234567", "№e\u03011234567", "N°123\u200b4567", "No.123\u200d4567", "SN1234567😀"]
+)
+def test_attached_label_does_not_erase_an_invalid_suffix(text):
+    assert number_core(text) is None
+    assert not reads_number(observations(text), "1234567")
+    assert not candidates({"lines": observations(text), "barcodes": []}, "1234567")
+
+
+@pytest.mark.parametrize(
+    "payload,target",
+    [
+        ("X0YZ01234567;12345678", "12345678"),
+        ("ABC1234567;XYZ7654321", "ABC1234567"),
+        ("ABC1234567;XYZ7654321", "XYZ7654321"),
+        ("*1234567*", "1234567"),
+        ("{1234567}", "1234567"),
+        ("unrelated,1234567", "1234567"),
+        ("é1234567;1234567", "1234567"),
+        ("e\u03011234567;1234567", "1234567"),
+    ],
+)
+def test_barcode_fields_are_validated_independently(payload, target):
+    from meter_eval.locate import barcode_stats, payload_tokens
+
+    barcodes = [{"payload": payload, "box": [0.1, 0.5, 0.4, 0.1]}]
+    assert target in payload_tokens(barcodes)
+    result = {"lines": observations(target), "barcodes": barcodes}
+    found = candidates(result, target)
+    assert next(candidate for candidate in found if candidate["core"] == target)[
+        "barcode_confirmed"
+    ]
+    row = {
+        "number_hmac": digest(target),
+        "number_core_hmac": digest(target),
+        "number_core_len": len(target),
+    }
+    assert barcode_stats(row, result) == {
+        "barcode_found": 1,
+        "barcode_decoded": 1,
+        "barcode_has_number": 1,
+    }
+
+
+def test_barcode_fields_cannot_join_across_a_delimiter():
+    from meter_eval.locate import barcode_stats, payload_tokens
+
+    barcodes = [{"payload": "1234;567"}]
+    assert "1234567" not in payload_tokens(barcodes)
+    row = {
+        "number_hmac": digest("1234567"),
+        "number_core_hmac": digest("1234567"),
+        "number_core_len": 7,
+    }
+    assert barcode_stats(row, {"barcodes": barcodes})["barcode_has_number"] == 0

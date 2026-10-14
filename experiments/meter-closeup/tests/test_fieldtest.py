@@ -168,8 +168,8 @@ def test_read_target_strips_only_recognised_label_words(label, suffix):
     assert not reads_number("AB12346", target)
 
 
-@pytest.mark.parametrize("serial", ["ABC1234567", "NO1234567", "SN1234567", "METER1234567"])
-def test_read_target_preserves_serial_letters_without_a_label_boundary(serial):
+@pytest.mark.parametrize("serial", ["ABC1234567", "ABSN12345", "XNO1234567", "XMETER1234567"])
+def test_read_target_preserves_letters_outside_a_recognised_label_prefix(serial):
     from meter_eval.match import read_target
 
     assert read_target(serial) == serial.casefold()

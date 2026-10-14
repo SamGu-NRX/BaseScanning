@@ -64,19 +64,19 @@ def tokens(text: str) -> list[str]:
     return [t for t in unique if digits(t) >= 4]
 
 
+def payload_fields(barcodes: list[dict]) -> list[str]:
+    """Validate each delimited barcode field independently, skipping unsupported fields."""
+    return [
+        token
+        for barcode in barcodes
+        for field in re.split(r"[;*,{}]+", barcode.get("payload") or "")
+        if (token := number_core(field))
+    ]
+
+
 def payload_tokens(barcodes: list[dict]) -> set[str]:
-    """Cores of the digit-bearing parts of every decoded payload."""
-    parts = set()
-    for barcode in barcodes:
-        payload = barcode.get("payload") or ""
-        if number_core(payload) is None:
-            continue
-        for part in re.split(r"[\s;*,{}]+", payload):
-            if digits(part) >= 4:
-                token = number_core(part)
-                if token:
-                    parts.add(token)
-    return parts
+    """Cores of the digit-bearing fields of every decoded payload."""
+    return {token for token in payload_fields(barcodes) if digits(token) >= 4}
 
 
 def candidates(
@@ -192,8 +192,7 @@ def barcode_stats(row: dict, result: dict) -> dict:
     length = int(row["number_core_len"] or 0)
     has_number = any(
         digest(token[i : i + length]) == target
-        for p in payloads
-        if (token := number_core(p))
+        for token in payload_fields(barcodes)
         for i in range(len(token) - length + 1)
     )
     return {

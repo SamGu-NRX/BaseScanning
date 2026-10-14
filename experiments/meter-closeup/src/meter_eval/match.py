@@ -22,7 +22,7 @@ from meter_eval.quality import union_box
 DIGIT_FIXUPS = str.maketrans({"O": "0", "I": "1", "L": "1"})
 
 # Printed labels shared by reading and candidate ranking. Compound labels precede
-# shorter forms; a label boundary keeps serial letters in ABC1234567 or NO1234567.
+# shorter forms. Recognised prefixes split off even when attached to the serial.
 NUMBER_LABELS = (
     "Serial No",
     "Meter No",
@@ -40,16 +40,12 @@ NUMBER_LABELS = (
 )
 # Label wrappers are explicit so format characters cannot disappear around a label.
 _LABEL_SEPARATOR = r"[\s().:/#-]"
-KEYWORD = re.compile(
-    rf"^{_LABEL_SEPARATOR}*(?:"
-    + "|".join(
-        re.escape(label).replace(r"\ ", _LABEL_SEPARATOR + "+")
-        + (rf"(?=$|{_LABEL_SEPARATOR})" if label[-1].isalnum() else "")
-        for label in NUMBER_LABELS
-    )
-    + rf"){_LABEL_SEPARATOR}*",
-    re.IGNORECASE,
+_LABEL_PATTERN = "|".join(
+    (_LABEL_SEPARATOR + "+").join(r"(?ai:" + re.escape(word) + ")" for word in label.split())
+    for label in NUMBER_LABELS
 )
+_LABEL_PREFIX = re.compile(r"(?:" + _LABEL_PATTERN + r")")
+KEYWORD = re.compile(rf"^{_LABEL_SEPARATOR}*(?:" + _LABEL_PATTERN + rf"){_LABEL_SEPARATOR}*")
 
 
 _SERIAL_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -153,9 +149,6 @@ def match_serial(
     if target is not None and wanted is None:
         return []
     found = []
-    label_groups = [
-        tuple(re.findall(r"N°|№|#|[A-Z0-9]+", label.upper())) for label in NUMBER_LABELS
-    ]
     for row_id, row in enumerate(rows):
         row_box = union_box([piece["box"] for piece in row])
         # No Unicode normalization/case folding or O/0, I/1, Cyrillic/Latin mapping.
@@ -170,35 +163,45 @@ def match_serial(
             owners.extend([piece["box"]] * len(text))
         row_text = " ".join(normalized)
         masked = list(row_text)
-        rating_starts = set()
-        for rating in _RATING.finditer(row_text):
+        boundary_spans = []
+        label_end = 0
+        for token in _SERIAL_GROUP.finditer(row_text):
+            if token.start() < label_end:
+                continue
+            label = _LABEL_PREFIX.match(row_text, token.start())
+            if label:
+                label_end = label.end()
+                boundary_spans.append((label.start(), label.end()))
+                masked[label.start() : label.end()] = [" "] * (label.end() - label.start())
+        labelled_text = "".join(masked)
+        for rating in _RATING.finditer(labelled_text):
             # Never extract a rating from inside a group containing an unsupported character.
-            neighbours = row_text[rating.start() - 1 : rating.start()] if rating.start() else ""
-            neighbours += row_text[rating.end() : rating.end() + 1]
+            neighbours = (
+                labelled_text[rating.start() - 1 : rating.start()] if rating.start() else ""
+            )
+            neighbours += labelled_text[rating.end() : rating.end() + 1]
             if any(
                 not character.isspace() and character not in _SERIAL_SEPARATORS
                 for character in neighbours
             ):
                 continue
-            rating_starts.add(rating.start())
-            # Preserve offsets for source boxes while making the entire rating a boundary.
-            masked[rating.start() : rating.end()] = ["\0"] + [" "] * (
-                rating.end() - rating.start() - 1
-            )
+            boundary_spans.append((rating.start(), rating.end()))
+            masked[rating.start() : rating.end()] = [" "] * (rating.end() - rating.start())
+        # Explicit spans keep attached labels separate without deleting any suffix characters.
+        spans = [(start, end, "", True) for start, end in boundary_spans]
+        spans.extend(
+            (token.start(), token.end(), token.group(), False)
+            for token in _SERIAL_GROUP.finditer("".join(masked))
+        )
         groups = []
-        boundaries = set()
-        for token in _SERIAL_GROUP.finditer("".join(masked)):
+        kinds = []
+        for start, end, word, boundary in sorted(spans):
             boxes = []
-            for box in owners[token.start() : token.end()]:
+            for box in owners[start:end]:
                 if box is not None and box not in boxes:
                     boxes.append(box)
-            if token.start() in rating_starts:
-                boundaries.add(len(groups))
-            groups.append((token.group(), boxes))
-        words = [word for word, _ in groups]
-        kinds = []
-        for index, word in enumerate(words):
-            if index in boundaries:
+            groups.append((word, boxes))
+            if boundary:
                 kind = "boundary"
             elif any(character not in _SERIAL_ALPHABET for character in word):
                 kind = "invalid"
@@ -207,16 +210,7 @@ def match_serial(
             else:
                 kind = "text"
             kinds.append(kind)
-        i = 0
-        while i < len(words):
-            label = next(
-                (parts for parts in label_groups if tuple(words[i : i + len(parts)]) == parts), None
-            )
-            if label:
-                kinds[i : i + len(label)] = ["boundary"] * len(label)
-                i += len(label)
-            else:
-                i += 1
+        words = [word for word, _ in groups]
         for start in range(len(words)):
             if kinds[start] in ("boundary", "invalid") or (
                 start and kinds[start - 1] in ("numeric", "invalid")
