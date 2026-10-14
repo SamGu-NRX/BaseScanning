@@ -295,3 +295,65 @@ for (const response of [
     assert.ok(eventsAt[1] - eventsAt[0] >= 15_000, `event reads at ${eventsAt}`);
   } finally { h.follower.stop(); await h.follower.done; }
 });
+
+for (const response of [
+  { status: 409, code: "preview_run_changed" },
+  { status: 404, code: "preview_not_available" },
+]) test(`preview ${response.code} restarts result polling after slow reads`, async () => {
+  const resultAt = [];
+  let previewReads = 0;
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) return stubEvents();
+    if (path.endsWith("/result")) {
+      resultAt.push(clock);
+      if (resultAt.length <= 8) return stubJson({ runId: "run_s", status: "complete", outcome: null });
+      return stubResult(resultAt.length === 9 ? "withheld" : "");
+    }
+    if (path.includes("/preview")) {
+      previewReads += 1;
+      return stubJson({ errors: [{ code: response.code }] }, response.status);
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => resultAt.length >= 10 && h.state.result.body.previewUrl === "");
+    assert.ok(resultAt[8] - resultAt[7] >= 30_000, "the result reached the slow polling interval");
+    assert.ok(resultAt[9] - resultAt[8] <= 4_000, `result reads at ${resultAt}`);
+    assert.equal(previewReads, 1);
+    assert.equal(h.state.preview.phase, "none");
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+for (const change of ["run", "revision"]) test(`preview backoff does not delay a new ${change}`, async () => {
+  const previewAt = [];
+  let resultReads = 0;
+  let revisedAt = null;
+  const runAt = (clock) => change === "run" && clock >= 6_000 ? "run_b" : "run_s";
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) {
+      const after = new URL(path, "http://x").searchParams.get("after");
+      const changed = clock >= 6_000;
+      return stubJson({ status: "complete", next: changed ? 1 : 0, events: changed && after === "0"
+        ? [{ seq: 1, type: "verdict_ready", data: { runId: runAt(clock), kind: "eligible" } }] : [] });
+    }
+    if (path.endsWith("/result")) {
+      resultReads += 1;
+      if (resultReads === 2) revisedAt = clock;
+      return stubJson({ runId: runAt(clock), status: "complete", outcome: { kind: "eligible" }, previewUrl: resultReads === 1 ? "artifact_a" : "artifact_b" });
+    }
+    if (path.includes("/preview")) {
+      previewAt.push({ clock, run: new URL(path, "http://x").searchParams.get("run") });
+      return previewAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "120" }) : new Response(ply);
+    }
+    return stubJson({ runId: runAt(clock), status: "complete" });
+  });
+  try {
+    await until(() => h.state.preview.phase === "ready");
+    assert.equal(resultReads, 2);
+    assert.equal(previewAt.length, 2, "the failed revision was not retried during its backoff");
+    assert.equal(previewAt[1].clock, revisedAt, "the new revision's preview was read as soon as its result was accepted");
+    assert.ok(previewAt[1].clock < previewAt[0].clock + 120_000);
+    assert.equal(previewAt[1].run, change === "run" ? "run_b" : "run_s");
+  } finally { h.follower.stop(); await h.follower.done; }
+});

@@ -69,6 +69,7 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
     let resultAt = -Infinity;
     let resultNotBefore = -Infinity;
     let previewKey = null;
+    let previewRetryKey = null;
     let previewRetryAt = -Infinity;
     // Reads start without waiting and repeat while pages come back full. They return what happened
     // before the viewer connected, which the reducer marks as backlog so it does not animate.
@@ -142,7 +143,7 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
       const result = getState().result;
       const runId = result.body?.runId ?? null;
       const revisionKey = `${runId}|${result.revision}`;
-      if (result.phase === "ready" && hasPreview(result.body) && typeof runId === "string" && previewKey !== revisionKey && now() >= previewRetryAt) {
+      if (result.phase === "ready" && hasPreview(result.body) && typeof runId === "string" && previewKey !== revisionKey && (previewRetryKey !== revisionKey || now() >= previewRetryAt)) {
         previewKey = revisionKey;
         send({ type: "preview-loading", runId });
         try {
@@ -154,12 +155,18 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
           if (error instanceof HttpError && (error.status === 409 || error.code === "preview_not_available")) {
             previewKey = revisionKey; // do not retry this artifact until a fresh result is accepted
             readyKey = null;
+            // This result is stale; do not carry over its slow polling schedule.
+            resultTries = 0;
+            resultAt = -Infinity;
+            resultNotBefore = -Infinity;
+            waitS = 0;
           } else if (error instanceof PlyError) send({ type: "preview-error", runId, unsupported: true, error: error.message });
           else {
             // A fetch failure may pass; an unreadable file will not. Only the first is retried.
             send({ type: "preview-error", runId, error: error instanceof HttpError ? error.message : "network error" });
             previewKey = null;
             const asked = error instanceof HttpError && error.retryAfterS ? Math.min(error.retryAfterS * 1000, RETRY_AFTER_CAP_MS) : 0;
+            previewRetryKey = revisionKey; // another revision may reference a different storage object
             previewRetryAt = now() + Math.max(PREVIEW_RETRY_MS, asked);
           }
         }
