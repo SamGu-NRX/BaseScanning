@@ -3,12 +3,11 @@
     uv run python -m meter_eval.fieldtest PHOTO_DIR --number "12 345 678"
 
 For each photo: whether Vision read the number, where the number-finding ranking put it, the
-retake check values and whether they would ask for a retake. The checks use the contract
-ranking's top candidate, putting an exact --number match first when present. This is an
-evaluation ordering, not a prediction of the app's selection. The summary counts a retake
-asked for a photo that read (a
-wasted retake) and a photo accepted that did not read (a re-request later). The meter number
-is taken from the command line and is never written to disk.
+retake check values and whether they would ask for a retake. Candidates and the retake box
+come from the blind heuristic ranking; --number only scores the read and the number's rank.
+The summary counts a retake asked for a photo that read (a wasted retake) and a photo
+accepted that did not read (a re-request later). The meter number is taken from the command
+line and is never written to disk.
 """
 
 import argparse

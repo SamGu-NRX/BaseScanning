@@ -802,7 +802,8 @@ def test_score_clears_old_reports_before_a_failure(case):
     with pytest.raises(ValueError):
         field.score(archive, paths["truth"], paths["map"], paths["rules"], out)
     assert not (out / "field_report.md").exists()
-    assert not (out / "scored").exists()
+    assert (out / "scored").is_dir()
+    assert not list((out / "scored").iterdir())
 
 
 @pytest.mark.parametrize("layout", ["inside", "equal", "ancestor", "alias", "cleanup-alias"])
@@ -885,3 +886,24 @@ def test_equal_archive_basenames_get_distinct_result_directories(tmp_path, monke
             z.writestr("session.json", name)
         archives.append(archive)
     assert field.result_dir(archives[0]) != field.result_dir(archives[1])
+
+
+@pytest.mark.parametrize("dangling", [False, True])
+def test_score_replaces_scored_symlink_without_touching_its_target(case, dangling):
+    archive, paths, _capture, out = case
+    unrelated = out.parent / "unrelated-scores"
+    if not dangling:
+        unrelated.mkdir()
+        (unrelated / "keep.json").write_bytes(b"caller-owned scores")
+    out.mkdir()
+    scored = out / "scored"
+    scored.symlink_to(unrelated, target_is_directory=True)
+    field.score(archive, paths["truth"], paths["map"], paths["rules"], out)
+    assert scored.is_dir()
+    assert not scored.is_symlink()
+    (scored / "new.json").write_bytes(b"new scores")
+    if dangling:
+        assert not unrelated.exists()
+    else:
+        assert (unrelated / "keep.json").read_bytes() == b"caller-owned scores"
+        assert {path.name for path in unrelated.iterdir()} == {"keep.json"}

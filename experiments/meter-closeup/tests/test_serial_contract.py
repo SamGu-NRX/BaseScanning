@@ -602,3 +602,41 @@ def test_field_cli_reports_the_blind_second_rank_and_uses_the_blind_box(
     assert "| photo.jpg | yes | 2 | no |" in capsys.readouterr().out
     assert len(selected_boxes) == 1
     assert selected_boxes[0] == pytest.approx(result["lines"][0]["box"])
+
+
+@pytest.mark.parametrize(
+    "target,text,expected",
+    [
+        ("Serial No: SN1234567", "Serial No: SN1234567", True),
+        ("SN1234567", "SN 1234567", True),
+        ("No. 1234567", "1234567", True),
+        ("NoSN1234567", "NoSN1234567", True),
+        ("Serial No: NoSN1234567", "#1234567", True),
+        ("123 SN4567", "123 SN4567", False),
+    ],
+)
+def test_targets_and_ocr_use_the_same_repeated_label_stripping(target, text, expected):
+    assert number_core(target) == "1234567"
+    # The last case retains a label boundary between numeric groups in the OCR.
+    assert reads_number(observations(text), target) is expected
+
+
+@pytest.mark.parametrize("text", ["Serial No: SNé1234567", "NoSN123\u200b4567"])
+def test_repeated_labels_never_remove_an_unsupported_suffix_character(text):
+    assert number_core(text) is None
+    assert not reads_number(observations(text), "1234567")
+
+
+def test_field_help_describes_blind_ranking(tmp_path, monkeypatch, capsys):
+    import sys
+
+    from meter_eval import fieldtest
+
+    monkeypatch.setattr(sys, "argv", ["fieldtest", "--help"])
+    with pytest.raises(SystemExit) as error:
+        fieldtest.main()
+    assert error.value.code == 0
+    help_text = capsys.readouterr().out
+    assert "blind heuristic ranking" in help_text
+    assert "--number only scores" in help_text
+    assert "exact --number match first" not in help_text
