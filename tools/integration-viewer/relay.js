@@ -137,7 +137,7 @@ export function createViewerServer({ upstreams, publicDir, log = () => {} }) {
     }
     if (!reply.ok) {
       const retryAfter = reply.headers.get("retry-after");
-      await reply.body?.cancel();
+      await reply.body?.cancel().catch(() => {});
       return refuse(res, 502, "preview_fetch_failed", `storage answered ${reply.status}`, retryAfter ? { "retry-after": retryAfter } : {});
     }
     const declared = Number(reply.headers.get("content-length") ?? "0");

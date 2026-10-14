@@ -255,6 +255,24 @@ describe("refusals", () => {
     }
   });
 
+  test("an errored storage body cannot replace the preview 502 or Retry-After", async (t) => {
+    const storageUrl = `http://127.0.0.1:${hostile.address().port}/v1/errored.ply`;
+    hostileBody = { runId: "r", previewUrl: storageUrl };
+    const fetchImpl = globalThis.fetch;
+    let storageReads = 0;
+    t.mock.method(globalThis, "fetch", async (url, init) => {
+      if (String(url) !== storageUrl) return fetchImpl(url, init);
+      storageReads += 1;
+      const body = new ReadableStream({ start(controller) { controller.error(new Error("storage stream failed")); } });
+      return new Response(body, { status: 503, headers: { "retry-after": "19" } });
+    });
+    const reply = await raw("/relay/hostile/captures/cap_HOSTILE_1/preview?run=r");
+    assert.equal(storageReads, 1);
+    assert.equal(reply.status, 502);
+    assert.equal(reply.json.errors[0].code, "preview_fetch_failed");
+    assert.equal(reply.headers["retry-after"], "19");
+  });
+
   test("an oversized API reply is refused, not buffered", async () => {
     hostileHandler = (req, res) => {
       res.writeHead(200, { "content-type": "application/json" });
