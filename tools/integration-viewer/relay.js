@@ -7,6 +7,7 @@
 // supplies a URL. Signed storage URLs in the result stay inside the relay: the page gets a
 // placeholder, and the relay fetches the preview itself after checking the URL's host.
 
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join } from "node:path";
@@ -98,6 +99,10 @@ export function createViewerServer({ upstreams, publicDir, log = () => {} }) {
     let body = reply.json;
     if (leaf === "result" && body && typeof body === "object") {
       body = { ...body };
+      // A renewed signed query is not a new file. The digest distinguishes files without
+      // exposing their URL; query-only changes conservatively keep the same retry delay.
+      body.previewArtifactId = typeof body.previewUrl === "string" && body.previewUrl !== ""
+        ? createHash("sha256").update(body.previewUrl.split(/[?#]/, 1)[0]).digest("hex") : null;
       // Only a real URL is replaced; an empty value still means "no preview" to the page.
       for (const field of ["previewUrl", "verdictUrl"]) if (typeof body[field] === "string" && body[field] !== "") body[field] = WITHHELD;
     }

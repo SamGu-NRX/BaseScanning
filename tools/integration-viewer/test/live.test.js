@@ -340,7 +340,7 @@ for (const change of ["run", "revision"]) test(`preview backoff does not delay a
     if (path.endsWith("/result")) {
       resultReads += 1;
       if (resultReads === 2) revisedAt = clock;
-      return stubJson({ runId: runAt(clock), status: "complete", outcome: { kind: "eligible" }, previewUrl: resultReads === 1 ? "artifact_a" : "artifact_b" });
+      return stubJson({ runId: runAt(clock), status: "complete", outcome: { kind: "eligible" }, previewUrl: "withheld-by-viewer-relay", previewArtifactId: resultReads === 1 ? "artifact_a" : "artifact_b" });
     }
     if (path.includes("/preview")) {
       previewAt.push({ clock, run: new URL(path, "http://x").searchParams.get("run") });
@@ -355,5 +355,69 @@ for (const change of ["run", "revision"]) test(`preview backoff does not delay a
     assert.equal(previewAt[1].clock, revisedAt, "the new revision's preview was read as soon as its result was accepted");
     assert.ok(previewAt[1].clock < previewAt[0].clock + 120_000);
     assert.equal(previewAt[1].run, change === "run" ? "run_b" : "run_s");
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+for (const response of [
+  { status: 409, code: "preview_run_changed" },
+  { status: 404, code: "preview_not_available" },
+]) test(`result and preview delays survive refreshes and ${response.code}`, async () => {
+  const resultAt = [];
+  const previewAt = [];
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) {
+      const after = Number(new URL(path, "http://x").searchParams.get("after"));
+      const seq = clock >= 10_000 ? 2 : clock >= 6_000 ? 1 : 0;
+      return stubJson({ status: "complete", next: seq, events: seq > after
+        ? [{ seq, type: "verdict_ready", data: { runId: "run_s", kind: "eligible" } }] : [] });
+    }
+    if (path.endsWith("/result")) {
+      resultAt.push(clock);
+      if (resultAt.length === 3) return stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "40" });
+      return stubResult(resultAt.length < 5 ? "withheld-by-viewer-relay" : "");
+    }
+    if (path.includes("/preview")) {
+      previewAt.push(clock);
+      if (clock < 21_000) return stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": String((21_000 - clock) / 1000) });
+      return stubJson({ errors: [{ code: response.code }] }, response.status);
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => resultAt.length >= 5 && h.state.preview.phase === "none");
+    assert.equal(resultAt[1], 6_000, "a refreshed result is read while the preview is delayed");
+    assert.equal(resultAt[2], 10_000);
+    assert.deepEqual({
+      resultRetriedEarly: resultAt[3] < resultAt[2] + 40_000,
+      previewRetriedEarly: previewAt.slice(1).some((at) => at < 21_000),
+    }, { resultRetriedEarly: false, previewRetriedEarly: false });
+    assert.equal(previewAt[1], resultAt[3], "preview waits for the later deadline because its relay rereads the result");
+    assert.ok(resultAt[4] - resultAt[3] <= 4_000, "invalidation resets cadence without erasing server delays");
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+test("a delayed prerequisite result read also delays direct result refreshes", async () => {
+  const resultAt = [];
+  const previewAt = [];
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) {
+      const after = new URL(path, "http://x").searchParams.get("after");
+      return stubJson({ status: "complete", next: clock >= 6_000 ? 1 : 0, events: clock >= 6_000 && after === "0"
+        ? [{ seq: 1, type: "verdict_ready", data: { runId: "run_s", kind: "eligible" } }] : [] });
+    }
+    if (path.endsWith("/result")) {
+      resultAt.push(clock);
+      return stubResult(resultAt.length === 1 ? "withheld" : "");
+    }
+    if (path.includes("/preview")) {
+      previewAt.push(clock);
+      return stubJson({ errors: [{ code: "result_unavailable" }] }, 503, { "retry-after": "19" });
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => resultAt.length === 2 && h.state.preview.phase === "none");
+    assert.ok(resultAt[1] >= previewAt[0] + 19_000, `result reads at ${resultAt}`);
+    assert.equal(previewAt.length, 1);
   } finally { h.follower.stop(); await h.follower.done; }
 });

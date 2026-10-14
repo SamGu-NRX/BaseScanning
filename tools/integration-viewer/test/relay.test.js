@@ -105,6 +105,24 @@ describe("allowed reads", () => {
     const cloud = parsePly(preview.body.buffer.slice(preview.body.byteOffset, preview.body.byteOffset + preview.body.byteLength));
     assert.ok(cloud.count > 1000);
   });
+
+  test("preview identity survives renewed credentials but changes for another file", async () => {
+    const read = async (previewUrl) => {
+      hostileBody = { runId: "run_s", previewUrl, verdictUrl: "https://storage.example/verdict?secret=verdict" };
+      const reply = await raw("/relay/hostile/captures/cap_ARTIFACT/result");
+      assert.equal(reply.status, 200);
+      assert.equal(reply.json.previewUrl, "withheld-by-viewer-relay");
+      assert.equal(reply.json.verdictUrl, "withheld-by-viewer-relay");
+      assert.match(reply.json.previewArtifactId, /^[a-f0-9]{64}$/);
+      assert.ok(!reply.body.toString().includes("secret="));
+      return reply.json.previewArtifactId;
+    };
+    const first = await read("https://storage.example/model-a.ply?secret=first");
+    assert.equal(await read("https://storage.example/model-a.ply?secret=renewed"), first);
+    assert.notEqual(await read("https://storage.example/model-b.ply?secret=renewed"), first);
+    hostileBody = { runId: "run_s", previewUrl: "" };
+    assert.equal((await raw("/relay/hostile/captures/cap_ARTIFACT/result")).json.previewArtifactId, null);
+  });
 });
 
 describe("refusals", () => {
