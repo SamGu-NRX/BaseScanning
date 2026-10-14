@@ -26,11 +26,26 @@ from meter_eval.quality import gray
 
 SUFFIXES = {".jpg", ".jpeg", ".png", ".heic"}
 
+# Compound labels precede their shorter forms; strip only whole labels, never arbitrary
+# serial letters such as ABC in ABC1234567.
+READ_LABELS = ("Serial No", "Meter No", "Meter #", "S/N", "Serial", "Meter", "SN", "No", "#")
+
+
+def read_target(target: str) -> str:
+    for label in READ_LABELS:
+        words = re.escape(label).replace(r"\ ", r"[\W_]+")
+        boundary = r"(?=$|[\W_])" if label[-1].isalnum() else ""
+        prefix = re.match(r"^[\W_]*" + words + boundary + r"[\W_]*", target, re.IGNORECASE)
+        if prefix:
+            target = target[prefix.end() :]
+            break
+    return "".join(re.findall(r"[^\W_]+", target)).casefold()
+
 
 def reads_number(text: str, target: str) -> bool:
     # OCR cannot distinguish a trailing group from a separate field, so any
     # contiguous sequence of alphanumeric groups can count as a read.
-    target = "".join(re.findall(r"[^\W_]+", target)).casefold()
+    target = read_target(target)
     if not target:
         return False
     groups = re.findall(r"[^\W_]+", text.casefold())
@@ -98,7 +113,7 @@ def main() -> None:
             image.save(upright)
             g = gray(image)
             result = reader.read(upright, barcodes=True)
-            read = any(reads_number(text, target_core) for text, _ in rows_of_text(result["lines"]))
+            read = any(reads_number(text, args.number) for text, _ in rows_of_text(result["lines"]))
             order = ranked(candidates(result))
             rank = next((i + 1 for i, c in enumerate(order) if c == target_core), None)
             guess = top_candidate(result)
