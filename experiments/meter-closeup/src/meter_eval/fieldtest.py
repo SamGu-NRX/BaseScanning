@@ -98,7 +98,7 @@ def main() -> None:
             image.save(upright)
             g = gray(image)
             result = reader.read(upright, barcodes=True)
-            read = any(reads_number(text, args.number) for text, _ in rows_of_text(result["lines"]))
+            read = any(reads_number(text, target_core) for text, _ in rows_of_text(result["lines"]))
             order = ranked(candidates(result))
             rank = next((i + 1 for i, c in enumerate(order) if c == target_core), None)
             guess = top_candidate(result)

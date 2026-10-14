@@ -44,12 +44,17 @@ def recover_backup(here: Path) -> None:
         for stage in here.glob(".fixtures.*")
         if stage.is_dir() and not stage.is_symlink()
     ]
+    backups = [
+        stage / "previous"
+        for stage in stages
+        if (stage / "previous").exists() or (stage / "previous").is_symlink()
+    ]
+    if backups and (fixtures.exists() or fixtures.is_symlink()):
+        paths = ", ".join(str(backup.parent) for backup in backups)
+        raise RuntimeError(
+            f"Fixtures is occupied; backup preserved in {paths}; inspect before refreshing"
+        )
     if not fixtures.exists() and not fixtures.is_symlink():
-        backups = [
-            stage / "previous"
-            for stage in stages
-            if (stage / "previous").exists() or (stage / "previous").is_symlink()
-        ]
         if len(backups) > 1:
             raise RuntimeError(
                 "multiple fixture backups; inspect them before refreshing"

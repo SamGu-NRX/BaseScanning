@@ -805,6 +805,46 @@ def test_score_clears_old_reports_before_a_failure(case):
     assert not (out / "scored").exists()
 
 
+@pytest.mark.parametrize("layout", ["inside", "equal", "ancestor", "alias", "cleanup-alias"])
+def test_score_preserves_directory_sessions_overlapping_outputs(case, layout):
+    archive, paths, _capture, _out = case
+    folder, _ = field.unpack(archive)
+    out = folder / "results"
+    if layout == "equal":
+        out = folder
+    elif layout == "ancestor":
+        out = folder.parent
+    elif layout in ("alias", "cleanup-alias"):
+        out = folder.parent / "output-alias"
+        if layout == "alias":
+            (folder / "results").mkdir()
+            out.symlink_to(folder / "results", target_is_directory=True)
+    out.mkdir(exist_ok=True)
+    scored = out / "scored"
+    if layout == "cleanup-alias":
+        scored.symlink_to(folder, target_is_directory=True)
+    else:
+        scored.mkdir()
+        doc = json.loads((folder / "session.json").read_text())
+        (scored / "session-input.jpg").write_bytes(
+            field.session_file(folder, doc["keyframes"][0]["img"]).read_bytes()
+        )
+        if scored.resolve().is_relative_to(folder):
+            doc["keyframes"][0]["img"] = str(
+                (scored / "session-input.jpg").resolve().relative_to(folder)
+            )
+            (folder / "session.json").write_text(json.dumps(doc))
+    report = out / "field_report.md"
+    report.write_text("previous report")
+    before = {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()}
+    with pytest.raises(ValueError, match=r"directory input .* overlaps scoring output cleanup"):
+        field.score(folder, paths["truth"], paths["map"], paths["rules"], out)
+    assert {
+        str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()
+    } == before
+    assert report.read_text() == "previous report"
+
+
 def test_prepare_without_output_directory_skips_result_lookup(tmp_path, monkeypatch, capsys):
     import sys
 

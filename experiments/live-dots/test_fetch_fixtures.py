@@ -222,6 +222,10 @@ exec "$TEST_PYTHON" "$helper" "$@"''',
         )
         assert again.returncode == 1, again.stderr
         assert contents(fixtures) == expected
+        if failure == "kill-published":
+            assert "Fixtures is occupied; backup preserved" in again.stderr
+            assert str(stages[0]) in again.stderr
+            assert contents(stages[0] / "previous") == original
     elif failure == "success":
         assert result.returncode == 0, result.stderr
         assert (
@@ -245,6 +249,20 @@ exec "$TEST_PYTHON" "$helper" "$@"''',
         else:
             assert (tmp_path / "restore-failed").read_text() == "failed\n"
             assert not fixtures.exists()
+        if failure != "restore":
+            destination_before = contents(fixtures)
+            again = subprocess.run(
+                ["/bin/sh", str(script)],
+                env={**env, "FAILURE": "archive"},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert again.returncode != 0
+            assert "Fixtures is occupied; backup preserved" in again.stderr
+            assert str(stages[0]) in again.stderr
+            assert contents(backup) == original
+            assert contents(fixtures) == destination_before
     else:
         assert result.returncode != 0
         assert contents(fixtures) == original
@@ -252,7 +270,13 @@ exec "$TEST_PYTHON" "$helper" "$@"''',
             assert (tmp_path / "final-move-failed").read_text() == "failed\n"
         if failure == "missing-session":
             assert "lack synthetic-wall-lidar/session.json" in result.stderr
-    if failure not in ("occupied", "restore", "reappeared", "reappeared-empty"):
+    if failure not in (
+        "occupied",
+        "restore",
+        "reappeared",
+        "reappeared-empty",
+        "kill-published",
+    ):
         assert not list(tmp_path.glob(".fixtures.*"))
 
 

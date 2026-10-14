@@ -810,6 +810,17 @@ def score(
     generated = {(out_dir / name).resolve() for name in (*ROW_FILES, "field_report.md")}
     # Check before any cleanup: callers can keep an archive or survey under the output root.
     for path in (session_path, truth_path, map_path, rules_path):
+        if (
+            path is not None
+            and path.is_dir()
+            and any(
+                path.is_relative_to(target) or target.is_relative_to(path)
+                for target in (out_dir, scored, *generated)
+            )
+        ):
+            raise ValueError(
+                f"directory input {path} overlaps scoring output cleanup; choose another out-dir"
+            )
         if path is not None and (path.is_relative_to(scored) or path in generated):
             raise ValueError(
                 f"input {path} overlaps scoring output cleanup; choose another out-dir"
