@@ -745,6 +745,63 @@ final class ScreenStatesUITests: XCTestCase {
         attach(app, name: "wallWalk-aimHint-arrow")
     }
 
+    /// Review of #241: an aim card's title follows the marker the overlay draws, and the overlay
+    /// draws within the camera the card leaves open. If a title changed the card's height, a
+    /// target standing at the card's edge could flip the marker, then the title, then the marker
+    /// back, for as long as the phone stayed there. At the largest text the titles wrap to
+    /// different numbers of lines, so that is where the card must keep one height
+    /// (`Instruction.titleReserve`).
+    ///
+    /// Two frozen aim states whose cards carry different titles must lay the card out alike: its
+    /// Details row starts at one place. (The `instruction` element's own frame covers only the
+    /// words shown, not the reserved room.) Then a stationary target at the largest text, where
+    /// the card reaches down to the ring, must keep one title and one marker for several seconds.
+    /// Without the reserve this state never draws a frame: the app's main thread spins between
+    /// the overlay and the card, and the first query times out.
+    @MainActor
+    func testTheAimCardKeepsItsHeightSoAStillTargetDoesNotFlip() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        func card(_ arguments: [String]) -> (title: String, detailsTop: CGFloat) {
+            app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk"] + arguments + Self.largestText
+            app.launch()
+            let instruction = element(app, "instruction")
+            XCTAssertTrue(instruction.waitForExistence(timeout: 15))
+            XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 5), "at the largest text an aim card folds its detail")
+            // Let the overlay report its marker and the card follow it.
+            Thread.sleep(forTimeInterval: 1.5)
+            let title = ElementRead.snapshot(instruction)?.label ?? ""
+            return (title, ElementRead.snapshot(element(app, "instruction.details"))?.frame.minY ?? -1)
+        }
+        // The ring or an under-card arrow ("Put the ring on the strip" or "Tilt up a little")...
+        let near = card(["-uiDemoAim", "-uiDemoAimHint", "above"])
+        attach(app, name: "wallWalk-aimCard-near-AX5")
+        app.terminate()
+        // ...against an edge arrow, which keeps the step's own title. Every live aim step has
+        // a hint, and with it the reserved titles.
+        let away = card(["-uiDemoAimOffScreen", "-uiDemoAimHint", "left"])
+        attach(app, name: "wallWalk-aimCard-away-AX5")
+        app.terminate()
+        XCTAssertNotEqual(near.title, away.title, "the two states must show different titles for the check to mean anything")
+        XCTAssertEqual(near.detailsTop, away.detailsTop, accuracy: 0.5, "the aim card's height changed with its title: \(near) vs \(away)")
+
+        // Stationary at the card's edge: sampled for 4 s, nothing may change.
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAim", "-uiDemoAimHint", "above"] + Self.largestText
+        app.launch()
+        let instruction = element(app, "instruction")
+        XCTAssertTrue(instruction.waitForExistence(timeout: 15))
+        Thread.sleep(forTimeInterval: 1.5)
+        var seen: [String] = []
+        for _ in 0..<10 {
+            let title = ElementRead.snapshot(instruction)?.label ?? "?"
+            let ring = element(app, "aim.ring").exists
+            let details = ElementRead.snapshot(element(app, "instruction.details"))?.frame.minY ?? -1
+            seen.append("\(title) | ring \(ring) | Details at \(Int(details)) pt")
+            Thread.sleep(forTimeInterval: 0.4)
+        }
+        XCTAssertEqual(Set(seen).count, 1, "a still target flipped: \(seen)")
+    }
+
     /// #81: the first aim ring comes with a line under the card saying what it is for, clear of
     /// the card at every text size, and reads its progress to VoiceOver. Off screen, the edge
     /// arrow stands in for the ring, and neither shows.

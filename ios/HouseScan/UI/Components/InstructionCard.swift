@@ -113,7 +113,13 @@ struct InstructionCard: View {
         // Only the scrim's height eases. Reduce Motion asks for no size changes, so it snaps.
         .animation(reduceMotion ? nil : Motion.text, value: instruction)
         .animation(reduceMotion ? nil : Motion.text, value: reply == nil)
-        .onChange(of: instruction.title) { detailsShown = false }
+        // A new task's words close Details. A swap between titles the card already reserved
+        // room for (`Instruction.titleReserve`) is the same step: closing Details there changed
+        // the card's height, which an aim card's title must not do (review of #241).
+        .onChange(of: instruction.title) { old, new in
+            let reserved = instruction.titleReserve
+            if !(reserved.contains(old) && reserved.contains(new)) { detailsShown = false }
+        }
         .task(id: replyTask) {
             // Cleared first, so a task that comes back within the lock (A, B, A) is locked again.
             let shown = replyTask
