@@ -222,16 +222,17 @@ TEMPLATE = """<!doctype html>
 <script type="application/json" id="items">__ITEMS__</script>
 <script>
 const items = JSON.parse(document.getElementById("items").textContent);
-// Answers already ingested ship with the page, so a new browser starts from them. An answer
-// saved in this browser since then takes precedence only while the page still shows the number
-// it was given for: after a label correction or dataset update the photo is open again, so a
-// stale Keep is neither shown as done nor exported. Answers saved before `shown` was recorded
-// cannot be checked and are dropped the same way.
+// Answers already ingested ship with the page, so a new browser starts from them; answers saved
+// in this browser since then take precedence. A Fix carries the reviewer's own number, so it
+// stands whatever the page showed. A Keep confirms the number shown, so it stands only while
+// the page still shows that number: after a label correction or dataset update the photo is
+// open again, and a stale Keep is neither shown as done nor exported. A Keep saved before
+// `shown` was recorded cannot be checked and is dropped the same way.
 function startingAnswers(items, stored) {
   const answers = {};
   for (const item of items) {
     const mine = stored[item.id];
-    if (mine && mine.shown === item.number) answers[item.id] = mine;
+    if (mine && (mine.verdict === "fix" || mine.shown === item.number)) answers[item.id] = mine;
     else if (item.answer) answers[item.id] = item.answer;
   }
   return answers;

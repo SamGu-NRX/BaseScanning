@@ -56,6 +56,7 @@ def test_a_browser_keep_given_for_a_number_the_page_no_longer_shows_is_dropped()
         },
         {"id": "m02", "number": "2222222", "corrected": False, "answer": None},
         {"id": "m03", "number": "3333333", "corrected": False, "answer": None},
+        {"id": "m04", "number": "4444444", "corrected": False, "answer": None},
     ]
     stored = {
         # Kept while the page showed the readers' 1111111, before the correction was ingested.
@@ -64,7 +65,7 @@ def test_a_browser_keep_given_for_a_number_the_page_no_longer_shows_is_dropped()
         "m02": {"verdict": "keep", "number": "", "shown": "2220000"},
         # Kept for the number still shown.
         "m03": {"verdict": "keep", "number": "", "shown": "3333333"},
-        # Saved before answers recorded what they were given for.
+        # A Keep saved before answers recorded what they were given for.
         "m04": {"verdict": "keep", "number": ""},
     }
     saved = on_page("startingAnswers(items, stored)", items=items, stored=stored)
@@ -73,7 +74,27 @@ def test_a_browser_keep_given_for_a_number_the_page_no_longer_shows_is_dropped()
         "m03": {"verdict": "keep", "number": "", "shown": "3333333"},
     }
     rows = on_page("answerRows(items, startingAnswers(items, stored))", items=items, stored=stored)
-    assert rows[1:] == [["m01", "fix", "7654321"], ["m02", "", ""], ["m03", "keep", ""]]
+    assert rows[1:] == [
+        ["m01", "fix", "7654321"],
+        ["m02", "", ""],
+        ["m03", "keep", ""],
+        ["m04", "", ""],
+    ]
+
+
+def test_a_browser_correction_survives_a_label_change_and_the_upgrade():
+    items = [
+        {"id": "m01", "number": "1111111", "corrected": False, "answer": None},
+        {"id": "m02", "number": "2222222", "corrected": False, "answer": None},
+    ]
+    stored = {
+        # Saved by the page before `shown` existed and never ingested: the reviewer's own number.
+        "m01": {"verdict": "fix", "number": "ABC 7654321"},
+        # Typed while the page showed another number, which a dataset update has since changed.
+        "m02": {"verdict": "fix", "number": "2223333", "shown": "2220000"},
+    }
+    rows = on_page("answerRows(items, startingAnswers(items, stored))", items=items, stored=stored)
+    assert rows[1:] == [["m01", "fix", "ABC 7654321"], ["m02", "fix", "2223333"]]
 
 
 def write(path, rows):
