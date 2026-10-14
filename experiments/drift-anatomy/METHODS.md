@@ -20,7 +20,7 @@ The server allows 0.16 ft of error per foot along the wall. That allowance domin
 
 ## Result
 
-All four fail. Tables: [results/drift_anatomy.md](results/drift_anatomy.md).
+A1, A2 and A4 fail their numeric criteria. A3 fails the 60% criterion for a travel-axis proxy; this is not evidence that a wall-plane experiment failed. Wall-plane benefit remains untested without wall annotations. Tables: [results/drift_anatomy.md](results/drift_anatomy.md).
 
 - **A1.** 30 of 56 MARViN loops (54%). ADVIO has no revisit under 0.3 m while ARKit tracks. Scale and heading error cancel on return, so r misses them.
 - **A2.** 5.7% SD on MARViN, 19% on ADVIO: drop. A few outlier windows inflate MARViN's SD; its robust SD is 1.8%.

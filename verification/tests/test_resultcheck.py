@@ -1890,3 +1890,35 @@ def test_vet_budget_includes_midpoint_direction_switches(monkeypatch):
     assert invariant_problems(scene, answer, rules=broad) == [
         f"response geometry sample budget exceeds {MAX_GEOMETRY_SAMPLES} samples"
     ]
+
+
+@pytest.mark.parametrize("allowance", [-1, float("nan"), float("inf"), -float("inf")])
+def test_breadth_corner_allowance_must_be_finite_nonnegative(allowance):
+    answer = {
+        "checks": [
+            {
+                "id": "route_corner",
+                "threshold_ft": allowance,
+                "rule": {"key": "route.corner_allowance_ft"},
+            }
+        ]
+    }
+    with pytest.raises(ValueError, match="corner allowance must be finite and nonnegative"):
+        reported_rules(answer, RULES)
+    assert invariant_problems(SCENE, answer, rules=RULES) == [
+        "route_corner corner allowance must be finite and nonnegative"
+    ]
+
+
+@pytest.mark.parametrize("allowance", [0, 0.5])
+def test_breadth_zero_or_positive_corner_allowance_is_valid(allowance):
+    answer = {
+        "checks": [
+            {
+                "id": "route_corner",
+                "threshold_ft": allowance,
+                "rule": {"key": "route.corner_allowance_ft"},
+            }
+        ]
+    }
+    assert reported_rules(answer, RULES).corner_allowance_ft == allowance

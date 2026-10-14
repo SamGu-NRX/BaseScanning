@@ -19,8 +19,8 @@ otherwise, so a bush in front of the wall hides the wall instead of standing in 
 
 Facing and overhead space needs no surface: it is observed where the fused volume shows it seen
 empty (every voxel observed, none occupied) and two camera positions at least 0.25 m apart each
-saw through it (`SeenFromTwo`), up to the first occupied voxel (a measured gap or clearance) or
-the first sample short of that (seen clear only that far).
+saw through it (`SeenFromTwo`). An occupied slab always stops the march, but supports a measured
+gap or clearance only when that slab also passes the observation test.
 """
 
 from __future__ import annotations
@@ -353,7 +353,9 @@ def free_space(wall: WallFrame, vol: Volume | SeenFromTwo, cells: np.ndarray):
             for out, hit, observed in zip(chunk, occupied, seen, strict=True):
                 # Any occupied sampled voxel stops clearance, including one-step thin rails.
                 if hit:
-                    facing_gap[c] = max(0.0, out - step - front)
+                    # A fused hit alone does not establish a two-view measurement.
+                    if observed:
+                        facing_gap[c] = max(0.0, out - step - front)
                     stopped = True
                     break
                 if not observed:
@@ -374,7 +376,8 @@ def free_space(wall: WallFrame, vol: Volume | SeenFromTwo, cells: np.ndarray):
             stopped = False
             for h, hit, observed in zip(chunk, occupied, seen, strict=True):
                 if hit:
-                    over_gap[c] = max(0.0, h - step)
+                    if observed:
+                        over_gap[c] = max(0.0, h - step)
                     stopped = True
                     break
                 if not observed:

@@ -13,7 +13,7 @@ The server allows 0.16 ft of error per foot along the wall, which dominates a ch
 
 ## Result
 
-All four fail ([tables](results/drift_anatomy.md)).
+A1, A2 and A4 fail their numeric criteria. A3 fails the 60% criterion for a travel-axis proxy; the unannotated walks cannot test wall-plane benefit ([tables](results/drift_anatomy.md)).
 
 - **A1.** The closure residual bounds the peak error in 30 of 56 loops. Scale and heading error cancel on return.
 - **A2.** Scale spread within a walk is 1.8% robust SD (5.7% SD) on MARViN.

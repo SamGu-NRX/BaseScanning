@@ -1151,3 +1151,37 @@ def test_vet_judge_rejects_invalid_width_before_rule_consumers(monkeypatch, widt
         else ["width must be finite and positive"]
     )
     assert consumers == []
+
+
+@pytest.mark.parametrize("allowance", [-1, float("nan"), float("inf")])
+def test_breadth_invalid_corner_allowance_stops_before_rule_adoption(monkeypatch, allowance):
+    answer = {
+        "decision": "reject",
+        "spot": None,
+        "sweep": [],
+        "checks": [
+            {
+                "id": "route_corner",
+                "threshold_ft": allowance,
+                "rule": {"key": "route.corner_allowance_ft"},
+            }
+        ],
+    }
+    monkeypatch.setattr(e2e, "post", lambda *args: (200, json.dumps(answer).encode(), 1))
+    monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
+
+    def no_adoption(*args):
+        pytest.fail("invalid corner allowance reached rule adoption")
+
+    monkeypatch.setattr(e2e, "reported_rules", no_adoption)
+    record = judge(
+        "unused",
+        Endpoint("/place", "application/json"),
+        SceneInput("corner", SCENE, b"{}"),
+        SCHEMAS,
+        RULES,
+    )
+    assert record["status"] == "fail"
+    assert record["contract_problems"] == [
+        "route_corner corner allowance must be finite and nonnegative"
+    ]

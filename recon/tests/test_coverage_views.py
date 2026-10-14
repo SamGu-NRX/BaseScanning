@@ -8,6 +8,7 @@ import pytest
 from recon import coverage
 from recon.capture import Frame
 from recon.depth import Depth
+from recon.geometry import WallFrame
 
 
 class ClearVolume:
@@ -117,3 +118,71 @@ def test_one_view_or_one_position_never_claims_free_space():
             frame.cam_to_world[:3, 3] = [0, 1, 4]
         view = coverage.SeenFromTwo(ClearVolume(), frames, depths)
         assert not view.observed(np.array([[0, 1, 1]])).any()
+
+
+class FirstSlabObstacle(ClearVolume):
+    def __init__(self, band):
+        self.band = band
+
+    def occupied(self, points):
+        if self.band == "facing":
+            # A thin hit in the first outward slab, too small to become the wall front.
+            return np.isclose(points[:, 2], 0.1) & np.isclose(points[:, 1], 1.0)
+        return np.isclose(points[:, 1], 0.3) & np.isclose(points[:, 2], 0.3)
+
+
+def free_space_from_positions(raw, xs):
+    frames, depths = views(len(xs))
+    for frame, x in zip(frames, xs, strict=True):
+        frame.cam_to_world[:3, :3] = np.eye(3)
+        frame.cam_to_world[:3, 3] = [x, 1.0, 4.0]
+        depths[frame.id].depth[:] = 4.0
+    wall = WallFrame(
+        np.array([0.0, 1.0, 0.0]), np.array([1.0, 0, 0]), np.array([0, 0, 1.0]), 0.0, (0, 0.3)
+    )
+    cells = np.array([0.0])
+    arrays = coverage.free_space(wall, coverage.SeenFromTwo(raw, frames, depths), cells)
+    return coverage.CellCoverage(cells, np.zeros(1, bool), np.zeros(1), *arrays)
+
+
+@pytest.mark.parametrize("band", ["facing", "overhead"])
+@pytest.mark.parametrize(
+    ("xs", "supported"),
+    [([0.075], False), ([0.025, 0.125], False), ([-0.125, 0.275], True)],
+    ids=["one_camera", "nearby_cameras", "separated_cameras"],
+)
+def test_first_occupied_slab_needs_two_views_before_exporting_measurement(band, xs, supported):
+    cov = free_space_from_positions(FirstSlabObstacle(band), xs)
+    gap = cov.facing_gap if band == "facing" else cov.overhead_clearance
+    clear = cov.facing_clear if band == "facing" else cov.overhead_clear
+    entries = [entry for entry in coverage.observed(cov) if entry["band"] == band]
+    measurements = coverage.measurements(cov, "wall", 0.5)[0 if band == "facing" else 1]
+    # An occupied first slab never counts as empty, even when its measurement is unsupported.
+    assert clear[0] == 0.0
+    if supported:
+        assert gap[0] == pytest.approx(0.0 if band == "facing" else 0.25)
+        assert entries == [{"band": band, "span_ft": [0.0, 0.5]}]
+        assert len(measurements) == 1
+    else:
+        assert np.isnan(gap[0])
+        assert entries == []
+        assert measurements == []
+
+
+@pytest.mark.parametrize(
+    ("xs", "supported"),
+    [([0.075], False), ([0.025, 0.125], False), ([-0.125, 0.275], True)],
+    ids=["one_camera", "nearby_cameras", "separated_cameras"],
+)
+def test_empty_volume_needs_two_views_before_exporting_clear_space(xs, supported):
+    cov = free_space_from_positions(ClearVolume(), xs)
+    assert np.isnan(cov.facing_gap[0]) and np.isnan(cov.overhead_clearance[0])
+    assert coverage.measurements(cov, "wall", 0.5) == ([], [])
+    entries = coverage.observed(cov)
+    if supported:
+        assert cov.facing_clear[0] > 0 and cov.overhead_clear[0] > 0
+        assert {entry["band"] for entry in entries} == {"facing", "overhead"}
+        assert all(entry["out_ft"] > 0 for entry in entries)
+    else:
+        assert cov.facing_clear[0] == cov.overhead_clear[0] == 0.0
+        assert entries == []

@@ -32,18 +32,21 @@ def scalar_march(wall, volume, cells):
         for out in np.arange(front + step, front + coverage.FACING_MAX_M, step):
             share, seen = coverage._slab(wall, volume, across, heights, [out])
             if share > 0:
-                fg[c] = max(0, out - step - front)
+                if seen:
+                    fg[c] = max(0, out - step - front)
                 break
             if not seen:
                 break
             fc[c] = out - front
-        outs = front + np.arange(
-            coverage.OVERHEAD_OUT_M[0], coverage.OVERHEAD_OUT_M[1] + 1e-9, step
+        outs = front + np.append(
+            np.arange(coverage.OVERHEAD_OUT_M[0], coverage.OVERHEAD_OUT_M[1], step),
+            coverage.OVERHEAD_OUT_M[1],
         )
         for height in np.arange(0.3, coverage.OVERHEAD_MAX_M, step):
             share, seen = coverage._slab(wall, volume, across, [height], outs)
             if share > 0:
-                og[c] = max(0, height - step)
+                if seen:
+                    og[c] = max(0, height - step)
                 break
             if not seen:
                 break
