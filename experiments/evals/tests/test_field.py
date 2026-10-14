@@ -769,6 +769,35 @@ def test_score_clears_old_reports_before_a_failure(case):
     assert not (out / "scored").exists()
 
 
+def test_prepare_without_output_directory_skips_result_lookup(tmp_path, monkeypatch, capsys):
+    import sys
+
+    archive = tmp_path / "session.zip"
+    folder, prepared = tmp_path / "unpacked", tmp_path / "prepared"
+    calls = []
+
+    def unpack(session):
+        assert session == archive
+        calls.append("unpack")
+        return folder, "capture-hash"
+
+    def prepare(session_folder, digest):
+        assert (session_folder, digest) == (folder, "capture-hash")
+        calls.append("prepare")
+        return prepared
+
+    def unused_lookup(*args):
+        pytest.fail("prepare must not look up a results directory")
+
+    monkeypatch.setattr(sys, "argv", ["field", "prepare", str(archive)])
+    monkeypatch.setattr(field, "unpack", unpack)
+    monkeypatch.setattr(field, "prepare", prepare)
+    monkeypatch.setattr(field, "result_dir", unused_lookup)
+    field.main()
+    assert calls == ["unpack", "prepare"]
+    assert capsys.readouterr().out == f"{prepared}\n"
+
+
 def test_equal_archive_basenames_get_distinct_result_directories(tmp_path, monkeypatch):
     monkeypatch.setattr(field, "FIELD_DIR", tmp_path / "cache")
     archives = []

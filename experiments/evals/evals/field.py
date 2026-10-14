@@ -941,12 +941,12 @@ def main() -> None:
     if args.step == "result-dir":
         print(result_dir(args.session))
         return
+    if args.step == "prepare":
+        print(prepare(*unpack(args.session)))
+        return
     out_dir = args.out_dir or result_dir(args.session)
     if args.step == "stamp":
         print(stamp(args.session, args.truth, args.map, out_dir))
-        return
-    if args.step == "prepare":
-        print(prepare(*unpack(args.session)))
         return
     report = score(args.session, args.truth, args.map, args.rules, out_dir, args.tap_error_in)
     out_dir.mkdir(parents=True, exist_ok=True)
