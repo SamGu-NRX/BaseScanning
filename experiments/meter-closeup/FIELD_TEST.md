@@ -10,7 +10,7 @@ The thresholds in [PORTING.md](PORTING.md) come from processed Commons JPEGs, no
 	uv run python -m meter_eval.fieldtest PHOTO_DIR --number "<number as printed>"
 	```
 
-The command prints each photo's read result, the candidate's rank and the check values. It then counts retakes asked for photos that read, and photos accepted that did not. Its contract ranking puts an admissible exact `--number` match first, and the checks use that candidate's union box. This is an evaluation ordering, not a prediction of the app's selection. The number is never written to disk.
+The command prints each photo's read result, the candidate's rank and the check values. It then counts retakes asked for photos that read, and photos accepted that did not. Ranking and the top candidate used for retake checks depend only on blind heuristic features. The supplied number scores the read and its position in that order; it never changes the selected candidate. The number is never written to disk.
 
 | Threshold | Photos to take | The threshold holds if |
 |---|---|---|

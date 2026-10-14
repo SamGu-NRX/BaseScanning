@@ -55,7 +55,10 @@ def test_read_and_rank_follow_the_complete_contract(target, text, expected):
     read = reads_number(lines, target)
     found = candidates({"lines": lines, "barcodes": []}, target)
     order = ranked(found)
-    ranked_read = bool(order) and order[0] == number_core(target)
+    rank = next(
+        (i + 1 for i, candidate in enumerate(order) if candidate == number_core(target)), None
+    )
+    ranked_read = rank is not None
     assert read is expected
     assert ranked_read is expected
     assert read == ranked_read
@@ -73,7 +76,8 @@ def test_read_and_rank_follow_the_complete_contract(target, text, expected):
         "test",
     )
     assert bool(result["read"]) is expected
-    assert (result["rank"] == 1) is expected
+    assert (result["rank"] is not None) is expected
+    assert result["rank"] == rank
     if text == "ABC|1234567":
         exact = next(c for c in found if c["core"] == "ABC1234567")
         assert exact["boxes"] == [line["box"] for line in lines]
@@ -492,3 +496,109 @@ def test_barcode_fields_cannot_join_across_a_delimiter():
         "number_core_len": 7,
     }
     assert barcode_stats(row, {"barcodes": barcodes})["barcode_has_number"] == 0
+
+
+def blind_ranking_photo():
+    return {
+        "lines": [
+            {"text": "7654321", "box": [0.1, 0.1, 0.4, 0.2]},
+            {"text": "1234567", "box": [0.1, 0.6, 0.4, 0.1]},
+        ],
+        "barcodes": [],
+    }
+
+
+def test_evaluator_scores_a_readable_serial_at_its_blind_rank():
+    from meter_eval.locate import rule_table, rules
+
+    result = blind_ranking_photo()
+    row = {
+        "id": "m02",
+        "class_kind": "",
+        "number_agreed_strict": "yes",
+        "number_agreed": "yes",
+        "number_hmac": digest("1234567"),
+        "number_core_hmac": digest("1234567"),
+        "number_core_len": 7,
+    }
+    assert ranked(candidates(result)) == ["7654321", "1234567"]
+    scored = evaluate(row, result, "test")
+    assert scored["read"] == 1
+    assert scored["rank"] == 2
+    row |= {"number_hmac": digest("9999999"), "number_core_hmac": digest("9999999")}
+    missed = evaluate(row, result, "test")
+    assert missed["read"] == 0
+    assert missed["rank"] is None
+    table = rule_table([scored, missed], list(rules([], [])))
+    assert "ranking, top 1, over read photos only | 1 | – | 0/1 = 0%" in table
+    assert "ranking, top 3, over read photos only | 1 | – | 1/1 = 100%" in table
+
+
+def test_best_and_all_rules_are_blind_to_the_target_digest():
+    from meter_eval.locate import best, rules
+
+    result = blind_ranking_photo()
+    result["barcodes"] = [
+        {"payload": number, "box": [0.1, 0.85, 0.4, 0.05]} for number in ("7654321", "1234567")
+    ]
+    blind = candidates(result)
+    labelled = candidates(result, target_digest=digest("1234567"))
+    assert best(blind)["core"] == "7654321"
+    assert best(labelled)["core"] == best(blind)["core"]
+    assert ranked(labelled) == ranked(blind)
+    blind_picks = rules(blind, result["barcodes"])
+    labelled_picks = rules(labelled, result["barcodes"])
+    assert {name: pick and pick["core"] for name, pick in labelled_picks.items()} == {
+        name: pick and pick["core"] for name, pick in blind_picks.items()
+    }
+
+
+def test_target_annotations_do_not_change_source_order_or_blind_ties():
+    result = blind_ranking_photo()
+    result["lines"][1]["box"][3] = result["lines"][0]["box"][3]
+    blind = candidates(result)
+    for labelled in (
+        candidates(result, "1234567"),
+        candidates(result, target_digest=digest("1234567")),
+    ):
+        assert [candidate["core"] for candidate in labelled] == [
+            candidate["core"] for candidate in blind
+        ]
+        assert ranked(labelled) == ranked(blind)
+
+
+def test_field_cli_reports_the_blind_second_rank_and_uses_the_blind_box(
+    tmp_path, monkeypatch, capsys
+):
+    import sys
+
+    from PIL import Image
+
+    from meter_eval import fieldtest
+
+    result = blind_ranking_photo()
+
+    class Reader:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            pass
+
+        def read(self, path, barcodes):
+            return result
+
+    selected_boxes = []
+
+    def reasons(gray, box):
+        selected_boxes.append(box)
+        return []
+
+    Image.new("RGB", (128, 128), "white").save(tmp_path / "photo.jpg")
+    monkeypatch.setattr(fieldtest, "Reader", Reader)
+    monkeypatch.setattr(fieldtest.retake, "reasons", reasons)
+    monkeypatch.setattr(sys, "argv", ["fieldtest", str(tmp_path), "--number", "1234567"])
+    fieldtest.main()
+    assert "| photo.jpg | yes | 2 | no |" in capsys.readouterr().out
+    assert len(selected_boxes) == 1
+    assert selected_boxes[0] == pytest.approx(result["lines"][0]["box"])

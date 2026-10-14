@@ -128,7 +128,7 @@ _RATING = re.compile(
 def match_serial(
     lines: Sequence[dict], target: str | None = None, *, target_digest: str | None = None
 ) -> list[dict]:
-    """Admissible row candidates, exact target matches first, with source and union boxes.
+    """Admissible row candidates in source order, with source and union boxes.
 
     Labels and ratings split runs. Numeric neighbours disallow a partial number;
     alphabetic neighbours permit a serial inside surrounding printed words.
@@ -244,7 +244,7 @@ def match_serial(
                         else target_digest is not None and digest(joined) == target_digest,
                     }
                 )
-    return sorted(found, key=lambda candidate: candidate["matches_target"], reverse=True)
+    return found
 
 
 def normalize(text: str) -> str:

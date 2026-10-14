@@ -135,13 +135,13 @@ def score(c: dict) -> float:
 
 
 def top_candidate(result: dict, target: str | None = None) -> dict | None:
-    """Best admissible candidate, with an exact supplied target first."""
+    """Best admissible candidate under the blind heuristic score."""
     return best(candidates(result, target))
 
 
 def ranked(found: list[dict]) -> list[str]:
     """Candidate cores, best first, each core once."""
-    order = sorted(found, key=lambda c: (c.get("matches_target", False), score(c)), reverse=True)
+    order = sorted(found, key=score, reverse=True)
     return list(dict.fromkeys(c["core"] for c in order))
 
 
@@ -150,7 +150,7 @@ def tallest(pool: list[dict]) -> dict | None:
 
 
 def best(pool: list[dict]) -> dict | None:
-    return max(pool, key=lambda c: (c.get("matches_target", False), score(c)), default=None)
+    return max(pool, key=score, default=None)
 
 
 def rules(found: list[dict], barcodes: list[dict]) -> dict[str, dict | None]:
@@ -233,11 +233,12 @@ def evaluate(row: dict, result: dict, split: str) -> dict:
     if row["number_agreed"] != "yes":
         return out
     target = row["number_core_hmac"]
-    found = candidates(result, target_digest=target)
-    out["read"] = int(any(candidate["matches_target"] for candidate in found))
+    # Keep ground truth out of candidate generation, ranking and rule selection.
+    found = candidates(result)
     order = ranked(found)
     hits = [i for i, c in enumerate(order) if digest(c) == target]
-    out["rank"] = hits[0] + 1 if hits else ""
+    out["rank"] = hits[0] + 1 if hits else None
+    out["read"] = int(out["rank"] is not None)
     out["candidates"] = len(order)
     for name, pick in rules(found, result.get("barcodes") or []).items():
         out[name] = "" if pick is None else int(digest(pick["core"]) == target)
@@ -297,19 +298,19 @@ def rule_table(rows: list[dict], names: list[str]) -> str:
                 f"{share(right, len(subset))} |"
             )
         for k in (1, 3):
-            hit = sum(1 for r in read if r["rank"] != "" and r["rank"] <= k)
+            hit = sum(1 for r in read if r["rank"] is not None and r["rank"] <= k)
             out.append(
                 f"| ranking, top {k}, over read photos only | {len(read)} | – | "
                 f"{share(hit, len(read))} |"
             )
         # End to end: a photo Vision did not read cannot offer the number, so it is a miss.
         for k in (1, 3):
-            hit = sum(1 for r in subset if r["rank"] != "" and r["rank"] <= k)
+            hit = sum(1 for r in subset if r["rank"] is not None and r["rank"] <= k)
             out.append(
                 f"| ranking, top {k}, over every agreed photo (unread count as misses) | "
                 f"{len(subset)} | – | {share(hit, len(subset))} |"
             )
-        present = sum(1 for r in read if r["rank"] != "")
+        present = sum(1 for r in read if r["rank"] is not None)
         out.append(
             f"| number is any candidate, over read photos (ceiling) | {len(read)} | – | "
             f"{share(present, len(read))} |\n"

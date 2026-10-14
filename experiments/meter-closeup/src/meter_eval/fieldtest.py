@@ -87,9 +87,9 @@ def main() -> None:
             g = gray(image)
             result = reader.read(upright, barcodes=True)
             read = reads_number(result["lines"], args.number)
-            order = ranked(candidates(result, args.number))
+            order = ranked(candidates(result))
             rank = next((i + 1 for i, c in enumerate(order) if c == target_core), None)
-            guess = top_candidate(result, args.number)
+            guess = top_candidate(result)
             box = guess and guess["box"]
             why = retake.reasons(g, box)
             wasted += read and bool(why)
