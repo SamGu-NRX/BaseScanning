@@ -371,7 +371,7 @@ struct GuidanceHint: Equatable, Sendable {
 /// A problem to fix while it lasts. Tracking problems and `pastWallEnd` override guidance; the
 /// capture gate's (`slowDown`, `turnSlowly`, `holdSteady`, `tooDark`, `tooDarkToMeasure`) and
 /// `needsTexture` ride along with it on the walk. UI/ owns the words.
-typealias Coaching = HouseScanKit.Coaching
+typealias Coaching = AimCoaching
 
 /// Where a wall end would land if the homeowner ended the wall now, while ending it is on offer.
 /// The strip draws it before the tap, so an end never lands somewhere the screen didn't show.

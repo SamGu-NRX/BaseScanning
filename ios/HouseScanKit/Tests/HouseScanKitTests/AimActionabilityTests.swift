@@ -10,19 +10,19 @@ import Testing
             screen: screen, coaching: nil, interrupted: false) == (screen == .guidance))
     }
 
-    @Test(arguments: [Coaching.tooDark, .tooDarkToMeasure, .holdSteady, .needsTexture, .slowDown, .turnSlowly])
-    func coachingBesideTheAimAllowsProgress(coaching: Coaching) {
+    @Test(arguments: [AimCoaching.tooDark, .tooDarkToMeasure, .holdSteady, .needsTexture, .slowDown, .turnSlowly])
+    func coachingBesideTheAimAllowsProgress(coaching: AimCoaching) {
         #expect(AimActionability.canAct(on: aim, coverage: CoverageMap(wall: standardWall()),
             screen: .guidance, coaching: coaching, interrupted: false))
     }
 
-    @Test(arguments: [Coaching.initializing, .relocalizing, .trackingLost, .pastWallEnd])
-    func replacementCoachingPausesTheAim(coaching: Coaching) {
+    @Test(arguments: [AimCoaching.initializing, .relocalizing, .trackingLost, .pastWallEnd])
+    func replacementAimCoachingPausesTheAim(coaching: AimCoaching) {
         #expect(!AimActionability.canAct(on: aim, coverage: CoverageMap(wall: standardWall()),
             screen: .guidance, coaching: coaching, interrupted: false))
     }
 
-    @Test func twoOfFourHiddenCellsReplaceAnAimWithoutCoaching() {
+    @Test func twoOfFourHiddenCellsReplaceAnAimWithoutAimCoaching() {
         var map = CoverageMap(wall: standardWall())
         map.record([-1, 0].map { .init(band: .ground, index: $0, rows: [], hiddenRows: [1]) }, from: .zero)
         let cells = map.indices(overlapping: -0.3...0.3)
@@ -42,7 +42,7 @@ import Testing
             screen: .guidance, coaching: nil, interrupted: false))
     }
 
-    @Test func aHiddenAimKeepsItsRemainingBudgetWithoutCoaching() {
+    @Test func aHiddenAimKeepsItsRemainingBudgetWithoutAimCoaching() {
         var map = CoverageMap(wall: standardWall())
         let camera = GuidancePlannerTests.homeowner()
         var planner = GuidancePlanner()

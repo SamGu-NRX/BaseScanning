@@ -1,12 +1,12 @@
 import Foundation
 
-public enum Coaching: Equatable, Sendable {
+public enum AimCoaching: Equatable, Sendable {
     case initializing
     case slowDown
     case needsTexture
     case tooDark
     /// Frames have been mostly too dark for a long while: waiting won't help, daylight will
-    /// (`CoachingDebouncer.GateProblem.persistentlyDark`).
+    /// (`AimCoachingDebouncer.GateProblem.persistentlyDark`).
     case tooDarkToMeasure
     case holdSteady
     /// Turning or tilting the phone faster than the capture gate keeps photos at, as opposed to
@@ -19,7 +19,7 @@ public enum Coaching: Equatable, Sendable {
     case pastWallEnd
 }
 
-extension Coaching {
+extension AimCoaching {
     public var replacesAim: Bool {
         switch self {
         case .initializing, .relocalizing, .trackingLost, .pastWallEnd: true
@@ -35,7 +35,7 @@ public enum AimActionability {
     }
 
     public static func canAct(on task: GuidanceTask?, coverage: CoverageMap?, screen: Screen,
-                              coaching: Coaching?, interrupted: Bool) -> Bool {
+                              coaching: AimCoaching?, interrupted: Bool) -> Bool {
         guard screen == .guidance, !interrupted, coaching?.replacesAim != true else { return false }
         guard let task, let coverage else { return true }
         switch task {
