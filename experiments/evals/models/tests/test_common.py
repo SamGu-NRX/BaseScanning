@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import select
 import shutil
 import subprocess
 import sys
@@ -401,6 +402,93 @@ def test_staging_recovery_preserves_a_replaced_directory(tmp_path):
         pytest.fail("accepted a replaced staging directory")
     assert _snapshot(stage) == before
     assert json.loads(owner.read_text()) == record
+
+
+def test_concurrent_group_runs_infer_once(tmp_path):
+    from models import run_groups
+
+    (tmp_path / "images_1024").mkdir()
+    (tmp_path / "images_1024/a.jpg").write_bytes(b"image")
+    (tmp_path / "model_inputs").mkdir()
+    (tmp_path / "model_inputs/intrinsics.json").write_text(json.dumps({"a": [1, 1, 0, 0]}))
+    (tmp_path / "subsets.json").write_text(json.dumps({"1": [["a"]]}))
+    script = """
+import fcntl, sys, types
+from pathlib import Path
+import numpy as np
+from models import run_groups
+root, role = Path(sys.argv[1]), sys.argv[2]
+sys.modules['torch'] = types.SimpleNamespace()
+run_groups.pick_device = lambda device: 'cpu'
+run_groups.set_cache_dirs = lambda: None
+run_groups.require_free_space_for_download = lambda *args: None
+run_groups.checkpoint_record = lambda *args: {'verified': True}
+def load(device):
+    with (root / 'loads.txt').open('a') as file:
+        file.write(role + '\\n')
+    print('loaded', flush=True)
+    sys.stdin.readline()
+    return object()
+def infer(model, inputs):
+    with (root / 'inferences.txt').open('a') as file:
+        file.write(role + '\\n')
+    return [types.SimpleNamespace(
+        path=inputs.images[0], depth=np.ones((2, 2), np.float32),
+        valid=np.ones((2, 2), bool), intrinsics=np.array([1., 1., 0., 0.]),
+        cam_to_world=None, arrays={}, seconds=0., network_wh=(2, 2),
+        extra={'metric_scaling_factor': 1.})]
+run_groups.load = load
+run_groups.run = infer
+if role == 'second':
+    flock = fcntl.flock
+    def announce_wait(file, operation):
+        print('nonblocking' if operation & fcntl.LOCK_NB else 'waiting', flush=True)
+        return flock(file, operation)
+    fcntl.flock = announce_wait
+sys.argv = ['run_groups', '--scene-dir', str(root), '--out', str(root / 'outputs')]
+run_groups.main()
+"""
+    processes = []
+
+    def launch(role):
+        process = subprocess.Popen(
+            [sys.executable, "-u", "-c", script, str(tmp_path), role],
+            cwd=Path(run_groups.__file__).resolve().parents[1],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        processes.append(process)
+        return process
+
+    def await_line(process):
+        assert select.select([process.stdout], [], [], 10)[0], "runner did not reach the barrier"
+        return process.stdout.readline().strip()
+
+    try:
+        first = launch("first")
+        assert await_line(first) == "loaded"
+        second = launch("second")
+        lock_mode = await_line(second)
+        assert lock_mode in ("waiting", "nonblocking")
+        if lock_mode == "nonblocking":
+            # Make the old cache-check-only lock reproduce both misses before publication.
+            assert await_line(second) == "loaded"
+        _, errors = first.communicate(input="\n", timeout=10)
+        assert first.returncode == 0, errors
+        _, errors = second.communicate(input="\n", timeout=10)
+        assert second.returncode == 0, errors
+    finally:
+        for process in processes:
+            if process.poll() is None:
+                process.kill()
+                process.communicate(timeout=10)
+    assert (tmp_path / "inferences.txt").read_text().splitlines() == ["first"]
+    assert (tmp_path / "loads.txt").read_text().splitlines() == ["first"]
+    group = tmp_path / "outputs/n1-a"
+    record = json.loads((group / "run.json").read_text())
+    assert run_groups.cached_group(group, record["fingerprint"], ["a"])
 
 
 def test_a_run_that_fails_midway_leaves_the_previous_run_intact(tmp_path, monkeypatch):

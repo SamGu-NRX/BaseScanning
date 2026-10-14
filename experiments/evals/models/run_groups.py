@@ -41,7 +41,13 @@ def write_group(out: Path, results, summary: dict) -> None:
     """Write one group's depth maps and run.json, all or nothing: they go to a staging folder
     that `publish` swaps in for `out` only once every file is written, so a failure partway
     leaves the previous outputs and run.json as they were, never a mix of old and new views."""
-    with output_lock(out), staging_directory(out) as stage:
+    with output_lock(out, wait=True):
+        write_locked_group(out, results, summary)
+
+
+def write_locked_group(out: Path, results, summary: dict) -> None:
+    """Called with the group lock held through inference and publication."""
+    with staging_directory(out) as stage:
         for res in results:
             write_npz(
                 stage,
@@ -124,55 +130,56 @@ def main() -> None:
             key = fingerprint(
                 members, images, intrinsics, poses, args.max_side, map_anything.SHA256
             )
-            with output_lock(out):
-                cached = cached_group(out, key, members)
-            if cached:
-                continue
-            if model is None:
-                import torch
+            with output_lock(out, wait=True):
+                if cached_group(out, key, members):
+                    continue
+                if model is None:
+                    import torch
 
-                device = pick_device(args.device)
-                ckpt = (map_anything.REPO, map_anything.FILENAME, map_anything.REVISION)
-                require_free_space_for_download(*ckpt)
-                t0 = time.perf_counter()
-                model = load(device)
-                checkpoint = checkpoint_record(*ckpt, map_anything.SHA256)
+                    device = pick_device(args.device)
+                    ckpt = (map_anything.REPO, map_anything.FILENAME, map_anything.REVISION)
+                    require_free_space_for_download(*ckpt)
+                    t0 = time.perf_counter()
+                    model = load(device)
+                    checkpoint = checkpoint_record(*ckpt, map_anything.SHA256)
+                    if device == "mps":
+                        torch.mps.empty_cache()
+                        torch.mps.set_per_process_memory_fraction(
+                            args.mps_cap_gb * 1e9 / torch.mps.recommended_max_memory()
+                        )
+                    print(
+                        f"loaded in {time.perf_counter() - t0:.1f} s on {device}", file=sys.stderr
+                    )
+                inputs = RunInputs(
+                    images=images,
+                    intrinsics=intrinsics,
+                    intrinsics_mode="known",
+                    poses=poses,
+                    max_side=args.max_side,
+                    device=device,
+                    fp32=False,
+                )
+                results = run(model, inputs)
+                summary = {
+                    "fingerprint": key,
+                    "checkpoint": checkpoint,
+                    "members": members,
+                    "seconds_per_view": round(results[0].seconds, 3),
+                    "network_wh": list(results[0].network_wh),
+                    "weights": "transformer stacks bf16, rest fp32 (models/map_anything.py load)",
+                    "metric_scaling_factor": [r.extra["metric_scaling_factor"] for r in results],
+                    "poses_file": str(args.poses_file) if args.poses_file else None,
+                    # What evals.pose_priors labels the row by: the exact pose file this run used.
+                    "poses_sha256": (
+                        hashlib.sha256(args.poses_file.read_bytes()).hexdigest()
+                        if args.poses_file
+                        else None
+                    ),
+                }
+                write_locked_group(out, results, summary)
+                print(f"n={n} {members[0]}: {results[0].seconds:.2f} s/view", file=sys.stderr)
                 if device == "mps":
                     torch.mps.empty_cache()
-                    torch.mps.set_per_process_memory_fraction(
-                        args.mps_cap_gb * 1e9 / torch.mps.recommended_max_memory()
-                    )
-                print(f"loaded in {time.perf_counter() - t0:.1f} s on {device}", file=sys.stderr)
-            inputs = RunInputs(
-                images=images,
-                intrinsics=intrinsics,
-                intrinsics_mode="known",
-                poses=poses,
-                max_side=args.max_side,
-                device=device,
-                fp32=False,
-            )
-            results = run(model, inputs)
-            summary = {
-                "fingerprint": key,
-                "checkpoint": checkpoint,
-                "members": members,
-                "seconds_per_view": round(results[0].seconds, 3),
-                "network_wh": list(results[0].network_wh),
-                "weights": "transformer stacks bf16, rest fp32 (models/map_anything.py load)",
-                "metric_scaling_factor": [r.extra["metric_scaling_factor"] for r in results],
-                "poses_file": str(args.poses_file) if args.poses_file else None,
-                # What evals.pose_priors labels the row by: the exact pose file this run used.
-                "poses_sha256": (
-                    hashlib.sha256(args.poses_file.read_bytes()).hexdigest()
-                    if args.poses_file
-                    else None
-                ),
-            }
-            write_group(out, results, summary)
-            print(f"n={n} {members[0]}: {results[0].seconds:.2f} s/view", file=sys.stderr)
-            if device == "mps":
-                torch.mps.empty_cache()
 
 
 if __name__ == "__main__":

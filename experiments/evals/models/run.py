@@ -156,13 +156,13 @@ def directory_identity(path: Path) -> list[int] | None:
 
 
 @contextmanager
-def output_lock(out: Path):
+def output_lock(out: Path, *, wait: bool = False):
     """One writer per output; a hard exit releases the OS lock before the next recovery."""
     out.parent.mkdir(parents=True, exist_ok=True)
     # Keep this file: unlinking it lets two processes lock different inodes at the same path.
     with out.with_name("." + out.name + ".runner.lock").open("a") as lock:
         try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(lock, fcntl.LOCK_EX | (0 if wait else fcntl.LOCK_NB))
         except BlockingIOError as e:
             raise RuntimeError(f"another model runner is writing {out}") from e
         recover_publication(out)
