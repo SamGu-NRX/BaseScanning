@@ -149,9 +149,9 @@ class CameraContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp) / "converted.json"
             out.write_text("previous result")
-            with patch("capture_contract.os.fsync", side_effect=OSError("disk full")):
-                with self.assertRaisesRegex(OSError, "disk full"):
-                    write_result(out, {"new": "result"})
+            with (patch("capture_contract.os.fsync", side_effect=OSError("disk full")),
+                  self.assertRaisesRegex(OSError, "disk full")):
+                write_result(out, {"new": "result"})
             self.assertEqual(out.read_text(), "previous result")
             self.assertEqual(list(Path(temp).iterdir()), [out])
             write_result(out, {"new": "result"})
@@ -185,19 +185,19 @@ class CameraContractTests(unittest.TestCase):
             out=Path(temp)/"converted.json"
             cmd=[sys.executable,str(ROOT/"capture_contract.py"),
                  str(ROOT/"fixtures/synthetic-session.json"),"--out",str(out)]
-            result=subprocess.run(cmd,capture_output=True,text=True)
+            result=subprocess.run(cmd,capture_output=True,text=True,check=False)
             self.assertEqual(result.returncode,0,result.stderr)
             converted=json.loads(out.read_text())
             self.assertEqual(len(converted["source_manifest_sha256"]),64)
             invalid=Path(temp)/"bad.json";invalid.write_text('{"format": 5}')
             badout=Path(temp)/"not-created.json"
             result=subprocess.run([sys.executable,str(ROOT/"capture_contract.py"),
-                                   str(invalid),"--out",str(badout)],capture_output=True,text=True)
+                                   str(invalid),"--out",str(badout)],capture_output=True,text=True,check=False)
             self.assertEqual(result.returncode,2)
             self.assertFalse(badout.exists())
             original=invalid.read_bytes()
             result=subprocess.run([sys.executable,str(ROOT/"capture_contract.py"),
-                                   str(invalid),"--out",str(invalid)],capture_output=True,text=True)
+                                   str(invalid),"--out",str(invalid)],capture_output=True,text=True,check=False)
             self.assertEqual(result.returncode,2)
             self.assertEqual(invalid.read_bytes(),original)
 

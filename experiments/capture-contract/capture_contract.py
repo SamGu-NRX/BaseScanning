@@ -84,7 +84,8 @@ def validate_frame(frame):
     pose = camera_pose(frame.get("pose"), label + ".pose")
     vector([frame.get("timestamp")], 1, label + ".timestamp")
     if not isinstance(frame.get("tracking"), str):
-        raise ValueError(f"{label}: tracking must be explicit")
+        # Keep ValueError consistent with the public manifest-validation contract.
+        raise ValueError(f"{label}: tracking must be explicit")  # noqa: TRY004
     if not isinstance(frame.get("img"), str) or not frame["img"]:
         raise ValueError(f"{label}: image reference must be explicit")
     return width, height, intrinsics, pose
