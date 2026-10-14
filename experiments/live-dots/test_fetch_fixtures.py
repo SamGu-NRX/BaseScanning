@@ -13,7 +13,9 @@ SCRIPT = Path(__file__).resolve().parent / "fetch-fixtures.sh"
 @pytest.mark.parametrize(
     "ownership", [None, "malformed", "wrong-stage", "wrong-backup"]
 )
-def test_recovery_preserves_unowned_fixture_backups(tmp_path, ownership):
+def test_locked_recovery_restores_legacy_backup_and_removes_stage(tmp_path, ownership):
+    import fcntl
+
     helper = runpy.run_path(str(SCRIPT.with_name("rename-fixtures.py")))
     stage = tmp_path / ".fixtures.caller"
     previous = stage / "previous"
@@ -31,10 +33,12 @@ def test_recovery_preserves_unowned_fixture_backups(tmp_path, ownership):
         (stage / "ownership.json").write_text(
             "{" if ownership == "malformed" else json.dumps(record)
         )
-    before = contents(stage)
-    helper["recover_backup"](tmp_path)
-    assert not (tmp_path / "Fixtures").exists()
-    assert contents(stage) == before
+    before = contents(previous)
+    with (tmp_path / ".fixtures-refresh.lock").open("a") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        helper["recover_backup"](tmp_path)
+    assert contents(tmp_path / "Fixtures") == before
+    assert not stage.exists()
 
 
 def contents(folder):
@@ -43,6 +47,25 @@ def contents(folder):
         for path in folder.rglob("*")
         if path.is_file()
     }
+
+
+@pytest.mark.parametrize("published", [False, True])
+def test_locked_recovery_reclaims_a_stage_killed_before_its_marker(tmp_path, published):
+    import fcntl
+
+    helper = runpy.run_path(str(SCRIPT.with_name("rename-fixtures.py")))
+    stage = tmp_path / ".fixtures.unmarked"
+    stage.mkdir()
+    (stage / "fixtures.tar").write_bytes(b"unfinished archive")
+    if published:
+        (tmp_path / "Fixtures").mkdir()
+        (tmp_path / "Fixtures/session.json").write_text("current")
+    with (tmp_path / ".fixtures-refresh.lock").open("a") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        helper["recover_backup"](tmp_path)
+    assert not stage.exists()
+    if published:
+        assert (tmp_path / "Fixtures/session.json").read_text() == "current"
 
 
 @pytest.mark.parametrize(
@@ -58,6 +81,8 @@ def contents(folder):
         "reappeared-empty",
         "restore",
         "hard-kill",
+        "kill-extract",
+        "kill-published",
         "success",
     ],
 )
@@ -92,11 +117,14 @@ esac
 mkdir -p "$4/Fixtures"
 case "$FAILURE" in
 missing-session) echo unrelated > "$4/Fixtures/new.json" ;;
-success|move|occupied|restore|reappeared|reappeared-empty|hard-kill)
+success|move|occupied|restore|reappeared|reappeared-empty|hard-kill|kill-extract|kill-published)
     mkdir -p "$4/Fixtures/synthetic-wall-lidar"
     echo replacement > "$4/Fixtures/synthetic-wall-lidar/session.json"
     ;;
 esac
+if [ "$FAILURE" = kill-extract ]; then
+    kill -KILL "$PPID"
+fi
 """)
     mv = bin_dir / "mv"
     mv.write_text("""#!/bin/sh
@@ -141,6 +169,11 @@ exec /bin/mv "$@"
     kill -KILL "$PPID"
     exit 0
 fi
+if [ "$FAILURE" = kill-published ] && [ "${1##*/}" = Fixtures ] && [ "$1" != "$TEST_ROOT/Fixtures" ]; then
+    "$TEST_PYTHON" "$helper" "$@" || exit 1
+    kill -KILL "$PPID"
+    exit 0
+fi
 exec "$TEST_PYTHON" "$helper" "$@"''',
         )
     )
@@ -158,19 +191,26 @@ exec "$TEST_PYTHON" "$helper" "$@"''',
     result = subprocess.run(
         ["/bin/sh", str(script)], env=env, capture_output=True, text=True, check=False
     )
-    if failure == "hard-kill":
+    if failure in ("hard-kill", "kill-extract", "kill-published"):
         assert result.returncode == -9, result.stderr
-        assert not fixtures.exists()
         stages = list(tmp_path.glob(".fixtures.*"))
         assert len(stages) == 1
         assert (stages[0] / "ownership.json").is_file()
-        assert contents(stages[0] / "previous") == original
+        if failure == "hard-kill":
+            assert not fixtures.exists()
+        if failure != "kill-extract":
+            assert contents(stages[0] / "previous") == original
+        else:
+            assert not (stages[0] / "previous").exists()
+        expected = contents(fixtures) if fixtures.exists() else original
         # The first git invocation must already see the restored fixtures. Then fail
         # archive creation, so neither fetching nor a successful swap can mask recovery.
         git.write_text(
             git.read_text().replace(
                 'rev-parse) echo "$TEST_ROOT" ;;',
-                'rev-parse) test -f "$TEST_ROOT/Fixtures/old.json" || exit 2; echo "$TEST_ROOT" ;;',
+                'rev-parse) test -d "$TEST_ROOT/Fixtures" || exit 2; '
+                'for stage in "$TEST_ROOT"/.fixtures.*; do test ! -d "$stage" || exit 2; done; '
+                'echo "$TEST_ROOT" ;;',
             )
         )
         again = subprocess.run(
@@ -181,7 +221,7 @@ exec "$TEST_PYTHON" "$helper" "$@"''',
             check=False,
         )
         assert again.returncode == 1, again.stderr
-        assert contents(fixtures) == original
+        assert contents(fixtures) == expected
     elif failure == "success":
         assert result.returncode == 0, result.stderr
         assert (

@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import argparse
-from hashlib import sha256
 import json
 import os
+import stat
 import tempfile
+from hashlib import sha256
 from math import hypot, isfinite
 from pathlib import Path
 
@@ -201,17 +202,21 @@ def reject_constant(value):
 
 
 def write_result(path, result):
-    temporary = None
     try:
-        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as output:
-            temporary = Path(output.name)
+        mode = stat.S_IMODE(path.stat().st_mode)
+    except FileNotFoundError:
+        mode = None
+    # Ordinary creation inside a private directory applies umask for a new result.
+    # Existing results retain their mode when the completed inode replaces them.
+    with tempfile.TemporaryDirectory(dir=path.parent) as stage:
+        temporary = Path(stage) / "result.json"
+        with temporary.open("w") as output:
             output.write(json.dumps(result, indent=2, allow_nan=False) + "\n")
             output.flush()
+            if mode is not None:
+                os.fchmod(output.fileno(), mode)
             os.fsync(output.fileno())
         temporary.replace(path)
-    finally:
-        if temporary is not None and temporary.exists():
-            temporary.unlink()
 
 
 def main():

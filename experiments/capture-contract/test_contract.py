@@ -1,15 +1,22 @@
 """Known-answer controls. These verify adapters, not device measurement accuracy."""
-from copy import deepcopy
 import json
-from pathlib import Path
-import tempfile
+import os
 import subprocess
 import sys
+import tempfile
 import unittest
+from copy import deepcopy
+from pathlib import Path
 from unittest.mock import patch
 
-from capture_contract import (camera_pose, crop_resize_intrinsics,
-                              no_duplicates, ray_for_pixel, validate_session, write_result)
+from capture_contract import (
+    camera_pose,
+    crop_resize_intrinsics,
+    no_duplicates,
+    ray_for_pixel,
+    validate_session,
+    write_result,
+)
 
 ROOT = Path(__file__).parent
 
@@ -149,6 +156,29 @@ class CameraContractTests(unittest.TestCase):
             self.assertEqual(list(Path(temp).iterdir()), [out])
             write_result(out, {"new": "result"})
             self.assertEqual(json.loads(out.read_text()), {"new": "result"})
+
+    def test_atomic_replacement_preserves_existing_permissions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp) / "converted.json"
+            for mode in (0o644, 0o640, 0o600):
+                with self.subTest(mode=mode):
+                    out.write_text("previous result")
+                    out.chmod(mode)
+                    write_result(out, {"new": "result"})
+                    self.assertEqual(out.stat().st_mode & 0o777, mode)
+                    self.assertEqual(json.loads(out.read_text()), {"new": "result"})
+
+    def test_new_result_permissions_follow_umask(self):
+        with tempfile.TemporaryDirectory() as temp:
+            for mask in (0o022, 0o027):
+                with self.subTest(mask=mask):
+                    out = Path(temp) / f"converted-{mask}.json"
+                    previous = os.umask(mask)
+                    try:
+                        write_result(out, {"new": "result"})
+                    finally:
+                        os.umask(previous)
+                    self.assertEqual(out.stat().st_mode & 0o777, 0o666 & ~mask)
 
     def test_cli_writes_only_after_validation(self):
         with tempfile.TemporaryDirectory() as temp:

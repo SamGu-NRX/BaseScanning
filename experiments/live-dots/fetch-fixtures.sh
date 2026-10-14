@@ -29,6 +29,7 @@ cleanup() {
 }
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
+python3 "$here/rename-fixtures.py" --mark-stage "$stage"
 # Keep archive creation separate from extraction so either failure preserves the old fixtures.
 git -C "$root" archive --output="$stage/fixtures.tar" origin/t3/ios-mvf ios/HouseScanUITests/Fixtures
 tar -xf "$stage/fixtures.tar" -C "$stage" --strip-components=2

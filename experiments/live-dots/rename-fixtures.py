@@ -31,29 +31,33 @@ def mark_backup(stage: Path, fixtures: Path) -> None:
     )
 
 
+def mark_stage(stage: Path) -> None:
+    (stage / "ownership.json").write_text(json.dumps({"stage": identity(stage)}))
+
+
 def recover_backup(here: Path) -> None:
     fixtures = here / "Fixtures"
-    if fixtures.exists() or fixtures.is_symlink():
-        return
-    owned = []
-    for stage in here.glob(".fixtures.*"):
-        try:
-            record = json.loads((stage / "ownership.json").read_text())
-            if (
-                isinstance(record, dict)
-                and record.get("stage") == identity(stage)
-                and record.get("previous") == identity(stage / "previous")
-            ):
-                owned.append(stage)
-        except (OSError, ValueError):
-            continue
-    if len(owned) > 1:
-        raise RuntimeError(
-            "multiple owned fixture backups; inspect them before refreshing"
-        )
-    if owned:
-        stage = owned[0]
-        rename_exclusive(str(stage / "previous"), str(fixtures))
+    # This namespace is reserved for refresh stages. The caller holds the refresh
+    # lock, so even stages killed before their marker was written are abandoned.
+    stages = [
+        stage
+        for stage in here.glob(".fixtures.*")
+        if stage.is_dir() and not stage.is_symlink()
+    ]
+    if not fixtures.exists() and not fixtures.is_symlink():
+        backups = [
+            stage / "previous"
+            for stage in stages
+            if (stage / "previous").exists() or (stage / "previous").is_symlink()
+        ]
+        if len(backups) > 1:
+            raise RuntimeError(
+                "multiple fixture backups; inspect them before refreshing"
+            )
+        if backups:
+            identity(backups[0])
+            rename_exclusive(str(backups[0]), str(fixtures))
+    for stage in stages:
         shutil.rmtree(stage)
 
 
@@ -96,5 +100,7 @@ if __name__ == "__main__":
         recover_backup(Path(sys.argv[2]))
     elif sys.argv[1] == "--mark-backup":
         mark_backup(Path(sys.argv[2]), Path(sys.argv[3]))
+    elif sys.argv[1] == "--mark-stage":
+        mark_stage(Path(sys.argv[2]))
     else:
         rename_exclusive(*sys.argv[1:])
