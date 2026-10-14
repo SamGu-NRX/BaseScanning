@@ -350,7 +350,7 @@ function renderResult() {
     $("review-link").hidden = true;
     return;
   }
-  if (!body || (result.phase !== "ready" && result.phase !== "loading")) {
+  if (!body || (result.phase !== "ready" && result.phase !== "loading" && !result.error)) {
     box.hidden = true;
     $("criteria").replaceChildren();
     $("criteria").dataset.key = "";

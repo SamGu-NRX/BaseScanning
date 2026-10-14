@@ -273,24 +273,39 @@ test("a null result refresh keeps the accepted eligible result and shows a refre
 });
 
 for (const body of [null, [], "invalid"]) {
-  test(`a pending result followed by ${JSON.stringify(body)} clears the body so its error can render`, () => {
+  test(`a pending result followed by ${JSON.stringify(body)} keeps its body with a refresh error`, () => {
     const pending = run(selected(), { type: "result", body: { runId: "run_a", status: "processing", outcome: null } });
     assert.equal(pending.result.phase, "pending");
     const failed = run(pending, { type: "result-loading" }, { type: "result", body });
-    assert.equal(failed.result.phase, "error");
-    assert.equal(failed.result.body, null);
+    assert.equal(failed.result.phase, "pending");
+    assert.equal(failed.result.body, pending.result.body);
     assert.equal(failed.result.error, "Result was not a JSON object");
     assert.equal(failed.result.revision, pending.result.revision);
   });
 }
 
-test("a pending result followed by a fetch failure clears the body so its error can render", () => {
+test("a pending result followed by a fetch failure keeps its body with a refresh error", () => {
   const pending = run(selected(), { type: "result", body: { runId: "run_a", status: "processing", outcome: null } });
   const failed = run(pending, { type: "result-loading" }, { type: "result-error", error: "network error" });
-  assert.equal(failed.result.phase, "error");
-  assert.equal(failed.result.body, null);
+  assert.equal(failed.result.phase, "pending");
+  assert.equal(failed.result.body, pending.result.body);
   assert.equal(failed.result.error, "network error");
 });
+
+for (const withRetake of [false, true]) {
+  test(`a needs_views refresh failure retains titled prompts ${withRetake ? "over event IDs" : "without retake events"}`, () => {
+    const actions = withRetake ? [events([{ seq: 1, type: "retake_request", data: { runId: "run_a", viewsNeeded: ["view_left"] } }])] : [];
+    const pending = run(selected(), ...actions, { type: "result", body: {
+      runId: "run_a", status: "needs_views", outcome: null,
+      viewsNeeded: [{ id: "view_left", prompt: { title: "Show the left edge" } }],
+    } });
+    const failed = run(pending, { type: "result-loading" }, { type: "result", body: null });
+    assert.deepEqual(viewsToShow(failed), [{ id: "view_left", title: "Show the left edge" }]);
+    assert.equal(failed.result.body, pending.result.body);
+    assert.equal(failed.result.phase, "pending");
+    assert.equal(failed.result.error, "Result was not a JSON object");
+  });
+}
 
 test("the eligible illustration leaves no check unsure", async () => {
   const { resultBody } = await import("../public/scenario.js");

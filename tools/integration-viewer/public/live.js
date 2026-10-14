@@ -72,46 +72,64 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
     const previewNotBefore = new Map();
     let previewKey = null;
     let invalidatedArtifactKey = null;
+    let contactNotBefore = -Infinity;
+
+    function resultDue(state) {
+      const key = resultKey(state);
+      if (!resultExpected(state) || resultPoll.readyKey === key) return Infinity;
+      const tries = resultPoll.key === key ? resultPoll.tries : 0;
+      const interval = tries < RESULT_QUICK_TRIES ? RESULT_RETRY_MS : RESULT_SLOW_MS;
+      return Math.max(resultPoll.at + interval, resultNotBefore);
+    }
+
+    function previewDue(result) {
+      const runId = result.body?.runId;
+      const artifactKey = artifactKeyFor(result.body);
+      if (result.phase !== "ready" || !hasPreview(result.body) || typeof runId !== "string"
+        || previewKey === `${runId}|${result.revision}` || artifactKey === invalidatedArtifactKey) return Infinity;
+      return Math.max(resultNotBefore, previewNotBefore.get(artifactKey) ?? -Infinity);
+    }
     // Reads start without waiting and repeat while pages come back full. They return what happened
     // before the viewer connected, which the reducer marks as backlog so it does not animate.
     let catchUp = true;
     let waitS = 0;
 
     while (!signal.aborted) {
-      let contactRetryMs = 0;
-      try {
-        // An event or result named a run the status has not named yet: ask the status now.
-        if (getState().statusRefreshWanted) statusAt = -Infinity;
-        if (now() - statusAt >= STATUS_EVERY_MS) {
-          // Health is read until it answers once, so the build shown survives a failed first read.
-          if (!getState().identity) get("/healthz").then((body) => send({ type: "health", body }), () => {});
-          send({ type: "status", body: await get(`/captures/${captureId}`) });
-          statusAt = now();
-          send({ type: "contact-ok", at: now() });
+      if (now() >= contactNotBefore) {
+        try {
+          // An event or result named a run the status has not named yet: ask the status now.
+          if (getState().statusRefreshWanted) statusAt = -Infinity;
+          if (now() - statusAt >= STATUS_EVERY_MS) {
+            // Health is read until it answers once, so the build shown survives a failed first read.
+            if (!getState().identity) get("/healthz").then((body) => send({ type: "health", body }), () => {});
+            send({ type: "status", body: await get(`/captures/${captureId}`) });
+            statusAt = now();
+            send({ type: "contact-ok", at: now() });
+          }
+          const cursor = getState().cursor;
+          const asked = now();
+          // The wait ends by the next status refresh, so a status change with no event still shows.
+          const untilStatusS = Math.ceil(Math.max(0, STATUS_EVERY_MS - (now() - statusAt)) / 1000);
+          const body = await get(`/captures/${captureId}/events?after=${cursor}&wait=${catchUp ? 0 : Math.min(waitS, untilStatusS)}`);
+          const count = Array.isArray(body?.events) ? body.events.length : 0;
+          send({ type: "events", body, at: now(), catchUp });
+          failures = 0;
+          if (catchUp && count >= PAGE_SIZE) continue;
+          catchUp = false;
+          if (count === 0 && now() - asked < MIN_EMPTY_POLL_MS) await sleep(MIN_EMPTY_POLL_MS - (now() - asked), signal).catch(() => {});
+        } catch (error) {
+          if (signal.aborted) return;
+          if (error instanceof HttpError && (error.status === 404 || error.status === 410)) {
+            send({ type: "gone", error: error.status === 410 ? "The capture was deleted (410)." : "The API has no capture with this id (404)." });
+            return;
+          }
+          const detail = error instanceof HttpError ? `${error.code} (${error.status})` : "network error";
+          send({ type: "contact-failed", error: detail, offline: !online() });
+          const backoff = BACKOFF_MS[Math.min(failures, BACKOFF_MS.length - 1)];
+          const asked = error instanceof HttpError && error.retryAfterS ? Math.min(error.retryAfterS * 1000, RETRY_AFTER_CAP_MS) : 0;
+          contactNotBefore = now() + Math.max(backoff, asked);
+          failures += 1;
         }
-        const cursor = getState().cursor;
-        const asked = now();
-        // The wait ends by the next status refresh, so a status change with no event still shows.
-        const untilStatusS = Math.ceil(Math.max(0, STATUS_EVERY_MS - (now() - statusAt)) / 1000);
-        const body = await get(`/captures/${captureId}/events?after=${cursor}&wait=${catchUp ? 0 : Math.min(waitS, untilStatusS)}`);
-        const count = Array.isArray(body?.events) ? body.events.length : 0;
-        send({ type: "events", body, at: now(), catchUp });
-        failures = 0;
-        if (catchUp && count >= PAGE_SIZE) continue;
-        catchUp = false;
-        if (count === 0 && now() - asked < MIN_EMPTY_POLL_MS) await sleep(MIN_EMPTY_POLL_MS - (now() - asked), signal).catch(() => {});
-      } catch (error) {
-        if (signal.aborted) return;
-        if (error instanceof HttpError && (error.status === 404 || error.status === 410)) {
-          send({ type: "gone", error: error.status === 410 ? "The capture was deleted (410)." : "The API has no capture with this id (404)." });
-          return;
-        }
-        const detail = error instanceof HttpError ? `${error.code} (${error.status})` : "network error";
-        send({ type: "contact-failed", error: detail, offline: !online() });
-        const backoff = BACKOFF_MS[Math.min(failures, BACKOFF_MS.length - 1)];
-        const asked = error instanceof HttpError && error.retryAfterS ? Math.min(error.retryAfterS * 1000, RETRY_AFTER_CAP_MS) : 0;
-        contactRetryMs = Math.max(backoff, asked);
-        failures += 1;
       }
 
       const state = getState();
@@ -121,9 +139,7 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
         resultPoll.key = key;
         resultPoll.tries = 0;
       }
-      const pending = resultExpected(state) && resultPoll.readyKey !== key;
-      const interval = resultPoll.tries < RESULT_QUICK_TRIES ? RESULT_RETRY_MS : RESULT_SLOW_MS;
-      if (pending && now() >= Math.max(resultPoll.at + interval, resultNotBefore)) {
+      if (now() >= resultDue(state)) {
         resultPoll.tries += 1;
         resultPoll.at = now();
         send({ type: "result-loading" });
@@ -151,8 +167,7 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
       const revisionKey = `${runId}|${result.revision}`;
       const artifactKey = artifactKeyFor(result.body);
       for (const [artifact, deadline] of previewNotBefore) if (deadline <= now()) previewNotBefore.delete(artifact);
-      const previewDue = Math.max(resultNotBefore, previewNotBefore.get(artifactKey) ?? -Infinity);
-      if (result.phase === "ready" && hasPreview(result.body) && typeof runId === "string" && previewKey !== revisionKey && artifactKey !== invalidatedArtifactKey && now() >= previewDue) {
+      if (now() >= previewDue(result)) {
         previewKey = revisionKey;
         send({ type: "preview-loading", runId });
         try {
@@ -182,7 +197,12 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
           }
         }
       }
-      if (contactRetryMs > 0) await sleep(contactRetryMs, signal).catch(() => {});
+      if (now() < contactNotBefore) {
+        // Contact throttling must not delay independent result or preview retries.
+        const current = getState();
+        const wakeAt = Math.min(contactNotBefore, resultDue(current), previewDue(current.result));
+        await sleep(Math.max(0, wakeAt - now()), signal).catch(() => {});
+      }
     }
   }
 

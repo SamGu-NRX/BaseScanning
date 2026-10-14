@@ -237,6 +237,37 @@ test("terminal results are read even while every events request fails", async ()
   } finally { h.follower.stop(); await h.follower.done; }
 });
 
+for (const firstResult of ["pending", "throttled"]) test(`events Retry-After leaves ${firstResult} result and preview retries on their own schedules`, async () => {
+  const eventsAt = [];
+  const resultAt = [];
+  const previewAt = [];
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) {
+      eventsAt.push(clock);
+      return eventsAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "120" }) : stubEvents();
+    }
+    if (path.endsWith("/result")) {
+      resultAt.push(clock);
+      if (resultAt.length > 1) return stubResult("withheld");
+      return firstResult === "pending" ? stubJson({ runId: "run_s", status: "complete", outcome: null })
+        : stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "11" });
+    }
+    if (path.includes("/preview")) {
+      previewAt.push(clock);
+      return previewAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "19" }) : new Response(ply);
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => eventsAt.length >= 2 && h.state.preview.phase === "ready");
+    assert.equal(resultAt[1] - resultAt[0], firstResult === "pending" ? 4_000 : 11_000, `result reads at ${resultAt}`);
+    assert.equal(previewAt[1] - previewAt[0], 19_000, `preview reads at ${previewAt}`);
+    assert.ok(previewAt[1] < eventsAt[0] + 120_000, "the preview settles while events are still delayed");
+    assert.ok(eventsAt[1] - eventsAt[0] >= 120_000, `event reads at ${eventsAt}`);
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
 for (const form of ["seconds", "date"]) test(`preview retries wait for ${form}-form Retry-After`, async () => {
   const previewAt = [];
   const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";

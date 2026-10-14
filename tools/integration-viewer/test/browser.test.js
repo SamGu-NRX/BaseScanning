@@ -59,7 +59,7 @@ const READ_PAGE = `(() => {
   };
 })()`;
 
-for (const phase of ["pending", "ready"]) {
+for (const phase of ["needs_views", "pending", "ready"]) {
   test(`${phase} result followed by null shows the error in the page`, { skip: chromePath ? false : "no Chrome found; set CHROME_PATH" }, async () => {
     const chrome = await launchChrome(chromePath);
     try {
@@ -74,7 +74,8 @@ for (const phase of ["pending", "ready"]) {
           if (path.endsWith("/result")) {
             window.__resultReads += 1;
             return json(window.__resultReads > 1 ? null : {
-              runId: "run_a", status: "complete",
+              runId: "run_a", status: ${JSON.stringify(phase === "needs_views" ? "needs_views" : "complete")},
+              viewsNeeded: ${phase === "needs_views" ? '[{ id: "view_left", prompt: { title: "Show the left edge" } }]' : '[]'},
               outcome: ${phase === "ready" ? '{ kind: "eligible", message: "Accepted result" }' : 'null'},
             });
           }
@@ -99,7 +100,8 @@ for (const phase of ["pending", "ready"]) {
           return { reads: window.__resultReads, visible: !box.hidden,
             kind: document.getElementById("outcome-kind").textContent,
             message: document.getElementById("outcome-msg").textContent,
-            note: note.hidden ? "" : note.textContent };
+            note: note.hidden ? "" : note.textContent,
+            views: document.getElementById("views").hidden ? "" : document.getElementById("views-list").textContent };
         })()`);
         if (page?.reads >= 2 && /Result was not a JSON object/.test(page.message + page.note)) break;
       }
@@ -110,8 +112,9 @@ for (const phase of ["pending", "ready"]) {
         assert.equal(page.message, "Accepted result");
         assert.match(page.note, /Refreshing the result failed.*Result was not a JSON object/);
       } else {
-        assert.equal(page.kind, "Could not read the result");
-        assert.match(page.message, /Result was not a JSON object/);
+        assert.equal(page.kind, "No outcome");
+        assert.match(page.note, /Refreshing the result failed.*Result was not a JSON object/);
+        if (phase === "needs_views") assert.equal(page.views, "Show the left edgeview_left");
       }
     } finally {
       await chrome.close();
