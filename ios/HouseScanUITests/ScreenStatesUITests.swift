@@ -728,8 +728,16 @@ final class ScreenStatesUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         // A drawn ring, though the engine's angle says the target is above the view.
-        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAim", "-uiDemoAimHint", "above"]
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAim",
+                               "-uiDemoAimHint", "above", "-uiDemoAimHintLater", "onScreen",
+                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
         app.launch()
+        XCTAssertTrue(element(app, "screen.wallWalk").waitForExistence(timeout: 15))
+        // AX1 folds the legend into Details, leaving room for a ring at the optical center.
+        // Move the projection there while retaining the planted "above" engine hint.
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("dev.housescanning.uiDemo.aimHintLater" as CFString),
+            nil, nil, true)
         XCTAssertTrue(element(app, "aim.ring").waitForExistence(timeout: 15))
         let card = element(app, "instruction")
         XCTAssertTrue(card.label.contains("Put the ring on the strip"), "with the ring drawn the card reads \(card.label)")
