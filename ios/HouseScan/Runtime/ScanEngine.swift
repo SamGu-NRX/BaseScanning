@@ -529,16 +529,33 @@ final class ScanEngine {
         guard replay == nil, options.replayFolder == nil, live == nil, sourceState.mayStartSource else { return }
         sourceState.sourceStarted()
         state.spatialResultAvailable = true
-        let capture = LiveCapture(
-            onFrame: { [weak self] frame in self?.ingest(frame) },
-            onEvent: { [weak self] event in self?.handle(event) }
+        let captureID = UUID()
+        let capture = LiveCapture(id: captureID,
+            onFrame: { [weak self] frame in self?.receive(frame, from: captureID) },
+            onEvent: { [weak self] event in self?.receive(event, from: captureID) }
         )
-        live = capture
+        replaceLiveCapture(with: capture)
         state.feed = .live
         state.depthAvailable = LiveCapture.supportsDepth
         capture.setRecorder(recorder)
         capture.start()
         updateRecording()
+    }
+
+    private func replaceLiveCapture(with capture: LiveCapture?) {
+        live = capture
+        cameraInterrupted = false
+        latestEndedInterruptionGeneration = 0
+    }
+
+    private func receive(_ frame: SourceFrame, from captureID: UUID) {
+        guard live?.id == captureID else { return }
+        ingest(frame)
+    }
+
+    private func receive(_ event: LiveEvent, from captureID: UUID) {
+        guard live?.id == captureID else { return }
+        handle(event)
     }
 
     private static func makeRecorder(_ store: KeyframeStore) -> CaptureRecorder {
@@ -2420,8 +2437,6 @@ final class ScanEngine {
         gateCoaching = CoachingDebouncer()
         planner.reset()
         state.resetAimSpans()
-        cameraInterrupted = false
-        latestEndedInterruptionGeneration = 0
         closeUpGate = CloseUpGate()
         gapPlan = nil
         skippedGaps = []
@@ -2510,8 +2525,9 @@ final class ScanEngine {
         let discard = sourceState.startOver()
         if sourceState.failure == nil { state.failure = nil }
         guard discard else { return }
-        live?.pause()
-        live = nil
+        let failedCapture = live
+        replaceLiveCapture(with: nil)
+        failedCapture?.pause()
         state.feed = .none
         if replay == nil, let folder = options.replayFolder { Task { await loadReplay(folder) } }
     }
@@ -2665,7 +2681,7 @@ extension ScanEngine {
 #if DEBUG
 extension ScanEngine {
     /// Deterministic integration checks launched by EngineGuidanceTests in the existing journey
-    /// target. No live session, replay, network, or elapsed-time waits participate.
+    /// target. Live sessions are never run; no replay, network, or elapsed-time waits participate.
     static func checkGuidanceEngine(_ scenario: String) -> String {
         var now: Double = 0
         let engine = ScanEngine(options: LaunchOptions(arguments: ["-sampleResult"], defaultServerURL: nil), aimClock: { now })
@@ -2726,6 +2742,45 @@ extension ScanEngine {
             engine.ingest(frame(0, generation: 1))
             guard engine.currentFrame?.id == "test-0.0", engine.state.coaching != .relocalizing else {
                 return "current-generation frame was rejected for its timestamp"
+            }
+            return aimHeld()
+        case "captureRecreatedAfterEnd", "captureRecreatedWhileInterrupted", "releasedCaptureCallbacks":
+            // Construct captures without running their AR sessions. The scenario drives the
+            // same release and callback entry points as camera-access recovery.
+            let oldCapture = LiveCapture(onFrame: { _ in }, onEvent: { _ in })
+            engine.replaceLiveCapture(with: oldCapture)
+            engine.sourceState.sourceStarted()
+            if scenario != "releasedCaptureCallbacks" {
+                engine.receive(.interrupted, from: oldCapture.id)
+                if scenario == "captureRecreatedAfterEnd" {
+                    engine.receive(.interruptionEnded(generation: 1), from: oldCapture.id)
+                }
+            }
+            engine.receive(.cameraDenied, from: oldCapture.id)
+            guard engine.state.failure == .cameraDenied else { return "fixture did not fail the old capture" }
+            engine.releaseFailedSource()
+            guard engine.live == nil, engine.sourceState.mayStartSource else { return "failed capture was not released" }
+            let newCapture = LiveCapture(onFrame: { _ in }, onEvent: { _ in })
+            engine.replaceLiveCapture(with: newCapture)
+            engine.sourceState.sourceStarted()
+            // Do not call go here: starting a real AR session is outside this check.
+            engine.state.phase = .wallWalk
+            now = scenario == "releasedCaptureCallbacks" ? 6 : 36
+            engine.receive(frame(0), from: newCapture.id)
+            guard engine.currentFrame?.id == "test-0.0", engine.state.coaching != .relocalizing else {
+                return "replacement capture rejected its generation-zero frame"
+            }
+            if scenario == "releasedCaptureCallbacks" {
+                engine.receive(.interrupted, from: oldCapture.id)
+                engine.receive(.interruptionEnded(generation: 99), from: oldCapture.id)
+                engine.receive(.cameraDenied, from: oldCapture.id)
+                engine.receive(frame(1_000_000_000, generation: 99), from: oldCapture.id)
+                guard !engine.cameraInterrupted, engine.latestEndedInterruptionGeneration == 0,
+                      engine.currentFrame?.id == "test-0.0", engine.state.failure == nil,
+                      engine.state.coaching != .relocalizing else { return "released capture changed the new capture's state" }
+                engine.receive(.interrupted, from: oldCapture.id)
+                engine.receive(frame(1), from: newCapture.id)
+                guard engine.currentFrame?.id == "test-1.0" else { return "released capture paused the new capture" }
             }
             return aimHeld()
         case "marking":

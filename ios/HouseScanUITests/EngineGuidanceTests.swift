@@ -16,6 +16,9 @@ final class EngineGuidanceTests: XCTestCase {
     @MainActor func testAnOldFrameCannotEndRecoveryAfterTheInterruptionEnds() { check("staleAfterEnd") }
     @MainActor func testAnInterruptionPausesWithoutAnotherGuidanceUpdate() { check("interruptionRecord") }
     @MainActor func testACurrentGenerationFrameDoesNotNeedAUptimeTimestamp() { check("generationIgnoresTimestamp") }
+    @MainActor func testCameraAccessRecoveryStartsWithANewInterruptionGeneration() { check("captureRecreatedAfterEnd") }
+    @MainActor func testCameraAccessRecoveryDropsAnUnfinishedInterruption() { check("captureRecreatedWhileInterrupted") }
+    @MainActor func testReleasedCaptureCallbacksCannotChangeTheNewCapture() { check("releasedCaptureCallbacks") }
     @MainActor func testMarkingPausesWithoutWalkFrames() { check("marking") }
     @MainActor func testCancellingAMarkResumesBeforeTheNextFrame() { check("markingResume") }
     @MainActor func testCompletingAMarkResumesBeforeTheNextFrame() { check("markingFinish") }

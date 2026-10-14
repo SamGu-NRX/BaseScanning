@@ -39,6 +39,7 @@ struct VerticalPlaneHit {
 /// per-face classification, which the packet carries; without LiDAR it runs without either.
 @MainActor
 final class LiveCapture {
+    let id: UUID
     let arView: ARView
     let delegate: LiveSessionDelegate
 
@@ -60,7 +61,8 @@ final class LiveCapture {
     /// The last `resultIsDrawn` findings logged, so they are logged when they change.
     private var lastDrawnReport: String?
 
-    init(onFrame: @escaping @MainActor @Sendable (SourceFrame) -> Void, onEvent: @escaping @MainActor @Sendable (LiveEvent) -> Void) {
+    init(id: UUID = UUID(), onFrame: @escaping @MainActor @Sendable (SourceFrame) -> Void, onEvent: @escaping @MainActor @Sendable (LiveEvent) -> Void) {
+        self.id = id
         arView = ARView(frame: .zero, cameraMode: .ar, automaticallyConfigureSession: false)
         delegate = LiveSessionDelegate(onFrame: onFrame, onEvent: onEvent)
         arView.session.delegateQueue = DispatchQueue(label: "dev.housescanning.housescan.ar-delegate", qos: .userInitiated)
