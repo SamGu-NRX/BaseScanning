@@ -278,6 +278,10 @@ final class DemoEngine: ScanActions {
             state.meterBrand = Self.demoBrand
             state.meterNumber = .choose(Self.demoCandidates)
         }
+        if arguments.contains("-uiDemoSpotOffScreen"), state.phase == .resultAR, var projection = state.projection {
+            projection.cameraToWorld.columns.3.x -= 10
+            state.projection = projection
+        }
         // Frozen, the upload script never runs, so show where it would end.
         if freeze, state.phase == .uploading {
             if rejectUpload || offline || unusableAnswers > 0 {
@@ -334,10 +338,6 @@ final class DemoEngine: ScanActions {
             finishedWalkState()
             showResult()
             state.phase = .resultAR
-            if arguments.contains("-uiDemoSpotOffScreen"), var projection = state.projection {
-                projection.cameraToWorld.columns.3.x -= 10
-                state.projection = projection
-            }
         case .processing:
             placeMeter()
             finishedWalkState()
