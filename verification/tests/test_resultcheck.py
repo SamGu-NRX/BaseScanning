@@ -6,6 +6,7 @@ from dataclasses import replace
 import pytest
 
 from hsverify.resultcheck import (
+    MAX_SWEEP_SAMPLES,
     GroundPlan,
     Need,
     RuleSet,
@@ -875,8 +876,8 @@ def test_each_start_in_a_sweep_run_needs_only_its_own_reach():
 
 
 def test_sweep_run_starts_are_sampled_at_the_rules_step_plus_the_ends():
-    assert run_starts([1.0, 1.5], 1 / 6) == pytest.approx([1.0, 7 / 6, 8 / 6, 1.5])
-    assert run_starts([2.0, 2.0], 1 / 6) == [2.0]
+    assert list(run_starts([1.0, 1.5], 1 / 6)) == pytest.approx([1.0, 7 / 6, 8 / 6, 1.5])
+    assert list(run_starts([2.0, 2.0], 1 / 6)) == [2.0]
     with pytest.raises(ValueError, match=r"sweep\.step_ft"):
         run_starts([1.0, 2.0], None)
 
@@ -1083,7 +1084,7 @@ def test_a_captured_request_claims_only_the_reach_it_asked_for():
 
 def test_a_sweep_run_shorter_than_a_step_keeps_its_first_start():
     # Review 4114352251: run_starts([0, 0.4], 1) returned only 0.4.
-    assert run_starts([0.0, 0.4], 1.0) == [0.0, 0.4]
+    assert list(run_starts([0.0, 0.4], 1.0)) == [0.0, 0.4]
 
 
 def test_a_passing_spot_must_pass_in_the_sweep_too():
@@ -1508,3 +1509,59 @@ def test_geometric_assumptions_compare_active_rules():
         assumption_mismatches({"battery_width": rules.width_ft, "corner_allowance": 0.5}, {}, rules)
         == []
     )
+
+
+@pytest.mark.parametrize("outcome", ["pass", "unsure"])
+@pytest.mark.parametrize("span", [[0, 1e9], [-1e9, 0], [1e9, 1e9]])
+def test_out_of_scan_sweep_fails_before_sampling(monkeypatch, outcome, span):
+    def no_sampling(*args):
+        pytest.fail("out-of-scan sweep reached sampling")
+
+    monkeypatch.setattr("hsverify.resultcheck.run_starts", no_sampling)
+    r = result(spot=False, sweep=[pass_run(*span) | {"outcome": outcome}])
+    message = f"sweep {outcome} starts {span}: start_ft span exceeds scanned range [-12.0, 12.0]"
+    for judge in (
+        invariant_problems,
+        footprint_problems,
+        coverage_problems,
+        declared_height_problems,
+    ):
+        assert judge(SCENE, r, rules=RULES) == [message]
+
+
+def test_sweep_sampling_is_lazy_and_keeps_the_limit_endpoint():
+    samples = run_starts([0, MAX_SWEEP_SAMPLES - 1], 1)
+    assert iter(samples) is samples
+    assert next(samples) == 0
+    remaining = list(samples)
+    assert len(remaining) == MAX_SWEEP_SAMPLES - 1
+    assert remaining[-1] == MAX_SWEEP_SAMPLES - 1
+    assert list(run_starts([0, 1e-9], 1)) == [0, 1e-9]
+
+
+@pytest.mark.parametrize(
+    "span,step",
+    [([0, 1e9], 1 / 6), ([0, MAX_SWEEP_SAMPLES], 1), ([0, 1], 1e-300), ([-1e308, 1e308], 1)],
+)
+def test_sweep_sample_limit_is_checked_before_iteration(span, step):
+    with pytest.raises(ValueError, match="10000 sample limit"):
+        run_starts(span, step)
+
+
+@pytest.mark.parametrize("span", [[2, 1], [0, float("inf")], [float("nan"), 1]])
+def test_sweep_sampler_refuses_invalid_spans(span):
+    with pytest.raises(ValueError, match="finite and ordered"):
+        run_starts(span, 1)
+
+
+@pytest.mark.parametrize("step", [None, 0, -1, float("inf"), float("nan")])
+def test_sweep_sampler_refuses_invalid_steps(step):
+    with pytest.raises(ValueError, match="finite positive"):
+        run_starts([0, 1], step)
+
+
+def test_in_scan_sweep_with_tiny_rule_step_fails_loudly():
+    r = result(spot=False, sweep=[pass_run(0, 1) | {"outcome": "unsure"}])
+    assert invariant_problems(SCENE, r, rules=replace(RULES, step_ft=1e-300)) == [
+        "sweep unsure starts [0, 1]: sweep sampling exceeds the 10000 sample limit"
+    ]
