@@ -7,13 +7,36 @@ import pytest
 SCRIPT = Path(__file__).resolve().parent / "fetch-fixtures.sh"
 
 
-@pytest.mark.parametrize("failure", ["archive", "extract", "empty", "move", "success"])
+def contents(folder):
+    return {
+        str(path.relative_to(folder)): path.read_bytes()
+        for path in folder.rglob("*")
+        if path.is_file()
+    }
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "archive",
+        "extract",
+        "empty",
+        "missing-session",
+        "move",
+        "occupied",
+        "restore",
+        "success",
+    ],
+)
 def test_failed_refresh_preserves_existing_fixtures(tmp_path, failure):
     script = tmp_path / "fetch-fixtures.sh"
     script.write_text(SCRIPT.read_text())
     fixtures = tmp_path / "Fixtures"
     fixtures.mkdir()
     (fixtures / "old.json").write_text("working replay")
+    (fixtures / "synthetic-wall-lidar").mkdir()
+    (fixtures / "synthetic-wall-lidar/session.json").write_text('{"working": true}')
+    original = contents(fixtures)
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     git = bin_dir / "git"
@@ -32,14 +55,30 @@ esac
 [ "$FAILURE" != extract ] || exit 1
 mkdir -p "$4/Fixtures"
 case "$FAILURE" in
-success|move) echo replacement > "$4/Fixtures/new.json" ;;
+missing-session) echo unrelated > "$4/Fixtures/new.json" ;;
+success|move|occupied|restore)
+    mkdir -p "$4/Fixtures/synthetic-wall-lidar"
+    echo replacement > "$4/Fixtures/synthetic-wall-lidar/session.json"
+    ;;
 esac
 """)
     mv = bin_dir / "mv"
     mv.write_text("""#!/bin/sh
-if [ "$FAILURE" = move ] && [ "${1##*/}" = Fixtures ] && [ "$1" != "$TEST_ROOT/Fixtures" ]; then
+if [ "${1##*/}" = Fixtures ] && [ "$1" != "$TEST_ROOT/Fixtures" ]; then
+    case "$FAILURE" in
+    move|occupied|restore)
     test -d "${1%/*}/previous" || exit 2
     echo failed > "$TEST_ROOT/final-move-failed"
+    if [ "$FAILURE" = occupied ]; then
+        mkdir "$TEST_ROOT/Fixtures"
+        echo concurrent > "$TEST_ROOT/Fixtures/other.json"
+    fi
+    exit 1
+    ;;
+    esac
+fi
+if [ "$FAILURE" = restore ] && [ "${1##*/}" = previous ]; then
+    echo failed > "$TEST_ROOT/restore-failed"
     exit 1
 fi
 exec /bin/mv "$@"
@@ -58,12 +97,30 @@ exec /bin/mv "$@"
     )
     if failure == "success":
         assert result.returncode == 0, result.stderr
-        assert (fixtures / "new.json").read_text() == "replacement\n"
+        assert (
+            fixtures / "synthetic-wall-lidar/session.json"
+        ).read_text() == "replacement\n"
         assert not (fixtures / "old.json").exists()
+    elif failure in ("occupied", "restore"):
+        assert result.returncode != 0
+        assert (tmp_path / "final-move-failed").read_text() == "failed\n"
+        stages = list(tmp_path.glob(".fixtures.*"))
+        assert len(stages) == 1
+        backup = stages[0] / "previous"
+        assert contents(backup) == original
+        assert f"backup preserved at {backup}" in result.stderr
+        if failure == "occupied":
+            assert (fixtures / "other.json").read_text() == "concurrent\n"
+            assert list(fixtures.iterdir()) == [fixtures / "other.json"]
+        else:
+            assert (tmp_path / "restore-failed").read_text() == "failed\n"
+            assert not fixtures.exists()
     else:
         assert result.returncode != 0
-        assert (fixtures / "old.json").read_text() == "working replay"
-        assert list(fixtures.iterdir()) == [fixtures / "old.json"]
+        assert contents(fixtures) == original
         if failure == "move":
             assert (tmp_path / "final-move-failed").read_text() == "failed\n"
-    assert not list(tmp_path.glob(".fixtures.*"))
+        if failure == "missing-session":
+            assert "lack synthetic-wall-lidar/session.json" in result.stderr
+    if failure not in ("occupied", "restore"):
+        assert not list(tmp_path.glob(".fixtures.*"))

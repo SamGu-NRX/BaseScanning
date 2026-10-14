@@ -91,7 +91,7 @@ Put an obstacle in front of the meter or panel and repeat run 1. Add these:
 
 Group the tests into short recordings: W-12 then M-3; W-10 then W-11; U-4 then U-3; O-4 alone. A call or a
 lock can end a screen recording, and this way it takes only its own tests with it. O-4 deletes the app and
-every scan on it, so export scans first.
+every scan on it, so share each completed scan before O-4 and confirm the exported file exists.
 
 | ID | Do | Expect |
 |---|---|---|
@@ -105,7 +105,7 @@ every scan on it, so export scans first.
 
 ## After the run
 
-- Share the scan off the phone before closing the app. Relaunching deletes the local scan, so confirm the exported file exists first.
+- Relaunch preserves the retained completed scans.
 
 - Save the scan's `scene.json` and replay its coverage:
 
