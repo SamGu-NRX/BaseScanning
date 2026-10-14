@@ -105,7 +105,9 @@ every scan on it, so share each completed scan before O-4 and confirm the export
 
 ## After the run
 
-- Relaunch preserves the retained completed scans.
+- On relaunch, a new scan store keeps the two newest completed scans with valid `scan.zip` bundles.
+  After pending bundle writes finish, cleanup can delete older completed scans and unfinished scans
+  without a bundle. Partial or unreadable bundles are left alone; export a run before reinstalling.
 
 - Save the scan's `scene.json` and replay its coverage:
 

@@ -310,6 +310,8 @@ Other things the recording showed:
   would unblock `reach` early. The strip could also show that an end will land at the meter before the tap.
 - **For the next runs:** the runbook now says to fill the strip next to the meter before any "Can't get
   there". Testers should say test IDs and haptics aloud, and share the scan off the phone before closing the app: a
-  relaunch deletes it. Runs 2 and 3 are still to do.
+  new-store cleanup on relaunch keeps the two newest completed scans with valid bundles, but can delete
+  older completed scans and unfinished scans without a bundle after pending bundle writes finish. Partial
+  or unreadable bundles are left alone. Runs 2 and 3 are still to do.
 
 Raw material stays out of git: the recording, the scan and the tape readings.

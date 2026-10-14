@@ -1,9 +1,9 @@
 """Q4 and Q5: find the meter number among everything Vision reads on a close-up.
 
 Candidates are the digit-bearing tokens of each recognized line plus decoded barcode
-payloads. A candidate is right when its core (see `match.core`) equals the labelled number's
-core, so "NO. 12345678" and "ABC 123456" count, while a longer string that merely contains
-the number, such as a barcode line "*XYZ1234567890…*", does not.
+payloads. A candidate is right when its label-stripped alphanumeric text equals the labelled
+number. Recognised printed labels such as "NO." are optional; serial letters such as ABC
+remain part of the number. A longer string that merely contains the number does not match.
 
 The rules and the ranking were written from the odd-numbered photos only (`--split dev`)
 and committed before the even-numbered photos were scored. The held-out set is split by
@@ -19,14 +19,11 @@ import csv
 import json
 import re
 
-from meter_eval.match import core, digest, number_read
+from meter_eval.match import KEYWORD, digest, number_core, number_read
 from meter_eval.ocr import Reader
 from meter_eval.paths import DATA_DIR, MANIFEST, RESULTS_DIR
 from meter_eval.stats import share
 
-# A label word in front of the number: No., Nr., №, #, S/N, Serial.
-# "#:" is how Vision renders the Taiwanese label 電號: in front of the number.
-KEYWORD = re.compile(r"^\s*(?:N[O0R]\.?|N°|№|#\s*:|S/?N|SERIAL\s*#?)\s*[.:#]?\s*", re.IGNORECASE)
 # Lines that describe the meter rather than identify it: ratings, voltages, constants, forms.
 SPEC = re.compile(
     r"\d\s*\(\s*\d+\s*\)|\d\s*V\b|HZ|\bKH\b|KH\s*\d|\bKT\b|\bTA\s*=?\s*\d|\bCL\s*\d|\d\s*CL\b|"
@@ -72,7 +69,7 @@ def payload_tokens(barcodes: list[dict]) -> set[str]:
     for barcode in barcodes:
         for part in re.split(r"[\s;*,{}]+", barcode.get("payload") or ""):
             if digits(part) >= 4:
-                parts.add(core(part))
+                parts.add(number_core(part))
     return parts
 
 
@@ -90,7 +87,7 @@ def candidates(result: dict) -> list[dict]:
         text = line["text"]
         _, _, w, h = line["box"]
         for token in tokens(text):
-            token_core = core(token)
+            token_core = number_core(token)
             confirmed = token_core in payloads
             if not confirmed and len(token_core) >= 6:
                 longer = [p for p in payloads if token_core in p]
@@ -106,7 +103,7 @@ def candidates(result: dict) -> list[dict]:
                     "barcode_confirmed": confirmed,
                     "keyword": bool(KEYWORD.match(text))
                     and not re.match(r"\s*CAT", text, re.IGNORECASE),
-                    "alone": core(KEYWORD.sub("", text)) == token_core,
+                    "alone": number_core(KEYWORD.sub("", text)) == token_core,
                     "spec": bool(SPEC.search(text)),
                     "vertical": h > w,
                     "zeros": set(token_core) <= {"0"},
@@ -204,9 +201,9 @@ def barcode_stats(row: dict, result: dict) -> dict:
     target = row["number_core_hmac"]
     length = int(row["number_core_len"] or 0)
     has_number = any(
-        digest(core(p)[i : i + length]) == target
+        digest(number_core(p)[i : i + length]) == target
         for p in payloads
-        for i in range(len(core(p)) - length + 1)
+        for i in range(len(number_core(p)) - length + 1)
     )
     return {
         "barcode_found": int(bool(barcodes)),

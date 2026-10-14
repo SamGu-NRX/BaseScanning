@@ -1,6 +1,8 @@
 # Depth and geometry model runners
 
-Runs three commercially licensed models on a list of photos and writes metric depth in one format, so the wall-reconstruction eval (question 2 in `../README.md`) can score each against ETH3D's laser scans.
+Runs three models on a list of photos and writes metric depth in one format, so the wall-reconstruction eval (question 2 in `../README.md`) can score each against ETH3D's laser scans.
+
+MoGe-2 is excluded from commercial-use claims until its checkpoint licence is verified; see the licence table below.
 
 ## Install
 

@@ -37,13 +37,27 @@ def mark_stage(stage: Path) -> None:
 
 def recover_backup(here: Path) -> None:
     fixtures = here / "Fixtures"
-    # This namespace is reserved for refresh stages. The caller holds the refresh
-    # lock, so even stages killed before their marker was written are abandoned.
-    stages = [
-        stage
-        for stage in here.glob(".fixtures.*")
-        if stage.is_dir() and not stage.is_symlink()
-    ]
+    stages = []
+    for stage in here.glob(".fixtures.*"):
+        try:
+            marker = stage / "ownership.json"
+            if marker.is_symlink():
+                raise ValueError("linked ownership marker")
+            record = json.loads(marker.read_text())
+            if not isinstance(record, dict) or not valid_identity(record.get("stage")):
+                raise ValueError("invalid stage identity")
+            if record["stage"] != identity(stage):
+                raise ValueError("stage identity changed")
+            previous = stage / "previous"
+            if "previous" in record and not valid_identity(record["previous"]):
+                raise ValueError("invalid backup identity")
+            if (previous.exists() or previous.is_symlink()) and record.get(
+                "previous"
+            ) != identity(previous):
+                raise ValueError("backup identity changed")
+            stages.append(stage)
+        except (OSError, ValueError):
+            print(f"Unverified fixture stage left untouched: {stage}", file=sys.stderr)
     backups = [
         stage / "previous"
         for stage in stages
@@ -64,6 +78,14 @@ def recover_backup(here: Path) -> None:
             rename_exclusive(str(backups[0]), str(fixtures))
     for stage in stages:
         shutil.rmtree(stage)
+
+
+def valid_identity(value) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) == 2
+        and all(type(n) is int for n in value)
+    )
 
 
 def rename_exclusive(source: str, destination: str) -> None:

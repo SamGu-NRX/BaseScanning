@@ -20,6 +20,41 @@ from meter_eval.paths import KEY_PATH
 # the output, so it can only add matches.
 DIGIT_FIXUPS = str.maketrans({"O": "0", "I": "1", "L": "1"})
 
+# Printed labels shared by reading and candidate ranking. Compound labels precede
+# shorter forms; a label boundary keeps serial letters in ABC1234567 or NO1234567.
+NUMBER_LABELS = (
+    "Serial No",
+    "Meter No",
+    "Meter #",
+    "S/N",
+    "Serial",
+    "Meter",
+    "SN",
+    "No",
+    "N0",
+    "Nr",
+    "N°",
+    "№",
+    "#",
+)
+KEYWORD = re.compile(
+    r"^[\W_]*(?:"
+    + "|".join(
+        re.escape(label).replace(r"\ ", r"[\W_]+") + (r"(?=$|[\W_])" if label[-1].isalnum() else "")
+        for label in NUMBER_LABELS
+    )
+    + r")[\W_]*",
+    re.IGNORECASE,
+)
+
+
+def read_target(text: str) -> str:
+    return "".join(re.findall(r"[^\W_]+", KEYWORD.sub("", text, count=1))).casefold()
+
+
+def number_core(text: str) -> str:
+    return read_target(text).upper()
+
 
 def normalize(text: str) -> str:
     """Uppercase and keep only A-Z and 0-9."""

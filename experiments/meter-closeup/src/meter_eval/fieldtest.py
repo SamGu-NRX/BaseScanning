@@ -20,26 +20,11 @@ from PIL import Image, ImageOps
 
 from meter_eval import retake
 from meter_eval.locate import candidates, ranked, top_candidate
-from meter_eval.match import core, normalize, rows_of_text
+from meter_eval.match import normalize, number_core, read_target, rows_of_text
 from meter_eval.ocr import Reader
 from meter_eval.quality import gray
 
 SUFFIXES = {".jpg", ".jpeg", ".png", ".heic"}
-
-# Compound labels precede their shorter forms; strip only whole labels, never arbitrary
-# serial letters such as ABC in ABC1234567.
-READ_LABELS = ("Serial No", "Meter No", "Meter #", "S/N", "Serial", "Meter", "SN", "No", "#")
-
-
-def read_target(target: str) -> str:
-    for label in READ_LABELS:
-        words = re.escape(label).replace(r"\ ", r"[\W_]+")
-        boundary = r"(?=$|[\W_])" if label[-1].isalnum() else ""
-        prefix = re.match(r"^[\W_]*" + words + boundary + r"[\W_]*", target, re.IGNORECASE)
-        if prefix:
-            target = target[prefix.end() :]
-            break
-    return "".join(re.findall(r"[^\W_]+", target)).casefold()
 
 
 def reads_number(text: str, target: str) -> bool:
@@ -91,7 +76,7 @@ def main() -> None:
     target = normalize(args.number)
     if not target:
         parser.error("--number must contain letters or digits")
-    target_core = core(args.number)
+    target_core = number_core(args.number)
     photos = sorted(p for p in args.folder.iterdir() if p.suffix.lower() in SUFFIXES)
     if not photos:
         raise SystemExit(f"no .jpg, .png or .heic photos in {args.folder}")

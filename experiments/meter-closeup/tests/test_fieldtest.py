@@ -75,10 +75,12 @@ def test_the_orientation_tag_is_applied(tmp_path):
         ("123ABC456789", "123abc456789", "yes", 1),
         ("123ABC456789", "123ABC 456789", "yes", 1),
         ("ABC1234567", "ABC1234567", "yes", 1),
-        ("ABC1234567", "1234567", "no", 1),
+        ("ABC1234567", "1234567", "no", None),
         ("S/N: AB-12345", "AB12345", "yes", 1),
         ("S/N: AB-12345", "ab 12345", "yes", 1),
         ("S/N: AB-12345", "AB12346", "no", None),
+        ("Nr. 1234567", "1234567", "yes", 1),
+        ("N° 1234567", "1234567", "yes", 1),
     ],
 )
 def test_fieldtest_scores_reads_and_ranks_without_a_dataset_key(
@@ -136,7 +138,23 @@ def test_read_number_matches_joined_target_groups(text, target, expected):
 
 
 @pytest.mark.parametrize(
-    "label", ["No", "No.", "#", "S/N", "SN", "Serial", "Serial No", "Meter", "Meter No", "Meter #"]
+    "label",
+    [
+        "No",
+        "No.",
+        "#",
+        "S/N",
+        "SN",
+        "Serial",
+        "Serial No",
+        "Meter",
+        "Meter No",
+        "Meter #",
+        "Nr.",
+        "N°",
+        "№",
+        "N0",
+    ],
 )
 @pytest.mark.parametrize("suffix", ["", ".", ":", "#"])
 def test_read_target_strips_only_recognised_label_words(label, suffix):

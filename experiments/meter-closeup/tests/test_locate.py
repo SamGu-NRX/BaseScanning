@@ -2,6 +2,22 @@ from meter_eval.locate import candidates, near_barcode, ranked, rules, tokens
 from meter_eval.match import core
 
 
+def test_serial_letters_distinguish_the_ranked_candidate():
+    from meter_eval.fieldtest import reads_number
+
+    result = {
+        "lines": [
+            {"text": "1234567", "box": [0.1, 0.1, 0.6, 0.1]},
+            {"text": "ABC1234567", "box": [0.1, 0.3, 0.6, 0.2]},
+        ],
+        "barcodes": [],
+    }
+    order = ranked(candidates(result))
+    assert order == ["ABC1234567", "1234567"]
+    assert reads_number(order[0], "ABC1234567")
+    assert not reads_number(order[1], "ABC1234567")
+
+
 def line(text, box=(0.4, 0.5, 0.2, 0.03)):
     return {"text": text, "box": list(box), "confidence": 1.0}
 

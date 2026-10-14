@@ -13,11 +13,11 @@ SCRIPT = Path(__file__).resolve().parent / "fetch-fixtures.sh"
 @pytest.mark.parametrize(
     "ownership", [None, "malformed", "wrong-stage", "wrong-backup"]
 )
-def test_locked_recovery_restores_legacy_backup_and_removes_stage(tmp_path, ownership):
+def test_recovery_preserves_unknown_fixture_stages(tmp_path, ownership, capsys):
     import fcntl
 
     helper = runpy.run_path(str(SCRIPT.with_name("rename-fixtures.py")))
-    stage = tmp_path / ".fixtures.caller"
+    stage = tmp_path / ".fixtures.foo"
     previous = stage / "previous"
     previous.mkdir(parents=True)
     (previous / "session.json").write_text("caller data")
@@ -33,12 +33,15 @@ def test_locked_recovery_restores_legacy_backup_and_removes_stage(tmp_path, owne
         (stage / "ownership.json").write_text(
             "{" if ownership == "malformed" else json.dumps(record)
         )
-    before = contents(previous)
+    before = contents(stage)
     with (tmp_path / ".fixtures-refresh.lock").open("a") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         helper["recover_backup"](tmp_path)
-    assert contents(tmp_path / "Fixtures") == before
-    assert not stage.exists()
+    assert contents(stage) == before
+    assert not (tmp_path / "Fixtures").exists()
+    assert (
+        f"Unverified fixture stage left untouched: {stage}" in capsys.readouterr().err
+    )
 
 
 def contents(folder):
@@ -50,7 +53,7 @@ def contents(folder):
 
 
 @pytest.mark.parametrize("published", [False, True])
-def test_locked_recovery_reclaims_a_stage_killed_before_its_marker(tmp_path, published):
+def test_recovery_preserves_a_stage_without_a_marker(tmp_path, published, capsys):
     import fcntl
 
     helper = runpy.run_path(str(SCRIPT.with_name("rename-fixtures.py")))
@@ -63,7 +66,8 @@ def test_locked_recovery_reclaims_a_stage_killed_before_its_marker(tmp_path, pub
     with (tmp_path / ".fixtures-refresh.lock").open("a") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         helper["recover_backup"](tmp_path)
-    assert not stage.exists()
+    assert (stage / "fixtures.tar").read_bytes() == b"unfinished archive"
+    assert str(stage) in capsys.readouterr().err
     if published:
         assert (tmp_path / "Fixtures/session.json").read_text() == "current"
 

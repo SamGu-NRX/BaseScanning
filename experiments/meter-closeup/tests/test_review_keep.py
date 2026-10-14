@@ -82,6 +82,8 @@ def test_build_treats_a_kept_correction_as_human_confirmed(tmp_path, monkeypatch
     monkeypatch.setattr(labels, "HUMAN", tmp_path / "human.csv")
     [row] = labels.build()
     assert row["number_hmac"] == labels.digest("ABC7654321")
+    assert row["number_core_hmac"] == labels.digest("ABC7654321")
+    assert row["number_core_len"] == len("ABC7654321")
     assert row["number_agreed"] == row["number_agreed_strict"] == "yes"
     assert row["human_check"] == "keep"
     assert "ABC7654321" in labels.known_numbers()
