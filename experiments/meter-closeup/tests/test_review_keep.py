@@ -97,6 +97,17 @@ def test_a_browser_correction_survives_a_label_change_and_the_upgrade():
     assert rows[1:] == [["m01", "fix", "ABC 7654321"], ["m02", "fix", "2223333"]]
 
 
+def test_a_kept_correction_survives_a_label_change():
+    """Fix, then Keep in the same browser, then a dataset update changes the readers' number."""
+    before = [{"id": "m01", "number": "1111111", "corrected": False, "answer": None}]
+    fixed = {"verdict": "fix", "number": "ABC 7654321", "shown": "1111111"}
+    kept = on_page("keepAnswer(previous, items[0])", previous=fixed, items=before)
+    stored = {"m01": {**kept, "shown": "1111111"}}
+    after = [{"id": "m01", "number": "1112222", "corrected": False, "answer": None}]
+    rows = on_page("answerRows(items, startingAnswers(items, stored))", items=after, stored=stored)
+    assert rows[1:] == [["m01", "keep", "ABC 7654321"]]
+
+
 def write(path, rows):
     with path.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
