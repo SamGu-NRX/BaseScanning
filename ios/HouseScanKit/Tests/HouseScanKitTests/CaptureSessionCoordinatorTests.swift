@@ -360,12 +360,14 @@ struct NativeCaptureFixture: Sendable {
         try await waitUntilHeld(http)
 
         coordinator.newWorld("world reset", recording: fixture.recording, newScan: false)
-        coordinator.kept(try fixture.photo(at: fixture.start + 4))
+        let stateURL = CaptureUploader.stateURL(in: first.folder)
+        // Retirement is synchronous, but abandonment runs on the uploader's next turn.
+        // Release the old reply only after that turn, so the test exercises a late reply.
+        try await waitUntilAbandoned(stateURL, reason: "world reset")
         http.release()
+        coordinator.kept(try fixture.photo(at: fixture.start + 4))
         await coordinator.settle()
         await first.uploader!.settled()
-        let stateURL = CaptureUploader.stateURL(in: first.folder)
-        try await waitUntilAbandoned(stateURL, reason: "world reset")
 
         let second = try #require(coordinator.session)
         #expect(second.packetID != first.packetID)
