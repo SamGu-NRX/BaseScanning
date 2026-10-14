@@ -371,24 +371,7 @@ struct GuidanceHint: Equatable, Sendable {
 /// A problem to fix while it lasts. Tracking problems and `pastWallEnd` override guidance; the
 /// capture gate's (`slowDown`, `turnSlowly`, `holdSteady`, `tooDark`, `tooDarkToMeasure`) and
 /// `needsTexture` ride along with it on the walk. UI/ owns the words.
-enum Coaching: Equatable, Sendable {
-    case initializing
-    case slowDown
-    case needsTexture
-    case tooDark
-    /// Frames have been mostly too dark for a long while: waiting won't help, daylight will
-    /// (`CoachingDebouncer.GateProblem.persistentlyDark`).
-    case tooDarkToMeasure
-    case holdSteady
-    /// Turning or tilting the phone faster than the capture gate keeps photos at, as opposed to
-    /// walking too fast (#26).
-    case turnSlowly
-    case relocalizing
-    case trackingLost
-    /// The phone stands past an end it can't see back from, so the walk keeps no photos: nothing
-    /// in them would count (`CoverageMap.unexploredEndPassed`).
-    case pastWallEnd
-}
+typealias Coaching = HouseScanKit.Coaching
 
 /// Where a wall end would land if the homeowner ended the wall now, while ending it is on offer.
 /// The strip draws it before the tap, so an end never lands somewhere the screen didn't show.

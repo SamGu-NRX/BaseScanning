@@ -208,10 +208,7 @@ enum ScanCopy {
     /// asks for counts until they clear. The capture gate's coaching and too little texture ride
     /// along with it instead (`withCoaching`). No `default`, so a new case has to pick a side.
     static func coachingReplacesTask(_ coaching: Coaching) -> Bool {
-        switch coaching {
-        case .initializing, .relocalizing, .trackingLost, .pastWallEnd: true
-        case .slowDown, .needsTexture, .tooDark, .tooDarkToMeasure, .holdSteady, .turnSlowly: false
-        }
+        coaching.replacesAim
     }
 
     /// The task with ride-along coaching under it: the task's title and second line both stay (on

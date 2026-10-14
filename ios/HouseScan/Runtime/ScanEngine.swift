@@ -31,6 +31,7 @@ final class ScanEngine {
     private var autoCapture = AutoCapture()
     private var closeUpGate = CloseUpGate()
     private var planner = GuidancePlanner()
+    private var cameraInterrupted = false
     let gapPlanner = GapPlanner()
 
     // Stored evidence
@@ -611,6 +612,7 @@ final class ScanEngine {
         }
         guard !frame.isPoseOnly else { return }
         noteFarSurface()
+        if frame.tracking == .normal { cameraInterrupted = false }
         trackRelocalization(frame)
         guard !frame.isReview else {
             refreshCues(camera: frame.camera)
@@ -1095,13 +1097,10 @@ final class ScanEngine {
     /// reads. Live, the two clocks agree; a replay at 3x speed on frame time changed the card
     /// every second or so, which the verify lane's wall-clock check (I6) and the accessibility
     /// audit both caught.
-    func updateGuidance(camera: CameraFrame, time _: Double,
-                        screenTime: Double = Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000) {
-        // Every exit records visibility without selecting another task. Questions, tilt-up and
-        // next-wall instructions bypass the planner but still hide its aim (review of #237).
-        var aimActionable = false
-        defer { planner.recordAimActionability(aimActionable, time: screenTime) }
-        // A question is on screen: the next step waits for its answer.
+    private func updateGuidance(camera: CameraFrame, time _: Double) {
+        let screenTime = Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000
+        let screen = aimScreen(camera: camera)
+        defer { recordAimActionability(screen: screen, time: screenTime) }
         guard let map = coverage, state.endQuestion == nil, !state.overheadQuestion,
               !state.endScanQuestion else { return }
         if let side = nextWallSide {
@@ -1123,10 +1122,10 @@ final class ScanEngine {
             logGuidance()
             return
         }
-        aimActionable = canActOnAim(planner.current, map, camera: camera)
+        let aimActionable = AimActionability.canAct(on: planner.current, coverage: map, screen: screen,
+                                                     coaching: state.coaching, interrupted: cameraInterrupted)
         let output = planner.update(coverage: map, camera: camera, time: screenTime,
                                     aimActionable: aimActionable)
-        aimActionable = canActOnAim(output.task, map, camera: camera)
         logPlannerSwitch(output)
         if let hidden = hiddenBlock(output.task, map, camera: camera) {
             seeBehindBands = hidden.bands
@@ -1152,9 +1151,17 @@ final class ScanEngine {
         logGuidance()
     }
 
-    private func canActOnAim(_ task: GuidanceTask?, _ map: CoverageMap, camera: CameraFrame) -> Bool {
-        state.marking == nil && !(state.coaching.map(ScanCopy.coachingReplacesTask) ?? false)
-            && (task.map { hiddenBlock($0, map, camera: camera) == nil } ?? true)
+    private func aimScreen(camera: CameraFrame? = nil) -> AimActionability.Screen {
+        if state.endQuestion != nil || state.overheadQuestion || state.endScanQuestion { return .question }
+        if nextWallSide != nil || state.nextWallConfirm != nil { return .nextWall }
+        if let map = coverage, let camera, tiltUpSpanIfDue(map, camera: camera) != nil { return .tiltUp }
+        if state.marking != nil { return .marking }
+        return .guidance
+    }
+
+    private func recordAimActionability(screen: AimActionability.Screen, time: Double) {
+        planner.recordAimActionability(AimActionability.canAct(on: planner.current, coverage: coverage,
+            screen: screen, coaching: state.coaching, interrupted: cameraInterrupted), time: time)
     }
 
     /// What the card of an aim step says beside the step (`GuidanceHint`); nil for other steps.
@@ -1226,19 +1233,14 @@ final class ScanEngine {
             let level = map.level(band, index)
             return level != .covered && level != .skipped
         }
-        func mostlyHidden(_ band: SurfaceBand, around s: Float) -> Bool {
-            let cells = map.indices(overlapping: (s - 0.3)...(s + 0.3)).filter { map.isWithinEnds($0) && open(band, $0) }
-            let hidden = cells.filter { map.level(band, $0) == .hidden }.count
-            return hidden > 0 && hidden * 2 >= cells.count
-        }
         switch task {
         case .seeBehind(let s):
             let bands = SurfaceBand.allCases.filter { !Self.hiddenCells(map, band: $0, around: s).isEmpty }
             return bands.isEmpty ? nil : (s, bands)
         case .aimAtGround(let s):
-            return mostlyHidden(.ground, around: s) ? (s, [.ground]) : nil
+            return AimActionability.mostlyHidden(.ground, around: s, coverage: map) ? (s, [.ground]) : nil
         case .aimAtWall(let s):
-            return mostlyHidden(.wall, around: s) ? (s, [.wall]) : nil
+            return AimActionability.mostlyHidden(.wall, around: s, coverage: map) ? (s, [.wall]) : nil
         case .walk(let side):
             let reach = planner.reach(side, coverage: map)
             let index = map.cellIndex(forS: side.sign * (reach + map.config.cellWidth / 2))
@@ -1604,6 +1606,8 @@ final class ScanEngine {
             RuntimeLog.capture.info("session interrupted")
             breakWalkedPath(because: "session interrupted")
             state.coaching = .relocalizing
+            cameraInterrupted = true
+            recordAimActionability(screen: aimScreen(), time: Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000)
         case .interruptionEnded:
             RuntimeLog.capture.info("session interruption ended")
             state.coaching = .relocalizing
@@ -2394,6 +2398,7 @@ final class ScanEngine {
         autoCapture.reset()
         gateCoaching = CoachingDebouncer()
         planner.reset()
+        cameraInterrupted = false
         closeUpGate = CloseUpGate()
         gapPlan = nil
         skippedGaps = []
