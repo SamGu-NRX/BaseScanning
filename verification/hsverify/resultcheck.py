@@ -28,6 +28,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import itertools
+import json
 import math
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, replace
@@ -40,6 +41,11 @@ EPS = 1e-6
 NUMBER_TOL_FT = 1e-5
 # Bound verifier work even when a server span or rules step requests billions of samples.
 MAX_SWEEP_SAMPLES = 10_000
+# The existing public-pool regression has 55 starts and a worst-case ground
+# reach of 14.15 ft: its conservative grid bound is below 50 million visits.
+# This cap retains that case while bounding aggregate work; it is a resource
+# policy, not a measured runtime or a physical scan limit.
+MAX_GEOMETRY_SAMPLES = 50_000_000
 # Spot centres and offsets are rounded by the server; a hundredth of a foot is 1/8 inch.
 OFFSET_TOL_FT = 0.01
 
@@ -308,10 +314,9 @@ def margin_problem(check: dict) -> str | None:
 def invariant_problems(
     scene: dict, result: dict, sent: bytes | None = None, rules: RuleSet | None = None
 ) -> list[str]:
-    if dimensions := reported_dimension_problems(result, rules):
-        return dimensions
-    if rules is not None and (sampling := sweep_sampling_problems(scene, result, rules)):
+    if sampling := geometry_admission_problems(scene, result, rules):
         return sampling
+    result = deduplicate_result_runs(result)
     problems: list[str] = []
     decision = result["decision"]
     spot = result.get("spot")
@@ -425,8 +430,9 @@ def footprint_problems(scene: dict, result: dict, rules: RuleSet) -> list[str]:
     """A battery that passes or is left to a person backs onto one straight stretch of scanned
     wall along its whole width; a footprint past the stretch's end (a corner, the end of the
     wall, a gap) can't sit flush, so the server fails it (server/solver.py check_backing)."""
-    if sampling := sweep_sampling_problems(scene, result, rules):
+    if sampling := geometry_admission_problems(scene, result, rules):
         return sampling
+    result = deduplicate_result_runs(result)
     pieces = straight_pieces(scene, rules)
     if not pieces:
         return []
@@ -681,7 +687,7 @@ def measured_band_gap(
     return None
 
 
-def run_starts(span: list[float], step_ft: float | None) -> Iterator[float]:
+def run_start_count(span: list[float], step_ft: float | None) -> int:
     """Validate eagerly, then sample a run lazily: first, every step after it, and last.
 
     A sample, not the server's own list: the server also evaluates boundaries and midpoints
@@ -699,25 +705,240 @@ def run_starts(span: list[float], step_ft: float | None) -> Iterator[float]:
     count = max(int(a < b), math.ceil(steps - EPS))
     if count + 1 > MAX_SWEEP_SAMPLES:
         raise ValueError(f"sweep sampling exceeds the {MAX_SWEEP_SAMPLES} sample limit")
-    return itertools.chain((a + k * step_ft for k in range(count)), (b,))
+    return count + 1
 
 
-def sweep_sampling_problems(scene: dict, result: dict, rules: RuleSet) -> list[str]:
-    """Reject invalid runs before footprint, coverage or height checks sample them."""
-    ends = chain_ends_s(scene, rules)
-    problems = []
+def run_starts(span: list[float], step_ft: float | None) -> Iterator[float]:
+    count = run_start_count(span, step_ft)
+    a, b = span
+    return itertools.chain((a + k * step_ft for k in range(count - 1)), (b,))
+
+
+def deduplicate_result_runs(result: dict) -> dict:
+    """Identical records cannot add geometry evidence or multiply sampling work."""
+    unique = {}
     for run in result.get("sweep", []):
-        if run["outcome"] not in ("pass", "unsure"):
+        unique.setdefault(json.dumps(run, sort_keys=True), run)
+    return result | {"sweep": list(unique.values())}
+
+
+def reported_dimension_problems(result: dict, rules: RuleSet | None) -> list[str]:
+    """Reject inconsistent C2 geometry before its dimensions can override public rules."""
+    problems = []
+
+    def finite(value: Any) -> bool:
+        try:
+            return (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and math.isfinite(value)
+            )
+        except OverflowError:
+            return False
+
+    spots = [(name, result.get(name)) for name in ("spot", "nearest_considered")]
+    for name, spot in spots:
+        if spot is None:
             continue
+        for field in ("width_ft", "depth_ft", "height_ft"):
+            if field in spot and (not finite(spot[field]) or spot[field] <= 0):
+                problems.append(f"{name}.{field} must be finite and positive")
+        span = spot.get("span_ft")
+        if span is not None:
+            if len(span) != 2 or not all(finite(v) for v in span) or span[0] >= span[1]:
+                problems.append(f"{name}.span_ft must be finite and increasing")
+            elif (
+                finite(spot.get("width_ft"))
+                and abs(span[1] - span[0] - spot["width_ft"]) > OFFSET_TOL_FT
+            ):
+                problems.append(f"{name}.width_ft does not match span_ft")
+        corners = spot.get("footprint")
+        if corners is None:
+            continue
+        if len(corners) != 4 or any(
+            len(point) != 2 or not all(finite(v) for v in point) for point in corners
+        ):
+            problems.append(f"{name}.footprint must have four finite plan corners")
+            continue
+        # C2 orders back-left, back-right, front-right, front-left. Use the verifier's existing
+        # hundredth-foot position tolerance when comparing its rounded plan edges and spans.
+        for field, edges in (("width_ft", ((0, 1), (2, 3))), ("depth_ft", ((1, 2), (3, 0)))):
+            if finite(spot.get(field)) and any(
+                abs(math.dist(corners[a], corners[b]) - spot[field]) > OFFSET_TOL_FT
+                for a, b in edges
+            ):
+                problems.append(f"{name}.{field} does not match footprint")
+
+    widths = [
+        (f"{name}.width_ft", spot["width_ft"])
+        for name, spot in spots
+        if spot is not None and "width_ft" in spot
+    ]
+    widths += [
+        (c["id"], c["threshold_ft"])
+        for c in result.get("checks", [])
+        if c.get("rule", {}).get("key") == "battery.width_ft" and c.get("threshold_ft") is not None
+    ]
+    for source, width in widths:
+        if not finite(width) or width <= 0:
+            message = f"{source} must be finite and positive"
+            if message not in problems:
+                problems.append(message)
+    valid_widths = [(source, width) for source, width in widths if finite(width) and width > 0]
+    if valid_widths and any(
+        abs(width - valid_widths[0][1]) > NUMBER_TOL_FT for _, width in valid_widths
+    ):
+        problems.append("reported battery widths disagree")
+    first, second = (spot for _, spot in spots)
+    if first is not None and second is not None:
+        for field in ("depth_ft", "height_ft"):
+            if (
+                finite(first.get(field))
+                and finite(second.get(field))
+                and abs(first[field] - second[field]) > NUMBER_TOL_FT
+            ):
+                problems.append(f"spot and nearest_considered {field} disagree")
+    return problems
+
+
+def geometry_admission_problems(scene: dict, result: dict, rules: RuleSet | None) -> list[str]:
+    """Bound all sampling before any footprint, coverage or height check runs.
+
+    Count sweep starts and a conservative upper bound for ground grid point visits,
+    including split-band edges. Bounds use whole runs, never enumerate their starts.
+    """
+    if problems := reported_dimension_problems(result, rules):
+        return problems
+    # Use validated reported dimensions only to estimate work, before the caller adopts them.
+    widths = [
+        c["threshold_ft"]
+        for c in result.get("checks", [])
+        if c.get("rule", {}).get("key") == "battery.width_ft" and c.get("threshold_ft") is not None
+    ]
+    widths += [
+        s["width_ft"]
+        for key in ("spot", "nearest_considered")
+        if (s := result.get(key)) is not None and "width_ft" in s
+    ]
+    depths = [
+        s["depth_ft"]
+        for key in ("spot", "nearest_considered")
+        if (s := result.get(key)) is not None and "depth_ft" in s
+    ]
+    if rules is not None:
+        rules = replace(
+            rules,
+            width_ft=max(widths, default=rules.width_ft),
+            depth_ft=max([rules.depth_ft, *depths]),
+        )
+    problems = []
+    bodies = []
+    ends = chain_ends_s(scene, rules) if rules is not None else None
+    for name in ("spot", "nearest_considered"):
+        if (spot := result.get(name)) is not None:
+            bodies.append((name, spot["span_ft"], spot["wall_id"], 1, True))
+    for run in deduplicate_result_runs(result)["sweep"]:
         a, b = run["start_ft"]
         prefix = f"sweep {run['outcome']} starts {run['start_ft']}: "
-        if ends is not None and (a < ends[0] - COLLINEAR_FT or b > ends[1] + COLLINEAR_FT):
-            problems.append(prefix + f"start_ft span exceeds scanned range [{ends[0]}, {ends[1]}]")
+        if not math.isfinite(a) or not math.isfinite(b) or a > b:
+            problems.append(prefix + "start_ft must be finite and ordered")
             continue
-        try:
-            run_starts(run["start_ft"], rules.step_ft)
-        except ValueError as exc:
-            problems.append(prefix + str(exc))
+        if run["outcome"] in ("pass", "unsure") and rules is not None:
+            if ends is not None and (a < ends[0] - COLLINEAR_FT or b > ends[1] + COLLINEAR_FT):
+                problems.append(
+                    prefix + f"start_ft span exceeds scanned range [{ends[0]}, {ends[1]}]"
+                )
+                continue
+            try:
+                count = run_start_count(run["start_ft"], rules.step_ft)
+            except ValueError as exc:
+                problems.append(prefix + str(exc))
+                continue
+            bodies.append(
+                (prefix, [a, b + rules.width_ft], run["wall_id"], count, run["outcome"] == "pass")
+            )
+    for name, span, _, _, _ in bodies:
+        if any(not math.isfinite(v) for v in span) or span[0] > span[1]:
+            problems.append(f"{name}: span_ft must be finite and ordered")
+    if problems or rules is None:
+        return problems
+    total = 0
+
+    def grid_count(length: float) -> int:
+        cells = length / GroundPlan.STEP_FT
+        if not math.isfinite(cells) or cells > MAX_GEOMETRY_SAMPLES:
+            return MAX_GEOMETRY_SAMPLES + 1
+        return 2 * max(1, math.ceil(max(0, cells))) + 1
+
+    for name, (lo, hi), wid, count, ground in bodies:
+        # Sweep ends name starts; footprints may extend beyond the chain and are checked below.
+        start_hi = hi - rules.width_ft if name.startswith("sweep") else hi
+        if ends is not None and (lo < ends[0] - COLLINEAR_FT or start_hi > ends[1] + COLLINEAR_FT):
+            label = "start_ft span" if name.startswith("sweep") else "span_ft"
+            problems.append(
+                f"{name}{'' if name.endswith(': ') else ': '}"
+                f"{label} exceeds scanned range [{ends[0]}, {ends[1]}]"
+            )
+            continue
+        total += count * (2 + (len(rules.needs) if ground else 0))
+        if ground and rules.wall_join_ft is not None:
+            segments = segments_s(scene, rules) or []
+            # Error changes at wall boundaries. Evaluate both sides and endpoints, not the grid.
+            width = rules.width_ft if name.startswith("sweep") else hi - lo
+            starts = {lo, max(lo, hi - width)}
+            boundaries = {edge for _, a, b, _, _ in segments for edge in (a, b)}
+            boundaries.update(
+                (left[2] + right[1]) / 2 for left, right in itertools.pairwise(segments)
+            )
+            for edge_at in boundaries:
+                for edge in (edge_at, edge_at - width, edge_at - width / 2):
+                    for offset in (-EPS, EPS):
+                        if lo <= edge + offset <= hi - width:
+                            starts.add(edge + offset)
+            for check, needs in rules.needs.items():
+                for need in needs:
+                    if need.band != "ground":
+                        continue
+                    error = (
+                        0.0
+                        if not need.widen
+                        else max(
+                            (along_error if need.along else battery_error)(
+                                scene, rules, wid, x, x + width
+                            )
+                            for x in starts
+                        )
+                    )
+                    radius = need.radius + error
+                    splits = 4 + 2 * sum(
+                        e["band"] == "ground" for e in scene.get("coverage", {}).get("observed", [])
+                    )
+                    along = grid_count(width + 2 * radius) + 3 * splits
+                    out = grid_count(rules.depth_ft + radius)
+                    # Spot coverage and missing-evidence checks can both visit the grid.
+                    repeats = (
+                        1
+                        if name.startswith("sweep")
+                        else 1
+                        + sum(
+                            c["id"] == check and c["outcome"] == "pass"
+                            for c in result.get("checks", [])
+                        )
+                    )
+                    total += count * along * out * repeats
+        if total > MAX_GEOMETRY_SAMPLES:
+            problems.append(
+                f"response geometry sample budget exceeds {MAX_GEOMETRY_SAMPLES} samples"
+            )
+            break
+    # A check-only reported width is still untrusted geometry, even without a chosen spot/run.
+    for width in [*widths, *depths]:
+        if not math.isfinite(width) or width <= 0:
+            problems.append("reported battery width must be finite and positive")
+            break
+        total += grid_count(width)
+    if total > MAX_GEOMETRY_SAMPLES and not any("sample budget" in p for p in problems):
+        problems.append(f"response geometry sample budget exceeds {MAX_GEOMETRY_SAMPLES} samples")
     return problems
 
 
@@ -752,8 +973,9 @@ def coverage_problems(scene: dict, result: dict, rules: RuleSet) -> list[str]:
     check's area around that start's battery with that battery's own position error, and the
     wall and cable route back to the meter over the whole run. Checking the whole run as one
     battery at its farthest start's error would ask for more than any single start needs."""
-    if sampling := sweep_sampling_problems(scene, result, rules):
+    if sampling := geometry_admission_problems(scene, result, rules):
         return sampling
+    result = deduplicate_result_runs(result)
     problems: list[str] = []
     route_wall = observed(
         scene, "wall", rules.route_height_ft, beyond=True, wall_default_ft=rules.headroom_ft
@@ -872,6 +1094,9 @@ def missing_evidence_problems(scene: dict, result: dict, rules: RuleSet | None =
     the reason and its requests; leaving both out would never ask the homeowner for the view
     that settles the check. Without a spot and without the reason, every position fails anyway,
     no photo would change the answer, and C2 lets missing_evidence stay empty."""
+    if sampling := geometry_admission_problems(scene, result, rules):
+        return sampling
+    result = deduplicate_result_runs(result)
     codes = {r["code"] for r in result.get("reasons", [])}
     spot = result.get("spot")
     unseen = unobserved_checks(result)
@@ -1056,19 +1281,34 @@ class GroundPlan:
             return False
         for s in self._samples(p, q):
             # Up to out_lo the stretch's own band already saw the ground.
-            deeper = [o for o in self._samples(out_lo, need(s)) if o > out_lo + SERVER_EPS]
-            for out in deeper:
+            for out in self._samples(out_lo, need(s)):
+                if out <= out_lo + SERVER_EPS:
+                    continue
                 x = self.point(s_mid, s, out)
                 if x is None or (self.required(x) and not self.seen(x)):
                     return False
         return True
 
     @classmethod
-    def _samples(cls, a: float, b: float) -> list[float]:
-        n = max(1, math.ceil((b - a) / cls.STEP_FT))
-        edges = [a + (b - a) * i / n for i in range(n + 1)]
-        centres = [a + (b - a) * (i + 0.5) / n for i in range(n)]
-        return sorted(edges + centres)
+    def _samples(cls, a: float, b: float) -> Iterator[float]:
+        cells = (b - a) / cls.STEP_FT
+        if not math.isfinite(cells) or cells > MAX_GEOMETRY_SAMPLES:
+            raise ValueError(
+                f"response geometry sample budget exceeds {MAX_GEOMETRY_SAMPLES} samples"
+            )
+        n = max(1, math.ceil(max(0, cells)))
+        if 2 * n + 1 > MAX_GEOMETRY_SAMPLES:
+            raise ValueError(
+                f"response geometry sample budget exceeds {MAX_GEOMETRY_SAMPLES} samples"
+            )
+
+        def points():
+            for i in range(n):
+                yield a + (b - a) * i / n
+                yield a + (b - a) * (i + 0.5) / n
+            yield b
+
+        return points()
 
 
 def chain_ends_s(scene: dict, rules: RuleSet) -> tuple[float, float] | None:
@@ -1085,8 +1325,9 @@ def declared_height_problems(scene: dict, result: dict, rules: RuleSet) -> list[
     it unsure for one within the battery's error of it (server/solver.py at 7133283,
     check_backing), so wall_backing passes only if every declared wall overlapping
     [s0 - e, s1 + e] is taller than battery.height_ft."""
-    if sampling := sweep_sampling_problems(scene, result, rules):
+    if sampling := geometry_admission_problems(scene, result, rules):
         return sampling
+    result = deduplicate_result_runs(result)
     declared = {w["id"]: w["height_ft"] for w in scene.get("walls", []) if "height_ft" in w}
     if not declared or rules.battery_height_ft is None:
         return []
@@ -1180,71 +1421,6 @@ def reported_rules(result: dict, rules: RuleSet) -> RuleSet:
         if values := reported_assumption_values(key, result):
             changes[field] = values[0][1]
     return replace(rules, **changes)
-
-
-def reported_dimension_problems(result: dict, rules: RuleSet | None) -> list[str]:
-    """Reject inconsistent C2 geometry before its dimensions can override public rules."""
-    problems = []
-
-    def finite(value: Any) -> bool:
-        return (
-            isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
-        )
-
-    spots = [(name, result.get(name)) for name in ("spot", "nearest_considered")]
-    for name, spot in spots:
-        if spot is None:
-            continue
-        for field in ("width_ft", "depth_ft", "height_ft"):
-            if field in spot and (not finite(spot[field]) or spot[field] <= 0):
-                problems.append(f"{name}.{field} must be finite and positive")
-        span = spot.get("span_ft")
-        if span is not None:
-            if len(span) != 2 or not all(finite(v) for v in span) or span[0] >= span[1]:
-                problems.append(f"{name}.span_ft must be finite and increasing")
-            elif (
-                finite(spot.get("width_ft"))
-                and abs(span[1] - span[0] - spot["width_ft"]) > OFFSET_TOL_FT
-            ):
-                problems.append(f"{name}.width_ft does not match span_ft")
-        corners = spot.get("footprint")
-        if corners is None:
-            continue
-        if len(corners) != 4 or any(
-            len(point) != 2 or not all(finite(v) for v in point) for point in corners
-        ):
-            problems.append(f"{name}.footprint must have four finite plan corners")
-            continue
-        # C2 orders back-left, back-right, front-right, front-left. Use the verifier's existing
-        # hundredth-foot position tolerance when comparing its rounded plan edges and spans.
-        for field, edges in (("width_ft", ((0, 1), (2, 3))), ("depth_ft", ((1, 2), (3, 0)))):
-            if finite(spot.get(field)) and any(
-                abs(math.dist(corners[a], corners[b]) - spot[field]) > OFFSET_TOL_FT
-                for a, b in edges
-            ):
-                problems.append(f"{name}.{field} does not match footprint")
-
-    widths = reported_assumption_values("battery_width", result)
-    for source, width in widths:
-        if not finite(width) or width <= 0:
-            message = f"{source} must be finite and positive"
-            if message not in problems:
-                problems.append(message)
-    valid_widths = [(source, width) for source, width in widths if finite(width) and width > 0]
-    if valid_widths and any(
-        abs(width - valid_widths[0][1]) > NUMBER_TOL_FT for _, width in valid_widths
-    ):
-        problems.append("reported battery widths disagree")
-    first, second = (spot for _, spot in spots)
-    if first is not None and second is not None:
-        for field in ("depth_ft", "height_ft"):
-            if (
-                finite(first.get(field))
-                and finite(second.get(field))
-                and abs(first[field] - second[field]) > NUMBER_TOL_FT
-            ):
-                problems.append(f"spot and nearest_considered {field} disagree")
-    return problems
 
 
 def assumption_mismatches(assumed: dict[str, float], result: dict) -> list[str]:

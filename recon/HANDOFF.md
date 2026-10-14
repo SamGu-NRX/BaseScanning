@@ -128,7 +128,7 @@ In `recon/` on this branch:
 
 These defects remain after the review-debt repairs. They can let the server settle a check on evidence the worker does not have. The saved ETH3D results above predate those repairs; dataset acceptance has not been rerun.
 
-- **The overhead strip is narrower than a battery.** `recon/coverage.py:42, 236-245`: overhead space is sampled only 0.10 to 0.56 m out from the wall front. Repro: an eave 0.05 m out from the wall, or 0.7 m out over a 3 ft deep battery, is not found, and the cell reports clearance above it. A fix needs the footprint of the battery the chosen rule places, passed from the server's rules or request.
+- **Overhead sampling assumes one battery depth.** `recon/coverage.py`: the worker samples both edges of the existing 0.56 m footprint. A 0.7 m eave over a 3 ft deep battery still lies beyond that assumed depth. Other battery depths need the footprint passed from the server's rules or request.
 - **The photos-only clearance error is not calibrated.** `recon/pipeline.py:29-35`: facing gaps and overhead clearances from photos carry ±0.56 ft. That comes from the 95% interval of the evals' surface pair-error p90 over 1 to 3 m spans, not from any measurement of where the fused volume puts a boundary. The evals put surface p90 at 5.64 in [4.63, 6.66] and edges at 9.65 in [4.93, 15.01]. Repro: a photos-only overhead clearance measured at 7.10 ft passes the 6.5 ft headroom rule, since 7.10 − 0.56 = 6.54 > 6.5. A fix needs the clearance estimator's own measured uncertainty, or a gate that returns the check unresolved until that exists.
 
 ### Fixed in the worker

@@ -8,7 +8,7 @@ The app is launched with the contract C4 arguments (`-replay <path>`, `-autopilo
 a screenshot once it has been on screen for `--settle` seconds; a state replaced sooner is
 captured immediately and flagged `transient`, because its image may already show the next
 state. The run ends at `--until`, after `--idle` seconds without a new state, or at
-`--timeout`. A state named with `--require` that never appeared makes the run fail, as do
+`--timeout`. States named with `--require` must appear in the order given, as do
 states missing from a `--require-order` sequence or out of its order, and a FIRST state of a
 `--require-then FIRST:THEN` pair that no THEN state answered before the next FIRST or the
 last state of a `--require-order` sequence. If the app
@@ -334,7 +334,17 @@ def wait_for_log_stream(events: queue.Queue, timeout_s: float) -> str | None:
 
 def missing_required(required: list[str], states: list[ShotRecord]) -> list[str]:
     seen = {s.state for s in states}
-    return [f"required state {name} never appeared" for name in required if name not in seen]
+    missing = [f"required state {name} never appeared" for name in required if name not in seen]
+    if missing:
+        return missing
+    remaining = iter(required)
+    next_required = next(remaining, None)
+    for state in states:
+        if state.state == next_required:
+            next_required = next(remaining, None)
+    if next_required is not None:
+        return [f"required states did not appear in order: {' -> '.join(required)}"]
+    return []
 
 
 def out_of_order(order: list[str], states: list[ShotRecord]) -> list[str]:
@@ -617,7 +627,7 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         default=[],
         metavar="STATE",
-        help="a state the run must reach; one that never appears is a problem (exit 1)",
+        help="a state the run must reach; repeat in the required journey order (exit 1 on failure)",
     )
     parser.add_argument(
         "--require-order",

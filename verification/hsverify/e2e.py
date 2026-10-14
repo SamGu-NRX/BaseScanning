@@ -60,6 +60,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from hsverify import gitref, memory
+from hsverify.bundle_limits import zip_directory_limits
 from hsverify.memory import peak_rss_mb
 from hsverify.resultcheck import (
     RuleSet,
@@ -67,13 +68,13 @@ from hsverify.resultcheck import (
     comparable,
     coverage_blocks,
     expectation_problems,
+    geometry_admission_problems,
     invariant_problems,
     less_coverage_problems,
     mirror_scene,
     more_error_problems,
     outcome_lengths,
     public_assumption_warnings,
-    reported_dimension_problems,
     reported_rules,
     schema_errors,
     tape_to_tap,
@@ -152,13 +153,20 @@ def read_bounded(bundle: zipfile.ZipFile, info: zipfile.ZipInfo, limit: int) -> 
 
 def read_bundle(path: Path) -> tuple[bytes, dict[str, bytes]]:
     """scene.json and the JPEGs of a C1 zip bundle, within the limits above."""
+    if path.stat().st_size > MAX_BUNDLE_BYTES:
+        raise SystemExit(f"{path}: archive exceeds {MAX_BUNDLE_BYTES} bytes")
+    try:
+        zip_directory_limits(path, MAX_BUNDLE_ENTRIES, MAX_BUNDLE_BYTES)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     with zipfile.ZipFile(path) as bundle:
-        infos = [i for i in bundle.infolist() if not i.is_dir()]
+        infos = bundle.infolist()
         if len(infos) > MAX_BUNDLE_ENTRIES:
             raise SystemExit(f"{path}: {len(infos)} entries, limit {MAX_BUNDLE_ENTRIES}")
         declared = sum(i.file_size for i in infos)
         if declared > MAX_BUNDLE_BYTES:
             raise SystemExit(f"{path}: declares {declared} bytes, limit {MAX_BUNDLE_BYTES}")
+        infos = [i for i in infos if not i.is_dir()]
         scenes = [i for i in infos if i.filename == "scene.json"]
         if len(scenes) != 1:
             raise SystemExit(
@@ -468,7 +476,9 @@ def post(
             conn.request("POST", path, body=body, headers={"Content-Type": ctype})
             conn.sock.settimeout(remaining())
             response = conn.getresponse()
-            while len(payload) <= MAX_RESPONSE_BYTES and (chunk := response.read(READ_CHUNK_BYTES)):
+            while len(payload) <= MAX_RESPONSE_BYTES and (
+                chunk := response.read(min(READ_CHUNK_BYTES, MAX_RESPONSE_BYTES + 1 - len(payload)))
+            ):
                 remaining()
                 payload += chunk
             if len(payload) <= MAX_RESPONSE_BYTES and response.length:
@@ -578,7 +588,7 @@ def judge(
     if problems:
         return record | {"status": "fail", "problems": problems[:20], "contract_problems": problems}
 
-    dimensions = reported_dimension_problems(result, rules)
+    dimensions = geometry_admission_problems(item.scene, result, rules)
     if dimensions:
         return record | {"status": "fail", "problems": dimensions, "contract_problems": dimensions}
 
@@ -641,7 +651,7 @@ def property_problems(
         if errors:
             problems.append(f"{name}: result schema: {errors[0]}")
             return None
-        if dimensions := reported_dimension_problems(other, rules):
+        if dimensions := geometry_admission_problems(scene, other, rules):
             problems.extend(f"{name}: {p}" for p in dimensions)
             return None
         problems.extend(

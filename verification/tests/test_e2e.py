@@ -3,6 +3,7 @@ import hashlib
 import io
 import json
 import re
+import struct
 import threading
 import time
 import zipfile
@@ -584,6 +585,123 @@ def test_a_bundle_with_too_many_entries_is_refused(tmp_path, monkeypatch):
         load_input(archive)
 
 
+@pytest.mark.parametrize("false_footer_count", [False, True])
+def test_bundle_counts_directories_before_zipfile_allocation(
+    tmp_path, monkeypatch, false_footer_count
+):
+    monkeypatch.setattr(e2e, "MAX_BUNDLE_ENTRIES", 3)
+    archive = tmp_path / "directories.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("scene.json", b"{}")
+        for i in range(3):
+            z.writestr(f"directory{i}/", b"")
+    if false_footer_count:
+        data = bytearray(archive.read_bytes())
+        struct.pack_into("<HH", data, len(data) - 22 + 8, 1, 1)
+        archive.write_bytes(data)
+
+    def metadata_allocation_forbidden(*args, **kwargs):
+        pytest.fail("ZipFile allocated metadata before archive admission")
+
+    monkeypatch.setattr(e2e.zipfile, "ZipFile", metadata_allocation_forbidden)
+    with pytest.raises(SystemExit, match="4 entries, limit 3"):
+        e2e.read_bundle(archive)
+
+
+@pytest.fixture
+def fake_transport(monkeypatch):
+    import socket
+
+    class FakeSocket:
+        def settimeout(self, timeout):
+            pass
+
+        def connect(self, address):
+            pass
+
+        def close(self):
+            pass
+
+    class Connection:
+        host = "localhost"
+        port = 80
+        sock = None
+        closed = False
+
+        def request(self, *args, **kwargs):
+            pass
+
+        def getresponse(self):
+            return self.response
+
+        def close(self):
+            self.closed = True
+
+    connection = Connection()
+    monkeypatch.setattr(e2e.http.client, "HTTPConnection", lambda *args, **kwargs: connection)
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *args, **kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80))],
+    )
+    monkeypatch.setattr(socket, "socket", lambda *args: FakeSocket())
+    return connection
+
+
+@pytest.mark.parametrize("status", [200, 500])
+def test_response_reads_only_remaining_byte_budget(monkeypatch, fake_transport, status):
+    monkeypatch.setattr(e2e, "MAX_RESPONSE_BYTES", 6)
+    monkeypatch.setattr(e2e, "READ_CHUNK_BYTES", 4)
+    reads = []
+
+    class Response(io.BytesIO):
+        length = None
+
+        def read(self, size=-1):
+            reads.append(size)
+            return super().read(size)
+
+    response = Response(b"oversized")
+    response.status = status
+    fake_transport.response = response
+    code, body, _ = e2e.post("http://localhost", Endpoint("/place", "application/json"), item())
+    assert code is None and body == f"HTTP {status} body over 6 bytes".encode()
+    assert reads == [4, 3]  # At most the six admitted bytes and one sentinel byte.
+    assert fake_transport.closed
+
+
+@pytest.mark.parametrize("status", [200, 500])
+def test_incomplete_response_is_a_clean_transport_failure(fake_transport, status):
+    from http.client import IncompleteRead
+
+    class Response:
+        def read(self, size):
+            raise IncompleteRead(b"partial", 50)
+
+    response = Response()
+    response.status = status
+    fake_transport.response = response
+    code, body, _ = e2e.post("http://localhost", Endpoint("/place", "application/json"), item())
+    assert code is None and body.startswith(b"IncompleteRead")
+    assert fake_transport.closed
+
+
+@pytest.mark.parametrize("status", [200, 500])
+def test_response_at_byte_cap_remains_a_complete_answer(monkeypatch, fake_transport, status):
+    monkeypatch.setattr(e2e, "MAX_RESPONSE_BYTES", 6)
+    monkeypatch.setattr(e2e, "READ_CHUNK_BYTES", 4)
+
+    class Response(io.BytesIO):
+        length = None
+
+    response = Response(b"123456")
+    response.status = status
+    fake_transport.response = response
+    code, body, _ = e2e.post("http://localhost", Endpoint("/place", "application/json"), item())
+    assert (code, body) == (status, b"123456")
+    assert fake_transport.closed
+
+
 def test_a_200_that_is_not_a_json_object_is_a_failure_not_a_crash(monkeypatch):
     for body in (b"<html>oops</html>", b"[1, 2]"):
         monkeypatch.setattr(e2e, "post", lambda *args, body=body, **kwargs: (200, body, 5.0))
@@ -651,7 +769,10 @@ def test_transformed_answer_checks_its_own_hash(monkeypatch):
     monkeypatch.setattr(e2e, "with_more_error", lambda *args: None)
     monkeypatch.setattr(e2e, "tape_to_tap", lambda *args: None)
     monkeypatch.setattr(e2e, "with_less_coverage", lambda *args: None)
-    scene = {"walls": [{"id": "w1", "baseline": [[-1, 0], [1, 0]]}], "meter": {"pos": [0, 1, 0]}}
+    scene = {
+        "walls": [{"id": "w1", "baseline": [[-1, 0], [1, 0]]}],
+        "meter": {"pos": [0, 1, 0], "wall_id": "w1"},
+    }
     probe = SceneInput(name="test", scene=scene, raw=json.dumps(scene).encode(), source="test")
     failures = e2e.property_problems(
         "unused", Endpoint("/p", "application/json"), probe, original, {"result": {}}, RULES
@@ -999,7 +1120,7 @@ def test_judge_distinguishes_reported_override_mismatch_and_unverified_defaults(
         assert "assumed public rules; server may override" in (tmp_path / "report.md").read_text()
 
 
-@pytest.mark.parametrize("width", [-1, 0, float("nan"), float("inf")])
+@pytest.mark.parametrize("width", [-1, 0, 1e9, float("nan"), float("inf")])
 def test_vet_judge_rejects_invalid_width_before_rule_consumers(monkeypatch, width):
     answer = {
         "decision": "reject",
@@ -1010,6 +1131,11 @@ def test_vet_judge_rejects_invalid_width_before_rule_consumers(monkeypatch, widt
     monkeypatch.setattr(e2e, "post", lambda *args: (200, json.dumps(answer).encode(), 1))
     monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
     consumers = []
+
+    def no_adoption(*args):
+        pytest.fail("invalid dimensions reached rule adoption")
+
+    monkeypatch.setattr(e2e, "reported_rules", no_adoption)
     monkeypatch.setattr(
         e2e, "invariant_problems", lambda *args, **kwargs: consumers.append("invariants") or []
     )
@@ -1019,5 +1145,9 @@ def test_vet_judge_rejects_invalid_width_before_rule_consumers(monkeypatch, widt
     item = SceneInput("invalid-width", SCENE, b"{}")
     record = judge("unused", Endpoint("/place", "application/json"), item, SCHEMAS, RULES)
     assert record["status"] == "fail"
-    assert record["contract_problems"] == ["width must be finite and positive"]
+    assert record["contract_problems"] == (
+        ["response geometry sample budget exceeds 50000000 samples"]
+        if width == 1e9
+        else ["width must be finite and positive"]
+    )
     assert consumers == []
