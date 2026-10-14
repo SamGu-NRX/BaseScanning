@@ -1,6 +1,7 @@
 import io
 
 import numpy as np
+import pytest
 from PIL import Image
 
 from meter_eval import retake
@@ -55,7 +56,19 @@ def test_the_orientation_tag_is_applied(tmp_path):
     assert upright_pixels(tmp_path / "turned.jpg", tmp_path).size == (100, 300)
 
 
-def test_fieldtest_scores_reads_and_ranks_without_a_dataset_key(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize(
+    "number, text, expected",
+    [
+        ("12-34567", "No. 1234567", "yes"),
+        ("No. 1234567", "1234567", "yes"),
+        ("1234567", "12345678", "no"),
+        ("1234567", "91234567", "no"),
+        ("1234567", "No. 123 4567", "yes"),
+    ],
+)
+def test_fieldtest_scores_reads_and_ranks_without_a_dataset_key(
+    tmp_path, monkeypatch, capsys, number, text, expected
+):
     import sys
 
     from meter_eval import fieldtest, match
@@ -68,15 +81,18 @@ def test_fieldtest_scores_reads_and_ranks_without_a_dataset_key(tmp_path, monkey
             pass
 
         def read(self, path, barcodes):
-            return {"lines": [{"text": "No. 1234567", "box": BOX}], "barcodes": []}
+            return {"lines": [{"text": text, "box": BOX}], "barcodes": []}
 
     def no_key():
         raise AssertionError("field test must not load the dataset key")
 
     Image.new("RGB", (256, 256), "white").save(tmp_path / "photo.jpg")
     monkeypatch.setattr(fieldtest, "Reader", Reader)
-    monkeypatch.setattr(sys, "argv", ["fieldtest", str(tmp_path), "--number", "12-34567"])
+    monkeypatch.setattr(sys, "argv", ["fieldtest", str(tmp_path), "--number", number])
     with monkeypatch.context() as without_key:
         without_key.setattr(match, "key", no_key)
         fieldtest.main()
-    assert "| photo.jpg | yes | 1 | yes |" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert f"| photo.jpg | {expected} |" in output
+    if expected == "yes":
+        assert "| photo.jpg | yes | 1 | yes |" in output

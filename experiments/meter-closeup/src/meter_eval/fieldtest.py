@@ -18,7 +18,7 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 from meter_eval import retake
-from meter_eval.locate import candidates, ranked, top_candidate
+from meter_eval.locate import candidates, ranked, tokens, top_candidate
 from meter_eval.match import core, normalize, rows_of_text
 from meter_eval.ocr import Reader
 from meter_eval.quality import gray
@@ -79,7 +79,12 @@ def main() -> None:
             image.save(upright)
             g = gray(image)
             result = reader.read(upright, barcodes=True)
-            read = any(target in normalize(text) for text, _ in rows_of_text(result["lines"]))
+            # Use complete OCR tokens, including joined number fragments, without barcode promotion.
+            read = any(
+                core(token) == target_core
+                for text, _ in rows_of_text(result["lines"])
+                for token in tokens(text)
+            )
             order = ranked(candidates(result))
             rank = next((i + 1 for i, c in enumerate(order) if c == target_core), None)
             guess = top_candidate(result)

@@ -17,9 +17,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import shutil
 import sys
-import tempfile
 import time
 from pathlib import Path
 
@@ -36,17 +34,14 @@ from models.common import (
     write_npz,
 )
 from models.map_anything import load, run
-from models.run import pick_device, publish, recover_publication
+from models.run import output_lock, pick_device, publish, staging_directory
 
 
 def write_group(out: Path, results, summary: dict) -> None:
     """Write one group's depth maps and run.json, all or nothing: they go to a staging folder
     that `publish` swaps in for `out` only once every file is written, so a failure partway
     leaves the previous outputs and run.json as they were, never a mix of old and new views."""
-    recover_publication(out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    stage = Path(tempfile.mkdtemp(prefix=out.name + ".staging-", dir=out.parent))
-    try:
+    with output_lock(out), staging_directory(out) as stage:
         for res in results:
             write_npz(
                 stage,
@@ -60,9 +55,6 @@ def write_group(out: Path, results, summary: dict) -> None:
         summary = {**summary, "outputs": {p.name: file_hash(p) for p in stage.glob("*.npz")}}
         (stage / "run.json").write_text(json.dumps(summary, indent=1) + "\n")
         publish(stage, out)
-    except BaseException:
-        shutil.rmtree(stage, ignore_errors=True)
-        raise
 
 
 def file_hash(path: Path) -> str:
@@ -124,7 +116,6 @@ def main() -> None:
         for members in members_list:
             gid = f"n{n}-{members[0]}"
             out = args.out / gid
-            recover_publication(out)
             poses = None
             if pose_sets is not None:
                 poses = [np.array(pose_sets[gid]["poses"][m]) for m in members]
@@ -133,7 +124,9 @@ def main() -> None:
             key = fingerprint(
                 members, images, intrinsics, poses, args.max_side, map_anything.SHA256
             )
-            if cached_group(out, key, members):
+            with output_lock(out):
+                cached = cached_group(out, key, members)
+            if cached:
                 continue
             if model is None:
                 import torch

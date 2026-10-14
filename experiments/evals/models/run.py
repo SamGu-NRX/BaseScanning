@@ -13,6 +13,7 @@ model's shared frame). See README.md in this folder.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import importlib
 import json
 import platform
@@ -20,6 +21,7 @@ import shutil
 import sys
 import tempfile
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 from models.common import (
@@ -113,7 +115,11 @@ def pick_device(requested: str) -> str:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
-    recover_publication(args.out)
+    with output_lock(args.out):
+        run_model(args)
+
+
+def run_model(args) -> None:
     caches = set_cache_dirs()
 
     images = read_image_list(args.images)
@@ -135,14 +141,9 @@ def main(argv: list[str] | None = None) -> None:
     # Everything is written to a staging folder and swapped in only when the whole run succeeds,
     # so a run that stops midway (out of memory, cancelled) leaves the previous run whole instead of
     # a mix of its depth maps and new ones under the old run.json.
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    stage = Path(tempfile.mkdtemp(prefix=args.out.name + ".staging-", dir=args.out.parent))
-    try:
+    with staging_directory(args.out) as stage:
         run_into(args, stage, images, intrinsics, poses, caches, module, device, torch)
         publish(stage, args.out)
-    except BaseException:
-        shutil.rmtree(stage, ignore_errors=True)
-        raise
     print(f"wrote the run's npz files and run.json to {args.out}", file=sys.stderr)
 
 
@@ -152,6 +153,70 @@ def directory_identity(path: Path) -> list[int] | None:
     except FileNotFoundError:
         return None
     return [stat.st_dev, stat.st_ino]
+
+
+@contextmanager
+def output_lock(out: Path):
+    """One writer per output; a hard exit releases the OS lock before the next recovery."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    # Keep this file: unlinking it lets two processes lock different inodes at the same path.
+    with out.with_name("." + out.name + ".runner.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as e:
+            raise RuntimeError(f"another model runner is writing {out}") from e
+        recover_publication(out)
+        recover_staging(out)
+        yield
+
+
+def recover_staging(out: Path) -> None:
+    owner = out.with_name("." + out.name + ".staging.json")
+    if not owner.exists():
+        return
+    try:
+        record = json.loads(owner.read_text(encoding="utf-8"))
+        name, identity = record["name"], record["identity"]
+        if (
+            not isinstance(name, str)
+            or Path(name).name != name
+            or not name.startswith(out.name + ".staging-")
+            or not isinstance(identity, list)
+            or len(identity) != 2
+            or any(type(value) is not int for value in identity)
+        ):
+            raise ValueError("invalid staged directory identity")
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise RuntimeError(f"invalid staging record {owner}; inspect it by hand") from e
+    stage = out.parent / name
+    current = directory_identity(stage)
+    if current is not None:
+        if current != identity:
+            raise RuntimeError(f"staging directory differs from {owner}; inspect it by hand")
+        shutil.rmtree(stage)
+    owner.unlink()
+
+
+@contextmanager
+def staging_directory(out: Path):
+    """Called under output_lock; record ownership before any prediction data is written."""
+    stage = Path(tempfile.mkdtemp(prefix=out.name + ".staging-", dir=out.parent))
+    owner = out.with_name("." + out.name + ".staging.json")
+    try:
+        record = {"name": stage.name, "identity": directory_identity(stage)}
+        with tempfile.TemporaryDirectory(dir=out.parent) as tmp:
+            temporary = Path(tmp) / "owner.json"
+            temporary.write_text(json.dumps(record), encoding="utf-8")
+            owner.hardlink_to(temporary)
+    except BaseException:
+        shutil.rmtree(stage)
+        raise
+    try:
+        yield stage
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
+        owner.unlink()
 
 
 def recover_publication(out: Path) -> None:

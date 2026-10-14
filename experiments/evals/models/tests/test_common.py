@@ -298,6 +298,111 @@ def _snapshot(folder):
     return {p.name: p.read_bytes() for p in sorted(folder.iterdir())}
 
 
+@pytest.mark.parametrize("writer", ["single", "group"])
+def test_next_run_reclaims_staging_after_a_hard_exit(tmp_path, monkeypatch, writer):
+    from models import run, run_groups
+
+    invoke, out = _fake_model_run(tmp_path, monkeypatch, fail_on=None)
+    _complete_run(out, "previous")
+    before = _snapshot(out)
+    script = """
+import os, sys
+from pathlib import Path
+import pytest
+sys.path.insert(0, 'models/tests')
+from test_common import _fake_model_run
+from models import run, run_groups
+root, writer = Path(sys.argv[1]), sys.argv[2]
+def crash(stage):
+    (stage / 'partial.npz').write_bytes(b'partial prediction')
+    os._exit(137)
+if writer == 'single':
+    invoke, out = _fake_model_run(root, pytest.MonkeyPatch(), fail_on=None)
+    run.run_into = lambda args, stage, *rest: crash(stage)
+    invoke()
+else:
+    def results():
+        stage = next(root.glob('out.staging-*'))
+        crash(stage)
+        yield
+    run_groups.write_group(root / 'out', results(), {})
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(tmp_path), writer],
+        cwd=Path(run.__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 137, result.stderr
+    abandoned = list(tmp_path.glob("out.staging-*"))
+    assert len(abandoned) == 1
+    assert (abandoned[0] / "partial.npz").read_bytes() == b"partial prediction"
+    assert _snapshot(out) == before
+    # A caller's similarly named folder must not be swept up with the recorded one.
+    unowned = tmp_path / "out.staging-caller"
+    _complete_run(unowned, "caller")
+    unowned_before = _snapshot(unowned)
+    if writer == "single":
+        invoke()
+    else:
+        run_groups.write_group(out, [], {"run": "retry"})
+    assert not abandoned[0].exists()
+    assert _snapshot(unowned) == unowned_before
+    assert not (tmp_path / ".out.staging.json").exists()
+    assert (out / "run.json").is_file()
+
+
+def test_staging_recovery_preserves_an_active_runner(tmp_path):
+    from models import run
+
+    script = """
+import sys
+from pathlib import Path
+from models.run import output_lock, staging_directory
+with output_lock(Path(sys.argv[1])), staging_directory(Path(sys.argv[1])) as stage:
+    (stage / 'partial.npz').write_bytes(b'active prediction')
+    print(stage, flush=True)
+    sys.stdin.readline()
+"""
+    out = tmp_path / "out"
+    with subprocess.Popen(
+        [sys.executable, "-c", script, str(out)],
+        cwd=Path(run.__file__).resolve().parents[1],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    ) as process:
+        try:
+            stage = Path(process.stdout.readline().strip())
+            assert (stage / "partial.npz").read_bytes() == b"active prediction"
+            with pytest.raises(RuntimeError, match="another model runner"), run.output_lock(out):
+                pytest.fail("acquired an active runner's lock")
+            assert (stage / "partial.npz").read_bytes() == b"active prediction"
+        finally:
+            process.communicate(input="\n", timeout=10)
+        assert process.returncode == 0
+    assert not stage.exists()
+
+
+def test_staging_recovery_preserves_a_replaced_directory(tmp_path):
+    from models import run
+
+    out = tmp_path / "out"
+    stage = tmp_path / "out.staging-old"
+    _complete_run(stage, "old")
+    record = {"name": stage.name, "identity": run.directory_identity(stage)}
+    stage.rename(tmp_path / "saved-stage")
+    _complete_run(stage, "caller")
+    owner = tmp_path / ".out.staging.json"
+    owner.write_text(json.dumps(record))
+    before = _snapshot(stage)
+    with pytest.raises(RuntimeError, match="staging directory differs"), run.output_lock(out):
+        pytest.fail("accepted a replaced staging directory")
+    assert _snapshot(stage) == before
+    assert json.loads(owner.read_text()) == record
+
+
 def test_a_run_that_fails_midway_leaves_the_previous_run_intact(tmp_path, monkeypatch):
     main, out = _fake_model_run(tmp_path, monkeypatch, fail_on="b")
     out.mkdir()
@@ -562,7 +667,7 @@ def test_a_group_write_that_fails_midway_keeps_the_previous_outputs(tmp_path, mo
     with pytest.raises(OSError, match="injected"):
         run_groups.write_group(out, results, {"run": "new"})  # a is written, then b fails
     assert _snapshot(out) == before
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["n2-a"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == [".n2-a.runner.lock", "n2-a"]
     monkeypatch.setattr(run_groups, "write_npz", real_write)
     run_groups.write_group(out, results, {"run": "new"})
     assert sorted(p.name for p in out.iterdir()) == ["a.npz", "b.npz", "run.json"]
