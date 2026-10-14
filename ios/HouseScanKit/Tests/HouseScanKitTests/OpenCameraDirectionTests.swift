@@ -6,6 +6,24 @@ import Testing
     private static let camera = CGSize(width: 402, height: 874)
     private static let window = CGRect(x: 24, y: 550, width: 354, height: 230)
 
+    @Test(arguments: [AimHint.above, .below, .left, .right])
+    func diagonalJitterKeepsTheLastDirection(previous: AimHint) {
+        let dx: CGFloat = previous == .left ? -1 : 1
+        let dy: CGFloat = previous == .above ? -1 : 1
+        var last = previous
+        for ratio: CGFloat in [0.99, 1.01, 0.98, 1.02] {
+            last = OpenCameraDirection.classify(CGVector(dx: dx, dy: dy * ratio), previous: last)
+            #expect(last == previous)
+        }
+    }
+
+    @Test func aStrongAxisChangeUpdatesTheDirection() {
+        #expect(OpenCameraDirection.classify(CGVector(dx: -1.3, dy: -1), previous: .above) == .left)
+        #expect(OpenCameraDirection.classify(CGVector(dx: -1, dy: 1.3), previous: .left) == .below)
+        #expect(OpenCameraDirection.classify(CGVector(dx: 1.3, dy: 1), previous: .below) == .right)
+        #expect(OpenCameraDirection.classify(CGVector(dx: 1, dy: -1.3), previous: .right) == .above)
+    }
+
     /// The card covers this spot, even though it is below the full camera's center. Measuring
     /// from that center used to point down, farther behind the card (review of #241).
     @Test func aSpotBelowCameraCenterButAboveTheWindowPointsUp() throws {

@@ -374,8 +374,8 @@ enum ScanCopy {
 
     /// Over the result's list of marks the server set aside (`ResultPresentation.marksNotUsed`).
     static let marksNotUsedTitle = "Not counted"
-    /// Under that list: how a set-aside mark comes to count (result.schema.json `objects_not_used`).
-    static let marksNotUsedHint = "To count them, scan again and walk on past that end of the wall."
+    /// Why the marks were set aside; the available follow-up is determined by the server answer.
+    static let marksNotUsedHint = "These marks are outside the part of the wall used for this answer."
 
     /// Under a reviewed mark that lies wholly past a marked end (`ScanViewState.featuresPastEnds`).
     static let featurePastEnd = "Past the end of your scan"
@@ -822,8 +822,8 @@ enum ScanCopy {
     static let proposedSpotOverlay = "A proposed battery spot, drawn on your wall"
     static let proposedSpotThisWay = "The proposed spot is this way"
     static let proposedSpotOffScreen = "The proposed spot is off screen. Turn the phone toward the arrow."
-    /// The card's legend line when the open camera is too short for the chevron, so there is no
-    /// arrow to turn toward (review of #241).
+    /// The note shown outside Details when the open camera cannot hold the chevron, so there
+    /// is no arrow to turn toward (review of #241).
     static func proposedSpotOffScreen(turn direction: AimDirection) -> String {
         let turn = switch direction {
         case .above: "Tilt the phone up"

@@ -166,8 +166,8 @@ struct WayfindingOverlay: View {
         progress == nil || reported == .ring ? 0 : Self.ringEntryMargin
     }
 
-    /// What `marker` draws for an aim step's filling target, for the card (`onAimMarker`). Nil
-    /// while a completed ring holds the screen, off an aim step, or with nothing drawn.
+    /// What the card can name for an aim target (`onAimMarker`). `.covered` means the chrome
+    /// hides it; nil while a completed ring holds the screen or off an aim step.
     private func aimMarker(in size: CGSize, band: Band?) -> AimMarker? {
         guard progress != nil, let target else { return nil }
         // A completed ring holding the screen belongs to the step before (`marker`).
@@ -179,7 +179,7 @@ struct WayfindingOverlay: View {
             let previous: AimDirection? = if case .arrow(let direction)? = reported { direction } else { nil }
             return .arrow(Self.direction(of: angle, previous: previous))
         case .hidden:
-            return nil
+            return .covered
         }
     }
 
@@ -187,15 +187,22 @@ struct WayfindingOverlay: View {
     /// direction named before, the other axis must be `AimHint.axisBias` times larger to change
     /// it, as for the hint itself.
     static func direction(of angle: Angle, previous: AimDirection?) -> AimDirection {
-        let dx = cos(angle.radians), dy = sin(angle.radians)
-        let bias = Double(AimHint.axisBias)
-        let vertical = switch previous {
-        case .above?, .below?: abs(dy) * bias >= abs(dx)
-        case .left?, .right?: abs(dy) > abs(dx) * bias
-        default: abs(dy) >= abs(dx)
+        let prior: AimHint? = previous.flatMap {
+            switch $0 {
+            case .above: .above
+            case .below: .below
+            case .left: .left
+            case .right: .right
+            case .onScreen, .behind: nil
+            }
         }
-        if vertical { return dy < 0 ? .above : .below }
-        return dx < 0 ? .left : .right
+        switch OpenCameraDirection.classify(CGVector(dx: cos(angle.radians), dy: sin(angle.radians)), previous: prior) {
+        case .above: return .above
+        case .below: return .below
+        case .left: return .left
+        case .right: return .right
+        case .onScreen, .behind: preconditionFailure("A screen direction must name an axis")
+        }
     }
 
     private func placement(for target: SIMD3<Float>, in size: CGSize, band: Band?, entryMargin: CGFloat = 0) -> TargetMarker.Placement {
@@ -293,6 +300,7 @@ struct WayfindingOverlay: View {
 
 /// What stands for an aim step's target on screen (`WayfindingOverlay.onAimMarker`).
 enum AimMarker: Equatable {
+    case covered
     case ring
     case arrow(AimDirection)
 }

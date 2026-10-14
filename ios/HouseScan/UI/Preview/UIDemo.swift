@@ -49,6 +49,8 @@ import SwiftUI
 /// - `-uiDemoCorner`: the wall turns an outside corner 1.8 m right of the meter and the walk
 ///   followed it, so the window and part of its clearance zone are round the corner. For the
 ///   result model: `-uiDemoPhase result -uiDemoCorner`.
+/// - `-uiDemoSpotOffScreen`: with `-uiDemoPhase resultAR`, place the camera 10 m left so the
+///   proposed spot needs an off-screen direction, including at accessibility text sizes.
 /// - `-uiDemoPhase spotConfirm`: the spot check before the result, on the made-up sample spot.
 /// - `-uiDemoSpotAnswered <clear|somethingThere|cannotCheck>`: with `-uiDemoPhase spotConfirm`,
 ///   the check is answered and says what happens next. With `-uiDemoPhase result`, the result

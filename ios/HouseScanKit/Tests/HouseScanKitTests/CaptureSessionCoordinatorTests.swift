@@ -652,7 +652,6 @@ struct NativeCaptureFixture: Sendable {
         #expect(CaptureSessionCoordinator(environment: environment).resumeSealedCaptures().isEmpty)
         #expect(server.requests("PUT upload").isEmpty)
 
-        server.state.withLock { $0.held = [] }
         await uploader.settled()
         #expect(server.requests("PUT upload").isEmpty)
     }
@@ -685,7 +684,6 @@ struct NativeCaptureFixture: Sendable {
         _ = try #require(blockUntilAbandoned(stateURL, reason: "consent withdrawn"))
         #expect(try CaptureUploadState.load(from: stateURL).end == .abandoned("consent withdrawn"))
 
-        server.state.withLock { $0.held = [] }
         await uploader.settled()
         #expect(await uploader.snapshot.end == .abandoned("consent withdrawn"))
     }

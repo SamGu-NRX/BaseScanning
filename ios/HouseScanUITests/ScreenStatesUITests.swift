@@ -765,6 +765,40 @@ final class ScreenStatesUITests: XCTestCase {
             .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "Tilt up a little")).firstMatch
         XCTAssertTrue(aboveCard.waitForExistence(timeout: 5), "the card ignored an arrow that disagrees with an off-screen hint")
         attach(app, name: "wallWalk-aimHint-offScreenMismatch-AX5")
+        app.terminate()
+
+        // With Details open at AX5, no camera lane remains. The card must name the step,
+        // not a ring that cannot be drawn, and say where the camera view went.
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk",
+                               "-uiDemoAim", "-uiDemoAimHint", "onScreen"] + Self.largestText
+        app.launch()
+        tap(app, "instruction.details")
+        let coveredCard = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "The camera view is below")).firstMatch
+        XCTAssertTrue(coveredCard.waitForExistence(timeout: 5), "covered camera instructions must remain visible")
+        XCTAssertFalse(element(app, "aim.ring").exists)
+        XCTAssertFalse(element(app, "aim.arrow").exists)
+        XCTAssertFalse(coveredCard.label.contains("Put the ring"), coveredCard.label)
+        XCTAssertTrue(coveredCard.label.contains("Tilt down"), coveredCard.label)
+        attach(app, name: "wallWalk-aimHint-covered-AX5")
+    }
+
+    @MainActor
+    func testTheOffScreenSpotInstructionStaysVisibleWithDetailsClosedAtAX3() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "resultAR",
+                               "-uiDemoSpotOffScreen", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"]
+        app.launch()
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
+        let note = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "The proposed spot is off screen")).firstMatch
+        XCTAssertTrue(note.waitForExistence(timeout: 5), "the off-screen direction must not be folded into Details")
+        XCTAssertTrue(note.label.contains("Turn the phone right"), note.label)
+        XCTAssertFalse(element(app, "instruction.detail").exists, "Details must remain closed")
+        XCTAssertFalse(element(app, "ar.spotDirection").exists, "fixture must leave no room for a chevron and label")
+        XCTAssertTrue(app.frame.contains(note.frame), "the full instruction must be on the visible screen: \(note.frame)")
+        attach(app, name: "resultAR-offScreen-note-AX3")
     }
 
     /// Review of #241: an aim card's title follows the marker the overlay draws, and the overlay

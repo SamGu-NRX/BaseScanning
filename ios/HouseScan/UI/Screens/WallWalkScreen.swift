@@ -119,7 +119,11 @@ struct WallWalkScreen: View {
             let folded = Instruction.Folded(title: ScanCopy.wallTooShortLead, detail: "\(ScanCopy.wallTooShort) \(step)")
             return ScanCopy.withCoaching(Instruction(title: ScanCopy.wallTooShort, detail: step, folded: folded), coaching)
         }
-        return ScanCopy.withCoaching(ScanCopy.guidance(state.guidance, hint: shownHint), coaching)
+        var copy = ScanCopy.withCoaching(ScanCopy.guidance(state.guidance, hint: shownHint), coaching)
+        if aimMarker == .covered {
+            copy.note = [copy.note, "The camera view is below. Close Details or scroll."].compactMap { $0 }.joined(separator: " ")
+        }
+        return copy
     }
 
     /// The card follows every marker the overlay draws. For a target behind the camera the
@@ -127,6 +131,8 @@ struct WallWalkScreen: View {
     private var shownHint: GuidanceHint? {
         guard var hint = state.guidanceHint, let aimMarker else { return state.guidanceHint }
         switch aimMarker {
+        case .covered:
+            if hint.aim == .onScreen { hint.aim = nil }
         case .ring:
             hint.aim = .onScreen
         case .arrow(let direction):

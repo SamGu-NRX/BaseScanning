@@ -153,6 +153,10 @@ final class ResultCardUITests: XCTestCase {
         XCTAssertTrue(mark.label.contains("The window marked 12 ft left of the meter"), mark.label)
         XCTAssertTrue(mark.label.contains("so it was not used"), mark.label)
         scrollIntoView(mark, in: app)
+        let hint = app.staticTexts["These marks are outside the part of the wall used for this answer."]
+        scrollIntoView(hint, in: app)
+        XCTAssertTrue(hint.exists)
+        XCTAssertFalse(app.staticTexts["To count them, scan again and walk on past that end of the wall."].exists)
         attach(app, name: "result-marksNotUsed")
     }
 

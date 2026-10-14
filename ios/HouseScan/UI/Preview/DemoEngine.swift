@@ -334,6 +334,10 @@ final class DemoEngine: ScanActions {
             finishedWalkState()
             showResult()
             state.phase = .resultAR
+            if arguments.contains("-uiDemoSpotOffScreen"), var projection = state.projection {
+                projection.cameraToWorld.columns.3.x -= 10
+                state.projection = projection
+            }
         case .processing:
             placeMeter()
             finishedWalkState()
@@ -1379,10 +1383,10 @@ final class DemoEngine: ScanActions {
         }
     }
 
-    /// The offline sample result. Placeholder rules, so the decision is manual review.
     /// The server's sentence for a mark it set aside (solver.py `objects_not_used`).
     static let markNotUsedSample = "The window marked 12 ft left of the meter is past the left end of the scan, where the wall may turn, so it was not used."
 
+    /// The offline sample result. Placeholder rules, so the decision is manual review.
     static let reviewSample = ResultPresentation(
         decision: .manualReview,
         summary: "The best spot, 3 ft right of your meter, is close to a window, so it needs an installer's review.",
