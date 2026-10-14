@@ -4,7 +4,7 @@ Each setting is an assumption, stated with where its numbers come from:
 
 - `exact`: the true poses, the best any pose prior can do.
 - `advio_2018`: the errors measured in `evals.drift` on ADVIO's 2018 iPhone 6s. Scale: each
-  group of photos takes one walk's ARKit scale against the ground truth rescaled to GPS, in turn
+  seed takes one walk's ARKit scale against the ground truth rescaled to GPS, by seed identity
   (`arkit_scale_vs_truth_gps` in results/advio_drift.json, walks 20 to 22: 0.838, 0.943, 0.951;
   the median displacement ratio over 10 to 30 ft windows). ARCore is not the reference: on walk
   20 it reads 4% short of GPS itself (0.802 vs 0.835 of the truth). Position noise: ARKit's own
@@ -17,7 +17,7 @@ Each setting is an assumption, stated with where its numbers come from:
 
 Scale error stretches every camera's offset from the group's first camera; noise is then added
 independently per camera. Rotation noise turns each camera about its own centre. Each setting with
-noise is drawn `NOISE_DRAWS` times (draw 0 is the one MapAnything was run on); the scale a group
+noise is drawn `NOISE_DRAWS` times (draw 0 is used for new MapAnything runs); the scale a group
 gets does not change between draws.
 """
 
@@ -30,7 +30,7 @@ import numpy as np
 
 @dataclass(frozen=True)
 class PoseError:
-    scales: tuple[float, ...]  # one per group, taken in turn
+    scales: tuple[float, ...]  # selected by seed identity, shared across view counts
     position_sigma_m: float
     rotation_sigma_deg: float
     # How far a correct match may reproject with these poses: 2 px of feature noise plus what the
@@ -87,22 +87,21 @@ def degrade(
 def group_poses(
     views: dict, groups: dict[str, list[list[str]]], setting: str, draw: int = 0
 ) -> dict[str, dict]:
-    """{group id: {"scale": applied scale, "poses": {view: 4x4 cam-to-world}}} for every group,
-    deterministic per setting and draw. Draw 0 keeps the generator the first version used, so it
-    reproduces the poses MapAnything was given."""
+    """Pose noise keyed by setting, draw, seed and camera, shared by nested view groups."""
     error = SETTINGS[setting]
-    rng = np.random.default_rng(_seed(setting) if draw == 0 else [_seed(setting), draw])
     out: dict[str, dict] = {}
-    k = 0
     for n, members_list in groups.items():
         for members in members_list:
-            scale = error.scales[k % len(error.scales)]
-            k += 1
-            poses = degrade([views[m].cam_to_world for m in members], scale, error, rng)
-            out[f"n{n}-{members[0]}"] = {
-                "scale": scale,
-                "poses": {m: T.tolist() for m, T in zip(members, poses, strict=True)},
-            }
+            seed = members[0]
+            scale = error.scales[_seed(seed) % len(error.scales)]
+            poses = {}
+            for member in members:
+                rng = np.random.default_rng([_seed(setting), draw, _seed(seed), _seed(member)])
+                T = views[member].cam_to_world.copy()
+                origin = views[seed].cam_to_world[:3, 3]
+                T[:3, 3] = origin + scale * (T[:3, 3] - origin)
+                poses[member] = degrade([T], 1.0, error, rng)[0].tolist()
+            out[f"n{n}-{seed}"] = {"scale": scale, "poses": poses}
     return out
 
 

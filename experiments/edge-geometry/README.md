@@ -1,5 +1,7 @@
 # Edge geometry
 
+The tracked tables predate the match-rate denominator correction. Their M3 match rates exclude unpaired points and need a new run before use.
+
 ## Question
 
 Clearances start at edges, and learned depth is 8 in or worse there. How much of that error lands along the wall, and how does it depend on the angle a photo sees the edge from? It compares four ways to place an edge (M0 to M3), plus the app's plane from one patch (M1-anchor), on ETH3D electro's laser truth. [METHODS.md](METHODS.md) defines them.

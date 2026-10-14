@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import select
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -296,6 +299,212 @@ def _snapshot(folder):
     return {p.name: p.read_bytes() for p in sorted(folder.iterdir())}
 
 
+@pytest.mark.parametrize("writer", ["single", "group"])
+def test_next_run_reclaims_staging_after_a_hard_exit(tmp_path, monkeypatch, writer):
+    from models import run, run_groups
+
+    invoke, out = _fake_model_run(tmp_path, monkeypatch, fail_on=None)
+    _complete_run(out, "previous")
+    before = _snapshot(out)
+    script = """
+import os, sys
+from pathlib import Path
+import pytest
+sys.path.insert(0, 'models/tests')
+from test_common import _fake_model_run
+from models import run, run_groups
+root, writer = Path(sys.argv[1]), sys.argv[2]
+def crash(stage):
+    (stage / 'partial.npz').write_bytes(b'partial prediction')
+    os._exit(137)
+if writer == 'single':
+    invoke, out = _fake_model_run(root, pytest.MonkeyPatch(), fail_on=None)
+    run.run_into = lambda args, stage, *rest: crash(stage)
+    invoke()
+else:
+    def results():
+        stage = next(root.glob('out.staging-*'))
+        crash(stage)
+        yield
+    run_groups.write_group(root / 'out', results(), {})
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(tmp_path), writer],
+        cwd=Path(run.__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 137, result.stderr
+    abandoned = list(tmp_path.glob("out.staging-*"))
+    assert len(abandoned) == 1
+    assert (abandoned[0] / "partial.npz").read_bytes() == b"partial prediction"
+    assert _snapshot(out) == before
+    # A caller's similarly named folder must not be swept up with the recorded one.
+    unowned = tmp_path / "out.staging-caller"
+    _complete_run(unowned, "caller")
+    unowned_before = _snapshot(unowned)
+    if writer == "single":
+        invoke()
+    else:
+        run_groups.write_group(out, [], {"run": "retry"})
+    assert not abandoned[0].exists()
+    assert _snapshot(unowned) == unowned_before
+    assert not (tmp_path / ".out.staging.json").exists()
+    assert (out / "run.json").is_file()
+
+
+def test_staging_recovery_preserves_an_active_runner(tmp_path):
+    from models import run
+
+    script = """
+import sys
+from pathlib import Path
+from models.run import output_lock, staging_directory
+with output_lock(Path(sys.argv[1])), staging_directory(Path(sys.argv[1])) as stage:
+    (stage / 'partial.npz').write_bytes(b'active prediction')
+    print(stage, flush=True)
+    sys.stdin.readline()
+"""
+    out = tmp_path / "out"
+    with subprocess.Popen(
+        [sys.executable, "-c", script, str(out)],
+        cwd=Path(run.__file__).resolve().parents[1],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    ) as process:
+        try:
+            stage = Path(process.stdout.readline().strip())
+            assert (stage / "partial.npz").read_bytes() == b"active prediction"
+            with pytest.raises(RuntimeError, match="another model runner"), run.output_lock(out):
+                pytest.fail("acquired an active runner's lock")
+            assert (stage / "partial.npz").read_bytes() == b"active prediction"
+        finally:
+            process.communicate(input="\n", timeout=10)
+        assert process.returncode == 0
+    assert not stage.exists()
+
+
+def test_staging_recovery_preserves_a_replaced_directory(tmp_path):
+    from models import run
+
+    out = tmp_path / "out"
+    stage = tmp_path / "out.staging-old"
+    _complete_run(stage, "old")
+    record = {"name": stage.name, "identity": run.directory_identity(stage)}
+    stage.rename(tmp_path / "saved-stage")
+    _complete_run(stage, "caller")
+    owner = tmp_path / ".out.staging.json"
+    owner.write_text(json.dumps(record))
+    before = _snapshot(stage)
+    with pytest.raises(RuntimeError, match="staging directory differs"), run.output_lock(out):
+        pytest.fail("accepted a replaced staging directory")
+    assert _snapshot(stage) == before
+    assert json.loads(owner.read_text()) == record
+
+
+def test_concurrent_group_runs_load_once_across_multiple_groups(tmp_path):
+    from models import run_groups
+
+    (tmp_path / "images_1024").mkdir()
+    (tmp_path / "images_1024/a.jpg").write_bytes(b"image")
+    (tmp_path / "images_1024/b.jpg").write_bytes(b"image b")
+    (tmp_path / "model_inputs").mkdir()
+    (tmp_path / "model_inputs/intrinsics.json").write_text(
+        json.dumps({"a": [1, 1, 0, 0], "b": [1, 1, 0, 0]})
+    )
+    (tmp_path / "subsets.json").write_text(json.dumps({"1": [["a"], ["b"]]}))
+    script = """
+import fcntl, sys, types
+from pathlib import Path
+import numpy as np
+from models import run_groups
+root, role = Path(sys.argv[1]), sys.argv[2]
+sys.modules['torch'] = types.SimpleNamespace()
+run_groups.pick_device = lambda device: 'cpu'
+run_groups.set_cache_dirs = lambda: None
+run_groups.require_free_space_for_download = lambda *args: None
+run_groups.checkpoint_record = lambda *args: {'verified': True}
+def load(device):
+    with (root / 'loads.txt').open('a') as file:
+        file.write(role + '\\n')
+    print('loaded', flush=True)
+    sys.stdin.readline()
+    return object()
+def infer(model, inputs):
+    with (root / 'inferences.txt').open('a') as file:
+        file.write(role + ':' + inputs.images[0].stem + '\\n')
+    return [types.SimpleNamespace(
+        path=inputs.images[0], depth=np.ones((2, 2), np.float32),
+        valid=np.ones((2, 2), bool), intrinsics=np.array([1., 1., 0., 0.]),
+        cam_to_world=None, arrays={}, seconds=0., network_wh=(2, 2),
+        extra={'metric_scaling_factor': 1.})]
+run_groups.load = load
+run_groups.run = infer
+flock = fcntl.flock
+def announce_wait(file, operation):
+    if role == 'second':
+        print('root' if Path(file.name).name == '.outputs.runner.lock' else 'group', flush=True)
+    elif Path(file.name).name == '.n1-b.runner.lock':
+        print('next-group', flush=True)
+        sys.stdin.readline()
+    return flock(file, operation)
+fcntl.flock = announce_wait
+sys.argv = ['run_groups', '--scene-dir', str(root), '--out', str(root / 'outputs')]
+run_groups.main()
+"""
+    processes = []
+
+    def launch(role):
+        process = subprocess.Popen(
+            [sys.executable, "-u", "-c", script, str(tmp_path), role],
+            cwd=Path(run_groups.__file__).resolve().parents[1],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        processes.append(process)
+        return process
+
+    def await_line(process):
+        assert select.select([process.stdout], [], [], 10)[0], "runner did not reach the barrier"
+        return process.stdout.readline().strip()
+
+    try:
+        first = launch("first")
+        assert await_line(first) == "loaded"
+        second = launch("second")
+        lock_scope = await_line(second)
+        assert lock_scope in ("root", "group")
+        first.stdin.write("\n")
+        first.stdin.flush()
+        assert await_line(first) == "next-group"
+        if lock_scope == "group":
+            assert await_line(second) == "group"
+            # Allow the old per-group design to overtake the first runner at group b.
+            assert await_line(second) == "loaded"
+            _, errors = second.communicate(input="\n", timeout=10)
+            assert second.returncode == 0, errors
+        _, errors = first.communicate(input="\n", timeout=10)
+        assert first.returncode == 0, errors
+        if lock_scope == "root":
+            _, errors = second.communicate(input="\n", timeout=10)
+            assert second.returncode == 0, errors
+    finally:
+        for process in processes:
+            if process.poll() is None:
+                process.kill()
+                process.communicate(timeout=10)
+    assert (tmp_path / "inferences.txt").read_text().splitlines() == ["first:a", "first:b"]
+    assert (tmp_path / "loads.txt").read_text().splitlines() == ["first"]
+    for member in ("a", "b"):
+        group = tmp_path / f"outputs/n1-{member}"
+        record = json.loads((group / "run.json").read_text())
+        assert run_groups.cached_group(group, record["fingerprint"], [member])
+
+
 def test_a_run_that_fails_midway_leaves_the_previous_run_intact(tmp_path, monkeypatch):
     main, out = _fake_model_run(tmp_path, monkeypatch, fail_on="b")
     out.mkdir()
@@ -349,34 +558,184 @@ def test_a_publication_that_fails_twice_keeps_the_previous_run(tmp_path, monkeyp
         shutil.rmtree(stage)
 
 
-def test_a_run_left_aside_by_a_killed_publication_is_restored_not_deleted(tmp_path, monkeypatch):
+@pytest.mark.parametrize("out_exists", [False, True])
+def test_publication_refuses_an_existing_backup_directory(tmp_path, out_exists):
     from models import run
 
-    # A kill between setting the old run aside and moving the new one in leaves only .previous.
-    _complete_run(tmp_path / "out.previous", "previous")
+    if out_exists:
+        _complete_run(tmp_path / "out", "current")
+    _complete_run(tmp_path / "out.previous", "caller-owned")
     before = _snapshot(tmp_path / "out.previous")
-    stage = tmp_path / "out.staging"
+    stage = tmp_path / "stage"
     _complete_run(stage, "new")
-    run.publish(stage, tmp_path / "out")
-    assert json.loads((tmp_path / "out" / "run.json").read_text()) == {"run": "new"}
-    assert not (tmp_path / "out.previous").exists()
-    # Restored first, then superseded by a complete publication: never deleted while alone.
-    _complete_run(tmp_path / "out.previous", "previous")
-    shutil.rmtree(tmp_path / "out")
-    stage = tmp_path / "out.staging"
-    _complete_run(stage, "new again")
-
-    real = Path.rename
-
-    def refuse_staging(self, target):
-        if self.name == "out.staging":
-            raise OSError("injected")
-        return real(self, target)
-
-    monkeypatch.setattr(Path, "rename", refuse_staging)
-    with pytest.raises(OSError, match="injected"):
+    with pytest.raises(RuntimeError, match="existing backup"):
         run.publish(stage, tmp_path / "out")
-    assert _snapshot(tmp_path / "out") == before
+    assert _snapshot(tmp_path / "out.previous") == before
+    assert stage.exists()
+
+
+@pytest.mark.parametrize("record", ["{", "[]", '{"old": null, "new": null}'])
+def test_publication_preserves_an_invalid_ownership_record(tmp_path, record):
+    from models import run
+
+    owner = tmp_path / "out.publication.json"
+    owner.write_text(record)
+    backup, stage = tmp_path / "out.previous", tmp_path / "stage"
+    _complete_run(backup, "caller-owned")
+    _complete_run(stage, "new")
+    before = _snapshot(backup)
+    with pytest.raises(RuntimeError, match="invalid publication record"):
+        run.publish(stage, tmp_path / "out")
+    assert _snapshot(backup) == before
+    assert owner.read_text() == record
+    assert stage.exists()
+
+
+@pytest.mark.parametrize("after_rename", ["out", "stage", "cleanup"])
+def test_publication_recovers_after_a_process_is_killed(tmp_path, monkeypatch, after_rename):
+    from models import run
+
+    out, stage = tmp_path / "out", tmp_path / "stage"
+    _complete_run(out, "previous")
+    _complete_run(stage, "interrupted")
+    previous_bytes, new_bytes = _snapshot(out), _snapshot(stage)
+    # Hard exit after the real rename bypasses publish's exception rollback.
+    script = """
+import os, shutil, sys
+from pathlib import Path
+from models.run import publish
+out, stage, after_rename = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
+rename = Path.rename
+def interrupted(self, target):
+    result = rename(self, target)
+    if self.name == after_rename:
+        os._exit(137)
+    return result
+Path.rename = interrupted
+rmtree = shutil.rmtree
+def interrupted_cleanup(path, *args, **kwargs):
+    result = rmtree(path, *args, **kwargs)
+    if after_rename == "cleanup" and Path(path) == out.with_name(out.name + ".previous"):
+        os._exit(137)
+    return result
+shutil.rmtree = interrupted_cleanup
+publish(stage, out)
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(out), str(stage), after_rename],
+        cwd=Path(run.__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 137, result.stderr
+    backup = tmp_path / "out.previous"
+    if after_rename == "cleanup":
+        assert not backup.exists()
+    else:
+        assert _snapshot(backup) == previous_bytes
+    retry = tmp_path / "retry"
+    _complete_run(retry, "retry")
+    rename = Path.rename
+
+    def fail_retry(self, target):
+        if self == retry:
+            raise OSError("injected replacement failure")
+        return rename(self, target)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "rename", fail_retry)
+        with pytest.raises(OSError, match="injected replacement failure"):
+            run.publish(retry, out)
+    assert _snapshot(out) == (previous_bytes if after_rename == "out" else new_bytes)
+    assert not backup.exists()
+    assert not (tmp_path / "out.publication.json").exists()
+    expected = _snapshot(retry)
+    run.publish(retry, out)
+    assert _snapshot(out) == expected
+
+
+def test_publication_record_cannot_claim_a_replaced_backup(tmp_path):
+    from models import run
+
+    out, stage = tmp_path / "out", tmp_path / "stage"
+    _complete_run(out, "previous")
+    _complete_run(stage, "new")
+    owner = tmp_path / "out.publication.json"
+    owner.write_text(
+        json.dumps({"old": run.directory_identity(out), "new": run.directory_identity(stage)})
+    )
+    out.rename(tmp_path / "saved-original")
+    backup = tmp_path / "out.previous"
+    _complete_run(backup, "caller-owned")
+    before = _snapshot(backup)
+    with pytest.raises(RuntimeError, match="directories differ"):
+        run.publish(stage, out)
+    assert _snapshot(backup) == before
+    assert stage.exists()
+    assert owner.exists()
+
+
+@pytest.mark.parametrize("writer", ["single", "group"])
+def test_runners_recover_before_a_new_model_failure(tmp_path, monkeypatch, writer):
+    from models import run, run_groups
+
+    main, out = _fake_model_run(tmp_path, monkeypatch, fail_on="a")
+    _complete_run(out, "previous")
+    before = _snapshot(out)
+    stage = tmp_path / "interrupted-stage"
+    _complete_run(stage, "interrupted")
+    owner = tmp_path / "out.publication.json"
+    owner.write_text(
+        json.dumps({"old": run.directory_identity(out), "new": run.directory_identity(stage)})
+    )
+    out.rename(tmp_path / "out.previous")
+
+    def fail_results():
+        raise MemoryError("injected")
+        yield  # the failure happens when the group writer starts consuming results
+
+    with pytest.raises(MemoryError):
+        if writer == "single":
+            main()
+        else:
+            run_groups.write_group(out, fail_results(), {})
+    assert _snapshot(out) == before
+    assert not (tmp_path / "out.previous").exists()
+    assert not owner.exists()
+
+
+def test_run_preserves_a_caller_owned_staging_sibling(tmp_path, monkeypatch):
+    main, _out = _fake_model_run(tmp_path, monkeypatch, fail_on=None)
+    sibling = tmp_path / "out.staging"
+    _complete_run(sibling, "caller-owned")
+    before = _snapshot(sibling)
+    main()
+    assert _snapshot(sibling) == before
+
+
+def test_read_poses_refuses_a_reflection(tmp_path):
+    from models.common import read_poses
+
+    pose = np.eye(4)
+    pose[0, 0] = -1
+    path = tmp_path / "poses.json"
+    path.write_text(json.dumps({"a": pose.tolist()}))
+    with pytest.raises(ValueError, match="rigid transform"):
+        read_poses(path, [tmp_path / "a.jpg"])
+
+
+def test_group_cache_requires_unchanged_member_outputs(tmp_path):
+    from models.run_groups import cached_group, file_hash
+
+    output = tmp_path / "a.npz"
+    output.write_bytes(b"prediction")
+    record = {"fingerprint": "k", "outputs": {"a.npz": file_hash(output)}}
+    (tmp_path / "run.json").write_text(json.dumps(record))
+    assert cached_group(tmp_path, "k", ["a"])
+    output.write_bytes(b"substitute")
+    assert not cached_group(tmp_path, "k", ["a"])
+    output.unlink()
+    assert not cached_group(tmp_path, "k", ["a"])
 
 
 def test_a_group_write_that_fails_midway_keeps_the_previous_outputs(tmp_path, monkeypatch):
@@ -410,8 +769,98 @@ def test_a_group_write_that_fails_midway_keeps_the_previous_outputs(tmp_path, mo
     with pytest.raises(OSError, match="injected"):
         run_groups.write_group(out, results, {"run": "new"})  # a is written, then b fails
     assert _snapshot(out) == before
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["n2-a"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == [".n2-a.runner.lock", "n2-a"]
     monkeypatch.setattr(run_groups, "write_npz", real_write)
     run_groups.write_group(out, results, {"run": "new"})
     assert sorted(p.name for p in out.iterdir()) == ["a.npz", "b.npz", "run.json"]
-    assert json.loads((out / "run.json").read_text()) == {"run": "new"}
+    assert json.loads((out / "run.json").read_text())["run"] == "new"
+
+
+def test_group_cache_hit_does_not_load_the_model(tmp_path, monkeypatch):
+    import sys
+
+    from models import run_groups
+    from models.common import fingerprint
+
+    (tmp_path / "images_1024").mkdir()
+    image = tmp_path / "images_1024" / "a.jpg"
+    image.write_bytes(b"image")
+    (tmp_path / "model_inputs").mkdir()
+    (tmp_path / "model_inputs" / "intrinsics.json").write_text(json.dumps({"a": [1, 1, 0, 0]}))
+    (tmp_path / "subsets.json").write_text(json.dumps({"1": [["a"]]}))
+    out = tmp_path / "outputs" / "n1-a"
+    out.mkdir(parents=True)
+    prediction = out / "a.npz"
+    prediction.write_bytes(b"prediction")
+    key = fingerprint(["a"], [image], [[1, 1, 0, 0]], None, None, run_groups.map_anything.SHA256)
+    (out / "run.json").write_text(
+        json.dumps({"fingerprint": key, "outputs": {"a.npz": run_groups.file_hash(prediction)}})
+    )
+
+    def refuse(*args):
+        raise AssertionError("cached group tried to load a model")
+
+    monkeypatch.setattr(run_groups, "load", refuse)
+    monkeypatch.setattr(run_groups, "require_free_space_for_download", refuse)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_groups", "--scene-dir", str(tmp_path), "--out", str(tmp_path / "outputs")],
+    )
+    run_groups.main()
+
+
+@pytest.mark.parametrize("writer", ["single", "group"])
+@pytest.mark.parametrize("failure", ["existing-backup", "rename"])
+def test_publication_failure_removes_only_owned_staging(tmp_path, monkeypatch, writer, failure):
+    from models import run_groups
+
+    if writer == "single":
+        invoke, out = _fake_model_run(tmp_path, monkeypatch, fail_on=None)
+    else:
+        out = tmp_path / "out"
+
+        def invoke():
+            run_groups.write_group(out, [], {"run": "new"})
+
+    _complete_run(out, "previous")
+    before = _snapshot(out)
+    sibling = out.with_name(out.name + ".staging")
+    _complete_run(sibling, "caller-owned")
+    sibling_before = _snapshot(sibling)
+    backup = out.with_name(out.name + ".previous")
+    if failure == "existing-backup":
+        _complete_run(backup, "caller-owned-backup")
+        backup_before = _snapshot(backup)
+        error, message = RuntimeError, "existing backup"
+    else:
+        rename = Path.rename
+
+        def refuse_staging(self, target):
+            if self.name.startswith(out.name + ".staging-"):
+                raise OSError("injected publication failure")
+            return rename(self, target)
+
+        monkeypatch.setattr(Path, "rename", refuse_staging)
+        error, message = OSError, "injected publication failure"
+    with pytest.raises(error, match=message):
+        invoke()
+    assert not list(tmp_path.glob(out.name + ".staging-*"))
+    assert _snapshot(out) == before
+    assert _snapshot(sibling) == sibling_before
+    if failure == "existing-backup":
+        assert _snapshot(backup) == backup_before
+    else:
+        assert not backup.exists()
+
+
+@pytest.mark.parametrize(
+    "record", [None, [], {"outputs": None}, {"outputs": ["a.npz"]}, {"outputs": {"a.npz": None}}]
+)
+def test_malformed_group_cache_is_a_miss(tmp_path, record):
+    from models.run_groups import cached_group
+
+    if isinstance(record, dict):
+        record["fingerprint"] = "k"
+    (tmp_path / "run.json").write_text(json.dumps(record))
+    assert not cached_group(tmp_path, "k", ["a"])

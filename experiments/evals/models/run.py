@@ -13,12 +13,15 @@ model's shared frame). See README.md in this folder.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import importlib
 import json
 import platform
 import shutil
 import sys
+import tempfile
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 from models.common import (
@@ -112,6 +115,11 @@ def pick_device(requested: str) -> str:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
+    with output_lock(args.out):
+        run_model(args)
+
+
+def run_model(args) -> None:
     caches = set_cache_dirs()
 
     images = read_image_list(args.images)
@@ -133,44 +141,138 @@ def main(argv: list[str] | None = None) -> None:
     # Everything is written to a staging folder and swapped in only when the whole run succeeds,
     # so a run that stops midway (out of memory, cancelled) leaves the previous run whole instead of
     # a mix of its depth maps and new ones under the old run.json.
-    stage = args.out.with_name(args.out.name + ".staging")
-    shutil.rmtree(stage, ignore_errors=True)
-    stage.mkdir(parents=True)
-    try:
+    with staging_directory(args.out) as stage:
         run_into(args, stage, images, intrinsics, poses, caches, module, device, torch)
-    except BaseException:
-        shutil.rmtree(stage, ignore_errors=True)
-        raise
-    publish(stage, args.out)
+        publish(stage, args.out)
     print(f"wrote the run's npz files and run.json to {args.out}", file=sys.stderr)
 
 
-def publish(stage: Path, out: Path) -> None:
-    """Replace `out` with the complete run in `stage`, all or nothing.
+def directory_identity(path: Path) -> list[int] | None:
+    try:
+        stat = path.lstat()
+    except FileNotFoundError:
+        return None
+    return [stat.st_dev, stat.st_ino]
 
-    The previous run is set aside as `out.previous` and put back if the swap fails. A
-    `.previous` is deleted only when a complete run (with its run.json) is published at `out`. A
-    `.previous` with nothing at `out` is a run a killed publication set aside, and is restored
-    before anything else, so a failed publication never loses the last complete run."""
+
+@contextmanager
+def output_lock(out: Path, *, wait: bool = False):
+    """One writer per output; a hard exit releases the OS lock before the next recovery."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    # Keep this file: unlinking it lets two processes lock different inodes at the same path.
+    with out.with_name("." + out.name + ".runner.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | (0 if wait else fcntl.LOCK_NB))
+        except BlockingIOError as e:
+            raise RuntimeError(f"another model runner is writing {out}") from e
+        recover_publication(out)
+        recover_staging(out)
+        yield
+
+
+def recover_staging(out: Path) -> None:
+    owner = out.with_name("." + out.name + ".staging.json")
+    if not owner.exists():
+        return
+    try:
+        record = json.loads(owner.read_text(encoding="utf-8"))
+        name, identity = record["name"], record["identity"]
+        if (
+            not isinstance(name, str)
+            or Path(name).name != name
+            or not name.startswith(out.name + ".staging-")
+            or not isinstance(identity, list)
+            or len(identity) != 2
+            or any(type(value) is not int for value in identity)
+        ):
+            raise ValueError("invalid staged directory identity")
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise RuntimeError(f"invalid staging record {owner}; inspect it by hand") from e
+    stage = out.parent / name
+    current = directory_identity(stage)
+    if current is not None:
+        if current != identity:
+            raise RuntimeError(f"staging directory differs from {owner}; inspect it by hand")
+        shutil.rmtree(stage)
+    owner.unlink()
+
+
+@contextmanager
+def staging_directory(out: Path):
+    """Called under output_lock; record ownership before any prediction data is written."""
+    stage = Path(tempfile.mkdtemp(prefix=out.name + ".staging-", dir=out.parent))
+    owner = out.with_name("." + out.name + ".staging.json")
+    try:
+        record = {"name": stage.name, "identity": directory_identity(stage)}
+        with tempfile.TemporaryDirectory(dir=out.parent) as tmp:
+            temporary = Path(tmp) / "owner.json"
+            temporary.write_text(json.dumps(record), encoding="utf-8")
+            owner.hardlink_to(temporary)
+    except BaseException:
+        shutil.rmtree(stage)
+        raise
+    try:
+        yield stage
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
+        owner.unlink()
+
+
+def recover_publication(out: Path) -> None:
+    """Restore or clean a runner-owned backup after interruption, preserving unknown siblings."""
     previous = out.with_name(out.name + ".previous")
-    if previous.exists():
-        if (out / "run.json").exists():
-            shutil.rmtree(previous)  # a later publication completed; this one is superseded
-        elif not out.exists():
+    owner = out.with_name(out.name + ".publication.json")
+    if directory_identity(owner) is None:
+        if directory_identity(previous) is not None:
+            raise RuntimeError(f"refusing to modify existing backup directory {previous}")
+        return
+    try:
+        record = json.loads(owner.read_text(encoding="utf-8"))
+        old, new = record["old"], record["new"]
+        identities = (new,) if old is None else (old, new)
+        for identity in identities:
+            if (
+                not isinstance(identity, list)
+                or len(identity) != 2
+                or any(type(value) is not int for value in identity)
+            ):
+                raise ValueError("invalid directory identity")
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise RuntimeError(f"invalid publication record {owner}; inspect it by hand") from e
+    current_id, previous_id = directory_identity(out), directory_identity(previous)
+    if previous_id is not None:
+        if previous_id != old or current_id not in (None, new):
+            raise RuntimeError(f"publication directories differ from {owner}; inspect them by hand")
+        if current_id is None:
             previous.rename(out)
         else:
-            raise RuntimeError(
-                f"both {out} (without run.json) and {previous} exist; inspect them by hand"
-            )
-    if out.exists():
-        out.rename(previous)
+            shutil.rmtree(previous)
+    elif current_id not in (old, new):
+        raise RuntimeError(f"publication directory differs from {owner}; inspect it by hand")
+    owner.unlink()
+
+
+def publish(stage: Path, out: Path) -> None:
+    """Publish a complete run, preserving the old directory if its replacement fails."""
+    recover_publication(out)
+    previous = out.with_name(out.name + ".previous")
+    owner = out.with_name(out.name + ".publication.json")
+    # Record directory identities before either rename, so recovery cannot mistake a caller's
+    # .previous sibling for the runner's backup. Publish the record atomically as well.
+    record = {"old": directory_identity(out), "new": directory_identity(stage)}
+    with tempfile.TemporaryDirectory(prefix=out.name + ".publication-", dir=out.parent) as tmp:
+        temporary = Path(tmp) / "directories.json"
+        temporary.write_text(json.dumps(record), encoding="utf-8")
+        owner.hardlink_to(temporary)
     try:
+        if out.exists():
+            out.rename(previous)
         stage.rename(out)
     except BaseException:
-        if previous.exists() and not out.exists():
-            previous.rename(out)
+        recover_publication(out)
         raise
-    shutil.rmtree(previous, ignore_errors=True)
+    recover_publication(out)
 
 
 def run_into(args, out: Path, images, intrinsics, poses, caches, module, device, torch) -> None:

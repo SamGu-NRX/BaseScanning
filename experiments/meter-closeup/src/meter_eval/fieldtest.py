@@ -3,11 +3,11 @@
     uv run python -m meter_eval.fieldtest PHOTO_DIR --number "12 345 678"
 
 For each photo: whether Vision read the number, where the number-finding ranking put it, the
-checks the app would run, and whether they would have asked for a retake. As in the app, the
-checks use the ranking's top candidate, not the true number; --number only scores the
-outcome. The summary counts the two costly outcomes: a retake asked for a photo that read (a
-wasted retake) and a photo accepted that did not read (a re-request later). The meter number
-is taken from the command line and is never written to disk.
+retake check values and whether they would ask for a retake. Candidates and the retake box
+come from the blind heuristic ranking; --number only scores the read and the number's rank.
+The summary counts a retake asked for a photo that read (a wasted retake) and a photo
+accepted that did not read (a re-request later). The meter number is taken from the command
+line and is never written to disk.
 """
 
 import argparse
@@ -19,11 +19,16 @@ from PIL import Image, ImageOps
 
 from meter_eval import retake
 from meter_eval.locate import candidates, ranked, top_candidate
-from meter_eval.match import core, digest, normalize, number_boxes
+from meter_eval.match import match_serial, number_core, serial_groups
 from meter_eval.ocr import Reader
 from meter_eval.quality import gray
 
 SUFFIXES = {".jpg", ".jpeg", ".png", ".heic"}
+
+
+def reads_number(text: str | list[dict], target: str) -> bool:
+    lines = [{"text": text, "box": [0, 0, 1, 1]}] if isinstance(text, str) else text
+    return any(candidate["matches_target"] for candidate in match_serial(lines, target))
 
 
 def upright_pixels(photo: Path, scratch: Path) -> Image.Image:
@@ -54,8 +59,15 @@ def main() -> None:
     parser.add_argument("--number", required=True, help="the meter number as printed")
     args = parser.parse_args()
 
-    target, length = digest(normalize(args.number)), len(normalize(args.number))
-    target_core = digest(core(args.number))
+    target_core = number_core(args.number)
+    if target_core is None:
+        parser.error("--number contains an unsupported character in a serial group")
+    if not target_core:
+        parser.error("--number must contain letters or digits")
+    if any(kind == "rating" for _, _, _, kind in serial_groups(args.number, ocr_ratings=True)):
+        parser.error(
+            "--number contains a rating-shaped part; such a serial is not supported by the OCR contract"
+        )
     photos = sorted(p for p in args.folder.iterdir() if p.suffix.lower() in SUFFIXES)
     if not photos:
         raise SystemExit(f"no .jpg, .png or .heic photos in {args.folder}")
@@ -77,9 +89,9 @@ def main() -> None:
             image.save(upright)
             g = gray(image)
             result = reader.read(upright, barcodes=True)
-            read = number_boxes(result["lines"], target, length, lenient=False) is not None
+            read = reads_number(result["lines"], args.number)
             order = ranked(candidates(result))
-            rank = next((i + 1 for i, c in enumerate(order) if digest(c) == target_core), None)
+            rank = next((i + 1 for i, c in enumerate(order) if c == target_core), None)
             guess = top_candidate(result)
             box = guess and guess["box"]
             why = retake.reasons(g, box)

@@ -27,7 +27,7 @@ import csv
 import re
 import secrets
 
-from meter_eval.match import core, digest, lenient_digest, normalize, normalize_class
+from meter_eval.match import core, digest, lenient_digest, normalize, normalize_class, number_core
 from meter_eval.paths import DATA_DIR, EXPERIMENT_DIR, KEY_PATH, MANIFEST
 
 READER1 = DATA_DIR / "labels_reader1.csv"
@@ -152,12 +152,13 @@ def build() -> list[dict]:
                 and r2["number_sure"] == "sure"
             )
             kept = verdict == "keep"
+            serial = number_core(number)
             row |= {
                 "number_hmac": digest(normalize(number)),
                 "number_hmac_lenient": lenient_digest(number),
                 "number_len": len(normalize(number)),
-                "number_core_hmac": digest(core(number)),
-                "number_core_len": len(core(number)),
+                "number_core_hmac": digest(serial) if serial else "",
+                "number_core_len": len(serial) if serial else 0,
                 "number_agreed": "yes" if (agreed and verdict != "fix") or kept else "no",
                 "number_agreed_strict": "yes" if (strict and verdict != "fix") or kept else "no",
                 "human_check": verdict,

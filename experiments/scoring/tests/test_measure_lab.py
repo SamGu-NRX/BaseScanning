@@ -514,7 +514,7 @@ def test_end_to_end_scores_and_decide_row_lands_in_checks(tmp_path: Path, capsys
     assert (
         "| `measure-lab` | ar_poses | 3/9 | 1.20 | 1.20 | 3/3 | 2 | 2 | 0 | 0 | 1 | 1 |" in stdout
     )
-    assert "| `measure-lab+rule` | 5/7 | 0 | 0 | 1 | 0 | 0 | 4 | 0 | 0 |" in stdout
+    assert "| `measure-lab+rule` | 5/7 | 0 | 0 | 1 | 0 | 0 | 5 | 0 | 0 |" in stdout
     assert "| `measure-lab` | no decisions |" in stdout
 
     with (csv_dir / "checks.csv").open(newline="") as handle:

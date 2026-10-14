@@ -34,7 +34,7 @@ CODE = {
     "repo": "https://github.com/microsoft/MoGe",
     "commit": "07444410f1e33f402353b99d6ccd26bd31e469e8",
 }
-LICENSE = "MIT"
+LICENSE = "weights unverified; code MIT"
 RESOLUTION_LEVEL = 9  # MoGe's default: 3600 ViT tokens, the top of its 1200-3600 range.
 
 

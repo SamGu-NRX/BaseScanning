@@ -1,5 +1,7 @@
 # Evals on real data
 
+Saved photo-geometry and pose-prior summaries predate the edge-cohort, fixed-camera-center, and shared-pose-noise fixes. They need dataset and model regeneration before use. The old Map3D report's CoverageMap comparison lacks a validated matching baseline and is no longer generated.
+
 **Question.** Can a phone's photos and AR tracking measure a house wall well enough for placement: about 4 in at p90 on 1 to 3 m spans? And does the app's coverage map claim only wall it saw (false-observed at most 0.5 ft)? Each bar was fixed before its run.
 
 **Run.** `cd experiments/evals && uv sync && make test`; each result has its own target (`make drift`, `make recon`, `make coverage`, …). Model runs need an Apple-silicon Mac, and the app-code checks need macOS 26 with Swift 6.2. [METHODS.md](METHODS.md) lists every target, prerequisite and dataset sha256.

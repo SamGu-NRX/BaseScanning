@@ -10,9 +10,11 @@ including each measurement's endpoints and the value keys they allow.
 import argparse
 import hashlib
 import json
+import lzma
 import sys
 import tempfile
 import zipfile
+import zlib
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal, localcontext
 from pathlib import Path
@@ -100,7 +102,7 @@ class Session:
     id: str
     started_at_uptime: Decimal
     measurements: dict[str, SessionMeasurement]
-    refusals: set[str]
+    refusals: dict[str, Decimal]
 
 
 def _number(value: Any, where: str) -> Decimal:
@@ -228,6 +230,15 @@ def load_session(path: Path, truth: Truth) -> Session:
                 raw = handle.read(MAX_SESSION_JSON_BYTES + 1)
     except zipfile.BadZipFile:
         raise InputError(f"{path}: not a zip file") from None
+    except (
+        NotImplementedError,
+        RuntimeError,
+        OSError,
+        EOFError,
+        zlib.error,
+        lzma.LZMAError,
+    ) as error:
+        raise InputError(f"{path}: cannot read session.json: {error}") from None
     where = f"{path}!{member}"
     if len(raw) > MAX_SESSION_JSON_BYTES:
         raise InputError(
@@ -289,11 +300,15 @@ def load_session(path: Path, truth: Truth) -> Session:
         _check_endpoints(entry, measurement, points, walls, f"{at} ({measurement_id})")
         measurements[measurement_id] = measurement
 
-    refusals: set[str] = set()
+    refusals: dict[str, Decimal] = {}
     for index, entry in enumerate(_list(data, "refusals", where)):
+        at = f"{where}: refusals[{index}]"
         if not isinstance(entry, dict):
-            raise InputError(f"{where}: refusals[{index}]: expected an object")
-        refusals.add(_text(entry.get("id"), f"{where}: refusals[{index}].id"))
+            raise InputError(f"{at}: expected an object")
+        refusal_id = _text(entry.get("id"), f"{at}.id")
+        if refusal_id in refusals:
+            raise InputError(f"{at}.id: refusal {refusal_id!r} is listed twice")
+        refusals[refusal_id] = _number(entry.get("time"), f"{at}.time")
 
     return Session(
         zip_path=path,
@@ -408,6 +423,7 @@ def _check_map(mapping: Map, session: Session, truth: Truth) -> None:
             'each to a session measurement, a refusal, "absent" or "unsupported"'
         )
     routes = _route_measurements(truth)
+    used_measurements: dict[str, str] = {}
     for survey_id, entry in mapping.entries.items():
         at = f"{where}: measurements.{survey_id}"
         if survey_id in routes and entry != "unsupported":
@@ -420,6 +436,13 @@ def _check_map(mapping: Map, session: Session, truth: Truth) -> None:
             raise InputError(f"{at}.refusal: {session.member} has no refusal {entry.refusal!r}")
         if not isinstance(entry, FromSession):
             continue
+        if entry.measurement in used_measurements:
+            raise InputError(
+                f"{at}.session_measurement: {entry.measurement!r} is already mapped to "
+                f"{used_measurements[entry.measurement]!r}; distinct survey distances need "
+                "distinct session measurements"
+            )
+        used_measurements[entry.measurement] = survey_id
         measurement = session.measurements.get(entry.measurement)
         if measurement is None:
             raise InputError(
@@ -511,13 +534,14 @@ def build_results(
         if survey_id in mapping.entries
     }
     times = [measurement.time for measurement in session.measurements.values()]
+    times.extend(session.refusals.values())
     capture_s = None
     if times:
         capture_s = (max(times) - session.started_at_uptime).quantize(
             SECONDS_PLACES, rounding=ROUND_HALF_UP
         )
-        if capture_s < 0:
-            raise InputError(f"{session.zip_path}: a measurement predates startedAtUptime")
+        if min(times) < session.started_at_uptime:
+            raise InputError(f"{session.zip_path}: a capture attempt predates startedAtUptime")
     return {
         "format": FORMAT,
         "unit": UNIT,

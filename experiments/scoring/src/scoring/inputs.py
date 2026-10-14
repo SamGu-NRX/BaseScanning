@@ -248,6 +248,14 @@ def refuse_output_over_inputs(outputs: Iterable[Path], inputs: Iterable[tuple[st
     """Stop before any write when an output file is one of the inputs, whether by the same path,
     another spelling of it, a symlink or a hard link."""
     inputs = list(inputs)
+    outputs = list(outputs)
+    for index, out_path in enumerate(outputs):
+        for other in outputs[:index]:
+            same = out_path.resolve() == other.resolve()
+            if not same and out_path.exists() and other.exists():
+                same = os.path.samefile(out_path, other)
+            if same:
+                raise InputError(f"{out_path} aliases output {other}; refusing to overwrite it")
     for out_path in outputs:
         out_resolved = out_path.resolve()
         for role, path in inputs:

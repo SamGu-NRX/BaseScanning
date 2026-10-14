@@ -1,3 +1,4 @@
 Fixtures/
+.fixtures-refresh.lock
 .build/
 .swiftpm/

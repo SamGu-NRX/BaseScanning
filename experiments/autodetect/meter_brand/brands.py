@@ -98,7 +98,7 @@ def within_one_edit(a: str, b: str) -> bool:
 def match_brand(line: str) -> str | None:
     """The canonical maker named in one recognised line, or None.
 
-    Long spellings match as a substring of the line, or one edit from a token or a pair of
+    Long spellings match whole tokens or one edit from a token or a pair of
     adjacent tokens (OCR drops or swaps a letter, or splits `LANDIS+GYR`). Short spellings such
     as `GE` must be a whole token, because they occur inside unrelated words.
     """
@@ -112,7 +112,7 @@ def match_brand(line: str) -> str | None:
             if alias in tokens:
                 return canon
             continue
-        if re.search(rf"(^| ){re.escape(alias)}($| )", norm) or alias.replace(" ", "") in norm.replace(" ", ""):
+        if re.search(rf"(^| ){re.escape(alias)}($| )", norm) or alias.replace(" ", "") in windows:
             return canon
         # One edit is allowed from 6 letters up: at 5, GENUS is one edit from "GE US".
         if len(alias.replace(" ", "")) >= 6 and any(within_one_edit(alias.replace(" ", ""), w.replace(" ", "")) for w in windows):

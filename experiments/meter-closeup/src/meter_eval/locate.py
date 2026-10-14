@@ -1,9 +1,9 @@
 """Q4 and Q5: find the meter number among everything Vision reads on a close-up.
 
 Candidates are the digit-bearing tokens of each recognized line plus decoded barcode
-payloads. A candidate is right when its core (see `match.core`) equals the labelled number's
-core, so "NO. 12345678" and "ABC 123456" count, while a longer string that merely contains
-the number, such as a barcode line "*XYZ1234567890…*", does not.
+payloads. A candidate is right when its label-stripped alphanumeric text equals the labelled
+number. Recognised printed labels such as "NO." are optional; serial letters such as ABC
+remain part of the number. A longer string that merely contains the number does not match.
 
 The rules and the ranking were written from the odd-numbered photos only (`--split dev`)
 and committed before the even-numbered photos were scored. The held-out set is split by
@@ -18,15 +18,13 @@ import argparse
 import csv
 import json
 import re
+from collections import Counter
 
-from meter_eval.match import core, digest, number_read
+from meter_eval.match import KEYWORD, digest, match_serial, number_core
 from meter_eval.ocr import Reader
 from meter_eval.paths import DATA_DIR, MANIFEST, RESULTS_DIR
 from meter_eval.stats import share
 
-# A label word in front of the number: No., Nr., №, #, S/N, Serial.
-# "#:" is how Vision renders the Taiwanese label 電號: in front of the number.
-KEYWORD = re.compile(r"^\s*(?:N[O0R]\.?|N°|№|#\s*:|S/?N|SERIAL\s*#?)\s*[.:#]?\s*", re.IGNORECASE)
 # Lines that describe the meter rather than identify it: ratings, voltages, constants, forms.
 SPEC = re.compile(
     r"\d\s*\(\s*\d+\s*\)|\d\s*V\b|HZ|\bKH\b|KH\s*\d|\bKT\b|\bTA\s*=?\s*\d|\bCL\s*\d|\d\s*CL\b|"
@@ -66,60 +64,49 @@ def tokens(text: str) -> list[str]:
     return [t for t in unique if digits(t) >= 4]
 
 
+def payload_fields(barcodes: list[dict]) -> list[str]:
+    """Validate each delimited barcode field independently, skipping unsupported fields."""
+    return [
+        token
+        for barcode in barcodes
+        for field in re.split(r"[;*,{}]+", barcode.get("payload") or "")
+        if (token := number_core(field))
+    ]
+
+
 def payload_tokens(barcodes: list[dict]) -> set[str]:
-    """Cores of the digit-bearing parts of every decoded payload."""
-    parts = set()
-    for barcode in barcodes:
-        for part in re.split(r"[\s;*,{}]+", barcode.get("payload") or ""):
-            if digits(part) >= 4:
-                parts.add(core(part))
-    return parts
+    """Cores of the digit-bearing fields of every decoded payload."""
+    return {token for token in payload_fields(barcodes) if digits(token) >= 4}
 
 
-def candidates(result: dict) -> list[dict]:
-    """Every candidate with the features the rules use.
-
-    A text token that equals a barcode payload part is confirmed. One that sits inside a
-    longer payload part (at least 6 characters) is a partial read of it, as when Vision drops
-    a digit or a prefix printed apart; the candidate then takes the payload's full string. If
-    two payloads of the same length both contain it, the read is ambiguous and not promoted.
-    """
+def candidates(
+    result: dict, target: str | None = None, *, target_digest: str | None = None
+) -> list[dict]:
+    """Admissible OCR candidates under the shared serial contract, with ranking features."""
     payloads = payload_tokens(result.get("barcodes") or [])
-    found = []
-    for line in result["lines"]:
-        text = line["text"]
-        _, _, w, h = line["box"]
-        for token in tokens(text):
-            token_core = core(token)
-            confirmed = token_core in payloads
-            if not confirmed and len(token_core) >= 6:
-                longer = [p for p in payloads if token_core in p]
-                shortest = min((len(p) for p in longer), default=0)
-                closest = [p for p in longer if len(p) == shortest]
-                # Promote only when one payload is the closest match; a tie is ambiguous.
-                if len(closest) == 1:
-                    token_core, confirmed = closest[0], True
-            found.append(
-                {
-                    "core": token_core,
-                    "box": line["box"],
-                    "barcode_confirmed": confirmed,
-                    "keyword": bool(KEYWORD.match(text))
-                    and not re.match(r"\s*CAT", text, re.IGNORECASE),
-                    "alone": core(KEYWORD.sub("", text)) == token_core,
-                    "spec": bool(SPEC.search(text)),
-                    "vertical": h > w,
-                    "zeros": set(token_core) <= {"0"},
-                    "length_ok": 6 <= len(token_core) <= 14 and digits(token_core) >= 5,
-                    "height": h,
-                }
-            )
+    found = match_serial(result["lines"], target, target_digest=target_digest)
+    # Ranking features describe the source row; retake checks use the candidate's own box.
+    row_counts = Counter(candidate["row_id"] for candidate in found)
+    for candidate in found:
+        token = candidate["core"]
+        _, _, width, height = candidate["row_box"]
+        candidate.update(
+            {
+                "barcode_confirmed": token in payloads,
+                "alone": row_counts[candidate["row_id"]] == 1,
+                "spec": bool(SPEC.search(candidate["text"])),
+                "vertical": height > width,
+                "zeros": set(token) <= {"0"},
+                "length_ok": 6 <= len(token) <= 14 and digits(token) >= 5,
+                "height": height,
+            }
+        )
     return found
 
 
 def near_barcode(candidate: dict, barcodes: list[dict]) -> bool:
     """The candidate's line sits within 1.5 line heights above or below a barcode it overlaps."""
-    x, y, w, h = candidate["box"]
+    x, y, w, h = candidate.get("row_box", candidate["box"])
     for b in barcodes:
         bx, by, bw, bh = b["box"]
         overlaps = min(x + w, bx + bw) - max(x, bx) > 0.3 * min(w, bw)
@@ -147,9 +134,9 @@ def score(c: dict) -> float:
     )
 
 
-def top_candidate(result: dict) -> dict | None:
-    """The phone's best guess at the number's line: the highest-scoring candidate."""
-    return best(candidates(result))
+def top_candidate(result: dict, target: str | None = None) -> dict | None:
+    """Best admissible candidate under the blind heuristic score."""
+    return best(candidates(result, target))
 
 
 def ranked(found: list[dict]) -> list[str]:
@@ -188,6 +175,7 @@ def rules(found: list[dict], barcodes: list[dict]) -> dict[str, dict | None]:
 
 def scan(rows: list[dict]) -> dict[str, dict]:
     raw_path = DATA_DIR / "ocr" / "scan.jsonl"
+    raw_path.parent.mkdir(parents=True, exist_ok=True)
     results = {}
     with Reader() as reader, raw_path.open("w") as raw:
         for row in rows:
@@ -201,12 +189,7 @@ def barcode_stats(row: dict, result: dict) -> dict:
     barcodes = result.get("barcodes") or []
     payloads = [b["payload"] for b in barcodes if b.get("payload")]
     target = row["number_core_hmac"]
-    length = int(row["number_core_len"] or 0)
-    has_number = any(
-        digest(core(p)[i : i + length]) == target
-        for p in payloads
-        for i in range(len(core(p)) - length + 1)
-    )
+    has_number = any(digest(token) == target for token in payload_fields(barcodes))
     return {
         "barcode_found": int(bool(barcodes)),
         "barcode_decoded": int(bool(payloads)),
@@ -244,14 +227,13 @@ def evaluate(row: dict, result: dict, split: str) -> dict:
     out |= barcode_stats(row, result)
     if row["number_agreed"] != "yes":
         return out
-    out["read"] = int(
-        number_read(result["lines"], row["number_hmac"], int(row["number_len"]), lenient=False)
-    )
-    found = candidates(result)
     target = row["number_core_hmac"]
+    # Keep ground truth out of candidate generation, ranking and rule selection.
+    found = candidates(result)
     order = ranked(found)
     hits = [i for i, c in enumerate(order) if digest(c) == target]
-    out["rank"] = hits[0] + 1 if hits else ""
+    out["rank"] = hits[0] + 1 if hits else None
+    out["read"] = int(out["rank"] is not None)
     out["candidates"] = len(order)
     for name, pick in rules(found, result.get("barcodes") or []).items():
         out[name] = "" if pick is None else int(digest(pick["core"]) == target)
@@ -311,19 +293,19 @@ def rule_table(rows: list[dict], names: list[str]) -> str:
                 f"{share(right, len(subset))} |"
             )
         for k in (1, 3):
-            hit = sum(1 for r in read if r["rank"] != "" and r["rank"] <= k)
+            hit = sum(1 for r in read if r["rank"] is not None and r["rank"] <= k)
             out.append(
                 f"| ranking, top {k}, over read photos only | {len(read)} | – | "
                 f"{share(hit, len(read))} |"
             )
         # End to end: a photo Vision did not read cannot offer the number, so it is a miss.
         for k in (1, 3):
-            hit = sum(1 for r in subset if r["rank"] != "" and r["rank"] <= k)
+            hit = sum(1 for r in subset if r["rank"] is not None and r["rank"] <= k)
             out.append(
                 f"| ranking, top {k}, over every agreed photo (unread count as misses) | "
                 f"{len(subset)} | – | {share(hit, len(subset))} |"
             )
-        present = sum(1 for r in read if r["rank"] != "")
+        present = sum(1 for r in read if r["rank"] is not None)
         out.append(
             f"| number is any candidate, over read photos (ceiling) | {len(read)} | – | "
             f"{share(present, len(read))} |\n"

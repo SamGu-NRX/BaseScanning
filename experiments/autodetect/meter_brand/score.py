@@ -70,7 +70,8 @@ def pick_unlisted(lines: list[dict]) -> str | None:
 def names_brand(text: str | None, brand: str) -> bool:
     if not text:
         return False
-    return match_brand(text) == brand or normalise(brand).replace(" ", "") in normalise(text).replace(" ", "")
+    return match_brand(text) == brand or bool(re.search(
+        rf"(?:^| ){re.escape(normalise(brand))}(?:$| )", normalise(text)))
 
 
 def note_head(pid: str, manifest: dict[str, dict]) -> str:

@@ -15,4 +15,11 @@
 - Two phone-side retake checks work: whole-photo sharpness of 6.68 or less, and a top candidate 33.9 px tall or less. Glare, framing and hand shake have none.
 - The labels come from two AI readers, not people.
 
+These figures use the earlier matcher that discarded arbitrary leading serial letters. The current
+ranking and read scorer share a row matcher: labels and ratings are boundaries, adjacent
+numeric groups cannot be omitted, and ranking uses only blind heuristic features. A read means
+an admissible candidate matches the target; its rank is its position in that blind order. Rebuild the private number-core
+labels and rerun the ranking evaluation before attributing those figures to the current code;
+that dataset rerun has not been performed.
+
 **What it changed.** The app offers three candidates to tap, barcode match first, and asks for a retake when the photo is blurry or the number too small ([PORTING.md](PORTING.md), [FIELD_TEST.md](FIELD_TEST.md)). Tables are in [results/](results/).

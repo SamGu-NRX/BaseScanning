@@ -117,6 +117,7 @@ def train(epochs: int, batch: int = 4, max_steps: int | None = None) -> None:
     gt = ground_truth("oi_train")
     rng = random.Random(SEED)
     step, t0 = 0, time.perf_counter()
+    (DATA / "student").mkdir(parents=True, exist_ok=True)
     log = open(DATA / "student" / "dfine_small_train.log", "a")
     for epoch in range(epochs):
         losses = []
