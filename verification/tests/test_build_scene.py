@@ -171,3 +171,19 @@ def test_clipped_tail_probes_stay_within_the_wall(length):
     assert probes and all(0.0 <= p <= length for p in probes)
     assert spans == [[0.0, length]]
     assert entries[0]["span_ft"] == [0.0, length]
+
+
+def test_clipped_overhead_tail_retains_the_active_headroom():
+    points = []
+
+    def within_wall(kf, w, point, walls):
+        points.append(point)
+        return 0.0 <= point[0] <= 2.2
+
+    entries, spans = build_scene.band_coverage(
+        "overhead", [wall("w", 0.0, 2.2)], [], ["kf"], within_wall, headroom_ft=7.25
+    )
+    assert max(float(point[1]) for point in points) == 7.25
+    assert all(0.0 <= point[0] <= 2.2 for point in points)
+    assert entries == [{"band": "overhead", "span_ft": [0.0, 2.2], "out_ft": 7.25}]
+    assert spans == [[0.0, 2.2]]

@@ -2,15 +2,6 @@ import LiveDotsCore
 import Metal
 import simd
 
-/// How the unmeasured world is shown.
-enum FogStyle: String, CaseIterable {
-    /// The fog layer: one continuous haze that dissolves where dots arrive.
-    case on
-    /// The old comparison: a flat 35% veil over 30 cm wall cells no dot has reached.
-    case veil
-    case off
-}
-
 /// The fog layer's GPU state: the 96 x 208 reveal mask, its blur, the lagged copy that carries
 /// from frame to frame, and each keyframe's depth for the depth term. The shaders and what they
 /// borrow are described at the fog section of Shaders.swift.

@@ -57,11 +57,9 @@ WINDOW_FT = (10, 20, 30)
 RANGE_SIGMAS_M = (0.05, 0.10, 0.20)
 GRADED_SIGMA_M = 0.10
 RANGE_DRAWS = 20
-# A3, added after review: the across-travel axis is a wall's normal only while the walk runs
-# straight along the wall, and the walks carry no wall annotations. Windows whose reference path
-# stays within this distance of its own start-to-end line stand in for a walk along a wall. Both
-# widths are untuned guesses at how straight a homeowner keeps to a wall, reported side by side.
-WALL_PARALLEL_M = (0.25, 0.5)
+# Chord deviation selects straight paths; without wall annotations it cannot select paths
+# parallel to a wall. The widths are untuned and not pre-registered.
+STRAIGHT_PATH_M = (0.25, 0.5)
 SEED = 0
 
 
@@ -285,11 +283,11 @@ def a3_a4(walks: list[Walk]) -> tuple[dict, dict]:
                 "median_horizontal_in": float(np.median(horiz)) / INCH,
                 "p90_vertical_in": p90(np.abs(err[:, 1])) / INCH,
                 "p90_3d_in": p90(np.linalg.norm(err, axis=1)) / INCH,
-                "wall_parallel": {
+                "straight_path": {
                     f"{m:.2f}": split_p90(err[dev <= m], ref[dev <= m])
                     if (dev <= m).any()
                     else None
-                    for m in WALL_PARALLEL_M
+                    for m in STRAIGHT_PATH_M
                 },
             }
             true_range = np.linalg.norm(ref, axis=1)
@@ -482,20 +480,19 @@ def markdown(meta: dict, r1: dict, r2: dict, r3: dict, r4: dict, r5: dict) -> st
         )
         + ".",
         "",
-        "Added after review: a wall plane removes the error along the wall's normal, and that is "
-        "the across-travel axis only while the walk runs straight along the wall. In windows that "
-        "turn, across holds some along-wall error and along holds some error a plane would remove, "
-        "so the graded split above cannot by itself say whether a plane helps. The walks have no "
-        "wall annotations, so the windows below stand in for a walk along a wall: those whose "
-        "reference path stays within the given distance of its own start-to-end line. The widths "
-        "are untuned and not pre-registered.",
+        "### Straight-path check",
         "",
-        "| Data | Walked | Within | Windows | Along | Across | Horizontal total | Along / total |",
+        "The windows below have reference paths within the given distance of their own "
+        "start-to-end line. This checks the along/across split on straight paths. The walks have "
+        "no wall annotations, so it cannot identify wall-parallel travel or measure the benefit "
+        "of a wall-plane constraint. The widths are untuned and not pre-registered.",
+        "",
+        "| Data | Walked | Max chord deviation | Windows | Along | Across | Horizontal total | Along / total |",
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for d, x in r3.items():
         for ft, y in x.items():
-            for m, z in y["wall_parallel"].items():
+            for m, z in y["straight_path"].items():
                 if z is None:
                     L.append(f"| {names[d]} | {ft} ft | {m} m | 0 | | | | |")
                     continue

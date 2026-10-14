@@ -48,13 +48,16 @@ def test_the_recorded_flows_pass(sequence):
     ("sequence", "problem"),
     [
         # A cached or prebuilt scan shown straight away: no capture, no upload.
-        ("onboarding>result>resultAR>result", "no findMeter at all"),
+        ("onboarding>result>resultAR>result", "result before findMeter"),
         # Captured, then a result with no upload behind it.
-        ("onboarding>findMeter>meterCloseUp>wallWalk>markFeatures>result", "no uploading after"),
+        (
+            "onboarding>findMeter>meterCloseUp>wallWalk>markFeatures>result",
+            "result before uploading",
+        ),
         # Uploaded before the walk that should have produced the scan.
         (
             "onboarding>uploading>findMeter>meterCloseUp>wallWalk>markFeatures>result",
-            "no uploading after markFeatures",
+            "result before uploading",
         ),
         # The answer asked for more, the app showed the request, then the result without sending.
         (

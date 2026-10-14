@@ -257,3 +257,29 @@ with open(sys.argv[1]) as lock:
     with simrun.device_lock():
         assert subprocess.run(cmd, timeout=5, check=False).returncode == 43
     assert subprocess.run(cmd, timeout=5, check=False).returncode == 0
+
+
+@pytest.mark.parametrize("prefix", [[], ["findMeter"], ["findMeter", "uploading"]])
+def test_early_result_cannot_be_hidden_by_a_later_complete_flow(prefix):
+    order = ["findMeter", "meterCloseUp", "wallWalk", "markFeatures", "uploading", "result"]
+    states = [shot(name) for name in [*prefix, "result", *order]]
+    assert simrun.out_of_order(order, states)
+    assert simrun.out_of_order(order, [shot(name) for name in order]) == []
+
+
+def test_order_still_allows_intermediate_states_and_completed_recapture():
+    order = ["findMeter", "uploading", "result"]
+    states = [
+        shot(name)
+        for name in [
+            "onboarding",
+            "findMeter",
+            "wallWalk",
+            "uploading",
+            "gapRequest",
+            "markFeatures",
+            "uploading",
+            "result",
+        ]
+    ]
+    assert simrun.out_of_order(order, states) == []

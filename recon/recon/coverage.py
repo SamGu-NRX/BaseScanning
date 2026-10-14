@@ -124,25 +124,20 @@ class SeenFromTwo:
 
     The volume's weight alone says only that some frame's ray reached a voxel, so one view could
     vouch for a clearance; wall and ground already need two positions, and so does free space.
-    Frames are stacked so each query is one pass over all of them."""
+    Queries project one frame at a time in bounded point batches, without copying the depth maps."""
 
     def __init__(self, vol: Volume, frames: list[Frame], depths: dict[str, Depth]):
         self.vol, self.voxel = vol, vol.voxel
         self.centres = np.array([f.center for f in frames]).reshape(-1, 3)
-        # free_space asks once per slab, thousands of times, about the same frames.
+        # Camera separation and partner masks stay the same across every slab batch.
         self.far = far_pairs(self.centres)
         T = np.array([f.cam_to_world for f in frames]).reshape(-1, 4, 4)
         self.R, self.C = T[:, :3, :3], T[:, :3, 3]
         self.K = np.array([f.intrinsics for f in frames], float).reshape(-1, 4)
         self.size = np.array([(f.width, f.height) for f in frames], float).reshape(-1, 2)
-        self.groups: list[tuple[np.ndarray, np.ndarray, np.ndarray]] = []
-        by_shape: dict[tuple[int, int], list[int]] = {}
-        for j, f in enumerate(frames):
-            by_shape.setdefault(depths[f.id].depth.shape, []).append(j)
-        for idx in by_shape.values():
-            stack = np.stack([depths[frames[j].id].depth for j in idx])
-            scale = stack.shape[2] / self.size[idx, 0]
-            self.groups.append((np.array(idx), stack, scale))
+        self.depths = [depths[f.id].depth for f in frames]
+        self.partner_bits = np.packbits(self.far.astype(bool), axis=1)
+        self.partner_frames = np.flatnonzero(self.partner_bits.any(axis=1))
 
     def occupied(self, points: np.ndarray) -> np.ndarray:
         return self.vol.occupied(points)
@@ -150,33 +145,68 @@ class SeenFromTwo:
     def seen_through(self, points: np.ndarray) -> np.ndarray:
         """(N, frames) bool: frame j's ray reached point i."""
         out = np.zeros((len(points), len(self.C)), bool)
-        for idx, stack, scale in self.groups:
-            d = points[None] - self.C[idx, None]  # (F, N, 3)
-            dist = np.linalg.norm(d, axis=2)
-            p = np.einsum("fnk,fkc->fnc", d, self.R[idx])  # camera axes, as in seen_by
-            z = -p[..., 2]
-            fx, fy, cx, cy = (self.K[idx, k, None] for k in range(4))
-            w, h = self.size[idx, 0, None], self.size[idx, 1, None]
+        for j, depth_map in enumerate(self.depths):
+            d = points - self.C[j]
+            dist = np.linalg.norm(d, axis=1)
+            p = d @ self.R[j]  # camera axes, as in seen_by
+            z = -p[:, 2]
+            fx, fy, cx, cy = self.K[j]
+            w, h = self.size[j]
             with np.errstate(divide="ignore", invalid="ignore"):
-                u = cx + fx * p[..., 0] / z
-                v = cy - fy * p[..., 1] / z
+                u = cx + fx * p[:, 0] / z
+                v = cy - fy * p[:, 1] / z
             ok = (dist > 0.1) & (dist <= MAX_RANGE_M) & (z > 0.05)
             ok &= (u >= w * IMAGE_MARGIN) & (u <= w * (1 - IMAGE_MARGIN))
             ok &= (v >= h * IMAGE_MARGIN) & (v <= h * (1 - IMAGE_MARGIN))
-            dh, dw = stack.shape[1:]
-            f_i, n_i = np.nonzero(ok)
-            du = np.clip((u[f_i, n_i] * scale[f_i]).astype(np.int64), 0, dw - 1)
-            dv = np.clip((v[f_i, n_i] * scale[f_i]).astype(np.int64), 0, dh - 1)
-            measured = stack[f_i, dv, du]
-            reached = np.isfinite(measured) & (measured >= z[f_i, n_i] - tolerance(dist[f_i, n_i]))
-            out[n_i[reached], idx[f_i[reached]]] = True
+            n_i = np.flatnonzero(ok)
+            dh, dw = depth_map.shape
+            scale = dw / w
+            du = np.clip((u[n_i] * scale).astype(np.int64), 0, dw - 1)
+            dv = np.clip((v[n_i] * scale).astype(np.int64), 0, dh - 1)
+            measured = depth_map[dv, du]
+            reached = np.isfinite(measured) & (measured >= z[n_i] - tolerance(dist[n_i]))
+            out[n_i[reached], j] = True
+
         return out
 
     def observed(self, points: np.ndarray) -> np.ndarray:
         seen = self.vol.observed(points)
-        if not seen.any():
-            return seen
-        return seen & two_positions(self.seen_through(points), self.centres, self.far)
+        if not seen.any() or not len(self.partner_frames):
+            return np.zeros_like(seen)
+        result = np.zeros_like(seen)
+        indices = np.flatnonzero(seen)
+        chunk = min(VIEW_POINTS_PER_BATCH, max(1, VIEW_SAMPLES_PER_BATCH // len(self.C)))
+        for start in range(0, len(indices), chunk):
+            idx = indices[start : start + chunk]
+            result[idx] = _two_positions_packed(
+                self.seen_through(points[idx]), self.partner_bits, self.partner_frames
+            )
+        return result
+
+
+# Bound each visibility matrix to 1 MiB and each per-frame projection to 4096 points, even when
+# a caller passes all points along a long wall. These are allocation limits, not measured tuning.
+VIEW_SAMPLES_PER_BATCH = 2**20
+VIEW_POINTS_PER_BATCH = 4096
+
+
+def _two_positions_packed(
+    saw: np.ndarray, partners: np.ndarray, partner_frames: np.ndarray | None = None
+) -> np.ndarray:
+    """Exact two-view test using packed partner masks instead of N x F by F x F multiplication.
+    A row stops once one visible frame has another visible, sufficiently separated partner."""
+    packed = np.packbits(saw, axis=1)
+    result = np.zeros(len(saw), bool)
+    eligible = np.count_nonzero(saw, axis=1) >= 2
+    if partner_frames is None:
+        partner_frames = np.flatnonzero(partners.any(axis=1))
+    for j in partner_frames:
+        idx = np.flatnonzero(eligible & ~result & saw[:, j])
+        if len(idx):
+            result[idx] = (packed[idx] & partners[j]).any(axis=1)
+        if np.all(result | ~eligible):
+            break
+    return result
 
 
 def face_offsets(wall: WallFrame, mesh: Mesh, cells: np.ndarray) -> np.ndarray:
@@ -281,7 +311,24 @@ def wall_front(wall: WallFrame, vol: Volume, across: np.ndarray) -> float:
     return front + vol.voxel
 
 
-def free_space(wall: WallFrame, vol: Volume, cells: np.ndarray):
+# At 5 cm voxels a facing batch has 3 x 31 x 16 = 1488 points, below the projection limit.
+# Keep short marches bounded too: a failed slab evaluates at most the rest of its 16-step batch.
+SLABS_PER_BATCH = 16
+
+
+def _slabs(wall: WallFrame, vol, across, heights, outs, *, axis: int):
+    """Occupied and observed flags per facing step (axis=2) or overhead step (axis=1)."""
+    if axis not in (1, 2):
+        raise ValueError("slab axis must be height (1) or outward distance (2)")
+    S, Hh, Oo = np.meshgrid(across, heights, outs, indexing="ij")
+    points = wall.world(S, Hh, Oo).reshape(-1, 3)
+    reduce = (0, 1) if axis == 2 else (0, 2)
+    occupied = vol.occupied(points).reshape(S.shape).any(axis=reduce)
+    seen = vol.observed(points).reshape(S.shape).all(axis=reduce)
+    return occupied, seen
+
+
+def free_space(wall: WallFrame, vol: Volume | SeenFromTwo, cells: np.ndarray):
     """Per cell: (facing gap or NaN, facing clear, overhead clearance or NaN, overhead clear).
     The facing gap and clear distance are measured out from the wall's reconstructed front, not
     from the fitted plane: in front of a pilaster 0.3 m proud, something 1.3 m out of the plane
@@ -294,27 +341,45 @@ def free_space(wall: WallFrame, vol: Volume, cells: np.ndarray):
     facing_gap, facing_clear = np.full(n, np.nan), np.zeros(n)
     over_gap, over_clear = np.full(n, np.nan), np.zeros(n)
     fh = np.arange(FACING_BAND_M[0], FACING_BAND_M[1] + 1e-9, step)
+    raw = vol.vol if isinstance(vol, SeenFromTwo) else vol
     for c in range(n):
         across = cells[c] + CELL_M * np.array([0.25, 0.5, 0.75])
-        front = wall_front(wall, vol, across)
-        for out in np.arange(front + step, front + FACING_MAX_M, step):
-            share, seen = _slab(wall, vol, across, fh, [out])
-            # Any reconstructed occupied voxel stops clearance, including one-step thin rails.
-            if share > 0:
-                facing_gap[c] = max(0.0, out - step - front)
+        front = wall_front(wall, raw, across)
+        outs = np.arange(front + step, front + FACING_MAX_M, step)
+        for start in range(0, len(outs), SLABS_PER_BATCH):
+            chunk = outs[start : start + SLABS_PER_BATCH]
+            occupied, seen = _slabs(wall, vol, across, fh, chunk, axis=2)
+            stopped = False
+            for out, hit, observed in zip(chunk, occupied, seen, strict=True):
+                # Any occupied sampled voxel stops clearance, including one-step thin rails.
+                if hit:
+                    facing_gap[c] = max(0.0, out - step - front)
+                    stopped = True
+                    break
+                if not observed:
+                    stopped = True
+                    break
+                facing_clear[c] = out - front
+            if stopped:
                 break
-            if not seen:
-                break
-            facing_clear[c] = out - front
         oo = front + np.arange(OVERHEAD_OUT_M[0], OVERHEAD_OUT_M[1] + 1e-9, step)
-        for h in np.arange(0.3, OVERHEAD_MAX_M, step):
-            share, seen = _slab(wall, vol, across, [h], oo)
-            if share > 0:
-                over_gap[c] = max(0.0, h - step)
+        heights = np.arange(0.3, OVERHEAD_MAX_M, step)
+        for start in range(0, len(heights), SLABS_PER_BATCH):
+            chunk = heights[start : start + SLABS_PER_BATCH]
+            occupied, seen = _slabs(wall, vol, across, chunk, oo, axis=1)
+            stopped = False
+            for h, hit, observed in zip(chunk, occupied, seen, strict=True):
+                if hit:
+                    over_gap[c] = max(0.0, h - step)
+                    stopped = True
+                    break
+                if not observed:
+                    stopped = True
+                    break
+                over_clear[c] = h
+            if stopped:
                 break
-            if not seen:
-                break
-            over_clear[c] = h
+
     return facing_gap, facing_clear, over_gap, over_clear
 
 

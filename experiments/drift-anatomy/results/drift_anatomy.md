@@ -132,9 +132,11 @@ The evals' windows: from every image (MARViN) or every 0.5 s (ADVIO) until the r
 
 Criterion at 20 ft: along p90 at most 0.60 of the horizontal total p90. MARViN 0.92, FAIL; ADVIO 0.76, FAIL.
 
-Added after review: a wall plane removes the error along the wall's normal, and that is the across-travel axis only while the walk runs straight along the wall. In windows that turn, across holds some along-wall error and along holds some error a plane would remove, so the graded split above cannot by itself say whether a plane helps. The walks have no wall annotations, so the windows below stand in for a walk along a wall: those whose reference path stays within the given distance of its own start-to-end line. The widths are untuned and not pre-registered.
+### Straight-path check
 
-| Data | Walked | Within | Windows | Along | Across | Horizontal total | Along / total |
+The windows below have reference paths within the given distance of their own start-to-end line. This checks the along/across split on straight paths. The walks have no wall annotations, so it cannot identify wall-parallel travel or measure the benefit of a wall-plane constraint. The widths are untuned and not pre-registered.
+
+| Data | Walked | Max chord deviation | Windows | Along | Across | Horizontal total | Along / total |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | MARViN | 10 ft | 0.25 m | 3601 | 5.8 | 2.1 | 6.2 | 0.95 |
 | MARViN | 10 ft | 0.50 m | 4489 | 5.9 | 2.3 | 6.3 | 0.94 |

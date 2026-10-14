@@ -657,3 +657,167 @@ def test_transformed_answer_checks_its_own_hash(monkeypatch):
     )
     assert calls and all(raw == json.dumps(scene, indent=1).encode() for scene, raw in calls)
     assert any("stale input hash" in p for p in failures)
+
+
+def test_connection_and_handshake_share_one_remaining_budget(monkeypatch):
+    import socket
+    import ssl
+
+    clock = [0.0]
+    phases = []
+
+    class FakeSocket:
+        def settimeout(self, timeout):
+            phases.append(timeout)
+
+        def connect(self, address):
+            clock[0] += 0.6
+
+        def do_handshake(self):
+            assert phases[-1] == pytest.approx(0.4)
+            clock[0] += 0.5
+            raise TimeoutError
+
+        def close(self):
+            pass
+
+        def shutdown(self, how):
+            pass
+
+    sock = FakeSocket()
+
+    class Context:
+        def wrap_socket(self, raw, *, server_hostname, do_handshake_on_connect):
+            assert raw is sock and not do_handshake_on_connect
+            return sock
+
+    monkeypatch.setattr(e2e.time, "perf_counter", lambda: clock[0])
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *args, **kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 443))],
+    )
+    monkeypatch.setattr(socket, "socket", lambda *args: sock)
+    monkeypatch.setattr(ssl, "create_default_context", Context)
+    status, payload, ms = e2e.post(
+        "https://localhost", Endpoint("/p", "application/json"), item(), 1
+    )
+    assert status is None and payload == b"no answer within 1 s"
+    assert phases[:2] == pytest.approx([1.0, 0.4])
+    assert ms == pytest.approx(1100)
+
+
+@pytest.mark.parametrize("phase", ["dns", "tcp", "tls"])
+def test_deadline_bounds_blocked_connection_phase_and_cleans_worker(monkeypatch, phase):
+    import socket
+    import ssl
+
+    entered, release, exited, closed = (threading.Event() for _ in range(4))
+
+    def block():
+        entered.set()
+        assert release.wait(2)
+        raise TimeoutError
+
+    class FakeSocket:
+        def settimeout(self, timeout):
+            assert 0 < timeout <= 0.1
+
+        def connect(self, address):
+            if phase == "tcp":
+                block()
+
+        def do_handshake(self):
+            block()
+
+        def shutdown(self, how):
+            release.set()
+
+        def close(self):
+            closed.set()
+
+    sock = FakeSocket()
+
+    def lookup(*args, **kwargs):
+        if phase == "dns":
+            entered.set()
+            assert release.wait(2)
+        return [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 443))]
+
+    class Context:
+        def wrap_socket(self, raw, **kwargs):
+            assert not kwargs["do_handshake_on_connect"]
+            return raw
+
+    original_thread = threading.Thread
+    workers = []
+
+    def thread(*args, target, **kwargs):
+        def run():
+            try:
+                target()
+            finally:
+                exited.set()
+
+        worker = original_thread(*args, target=run, **kwargs)
+        workers.append(worker)
+        return worker
+
+    monkeypatch.setattr(e2e.threading, "Thread", thread)
+    monkeypatch.setattr(socket, "getaddrinfo", lookup)
+    monkeypatch.setattr(socket, "socket", lambda *args: sock)
+    monkeypatch.setattr(ssl, "create_default_context", Context)
+    try:
+        status, payload, ms = e2e.post(
+            "https://localhost", Endpoint("/p", "application/json"), item(), 0.1
+        )
+        assert entered.is_set()
+        assert status is None and payload == b"no answer within 0.1 s"
+        assert 90 <= ms < 500
+        if phase != "dns":
+            assert closed.is_set()
+    finally:
+        release.set()
+        for worker in workers:
+            worker.join(2)
+        assert exited.is_set() and all(not w.is_alive() for w in workers)
+    if phase == "dns":
+        assert not closed.is_set()  # no socket can be allocated after late DNS completes
+
+
+def test_stalled_local_tls_handshake_ends_with_overall_deadline():
+    import socket
+
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    listener.settimeout(2)
+    stopped, accepted, disconnected = (threading.Event() for _ in range(3))
+
+    def peer():
+        with listener:
+            conn, _ = listener.accept()
+            with conn:
+                conn.settimeout(2)
+                accepted.set()
+                while conn.recv(4096):
+                    pass  # read ClientHello but never answer with ServerHello
+                disconnected.set()
+        stopped.set()
+
+    server = threading.Thread(target=peer)
+    server.start()
+    try:
+        status, payload, ms = e2e.post(
+            f"https://127.0.0.1:{listener.getsockname()[1]}",
+            Endpoint("/p", "application/json"),
+            item(),
+            0.2,
+        )
+        assert accepted.is_set()
+        assert status is None and payload == b"no answer within 0.2 s"
+        assert 150 <= ms < 1000
+        assert disconnected.wait(2)
+    finally:
+        server.join(3)
+        assert not server.is_alive() and stopped.is_set()

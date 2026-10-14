@@ -45,6 +45,7 @@ import os
 import re
 import signal
 import socket
+import ssl
 import subprocess
 import sys
 import threading
@@ -376,8 +377,8 @@ def post(
     Status None means no complete answer, and the payload then says why: the deadline passed,
     the body ran past MAX_RESPONSE_BYTES, it ended short of its Content-Length or chunk framing,
     or the connection failed. A socket timeout alone bounds
-    each read, not the response, so a server trickling bytes would never trip it; a timer shuts
-    the socket down at the deadline instead, which wakes any read in progress."""
+    each read, not the response. A bounded worker wait covers DNS as well as TCP, TLS, headers
+    and body; deadline expiry shuts down sockets already owned by the worker."""
     if item.bundle is not None and endpoint.accepts_zip:
         body, ctype = item.bundle, "application/zip"
     elif endpoint.content_type == "application/json":
@@ -395,57 +396,108 @@ def post(
         ctype = f"multipart/form-data; boundary={boundary}"
     target = urllib.parse.urlsplit(url + endpoint.path)
     https = target.scheme == "https"
-    conn = (http.client.HTTPSConnection if https else http.client.HTTPConnection)(
-        target.netloc, timeout=timeout_s
+    conn = http.client.HTTPConnection(
+        target.hostname, port=target.port or (443 if https else 80), timeout=timeout_s
     )
+    start = time.perf_counter()
+    deadline = start + timeout_s
     expired = threading.Event()
-    # Held here, not read from conn.sock: http.client drops that once the headers say the
-    # connection will close, while the body is still being read from the same socket.
+    done = threading.Event()
+    lock = threading.Lock()
     sockets: list[socket.socket] = []
+    answer: list[tuple[int | None, bytes]] = []
+
+    def remaining() -> float:
+        left = deadline - time.perf_counter()
+        if expired.is_set() or left <= 0:
+            raise TimeoutError
+        return left
 
     def expire() -> None:
-        expired.set()
-        for sock in sockets:
-            with contextlib.suppress(OSError):
-                sock.shutdown(socket.SHUT_RDWR)
+        with lock:
+            expired.set()
+            for sock in sockets:
+                with contextlib.suppress(OSError):
+                    sock.shutdown(socket.SHUT_RDWR)
+                sock.close()
 
-    timer = threading.Timer(timeout_s, expire)
-    timer.daemon = True
-    start = time.perf_counter()
-    timer.start()
-    status: int | None = None
-    payload = bytearray()
-    try:
-        conn.connect()
-        sockets.append(conn.sock)
-        if expired.is_set():  # the timer fired before there was a socket to shut down
-            raise TimeoutError
-        path = target.path + (f"?{target.query}" if target.query else "")
-        conn.request("POST", path, body=body, headers={"Content-Type": ctype})
-        response = conn.getresponse()
-        while len(payload) <= MAX_RESPONSE_BYTES and (chunk := response.read(READ_CHUNK_BYTES)):
-            payload += chunk
-        # read(amt) returns b"" when the server closes early, even short of Content-Length
-        # (http.client stays quiet there for compatibility), and `length` keeps what never came.
-        # A body cut short is not an answer, whatever its status says.
-        if len(payload) <= MAX_RESPONSE_BYTES and response.length:
-            raise http.client.IncompleteRead(bytes(payload), response.length)
-        status = response.status
-    except TimeoutError:
-        # One socket operation waited the whole timeout_s, so the deadline has passed too.
-        expired.set()
-    except (OSError, http.client.HTTPException) as exc:
-        status, payload = None, bytearray(f"{type(exc).__name__}: {exc}".encode())
-    finally:
-        timer.cancel()
-        conn.close()
+    def connect() -> None:
+        # getaddrinfo has no cancellable stdlib deadline. The daemon worker bounds the caller's
+        # wait; a late DNS result must check the deadline before allocating or sending anything.
+        addresses = socket.getaddrinfo(conn.host, conn.port, type=socket.SOCK_STREAM)
+        error = None
+        for family, kind, proto, _, address in addresses:
+            with lock:
+                remaining()
+                sock = socket.socket(family, kind, proto)
+                sockets.append(sock)  # own it before a blocking TCP connect or TLS handshake
+            try:
+                sock.settimeout(remaining())
+                sock.connect(address)
+                if https:
+                    context = ssl.create_default_context()
+                    with lock:
+                        remaining()
+                        sock = context.wrap_socket(
+                            sock, server_hostname=conn.host, do_handshake_on_connect=False
+                        )
+                        sockets.append(sock)
+                    sock.settimeout(remaining())
+                    sock.do_handshake()
+                sock.settimeout(remaining())
+                conn.sock = sock
+                return
+            except OSError as exc:
+                sock.close()
+                error = exc
+                remaining()
+        if error is not None:
+            raise error
+        raise OSError("DNS returned no connection addresses")
+
+    def exchange() -> None:
+        status: int | None = None
+        payload = bytearray()
+        try:
+            connect()
+            path = target.path + (f"?{target.query}" if target.query else "")
+            conn.sock.settimeout(remaining())
+            conn.request("POST", path, body=body, headers={"Content-Type": ctype})
+            conn.sock.settimeout(remaining())
+            response = conn.getresponse()
+            while len(payload) <= MAX_RESPONSE_BYTES and (chunk := response.read(READ_CHUNK_BYTES)):
+                remaining()
+                payload += chunk
+            if len(payload) <= MAX_RESPONSE_BYTES and response.length:
+                raise http.client.IncompleteRead(bytes(payload), response.length)
+            remaining()
+            status = response.status
+        except TimeoutError:
+            expired.set()
+        except (OSError, http.client.HTTPException) as exc:
+            status, payload = None, bytearray(f"{type(exc).__name__}: {exc}".encode())
+        finally:
+            conn.close()
+            with lock:
+                for sock in sockets:
+                    sock.close()
+            answer.append((status, bytes(payload)))
+            done.set()
+
+    # DNS may remain blocked after this returns. The worker is a daemon and owns no socket
+    # during DNS; once lookup returns, remaining() prevents a late request from being sent.
+    worker = threading.Thread(target=exchange, daemon=True)
+    worker.start()
+    if not done.wait(max(0.0, deadline - time.perf_counter())):
+        expire()
     ms = (time.perf_counter() - start) * 1000
-    if expired.is_set():
-        # A read cut short by the shutdown can look like a complete body; the deadline decides.
+    if expired.is_set() or time.perf_counter() >= deadline:
+        expire()
         return None, f"no answer within {timeout_s:g} s".encode(), ms
+    status, payload = answer[0]
     if len(payload) > MAX_RESPONSE_BYTES:
         return None, f"HTTP {status} body over {MAX_RESPONSE_BYTES} bytes".encode(), ms
-    return status, bytes(payload), ms
+    return status, payload, ms
 
 
 # --- Judging ---------------------------------------------------------------------------------

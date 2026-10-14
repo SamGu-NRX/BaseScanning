@@ -340,11 +340,19 @@ def missing_required(required: list[str], states: list[ShotRecord]) -> list[str]
 def out_of_order(order: list[str], states: list[ShotRecord]) -> list[str]:
     """`order` must appear among the run's states in that order; other states may come between.
     Reaching the last one is not enough: a run that skips the steps before it did not walk them."""
-    names = iter(s.state for s in states)
-    for i, want in enumerate(order):
-        if want not in names:  # consumes `names` up to the match, so order is enforced
-            after = f"after {order[i - 1]}" if i else "at all"
-            return [f"required order {' > '.join(order)}: no {want} {after}"]
+    next_required = 0
+    closing = order[-1] if order else None
+    for record in states:
+        if next_required == len(order):
+            return []
+        if record.state == order[next_required]:
+            next_required += 1
+        elif record.state == closing:
+            return [f"required order {' > '.join(order)}: {closing} before {order[next_required]}"]
+    if next_required < len(order):
+        want = order[next_required]
+        after = f"after {order[next_required - 1]}" if next_required else "at all"
+        return [f"required order {' > '.join(order)}: no {want} {after}"]
     return []
 
 
