@@ -1105,7 +1105,13 @@ def test_cli_shortened_run_cannot_claim_full_contract(
 def test_judge_distinguishes_reported_override_mismatch_and_unverified_defaults(
     tmp_path, monkeypatch, reported_width, contract_failure
 ):
-    answer = {"decision": "manual_review", "spot": None, "checks": [], "sweep": []}
+    answer = {
+        "decision": "manual_review",
+        "spot": None,
+        "checks": [],
+        "sweep": [],
+        "policy": {"sources": ["private"], "rules_sha256": "f" * 64},
+    }
     if reported_width is not None:
         answer["checks"] = [
             {

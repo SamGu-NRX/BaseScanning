@@ -1565,6 +1565,7 @@ def test_ground_trimming_keeps_omitted_reach_at_zero():
 def test_geometric_assumptions_use_reported_override_instead_of_public_defaults():
     public = replace(RULES, width_ft=4, corner_allowance_ft=10)
     answer = result()
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
     answer["checks"].append(
         {
             "id": "corner_allowance",
@@ -1628,6 +1629,7 @@ def test_reported_width_sources_override_public_width(source):
         if source == "check"
         else {source: {"width_ft": RULES.width_ft}}
     )
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
     assert reported_rules(answer, replace(RULES, width_ft=4)).width_ft == RULES.width_ft
     assert assumption_mismatches({"battery_width": RULES.width_ft}, answer) == []
 
@@ -1704,6 +1706,7 @@ def test_in_scan_sweep_with_tiny_rule_step_fails_loudly():
 def test_reported_override_prevents_a_false_footprint_failure():
     public = replace(RULES, width_ft=4)
     answer = result(spot=False, sweep=[pass_run(9, 9) | {"outcome": "unsure"}])
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
     backing = next(c for c in answer["checks"] if c["id"] == "wall_backing")
     backing["threshold_ft"] = RULES.width_ft
     backing["rule"]["key"] = "battery.width_ft"
@@ -1911,4 +1914,5 @@ def test_breadth_zero_or_positive_corner_allowance_is_valid(allowance):
             }
         ]
     }
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
     assert reported_rules(answer, RULES).corner_allowance_ft == allowance
