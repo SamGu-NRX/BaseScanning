@@ -17,12 +17,12 @@ import Testing
     }
 
     @Test(arguments: [AimCoaching.initializing, .relocalizing, .trackingLost, .pastWallEnd])
-    func replacementAimCoachingPausesTheAim(coaching: AimCoaching) {
+    func replacementCoachingPausesTheAim(coaching: AimCoaching) {
         #expect(!AimActionability.canAct(on: aim, coverage: CoverageMap(wall: standardWall()),
             screen: .guidance, coaching: coaching, interrupted: false))
     }
 
-    @Test func twoOfFourHiddenCellsReplaceAnAimWithoutAimCoaching() {
+    @Test func twoOfFourHiddenCellsReplaceAnAimWithoutCoaching() {
         var map = CoverageMap(wall: standardWall())
         map.record([-1, 0].map { .init(band: .ground, index: $0, rows: [], hiddenRows: [1]) }, from: .zero)
         let cells = map.indices(overlapping: -0.3...0.3)
@@ -35,6 +35,15 @@ import Testing
             screen: .guidance, coaching: nil, interrupted: false))
     }
 
+    @Test func aTrimmedAimIgnoresHiddenCellsOutsideItsRequest() {
+        var map = CoverageMap(wall: standardWall())
+        map.record([-1, 0].map { .init(band: .ground, index: $0, rows: [], hiddenRows: [1]) }, from: .zero)
+        let visibleWindow: ClosedRange<Float> = -0.3...(-map.config.cellWidth).nextDown
+        #expect(AimActionability.canAct(on: aim, coverage: map, screen: .guidance,
+            coaching: nil, interrupted: false, aimWindow: visibleWindow))
+        #expect(!AimActionability.mostlyHidden(.ground, around: 0, coverage: map, aimWindow: visibleWindow))
+    }
+
     @Test func oneOfFourHiddenCellsLeavesTheAimActionable() {
         var map = CoverageMap(wall: standardWall())
         map.record([.init(band: .ground, index: 0, rows: [], hiddenRows: [1])], from: .zero)
@@ -42,7 +51,7 @@ import Testing
             screen: .guidance, coaching: nil, interrupted: false))
     }
 
-    @Test func aHiddenAimKeepsItsRemainingBudgetWithoutAimCoaching() {
+    @Test func aHiddenAimKeepsItsRemainingBudgetWithoutCoaching() {
         var map = CoverageMap(wall: standardWall())
         let camera = GuidancePlannerTests.homeowner()
         var planner = GuidancePlanner()

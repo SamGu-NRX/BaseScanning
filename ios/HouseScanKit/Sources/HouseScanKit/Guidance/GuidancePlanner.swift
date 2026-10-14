@@ -166,15 +166,15 @@ public struct GuidancePlanner: Sendable {
             let satisfied = isSatisfied(current, coverage: coverage, camera: camera)
             let aim = Self.aim(current)
             if let aim, !satisfied {
-                let fraction = coverage.coveredFraction(aim.band, in: Self.stretch(around: aim.s))
+                let fraction = aimWindow(for: current, coverage: coverage).map { coverage.coveredFraction(aim.band, in: $0) } ?? 0
                 // A clock that went back (a replay restarted) restarts the stall clock too.
                 if fraction > lastFraction || time < lastProgressAt {
                     lastFraction = fraction
                     lastProgressAt = time
                 }
             }
-            if let aim, aimActionable, !satisfied, time - lastProgressAt >= config.stallTimeout {
-                let range = Self.stretch(around: aim.s)
+            if let aim, aimActionable, !satisfied, time - lastProgressAt >= config.stallTimeout,
+               let range = aimWindow(for: current, coverage: coverage) {
                 if !deferred.contains(where: { $0.band == aim.band && $0.range == range }) {
                     deferred.append(DeferredStretch(band: aim.band, range: range))
                 }
@@ -202,9 +202,9 @@ public struct GuidancePlanner: Sendable {
         var output = cues(for: task, coverage: coverage, camera: camera)
         output.switched = switched
         output.stalled = stalled
-        if let aim = Self.aim(task), let camera {
+        if let aim = Self.aim(task), let camera, let window = aimWindow(for: task, coverage: coverage) {
             output.stepBack = coverage.wall.wallPoint(camera.position).out < config.tooClose
-            output.needsSecondPosition = coverage.needsSecondPosition(band: aim.band, range: Self.stretch(around: aim.s), from: camera.position)
+            output.needsSecondPosition = coverage.needsSecondPosition(band: aim.band, range: window, from: camera.position)
         }
         return output
     }
@@ -213,7 +213,11 @@ public struct GuidancePlanner: Sendable {
     private mutating func begin(_ task: GuidanceTask, coverage: CoverageMap, time: Double) {
         current = task
         since = time
-        lastFraction = Self.aim(task).map { coverage.coveredFraction($0.band, in: Self.stretch(around: $0.s)) } ?? 0
+        if let aim = Self.aim(task), let window = aimWindow(for: task, coverage: coverage) {
+            lastFraction = coverage.coveredFraction(aim.band, in: window)
+        } else {
+            lastFraction = 0
+        }
         lastProgressAt = time
     }
 
@@ -277,8 +281,8 @@ public struct GuidancePlanner: Sendable {
         return .complete
     }
 
-    /// Half the stretch an aim task asks for, meters either side of its s: what `isSatisfied`
-    /// checks and what the guidance log records.
+    /// Half the usual stretch an aim asks for, meters either side of its s. `aimWindow` trims
+    /// it beside deferred spans during the walk.
     public static let aimHalfWidth: Float = 0.3
     /// An aim task is satisfied once this share of its stretch's cells is covered.
     public static let aimSatisfied = 0.8
@@ -341,6 +345,26 @@ public struct GuidancePlanner: Sendable {
         (s - aimHalfWidth)...(s + aimHalfWidth)
     }
 
+    /// The span requested by an aim. During the walk, a neighbouring deferred span trims the
+    /// usual 0.6 m window without discarding the remaining lagging run. Coverage counts a cell
+    /// when its non-deferred part overlaps this window, as `CoverageMap.indices` does elsewhere.
+    /// Once both ends are marked, the full window returns so `firstHole` can revisit deferred
+    /// spans. Nil for other tasks, or an aim centred inside a still-deferred span.
+    public func aimWindow(for task: GuidanceTask, coverage: CoverageMap) -> ClosedRange<Float>? {
+        guard let aim = Self.aim(task) else { return nil }
+        var window = Self.stretch(around: aim.s)
+        guard Self.walkingSide(coverage) != nil else { return window }
+        for stretch in deferred where stretch.band == aim.band && stretch.range.overlaps(window) {
+            if stretch.range.contains(aim.s) { return nil }
+            if stretch.range.upperBound < aim.s {
+                window = max(window.lowerBound, stretch.range.upperBound.nextUp)...window.upperBound
+            } else {
+                window = window.lowerBound...min(window.upperBound, stretch.range.lowerBound.nextDown)
+            }
+        }
+        return window
+    }
+
     /// An aim task whose stretch is still within `lagWindow` of the camera and between the marked
     /// ends. The preferred task is compared at each update, so small drifts added up: on device
     /// run 2 the card went 5 ft 3 in, 4 ft 9 in, 4 ft 6 in, 4 ft, each step under half the
@@ -393,9 +417,11 @@ public struct GuidancePlanner: Sendable {
     /// before an end was set stay in the map, but past it nothing is observed or skipped, so a
     /// task there could never be met or refused (issue #38).
     ///
-    /// Cells of deferred stretches don't count, and they split the lagging cells into runs: the
-    /// request is for the run nearest the camera that is long enough. Taking the middle of all
-    /// the cells left asked for a stalled stretch again whenever the band lagged on both sides of
+    /// Cells centred in deferred stretches don't count, and they split the lagging cells into runs:
+    /// request is for the run nearest the camera that is long enough, with its aim window trimmed
+    /// at a neighbouring deferred span. A three-cell run still gets a request even when its full
+    /// 0.6 m window would reach back into that span. Taking the middle of all the cells left
+    /// asked for a stalled stretch again whenever the band lagged on both sides of
     /// it, since the first and last cell, and so the middle, were unchanged (review of #120).
     /// Cells where the band is already done split the runs the same way: the middle of two runs
     /// either side of covered ground aimed the homeowner at that covered ground (#129).
@@ -423,11 +449,7 @@ public struct GuidancePlanner: Sendable {
             }
             return runs.filter { $0.count >= needed }
                 .compactMap { middle($0, coverage) }
-                .filter { target in
-                    let window = Self.stretch(around: target)
-                    return !deferred.contains { $0.band == band && $0.range.overlaps(window) }
-                        && canSatisfy(band, at: target, coverage)
-                }
+                .filter { canSatisfy(band, at: $0, coverage) }
                 .min { abs($0 - s) < abs($1 - s) }
         }
         if let mid = nearestRun(.ground, lags: { done(coverage.level(.wall, $0)) && !done(coverage.level(.ground, $0)) }) {
@@ -481,7 +503,9 @@ public struct GuidancePlanner: Sendable {
     /// skipped ones is centred on a stretch of five, of which only 3/5 can be covered: the
     /// request could only end by stalling (review of #154).
     private func canSatisfy(_ band: SurfaceBand, at s: Float, _ coverage: CoverageMap) -> Bool {
-        let cells = coverage.indices(overlapping: Self.stretch(around: s)).filter(coverage.isWithinEnds)
+        let task: GuidanceTask = band == .ground ? .aimAtGround(s: s) : .aimAtWall(s: s)
+        guard let window = aimWindow(for: task, coverage: coverage) else { return false }
+        let cells = coverage.indices(overlapping: window).filter(coverage.isWithinEnds)
         let open = cells.filter { coverage.level(band, $0) != .skipped }
         return !cells.isEmpty && Double(open.count) >= Self.aimSatisfied * Double(cells.count)
     }
@@ -495,10 +519,9 @@ public struct GuidancePlanner: Sendable {
         switch task {
         case .walk(let side), .markEnd(let side):
             return (side == .left ? coverage.leftEnd : coverage.rightEnd) != nil
-        case .aimAtGround(let s):
-            return coverage.coveredFraction(.ground, in: (s - Self.aimHalfWidth)...(s + Self.aimHalfWidth)) >= Self.aimSatisfied
-        case .aimAtWall(let s):
-            return coverage.coveredFraction(.wall, in: (s - Self.aimHalfWidth)...(s + Self.aimHalfWidth)) >= Self.aimSatisfied
+        case .aimAtGround, .aimAtWall:
+            guard let aim = Self.aim(task), let window = aimWindow(for: task, coverage: coverage) else { return false }
+            return coverage.coveredFraction(aim.band, in: window) >= Self.aimSatisfied
         case .stepBack:
             guard let camera else { return false }
             return coverage.wall.wallPoint(camera.position).out >= config.tooClose + 0.2

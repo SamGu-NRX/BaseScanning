@@ -27,6 +27,11 @@ enum AuditIssueKey {
         Set(passes.flatMap { $0.keys }).sorted()
     }
 
+    static func transient<Value>(in passes: [[String: Value]]) -> [String] {
+        let persistent = Set(repeated(in: passes))
+        return observed(in: passes).filter { !persistent.contains($0) }
+    }
+
     /// The keys found in at least two of the passes, sorted.
     static func repeated<Value>(in passes: [[String: Value]]) -> [String] {
         var counts: [String: Int] = [:]
@@ -135,8 +140,7 @@ enum AccessibilityAudit {
         let persistent = AuditIssueKey.repeated(in: passes.map(\.findings)).compactMap { key in
             latest.lazy.compactMap { $0.findings[key] }.first.map { (key: key, finding: $0) }
         }
-        let repeated = Set(persistent.map(\.key))
-        let transient = AuditIssueKey.observed(in: passes.map(\.findings)).filter { !repeated.contains($0) }.compactMap { key in
+        let transient = AuditIssueKey.transient(in: passes.map(\.findings)).compactMap { key in
             latest.lazy.compactMap { $0.findings[key] }.first.map { (key: key, finding: $0) }
         }
         return Outcome(persistent: persistent, transient: transient, unread: passes.flatMap(\.unread))
@@ -178,6 +182,9 @@ final class AuditIssueKeyTests: XCTestCase {
         let passes = [["contrast|id:instruction": 1], [:], ["contrast|id:photoCount": 1]]
         XCTAssertEqual(AuditIssueKey.observed(in: passes), ["contrast|id:instruction", "contrast|id:photoCount"])
         XCTAssertTrue(AuditIssueKey.repeated(in: passes).isEmpty)
+        XCTAssertEqual(AuditIssueKey.transient(in: passes), ["contrast|id:instruction", "contrast|id:photoCount"])
+        let repeated = passes + [["contrast|id:instruction": 1]]
+        XCTAssertEqual(AuditIssueKey.transient(in: repeated), ["contrast|id:photoCount"])
     }
 
     func testAnIssueFoundOnlyOnceIsNotRepeated() {

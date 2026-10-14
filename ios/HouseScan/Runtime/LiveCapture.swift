@@ -19,7 +19,7 @@ enum LiveMode: Sendable {
 
 enum LiveEvent: Sendable {
     case interrupted
-    case interruptionEnded
+    case interruptionEnded(at: Double)
     case cameraDenied
     case failed(String)
 }
@@ -683,7 +683,10 @@ final class LiveSessionDelegate: NSObject, ARSessionDelegate, Sendable {
     }
 
     func sessionInterruptionEnded(_ session: ARSession) {
-        Task { @MainActor [onEvent] in onEvent(.interruptionEnded) }
+        // ARFrame.timestamp and systemUptime are seconds since boot. Take the boundary here,
+        // before actor delivery can be delayed behind an encoded frame.
+        let endedAt = ProcessInfo.processInfo.systemUptime
+        Task { @MainActor [onEvent] in onEvent(.interruptionEnded(at: endedAt)) }
     }
 
     func session(_ session: ARSession, didFailWithError error: any Error) {

@@ -451,8 +451,8 @@ import Testing
         #expect(newScan.update(coverage: map, camera: Self.homeowner(), time: 28.5).task == .aimAtGround(s: 0))
     }
 
-    /// Once the middle stretch stalls, the remaining three-cell runs have aim windows
-    /// overlapping it. The walk continues until another accessible stretch is available.
+    /// A stalled middle stretch splits the lagging ground into two three-cell runs. Their
+    /// windows are trimmed at the deferred span, so the nearer run is requested first (#120).
     @Test func aStalledLaggingBandIsNotAskedForAgainAtOnce() {
         var map = Self.meterGroundSkipped()
         map.setEnd(.left, at: -0.5)
@@ -469,8 +469,19 @@ import Testing
         let stalled = planner.update(coverage: map, camera: camera, time: 20)
         #expect(stalled.stalled == first.task)
         #expect(stalled.switched == .stalled)
-        #expect(stalled.task == .walk(.right))
-        #expect(planner.update(coverage: map, camera: camera, time: 40).task == .walk(.right))
+        guard case .aimAtGround(let left) = stalled.task else {
+            Issue.record("expected the left three-cell run, got \(stalled.task)")
+            return
+        }
+        #expect(nearlyEqual(left, 1.905))
+        let next = planner.update(coverage: map, camera: camera, time: 40)
+        #expect(next.stalled == stalled.task)
+        guard case .aimAtGround(let right) = next.task else {
+            Issue.record("expected the right three-cell run, got \(next.task)")
+            return
+        }
+        #expect(nearlyEqual(right, 2.8194))
+        #expect(planner.update(coverage: map, camera: camera, time: 60).task == .walk(.right))
     }
 
     @Test func anActionableAimStillStallsWithoutCoverageProgress() {
@@ -511,22 +522,34 @@ import Testing
         #expect(planner.update(coverage: map, camera: camera, time: 55).stalled == first.task)
     }
 
-    @Test func aReplacementAimWindowDoesNotOverlapADeferredStretch() {
+    @Test func replacementAimWindowsExcludeDeferredSpansAndKeepAdjacentCells() throws {
         var map = Self.meterGroundSkipped()
         map.setEnd(.left, at: -0.5)
         map.markSkipped(.wall, 1...4)
         let camera = Self.homeowner(x: 2)
         var planner = GuidancePlanner()
-        guard case .aimAtGround(let first) = planner.update(coverage: map, camera: camera, time: 0).task else {
-            Issue.record("expected ground aim")
-            return
-        }
-        let next = planner.update(coverage: map, camera: camera, time: 20)
-        if case .aimAtGround(let replacement) = next.task {
-            #expect(abs(replacement - first) >= 2 * GuidancePlanner.aimHalfWidth)
-        } else {
-            #expect(next.task == .walk(.right))
-        }
+        let first = planner.update(coverage: map, camera: camera, time: 0)
+        let deferred = try #require(planner.aimWindow(for: first.task, coverage: map))
+        let left = planner.update(coverage: map, camera: camera, time: 20)
+        let leftWindow = try #require(planner.aimWindow(for: left.task, coverage: map))
+        #expect(!leftWindow.overlaps(deferred))
+        #expect(leftWindow.upperBound == deferred.lowerBound.nextDown)
+        // Cell 13 straddles the deferred boundary. Its portion outside that span still counts.
+        let leftCells = Set(map.indices(overlapping: leftWindow))
+        #expect(Set(11...13).isSubset(of: leftCells))
+        #expect(leftCells.isDisjoint(with: Set(14...16)))
+        let right = planner.update(coverage: map, camera: camera, time: 40)
+        let rightWindow = try #require(planner.aimWindow(for: right.task, coverage: map))
+        #expect(!rightWindow.overlaps(deferred))
+        #expect(!rightWindow.overlaps(leftWindow))
+        #expect(rightWindow.lowerBound == deferred.upperBound.nextUp)
+        let rightCells = Set(map.indices(overlapping: rightWindow))
+        #expect(Set(17...19).isSubset(of: rightCells))
+        #expect(rightCells.isDisjoint(with: Set(14...16)))
+
+        map.setEnd(.right, at: 4)
+        // The final hole pass may ask for the original deferred ground again.
+        #expect(planner.aimWindow(for: first.task, coverage: map) == deferred)
     }
 
     /// #77: the ground in front of the meter is asked for only while the phone is within 1 m of
