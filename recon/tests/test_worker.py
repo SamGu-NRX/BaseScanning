@@ -520,6 +520,35 @@ def test_facing_gap_and_clear_space_start_at_a_proud_wall_face():
     assert np.isnan(clear[0][0]) and 1.6 <= clear[1][0] <= 1.7
 
 
+def _facing_clear_seen_from(xs: dict[str, float]) -> float:
+    """Facing clear distance in front of a wall at z = 0 (outward +z), its space seen empty in
+    the volume to z = 7, when only cameras at x = xs, 4 m out and 1 m up, looking at it see it."""
+    wall = WallFrame(
+        np.array([0.0, 1.0, 0.0]), np.array([1.0, 0, 0]), np.array([0, 0, 1.0]), 0.0, (0, 0.3)
+    )
+    frames = [
+        cap.Frame(f.id, f.image, f.width, f.height, f.intrinsics, f.cam_to_world + _AT_Z4)
+        for f in _frames_facing(xs, 1.0, np.eye(3))
+    ]
+    view = coverage.SeenFromTwo(_slab_volume([(-0.3, 0.0)], 7.0), frames, _flat_depths(frames, 4.0))
+    _, clear, _, _ = coverage.free_space(wall, view, np.array([0.0]))
+    return float(clear[0])
+
+
+_AT_Z4 = np.zeros((4, 4))
+_AT_Z4[2, 3] = 4.0
+
+
+def test_free_space_seen_from_one_position_is_not_clearance_evidence():
+    # The volume alone calls all of it observed; one camera, or two closer than 0.25 m, is not
+    # the two positions wall and ground need, so no clear distance may be claimed.
+    assert _facing_clear_seen_from({"a": 0.075}) == 0.0
+    assert _facing_clear_seen_from({"a": 0.025, "b": 0.125}) == 0.0
+    # Two positions 0.4 m apart see it clear until the facing band's foot leaves their view,
+    # 2.5 m out with this lens.
+    assert _facing_clear_seen_from({"a": -0.125, "b": 0.275}) == pytest.approx(2.5, abs=0.06)
+
+
 # --- The server call ------------------------------------------------------------------------
 
 

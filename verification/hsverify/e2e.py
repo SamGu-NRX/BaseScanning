@@ -21,7 +21,9 @@ changed, and the answers must stay ordered: again (identical apart from timing),
 decision and outcome lengths), without or with less coverage, with ground trimmed just short
 of the largest clearance, with more error or tape re-measured by tap (nothing improves), and
 with every requested view added, up to three rounds (no check left unsure for coverage). Five
-hostile inputs must be refused or answered within 10 s and 500 MB of server growth.
+hostile inputs must be refused or answered within 10 s and 500 MB of server growth. Every
+answer, a result or an error, must arrive whole within its deadline and within 4 MB, or it
+counts as no answer.
 
 A run claims the contract (`contract_ok`) only when at least one scene was answered and
 checked and none broke it, and real-scene latency only from an HTTP 200 result.
@@ -43,8 +45,10 @@ import os
 import re
 import signal
 import socket
+import ssl
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -389,31 +393,23 @@ def bundle_zip(item: SceneInput) -> bytes:
     return buf.getvalue()
 
 
-# Fixed harness admission limit to bound answers from a server under test. This is not a
-# measured maximum result size; it matches the 4 MiB transport policy in PR #242.
+# The most of any response body the harness reads, a result or an error. Not derived from any
+# requirement: the largest result in the 20260927-102101 run against t3/server 1d1e7e1 was 16 KB
+# (eth3d-facade), so this leaves room for 250 times that.
 MAX_RESPONSE_BYTES = 4 * 2**20
-
-
-def read_response(response) -> bytes:
-    declared = response.headers.get("Content-Length")
-    if declared is not None:
-        declared = int(declared)
-        if declared < 0:
-            raise ValueError("negative response Content-Length")
-        if declared > MAX_RESPONSE_BYTES:
-            raise ValueError(f"response exceeds {MAX_RESPONSE_BYTES} bytes")
-    payload = response.read(MAX_RESPONSE_BYTES + 1)
-    if len(payload) > MAX_RESPONSE_BYTES:
-        raise ValueError(f"response exceeds {MAX_RESPONSE_BYTES} bytes")
-    if declared is not None and len(payload) < declared:
-        raise ValueError(f"truncated response: {len(payload)} bytes, expected {declared}")
-    return payload
+READ_CHUNK_BYTES = 2**16
 
 
 def post(
     url: str, endpoint: Endpoint, item: SceneInput, timeout_s: float = 60
 ) -> tuple[int | None, bytes, float]:
-    """Send one scene. A timeout or a dropped connection comes back as status None."""
+    """Send one scene and read the whole answer within `timeout_s`, headers and body together.
+
+    Status None means no complete answer, and the payload then says why: the deadline passed,
+    the body ran past MAX_RESPONSE_BYTES, it ended short of its Content-Length or chunk framing,
+    or the connection failed. A socket timeout alone bounds
+    each read, not the response. A bounded worker wait covers DNS as well as TCP, TLS, headers
+    and body; deadline expiry shuts down sockets already owned by the worker."""
     if item.bundle is not None and endpoint.accepts_zip:
         body, ctype = item.bundle, "application/zip"
     elif endpoint.content_type == "application/json":
@@ -429,26 +425,112 @@ def post(
             + f"\r\n--{boundary}--\r\n".encode()
         )
         ctype = f"multipart/form-data; boundary={boundary}"
-    request = urllib.request.Request(
-        url + endpoint.path, data=body, headers={"Content-Type": ctype}, method="POST"
+    target = urllib.parse.urlsplit(url + endpoint.path)
+    https = target.scheme == "https"
+    conn = http.client.HTTPConnection(
+        target.hostname, port=target.port or (443 if https else 80), timeout=timeout_s
     )
     start = time.perf_counter()
-    try:
+    deadline = start + timeout_s
+    expired = threading.Event()
+    done = threading.Event()
+    lock = threading.Lock()
+    sockets: list[socket.socket] = []
+    answer: list[tuple[int | None, bytes]] = []
+
+    def remaining() -> float:
+        left = deadline - time.perf_counter()
+        if expired.is_set() or left <= 0:
+            raise TimeoutError
+        return left
+
+    def expire() -> None:
+        with lock:
+            expired.set()
+            for sock in sockets:
+                with contextlib.suppress(OSError):
+                    sock.shutdown(socket.SHUT_RDWR)
+                sock.close()
+
+    def connect() -> None:
+        # getaddrinfo has no cancellable stdlib deadline. The daemon worker bounds the caller's
+        # wait; a late DNS result must check the deadline before allocating or sending anything.
+        addresses = socket.getaddrinfo(conn.host, conn.port, type=socket.SOCK_STREAM)
+        error = None
+        for family, kind, proto, _, address in addresses:
+            with lock:
+                remaining()
+                sock = socket.socket(family, kind, proto)
+                sockets.append(sock)  # own it before a blocking TCP connect or TLS handshake
+            try:
+                sock.settimeout(remaining())
+                sock.connect(address)
+                if https:
+                    context = ssl.create_default_context()
+                    with lock:
+                        remaining()
+                        sock = context.wrap_socket(
+                            sock, server_hostname=conn.host, do_handshake_on_connect=False
+                        )
+                        sockets.append(sock)
+                    sock.settimeout(remaining())
+                    sock.do_handshake()
+                sock.settimeout(remaining())
+                conn.sock = sock
+                return
+            except OSError as exc:
+                sock.close()
+                error = exc
+                remaining()
+        if error is not None:
+            raise error
+        raise OSError("DNS returned no connection addresses")
+
+    def exchange() -> None:
+        status: int | None = None
+        payload = bytearray()
         try:
-            response = urllib.request.urlopen(request, timeout=timeout_s)
-        except urllib.error.HTTPError as exc:
-            response = exc
-        with response:
-            status, payload = response.status, read_response(response)
-    except (
-        urllib.error.URLError,
-        TimeoutError,
-        ConnectionError,
-        http.client.HTTPException,
-        ValueError,
-    ) as exc:
-        status, payload = None, str(exc).encode()
-    return status, payload, (time.perf_counter() - start) * 1000
+            connect()
+            path = target.path + (f"?{target.query}" if target.query else "")
+            conn.sock.settimeout(remaining())
+            conn.request("POST", path, body=body, headers={"Content-Type": ctype})
+            conn.sock.settimeout(remaining())
+            response = conn.getresponse()
+            while len(payload) <= MAX_RESPONSE_BYTES and (
+                chunk := response.read(min(READ_CHUNK_BYTES, MAX_RESPONSE_BYTES + 1 - len(payload)))
+            ):
+                remaining()
+                payload += chunk
+            if len(payload) <= MAX_RESPONSE_BYTES and response.length:
+                raise http.client.IncompleteRead(bytes(payload), response.length)
+            remaining()
+            status = response.status
+        except TimeoutError:
+            expired.set()
+        except (OSError, http.client.HTTPException) as exc:
+            status, payload = None, bytearray(f"{type(exc).__name__}: {exc}".encode())
+        finally:
+            conn.close()
+            with lock:
+                for sock in sockets:
+                    sock.close()
+            answer.append((status, bytes(payload)))
+            done.set()
+
+    # DNS may remain blocked after this returns. The worker is a daemon and owns no socket
+    # during DNS; once lookup returns, remaining() prevents a late request from being sent.
+    worker = threading.Thread(target=exchange, daemon=True)
+    worker.start()
+    if not done.wait(max(0.0, deadline - time.perf_counter())):
+        expire()
+    ms = (time.perf_counter() - start) * 1000
+    if expired.is_set() or time.perf_counter() >= deadline:
+        expire()
+        return None, f"no answer within {timeout_s:g} s".encode(), ms
+    status, payload = answer[0]
+    if len(payload) > MAX_RESPONSE_BYTES:
+        return None, f"HTTP {status} body over {MAX_RESPONSE_BYTES} bytes".encode(), ms
+    return status, payload, ms
 
 
 # --- Judging ---------------------------------------------------------------------------------
@@ -476,7 +558,7 @@ def answer(url: str, endpoint: Endpoint, item: SceneInput) -> tuple[dict | None,
     """The server's result for a scene, or why there is none."""
     status, payload, _ = post(url, endpoint, item)
     if status is None:
-        return None, f"no answer: {payload.decode(errors='replace')[:200]}"
+        return None, payload.decode(errors="replace")[:200]
     if status != 200:
         return None, f"HTTP {status}: {payload[:300]!r}"
     result = parse_result(payload)
@@ -881,7 +963,7 @@ def judge_hostile(
     if grew > HOSTILE_MEMORY_MB:
         failure = f"the server grew by {grew:.0f} MB, budget {HOSTILE_MEMORY_MB} MB"
     elif status is None:
-        failure = f"no answer within {HOSTILE_BUDGET_MS / 1000 + 5:.0f} s"
+        failure = payload.decode(errors="replace")[:200]
     elif ms > HOSTILE_BUDGET_MS:
         failure = f"answered HTTP {status} after {ms:.0f} ms, budget {HOSTILE_BUDGET_MS:.0f}"
     elif status in (400, 413, 422):
@@ -1091,7 +1173,7 @@ def main(argv: list[str] | None = None) -> int:
                     else ""
                 )
             )
-            for problem in record.get("problems", [])[:6]:
+            for problem in (record.get("problems", []) + record.get("assumption_warnings", []))[:6]:
                 print(f"      - {problem}")
 
     meta = {

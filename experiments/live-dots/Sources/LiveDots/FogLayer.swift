@@ -2,15 +2,6 @@ import LiveDotsCore
 import Metal
 import simd
 
-/// How the unmeasured world is shown.
-enum FogStyle: String, CaseIterable {
-    /// The fog layer: one continuous haze that dissolves where dots arrive.
-    case on
-    /// The old comparison: a flat 35% veil over 30 cm wall cells no dot has reached.
-    case veil
-    case off
-}
-
 /// The fog layer's GPU state: the 96 x 208 reveal mask, its blur, the lagged copy that carries
 /// from frame to frame, and each keyframe's depth for the depth term. The shaders and what they
 /// borrow are described at the fog section of Shaders.swift.
@@ -86,7 +77,7 @@ final class FogLayer {
     }
 
     /// Splats, blurs and eases the reveal mask. `reset` snaps the lag to the new mask (a scrub, a
-    /// still, the first frame).
+    /// mode switch, the fog turned back on, a still); the first frame always snaps.
     func encodeMask(
         into commandBuffer: MTLCommandBuffer, splats: MTLBuffer?, splatCount: Int, clip: simd_float4x4,
         pixelsPerMetre: Float, time: Float, dt: Float, reduceMotion: Bool, reset: Bool

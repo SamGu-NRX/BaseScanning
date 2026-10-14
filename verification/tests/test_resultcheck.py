@@ -31,7 +31,9 @@ from hsverify.resultcheck import (
     observed,
     outcome_at,
     outcome_lengths,
+    public_assumption_warnings,
     reach_gaps,
+    reported_rules,
     run_starts,
     straight_pieces,
     tape_to_tap,
@@ -622,6 +624,64 @@ def test_less_coverage_never_creates_a_pass():
     assert less_coverage_problems(swept(run(0, 4, "pass")), swept(run(0, 4, "unsure")), "x") == []
     msgs = less_coverage_problems(swept(run(0, 4, "unsure")), swept(run(0, 4, "pass")), "x")
     assert msgs and all("went from unsure to pass" in m for m in msgs)
+
+
+def split():
+    """An original sweep: fail up to 2.0, then pass from 2.1, nothing evaluated between."""
+    return swept(run(0.0, 2.0, "fail"), run(2.1, 5.0, "pass"))
+
+
+def test_less_coverage_may_move_a_boundary_into_an_unswept_gap():
+    """A coverage edge that moved adds evaluated starts; one inside the original's gap between
+    a fail run and a pass run may pass, because the original allows either outcome there."""
+    after = swept(run(0.0, 2.04, "fail"), run(2.05, 5.0, "pass"))
+    assert less_coverage_problems(split(), after, "x") == []
+
+
+def test_less_coverage_cannot_pass_a_gap_between_runs_that_did_not():
+    before = swept(run(0.0, 2.0, "fail"), run(2.1, 5.0, "unsure"))
+    after = swept(run(0.0, 2.0, "fail"), run(2.05, 2.05, "pass"), run(2.1, 5.0, "unsure"))
+    assert less_coverage_problems(before, after, "x") == [
+        "x: start w1 2.050 went from unswept beside fail and unsure to pass"
+    ]
+
+
+def test_less_coverage_cannot_pass_where_the_original_swept_nothing():
+    """The decision guard does not catch this when the original already passed elsewhere."""
+    before = swept(run(0.0, 4.0, "pass"), decision="pass")
+    after = swept(run(0.0, 4.0, "pass"), run(10.0, 12.0, "pass", wall="w2"), decision="pass")
+    assert less_coverage_problems(before, after, "x") == [
+        f"x: start w2 {s:.3f} went from no run on its wall to pass" for s in (10.0, 11.0, 12.0)
+    ]
+    past_end = swept(run(0.0, 4.0, "pass"), run(4.1, 6.0, "fail"), decision="pass")
+    longer = swept(run(0.0, 4.0, "pass"), run(4.1, 6.0, "fail"), run(6.1, 6.1, "pass"))
+    assert less_coverage_problems(past_end, longer, "x") == [
+        "x: start w1 6.100 went from past the original sweep to pass"
+    ]
+
+
+def test_a_new_pass_past_the_original_sweep_is_not_read_from_its_last_run():
+    """The original ends on a pass run; nothing it evaluated brackets 4.1 to 6.0."""
+    before = swept(run(0.0, 4.0, "pass"), decision="pass")
+    after = swept(run(0.0, 4.0, "pass"), run(4.1, 6.0, "pass"), decision="pass")
+    expected = [
+        f"x: start w1 {s:.3f} went from past the original sweep to pass" for s in (4.1, 5.05, 6.0)
+    ]
+    assert less_coverage_problems(before, after, "x") == expected
+    assert more_error_problems(before, after, "x") == expected
+    # More error widens the reach limit, so a longer sweep may fail or turn unsure out there.
+    wider = swept(run(0.0, 4.0, "unsure"), run(4.1, 5.0, "fail"), run(5.1, 6.0, "unsure"))
+    assert more_error_problems(before, wider, "x") == []
+
+
+def test_more_error_reads_an_unswept_start_from_its_neighbours():
+    moved = swept(run(0.0, 2.04, "fail"), run(2.05, 5.0, "pass"))
+    assert more_error_problems(split(), moved, "x") == []
+    flipped = swept(run(0.0, 2.0, "fail"), run(2.05, 2.05, "pass"), run(2.1, 5.0, "fail"))
+    before = swept(run(0.0, 2.0, "fail"), run(2.1, 5.0, "fail"))
+    assert more_error_problems(before, flipped, "x") == [
+        "x: start w1 2.050 went from unswept beside fail and fail to pass"
+    ]
 
 
 def test_transforms():
@@ -1503,16 +1563,89 @@ def test_ground_trimming_keeps_omitted_reach_at_zero():
     assert trimmed["coverage"]["observed"][0]["out_ft"] == 0
 
 
-def test_geometric_assumptions_compare_reported_rules():
+def test_geometric_assumptions_use_reported_override_instead_of_public_defaults():
+    public = replace(RULES, width_ft=4, corner_allowance_ft=10)
     answer = result()
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
     answer["checks"].append(
-        {"id": "route_corner", "threshold_ft": 0.5, "rule": {"key": "route.corner_allowance_ft"}}
+        {
+            "id": "corner_allowance",
+            "threshold_ft": 0.5,
+            "rule": {"key": "route.corner_allowance_ft"},
+        }
     )
-    assert len(assumption_mismatches({"battery_width": 100, "corner_allowance": 100}, answer)) == 2
+    assumed = {"battery_width": RULES.width_ft, "corner_allowance": 0.5}
+    assert assumption_mismatches(assumed, answer) == []
+    assert public_assumption_warnings(assumed, answer, public) == []
+    active = reported_rules(answer, public)
+    assert (active.width_ft, active.corner_allowance_ft) == (RULES.width_ft, 0.5)
+    assert (public.width_ft, public.corner_allowance_ft) == (4, 10)
+
+
+def test_geometric_assumptions_detect_a_real_reported_mismatch():
+    answer = {
+        "spot": {"width_ft": 4},
+        "checks": [
+            {
+                "id": "route_corner",
+                "threshold_ft": 10,
+                "rule": {"key": "route.corner_allowance_ft"},
+            }
+        ],
+    }
     assert (
-        assumption_mismatches({"battery_width": RULES.width_ft, "corner_allowance": 0.5}, answer)
-        == []
+        len(
+            assumption_mismatches(
+                {"battery_width": RULES.width_ft, "corner_allowance": 0.5}, answer
+            )
+        )
+        == 2
     )
+
+
+def test_unreported_geometric_override_is_a_warning_not_a_mismatch():
+    public = replace(RULES, width_ft=4, corner_allowance_ft=10)
+    assumed = {"battery_width": RULES.width_ft, "corner_allowance": 0.5}
+    assert assumption_mismatches(assumed, {}) == []
+    warnings = public_assumption_warnings(assumed, {}, public)
+    assert len(warnings) == 2
+    assert all("assumed public rules; server may override" in text for text in warnings)
+    assert (
+        public_assumption_warnings({"battery_width": 4, "corner_allowance": 10}, {}, public) == []
+    )
+
+
+@pytest.mark.parametrize("source", ["spot", "nearest_considered", "check"])
+def test_reported_width_sources_override_public_width(source):
+    answer = (
+        {
+            "checks": [
+                {
+                    "id": "wall_backing",
+                    "threshold_ft": RULES.width_ft,
+                    "rule": {"key": "battery.width_ft"},
+                }
+            ]
+        }
+        if source == "check"
+        else {source: {"width_ft": RULES.width_ft}}
+    )
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
+    assert reported_rules(answer, replace(RULES, width_ft=4)).width_ft == RULES.width_ft
+    assert assumption_mismatches({"battery_width": RULES.width_ft}, answer) == []
+
+
+def test_other_width_thresholds_do_not_report_battery_width():
+    answer = {
+        "checks": [
+            {
+                "id": "meter_working_space",
+                "threshold_ft": 4,
+                "rule": {"key": "meter_working_space.width_ft"},
+            }
+        ]
+    }
+    assert reported_rules(answer, RULES).width_ft == RULES.width_ft
 
 
 @pytest.mark.parametrize("outcome", ["pass", "unsure"])
@@ -1568,6 +1701,87 @@ def test_in_scan_sweep_with_tiny_rule_step_fails_loudly():
     r = result(spot=False, sweep=[pass_run(0, 1) | {"outcome": "unsure"}])
     assert invariant_problems(SCENE, r, rules=replace(RULES, step_ft=1e-300)) == [
         "sweep unsure starts [0, 1]: sweep sampling exceeds the 10000 sample limit"
+    ]
+
+
+def test_reported_override_prevents_a_false_footprint_failure():
+    public = replace(RULES, width_ft=4)
+    answer = result(spot=False, sweep=[pass_run(9, 9) | {"outcome": "unsure"}])
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
+    backing = next(c for c in answer["checks"] if c["id"] == "wall_backing")
+    backing["threshold_ft"] = RULES.width_ft
+    backing["rule"]["key"] = "battery.width_ft"
+    assert footprint_problems(SCENE, answer, public)
+    assert footprint_problems(SCENE, answer, reported_rules(answer, public)) == []
+
+
+@pytest.mark.parametrize("field", ["width_ft", "depth_ft", "height_ft"])
+@pytest.mark.parametrize("value", [-1, 0, float("nan"), float("inf")])
+def test_vet_reported_dimensions_refuse_invalid_numbers(field, value):
+    answer = result()
+    answer["spot"][field] = value
+    with pytest.raises(ValueError, match=f"spot.{field} must be finite and positive"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("source", ["spot", "nearest_considered", "check"])
+def test_vet_reported_width_sources_must_agree(source):
+    answer = result()
+    answer["nearest_considered"] = copy.deepcopy(answer["spot"])
+    answer["checks"].append(
+        {"id": "width", "threshold_ft": RULES.width_ft, "rule": {"key": "battery.width_ft"}}
+    )
+    if source == "check":
+        answer["checks"][-1]["threshold_ft"] = 4
+    else:
+        answer[source]["width_ft"] = 4
+    with pytest.raises(ValueError, match="reported battery widths disagree"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("source", ["spot", "nearest_considered"])
+@pytest.mark.parametrize("value", [4, 1e9])
+def test_vet_reported_width_must_match_span_and_footprint(source, value):
+    answer = result()
+    answer[source] = copy.deepcopy(answer["spot"])
+    answer[source]["width_ft"] = value
+    if source == "nearest_considered":
+        answer["spot"] = None
+    with pytest.raises(ValueError, match="does not match"):
+        reported_rules(answer, RULES)
+
+
+def test_vet_reported_depth_must_match_footprint():
+    answer = result()
+    answer["spot"]["depth_ft"] = 4
+    with pytest.raises(ValueError, match="depth_ft does not match footprint"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("value", [-1, 0, float("nan"), float("inf")])
+def test_vet_reported_width_threshold_must_be_finite_positive(value):
+    answer = {
+        "checks": [{"id": "width", "threshold_ft": value, "rule": {"key": "battery.width_ft"}}]
+    }
+    with pytest.raises(ValueError, match="width must be finite and positive"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("outcome", ["fail", "unsure"])
+@pytest.mark.parametrize("old_wall_has_run", [False, True])
+def test_vet_more_error_may_add_nonpassing_run_on_previously_unswept_wall(
+    outcome, old_wall_has_run
+):
+    before = swept(run(0, 4, "fail")) if old_wall_has_run else swept()
+    after = swept(*before["sweep"], run(10, 12, outcome, wall="w2"))
+    assert more_error_problems(before, after, "more error") == []
+
+
+def test_vet_more_error_cannot_add_pass_on_previously_unswept_wall():
+    before = swept(run(0, 4, "pass"), decision="pass")
+    after = swept(*before["sweep"], run(10, 12, "pass", wall="w2"), decision="pass")
+    assert more_error_problems(before, after, "more error") == [
+        f"more error: start w2 {s:.3f} went from no run on its wall to pass" for s in (10, 11, 12)
     ]
 
 
@@ -1670,3 +1884,36 @@ def test_vet_runtime_samples_include_midpoint_direction_switches():
     with pytest.raises(WorkLimitExceeded):
         invariant_problems(scene, answer, rules=broad, meter=meter)
     assert meter.samples == 1001
+
+
+@pytest.mark.parametrize("allowance", [-1, float("nan"), float("inf"), -float("inf")])
+def test_breadth_corner_allowance_must_be_finite_nonnegative(allowance):
+    answer = {
+        "checks": [
+            {
+                "id": "route_corner",
+                "threshold_ft": allowance,
+                "rule": {"key": "route.corner_allowance_ft"},
+            }
+        ]
+    }
+    with pytest.raises(ValueError, match="corner allowance must be finite and nonnegative"):
+        reported_rules(answer, RULES)
+    assert "route_corner corner allowance must be finite and nonnegative" in invariant_problems(
+        SCENE, answer, rules=RULES
+    )
+
+
+@pytest.mark.parametrize("allowance", [0, 0.5])
+def test_breadth_zero_or_positive_corner_allowance_is_valid(allowance):
+    answer = {
+        "checks": [
+            {
+                "id": "route_corner",
+                "threshold_ft": allowance,
+                "rule": {"key": "route.corner_allowance_ft"},
+            }
+        ]
+    }
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
+    assert reported_rules(answer, RULES).corner_allowance_ft == allowance

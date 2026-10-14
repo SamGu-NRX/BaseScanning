@@ -23,4 +23,16 @@ public enum Schedule {
     public static func end(count: Int) -> Float {
         start(of: count)
     }
+
+    /// When playback stops: past the last keyframe's slot, long enough for its births to finish.
+    public static func playbackEnd(count: Int) -> Float {
+        end(count: count) + Tuning.birthDuration
+    }
+
+    /// Seconds keyframe `index` stays on screen: until the next keyframe appears, or for the last
+    /// one, until playback stops. `keyframe(at:count:)` holds the last keyframe forever, so it
+    /// cannot bound an offset into that one.
+    public static func onScreen(_ index: Int, count: Int) -> Float {
+        (index + 1 < count ? start(of: index + 1) : playbackEnd(count: count)) - start(of: index)
+    }
 }

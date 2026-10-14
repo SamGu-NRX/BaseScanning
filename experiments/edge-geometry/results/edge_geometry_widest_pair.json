@@ -1,0 +1,4170 @@
+{
+ "m3_pairing": "widest",
+ "evals_commit": "190ed339f41924ae0244e0b88c5ebe647ddd9eb4",
+ "evals_dir": "~/Programming Projects/review-debt/worktrees/evals-190ed33/experiments/evals",
+ "parameters": {
+  "NEAR_M": 6.0,
+  "TOLERANCE": 0.04,
+  "VERTICAL_MAX_UP": 0.3,
+  "WIDTH": 1024,
+  "SCENES": [
+   "electro",
+   "facade"
+  ],
+  "MIN_POINTS_TO_REPORT": 200,
+  "MAX_POINTS": 3000,
+  "PLANE_TOL_M": 0.03,
+  "MAX_TILT_DEG": 17.0,
+  "RANSAC_POINTS": 400000,
+  "JOIN_M": 0.6,
+  "MEMBER_REACH_M": 1.0,
+  "IN_PLANE_M": 0.05,
+  "EDGE_RADIUS_M": 0.15,
+  "VERTICAL_EDGE_DEG": 30.0,
+  "MIN_WALL_PX": 50,
+  "ANCHOR_ALONG_M": [
+   1.0,
+   3.0
+  ],
+  "ANCHOR_TARGET_M": 2.0,
+  "PATCH_RADIUS_M": 0.3,
+  "MIN_PATCH_PX": 20,
+  "ANCHOR_TRIES": 5,
+  "TAP_SIGMA_PX": 10.0,
+  "SNAP_RADIUS_PX": 25,
+  "SNAP_ROWS": 9,
+  "WORLD_PLANE_PX_PER_PHOTO": 3000,
+  "MIN_BASELINE_M": 0.3,
+  "MIN_RAY_ANGLE_DEG": 5.0,
+  "NCC_MIN": 0.8,
+  "NCC_PATCH": 15,
+  "DEPTH_RANGE_M": [
+   0.5,
+   10.0
+  ],
+  "SEED": 20260926
+ },
+ "scenes": {
+  "electro": {
+   "meta": {
+    "photos": 45,
+    "wall_planes": 21,
+    "edge_points_within_6m": 27436,
+    "edge_points_on_a_wall": 25492,
+    "points_sampled": 3000,
+    "in_plane": 2258,
+    "proud": 742,
+    "vertical_edges": 730,
+    "up_vs_camera_up_deg": 5.21,
+    "wall_tilt_deg_max": 3.14,
+    "oracle_scale_median": 0.9961415148011799,
+    "seconds": 53
+   },
+   "single": {
+    "m0": {
+     "all": {
+      "all angles": {
+       "along": {
+        "n": 7871,
+        "points": 2994,
+        "median_in": 2.13,
+        "p90_in": 15.64
+       },
+       "out": {
+        "n": 7871,
+        "points": 2994,
+        "median_in": 3.11,
+        "p90_in": 19.17
+       },
+       "3d": {
+        "n": 7871,
+        "points": 2994,
+        "median_in": 5.72,
+        "p90_in": 38.62
+       },
+       "missing": 23
+      },
+      "0-15": {
+       "along": {
+        "n": 647,
+        "points": 345,
+        "median_in": 0.19,
+        "p90_in": 1.35
+       },
+       "out": {
+        "n": 647,
+        "points": 345,
+        "median_in": 4.83,
+        "p90_in": 14.83
+       },
+       "3d": {
+        "n": 647,
+        "points": 345,
+        "median_in": 4.9,
+        "p90_in": 14.93
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 1483,
+        "points": 912,
+        "median_in": 0.73,
+        "p90_in": 4.59
+       },
+       "out": {
+        "n": 1483,
+        "points": 912,
+        "median_in": 3.76,
+        "p90_in": 15.26
+       },
+       "3d": {
+        "n": 1483,
+        "points": 912,
+        "median_in": 4.15,
+        "p90_in": 16.98
+       },
+       "missing": 2
+      },
+      "30-45": {
+       "along": {
+        "n": 2460,
+        "points": 1430,
+        "median_in": 2.02,
+        "p90_in": 8.89
+       },
+       "out": {
+        "n": 2460,
+        "points": 1430,
+        "median_in": 4.17,
+        "p90_in": 20.37
+       },
+       "3d": {
+        "n": 2460,
+        "points": 1430,
+        "median_in": 5.25,
+        "p90_in": 24.91
+       },
+       "missing": 14
+      },
+      ">45": {
+       "along": {
+        "n": 3281,
+        "points": 1593,
+        "median_in": 5.09,
+        "p90_in": 24.36
+       },
+       "out": {
+        "n": 3281,
+        "points": 1593,
+        "median_in": 1.72,
+        "p90_in": 23.7
+       },
+       "3d": {
+        "n": 3281,
+        "points": 1593,
+        "median_in": 7.5,
+        "p90_in": 66.17
+       },
+       "missing": 7
+      }
+     },
+     "in_plane": {
+      "all angles": {
+       "along": {
+        "n": 6067,
+        "points": 2258,
+        "median_in": 2.0,
+        "p90_in": 14.56
+       },
+       "out": {
+        "n": 6067,
+        "points": 2258,
+        "median_in": 2.78,
+        "p90_in": 16.17
+       },
+       "3d": {
+        "n": 6067,
+        "points": 2258,
+        "median_in": 5.33,
+        "p90_in": 31.73
+       },
+       "missing": 9
+      },
+      "0-15": {
+       "along": {
+        "n": 547,
+        "points": 281,
+        "median_in": 0.19,
+        "p90_in": 0.91
+       },
+       "out": {
+        "n": 547,
+        "points": 281,
+        "median_in": 4.83,
+        "p90_in": 14.63
+       },
+       "3d": {
+        "n": 547,
+        "points": 281,
+        "median_in": 4.9,
+        "p90_in": 14.78
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 1067,
+        "points": 708,
+        "median_in": 0.67,
+        "p90_in": 4.47
+       },
+       "out": {
+        "n": 1067,
+        "points": 708,
+        "median_in": 3.36,
+        "p90_in": 16.86
+       },
+       "3d": {
+        "n": 1067,
+        "points": 708,
+        "median_in": 3.64,
+        "p90_in": 18.19
+       },
+       "missing": 2
+      },
+      "30-45": {
+       "along": {
+        "n": 1835,
+        "points": 1077,
+        "median_in": 1.9,
+        "p90_in": 7.84
+       },
+       "out": {
+        "n": 1835,
+        "points": 1077,
+        "median_in": 3.85,
+        "p90_in": 15.95
+       },
+       "3d": {
+        "n": 1835,
+        "points": 1077,
+        "median_in": 4.91,
+        "p90_in": 19.86
+       },
+       "missing": 5
+      },
+      ">45": {
+       "along": {
+        "n": 2618,
+        "points": 1211,
+        "median_in": 4.78,
+        "p90_in": 24.06
+       },
+       "out": {
+        "n": 2618,
+        "points": 1211,
+        "median_in": 1.52,
+        "p90_in": 17.68
+       },
+       "3d": {
+        "n": 2618,
+        "points": 1211,
+        "median_in": 6.63,
+        "p90_in": 62.06
+       },
+       "missing": 2
+      }
+     },
+     "proud": {
+      "all angles": {
+       "along": {
+        "n": 1804,
+        "points": 736,
+        "median_in": 2.45,
+        "p90_in": 18.03
+       },
+       "out": {
+        "n": 1804,
+        "points": 736,
+        "median_in": 4.17,
+        "p90_in": 25.02
+       },
+       "3d": {
+        "n": 1804,
+        "points": 736,
+        "median_in": 7.34,
+        "p90_in": 57.26
+       },
+       "missing": 14
+      },
+      "0-15": {
+       "along": {
+        "n": 100,
+        "points": 64,
+        "median_in": 0.35,
+        "p90_in": 2.73
+       },
+       "out": {
+        "n": 100,
+        "points": 64,
+        "median_in": 4.85,
+        "p90_in": 16.17
+       },
+       "3d": {
+        "n": 100,
+        "points": 64,
+        "median_in": 4.93,
+        "p90_in": 16.4
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 416,
+        "points": 204,
+        "median_in": 0.93,
+        "p90_in": 4.76
+       },
+       "out": {
+        "n": 416,
+        "points": 204,
+        "median_in": 4.22,
+        "p90_in": 12.73
+       },
+       "3d": {
+        "n": 416,
+        "points": 204,
+        "median_in": 4.6,
+        "p90_in": 14.1
+       },
+       "missing": 0
+      },
+      "30-45": {
+       "along": {
+        "n": 625,
+        "points": 353,
+        "median_in": 2.4,
+        "p90_in": 12.12
+       },
+       "out": {
+        "n": 625,
+        "points": 353,
+        "median_in": 5.44,
+        "p90_in": 24.81
+       },
+       "3d": {
+        "n": 625,
+        "points": 353,
+        "median_in": 6.87,
+        "p90_in": 30.17
+       },
+       "missing": 9
+      },
+      ">45": {
+       "along": {
+        "n": 663,
+        "points": 382,
+        "median_in": 6.76,
+        "p90_in": 27.06
+       },
+       "out": {
+        "n": 663,
+        "points": 382,
+        "median_in": 3.14,
+        "p90_in": 48.07
+       },
+       "3d": {
+        "n": 663,
+        "points": 382,
+        "median_in": 19.91,
+        "p90_in": 116.19
+       },
+       "missing": 5
+      }
+     }
+    },
+    "m1": {
+     "all": {
+      "all angles": {
+       "along": {
+        "n": 6257,
+        "points": 2712,
+        "median_in": 1.26,
+        "p90_in": 7.25
+       },
+       "out": {
+        "n": 6257,
+        "points": 2712,
+        "median_in": 3.11,
+        "p90_in": 10.49
+       },
+       "3d": {
+        "n": 6257,
+        "points": 2712,
+        "median_in": 4.19,
+        "p90_in": 15.1
+       },
+       "missing": 1637
+      },
+      "0-15": {
+       "along": {
+        "n": 615,
+        "points": 342,
+        "median_in": 0.16,
+        "p90_in": 0.58
+       },
+       "out": {
+        "n": 615,
+        "points": 342,
+        "median_in": 4.16,
+        "p90_in": 11.43
+       },
+       "3d": {
+        "n": 615,
+        "points": 342,
+        "median_in": 4.17,
+        "p90_in": 11.57
+       },
+       "missing": 32
+      },
+      "15-30": {
+       "along": {
+        "n": 1406,
+        "points": 898,
+        "median_in": 0.53,
+        "p90_in": 2.75
+       },
+       "out": {
+        "n": 1406,
+        "points": 898,
+        "median_in": 2.88,
+        "p90_in": 10.29
+       },
+       "3d": {
+        "n": 1406,
+        "points": 898,
+        "median_in": 3.17,
+        "p90_in": 11.11
+       },
+       "missing": 79
+      },
+      "30-45": {
+       "along": {
+        "n": 2358,
+        "points": 1376,
+        "median_in": 1.63,
+        "p90_in": 6.32
+       },
+       "out": {
+        "n": 2358,
+        "points": 1376,
+        "median_in": 3.31,
+        "p90_in": 8.87
+       },
+       "3d": {
+        "n": 2358,
+        "points": 1376,
+        "median_in": 4.16,
+        "p90_in": 11.35
+       },
+       "missing": 116
+      },
+      ">45": {
+       "along": {
+        "n": 1878,
+        "points": 1219,
+        "median_in": 3.49,
+        "p90_in": 21.69
+       },
+       "out": {
+        "n": 1878,
+        "points": 1219,
+        "median_in": 2.56,
+        "p90_in": 16.32
+       },
+       "3d": {
+        "n": 1878,
+        "points": 1219,
+        "median_in": 5.33,
+        "p90_in": 45.01
+       },
+       "missing": 1410
+      }
+     },
+     "in_plane": {
+      "all angles": {
+       "along": {
+        "n": 4920,
+        "points": 2097,
+        "median_in": 1.13,
+        "p90_in": 6.65
+       },
+       "out": {
+        "n": 4920,
+        "points": 2097,
+        "median_in": 2.7,
+        "p90_in": 9.16
+       },
+       "3d": {
+        "n": 4920,
+        "points": 2097,
+        "median_in": 3.77,
+        "p90_in": 12.0
+       },
+       "missing": 1156
+      },
+      "0-15": {
+       "along": {
+        "n": 516,
+        "points": 278,
+        "median_in": 0.13,
+        "p90_in": 0.45
+       },
+       "out": {
+        "n": 516,
+        "points": 278,
+        "median_in": 4.25,
+        "p90_in": 11.52
+       },
+       "3d": {
+        "n": 516,
+        "points": 278,
+        "median_in": 4.27,
+        "p90_in": 11.65
+       },
+       "missing": 31
+      },
+      "15-30": {
+       "along": {
+        "n": 1041,
+        "points": 699,
+        "median_in": 0.42,
+        "p90_in": 2.3
+       },
+       "out": {
+        "n": 1041,
+        "points": 699,
+        "median_in": 2.44,
+        "p90_in": 9.78
+       },
+       "3d": {
+        "n": 1041,
+        "points": 699,
+        "median_in": 2.7,
+        "p90_in": 10.67
+       },
+       "missing": 28
+      },
+      "30-45": {
+       "along": {
+        "n": 1787,
+        "points": 1044,
+        "median_in": 1.52,
+        "p90_in": 5.76
+       },
+       "out": {
+        "n": 1787,
+        "points": 1044,
+        "median_in": 3.01,
+        "p90_in": 7.64
+       },
+       "3d": {
+        "n": 1787,
+        "points": 1044,
+        "median_in": 3.74,
+        "p90_in": 10.11
+       },
+       "missing": 53
+      },
+      ">45": {
+       "along": {
+        "n": 1576,
+        "points": 998,
+        "median_in": 2.89,
+        "p90_in": 15.02
+       },
+       "out": {
+        "n": 1576,
+        "points": 998,
+        "median_in": 1.89,
+        "p90_in": 8.92
+       },
+       "3d": {
+        "n": 1576,
+        "points": 998,
+        "median_in": 4.49,
+        "p90_in": 36.17
+       },
+       "missing": 1044
+      }
+     },
+     "proud": {
+      "all angles": {
+       "along": {
+        "n": 1337,
+        "points": 615,
+        "median_in": 2.01,
+        "p90_in": 14.46
+       },
+       "out": {
+        "n": 1337,
+        "points": 615,
+        "median_in": 5.0,
+        "p90_in": 19.02
+       },
+       "3d": {
+        "n": 1337,
+        "points": 615,
+        "median_in": 6.29,
+        "p90_in": 27.46
+       },
+       "missing": 481
+      },
+      "0-15": {
+       "along": {
+        "n": 99,
+        "points": 64,
+        "median_in": 0.28,
+        "p90_in": 1.05
+       },
+       "out": {
+        "n": 99,
+        "points": 64,
+        "median_in": 3.82,
+        "p90_in": 7.23
+       },
+       "3d": {
+        "n": 99,
+        "points": 64,
+        "median_in": 3.88,
+        "p90_in": 7.34
+       },
+       "missing": 1
+      },
+      "15-30": {
+       "along": {
+        "n": 365,
+        "points": 199,
+        "median_in": 0.99,
+        "p90_in": 3.54
+       },
+       "out": {
+        "n": 365,
+        "points": 199,
+        "median_in": 4.62,
+        "p90_in": 11.83
+       },
+       "3d": {
+        "n": 365,
+        "points": 199,
+        "median_in": 5.02,
+        "p90_in": 12.83
+       },
+       "missing": 51
+      },
+      "30-45": {
+       "along": {
+        "n": 571,
+        "points": 332,
+        "median_in": 2.23,
+        "p90_in": 8.69
+       },
+       "out": {
+        "n": 571,
+        "points": 332,
+        "median_in": 4.54,
+        "p90_in": 15.93
+       },
+       "3d": {
+        "n": 571,
+        "points": 332,
+        "median_in": 5.83,
+        "p90_in": 20.66
+       },
+       "missing": 63
+      },
+      ">45": {
+       "along": {
+        "n": 302,
+        "points": 221,
+        "median_in": 12.09,
+        "p90_in": 31.95
+       },
+       "out": {
+        "n": 302,
+        "points": 221,
+        "median_in": 9.57,
+        "p90_in": 29.5
+       },
+       "3d": {
+        "n": 302,
+        "points": 221,
+        "median_in": 19.18,
+        "p90_in": 77.71
+       },
+       "missing": 366
+      }
+     }
+    },
+    "m1a": {
+     "all": {
+      "all angles": {
+       "along": {
+        "n": 3411,
+        "points": 1707,
+        "median_in": 2.04,
+        "p90_in": 12.18
+       },
+       "out": {
+        "n": 3411,
+        "points": 1707,
+        "median_in": 3.82,
+        "p90_in": 17.86
+       },
+       "3d": {
+        "n": 3411,
+        "points": 1707,
+        "median_in": 5.11,
+        "p90_in": 27.19
+       },
+       "missing": 4483
+      },
+      "0-15": {
+       "along": {
+        "n": 301,
+        "points": 199,
+        "median_in": 0.15,
+        "p90_in": 0.57
+       },
+       "out": {
+        "n": 301,
+        "points": 199,
+        "median_in": 3.72,
+        "p90_in": 12.65
+       },
+       "3d": {
+        "n": 301,
+        "points": 199,
+        "median_in": 3.77,
+        "p90_in": 12.77
+       },
+       "missing": 346
+      },
+      "15-30": {
+       "along": {
+        "n": 821,
+        "points": 592,
+        "median_in": 1.13,
+        "p90_in": 5.55
+       },
+       "out": {
+        "n": 821,
+        "points": 592,
+        "median_in": 3.92,
+        "p90_in": 14.03
+       },
+       "3d": {
+        "n": 821,
+        "points": 592,
+        "median_in": 4.26,
+        "p90_in": 15.65
+       },
+       "missing": 664
+      },
+      "30-45": {
+       "along": {
+        "n": 1411,
+        "points": 924,
+        "median_in": 2.16,
+        "p90_in": 10.46
+       },
+       "out": {
+        "n": 1411,
+        "points": 924,
+        "median_in": 4.28,
+        "p90_in": 19.67
+       },
+       "3d": {
+        "n": 1411,
+        "points": 924,
+        "median_in": 5.39,
+        "p90_in": 26.69
+       },
+       "missing": 1063
+      },
+      ">45": {
+       "along": {
+        "n": 878,
+        "points": 633,
+        "median_in": 5.12,
+        "p90_in": 27.12
+       },
+       "out": {
+        "n": 878,
+        "points": 633,
+        "median_in": 3.03,
+        "p90_in": 18.81
+       },
+       "3d": {
+        "n": 878,
+        "points": 633,
+        "median_in": 6.57,
+        "p90_in": 36.78
+       },
+       "missing": 2410
+      }
+     },
+     "in_plane": {
+      "all angles": {
+       "along": {
+        "n": 2755,
+        "points": 1360,
+        "median_in": 1.93,
+        "p90_in": 10.43
+       },
+       "out": {
+        "n": 2755,
+        "points": 1360,
+        "median_in": 3.38,
+        "p90_in": 13.62
+       },
+       "3d": {
+        "n": 2755,
+        "points": 1360,
+        "median_in": 4.66,
+        "p90_in": 21.04
+       },
+       "missing": 3321
+      },
+      "0-15": {
+       "along": {
+        "n": 278,
+        "points": 181,
+        "median_in": 0.15,
+        "p90_in": 0.5
+       },
+       "out": {
+        "n": 278,
+        "points": 181,
+        "median_in": 3.5,
+        "p90_in": 11.78
+       },
+       "3d": {
+        "n": 278,
+        "points": 181,
+        "median_in": 3.52,
+        "p90_in": 12.04
+       },
+       "missing": 269
+      },
+      "15-30": {
+       "along": {
+        "n": 633,
+        "points": 478,
+        "median_in": 1.02,
+        "p90_in": 5.83
+       },
+       "out": {
+        "n": 633,
+        "points": 478,
+        "median_in": 3.49,
+        "p90_in": 13.65
+       },
+       "3d": {
+        "n": 633,
+        "points": 478,
+        "median_in": 3.88,
+        "p90_in": 15.34
+       },
+       "missing": 436
+      },
+      "30-45": {
+       "along": {
+        "n": 1088,
+        "points": 727,
+        "median_in": 2.21,
+        "p90_in": 8.58
+       },
+       "out": {
+        "n": 1088,
+        "points": 727,
+        "median_in": 4.06,
+        "p90_in": 16.15
+       },
+       "3d": {
+        "n": 1088,
+        "points": 727,
+        "median_in": 5.05,
+        "p90_in": 19.5
+       },
+       "missing": 752
+      },
+      ">45": {
+       "along": {
+        "n": 756,
+        "points": 526,
+        "median_in": 4.54,
+        "p90_in": 27.69
+       },
+       "out": {
+        "n": 756,
+        "points": 526,
+        "median_in": 2.76,
+        "p90_in": 12.21
+       },
+       "3d": {
+        "n": 756,
+        "points": 526,
+        "median_in": 5.68,
+        "p90_in": 36.52
+       },
+       "missing": 1864
+      }
+     },
+     "proud": {
+      "all angles": {
+       "along": {
+        "n": 656,
+        "points": 347,
+        "median_in": 2.48,
+        "p90_in": 15.62
+       },
+       "out": {
+        "n": 656,
+        "points": 347,
+        "median_in": 6.29,
+        "p90_in": 42.42
+       },
+       "3d": {
+        "n": 656,
+        "points": 347,
+        "median_in": 7.99,
+        "p90_in": 64.13
+       },
+       "missing": 1162
+      },
+      "0-15": {
+       "along": {
+        "n": 23,
+        "points": 18,
+        "median_in": 2.13,
+        "p90_in": 154.09
+       },
+       "out": {
+        "n": 23,
+        "points": 18,
+        "median_in": 12.74,
+        "p90_in": 3149.65
+       },
+       "3d": {
+        "n": 23,
+        "points": 18,
+        "median_in": 12.98,
+        "p90_in": 3164.05
+       },
+       "missing": 77
+      },
+      "15-30": {
+       "along": {
+        "n": 188,
+        "points": 114,
+        "median_in": 1.69,
+        "p90_in": 5.06
+       },
+       "out": {
+        "n": 188,
+        "points": 114,
+        "median_in": 7.13,
+        "p90_in": 14.6
+       },
+       "3d": {
+        "n": 188,
+        "points": 114,
+        "median_in": 7.77,
+        "p90_in": 16.43
+       },
+       "missing": 228
+      },
+      "30-45": {
+       "along": {
+        "n": 323,
+        "points": 197,
+        "median_in": 1.99,
+        "p90_in": 15.69
+       },
+       "out": {
+        "n": 323,
+        "points": 197,
+        "median_in": 4.69,
+        "p90_in": 63.53
+       },
+       "3d": {
+        "n": 323,
+        "points": 197,
+        "median_in": 5.84,
+        "p90_in": 79.7
+       },
+       "missing": 311
+      },
+      ">45": {
+       "along": {
+        "n": 122,
+        "points": 107,
+        "median_in": 9.51,
+        "p90_in": 17.91
+       },
+       "out": {
+        "n": 122,
+        "points": 107,
+        "median_in": 7.42,
+        "p90_in": 41.02
+       },
+       "3d": {
+        "n": 122,
+        "points": 107,
+        "median_in": 14.5,
+        "p90_in": 63.92
+       },
+       "missing": 546
+      }
+     }
+    },
+    "m1a_yaw": {
+     "observations": 3411,
+     "abs_psi_deg": {
+      "median": 2.15,
+      "p90": 6.72
+     },
+     "abs_s_m_median": 2.0,
+     "all_added_after_the_run": {
+      "sign_agreement_where_prediction_over_1cm": 0.7,
+      "median_error_over_prediction_where_over_1cm": 0.73,
+      "view_angle_under_60": {
+       "n": 3080,
+       "slope": 0.36,
+       "r2": 0.01
+      },
+      "spearman_abs_error_vs_tan_angle_alone": 0.5
+     },
+     "all": {
+      "n": 3411,
+      "signed_first_order_slope": 0.05,
+      "signed_first_order_r2": 0.02,
+      "signed_r2_with_slope_1": -4.58,
+      "abs_error_over_s_psi_tan_median": 0.94,
+      "abs_error_over_s_psi_tan_n": 2811,
+      "spearman_abs_error_vs_s_psi_tan": 0.63,
+      "abs_error_p90_in": 12.18,
+      "residual_after_first_order_p90_in": 10.9
+     },
+     "in_plane_added_after_the_run": {
+      "sign_agreement_where_prediction_over_1cm": 0.74,
+      "median_error_over_prediction_where_over_1cm": 0.83,
+      "view_angle_under_60": {
+       "n": 2455,
+       "slope": 0.29,
+       "r2": 0.02
+      },
+      "spearman_abs_error_vs_tan_angle_alone": 0.54
+     },
+     "in_plane": {
+      "n": 2755,
+      "signed_first_order_slope": 0.05,
+      "signed_first_order_r2": 0.02,
+      "signed_r2_with_slope_1": -12.61,
+      "abs_error_over_s_psi_tan_median": 0.94,
+      "abs_error_over_s_psi_tan_n": 2231,
+      "spearman_abs_error_vs_s_psi_tan": 0.67,
+      "abs_error_p90_in": 10.43,
+      "residual_after_first_order_p90_in": 9.41
+     }
+    },
+    "added_after_the_run_edge_point_to_plane": {
+     "laser_plane_in_plane_edges": {
+      "n": 6076,
+      "points": 2258,
+      "median_in": 0.4,
+      "p90_in": 1.38
+     },
+     "m1_plane_in_plane_edges": {
+      "n": 4920,
+      "points": 2097,
+      "median_in": 2.54,
+      "p90_in": 9.81
+     }
+    }
+   },
+   "multi": {
+    "exact": {
+     "all": {
+      "M2": {
+       "span_along": {
+        "n": 1819,
+        "points": 1819,
+        "median_in": 4.01,
+        "p90_in": 14.46,
+        "p90_ci95_in": [
+         13.85,
+         15.72
+        ]
+       },
+       "span_3d": {
+        "n": 1819,
+        "points": 1819,
+        "median_in": 6.39,
+        "p90_in": 23.93
+       },
+       "frame_along": {
+        "n": 2617,
+        "points": 2617,
+        "median_in": 3.37,
+        "p90_in": 16.39
+       },
+       "frame_3d": {
+        "n": 2617,
+        "points": 2617,
+        "median_in": 6.08,
+        "p90_in": 27.83
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 1819,
+        "points": 1819,
+        "median_in": 2.8,
+        "p90_in": 12.97
+       },
+       "span_along_true_pixel": {
+        "n": 1819,
+        "points": 1819,
+        "median_in": 2.55,
+        "p90_in": 12.57
+       },
+       "frame_along_true_pixel": {
+        "n": 2617,
+        "points": 2617,
+        "median_in": 1.31,
+        "p90_in": 13.11
+       },
+       "edge_point_to_fused_plane": {
+        "n": 2617,
+        "points": 2617,
+        "median_in": 2.69,
+        "p90_in": 13.87
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 191,
+         "points": 191,
+         "median_in": 2.22,
+         "p90_in": 5.69
+        },
+        "15-30": {
+         "n": 343,
+         "points": 343,
+         "median_in": 3.28,
+         "p90_in": 11.66
+        },
+        "30-45": {
+         "n": 959,
+         "points": 959,
+         "median_in": 4.16,
+         "p90_in": 12.33
+        },
+        ">45": {
+         "n": 326,
+         "points": 326,
+         "median_in": 7.53,
+         "p90_in": 38.75
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 191,
+         "points": 191,
+         "median_in": 0.17,
+         "p90_in": 4.53
+        },
+        "15-30": {
+         "n": 343,
+         "points": 343,
+         "median_in": 1.28,
+         "p90_in": 12.04
+        },
+        "30-45": {
+         "n": 959,
+         "points": 959,
+         "median_in": 2.58,
+         "p90_in": 11.79
+        },
+        ">45": {
+         "n": 326,
+         "points": 326,
+         "median_in": 5.95,
+         "p90_in": 51.18
+        }
+       }
+      },
+      "M3": {
+       "pairs": 2489,
+       "match_rate": 0.441,
+       "match_px": {
+        "n": 1097,
+        "median": 6.05,
+        "p90": 186.45
+       },
+       "frame_3d": {
+        "n": 1097,
+        "points": 1097,
+        "median_in": 4.92,
+        "p90_in": 101.76
+       },
+       "frame_along": {
+        "n": 1097,
+        "points": 1097,
+        "median_in": 1.43,
+        "p90_in": 49.88
+       },
+       "span_along": {
+        "n": 439,
+        "points": 439,
+        "median_in": 9.32,
+        "p90_in": 59.52,
+        "p90_ci95_in": [
+         54.35,
+         67.41
+        ]
+       },
+       "span_3d": {
+        "n": 439,
+        "points": 439,
+        "median_in": 43.87,
+        "p90_in": 156.35,
+        "p90_ci95_in": [
+         134.29,
+         161.35
+        ]
+       },
+       "anchor_matched": 439,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 381,
+        "points": 381,
+        "median_in": 0.55,
+        "p90_in": 1.84
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.347
+      }
+     },
+     "in_plane": {
+      "M2": {
+       "span_along": {
+        "n": 1452,
+        "points": 1452,
+        "median_in": 3.74,
+        "p90_in": 13.02,
+        "p90_ci95_in": [
+         12.06,
+         14.18
+        ]
+       },
+       "span_3d": {
+        "n": 1452,
+        "points": 1452,
+        "median_in": 5.78,
+        "p90_in": 22.02
+       },
+       "frame_along": {
+        "n": 2028,
+        "points": 2028,
+        "median_in": 3.26,
+        "p90_in": 14.39
+       },
+       "frame_3d": {
+        "n": 2028,
+        "points": 2028,
+        "median_in": 5.85,
+        "p90_in": 19.3
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 1452,
+        "points": 1452,
+        "median_in": 2.55,
+        "p90_in": 10.89
+       },
+       "span_along_true_pixel": {
+        "n": 1452,
+        "points": 1452,
+        "median_in": 2.15,
+        "p90_in": 10.93
+       },
+       "frame_along_true_pixel": {
+        "n": 2028,
+        "points": 2028,
+        "median_in": 1.23,
+        "p90_in": 10.19
+       },
+       "edge_point_to_fused_plane": {
+        "n": 2028,
+        "points": 2028,
+        "median_in": 2.26,
+        "p90_in": 10.04
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 178,
+         "points": 178,
+         "median_in": 2.29,
+         "p90_in": 5.63
+        },
+        "15-30": {
+         "n": 245,
+         "points": 245,
+         "median_in": 2.68,
+         "p90_in": 6.78
+        },
+        "30-45": {
+         "n": 780,
+         "points": 780,
+         "median_in": 4.19,
+         "p90_in": 11.6
+        },
+        ">45": {
+         "n": 249,
+         "points": 249,
+         "median_in": 6.09,
+         "p90_in": 29.1
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 178,
+         "points": 178,
+         "median_in": 0.15,
+         "p90_in": 4.27
+        },
+        "15-30": {
+         "n": 245,
+         "points": 245,
+         "median_in": 1.12,
+         "p90_in": 3.63
+        },
+        "30-45": {
+         "n": 780,
+         "points": 780,
+         "median_in": 2.54,
+         "p90_in": 10.5
+        },
+        ">45": {
+         "n": 249,
+         "points": 249,
+         "median_in": 5.06,
+         "p90_in": 13.8
+        }
+       }
+      },
+      "M3": {
+       "pairs": 1951,
+       "match_rate": 0.463,
+       "match_px": {
+        "n": 903,
+        "median": 6.44,
+        "p90": 185.54
+       },
+       "frame_3d": {
+        "n": 903,
+        "points": 903,
+        "median_in": 5.16,
+        "p90_in": 102.72
+       },
+       "frame_along": {
+        "n": 903,
+        "points": 903,
+        "median_in": 1.55,
+        "p90_in": 55.5
+       },
+       "span_along": {
+        "n": 368,
+        "points": 368,
+        "median_in": 9.16,
+        "p90_in": 61.2,
+        "p90_ci95_in": [
+         55.94,
+         69.41
+        ]
+       },
+       "span_3d": {
+        "n": 368,
+        "points": 368,
+        "median_in": 47.15,
+        "p90_in": 157.49,
+        "p90_ci95_in": [
+         132.58,
+         162.28
+        ]
+       },
+       "anchor_matched": 368,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 296,
+        "points": 296,
+        "median_in": 0.57,
+        "p90_in": 1.98
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.328
+      }
+     },
+     "proud": {
+      "M2": {
+       "span_along": {
+        "n": 367,
+        "points": 367,
+        "median_in": 5.46,
+        "p90_in": 18.1,
+        "p90_ci95_in": [
+         17.13,
+         20.83
+        ]
+       },
+       "span_3d": {
+        "n": 367,
+        "points": 367,
+        "median_in": 11.71,
+        "p90_in": 43.59
+       },
+       "frame_along": {
+        "n": 589,
+        "points": 589,
+        "median_in": 3.95,
+        "p90_in": 24.87
+       },
+       "frame_3d": {
+        "n": 589,
+        "points": 589,
+        "median_in": 7.52,
+        "p90_in": 44.47
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 367,
+        "points": 367,
+        "median_in": 4.91,
+        "p90_in": 17.96
+       },
+       "span_along_true_pixel": {
+        "n": 367,
+        "points": 367,
+        "median_in": 5.41,
+        "p90_in": 17.03
+       },
+       "frame_along_true_pixel": {
+        "n": 589,
+        "points": 589,
+        "median_in": 2.21,
+        "p90_in": 27.38
+       },
+       "edge_point_to_fused_plane": {
+        "n": 589,
+        "points": 589,
+        "median_in": 4.91,
+        "p90_in": 31.59
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 13,
+         "points": 13,
+         "median_in": 1.56,
+         "p90_in": 7.34
+        },
+        "15-30": {
+         "n": 98,
+         "points": 98,
+         "median_in": 7.3,
+         "p90_in": 14.5
+        },
+        "30-45": {
+         "n": 179,
+         "points": 179,
+         "median_in": 4.14,
+         "p90_in": 15.66
+        },
+        ">45": {
+         "n": 77,
+         "points": 77,
+         "median_in": 13.7,
+         "p90_in": 103.07
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 13,
+         "points": 13,
+         "median_in": 4.53,
+         "p90_in": 5.42
+        },
+        "15-30": {
+         "n": 98,
+         "points": 98,
+         "median_in": 5.98,
+         "p90_in": 13.97
+        },
+        "30-45": {
+         "n": 179,
+         "points": 179,
+         "median_in": 3.58,
+         "p90_in": 15.8
+        },
+        ">45": {
+         "n": 77,
+         "points": 77,
+         "median_in": 10.15,
+         "p90_in": 122.8
+        }
+       }
+      },
+      "M3": {
+       "pairs": 538,
+       "match_rate": 0.361,
+       "match_px": {
+        "n": 194,
+        "median": 2.77,
+        "p90": 191.71
+       },
+       "frame_3d": {
+        "n": 194,
+        "points": 194,
+        "median_in": 2.16,
+        "p90_in": 97.51
+       },
+       "frame_along": {
+        "n": 194,
+        "points": 194,
+        "median_in": 0.7,
+        "p90_in": 28.16
+       },
+       "span_along": {
+        "n": 71,
+        "points": 71,
+        "median_in": 10.2,
+        "p90_in": 41.75,
+        "p90_ci95_in": [
+         36.09,
+         117.05
+        ]
+       },
+       "span_3d": {
+        "n": 71,
+        "points": 71,
+        "median_in": 37.37,
+        "p90_in": 136.05,
+        "p90_ci95_in": [
+         120.08,
+         158.91
+        ]
+       },
+       "anchor_matched": 71,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 85,
+        "points": 85,
+        "median_in": 0.49,
+        "p90_in": 1.57
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.438
+      }
+     },
+     "in_plane_vertical": {
+      "M2": {
+       "span_along": {
+        "n": 381,
+        "points": 381,
+        "median_in": 3.25,
+        "p90_in": 15.43,
+        "p90_ci95_in": [
+         13.66,
+         16.83
+        ]
+       },
+       "span_3d": {
+        "n": 381,
+        "points": 381,
+        "median_in": 5.92,
+        "p90_in": 24.14
+       },
+       "frame_along": {
+        "n": 529,
+        "points": 529,
+        "median_in": 2.96,
+        "p90_in": 12.86
+       },
+       "frame_3d": {
+        "n": 529,
+        "points": 529,
+        "median_in": 5.94,
+        "p90_in": 20.94
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 381,
+        "points": 381,
+        "median_in": 2.91,
+        "p90_in": 11.88
+       },
+       "span_along_true_pixel": {
+        "n": 381,
+        "points": 381,
+        "median_in": 2.62,
+        "p90_in": 11.38
+       },
+       "frame_along_true_pixel": {
+        "n": 529,
+        "points": 529,
+        "median_in": 1.61,
+        "p90_in": 10.26
+       },
+       "edge_point_to_fused_plane": {
+        "n": 529,
+        "points": 529,
+        "median_in": 2.63,
+        "p90_in": 13.28
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 43,
+         "points": 43,
+         "median_in": 1.47,
+         "p90_in": 3.45
+        },
+        "15-30": {
+         "n": 83,
+         "points": 83,
+         "median_in": 3.25,
+         "p90_in": 8.93
+        },
+        "30-45": {
+         "n": 165,
+         "points": 165,
+         "median_in": 5.12,
+         "p90_in": 13.6
+        },
+        ">45": {
+         "n": 90,
+         "points": 90,
+         "median_in": 4.17,
+         "p90_in": 23.98
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 43,
+         "points": 43,
+         "median_in": 0.6,
+         "p90_in": 2.6
+        },
+        "15-30": {
+         "n": 83,
+         "points": 83,
+         "median_in": 1.99,
+         "p90_in": 6.95
+        },
+        "30-45": {
+         "n": 165,
+         "points": 165,
+         "median_in": 2.7,
+         "p90_in": 12.55
+        },
+        ">45": {
+         "n": 90,
+         "points": 90,
+         "median_in": 5.23,
+         "p90_in": 11.84
+        }
+       }
+      },
+      "M3": {
+       "pairs": 509,
+       "match_rate": 0.505,
+       "match_px": {
+        "n": 257,
+        "median": 24.35,
+        "p90": 200.48
+       },
+       "frame_3d": {
+        "n": 257,
+        "points": 257,
+        "median_in": 20.71,
+        "p90_in": 108.95
+       },
+       "frame_along": {
+        "n": 257,
+        "points": 257,
+        "median_in": 2.11,
+        "p90_in": 72.83
+       },
+       "span_along": {
+        "n": 106,
+        "points": 106,
+        "median_in": 7.05,
+        "p90_in": 64.42,
+        "p90_ci95_in": [
+         48.03,
+         90.2
+        ]
+       },
+       "span_3d": {
+        "n": 106,
+        "points": 106,
+        "median_in": 67.39,
+        "p90_in": 154.53,
+        "p90_ci95_in": [
+         109.0,
+         212.49
+        ]
+       },
+       "anchor_matched": 106,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 67,
+        "points": 67,
+        "median_in": 0.77,
+        "p90_in": 2.34
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.261
+      }
+     }
+    },
+    "modern_assumed": {
+     "all": {
+      "M2": {
+       "span_along": {
+        "n": 9095,
+        "points": 1819,
+        "median_in": 3.92,
+        "p90_in": 14.33,
+        "p90_ci95_in": [
+         13.42,
+         15.32
+        ]
+       },
+       "span_3d": {
+        "n": 9095,
+        "points": 1819,
+        "median_in": 6.52,
+        "p90_in": 23.25
+       },
+       "frame_along": {
+        "n": 13085,
+        "points": 2617,
+        "median_in": 4.24,
+        "p90_in": 17.4
+       },
+       "frame_3d": {
+        "n": 13085,
+        "points": 2617,
+        "median_in": 6.93,
+        "p90_in": 28.87
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 9090,
+        "points": 1818,
+        "median_in": 2.98,
+        "p90_in": 13.5
+       },
+       "span_along_true_pixel": {
+        "n": 9090,
+        "points": 1818,
+        "median_in": 2.87,
+        "p90_in": 12.74
+       },
+       "frame_along_true_pixel": {
+        "n": 13080,
+        "points": 2616,
+        "median_in": 1.66,
+        "p90_in": 14.48
+       },
+       "edge_point_to_fused_plane": {
+        "n": 13085,
+        "points": 2617,
+        "median_in": 2.79,
+        "p90_in": 13.8
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 955,
+         "points": 191,
+         "median_in": 2.57,
+         "p90_in": 6.1
+        },
+        "15-30": {
+         "n": 1715,
+         "points": 343,
+         "median_in": 3.2,
+         "p90_in": 11.31
+        },
+        "30-45": {
+         "n": 4795,
+         "points": 959,
+         "median_in": 4.1,
+         "p90_in": 12.39
+        },
+        ">45": {
+         "n": 1630,
+         "points": 326,
+         "median_in": 6.28,
+         "p90_in": 37.39
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 955,
+         "points": 191,
+         "median_in": 0.46,
+         "p90_in": 5.26
+        },
+        "15-30": {
+         "n": 1715,
+         "points": 343,
+         "median_in": 1.35,
+         "p90_in": 10.79
+        },
+        "30-45": {
+         "n": 4795,
+         "points": 959,
+         "median_in": 2.88,
+         "p90_in": 12.15
+        },
+        ">45": {
+         "n": 1625,
+         "points": 325,
+         "median_in": 6.34,
+         "p90_in": 46.74
+        }
+       }
+      },
+      "M3": {
+       "pairs": 12445,
+       "match_rate": 0.409,
+       "match_px": {
+        "n": 5089,
+        "median": 11.05,
+        "p90": 190.03
+       },
+       "frame_3d": {
+        "n": 5089,
+        "points": 1162,
+        "median_in": 9.93,
+        "p90_in": 102.85
+       },
+       "frame_along": {
+        "n": 5089,
+        "points": 1162,
+        "median_in": 3.47,
+        "p90_in": 54.49
+       },
+       "span_along": {
+        "n": 1663,
+        "points": 453,
+        "median_in": 13.14,
+        "p90_in": 64.34,
+        "p90_ci95_in": [
+         58.63,
+         75.75
+        ]
+       },
+       "span_3d": {
+        "n": 1663,
+        "points": 453,
+        "median_in": 51.37,
+        "p90_in": 158.68,
+        "p90_ci95_in": [
+         146.22,
+         169.18
+        ]
+       },
+       "anchor_matched": 1663,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 789,
+        "points": 371,
+        "median_in": 3.51,
+        "p90_in": 6.76
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.155
+      }
+     },
+     "in_plane": {
+      "M2": {
+       "span_along": {
+        "n": 7260,
+        "points": 1452,
+        "median_in": 3.63,
+        "p90_in": 12.55,
+        "p90_ci95_in": [
+         11.74,
+         13.77
+        ]
+       },
+       "span_3d": {
+        "n": 7260,
+        "points": 1452,
+        "median_in": 5.87,
+        "p90_in": 21.37
+       },
+       "frame_along": {
+        "n": 10140,
+        "points": 2028,
+        "median_in": 4.32,
+        "p90_in": 16.03
+       },
+       "frame_3d": {
+        "n": 10140,
+        "points": 2028,
+        "median_in": 6.74,
+        "p90_in": 20.76
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 7260,
+        "points": 1452,
+        "median_in": 2.68,
+        "p90_in": 11.52
+       },
+       "span_along_true_pixel": {
+        "n": 7260,
+        "points": 1452,
+        "median_in": 2.47,
+        "p90_in": 11.53
+       },
+       "frame_along_true_pixel": {
+        "n": 10140,
+        "points": 2028,
+        "median_in": 1.7,
+        "p90_in": 12.76
+       },
+       "edge_point_to_fused_plane": {
+        "n": 10140,
+        "points": 2028,
+        "median_in": 2.26,
+        "p90_in": 10.01
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 890,
+         "points": 178,
+         "median_in": 2.6,
+         "p90_in": 6.0
+        },
+        "15-30": {
+         "n": 1225,
+         "points": 245,
+         "median_in": 2.72,
+         "p90_in": 6.89
+        },
+        "30-45": {
+         "n": 3900,
+         "points": 780,
+         "median_in": 4.04,
+         "p90_in": 11.78
+        },
+        ">45": {
+         "n": 1245,
+         "points": 249,
+         "median_in": 5.25,
+         "p90_in": 26.92
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 890,
+         "points": 178,
+         "median_in": 0.43,
+         "p90_in": 4.88
+        },
+        "15-30": {
+         "n": 1225,
+         "points": 245,
+         "median_in": 1.17,
+         "p90_in": 3.77
+        },
+        "30-45": {
+         "n": 3900,
+         "points": 780,
+         "median_in": 2.83,
+         "p90_in": 10.95
+        },
+        ">45": {
+         "n": 1245,
+         "points": 249,
+         "median_in": 5.23,
+         "p90_in": 16.1
+        }
+       }
+      },
+      "M3": {
+       "pairs": 9755,
+       "match_rate": 0.426,
+       "match_px": {
+        "n": 4155,
+        "median": 11.91,
+        "p90": 189.43
+       },
+       "frame_3d": {
+        "n": 4155,
+        "points": 945,
+        "median_in": 10.72,
+        "p90_in": 104.22
+       },
+       "frame_along": {
+        "n": 4155,
+        "points": 945,
+        "median_in": 3.7,
+        "p90_in": 60.1
+       },
+       "span_along": {
+        "n": 1392,
+        "points": 381,
+        "median_in": 11.88,
+        "p90_in": 67.45,
+        "p90_ci95_in": [
+         59.33,
+         79.32
+        ]
+       },
+       "span_3d": {
+        "n": 1392,
+        "points": 381,
+        "median_in": 52.94,
+        "p90_in": 163.91,
+        "p90_ci95_in": [
+         144.62,
+         172.97
+        ]
+       },
+       "anchor_matched": 1392,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 561,
+        "points": 276,
+        "median_in": 3.51,
+        "p90_in": 7.34
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.135
+      }
+     },
+     "proud": {
+      "M2": {
+       "span_along": {
+        "n": 1835,
+        "points": 367,
+        "median_in": 5.98,
+        "p90_in": 18.22,
+        "p90_ci95_in": [
+         16.42,
+         21.24
+        ]
+       },
+       "span_3d": {
+        "n": 1835,
+        "points": 367,
+        "median_in": 12.2,
+        "p90_in": 45.64
+       },
+       "frame_along": {
+        "n": 2945,
+        "points": 589,
+        "median_in": 4.01,
+        "p90_in": 26.32
+       },
+       "frame_3d": {
+        "n": 2945,
+        "points": 589,
+        "median_in": 7.98,
+        "p90_in": 51.54
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 1830,
+        "points": 366,
+        "median_in": 5.53,
+        "p90_in": 18.13
+       },
+       "span_along_true_pixel": {
+        "n": 1830,
+        "points": 366,
+        "median_in": 5.54,
+        "p90_in": 17.16
+       },
+       "frame_along_true_pixel": {
+        "n": 2940,
+        "points": 588,
+        "median_in": 1.6,
+        "p90_in": 28.32
+       },
+       "edge_point_to_fused_plane": {
+        "n": 2945,
+        "points": 589,
+        "median_in": 5.38,
+        "p90_in": 30.69
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 65,
+         "points": 13,
+         "median_in": 2.06,
+         "p90_in": 9.88
+        },
+        "15-30": {
+         "n": 490,
+         "points": 98,
+         "median_in": 8.12,
+         "p90_in": 13.94
+        },
+        "30-45": {
+         "n": 895,
+         "points": 179,
+         "median_in": 4.6,
+         "p90_in": 15.9
+        },
+        ">45": {
+         "n": 385,
+         "points": 77,
+         "median_in": 13.6,
+         "p90_in": 63.84
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 65,
+         "points": 13,
+         "median_in": 5.07,
+         "p90_in": 7.76
+        },
+        "15-30": {
+         "n": 490,
+         "points": 98,
+         "median_in": 7.29,
+         "p90_in": 13.36
+        },
+        "30-45": {
+         "n": 895,
+         "points": 179,
+         "median_in": 4.06,
+         "p90_in": 15.56
+        },
+        ">45": {
+         "n": 380,
+         "points": 76,
+         "median_in": 10.0,
+         "p90_in": 73.08
+        }
+       }
+      },
+      "M3": {
+       "pairs": 2690,
+       "match_rate": 0.347,
+       "match_px": {
+        "n": 934,
+        "median": 4.46,
+        "p90": 195.18
+       },
+       "frame_3d": {
+        "n": 934,
+        "points": 217,
+        "median_in": 5.83,
+        "p90_in": 97.29
+       },
+       "frame_along": {
+        "n": 934,
+        "points": 217,
+        "median_in": 2.13,
+        "p90_in": 30.92
+       },
+       "span_along": {
+        "n": 271,
+        "points": 72,
+        "median_in": 15.65,
+        "p90_in": 48.62,
+        "p90_ci95_in": [
+         39.13,
+         74.07
+        ]
+       },
+       "span_3d": {
+        "n": 271,
+        "points": 72,
+        "median_in": 46.4,
+        "p90_in": 152.3,
+        "p90_ci95_in": [
+         122.03,
+         158.71
+        ]
+       },
+       "anchor_matched": 271,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 228,
+        "points": 95,
+        "median_in": 3.48,
+        "p90_in": 5.51
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.244
+      }
+     },
+     "in_plane_vertical": {
+      "M2": {
+       "span_along": {
+        "n": 1905,
+        "points": 381,
+        "median_in": 3.36,
+        "p90_in": 15.22,
+        "p90_ci95_in": [
+         13.42,
+         16.5
+        ]
+       },
+       "span_3d": {
+        "n": 1905,
+        "points": 381,
+        "median_in": 6.45,
+        "p90_in": 22.94
+       },
+       "frame_along": {
+        "n": 2645,
+        "points": 529,
+        "median_in": 3.63,
+        "p90_in": 15.53
+       },
+       "frame_3d": {
+        "n": 2645,
+        "points": 529,
+        "median_in": 6.65,
+        "p90_in": 22.96
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 1905,
+        "points": 381,
+        "median_in": 3.17,
+        "p90_in": 14.45
+       },
+       "span_along_true_pixel": {
+        "n": 1905,
+        "points": 381,
+        "median_in": 2.97,
+        "p90_in": 12.6
+       },
+       "frame_along_true_pixel": {
+        "n": 2645,
+        "points": 529,
+        "median_in": 2.47,
+        "p90_in": 14.19
+       },
+       "edge_point_to_fused_plane": {
+        "n": 2645,
+        "points": 529,
+        "median_in": 2.58,
+        "p90_in": 13.44
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 215,
+         "points": 43,
+         "median_in": 1.55,
+         "p90_in": 3.68
+        },
+        "15-30": {
+         "n": 415,
+         "points": 83,
+         "median_in": 2.97,
+         "p90_in": 9.15
+        },
+        "30-45": {
+         "n": 825,
+         "points": 165,
+         "median_in": 4.59,
+         "p90_in": 13.03
+        },
+        ">45": {
+         "n": 450,
+         "points": 90,
+         "median_in": 5.83,
+         "p90_in": 22.66
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 215,
+         "points": 43,
+         "median_in": 0.99,
+         "p90_in": 2.93
+        },
+        "15-30": {
+         "n": 415,
+         "points": 83,
+         "median_in": 1.79,
+         "p90_in": 6.92
+        },
+        "30-45": {
+         "n": 825,
+         "points": 165,
+         "median_in": 3.01,
+         "p90_in": 13.04
+        },
+        ">45": {
+         "n": 450,
+         "points": 90,
+         "median_in": 7.77,
+         "p90_in": 14.15
+        }
+       }
+      },
+      "M3": {
+       "pairs": 2545,
+       "match_rate": 0.496,
+       "match_px": {
+        "n": 1262,
+        "median": 32.46,
+        "p90": 208.58
+       },
+       "frame_3d": {
+        "n": 1262,
+        "points": 271,
+        "median_in": 21.49,
+        "p90_in": 110.39
+       },
+       "frame_along": {
+        "n": 1262,
+        "points": 271,
+        "median_in": 3.85,
+        "p90_in": 72.17
+       },
+       "span_along": {
+        "n": 474,
+        "points": 115,
+        "median_in": 8.73,
+        "p90_in": 77.67,
+        "p90_ci95_in": [
+         53.34,
+         93.21
+        ]
+       },
+       "span_3d": {
+        "n": 474,
+        "points": 115,
+        "median_in": 62.4,
+        "p90_in": 152.39,
+        "p90_ci95_in": [
+         129.39,
+         211.36
+        ]
+       },
+       "anchor_matched": 474,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 167,
+        "points": 69,
+        "median_in": 3.03,
+        "p90_in": 7.9
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.132
+      }
+     }
+    },
+    "tap_px": {
+     "tap_abs_du": {
+      "n": 12581,
+      "median": 6.73,
+      "p90": 16.47
+     },
+     "snap_abs_du": {
+      "n": 12581,
+      "median": 11.34,
+      "p90": 27.79
+     },
+     "snap_within_1px": 0.058,
+     "added_after_the_run_snap_from_true_pixel_abs_du": {
+      "n": 12581,
+      "median": 11.66,
+      "p90": 23.29
+     },
+     "added_after_the_run_vertical_in_plane_edges": {
+      "tap_px": {
+       "n": 2511,
+       "median": 6.6,
+       "p90": 16.28
+      },
+      "snap_px": {
+       "n": 2511,
+       "median": 8.85,
+       "p90": 24.59
+      },
+      "snap_from_true_px": {
+       "n": 2511,
+       "median": 8.8,
+       "p90": 21.87
+      }
+     }
+    },
+    "plans": {
+     "points_with_2_photos_in_a_group": 2641,
+     "photos_per_point_median": 5.0,
+     "points_with_a_second_photo": 2489
+    }
+   },
+   "criteria": {
+    "P1": {
+     "m0_along_p90_in_0_15": 1.35,
+     "m0_along_p90_in_over_30": 19.8,
+     "pass": true
+    },
+    "P2": {
+     "m1_along_p90_in_in_plane": 6.65,
+     "pass": false
+    },
+    "P3": {
+     "m2_span_along_p90_in_in_plane_modern": 12.55,
+     "pass": false
+    },
+    "P4": {
+     "m3_span_3d_p90_in_modern": 158.68,
+     "match_rate": 0.409,
+     "pass": false
+    },
+    "kill": {
+     "m0_along_p90_in_per_bin": [
+      1.35,
+      4.59,
+      8.89,
+      24.36
+     ],
+     "triggered": false
+    }
+   }
+  },
+  "facade": {
+   "meta": {
+    "photos": 76,
+    "wall_planes": 2,
+    "edge_points_within_6m": 4734,
+    "edge_points_on_a_wall": 866,
+    "points_sampled": 866,
+    "in_plane": 12,
+    "proud": 854,
+    "vertical_edges": 19,
+    "up_vs_camera_up_deg": 10.52,
+    "wall_tilt_deg_max": 1.05,
+    "oracle_scale_median": 1.0735974441681835,
+    "seconds": 7
+   },
+   "single": {
+    "m0": {
+     "all": {
+      "all angles": {
+       "along": {
+        "n": 1446,
+        "points": 866,
+        "median_in": 13.89,
+        "p90_in": 29.41
+       },
+       "out": {
+        "n": 1446,
+        "points": 866,
+        "median_in": 7.3,
+        "p90_in": 12.66
+       },
+       "3d": {
+        "n": 1446,
+        "points": 866,
+        "median_in": 16.03,
+        "p90_in": 31.68
+       },
+       "missing": 0
+      },
+      "0-15": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "30-45": {
+       "along": {
+        "n": 19,
+        "points": 19,
+        "median_in": 4.89,
+        "p90_in": 17.16
+       },
+       "out": {
+        "n": 19,
+        "points": 19,
+        "median_in": 5.41,
+        "p90_in": 17.57
+       },
+       "3d": {
+        "n": 19,
+        "points": 19,
+        "median_in": 7.36,
+        "p90_in": 24.58
+       },
+       "missing": 0
+      },
+      ">45": {
+       "along": {
+        "n": 1427,
+        "points": 859,
+        "median_in": 13.97,
+        "p90_in": 29.65
+       },
+       "out": {
+        "n": 1427,
+        "points": 859,
+        "median_in": 7.32,
+        "p90_in": 12.55
+       },
+       "3d": {
+        "n": 1427,
+        "points": 859,
+        "median_in": 16.16,
+        "p90_in": 31.92
+       },
+       "missing": 0
+      }
+     },
+     "in_plane": {
+      "all angles": {
+       "along": {
+        "n": 49,
+        "points": 12,
+        "median_in": 15.03,
+        "p90_in": 31.74
+       },
+       "out": {
+        "n": 49,
+        "points": 12,
+        "median_in": 7.58,
+        "p90_in": 20.86
+       },
+       "3d": {
+        "n": 49,
+        "points": 12,
+        "median_in": 18.21,
+        "p90_in": 36.22
+       },
+       "missing": 0
+      },
+      "0-15": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "30-45": {
+       "along": {
+        "n": 8,
+        "points": 8,
+        "median_in": 5.23,
+        "p90_in": 18.45
+       },
+       "out": {
+        "n": 8,
+        "points": 8,
+        "median_in": 5.71,
+        "p90_in": 19.29
+       },
+       "3d": {
+        "n": 8,
+        "points": 8,
+        "median_in": 7.82,
+        "p90_in": 26.72
+       },
+       "missing": 0
+      },
+      ">45": {
+       "along": {
+        "n": 41,
+        "points": 11,
+        "median_in": 15.1,
+        "p90_in": 31.94
+       },
+       "out": {
+        "n": 41,
+        "points": 11,
+        "median_in": 7.63,
+        "p90_in": 20.72
+       },
+       "3d": {
+        "n": 41,
+        "points": 11,
+        "median_in": 18.22,
+        "p90_in": 36.89
+       },
+       "missing": 0
+      }
+     },
+     "proud": {
+      "all angles": {
+       "along": {
+        "n": 1397,
+        "points": 854,
+        "median_in": 13.67,
+        "p90_in": 29.35
+       },
+       "out": {
+        "n": 1397,
+        "points": 854,
+        "median_in": 7.2,
+        "p90_in": 12.5
+       },
+       "3d": {
+        "n": 1397,
+        "points": 854,
+        "median_in": 15.89,
+        "p90_in": 31.46
+       },
+       "missing": 0
+      },
+      "0-15": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "30-45": {
+       "along": {
+        "n": 11,
+        "points": 11,
+        "median_in": 4.66,
+        "p90_in": 5.43
+       },
+       "out": {
+        "n": 11,
+        "points": 11,
+        "median_in": 5.25,
+        "p90_in": 5.92
+       },
+       "3d": {
+        "n": 11,
+        "points": 11,
+        "median_in": 7.08,
+        "p90_in": 8.11
+       },
+       "missing": 0
+      },
+      ">45": {
+       "along": {
+        "n": 1386,
+        "points": 848,
+        "median_in": 13.81,
+        "p90_in": 29.41
+       },
+       "out": {
+        "n": 1386,
+        "points": 848,
+        "median_in": 7.25,
+        "p90_in": 12.5
+       },
+       "3d": {
+        "n": 1386,
+        "points": 848,
+        "median_in": 15.97,
+        "p90_in": 31.52
+       },
+       "missing": 0
+      }
+     }
+    },
+    "m1": {
+     "all": {
+      "all angles": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 1446
+      },
+      "0-15": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "30-45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 19
+      },
+      ">45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 1427
+      }
+     },
+     "in_plane": {
+      "all angles": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 49
+      },
+      "0-15": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "30-45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 8
+      },
+      ">45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 41
+      }
+     },
+     "proud": {
+      "all angles": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 1397
+      },
+      "0-15": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "30-45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 11
+      },
+      ">45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 1386
+      }
+     }
+    },
+    "m1a": {
+     "all": {
+      "all angles": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 1446
+      },
+      "0-15": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "30-45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 19
+      },
+      ">45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 1427
+      }
+     },
+     "in_plane": {
+      "all angles": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 49
+      },
+      "0-15": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "30-45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 8
+      },
+      ">45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 41
+      }
+     },
+     "proud": {
+      "all angles": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 1397
+      },
+      "0-15": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "15-30": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 0
+      },
+      "30-45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 11
+      },
+      ">45": {
+       "along": {
+        "n": 0,
+        "points": 0
+       },
+       "out": {
+        "n": 0,
+        "points": 0
+       },
+       "3d": {
+        "n": 0,
+        "points": 0
+       },
+       "missing": 1386
+      }
+     }
+    },
+    "m1a_yaw": {
+     "observations": 0
+    }
+   },
+   "multi": {
+    "exact": {
+     "all": {
+      "M2": {
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "edge_point_to_fused_plane": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       }
+      },
+      "M3": {
+       "pairs": 603,
+       "match_rate": 0.138,
+       "match_px": {
+        "n": 83,
+        "median": 1.42,
+        "p90": 28.68
+       },
+       "frame_3d": {
+        "n": 83,
+        "points": 83,
+        "median_in": 1.43,
+        "p90_in": 29.45
+       },
+       "frame_along": {
+        "n": 83,
+        "points": 83,
+        "median_in": 1.2,
+        "p90_in": 22.06
+       },
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "anchor_matched": 0,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 51,
+        "points": 51,
+        "median_in": 0.78,
+        "p90_in": 1.76
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.614
+      }
+     },
+     "in_plane": {
+      "M2": {
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "edge_point_to_fused_plane": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       }
+      },
+      "M3": {
+       "pairs": 12,
+       "match_rate": 0.0,
+       "match_px": {
+        "n": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "anchor_matched": 0,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 0,
+        "points": 0
+       },
+       "added_after_the_run_share_of_matches_within_2px": NaN
+      }
+     },
+     "proud": {
+      "M2": {
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "edge_point_to_fused_plane": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       }
+      },
+      "M3": {
+       "pairs": 591,
+       "match_rate": 0.14,
+       "match_px": {
+        "n": 83,
+        "median": 1.42,
+        "p90": 28.68
+       },
+       "frame_3d": {
+        "n": 83,
+        "points": 83,
+        "median_in": 1.43,
+        "p90_in": 29.45
+       },
+       "frame_along": {
+        "n": 83,
+        "points": 83,
+        "median_in": 1.2,
+        "p90_in": 22.06
+       },
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "anchor_matched": 0,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 51,
+        "points": 51,
+        "median_in": 0.78,
+        "p90_in": 1.76
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.614
+      }
+     },
+     "in_plane_vertical": {
+      "M2": {
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "edge_point_to_fused_plane": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       }
+      },
+      "M3": {
+       "pairs": 0,
+       "match_rate": 0.0,
+       "match_px": {
+        "n": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "anchor_matched": 0,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 0,
+        "points": 0
+       },
+       "added_after_the_run_share_of_matches_within_2px": NaN
+      }
+     }
+    },
+    "modern_assumed": {
+     "all": {
+      "M2": {
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "edge_point_to_fused_plane": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       }
+      },
+      "M3": {
+       "pairs": 3015,
+       "match_rate": 0.102,
+       "match_px": {
+        "n": 308,
+        "median": 5.12,
+        "p90": 35.04
+       },
+       "frame_3d": {
+        "n": 308,
+        "points": 105,
+        "median_in": 6.22,
+        "p90_in": 33.48
+       },
+       "frame_along": {
+        "n": 308,
+        "points": 105,
+        "median_in": 4.91,
+        "p90_in": 25.57
+       },
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "anchor_matched": 0,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 62,
+        "points": 42,
+        "median_in": 3.71,
+        "p90_in": 11.14
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.201
+      }
+     },
+     "in_plane": {
+      "M2": {
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "edge_point_to_fused_plane": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       }
+      },
+      "M3": {
+       "pairs": 60,
+       "match_rate": 0.0,
+       "match_px": {
+        "n": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "anchor_matched": 0,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 0,
+        "points": 0
+       },
+       "added_after_the_run_share_of_matches_within_2px": NaN
+      }
+     },
+     "proud": {
+      "M2": {
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "edge_point_to_fused_plane": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       }
+      },
+      "M3": {
+       "pairs": 2955,
+       "match_rate": 0.104,
+       "match_px": {
+        "n": 308,
+        "median": 5.12,
+        "p90": 35.04
+       },
+       "frame_3d": {
+        "n": 308,
+        "points": 105,
+        "median_in": 6.22,
+        "p90_in": 33.48
+       },
+       "frame_along": {
+        "n": 308,
+        "points": 105,
+        "median_in": 4.91,
+        "p90_in": 25.57
+       },
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "anchor_matched": 0,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 62,
+        "points": 42,
+        "median_in": 3.71,
+        "p90_in": 11.14
+       },
+       "added_after_the_run_share_of_matches_within_2px": 0.201
+      }
+     },
+     "in_plane_vertical": {
+      "M2": {
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       }
+      },
+      "M2_added_after_the_run": {
+       "span_along_tap_no_snap": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along_true_pixel": {
+        "n": 0,
+        "points": 0
+       },
+       "edge_point_to_fused_plane": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       },
+       "span_along_true_pixel_by_median_view_angle": {
+        "0-15": {
+         "n": 0,
+         "points": 0
+        },
+        "15-30": {
+         "n": 0,
+         "points": 0
+        },
+        "30-45": {
+         "n": 0,
+         "points": 0
+        },
+        ">45": {
+         "n": 0,
+         "points": 0
+        }
+       }
+      },
+      "M3": {
+       "pairs": 0,
+       "match_rate": 0.0,
+       "match_px": {
+        "n": 0
+       },
+       "frame_3d": {
+        "n": 0,
+        "points": 0
+       },
+       "frame_along": {
+        "n": 0,
+        "points": 0
+       },
+       "span_along": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "span_3d": {
+        "n": 0,
+        "points": 0,
+        "p90_ci95_in": null
+       },
+       "anchor_matched": 0,
+       "added_after_the_run_frame_3d_where_match_within_2px": {
+        "n": 0,
+        "points": 0
+       },
+       "added_after_the_run_share_of_matches_within_2px": NaN
+      }
+     }
+    },
+    "tap_px": {
+     "tap_abs_du": {
+      "n": 3030,
+      "median": 6.75,
+      "p90": 16.18
+     },
+     "snap_abs_du": {
+      "n": 3030,
+      "median": 12.78,
+      "p90": 28.05
+     },
+     "snap_within_1px": 0.037,
+     "added_after_the_run_snap_from_true_pixel_abs_du": {
+      "n": 3030,
+      "median": 13.12,
+      "p90": 23.39
+     },
+     "added_after_the_run_vertical_in_plane_edges": {
+      "tap_px": {
+       "n": 0
+      },
+      "snap_px": {
+       "n": 0
+      },
+      "snap_from_true_px": {
+       "n": 0
+      }
+     }
+    },
+    "plans": {
+     "points_with_2_photos_in_a_group": 606,
+     "photos_per_point_median": 5.0,
+     "points_with_a_second_photo": 603
+    }
+   },
+   "criteria": {
+    "P1": {
+     "m0_along_p90_in_0_15": NaN,
+     "m0_along_p90_in_over_30": 29.41,
+     "pass": false
+    },
+    "P2": {
+     "m1_along_p90_in_in_plane": NaN,
+     "pass": false
+    },
+    "P3": {
+     "m2_span_along_p90_in_in_plane_modern": NaN,
+     "pass": false
+    },
+    "P4": {
+     "m3_span_3d_p90_in_modern": NaN,
+     "match_rate": 0.102,
+     "pass": false
+    },
+    "kill": {
+     "m0_along_p90_in_per_bin": [
+      NaN,
+      NaN,
+      17.16,
+      29.65
+     ],
+     "triggered": false
+    }
+   }
+  }
+ }
+}

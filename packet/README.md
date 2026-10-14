@@ -38,9 +38,14 @@ performance.
    adding once a device study measures it.
 2. **The ground's height at the meter.** 0.4 notes that world y = 0 is the phone's height at
    session start, not the ground. The app measures the ground where it can: the horizontal plane
-   below the meter. Proposal: `meterAnchor.groundY` (world meters) with `groundSource`
+   below the meter. Proposal: `meterAnchor.groundOffset`, the ground's height in the meter
+   anchor's frame (meters along its +y, negative below the meter), with `groundSource`
    (`plane`, `mesh`, `assumed`), so headroom and "ground under the battery" start from a
-   measurement when there is one.
+   measurement when there is one. A raw world `groundY` would stay put when ARKit corrects the
+   anchor (proposal 10), and the server would derive a wrong meter-to-ground offset; held in
+   the anchor's frame, the ground moves with the meter. The app's local packet 1.1 already
+   writes it this way: `meter_anchor.ground_y_m` is the ground's world y minus the anchor's, and
+   with `.gravity` alignment the anchor's +y is world up.
 3. **What a marked end or feature is.** 0.4's tap labels name the point, not the answers the
    homeowner gave about it:
    - whether a wall end is a real end (something blocks it) or unexplored (it turns a corner,

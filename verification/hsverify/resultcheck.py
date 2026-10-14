@@ -1137,7 +1137,7 @@ def reported_dimension_problems(result: dict, rules: RuleSet | None) -> list[str
         if check.get("rule", {}).get("key") == "route.corner_allowance_ft":
             allowance = check.get("threshold_ft")
             if allowance is not None and (not finite(allowance) or allowance < 0):
-                problems.append("reported corner allowance must be finite and nonnegative")
+                problems.append(f"{check['id']} corner allowance must be finite and nonnegative")
     valid_widths = [(source, width) for source, width in widths if finite(width) and width > 0]
     if valid_widths and any(
         abs(width - valid_widths[0][1]) > NUMBER_TOL_FT for _, width in valid_widths

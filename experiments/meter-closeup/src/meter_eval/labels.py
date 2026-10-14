@@ -134,7 +134,19 @@ def build() -> list[dict]:
             "usable": usable,
             "notes": scrub(r1["notes"]),
         }
-        verdict = human.get(image_id, {}).get("verdict", "")
+        answer = human.get(image_id, {})
+        verdict = answer.get("verdict", "")
+        # A bare Keep confirms only the label shown at review, not a later reader update.
+        shown = "" if number == "NONE" else number
+        shown_known = answer.get("shown_known") == "yes" or (
+            "shown_known" not in answer and bool(answer.get("shown"))
+        )
+        if (
+            verdict == "keep"
+            and not answer.get("number")
+            and (not shown_known or answer.get("shown") != shown)
+        ):
+            verdict = ""
         # A person's number replaces the readers': typed with "fix", or confirmed with "keep"
         # after a fix. A "keep" with no number confirms the readers' own number.
         if verdict in ("fix", "keep") and human[image_id].get("number"):

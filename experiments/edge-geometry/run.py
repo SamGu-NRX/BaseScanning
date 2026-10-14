@@ -2,6 +2,7 @@
 whether a ray to the wall plane, a snapped tap or a second photo places an edge better.
 
     uv run python run.py        # writes results/edge_geometry.json and results/edge_geometry.md
+    uv run python run.py --pair=widest   # M3 with the widest pair: results/edge_geometry_widest_pair.*
 
 Reads the evals harness read-only (EDGE_EVALS_DIR, default below) and its caches under
 ~/house-scanning-data/evals: the ETH3D scenes after `evals.recon prepare`, MoGe-2 predictions
@@ -81,6 +82,10 @@ SNAP_ROWS = 9
 WORLD_PLANE_PX_PER_PHOTO = 3000
 MIN_BASELINE_M = 0.3
 MIN_RAY_ANGLE_DEG = 5.0
+# M3's second photo, pre-registered: the narrowest ray angle at or above MIN_RAY_ANGLE_DEG, which
+# keeps the two patches most alike for matching. A narrow pair triangulates worst, so after review
+# `--pair=widest` reruns M3 with the widest qualifying angle instead, into separate results files.
+PAIRING = "widest" if "--pair=widest" in sys.argv else "narrowest"
 NCC_MIN = 0.8
 NCC_PATCH = 15
 DEPTH_RANGE_M = (0.5, 10.0)
@@ -311,7 +316,17 @@ def run_scene(scene: str) -> dict:
     E_all = cands[edge_ids].astype(np.float64)
     plane_e, sd_e = assign_edges(E_all, cands, plane_of, planes)
     assigned = np.flatnonzero(plane_e >= 0)
-    pick = assigned[np.unique(np.linspace(0, len(assigned) - 1, min(MAX_POINTS, len(assigned))).round().astype(int))] if len(assigned) else assigned
+    pick = (
+        assigned[
+            np.unique(
+                np.linspace(0, len(assigned) - 1, min(MAX_POINTS, len(assigned)))
+                .round()
+                .astype(int)
+            )
+        ]
+        if len(assigned)
+        else assigned
+    )
     ids = edge_ids[pick]
     P = E_all[pick]
     plane = plane_e[pick]
@@ -327,7 +342,9 @@ def run_scene(scene: str) -> dict:
         "proud": int((~in_plane).sum()),
         "vertical_edges": int(vertical_edge.sum()),
         "up_vs_camera_up_deg": round(float(np.degrees(np.arccos(up @ camera_up))), 2),
-        "wall_tilt_deg_max": round(float(max(np.degrees(np.arcsin(abs(n @ up))) for n, _ in planes)), 2),
+        "wall_tilt_deg_max": round(
+            float(max(np.degrees(np.arcsin(abs(n @ up))) for n, _ in planes)), 2
+        ),
         "oracle_scale_median": float(np.median([d.scale for d in vd.values()])),
     }
     print(f"{scene}: {meta}")
@@ -357,9 +374,21 @@ def run_scene(scene: str) -> dict:
 
 def single_photo_methods(ids, P, plane, planes, frames, names, vd, obs, up) -> dict:
     """M0, M1 and M1-anchor on every photo where the point is an edge."""
-    out: dict[str, list] = {k: [] for k in (
-        "j", "angle", "m0", "m1", "m1_offset", "m1a", "psi", "s", "pred_signed", "pred_mag",
-    )}
+    out: dict[str, list] = {
+        k: []
+        for k in (
+            "j",
+            "angle",
+            "m0",
+            "m1",
+            "m1_offset",
+            "m1a",
+            "psi",
+            "s",
+            "pred_signed",
+            "pred_mag",
+        )
+    }
     fits: dict[tuple[str, int], tuple[np.ndarray, float]] = {}
     for j, vi, row in zip(obs["j"], obs["view"], obs["row"], strict=True):
         d = vd[names[vi]]
@@ -457,13 +486,16 @@ def multi_photo_methods(scene, ids, P, plane, planes, frames, names, vd, obs, up
         ref = min(flagged or range(len(members)), key=lambda i: dist[i])
         rn = members[ref][0]
         second = None
-        best_angle = np.inf
+        best_angle = np.inf if PAIRING == "narrowest" else -np.inf
         for n, r in members:
             if n == rn or np.linalg.norm(vd[n].C - vd[rn].C) < MIN_BASELINE_M:
                 continue
             a, b = p - vd[rn].C, p - vd[n].C
-            ang = np.degrees(np.arccos(np.clip(a @ b / np.linalg.norm(a) / np.linalg.norm(b), -1, 1)))
-            if MIN_RAY_ANGLE_DEG <= ang < best_angle:
+            ang = np.degrees(
+                np.arccos(np.clip(a @ b / np.linalg.norm(a) / np.linalg.norm(b), -1, 1))
+            )
+            better = ang < best_angle if PAIRING == "narrowest" else ang > best_angle
+            if ang >= MIN_RAY_ANGLE_DEG and better:
                 second, best_angle = (n, r), ang
         plan[j] = (g, members, ref, second)
 
@@ -486,7 +518,14 @@ def multi_photo_methods(scene, ids, P, plane, planes, frames, names, vd, obs, up
             snap_true_err.append(abs(from_true[0] - d.uv[r][0]))
             tap_j.append(j)
     m2_angle = {
-        j: float(np.median([geom.view_angle_deg((P[j] - vd[n].C)[None], planes[int(plane[j])][0])[0] for n, _ in members]))
+        j: float(
+            np.median(
+                [
+                    geom.view_angle_deg((P[j] - vd[n].C)[None], planes[int(plane[j])][0])[0]
+                    for n, _ in members
+                ]
+            )
+        )
         for j, (_g, members, _ref, _second) in plan.items()
     }
 
@@ -499,20 +538,39 @@ def multi_photo_methods(scene, ids, P, plane, planes, frames, names, vd, obs, up
                 wall = vd[m].walls.get(k) if m in vd else None
                 if wall is None:
                     continue
-                sel = np.linspace(0, len(wall.cam) - 1, min(WORLD_PLANE_PX_PER_PHOTO, len(wall.cam))).astype(int)
+                sel = np.linspace(
+                    0, len(wall.cam) - 1, min(WORLD_PLANE_PX_PER_PHOTO, len(wall.cam))
+                ).astype(int)
                 T = gp[g][m]
                 pts.append(wall.cam[sel] @ T[:3, :3].T + T[:3, 3])
             n_pts = sum(len(x) for x in pts)
-            world_planes[key] = geom.fit_plane(np.concatenate(pts)) if n_pts >= MIN_WALL_PX else None
+            world_planes[key] = (
+                geom.fit_plane(np.concatenate(pts)) if n_pts >= MIN_WALL_PX else None
+            )
         return world_planes[key]
 
     out = {}
     for (setting, draw), gp in poses.items():
-        rec: dict[str, list] = {k: [] for k in (
-            "j", "draw", "m2_frame", "m2_span", "m2_span_tap", "m2_span_true", "m2_frame_true",
-            "m2_angle", "m2_offset", "m3_pair", "m3_ncc", "m3_px", "m3_frame",
-            "m3_span", "m3_anchor",
-        )}
+        rec: dict[str, list] = {
+            k: []
+            for k in (
+                "j",
+                "draw",
+                "m2_frame",
+                "m2_span",
+                "m2_span_tap",
+                "m2_span_true",
+                "m2_frame_true",
+                "m2_angle",
+                "m2_offset",
+                "m3_pair",
+                "m3_ncc",
+                "m3_px",
+                "m3_frame",
+                "m3_span",
+                "m3_anchor",
+            )
+        }
         for j, (g, members, ref, second) in plan.items():
             k = int(plane[j])
             F, p = frames[k], P[j]
@@ -655,7 +713,9 @@ def summarise_single(s: dict) -> dict:
         return out
     yaw: dict = {
         "observations": int(ok.sum()),
-        "abs_psi_deg": {q: round(float(np.percentile(psi, p)), 2) for q, p in (("median", 50), ("p90", 90))},
+        "abs_psi_deg": {
+            q: round(float(np.percentile(psi, p)), 2) for q, p in (("median", 50), ("p90", 90))
+        },
         "abs_s_m_median": round(float(np.median(np.abs(s["s"][ok]))), 2),
     }
     for cat, m in (("all", np.ones(len(err), bool)), ("in_plane", ip)):
@@ -673,10 +733,20 @@ def summarise_single(s: dict) -> dict:
         slope60 = float(pl @ el / (pl @ pl))
         r2_60 = 1 - float(np.sum((el - slope60 * pl) ** 2) / np.sum((el - el.mean()) ** 2))
         yaw[cat + "_added_after_the_run"] = {
-            "sign_agreement_where_prediction_over_1cm": round(float(np.mean(np.sign(e[big1]) == np.sign(pr[big1]))), 2),
-            "median_error_over_prediction_where_over_1cm": round(float(np.median(e[big1] / pr[big1])), 2),
-            "view_angle_under_60": {"n": int(low.sum()), "slope": round(slope60, 2), "r2": round(r2_60, 2)},
-            "spearman_abs_error_vs_tan_angle_alone": round(spearman(np.abs(e), np.tan(np.radians(ang[m]))), 2),
+            "sign_agreement_where_prediction_over_1cm": round(
+                float(np.mean(np.sign(e[big1]) == np.sign(pr[big1]))), 2
+            ),
+            "median_error_over_prediction_where_over_1cm": round(
+                float(np.median(e[big1] / pr[big1])), 2
+            ),
+            "view_angle_under_60": {
+                "n": int(low.sum()),
+                "slope": round(slope60, 2),
+                "r2": round(r2_60, 2),
+            },
+            "spearman_abs_error_vs_tan_angle_alone": round(
+                spearman(np.abs(e), np.tan(np.radians(ang[m]))), 2
+            ),
         }
         yaw[cat] = {
             "n": int(m.sum()),
@@ -760,10 +830,14 @@ def summarise_multi(m: dict) -> dict:
                     | {"p90_ci95_in": stats.bootstrap_p90(m3_span["3d"], j)},
                     "anchor_matched": int(r["m3_anchor"][c].sum()),
                     "added_after_the_run_frame_3d_where_match_within_2px": stats.summary(
-                        m3_frame["3d"][matched & (r["m3_px"][c] <= 2.0)], j[matched & (r["m3_px"][c] <= 2.0)]
+                        m3_frame["3d"][matched & (r["m3_px"][c] <= 2.0)],
+                        j[matched & (r["m3_px"][c] <= 2.0)],
                     ),
                     "added_after_the_run_share_of_matches_within_2px": round(
-                        float(np.mean(r["m3_px"][c][matched] <= 2.0)) if matched.any() else float("nan"), 3
+                        float(np.mean(r["m3_px"][c][matched] <= 2.0))
+                        if matched.any()
+                        else float("nan"),
+                        3,
                     ),
                 },
             }
@@ -786,20 +860,28 @@ def summarise_multi(m: dict) -> dict:
 def pct(x: np.ndarray) -> dict:
     if not len(x):
         return {"n": 0}
-    return {"n": len(x), "median": round(float(np.median(x)), 2), "p90": round(float(np.percentile(x, 90)), 2)}
+    return {
+        "n": len(x),
+        "median": round(float(np.median(x)), 2),
+        "p90": round(float(np.percentile(x, 90)), 2),
+    }
 
 
 def main() -> None:
     RESULTS.mkdir(exist_ok=True)
+    suffix = "" if PAIRING == "narrowest" else "_widest_pair"
     report: dict = {
+        "m3_pairing": PAIRING,
         "evals_commit": evals_commit(),
         "evals_dir": str(EVALS_DIR).replace(str(Path.home()), "~"),
-        "parameters": {k: v for k, v in globals().items() if k.isupper() and isinstance(v, (int, float, tuple))},
+        "parameters": {
+            k: v for k, v in globals().items() if k.isupper() and isinstance(v, (int, float, tuple))
+        },
         "scenes": {},
     }
     # `--from-raw` re-summarises the per-point records of the last full run (data/, git-ignored).
     for scene in SCENES:
-        raw = HERE / "data" / f"raw_{scene}.pkl"
+        raw = HERE / "data" / f"raw_{scene}{suffix}.pkl"
         if "--from-raw" in sys.argv:
             res = pickle.loads(raw.read_bytes())
         else:
@@ -810,12 +892,18 @@ def main() -> None:
             report["scenes"][scene] = res
             continue
         single, multi = res["single"], res["multi"]
-        summary = {"meta": res["meta"], "single": summarise_single(single), "multi": summarise_multi(multi)}
+        summary = {
+            "meta": res["meta"],
+            "single": summarise_single(single),
+            "multi": summarise_multi(multi),
+        }
         summary["criteria"] = grade(single, multi)
         report["scenes"][scene] = summary
-    (RESULTS / "edge_geometry.json").write_text(json.dumps(report, indent=1, default=float) + "\n")
-    (RESULTS / "edge_geometry.md").write_text(markdown(report))
-    print((RESULTS / "edge_geometry.md").read_text())
+    (RESULTS / f"edge_geometry{suffix}.json").write_text(
+        json.dumps(report, indent=1, default=float) + "\n"
+    )
+    (RESULTS / f"edge_geometry{suffix}.md").write_text(markdown(report))
+    print((RESULTS / f"edge_geometry{suffix}.md").read_text())
 
 
 def p90_in(x: np.ndarray) -> float:
@@ -838,11 +926,22 @@ def grade(single: dict, multi: dict) -> dict:
     rate = float(matched.sum() / max(len(pair), 1))
     m3 = p90_in(np.linalg.norm(ma["m3_span"], axis=1))
     return {
-        "P1": {"m0_along_p90_in_0_15": near, "m0_along_p90_in_over_30": wide, "pass": bool(near <= 0.5 * wide)},
+        "P1": {
+            "m0_along_p90_in_0_15": near,
+            "m0_along_p90_in_over_30": wide,
+            "pass": bool(near <= 0.5 * wide),
+        },
         "P2": {"m1_along_p90_in_in_plane": m1, "pass": bool(m1 <= 4.0)},
         "P3": {"m2_span_along_p90_in_in_plane_modern": m2, "pass": bool(m2 <= 2.0)},
-        "P4": {"m3_span_3d_p90_in_modern": m3, "match_rate": round(rate, 3), "pass": bool(m3 <= 2.0 and rate >= 0.7)},
-        "kill": {"m0_along_p90_in_per_bin": per_bin, "triggered": bool(all(x <= 4.0 for x in per_bin))},
+        "P4": {
+            "m3_span_3d_p90_in_modern": m3,
+            "match_rate": round(rate, 3),
+            "pass": bool(m3 <= 2.0 and rate >= 0.7),
+        },
+        "kill": {
+            "m0_along_p90_in_per_bin": per_bin,
+            "triggered": bool(all(x <= 4.0 for x in per_bin)),
+        },
     }
 
 
@@ -856,7 +955,9 @@ def markdown(report: dict) -> str:
     L = [
         "# Edge geometry (generated by `uv run python run.py`)",
         "",
-        f"Evals harness commit `{report['evals_commit']}`. Errors in inches, median / p90 (points).",
+        f"Evals harness commit `{report['evals_commit']}`. Errors in inches, median / p90 (points). "
+        f"M3 pairs each point's reference photo with the {report.get('m3_pairing', 'narrowest')} "
+        f"qualifying ray angle.",
     ]
     for scene, r in report["scenes"].items():
         L += ["", f"## {scene}", "", f"`{json.dumps(r['meta'])}`"]
@@ -864,14 +965,32 @@ def markdown(report: dict) -> str:
             L += ["", f"Skipped: {r['skipped']}."]
             continue
         s = r["single"]
-        for method, title in (("m0", "M0, depth at the pixel"), ("m1", "M1, ray to this photo's wall plane"), ("m1a", "M1-anchor, ray to a 0.3 m patch plane 1-3 m away")):
-            L += ["", f"### {title}", "", "| Edges | View angle | Along the wall | Out of plane | 3-D |", "| --- | --- | --- | --- | --- |"]
+        for method, title in (
+            ("m0", "M0, depth at the pixel"),
+            ("m1", "M1, ray to this photo's wall plane"),
+            ("m1a", "M1-anchor, ray to a 0.3 m patch plane 1-3 m away"),
+        ):
+            L += [
+                "",
+                f"### {title}",
+                "",
+                "| Edges | View angle | Along the wall | Out of plane | 3-D |",
+                "| --- | --- | --- | --- | --- |",
+            ]
             for cat in ("all", "in_plane", "proud"):
                 for label, row in s[method][cat].items():
-                    L.append(f"| {cat} | {label} | {fmt(row['along'])} | {fmt(row['out'])} | {fmt(row['3d'])} |")
+                    L.append(
+                        f"| {cat} | {label} | {fmt(row['along'])} | {fmt(row['out'])} | {fmt(row['3d'])} |"
+                    )
         L += ["", "### M1-anchor yaw", "", f"`{json.dumps(s['m1a_yaw'])}`"]
         m = r["multi"]
-        L += ["", "### M2 and M3", "", "| Poses | Edges | M2 span along | M2 p90 95% CI | M3 pairs | M3 match | M3 match px | M3 span along | M3 span 3-D | M3 3-D p90 95% CI | M3 frame 3-D |", "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+        L += [
+            "",
+            "### M2 and M3",
+            "",
+            "| Poses | Edges | M2 span along | M2 p90 95% CI | M3 pairs | M3 match | M3 match px | M3 span along | M3 span 3-D | M3 3-D p90 95% CI | M3 frame 3-D |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        ]
         for setting in ("exact", "modern_assumed"):
             for cat, row in m[setting].items():
                 m2, m3 = row["M2"], row["M3"]
@@ -880,7 +999,10 @@ def markdown(report: dict) -> str:
                     f"| {m3['match_px'].get('median', 'n/a')} / {m3['match_px'].get('p90', 'n/a')} | {fmt(m3['span_along'])} | {fmt(m3['span_3d'])} | {m3['span_3d'].get('p90_ci95_in')} | {fmt(m3['frame_3d'])} |"
                 )
         L += ["", "M3 match px is in pixels, not inches.", "", "### Added after the run", ""]
-        L += ["| Poses | Edges | M2 with the true pixel | M2 tap, no snap | Edge point to fused MoGe-2 plane | M3 3-D where the match is within 2 px | Matches within 2 px |", "| --- | --- | --- | --- | --- | --- | --- |"]
+        L += [
+            "| Poses | Edges | M2 with the true pixel | M2 tap, no snap | Edge point to fused MoGe-2 plane | M3 3-D where the match is within 2 px | Matches within 2 px |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+        ]
         for setting in ("exact", "modern_assumed"):
             for cat, row in m[setting].items():
                 d2, m3 = row["M2_added_after_the_run"], row["M3"]
@@ -888,14 +1010,34 @@ def markdown(report: dict) -> str:
                     f"| {setting} | {cat} | {fmt(d2['span_along_true_pixel'])} | {fmt(d2['span_along_tap_no_snap'])} | {fmt(d2['edge_point_to_fused_plane'])} "
                     f"| {fmt(m3['added_after_the_run_frame_3d_where_match_within_2px'])} | {m3['added_after_the_run_share_of_matches_within_2px']} |"
                 )
-        L += ["", "M2 along-wall span error by the point's median view angle (snap, then true pixel):", ""]
+        L += [
+            "",
+            "M2 along-wall span error by the point's median view angle (snap, then true pixel):",
+            "",
+        ]
         for setting in ("exact", "modern_assumed"):
             d2 = m[setting]["in_plane"]["M2_added_after_the_run"]
-            snapped = ", ".join(f"{b} {fmt(x)}" for b, x in d2["span_along_by_median_view_angle"].items())
-            true = ", ".join(f"{b} {fmt(x)}" for b, x in d2["span_along_true_pixel_by_median_view_angle"].items())
-            L += [f"- {setting}, in-plane, snapped: {snapped}", f"- {setting}, in-plane, true pixel: {true}"]
-        L += ["", f"Edge point to plane (single photo): `{json.dumps(s.get('added_after_the_run_edge_point_to_plane'))}`"]
-        L += ["", "", f"Tap and snap, horizontal pixel error: `{json.dumps(m['tap_px'])}`", "", f"`{json.dumps(m['plans'])}`"]
+            snapped = ", ".join(
+                f"{b} {fmt(x)}" for b, x in d2["span_along_by_median_view_angle"].items()
+            )
+            true = ", ".join(
+                f"{b} {fmt(x)}" for b, x in d2["span_along_true_pixel_by_median_view_angle"].items()
+            )
+            L += [
+                f"- {setting}, in-plane, snapped: {snapped}",
+                f"- {setting}, in-plane, true pixel: {true}",
+            ]
+        L += [
+            "",
+            f"Edge point to plane (single photo): `{json.dumps(s.get('added_after_the_run_edge_point_to_plane'))}`",
+        ]
+        L += [
+            "",
+            "",
+            f"Tap and snap, horizontal pixel error: `{json.dumps(m['tap_px'])}`",
+            "",
+            f"`{json.dumps(m['plans'])}`",
+        ]
         L += ["", "### Criteria", "", f"`{json.dumps(r['criteria'])}`"]
     return "\n".join(L) + "\n"
 

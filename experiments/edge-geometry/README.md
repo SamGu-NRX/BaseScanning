@@ -21,7 +21,7 @@ P1 passes; P2 to P4 fail ([tables](results/edge_geometry.md)).
 - **Angle.** In-plane edges are 0.9 in p90 along the wall within 15° of face-on and 24 in beyond 45°.
 - **Ray to plane (M1).** 6.7 in overall, 0.5 in within 15°.
 - **The app's plane (M1-anchor).** Its yaw error is 2.2° median and 6.7° p90.
-- **M2 and M3.** Tap, snap and median gives 12.6 in, because the learned plane's own error dominates. Two-photo matching finds 41% of points.
+- **M2 and M3.** Tap, snap and median gives 12.6 in, because the learned plane's own error dominates. Two-photo matching finds 41% of points. Pairing each point with the widest photo pair instead of the narrowest is no better (added after review).
 
 **Run:** `uv run python run.py`: 2 min, 0.9 GB. Needs the evals checkout at 190ed33 and its ETH3D and MoGe-2 caches.
 

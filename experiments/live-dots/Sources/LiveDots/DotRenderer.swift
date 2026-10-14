@@ -3,24 +3,6 @@ import Metal
 import MetalKit
 import simd
 
-/// What one frame shows: which keyframe, when on the playback clock, and the toggles.
-struct FrameRequest: Equatable {
-    var mode: CaptureMode
-    var keyframe: Int
-    /// Playback seconds; animations are evaluated at this time.
-    var time: Float
-    var reduceMotion: Bool
-    var fog: FogStyle
-    var scheme: DotScheme = .hologram
-    /// Seconds on a clock that keeps running while playback is paused, for the fog's drift.
-    var ambientTime: Float = 0
-    /// Seconds since the previous frame, for the fog's lag.
-    var frameInterval: Float = 1 / 60
-
-    /// A scrub or a still shows its keyframe settled; the renderer passes a far-future time.
-    var isSettled: Bool { time > 1e4 }
-}
-
 /// Draws a keyframe: the camera image, the optional fog veil, then the dots as additive point
 /// sprites from one vertex buffer. The buffer is rebuilt only when the keyframe or mode changes;
 /// between keyframes the shader animates births and evidence from the playback time.
@@ -60,6 +42,7 @@ final class DotRenderer {
     private var linkBuffer: MTLBuffer?
     private var linkVertexCount = 0
     private var cachedKey: (mode: CaptureMode, keyframe: Int, scheme: DotScheme)?
+    private var fogContinuity = FogContinuity()
     /// Replaces the timeline's sprites, for the 6,000-dot benchmark.
     var spriteOverride: [DotSprite]? {
         didSet { cachedKey = nil }
@@ -120,11 +103,13 @@ final class DotRenderer {
         let projection = ScreenProjection(keyframe: keyframe, viewSize: pixelSize)
 
         var clip = projection.clipMatrix
+        let resetFog = fogContinuity.consume(request)
         if request.fog == .on {
             fog.encodeMask(
                 into: commandBuffer, splats: splatBuffer, splatCount: splatCount, clip: clip,
                 pixelsPerMetre: keyframe.intrinsics.x * projection.scale * Float(FogLayer.maskWidth) / pixelSize.x,
-                time: request.time, dt: request.frameInterval, reduceMotion: request.reduceMotion, reset: request.isSettled)
+                time: request.time, dt: request.frameInterval, reduceMotion: request.reduceMotion,
+                reset: resetFog)
         }
 
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return }

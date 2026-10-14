@@ -87,7 +87,9 @@ def epipolar_match(
     fail = (np.full(2, np.nan), -1.0)
     if not (half <= uv1[0] <= w1 - 1 - half and half <= uv1[1] <= h1 - 1 - half):
         return fail
-    template = cv2.getRectSubPix(img1.astype(np.float32), (patch, patch), (float(uv1[0]), float(uv1[1])))
+    template = cv2.getRectSubPix(
+        img1.astype(np.float32), (patch, patch), (float(uv1[0]), float(uv1[1]))
+    )
 
     # The depths whose projection lands inside img2, in front of it: an interval along the ray,
     # so its two ends bound a straight segment in img2.
@@ -109,12 +111,20 @@ def epipolar_match(
     samples = ends[0] + np.linspace(0.0, 1.0, n)[:, None] * (ends[1] - ends[0])
 
     offs = np.arange(patch, dtype=np.float32) - half
-    map_x = (samples[:, 0, None, None] + offs[None, None, :]).astype(np.float32)
-    map_y = (samples[:, 1, None, None] + offs[None, :, None]).astype(np.float32)
-    map_x = np.broadcast_to(map_x, (n, patch, patch)).reshape(n * patch, patch)
-    map_y = np.broadcast_to(map_y, (n, patch, patch)).reshape(n * patch, patch)
-    patches = cv2.remap(img2.astype(np.float32), map_x, map_y, cv2.INTER_LINEAR)
-    score = _ncc(template, patches.reshape(n, patch, patch))
+    image2 = img2.astype(np.float32)
+    # cv2.remap takes at most SHRT_MAX rows, and a wide photo pair's segment can cross most of
+    # img2, so the patches are cut in chunks that fit; shorter segments are one chunk, as before.
+    chunk = (np.iinfo(np.int16).max - 1) // patch
+    patches = []
+    for a in range(0, n, chunk):
+        part = samples[a : a + chunk]
+        m = len(part)
+        map_x = (part[:, 0, None, None] + offs[None, None, :]).astype(np.float32)
+        map_y = (part[:, 1, None, None] + offs[None, :, None]).astype(np.float32)
+        map_x = np.broadcast_to(map_x, (m, patch, patch)).reshape(m * patch, patch)
+        map_y = np.broadcast_to(map_y, (m, patch, patch)).reshape(m * patch, patch)
+        patches.append(cv2.remap(image2, map_x, map_y, cv2.INTER_LINEAR).reshape(m, patch, patch))
+    score = _ncc(template, np.concatenate(patches))
     i = int(np.argmax(score))
     off = 0.0
     if 0 < i < n - 1:
