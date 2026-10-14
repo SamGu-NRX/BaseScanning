@@ -1,4 +1,4 @@
-import HouseScanKit
+@testable import HouseScanKit
 import simd
 import Testing
 
@@ -27,6 +27,42 @@ import Testing
         map.observe(wallCamera(s: 0), trackingNormal: true)
         map.observe(wallCamera(s: 0.3), trackingNormal: true)
         return meterGroundSkipped(map)
+    }
+
+    @Test func aCompletedTrimmedMeterAimMovesOn() throws {
+        var map = CoverageMap(wall: standardWall())
+        let wall = (-2...3).map {
+            CoverageMap.Sighting(band: .wall, index: $0, rows: Set(0...9), hiddenRows: [])
+        }
+        map.record(wall, from: SIMD3(0, 1.4, 2.6))
+        map.record(wall, from: SIMD3(0.3, 1.4, 2.6))
+        var planner = GuidancePlanner()
+        let first = planner.update(coverage: map, camera: Self.homeowner(x: 1.2), time: 0)
+        #expect(first.task == .aimAtGround(s: 0.381))
+        let stalled = planner.update(coverage: map, camera: Self.homeowner(x: 1.2), time: 20)
+        #expect(stalled.stalled == first.task)
+        let meter = planner.update(coverage: map, camera: Self.homeowner(), time: 24)
+        #expect(meter.task == .aimAtGround(s: 0))
+        let window = try #require(planner.aimWindow(for: meter.task, coverage: map))
+        #expect(nearlyEqual(window.lowerBound, -0.3))
+        #expect(nearlyEqual(window.upperBound, 0.081))
+        let ground = (-2...0).map {
+            CoverageMap.Sighting(band: .ground, index: $0, rows: Set(0...2), hiddenRows: [])
+        }
+        map.record(ground, from: SIMD3(0, 1.4, 2.6))
+        map.record(ground, from: SIMD3(0.3, 1.4, 2.6))
+        for index in -2...0 { #expect(map.level(.ground, index) == .covered) }
+        #expect(map.level(.ground, 1) == .unseen)
+        #expect(planner.isSatisfied(meter.task, coverage: map, camera: Self.homeowner()))
+        #expect(planner.groundByMeterDone(map))
+        let next = planner.update(coverage: map, camera: Self.homeowner(), time: 25)
+        #expect(next.task == .walk(.left))
+        #expect(next.switched == .satisfied)
+        #expect(planner.update(coverage: map, camera: Self.homeowner(), time: 60).task == .walk(.left))
+        map.setEnd(.left, at: -0.5)
+        map.setEnd(.right, at: 0.8)
+        #expect(!planner.groundByMeterDone(map))
+        #expect(!planner.isSatisfied(meter.task, coverage: map, camera: Self.homeowner()))
     }
 
     /// The walk's first request is the ground in front of the meter, with or without a camera,

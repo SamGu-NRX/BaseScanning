@@ -294,7 +294,8 @@ public struct GuidancePlanner: Sendable {
     /// the walk's first request while the phone is near the meter (`preferredTask`), before either
     /// side. Done when no cell of it is between the ends.
     func groundByMeterDone(_ coverage: CoverageMap) -> Bool {
-        let window = -Self.aimHalfWidth...Self.aimHalfWidth
+        // Match satisfaction when a neighbouring stalled span trims the meter request.
+        guard let window = aimWindow(for: .aimAtGround(s: 0), coverage: coverage) else { return false }
         let cells = coverage.indices(overlapping: window).filter(coverage.isWithinEnds)
         guard !cells.isEmpty else { return true }
         let done = cells.filter { index in
