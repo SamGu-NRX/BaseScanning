@@ -16,6 +16,7 @@ import json
 import math
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 DATA = Path(os.environ.get("HOUSE_SCANNING_DATA", Path.home() / "house-scanning-data"))
@@ -26,6 +27,21 @@ REPO = "Ruicheng/moge-2-vitl-normal"
 REVISION = "cb0e8bbd6b1e243589717c78e750b1ba4c093acf"
 RESOLUTION_LEVEL = 9
 MPS_CAP_GB = 3.6
+
+
+def write_depth(target: Path, depth) -> None:
+    import numpy as np
+
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=target.parent, suffix=".npz", delete=False) as f:
+            temporary = Path(f.name)
+            np.savez(f, depth=depth.astype(np.float32))
+        # A killed writer cannot leave a partially written archive at the reusable cache path.
+        os.replace(temporary, target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def main(manifest: Path) -> None:
@@ -58,7 +74,7 @@ def main(manifest: Path) -> None:
             out = model.infer(rgb, resolution_level=RESOLUTION_LEVEL, fov_x=fov_x, use_fp16=True)
         depth = out["depth"].float().cpu().numpy()
         depth[~out["mask"].cpu().numpy().astype(bool)] = np.nan
-        np.savez(item["out"], depth=depth.astype(np.float32))
+        write_depth(Path(item["out"]), depth)
         print(f"{Path(item['image']).name}: median {np.nanmedian(depth):.2f} m", file=sys.stderr)
         del out, rgb
         if device == "mps":

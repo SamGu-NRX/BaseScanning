@@ -6,9 +6,12 @@ from dataclasses import replace
 import pytest
 
 from hsverify.resultcheck import (
+    MAX_SWEEP_SAMPLES,
     GroundPlan,
     Need,
     RuleSet,
+    WorkLimitExceeded,
+    WorkMeter,
     assumption_mismatches,
     battery_error,
     chain_ends_s,
@@ -412,7 +415,7 @@ clearances: {gas_ft: {value: 3}, ac_ft: {value: 3}, battery_ft: {value: 3}, driv
 openings: {exempt_bottom_above_ft: null}
 facing: {min_ft: {value: 3}}
 headroom: {min_ft: {value: 6.5}}
-route: {height_ft: {value: 1}}
+route: {height_ft: {value: 1}, corner_allowance_ft: {value: 0.5}}
 sweep: {step_ft: {value: 0.166666666667}, wall_join_ft: {value: 0.6}}
 """
     rules = RuleSet.from_yaml(text)
@@ -505,7 +508,8 @@ def test_outcome_not_rules_out_one_outcome_and_tolerates_no_runs():
         ]
     }
     assert expectation_problems(bad, r) == [
-        "sweep w1 starts [2.1, 3.0] is pass, which this case rules out (window)"
+        "sweep expectation w1 starts (0.5, 2.5) failed for 1 runs; "
+        "expected {'outcome_not': 'pass'}; examples: w1 starts [2.1, 3.0] is pass; reason: window"
     ]
 
 
@@ -752,9 +756,9 @@ def test_an_overhead_seen_clear_all_the_way_up_settles_headroom():
 
 
 def test_battery_clearance_is_needed_when_its_rule_reaches_past_gas_or_a_battery_is_marked():
-    # BAND_RULES set battery_clearance's radius (100) above gas's (1): the server evaluates it,
+    # BAND_RULES set battery_clearance's radius (2) above gas's (1): the server evaluates it,
     # so a result that leaves it out is flagged and its coverage is needed anyway.
-    wide = replace(RULES, needs=RULES.needs | {"battery_clearance": (Need("ground", 100.0),)})
+    wide = replace(RULES, needs=RULES.needs | {"battery_clearance": (Need("ground", 2.0),)})
     r = result(checks=[check()], sweep=[PASS_RUN])
     msgs = invariant_problems(SCENE, r, rules=wide)
     assert "the result leaves out check battery_clearance, which the rules define" in msgs
@@ -875,8 +879,8 @@ def test_each_start_in_a_sweep_run_needs_only_its_own_reach():
 
 
 def test_sweep_run_starts_are_sampled_at_the_rules_step_plus_the_ends():
-    assert run_starts([1.0, 1.5], 1 / 6) == pytest.approx([1.0, 7 / 6, 8 / 6, 1.5])
-    assert run_starts([2.0, 2.0], 1 / 6) == [2.0]
+    assert list(run_starts([1.0, 1.5], 1 / 6)) == pytest.approx([1.0, 7 / 6, 8 / 6, 1.5])
+    assert list(run_starts([2.0, 2.0], 1 / 6)) == [2.0]
     with pytest.raises(ValueError, match=r"sweep\.step_ft"):
         run_starts([1.0, 2.0], None)
 
@@ -1083,7 +1087,7 @@ def test_a_captured_request_claims_only_the_reach_it_asked_for():
 
 def test_a_sweep_run_shorter_than_a_step_keeps_its_first_start():
     # Review 4114352251: run_starts([0, 0.4], 1) returned only 0.4.
-    assert run_starts([0.0, 0.4], 1.0) == [0.0, 0.4]
+    assert list(run_starts([0.0, 0.4], 1.0)) == [0.0, 0.4]
 
 
 def test_a_passing_spot_must_pass_in_the_sweep_too():
@@ -1222,9 +1226,9 @@ def test_a_passing_spot_must_stand_on_the_scanned_wall():
         ],
     )
     r["spot"]["span_ft"] = [11.0, 11.0 + 31 / 12]
+    r["spot"]["footprint"] = [[11, 0], [11 + 31 / 12, 0], [11 + 31 / 12, 22 / 12], [11, 22 / 12]]
     msgs = invariant_problems(broadly_seen(), r, rules=RULES)
-    assert any("spot [11.00, 13.58] runs past its straight wall [-12.00, 12.00]" in m for m in msgs)
-    assert any("sweep pass start 11.00 runs past its straight wall" in m for m in msgs)
+    assert msgs == ["spot: span_ft exceeds scanned range [-12.0, 12.0]"]
 
 
 def test_walls_meeting_in_a_straight_line_are_one_stretch_and_a_corner_is_not():
@@ -1335,7 +1339,7 @@ def test_a_passing_footprint_keeps_the_wall_error_clear_of_its_stretch_end():
     ]
     r = result(spot=False, sweep=[pass_run(6.846, 10.0 - 31 / 12)])
     assert footprint_problems(scene, r, RULES) == [
-        "sweep pass start 7.42 ends within its error (0.60 ft) of its straight wall's end at 10.00"
+        "sweep pass start 7.01 ends within its error (0.60 ft) of its straight wall's end at 10.00"
     ]
     r["sweep"][0]["outcome"] = "unsure"  # unsure may stand that close
     assert footprint_problems(scene, r, RULES) == []
@@ -1479,3 +1483,190 @@ def test_a_band_gap_under_the_coverage_tolerance_is_rounding():
     assert gaps_over([(-6.5, 18.0)], 9.94, 18.011) == [(18.0, 18.011)]
     assert gaps_over([(0.0, 1.0), (1.009, 3.0)], 0.5, 2.0) == []
     assert gaps_over([(0.0, 1.0), (1.011, 3.0)], 0.5, 2.0) == [(1.0, 1.011)]
+
+
+@pytest.mark.parametrize("outcome", ["pass", "unsure"])
+def test_interior_sweep_start_cannot_cross_a_corner(outcome):
+    scene = copy.deepcopy(SCENE)
+    scene["walls"][0]["baseline"] = [[-12.0, 0.0], [5.0, 0.0], [5.0, 7.0]]
+    result = {"sweep": [{"wall_id": "w1", "start_ft": [1.0, 8.0], "outcome": outcome}]}
+    assert footprint_problems(scene, result, RULES)
+
+
+def test_ground_trimming_keeps_omitted_reach_at_zero():
+    scene = copy.deepcopy(SCENE)
+    scene["coverage"]["observed"] = [
+        {"band": "ground", "span_ft": [-12, 0]},
+        {"band": "ground", "span_ft": [0, 12], "out_ft": 100},
+    ]
+    trimmed = with_ground_short_of(scene, RULES)
+    assert trimmed["coverage"]["observed"][0]["out_ft"] == 0
+
+
+def test_geometric_assumptions_compare_reported_rules():
+    answer = result()
+    answer["checks"].append(
+        {"id": "route_corner", "threshold_ft": 0.5, "rule": {"key": "route.corner_allowance_ft"}}
+    )
+    assert len(assumption_mismatches({"battery_width": 100, "corner_allowance": 100}, answer)) == 2
+    assert (
+        assumption_mismatches({"battery_width": RULES.width_ft, "corner_allowance": 0.5}, answer)
+        == []
+    )
+
+
+@pytest.mark.parametrize("outcome", ["pass", "unsure"])
+@pytest.mark.parametrize("span", [[0, 1e9], [-1e9, 0], [1e9, 1e9]])
+def test_out_of_scan_sweep_fails_before_sampling(monkeypatch, outcome, span):
+    def no_sampling(*args):
+        pytest.fail("out-of-scan sweep reached sampling")
+
+    monkeypatch.setattr("hsverify.resultcheck.run_starts", no_sampling)
+    r = result(spot=False, sweep=[pass_run(*span) | {"outcome": outcome}])
+    message = f"sweep {outcome} starts {span}: start_ft span exceeds scanned range [-12.0, 12.0]"
+    for judge in (
+        invariant_problems,
+        footprint_problems,
+        coverage_problems,
+        declared_height_problems,
+    ):
+        assert judge(SCENE, r, rules=RULES) == [message]
+
+
+def test_sweep_sampling_is_lazy_and_keeps_the_limit_endpoint():
+    samples = run_starts([0, MAX_SWEEP_SAMPLES - 1], 1)
+    assert iter(samples) is samples
+    assert next(samples) == 0
+    remaining = list(samples)
+    assert len(remaining) == MAX_SWEEP_SAMPLES - 1
+    assert remaining[-1] == MAX_SWEEP_SAMPLES - 1
+    assert list(run_starts([0, 1e-9], 1)) == [0, 1e-9]
+
+
+@pytest.mark.parametrize(
+    "span,step",
+    [([0, 1e9], 1 / 6), ([0, MAX_SWEEP_SAMPLES], 1), ([0, 1], 1e-300), ([-1e308, 1e308], 1)],
+)
+def test_sweep_sample_limit_is_checked_before_iteration(span, step):
+    with pytest.raises(ValueError, match="10000 sample limit"):
+        run_starts(span, step)
+
+
+@pytest.mark.parametrize("span", [[2, 1], [0, float("inf")], [float("nan"), 1]])
+def test_sweep_sampler_refuses_invalid_spans(span):
+    with pytest.raises(ValueError, match="finite and ordered"):
+        run_starts(span, 1)
+
+
+@pytest.mark.parametrize("step", [None, 0, -1, float("inf"), float("nan")])
+def test_sweep_sampler_refuses_invalid_steps(step):
+    with pytest.raises(ValueError, match="finite positive"):
+        run_starts([0, 1], step)
+
+
+def test_in_scan_sweep_with_tiny_rule_step_fails_loudly():
+    r = result(spot=False, sweep=[pass_run(0, 1) | {"outcome": "unsure"}])
+    assert invariant_problems(SCENE, r, rules=replace(RULES, step_ft=1e-300)) == [
+        "sweep unsure starts [0, 1]: sweep sampling exceeds the 10000 sample limit"
+    ]
+
+
+@pytest.mark.parametrize("outcome", ["pass", "unsure", "fail"])
+@pytest.mark.parametrize("span", [[float("nan"), 1], [0, float("inf")], [2, 1]])
+def test_vet_all_sweep_spans_are_validated_before_downstream(monkeypatch, outcome, span):
+    def no_downstream(*args):
+        pytest.fail("invalid geometry reached downstream sampling")
+
+    monkeypatch.setattr("hsverify.resultcheck.run_starts", no_downstream)
+    answer = result(spot=False, sweep=[pass_run(*span) | {"outcome": outcome}])
+    assert any("finite and ordered" in p for p in invariant_problems(SCENE, answer, rules=RULES))
+
+
+def test_vet_identical_unsure_runs_are_sampled_only_once(monkeypatch):
+    calls = []
+
+    def starts(*args):
+        calls.append(True)
+        return iter([1.0])
+
+    monkeypatch.setattr("hsverify.resultcheck.run_starts", starts)
+    run = pass_run(1, 9) | {"outcome": "unsure"}
+    answer = result(spot=False, sweep=[copy.deepcopy(run) for _ in range(10_000)])
+    assert footprint_problems(SCENE, answer, RULES) == []
+    assert len(calls) == 1
+
+
+def test_vet_many_distinct_admissible_runs_exceed_one_response_budget():
+    scene = copy.deepcopy(SCENE)
+    scene["walls"][0]["baseline"] = [[-2000, 0], [2000, 0]]
+    runs = [pass_run(i / 1000, 1000 + i / 1000) | {"outcome": "unsure"} for i in range(5000)]
+    answer = result(spot=False, sweep=runs)
+    meter = WorkMeter(1000)
+    with pytest.raises(WorkLimitExceeded):
+        invariant_problems(scene, answer, rules=RULES, meter=meter)
+    assert meter.samples == 1001
+
+
+def test_vet_huge_spot_with_empty_sweep_stops_before_geometry(monkeypatch):
+    def no_geometry(*args):
+        pytest.fail("invalid spot reached the ground grid")
+
+    monkeypatch.setattr(GroundPlan, "_samples", no_geometry)
+    answer = result(sweep=[])
+    answer["spot"]["span_ft"] = [1, 1e9]
+    problems = invariant_problems(SCENE, answer, rules=RULES)
+    assert problems and any("span_ft" in p for p in problems)
+
+
+def test_vet_unused_spot_grid_does_not_consume_predicted_work():
+    answer = result(sweep=[])
+    huge_reach = replace(RULES, needs={"gas_clearance": (Need("ground", 1e9),)})
+    meter = WorkMeter(1000)
+    problems = invariant_problems(SCENE, answer, rules=huge_reach, meter=meter)
+    assert any("check gas_clearance passes" in p for p in problems)
+    assert meter.samples < 1000
+
+
+def test_vet_check_only_width_does_not_predict_unused_geometry():
+    answer = result(spot=False, sweep=[])
+    answer["checks"].append(
+        {"id": "width", "outcome": "pass", "threshold_ft": 1e9, "rule": {"key": "battery.width_ft"}}
+    )
+    meter = WorkMeter(1000)
+    assert invariant_problems(SCENE, answer, rules=RULES, meter=meter) == []
+    assert meter.samples < 1000
+
+
+def test_vet_ground_samples_are_lazy_and_preserve_grid_edges_and_centres():
+    points = GroundPlan._samples(0, 0.1)
+    assert iter(points) is points
+    assert list(points) == pytest.approx([0, 0.025, 0.05, 0.075, 0.1])
+
+
+def test_vet_repeated_spot_checks_reuse_geometry():
+    one = result(sweep=[], checks=[passing("ground_surface")])
+    many = result(sweep=[], checks=[passing("ground_surface") for _ in range(1000)])
+    broad = replace(RULES, needs={"ground_surface": (Need("ground", 10),)})
+    one_meter, many_meter = WorkMeter(100_000), WorkMeter(100_000)
+    assert coverage_problems(SCENE, many, broad, meter=many_meter) == coverage_problems(
+        SCENE, one, broad, meter=one_meter
+    )
+    assert many_meter.samples == one_meter.samples
+
+
+def test_vet_runtime_samples_include_midpoint_direction_switches():
+    scene = copy.deepcopy(SCENE)
+    scene["meter"]["plus_minus_ft"] = 8.8
+    scene["walls"] = [
+        {"id": "w1", "baseline": [[0, 0], [10, 0]], "plus_minus_ft": 0},
+        {"id": "w2", "baseline": [[10, 0], [9, 0]], "plus_minus_ft": 0},
+        {"id": "w3", "baseline": [[9, 0], [109, 0]], "plus_minus_ft": 0},
+    ]
+    broad = replace(
+        RULES, width_ft=10, depth_ft=2, step_ft=0.1, needs={"ground_surface": (Need("ground", 0),)}
+    )
+    answer = result(spot=False, sweep=[pass_run(0, 10)])
+    meter = WorkMeter(1000)
+    with pytest.raises(WorkLimitExceeded):
+        invariant_problems(scene, answer, rules=broad, meter=meter)
+    assert meter.samples == 1001

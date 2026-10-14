@@ -750,7 +750,19 @@ PR_LIST_TIMEOUT_S = 60
 
 def list_prs() -> list[dict]:
     out = subprocess.run(
-        ["gh", "pr", "list", "--repo", GITHUB_REPO, "--state", "open", "--json", PR_FIELDS],
+        [
+            "gh",
+            "pr",
+            "list",
+            "--repo",
+            GITHUB_REPO,
+            "--state",
+            "open",
+            "--limit",
+            "10000",
+            "--json",
+            PR_FIELDS,
+        ],
         check=True,
         capture_output=True,
         text=True,

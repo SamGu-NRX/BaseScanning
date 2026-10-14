@@ -124,7 +124,9 @@
       ]
     }
   },
-  "rules_assumed": {},
+  "rules_assumed": {
+    "battery_width": 2.5833333333333335
+  },
   "expect": {
     "missing_evidence_empty": true,
     "sweep_runs": [

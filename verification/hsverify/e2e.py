@@ -36,6 +36,7 @@ import argparse
 import contextlib
 import datetime as dt
 import hashlib
+import http.client
 import io
 import json
 import os
@@ -50,23 +51,33 @@ import urllib.parse
 import urllib.request
 import uuid
 import zipfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from hsverify import gitref, memory
+from hsverify.bundle_limits import zip_directory_limits
+from hsverify.diagnostics import bounded_report_records
 from hsverify.memory import peak_rss_mb
 from hsverify.resultcheck import (
     RuleSet,
+    WorkLimitExceeded,
+    WorkMeter,
     assumption_mismatches,
+    case_metadata_problems,
     comparable,
     coverage_blocks,
     expectation_problems,
+    geometry_admission_problems,
+    ingestion_problems,
     invariant_problems,
     less_coverage_problems,
     mirror_scene,
     more_error_problems,
     outcome_lengths,
+    public_assumption_warnings,
+    public_dimension_problems,
+    reported_rules,
     schema_errors,
     tape_to_tap,
     unobserved_checks,
@@ -144,16 +155,40 @@ def read_bounded(bundle: zipfile.ZipFile, info: zipfile.ZipInfo, limit: int) -> 
 
 def read_bundle(path: Path) -> tuple[bytes, dict[str, bytes]]:
     """scene.json and the JPEGs of a C1 zip bundle, within the limits above."""
+    if path.stat().st_size > MAX_BUNDLE_BYTES:
+        raise SystemExit(f"{path}: archive exceeds {MAX_BUNDLE_BYTES} bytes")
+    try:
+        zip_directory_limits(path, MAX_BUNDLE_ENTRIES, MAX_BUNDLE_BYTES)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     with zipfile.ZipFile(path) as bundle:
-        infos = [i for i in bundle.infolist() if not i.is_dir()]
+        infos = bundle.infolist()
         if len(infos) > MAX_BUNDLE_ENTRIES:
             raise SystemExit(f"{path}: {len(infos)} entries, limit {MAX_BUNDLE_ENTRIES}")
         declared = sum(i.file_size for i in infos)
         if declared > MAX_BUNDLE_BYTES:
             raise SystemExit(f"{path}: declares {declared} bytes, limit {MAX_BUNDLE_BYTES}")
-        scene = next((i for i in infos if i.filename.endswith("scene.json")), None)
-        if scene is None:
-            raise SystemExit(f"{path}: no scene.json in the bundle")
+        capture_infos = [i for i in infos if not i.filename.startswith("__MACOSX/")]
+        infos = [i for i in capture_infos if not i.is_dir()]
+        # Mirror the public API layouts, but refuse competing scenes instead of
+        # preferring the root: the verifier must know which input it is testing.
+        candidates = [i for i in infos if i.filename.split("/")[-1] == "scene.json"]
+        if len({i.filename for i in candidates}) > 1:
+            raise SystemExit(f"{path}: ambiguous scene.json paths")
+        scene_name = "scene.json"
+        if not any(i.filename == scene_name for i in infos):
+            # The public API also accepts a capture wrapped in one top-level folder.
+            tops = {i.filename.split("/", 1)[0] for i in capture_infos}
+            if len(tops) == 1:
+                (top,) = tops
+                if all(i.filename.startswith(f"{top}/") for i in capture_infos):
+                    scene_name = f"{top}/scene.json"
+        scenes = [i for i in infos if i.filename == scene_name]
+        if len(scenes) != 1:
+            raise SystemExit(
+                f"{path}: expected exactly one canonical scene.json, found {len(scenes)}"
+            )
+        scene = scenes[0]
         raw = read_bounded(bundle, scene, MAX_SCENE_BYTES)
         images = {
             Path(i.filename).name: read_bounded(bundle, i, MAX_IMAGE_BYTES)
@@ -354,6 +389,27 @@ def bundle_zip(item: SceneInput) -> bytes:
     return buf.getvalue()
 
 
+# Fixed harness admission limit to bound answers from a server under test. This is not a
+# measured maximum result size; it matches the 4 MiB transport policy in PR #242.
+MAX_RESPONSE_BYTES = 4 * 2**20
+
+
+def read_response(response) -> bytes:
+    declared = response.headers.get("Content-Length")
+    if declared is not None:
+        declared = int(declared)
+        if declared < 0:
+            raise ValueError("negative response Content-Length")
+        if declared > MAX_RESPONSE_BYTES:
+            raise ValueError(f"response exceeds {MAX_RESPONSE_BYTES} bytes")
+    payload = response.read(MAX_RESPONSE_BYTES + 1)
+    if len(payload) > MAX_RESPONSE_BYTES:
+        raise ValueError(f"response exceeds {MAX_RESPONSE_BYTES} bytes")
+    if declared is not None and len(payload) < declared:
+        raise ValueError(f"truncated response: {len(payload)} bytes, expected {declared}")
+    return payload
+
+
 def post(
     url: str, endpoint: Endpoint, item: SceneInput, timeout_s: float = 60
 ) -> tuple[int | None, bytes, float]:
@@ -378,11 +434,19 @@ def post(
     )
     start = time.perf_counter()
     try:
-        with urllib.request.urlopen(request, timeout=timeout_s) as response:
-            status, payload = response.status, response.read()
-    except urllib.error.HTTPError as exc:
-        status, payload = exc.code, exc.read()
-    except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+        try:
+            response = urllib.request.urlopen(request, timeout=timeout_s)
+        except urllib.error.HTTPError as exc:
+            response = exc
+        with response:
+            status, payload = response.status, read_response(response)
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        ConnectionError,
+        http.client.HTTPException,
+        ValueError,
+    ) as exc:
         status, payload = None, str(exc).encode()
     return status, payload, (time.perf_counter() - start) * 1000
 
@@ -428,7 +492,10 @@ def judge(
     schemas: dict,
     rules: RuleSet,
     limit: memory.TreeLimit | None = None,
+    *,
+    meter: WorkMeter | None = None,
 ) -> dict:
+    meter = meter if meter is not None else WorkMeter()
     record: dict = {
         "name": item.name,
         "source": item.source,
@@ -440,7 +507,11 @@ def judge(
         return record | {"status": "skipped", "problems": [], "skip_reason": item.skip_reason}
     if item.hostile:
         return record | {"hostile": True} | judge_hostile(url, endpoint, item, schemas, limit)
-    input_errors = schema_errors(item.scene, schemas["scene"])
+    input_errors = (
+        case_metadata_problems(item.rules_assumed, item.expect)
+        or ingestion_problems(item.scene, "scene")
+        or schema_errors(item.scene, schemas["scene"])
+    )
     if input_errors:
         return record | {"status": "bad input", "problems": input_errors[:20]}
 
@@ -450,7 +521,7 @@ def judge(
         failure = [
             f"HTTP {status} for a scene that validates: {payload[:500]!r}"
             if status is not None
-            else f"no answer within 60 s: {payload[:200]!r}"
+            else payload.decode(errors="replace")[:200]
         ]
         return record | {"status": "fail", "problems": failure, "contract_problems": failure}
     result = parse_result(payload)
@@ -458,54 +529,178 @@ def judge(
         failure = [f"HTTP 200 with a body that is not a JSON object: {payload[:200]!r}"]
         return record | {"status": "fail", "problems": failure, "contract_problems": failure}
     record["result"] = result
-    problems = [f"result schema: {e}" for e in schema_errors(result, schemas["result"])]
+
+    def check(name: str, function: Callable[[], list[str]]) -> list[str]:
+        try:
+            return function()
+        except WorkLimitExceeded:
+            return [f"verification work limit exceeded ({meter.samples} samples)"]
+        except Exception as exc:
+            return [f"{name}: {type(exc).__name__}: {exc}"]
+
+    problems = check(
+        "result schema",
+        lambda: [
+            f"result schema: {e}"
+            for e in (
+                ingestion_problems(result, "result") or schema_errors(result, schemas["result"])
+            )
+        ],
+    )
     if problems:
         return record | {"status": "fail", "problems": problems[:20], "contract_problems": problems}
 
-    # Contract problems hold for any scene; expectation problems depend on one case's geometry.
-    contract = invariant_problems(item.scene, result, sent=item.raw, rules=rules)
-    contract += property_problems(url, endpoint, item, result, schemas, rules)
+    # Admission errors stop geometry, including report summaries that subtract spans.
+    contract = check(
+        "geometry admission",
+        lambda: geometry_admission_problems(item.scene, result, rules, meter=meter),
+    )
+    admitted = not contract
+    mismatches: list[str] = []
+    warnings: list[str] = []
+    active_rules = rules
+    expected: list[str] = []
+    if admitted:
+
+        def check_reported_rules() -> list[str]:
+            nonlocal active_rules
+            mismatches.extend(assumption_mismatches(item.rules_assumed, result))
+            warnings.extend(public_assumption_warnings(item.rules_assumed, result, rules))
+            active_rules = reported_rules(result, rules)
+            return []
+
+        contract += check("reported rules", check_reported_rules)
+        admitted = not contract
+        if admitted:
+            contract += check("public dimensions", lambda: public_dimension_problems(result, rules))
+    if warnings:
+        record["rule_checks_unverified"] = True
+    if admitted:
+        contract += check(
+            "invariants",
+            lambda: invariant_problems(
+                item.scene,
+                result,
+                sent=item.raw,
+                rules=None if warnings else active_rules,
+                meter=meter,
+            ),
+        )
+    if not contract:
+        contract += check(
+            "properties",
+            lambda: property_problems(
+                url,
+                endpoint,
+                item,
+                result,
+                schemas,
+                active_rules,
+                meter=meter,
+                rule_checks=not warnings,
+                public_rules=rules,
+            ),
+        )
     if item.real and ms > LATENCY_BUDGET_MS:
         contract.append(f"real-derived scene took {ms:.0f} ms, budget {LATENCY_BUDGET_MS:.0f}")
-    mismatches = assumption_mismatches(item.rules_assumed, result)
-    expected = expectation_problems(item.expect, result) if item.expect and not mismatches else []
-    problems = contract + expected
+    exhausted = any(p.startswith("verification work limit exceeded (") for p in contract)
+    if admitted and not exhausted:
+        if item.expect and not mismatches and not warnings:
+            expected = check(
+                "expectations", lambda: expectation_problems(item.expect, result, meter=meter)
+            )
 
-    record["decision"] = result["decision"]
-    record["outcome_lengths_ft"] = outcome_lengths(result)
+        def summarize() -> list[str]:
+            record["outcome_lengths_ft"] = outcome_lengths(result)
+            return []
+
+        contract += check("outcome lengths", summarize)
+    if "decision" in result:
+        record["decision"] = result["decision"]
     if mismatches:
         record["assumption_mismatches"] = mismatches
+    if warnings:
+        record["assumption_warnings"] = warnings
+    record["verification_samples"] = meter.samples
     record["contract_problems"] = contract
     record["expectation_problems"] = expected
-    record["problems"] = problems
-    record["status"] = "fail" if problems else "assumption mismatch" if mismatches else "pass"
+    record["problems"] = contract + expected
+    record["status"] = (
+        "fail"
+        if record["problems"]
+        else "assumption mismatch"
+        if mismatches
+        else "assumptions unverified"
+        if warnings
+        else "pass"
+    )
     return record
 
 
 def property_problems(
-    url: str, endpoint: Endpoint, item: SceneInput, result: dict, schemas: dict, rules: RuleSet
+    url: str,
+    endpoint: Endpoint,
+    item: SceneInput,
+    result: dict,
+    schemas: dict,
+    rules: RuleSet,
+    *,
+    meter: WorkMeter | None = None,
+    rule_checks: bool = True,
+    public_rules: RuleSet | None = None,
 ) -> list[str]:
     """The same scene resent unchanged and transformed. Every answer to a transformed scene must
     also satisfy the invariants, and the transforms that only lose information must not make
     the server surer."""
+    meter = meter if meter is not None else WorkMeter()
+    public_rules = public_rules if public_rules is not None else rules
+    checked_rules = rules if rule_checks else None
+    if admission := geometry_admission_problems(item.scene, result, checked_rules, meter=meter):
+        return admission
     problems: list[str] = []
 
     def resend(name: str, scene: dict) -> dict | None:
-        other, failure = answer(url, endpoint, variant(item, name, scene))
+        if admission := ingestion_problems(scene, "scene"):
+            problems.extend(f"{name}: scene ingestion: {p}" for p in admission)
+            return None
+        transformed = variant(item, name, scene)
+        other, failure = answer(url, endpoint, transformed)
         if failure:
             problems.append(f"{name}: {failure}")
             return None
-        errors = schema_errors(other, schemas["result"])
-        if errors:
-            problems.append(f"{name}: result schema: {errors[0]}")
+        check_name = "result schema"
+        try:
+            errors = ingestion_problems(other, "result") or schema_errors(other, schemas["result"])
+            if errors:
+                problems.append(f"{name}: result schema: {errors[0]}")
+                return None
+            check_name = "geometry admission"
+            admission = geometry_admission_problems(scene, other, checked_rules, meter=meter)
+            if admission:
+                problems.extend(f"{name}: {p}" for p in admission)
+                return None
+            check_name = "invariants"
+            variant_rules = reported_rules(other, public_rules) if rule_checks else None
+            dimensions = public_dimension_problems(other, public_rules) if rule_checks else []
+            invariants = dimensions + invariant_problems(
+                scene, other, sent=transformed.raw, rules=variant_rules, meter=meter
+            )
+            if invariants:
+                problems.extend(f"{name}: {p}" for p in invariants)
+                return None
+        except WorkLimitExceeded:
+            raise
+        except Exception as exc:
+            problems.append(f"{name} {check_name}: {type(exc).__name__}: {exc}")
             return None
-        problems.extend(f"{name}: {p}" for p in invariant_problems(scene, other, rules=rules))
         return other
 
     # 1. Same input, same answer.
     status, payload, _ = post(url, endpoint, item)
     again = parse_result(payload) if status == 200 else None
-    if again is None or comparable(again) != comparable(result):
+    if again is not None and (admission := ingestion_problems(again, "result")):
+        problems.extend(f"identical resend: {p}" for p in admission)
+    elif again is None or comparable(again) != comparable(result):
         problems.append("sending the same scene twice gave different results")
 
     # 2. Mirrored left to right: same decision, same amount of each outcome along the wall.
@@ -527,19 +722,22 @@ def property_problems(
     if "coverage" in item.scene:
         bare = {k: v for k, v in item.scene.items() if k != "coverage"}
         if (other := resend("no coverage", bare)) is not None:
-            problems += less_coverage_problems(result, other, "no coverage")
-    for name, scene in (
-        ("less coverage", with_less_coverage(item.scene)),
-        ("ground short of the largest clearance", with_ground_short_of(item.scene, rules)),
-    ):
+            problems += less_coverage_problems(result, other, "no coverage", meter=meter)
+    coverage_variants = [("less coverage", with_less_coverage(item.scene))]
+    if rule_checks:
+        coverage_variants.append(
+            ("ground short of the largest clearance", with_ground_short_of(item.scene, rules))
+        )
+    for name, scene in coverage_variants:
         if scene is not None and (other := resend(name, scene)) is not None:
-            problems += less_coverage_problems(result, other, name)
-    for name, scene in (
-        ("more error", with_more_error(item.scene, rules)),
-        ("tape re-measured by tap", tape_to_tap(item.scene)),
-    ):
-        if scene is not None and (other := resend(name, scene)) is not None:
-            problems += more_error_problems(result, other, name)
+            problems += less_coverage_problems(result, other, name, meter=meter)
+    if rule_checks:
+        for name, scene in (
+            ("more error", with_more_error(item.scene, rules)),
+            ("tape re-measured by tap", tape_to_tap(item.scene)),
+        ):
+            if scene is not None and (other := resend(name, scene)) is not None:
+                problems += more_error_problems(result, other, name, meter=meter)
 
     # 4. Showing everything the result asked for settles every check that was unsure only
     # because an area was unobserved (the chosen spot may move; three rounds at most).
@@ -568,6 +766,15 @@ def property_problems(
 # denial-of-service risk. Not derived from any requirement: it is ten times the real-scene
 # budget. S2 at 739fb6f answered the crowded input in 8.2 s on this Mac, close to the line.
 HOSTILE_BUDGET_MS = 10_000.0
+
+
+HOSTILE_PROBE_NAMES = (
+    "hostile: 150 objects, each its own error",
+    "hostile: coordinates of 1e300 ft",
+    "hostile: a 5000 ft wall",
+    "hostile: nested 5000 deep",
+    "hostile: 400 MB scene.json in a small zip",
+)
 
 
 def hostile_inputs() -> list[SceneInput]:
@@ -613,13 +820,11 @@ def hostile_inputs() -> list[SceneInput]:
     }
     nested = ('{"meter": ' + "[" * 5000 + "]" * 5000 + "}").encode()
     items = [
-        SceneInput(
-            "hostile: 150 objects, each its own error", crowded, json.dumps(crowded).encode()
-        ),
-        SceneInput("hostile: coordinates of 1e300 ft", huge, json.dumps(huge).encode()),
-        SceneInput("hostile: a 5000 ft wall", long_wall, json.dumps(long_wall).encode()),
-        SceneInput("hostile: nested 5000 deep", {}, nested),
-        SceneInput("hostile: 400 MB scene.json in a small zip", {}, b"", bundle=zip_bomb(400)),
+        SceneInput(HOSTILE_PROBE_NAMES[0], crowded, json.dumps(crowded).encode()),
+        SceneInput(HOSTILE_PROBE_NAMES[1], huge, json.dumps(huge).encode()),
+        SceneInput(HOSTILE_PROBE_NAMES[2], long_wall, json.dumps(long_wall).encode()),
+        SceneInput(HOSTILE_PROBE_NAMES[3], {}, nested),
+        SceneInput(HOSTILE_PROBE_NAMES[4], {}, b"", bundle=zip_bomb(400)),
     ]
     for item in items:
         item.hostile = True
@@ -661,12 +866,15 @@ def judge_hostile(
         and not (endpoint.accepts_zip)
     ):
         return {
-            "status": "skipped",
-            "skip_reason": "the endpoint takes neither a zip nor an upload",
+            "status": "fail",
+            "problems": ["large-input probe was not exercised: endpoint accepts no archive"],
+            "contract_problems": [
+                "large-input probe was not exercised: endpoint accepts no archive"
+            ],
         }
     before = limit.reset() if limit else 0.0
     status, payload, ms = post(url, endpoint, item, timeout_s=HOSTILE_BUDGET_MS / 1000 + 5)
-    record = {"http_status": status, "latency_ms": round(ms, 1)}
+    record = {"http_status": status, "latency_ms": round(ms, 1), "hostile_probe_executed": True}
     grew = limit.peak_mb - before if limit else 0.0
     if limit:
         record["server_growth_mb"] = round(grew, 1)
@@ -710,11 +918,21 @@ def write_report(out: Path, meta: dict, records: list[dict]) -> dict:
     exported = [r for r in records if r.get("app_export")]
     contract_problems = sum(len(r.get("contract_problems", [])) for r in records)
     killed = bool(meta["peak_memory"].get("server_killed"))
+    all_passed = all(r["status"] == "pass" for r in records) and bool(checked) and not killed
+    contract_ok = (
+        bool(checked)
+        and contract_problems == 0
+        and not killed
+        and not any(r.get("rule_checks_unverified") for r in checked)
+    )
+    executed = sorted(
+        {r["name"] for r in records if r.get("hostile") and r.get("hostile_probe_executed") is True}
+    )
+    hostile_complete = set(HOSTILE_PROBE_NAMES).issubset(executed)
     report = meta | {
         "counts": counts,
-        "all_passed": all(r["status"] in ("pass", "skipped") for r in records)
-        and bool(checked)
-        and not killed,
+        # A missing listed scene leaves the run incomplete, even when other scenes passed.
+        "all_passed": all_passed,
         "latency_ms": max(real) if real else None,
         "scenes_answered": sum(1 for r in records if "decision" in r),
         "scenes_checked": len(checked),
@@ -724,7 +942,12 @@ def write_report(out: Path, meta: dict, records: list[dict]) -> dict:
         # expectations are counted separately because a case can be wrong itself.
         "contract_problem_count": contract_problems,
         # The contract holds only on evidence: at least one scene checked, none broken.
-        "contract_ok": bool(checked) and contract_problems == 0 and not killed,
+        "contract_ok": contract_ok,
+        "hostile_probes_required": list(HOSTILE_PROBE_NAMES),
+        "hostile_probes_executed": executed,
+        "hostile_probes_complete": hostile_complete,
+        # Local --no-hostile success proves only that shortened run, not S2-8's full guarantee.
+        "full_contract_ok": all_passed and contract_ok and hostile_complete,
         "expectation_problem_count": sum(len(r.get("expectation_problems", [])) for r in records),
         "real_scene_passed": any(r.get("real") and r["status"] == "pass" for r in records),
         # Null when the run had no app export, so the scoreboard looks for an older run.
@@ -740,6 +963,10 @@ def write_report(out: Path, meta: dict, records: list[dict]) -> dict:
         "app_export_source": [r["source"] for r in exported],
         "records": records,
     }
+    records, omitted = bounded_report_records(records)
+    report["records"] = records
+    if omitted:
+        report["diagnostic_summary"] = omitted
     (out / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     lines = [
         f"# End-to-end run against `{meta['server_ref']}` at `{meta['server_sha'][:12]}`",
@@ -760,12 +987,17 @@ def write_report(out: Path, meta: dict, records: list[dict]) -> dict:
         "| --- | --- | --- | --- | --- |",
     ]
     for r in records:
-        issues = "; ".join(r.get("problems", []) + r.get("assumption_mismatches", []))
+        issues = "; ".join(
+            r.get("problems", [])
+            + r.get("assumption_mismatches", [])
+            + r.get("assumption_warnings", [])
+        )
         issues = issues or r.get("skip_reason", "")
         lines.append(
             f"| {r['name']}{' (real)' if r.get('real') else ''} | {r['status']} | "
             f"{r.get('decision', '')} | {r.get('latency_ms', '')} | {issues.replace('|', '/')} |"
         )
+    lines.extend(omitted)
     (out / "report.md").write_text("\n".join(lines) + "\n")
     return report
 
@@ -879,7 +1111,16 @@ def main(argv: list[str] | None = None) -> int:
     }
     report = write_report(out, meta, records)
     print(f"Report: {out / 'report.md'}")
-    return 0 if report["all_passed"] else 1
+    if report["all_passed"]:
+        return 0
+    # An unreported override is incomplete evidence, not a proven server failure.
+    if (
+        not meta["peak_memory"].get("server_killed")
+        and all(r["status"] in ("pass", "assumptions unverified") for r in records)
+        and any(r["status"] == "assumptions unverified" for r in records)
+    ):
+        return 2
+    return 1
 
 
 if __name__ == "__main__":

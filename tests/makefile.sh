@@ -31,10 +31,10 @@ EOF
 done
 export PATH="$work/bin:$PATH"
 
-suites="scoring measure-lab evals recon meter-closeup integration-viewer"
+suites="scoring measure-lab evals recon meter-closeup verification integration-viewer"
 folder() {
 	case $1 in
-	recon) echo recon ;;
+	recon | verification) echo "$1" ;;
 	integration-viewer) echo tools/integration-viewer ;;
 	*) echo "experiments/$1" ;;
 	esac
@@ -80,8 +80,8 @@ fail() {
 }
 
 # 1. `make check` runs server, web and ios, then exactly the experiment suites present, in order,
-#    for all 64 combinations. "." is the ios build or project drift check at the root.
-for mask in $(seq 0 63); do
+#    for all 128 combinations. "." is the ios build or project drift check at the root.
+for mask in $(seq 0 127); do
 	present=()
 	expected="server web ."
 	i=0
@@ -125,6 +125,8 @@ experiments/evals make test"
 expect_commands recon "recon make test"
 expect_commands meter-closeup "experiments/meter-closeup uv sync --locked
 experiments/meter-closeup make check"
+expect_commands verification "verification uv sync --locked
+verification make test"
 expect_commands integration-viewer "tools/integration-viewer node --test test/*.test.js"
 
 # 3. Naming a missing suite fails loudly and runs nothing.
@@ -145,6 +147,7 @@ for FAIL_AT in "experiments/scoring uv" "experiments/measure-lab make" \
 	". git ls-files --others --exclude-standard -- experiments/measure-lab/MeasureLab.xcodeproj" \
 	"experiments/evals uv" "experiments/evals make" "recon make" \
 	"experiments/meter-closeup uv" "experiments/meter-closeup make" \
+	"verification uv" "verification make" \
 	"tools/integration-viewer node"; do
 	make_tree $suites
 	if run_make check; then

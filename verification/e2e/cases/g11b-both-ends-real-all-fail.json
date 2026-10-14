@@ -197,7 +197,9 @@
     }
   },
   "rules_assumed": {
-    "gas": 3.0
+    "battery_width": 2.5833333333333335,
+    "gas": 3.0,
+    "corner_allowance": 0.5
   },
   "expect": {
     "decision_in": [

@@ -4,6 +4,7 @@ import struct
 import numpy as np
 import pytest
 
+from hsverify import replaycheck
 from hsverify.replaycheck import (
     accuracy,
     check_format,
@@ -136,3 +137,20 @@ def test_accuracy_separates_scale_from_alignment(tmp_path, scale):
     assert result["max_vertical_axis_mismatch"] == pytest.approx(0, abs=1e-9)
     expected_final = (1 - scale) * 39
     assert result["anchored_error_m_final"] == pytest.approx(expected_final, abs=1e-3)
+
+
+def test_oversized_integer_is_a_format_error(tmp_path):
+    session = session_with(tmp_path, [[0, 0, 0]])
+    session["keyframes"][0]["intrinsics"][0] = 10**400
+    errors, _ = check_format(tmp_path, session)
+    assert any("finite numbers" in e for e in errors)
+
+
+def test_invalid_replay_with_ground_truth_still_reports(tmp_path, capsys):
+    session = session_with(tmp_path, [[0, 0, 0]])
+    del session["keyframes"][0]["pose"]
+    (tmp_path / "session.json").write_text(json.dumps(session))
+    (tmp_path / "ground_truth.json").write_text("{}")
+    assert replaycheck.main([str(tmp_path), "--json"]) == 1
+    data = json.loads(capsys.readouterr().out)
+    assert data["format_errors"] and "pose_accuracy" not in data

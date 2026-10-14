@@ -2,6 +2,7 @@ import hashlib
 import io
 import json
 import re
+import struct
 import threading
 import time
 import zipfile
@@ -296,7 +297,8 @@ def test_server_breaking_coverage_rule_fails(fake_url):
     assert record["status"] == "fail"
     joined = "\n".join(record["problems"])
     assert "ruled out for this case" in joined
-    assert "no coverage: decision pass for a scene with no coverage at all" in joined
+    assert "decision pass without a passing spot" in joined
+    assert "no coverage:" not in joined  # Initial invariant failure stops transformed requests.
     assert re.search(r"needs ground \[.*\] observed, none seen", joined)
 
 
@@ -384,7 +386,7 @@ def test_a_prebuilt_zip_goes_as_application_zip_when_the_endpoint_takes_it(refus
     RefusingServer.content_types.clear()
     bomb = hostile_inputs()[4]
     json_only = Endpoint("/p", "application/json")
-    assert judge_hostile(refusing_url, json_only, bomb, SCHEMAS)["status"] == "skipped"
+    assert judge_hostile(refusing_url, json_only, bomb, SCHEMAS)["status"] == "fail"
     zip_too = Endpoint("/p", "application/json", accepts_zip=True)
     assert judge_hostile(refusing_url, zip_too, bomb, SCHEMAS)["status"] == "pass"
     assert RefusingServer.content_types == ["application/zip"]
@@ -475,6 +477,87 @@ def test_a_bundle_with_too_many_entries_is_refused(tmp_path, monkeypatch):
         load_input(archive)
 
 
+@pytest.mark.parametrize("false_footer_count", [False, True])
+def test_bundle_counts_directories_before_zipfile_allocation(
+    tmp_path, monkeypatch, false_footer_count
+):
+    monkeypatch.setattr(e2e, "MAX_BUNDLE_ENTRIES", 3)
+    archive = tmp_path / "directories.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("scene.json", b"{}")
+        for i in range(3):
+            z.writestr(f"directory{i}/", b"")
+    if false_footer_count:
+        data = bytearray(archive.read_bytes())
+        struct.pack_into("<HH", data, len(data) - 22 + 8, 1, 1)
+        archive.write_bytes(data)
+
+    def metadata_allocation_forbidden(*args, **kwargs):
+        pytest.fail("ZipFile allocated metadata before archive admission")
+
+    monkeypatch.setattr(e2e.zipfile, "ZipFile", metadata_allocation_forbidden)
+    with pytest.raises(SystemExit, match="4 entries, limit 3"):
+        e2e.read_bundle(archive)
+
+
+@pytest.mark.parametrize("status", [200, 413])
+def test_response_read_is_bounded_for_success_and_http_error(monkeypatch, status):
+    from urllib.error import HTTPError
+
+    class Response(io.BytesIO):
+        headers: ClassVar[dict] = {}
+
+        def read(self, size=-1):
+            assert 0 <= size <= 4 * 2**20 + 1, "response read must have a byte limit"
+            return super().read(size)
+
+    response = Response(b"x" * (4 * 2**20 + 1))
+    response.status = status
+
+    def urlopen(*args, **kwargs):
+        if status != 200:
+            raise HTTPError("http://unused", status, "too large", {}, response)
+        return response
+
+    monkeypatch.setattr(e2e.urllib.request, "urlopen", urlopen)
+    code, body, _ = e2e.post("http://unused", Endpoint("/place", "application/json"), item())
+    assert code is None
+    assert b"response exceeds" in body
+
+
+@pytest.mark.parametrize("status", [200, 413])
+def test_incomplete_response_is_a_clean_transport_failure(monkeypatch, status):
+    from http.client import IncompleteRead
+    from urllib.error import HTTPError
+
+    class Response(io.BytesIO):
+        headers: ClassVar[dict] = {}
+
+        def read(self, size=-1):
+            raise IncompleteRead(b"partial", 50)
+
+    response = Response()
+    response.status = status
+
+    def urlopen(*args, **kwargs):
+        if status != 200:
+            raise HTTPError("http://unused", status, "truncated", {}, response)
+        return response
+
+    monkeypatch.setattr(e2e.urllib.request, "urlopen", urlopen)
+    code, body, _ = e2e.post("http://unused", Endpoint("/place", "application/json"), item())
+    assert code is None and b"IncompleteRead" in body
+
+
+def test_short_content_length_response_is_a_clean_transport_failure(monkeypatch):
+    response = io.BytesIO(b"{}")
+    response.status = 200
+    response.headers = {"Content-Length": "10"}
+    monkeypatch.setattr(e2e.urllib.request, "urlopen", lambda *args, **kwargs: response)
+    code, body, _ = e2e.post("http://unused", Endpoint("/place", "application/json"), item())
+    assert code is None and b"truncated response" in body
+
+
 def test_a_200_that_is_not_a_json_object_is_a_failure_not_a_crash(monkeypatch):
     for body in (b"<html>oops</html>", b"[1, 2]"):
         monkeypatch.setattr(e2e, "post", lambda *args, body=body, **kwargs: (200, body, 5.0))
@@ -484,3 +567,209 @@ def test_a_200_that_is_not_a_json_object_is_a_failure_not_a_crash(monkeypatch):
         assert "not a JSON object" in record["contract_problems"][0]
         hostile = judge_hostile("http://unused", endpoint, hostile_inputs()[3], SCHEMAS)
         assert hostile["status"] == "fail" and "not a JSON object" in hostile["problems"][0]
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"status": "skipped", "skip_reason": "missing scene"},
+        {"status": "fail", "expectation_problems": ["wrong decision"], "contract_problems": []},
+    ],
+)
+def test_run_acceptance_is_separate_from_contract_invariants(tmp_path, extra):
+    report = e2e.write_report(tmp_path, META, [CHECKED, {"name": "other", **extra}])
+    assert not report["all_passed"]
+    assert report["contract_ok"]
+
+
+def test_unexercised_large_input_probe_fails_contract():
+    item = hostile_inputs()[-1]
+    item.bundle = b"archive"
+    record = judge_hostile("unused", Endpoint("/place", "application/json"), item, {})
+    assert record["status"] == "fail" and record["contract_problems"]
+
+
+def test_bundle_uses_exact_canonical_scene(tmp_path):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("old-scene.json", b"old")
+        z.writestr("scene.json", b"canonical")
+    assert e2e.read_bundle(archive)[0] == b"canonical"
+
+
+def test_bundle_reads_one_wrapped_capture_and_ignores_macos_metadata(tmp_path):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("capture/", b"")
+        z.writestr("capture/scene.json", b"canonical")
+        z.writestr("capture/frame.jpg", b"photo")
+        z.writestr("__MACOSX/capture/._scene.json", b"metadata")
+        z.writestr("__MACOSX/capture/frame.jpg", b"metadata")
+    assert e2e.read_bundle(archive) == (b"canonical", {"frame.jpg": b"photo"})
+
+
+def test_bundle_accepts_public_api_finder_fixture_shape(tmp_path):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("capture-2026-09-26/scene.json", b"canonical")
+        z.writestr("__MACOSX/capture-2026-09-26/._scene.json", b"resource fork")
+    assert e2e.read_bundle(archive) == (b"canonical", {})
+
+
+@pytest.mark.parametrize("wrapped_scene", ["capture/scene.json", "a/b/scene.json"])
+def test_bundle_rejects_root_and_wrapped_scene_together(tmp_path, wrapped_scene):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("scene.json", b"canonical")
+        z.writestr(wrapped_scene, b"other")
+    with pytest.raises(SystemExit, match=r"ambiguous scene\.json"):
+        e2e.read_bundle(archive)
+
+
+@pytest.mark.parametrize(
+    "names",
+    [
+        ["old-scene.json"],
+        ["not-scene.json"],
+        ["scene.json", "scene.json"],
+        ["capture/scene.json", "capture/scene.json"],
+        ["first/scene.json", "second/scene.json"],
+        ["capture/scene.json", "other/frame.jpg"],
+        ["capture/nested/scene.json"],
+        ["capture/scene.json", "other/"],
+        ["capture/scene.json", "capture"],
+    ],
+)
+def test_bundle_rejects_missing_or_duplicate_canonical_scene(tmp_path, names):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        for name in names:
+            z.writestr(name, b"{}")
+    with pytest.raises(
+        SystemExit, match=r"exactly one canonical scene\.json|ambiguous scene\.json"
+    ):
+        e2e.read_bundle(archive)
+
+
+def test_transformed_answer_checks_its_own_hash(monkeypatch):
+    calls = []
+    original = {"decision": "pass", "stats": {}, "sweep": []}
+    monkeypatch.setattr(
+        e2e, "post", lambda *args, **kwargs: (200, json.dumps(original).encode(), 1)
+    )
+    monkeypatch.setattr(e2e, "answer", lambda *args: (original, None))
+    monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
+
+    def check_hash(scene, result, sent=None, rules=None, *, meter=None):
+        calls.append((scene, sent))
+        return ["stale input hash"] if sent is not None else []
+
+    monkeypatch.setattr(e2e, "invariant_problems", check_hash)
+    monkeypatch.setattr(e2e, "with_ground_short_of", lambda *args: None)
+    monkeypatch.setattr(e2e, "with_more_error", lambda *args: None)
+    monkeypatch.setattr(e2e, "tape_to_tap", lambda *args: None)
+    monkeypatch.setattr(e2e, "with_less_coverage", lambda *args: None)
+    scene = {
+        "walls": [{"id": "w1", "baseline": [[-1, 0], [1, 0]]}],
+        "meter": {"pos": [0, 1, 0], "wall_id": "w1"},
+    }
+    probe = SceneInput(name="test", scene=scene, raw=json.dumps(scene).encode(), source="test")
+    failures = e2e.property_problems(
+        "unused", Endpoint("/p", "application/json"), probe, original, {"result": {}}, RULES
+    )
+    assert calls and all(raw == json.dumps(scene, indent=1).encode() for scene, raw in calls)
+    assert any("stale input hash" in p for p in failures)
+
+
+def hostile_records():
+    return [
+        {
+            "name": name,
+            "hostile": True,
+            "hostile_probe_executed": True,
+            "http_status": 422,
+            "latency_ms": 1.0,
+            "status": "pass",
+            "contract_problems": [],
+        }
+        for name in e2e.HOSTILE_PROBE_NAMES
+    ]
+
+
+@pytest.mark.parametrize("missing", range(5))
+def test_every_required_hostile_probe_must_be_exercised(tmp_path, missing):
+    probes = hostile_records()
+    omitted = probes.pop(missing)
+    probes.append(probes[0].copy())  # duplicate evidence cannot replace the missing probe
+    report = e2e.write_report(tmp_path, META, [CHECKED, *probes])
+    assert report["all_passed"] and report["contract_ok"]
+    assert not report["hostile_probes_complete"] and not report["full_contract_ok"]
+    assert omitted["name"] not in report["hostile_probes_executed"]
+
+
+def test_probe_name_without_execution_is_not_full_evidence(tmp_path):
+    probes = hostile_records()
+    del probes[0]["hostile_probe_executed"]
+    assert not e2e.write_report(tmp_path, META, [CHECKED, *probes])["full_contract_ok"]
+    assert e2e.write_report(tmp_path, META, [CHECKED, *hostile_records()])["full_contract_ok"]
+
+
+def test_hostile_execution_is_recorded_only_after_sending(monkeypatch):
+    monkeypatch.setattr(e2e, "post", lambda *args, **kwargs: (422, b"{}", 1.0))
+    probe = SceneInput(e2e.HOSTILE_PROBE_NAMES[0], {}, b"{}", hostile=True)
+    record = judge("unused", Endpoint("/place", "application/json"), probe, SCHEMAS, RULES)
+    assert record["hostile_probe_executed"] is True
+    probe.bundle = b"archive"
+    record = judge("unused", Endpoint("/place", "application/json"), probe, SCHEMAS, RULES)
+    assert not record.get("hostile_probe_executed", False)
+
+
+@pytest.mark.parametrize("no_hostile", [False, True])
+def test_cli_shortened_run_cannot_claim_full_contract(tmp_path, monkeypatch, no_hostile):
+    from pathlib import Path
+
+    # Only public rules are read. All HTTP, git and hostile payload generation are mocked.
+    public_rules = (Path(__file__).resolve().parents[2] / "server" / "rules.yaml").read_text()
+    cases = tmp_path / "cases"
+    cases.mkdir()
+    (cases / "scene.json").write_text(json.dumps(SCENE))
+    monkeypatch.setattr(e2e.gitref, "fetch", lambda: None)
+    monkeypatch.setattr(e2e.gitref, "resolve", lambda _: "a" * 40)
+    monkeypatch.setattr(
+        e2e.gitref, "show", lambda sha, path: public_rules if path.endswith("rules.yaml") else "{}"
+    )
+    monkeypatch.setattr(
+        e2e.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: io.BytesIO(json.dumps(openapi({"/place": json_op()})).encode()),
+    )
+    monkeypatch.setattr(
+        e2e,
+        "hostile_inputs",
+        lambda: [SceneInput(name, {}, b"{}", hostile=True) for name in e2e.HOSTILE_PROBE_NAMES],
+    )
+
+    def fake_judge(url, endpoint, probe, *args):
+        if probe.hostile:
+            return next(r for r in hostile_records() if r["name"] == probe.name)
+        return CHECKED | {"name": probe.name}
+
+    monkeypatch.setattr(e2e, "judge", fake_judge)
+    monkeypatch.setattr(e2e, "peak_rss_mb", lambda: {})
+    out = tmp_path / "out"
+    args = ["--server-url", "http://unused", "--cases", str(cases), "--out", str(out)]
+    if no_hostile:
+        args.append("--no-hostile")
+    assert e2e.main(args) == 0
+    data = json.loads((out / "report.json").read_text())
+    assert data["all_passed"] and data["contract_ok"]
+    assert data["full_contract_ok"] is (not no_hostile)
+    assert data["hostile_probes_executed"] == (
+        [] if no_hostile else sorted(e2e.HOSTILE_PROBE_NAMES)
+    )
+    from hsverify import scoreboard
+
+    metric = next(m for m in scoreboard.load_metrics()[1] if m.id == "S2-8")
+    metric.probe["glob"] = str(out / "report.json")
+    status = scoreboard.probe_report(metric.probe, data["sha"]).status
+    assert status == ("gap" if no_hostile else "met")

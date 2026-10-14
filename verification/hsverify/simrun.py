@@ -8,7 +8,7 @@ The app is launched with the contract C4 arguments (`-replay <path>`, `-autopilo
 a screenshot once it has been on screen for `--settle` seconds; a state replaced sooner is
 captured immediately and flagged `transient`, because its image may already show the next
 state. The run ends at `--until`, after `--idle` seconds without a new state, or at
-`--timeout`. A state named with `--require` that never appeared makes the run fail. If the app
+`--timeout`. States named with `--require` must appear in the order given. If the app
 logged a scan bundle, it is copied into the report as scan.zip (required with `--require-export`)
 and named in report.json's
 `app_export`, so the report folder can be replayed as an app export. Reports go outside git
@@ -30,6 +30,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from collections.abc import Iterable
@@ -52,6 +53,7 @@ DEVICE_TYPE = "com.apple.CoreSimulator.SimDeviceType.iPhone-17"
 DEFAULT_REPORTS = Path.home() / "house-scanning-data" / "reports" / "sim"
 DERIVED_DATA = Path("/tmp/hs-verify-derived-data")
 BUILD_LOCK = Path("/tmp/hs-verify-xcodebuild.lock")
+DEVICE_LOCK = Path("/tmp/hs-verify-simulator.lock")
 BUILT_APP_DIR = "built-app"  # in the report folder, until the Simulator has installed it
 
 
@@ -219,11 +221,14 @@ def build_app(
         built = DERIVED_DATA / "Build" / "Products" / "Debug-iphonesimulator" / f"{scheme}.app"
         app = None
         if code == 0 and built.exists():
-            app = out / BUILT_APP_DIR / built.name
-            shutil.rmtree(app.parent, ignore_errors=True)
-            shutil.copytree(built, app, symlinks=True)
+            app = Path(tempfile.mkdtemp(prefix=f"{BUILT_APP_DIR}-", dir=out)) / built.name
+            try:
+                shutil.copytree(built, app, symlinks=True)
+            except BaseException:
+                discard_app(app)
+                raise
     text = log_path.read_text(errors="replace")
-    warnings = sorted(set(re.findall(r"^.*: warning: .*$", text, re.M)))
+    warnings = sorted(set(re.findall(r"^(?:.*: )?warning: .*$", text, re.M)))
     errors = sorted(set(re.findall(r"^.*: error: .*$", text, re.M)))
     result = {
         "ok": code == 0,
@@ -239,7 +244,7 @@ def build_app(
 
 def discard_app(app: Path) -> None:
     """Remove this run's copy of the app once the Simulator has installed its own."""
-    if app.parent.name == BUILT_APP_DIR:
+    if app.parent.name.startswith(f"{BUILT_APP_DIR}-"):
         shutil.rmtree(app.parent, ignore_errors=True)
 
 
@@ -326,7 +331,17 @@ def wait_for_log_stream(events: queue.Queue, timeout_s: float) -> str | None:
 
 def missing_required(required: list[str], states: list[ShotRecord]) -> list[str]:
     seen = {s.state for s in states}
-    return [f"required state {name} never appeared" for name in required if name not in seen]
+    missing = [f"required state {name} never appeared" for name in required if name not in seen]
+    if missing:
+        return missing
+    remaining = iter(required)
+    next_required = next(remaining, None)
+    for state in states:
+        if state.state == next_required:
+            next_required = next(remaining, None)
+    if next_required is not None:
+        return [f"required states did not appear in order: {' -> '.join(required)}"]
+    return []
 
 
 def logged_message(line: str) -> str:
@@ -529,6 +544,16 @@ def collect_crashes(since: float, out: Path) -> list[str]:
     return found
 
 
+@contextlib.contextmanager
+def device_lock():
+    """Hold the shared Simulator until install, capture and shutdown have finished."""
+    DEVICE_LOCK.touch()
+    with DEVICE_LOCK.open() as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+@device_lock()
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--ref", default="origin/main", help="git ref to build")
@@ -548,7 +573,7 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         default=[],
         metavar="STATE",
-        help="a state the run must reach; one that never appears is a problem (exit 1)",
+        help="a state the run must reach; repeat in the required journey order (exit 1 on failure)",
     )
     parser.add_argument(
         "--require-export",
@@ -608,7 +633,12 @@ def main(argv: list[str] | None = None) -> int:
         flush=True,
     )
 
-    device = ensure_device(args.udid)
+    try:
+        device = ensure_device(args.udid)
+    except BaseException:
+        if app is not None:
+            discard_app(app)
+        raise
     rep = RunReport(
         ref=args.ref,
         sha=sha,
@@ -654,6 +684,8 @@ def main(argv: list[str] | None = None) -> int:
         if rep.crash_reports:
             rep.problems.append(f"Crash reports: {', '.join(rep.crash_reports)}")
     finally:
+        if app is not None:
+            discard_app(app)
         services.close()
         rep.peak_memory = peak_rss_mb()
         if not args.keep_booted:

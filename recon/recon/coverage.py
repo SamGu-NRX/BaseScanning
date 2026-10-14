@@ -31,7 +31,7 @@ import numpy as np
 from recon.capture import FEET, UP, Frame
 from recon.depth import Depth
 from recon.fusion import MAX_RANGE_M, Mesh, Volume
-from recon.geometry import WallFrame
+from recon.geometry import Ground, WallFrame
 
 CELL_M = 0.1524  # half a foot, the app's cell
 WALL_TOP_M = 1.9812  # 6.5 ft, the headroom the export's wall band claims
@@ -39,7 +39,7 @@ WALL_ROWS = 9  # about 0.25 m apart, so a box mounted between rows cannot slip t
 GROUND_MAX_M = 3.048  # 10 ft out
 FACING_MAX_M = 6.0
 FACING_BAND_M = (0.3, 1.8)
-OVERHEAD_OUT_M = (0.1, 0.56)  # above the battery's footprint (1.83 ft deep)
+OVERHEAD_OUT_M = (0.0, 0.56)  # the whole existing 1.83 ft footprint, from the first free wall step
 OVERHEAD_MAX_M = 3.0
 MAX_ANGLE = np.radians(65)  # the app's limit on how oblique a view may be
 IMAGE_MARGIN = 0.03
@@ -110,6 +110,8 @@ def face_offsets(wall: WallFrame, mesh: Mesh, cells: np.ndarray) -> np.ndarray:
     """Per cell, how far a flat, full-height face stands in front of the fitted plane (0 if none).
     Flat: in at least 75% of the 10 cm height bins from 0.3 to 1.9 m, the front-most surface within
     0.6 m lies within 3 cm of their median. A bush or bin is neither, so it stays an occluder."""
+    if not len(cells):
+        return np.zeros(0)
     loc = wall.local(mesh.vertices.astype(np.float64))
     s, h, out = loc[:, 0], loc[:, 1], loc[:, 2]
     keep = (out > -0.15) & (out < 0.6) & (h > 0.3) & (h < 1.9)
@@ -146,6 +148,7 @@ def wall_and_ground(
     vol: Volume,
     mesh: Mesh,
     cells: np.ndarray,
+    ground: Ground | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     centres = np.array([f.center for f in frames])
     faces = face_offsets(wall, mesh, cells)
@@ -164,7 +167,10 @@ def wall_and_ground(
     S = np.broadcast_to(alongs[:, :, None], (len(cells), 2, len(outs)))
     Oo = np.maximum(np.broadcast_to(outs[None, None, :], S.shape), faces[:, None, None] + 0.05)
     gpts = wall.world(S, np.zeros_like(S), Oo).reshape(-1, 3)
-    gseen = two_positions(seen_by(gpts, UP, frames, depths, vol), centres).reshape(
+    if ground is not None:
+        gpts[:, 1] = ground.height_at(gpts[:, 0], gpts[:, 2])
+    gnormal = UP if ground is None else ground.normal
+    gseen = two_positions(seen_by(gpts, gnormal, frames, depths, vol), centres).reshape(
         len(cells), 2, len(outs)
     )
     row_ok = gseen.all(axis=1)  # (C, outs)
@@ -207,7 +213,8 @@ def free_space(wall: WallFrame, vol: Volume, cells: np.ndarray):
     The facing gap and clear distance are measured out from the wall's reconstructed front, not
     from the fitted plane: in front of a pilaster 0.3 m proud, something 1.3 m out of the plane
     is 1.0 m from the face the battery would stand against. The front is the first free step
-    past the wall's occupied voxels, so both read up to a voxel short, never long. Overhead
+    past the wall's occupied voxels. The gap also backs off one voxel from the first occupied
+    sample, so voxel sampling does not extend it into the obstacle. Overhead
     clearance is a height above the ground over the footprint in front of that face."""
     step = vol.voxel
     n = len(cells)
@@ -217,38 +224,44 @@ def free_space(wall: WallFrame, vol: Volume, cells: np.ndarray):
     for c in range(n):
         across = cells[c] + CELL_M * np.array([0.25, 0.5, 0.75])
         front = wall_front(wall, vol, across)
-        hits = 0
         for out in np.arange(front + step, front + FACING_MAX_M, step):
             share, seen = _slab(wall, vol, across, fh, [out])
-            hits = hits + 1 if share >= OCCUPIED_SHARE else 0
-            if hits == 2:
-                facing_gap[c] = out - step - front
+            # Any reconstructed occupied voxel stops clearance, including one-step thin rails.
+            if share > 0:
+                facing_gap[c] = max(0.0, out - step - front)
                 break
             if not seen:
                 break
-            if hits == 0:
-                facing_clear[c] = out - front
-        oo = front + np.arange(OVERHEAD_OUT_M[0], OVERHEAD_OUT_M[1] + 1e-9, step)
-        hits = 0
+            facing_clear[c] = out - front
+        # Include both footprint edges. Skipping the first 10 cm missed a 1.90 m eave in the
+        # full-depth regression, while a voxel step alone can end short of the outer edge.
+        oo = front + np.append(
+            np.arange(OVERHEAD_OUT_M[0], OVERHEAD_OUT_M[1], step), OVERHEAD_OUT_M[1]
+        )
         for h in np.arange(0.3, OVERHEAD_MAX_M, step):
             share, seen = _slab(wall, vol, across, [h], oo)
-            hits = hits + 1 if share >= OCCUPIED_SHARE else 0
-            if hits == 2:
-                over_gap[c] = h - step
+            if share > 0:
+                over_gap[c] = max(0.0, h - step)
                 break
             if not seen:
                 break
-            if hits == 0:
-                over_clear[c] = h
+            over_clear[c] = h
     return facing_gap, facing_clear, over_gap, over_clear
 
 
 def compute(
-    wall: WallFrame, frames: list[Frame], depths: dict[str, Depth], vol: Volume, mesh: Mesh
+    wall: WallFrame,
+    frames: list[Frame],
+    depths: dict[str, Depth],
+    vol: Volume,
+    mesh: Mesh,
+    ground: Ground | None = None,
 ) -> CellCoverage:
     lo, hi = wall.s_range
-    cells = np.arange(np.floor(lo / CELL_M) * CELL_M, hi - 1e-9, CELL_M)
-    wall_ok, ground_out, _ = wall_and_ground(wall, frames, depths, vol, mesh, cells)
+    # Only complete cells inside the fitted extent can support the full exported half-foot span.
+    start = np.ceil(lo / CELL_M - 1e-9) * CELL_M
+    cells = np.arange(start, hi - CELL_M + 1e-9, CELL_M)
+    wall_ok, ground_out, _ = wall_and_ground(wall, frames, depths, vol, mesh, cells, ground)
     fg, fc, og, oc = free_space(wall, vol, cells)
     return CellCoverage(cells, wall_ok, ground_out, fg, fc, og, oc)
 

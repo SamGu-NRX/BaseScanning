@@ -2,6 +2,7 @@ import contextlib
 import datetime as dt
 import json
 import os
+import subprocess
 import textwrap
 import time
 
@@ -675,3 +676,39 @@ def test_tail_keeps_last_three_lines_with_spaces_collapsed():
         sb._tail("a\n\n...   [ 82%]\nb\n  87 passed  in 1s \n")
         == "... [ 82%] / b / 87 passed in 1s"
     )
+
+
+def test_pr_inventory_exceeds_default_page(monkeypatch):
+    prs = [{"number": n} for n in range(1, 42)]
+
+    def fake_run(cmd, **kwargs):
+        assert int(cmd[cmd.index("--limit") + 1]) > 30
+        assert kwargs["timeout"] == sb.PR_LIST_TIMEOUT_S
+        return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(prs))
+
+    monkeypatch.setattr(sb.subprocess, "run", fake_run)
+    assert sb.list_prs() == prs
+
+
+def test_s2_contract_credit_requires_successful_full_run(tmp_path):
+    _, metrics = sb.load_metrics()
+    metric = next(m for m in metrics if m.id == "S2-8")
+    metric.probe["glob"] = str(tmp_path / "*" / "report.json")
+    write_report(
+        tmp_path / "r" / "report.json",
+        {"sha": SHA, "contract_ok": True, "all_passed": False},
+        100,
+    )
+    assert sb.probe_report(metric.probe, SHA).status == "gap"
+
+
+@pytest.mark.parametrize("full", [None, False, True])
+def test_s2_requires_hostile_execution_evidence_from_report(tmp_path, full):
+    metric = real_metric("S2-8")
+    metric.probe["glob"] = str(tmp_path / "*" / "report.json")
+    data = {"sha": SHA, "contract_ok": True, "all_passed": True}
+    if full is not None:
+        data["full_contract_ok"] = full
+    write_report(tmp_path / "r" / "report.json", data, 100)
+    status = sb.probe_report(metric.probe, SHA).status
+    assert (status == "met") is (full is True)
