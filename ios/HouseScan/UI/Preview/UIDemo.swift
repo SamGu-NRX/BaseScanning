@@ -114,7 +114,10 @@ private struct FoldedAimCardDemo: View {
     var body: some View {
         VStack(spacing: 24) {
             InstructionCard(instruction: instruction, foldsDetail: true)
-                .environment(\.accessibilityReduceMotion, true)
+                .transaction { transaction in
+                    transaction.animation = nil
+                    transaction.disablesAnimations = true
+                }
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("demo.aimCard")
             Button("Next title") {
