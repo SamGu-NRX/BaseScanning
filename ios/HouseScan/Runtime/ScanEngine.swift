@@ -32,7 +32,7 @@ final class ScanEngine {
     private var closeUpGate = CloseUpGate()
     private var planner = GuidancePlanner()
     private var cameraInterrupted = false
-    private var interruptionEndedAt: Double?
+    private var latestEndedInterruptionGeneration: UInt64 = 0
     private let aimClock: () -> Double
     let gapPlanner = GapPlanner()
 
@@ -579,7 +579,7 @@ final class ScanEngine {
     func ingest(_ frame: SourceFrame) {
         // Encoding can deliver an old normal frame after an interruption event. It must not
         // change tracking, coaching, coverage or cues, even after the session has resumed.
-        guard !cameraInterrupted, interruptionEndedAt.map({ frame.timestamp > $0 }) ?? true else { return }
+        guard !cameraInterrupted, frame.interruptionGeneration >= latestEndedInterruptionGeneration else { return }
         captureClock = max(captureClock ?? frame.timestamp, frame.timestamp)
         if !frame.isPoseOnly { lastFrame = frame }
         if let still = frame.still { state.feed = .still(still) }
@@ -1626,10 +1626,10 @@ final class ScanEngine {
             state.coaching = .relocalizing
             cameraInterrupted = true
             recordAimActionability(screen: aimScreen(), time: aimClock())
-        case .interruptionEnded(let endedAt):
+        case .interruptionEnded(let generation):
             RuntimeLog.capture.info("session interruption ended")
             cameraInterrupted = false
-            interruptionEndedAt = endedAt
+            latestEndedInterruptionGeneration = max(latestEndedInterruptionGeneration, generation)
             state.coaching = .relocalizing
         case .cameraDenied:
             // As for a failed session: once the scan is sent, the answer stays on screen.
@@ -2421,7 +2421,7 @@ final class ScanEngine {
         planner.reset()
         state.resetAimSpans()
         cameraInterrupted = false
-        interruptionEndedAt = nil
+        latestEndedInterruptionGeneration = 0
         closeUpGate = CloseUpGate()
         gapPlan = nil
         skippedGaps = []
@@ -2679,8 +2679,8 @@ extension ScanEngine {
             SIMD4(-simd_cross(right, forward), 0), SIMD4(right, 0), SIMD4(-forward, 0), SIMD4(0, 1.4, 2.6, 1)),
             intrinsics: SIMD4(500, 500, 320, 240), imageSize: SIMD2(640, 480))
         func update() { engine.updateGuidance(camera: camera, time: now) }
-        func frame(_ timestamp: Double) -> SourceFrame {
-            SourceFrame(id: "test-\(timestamp)", timestamp: timestamp, camera: camera, tracking: .normal,
+        func frame(_ timestamp: Double, generation: UInt64 = 0) -> SourceFrame {
+            SourceFrame(id: "test-\(timestamp)", timestamp: timestamp, interruptionGeneration: generation, camera: camera, tracking: .normal,
                 quality: nil, jpeg: .none, still: nil, meterAnchor: nil, meterAnchorID: nil,
                 planes: nil, depth: nil, sensorDepth: nil, exposure: nil)
         }
@@ -2699,17 +2699,17 @@ extension ScanEngine {
         case "staleAfterEnd":
             engine.handle(.interrupted)
             now = 30
-            engine.handle(.interruptionEnded(at: now))
-            engine.ingest(frame(4))
+            engine.handle(.interruptionEnded(generation: 1))
+            engine.ingest(frame(1_000_000_000, generation: 0))
             guard engine.state.coaching == .relocalizing else { return "pre-resume frame cleared recovery coaching" }
             update()
             return aimHeld()
         case "interruptionRecord":
             engine.handle(.interrupted)
             now = 35
-            engine.handle(.interruptionEnded(at: now))
+            engine.handle(.interruptionEnded(generation: 1))
             now = 36
-            engine.ingest(frame(36))
+            engine.ingest(frame(36, generation: 1))
             guard engine.currentFrame?.id == "test-36.0", engine.state.coaching != .relocalizing else {
                 return "fresh normal frame did not resume the engine"
             }
@@ -2717,6 +2717,17 @@ extension ScanEngine {
             now = 51
             update()
             return engine.planner.current != .aimAtGround(s: 0) ? "passed" : "recovery never resumed the stall clock"
+        case "generationIgnoresTimestamp":
+            engine.handle(.interrupted)
+            now = 35
+            engine.handle(.interruptionEnded(generation: 1))
+            now = 36
+            // Zero is below any running host's uptime. Only the generation admits the frame.
+            engine.ingest(frame(0, generation: 1))
+            guard engine.currentFrame?.id == "test-0.0", engine.state.coaching != .relocalizing else {
+                return "current-generation frame was rejected for its timestamp"
+            }
+            return aimHeld()
         case "marking":
             engine.beginMarking(.window)
             now = 35

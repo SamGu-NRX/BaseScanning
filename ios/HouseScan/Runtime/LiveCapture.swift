@@ -19,7 +19,7 @@ enum LiveMode: Sendable {
 
 enum LiveEvent: Sendable {
     case interrupted
-    case interruptionEnded(at: Double)
+    case interruptionEnded(generation: UInt64)
     case cameraDenied
     case failed(String)
 }
@@ -388,6 +388,8 @@ final class LiveSessionDelegate: NSObject, ARSessionDelegate, Sendable {
 
     private struct QueueState {
         var frameCount = 0
+        /// Advanced and read only by callbacks on the serial AR delegate queue.
+        var interruptionGeneration: UInt64 = 0
         var lastEncode: (time: Double, camera: CameraFrame)?
         var encoding = false
     }
@@ -421,9 +423,9 @@ final class LiveSessionDelegate: NSObject, ARSessionDelegate, Sendable {
     }
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        let count = queueState.withLock { state -> Int in
+        let (count, generation) = queueState.withLock { state in
             state.frameCount += 1
-            return state.frameCount
+            return (state.frameCount, state.interruptionGeneration)
         }
         let shared = shared.withLock { $0 }
         let tracking = Self.tracking(frame.camera.trackingState)
@@ -446,7 +448,7 @@ final class LiveSessionDelegate: NSObject, ARSessionDelegate, Sendable {
         let meterAnchor = shared.meterAnchorID.flatMap { id in frame.anchors.first { $0.identifier == id }?.transform }
         guard count % Self.sampleEvery == 0 else {
             let pose = SourceFrame(
-                id: "live-\(count)", timestamp: frame.timestamp, camera: camera, tracking: tracking,
+                id: "live-\(count)", timestamp: frame.timestamp, interruptionGeneration: generation, camera: camera, tracking: tracking,
                 quality: nil, jpeg: .none, still: nil, meterAnchor: meterAnchor, meterAnchorID: shared.meterAnchorID, isPoseOnly: true
             )
             encodeQueue.async { [self, pose] in deliver(pose) }
@@ -457,7 +459,7 @@ final class LiveSessionDelegate: NSObject, ARSessionDelegate, Sendable {
         let ground = planes.filter { $0.alignment == .horizontal }.map(Self.groundEvidence)
         let walls = planes.filter { $0.alignment == .vertical }.map(Self.wallEvidence)
         var snapshot = SourceFrame(
-            id: "live-\(count)", timestamp: frame.timestamp, camera: camera, tracking: tracking,
+            id: "live-\(count)", timestamp: frame.timestamp, interruptionGeneration: generation, camera: camera, tracking: tracking,
             quality: quality, jpeg: .none, still: nil, meterAnchor: meterAnchor, meterAnchorID: shared.meterAnchorID,
             planes: PlaneSnapshot(ground: ground, walls: walls)
         )
@@ -679,14 +681,23 @@ final class LiveSessionDelegate: NSObject, ARSessionDelegate, Sendable {
     }
 
     func sessionWasInterrupted(_ session: ARSession) {
-        Task { @MainActor [onEvent] in onEvent(.interrupted) }
+        deliver(.interrupted)
     }
 
     func sessionInterruptionEnded(_ session: ARSession) {
-        // ARFrame.timestamp and systemUptime are seconds since boot. Take the boundary here,
-        // before actor delivery can be delayed behind an encoded frame.
-        let endedAt = ProcessInfo.processInfo.systemUptime
-        Task { @MainActor [onEvent] in onEvent(.interruptionEnded(at: endedAt)) }
+        let generation = queueState.withLock { state in
+            state.interruptionGeneration += 1
+            return state.interruptionGeneration
+        }
+        deliver(.interruptionEnded(generation: generation))
+    }
+
+    /// Delegate callbacks enqueue events in order. A current-generation frame cannot enqueue
+    /// its main-queue delivery before the ended event that advanced its generation.
+    private func deliver(_ event: LiveEvent) {
+        DispatchQueue.main.async { [onEvent] in
+            MainActor.assumeIsolated { onEvent(event) }
+        }
     }
 
     func session(_ session: ARSession, didFailWithError error: any Error) {
@@ -696,7 +707,7 @@ final class LiveSessionDelegate: NSObject, ARSessionDelegate, Sendable {
         } else {
             event = .failed(error.localizedDescription)
         }
-        Task { @MainActor [onEvent] in onEvent(event) }
+        deliver(event)
     }
 }
 

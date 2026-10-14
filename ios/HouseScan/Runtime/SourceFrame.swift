@@ -10,6 +10,9 @@ struct SourceFrame: Sendable {
     var id: String
     /// Seconds on the frame clock (ARFrame.timestamp, or the replay's timestamps).
     var timestamp: Double
+    /// Stamped on the serial AR delegate queue, before encoding. Replay and demo frames stay
+    /// at zero; live frames advance only after an interruption ends.
+    var interruptionGeneration: UInt64 = 0
     var camera: CameraFrame
     var tracking: TrackingQuality
     /// Measured on some frames only; auto-capture reuses the last measurement in between.
