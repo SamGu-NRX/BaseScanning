@@ -297,7 +297,8 @@ def test_server_breaking_coverage_rule_fails(fake_url):
     assert record["status"] == "fail"
     joined = "\n".join(record["problems"])
     assert "ruled out for this case" in joined
-    assert "no coverage: decision pass for a scene with no coverage at all" in joined
+    assert "decision pass without a passing spot" in joined
+    assert "no coverage:" not in joined  # Initial invariant failure stops transformed requests.
     assert re.search(r"needs ground \[.*\] observed, none seen", joined)
 
 
@@ -615,7 +616,7 @@ def test_transformed_answer_checks_its_own_hash(monkeypatch):
     monkeypatch.setattr(e2e, "answer", lambda *args: (original, None))
     monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
 
-    def check_hash(scene, result, sent=None, rules=None):
+    def check_hash(scene, result, sent=None, rules=None, *, meter=None):
         calls.append((scene, sent))
         return ["stale input hash"] if sent is not None else []
 
@@ -624,7 +625,10 @@ def test_transformed_answer_checks_its_own_hash(monkeypatch):
     monkeypatch.setattr(e2e, "with_more_error", lambda *args: None)
     monkeypatch.setattr(e2e, "tape_to_tap", lambda *args: None)
     monkeypatch.setattr(e2e, "with_less_coverage", lambda *args: None)
-    scene = {"walls": [{"id": "w1", "baseline": [[-1, 0], [1, 0]]}], "meter": {"pos": [0, 1, 0]}}
+    scene = {
+        "walls": [{"id": "w1", "baseline": [[-1, 0], [1, 0]]}],
+        "meter": {"pos": [0, 1, 0], "wall_id": "w1"},
+    }
     probe = SceneInput(name="test", scene=scene, raw=json.dumps(scene).encode(), source="test")
     failures = e2e.property_problems(
         "unused", Endpoint("/p", "application/json"), probe, original, {"result": {}}, RULES

@@ -51,7 +51,7 @@ import urllib.parse
 import urllib.request
 import uuid
 import zipfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -60,10 +60,13 @@ from hsverify.bundle_limits import zip_directory_limits
 from hsverify.memory import peak_rss_mb
 from hsverify.resultcheck import (
     RuleSet,
+    WorkLimitExceeded,
+    WorkMeter,
     assumption_mismatches,
     comparable,
     coverage_blocks,
     expectation_problems,
+    geometry_admission_problems,
     invariant_problems,
     less_coverage_problems,
     mirror_scene,
@@ -469,7 +472,10 @@ def judge(
     schemas: dict,
     rules: RuleSet,
     limit: memory.TreeLimit | None = None,
+    *,
+    meter: WorkMeter | None = None,
 ) -> dict:
+    meter = meter if meter is not None else WorkMeter()
     record: dict = {
         "name": item.name,
         "source": item.source,
@@ -499,36 +505,92 @@ def judge(
         failure = [f"HTTP 200 with a body that is not a JSON object: {payload[:200]!r}"]
         return record | {"status": "fail", "problems": failure, "contract_problems": failure}
     record["result"] = result
-    problems = [f"result schema: {e}" for e in schema_errors(result, schemas["result"])]
+
+    def check(name: str, function: Callable[[], list[str]]) -> list[str]:
+        try:
+            return function()
+        except WorkLimitExceeded:
+            return [f"verification work limit exceeded ({meter.samples} samples)"]
+        except Exception as exc:
+            return [f"{name}: {type(exc).__name__}: {exc}"]
+
+    problems = check(
+        "result schema",
+        lambda: [f"result schema: {e}" for e in schema_errors(result, schemas["result"])],
+    )
     if problems:
         return record | {"status": "fail", "problems": problems[:20], "contract_problems": problems}
 
-    # Contract problems hold for any scene; expectation problems depend on one case's geometry.
-    contract = invariant_problems(item.scene, result, sent=item.raw, rules=rules)
-    contract += property_problems(url, endpoint, item, result, schemas, rules)
+    # Admission errors stop geometry, including report summaries that subtract spans.
+    contract = check(
+        "geometry admission",
+        lambda: geometry_admission_problems(item.scene, result, rules, meter=meter),
+    )
+    admitted = not contract
+    if admitted:
+        contract += check(
+            "invariants",
+            lambda: invariant_problems(item.scene, result, sent=item.raw, rules=rules, meter=meter),
+        )
+    if not contract:
+        contract += check(
+            "properties",
+            lambda: property_problems(url, endpoint, item, result, schemas, rules, meter=meter),
+        )
     if item.real and ms > LATENCY_BUDGET_MS:
         contract.append(f"real-derived scene took {ms:.0f} ms, budget {LATENCY_BUDGET_MS:.0f}")
-    mismatches = assumption_mismatches(item.rules_assumed, result, rules)
-    expected = expectation_problems(item.expect, result) if item.expect and not mismatches else []
-    problems = contract + expected
+    mismatches: list[str] = []
+    expected: list[str] = []
+    exhausted = any(p.startswith("verification work limit exceeded (") for p in contract)
+    if admitted and not exhausted:
 
-    record["decision"] = result["decision"]
-    record["outcome_lengths_ft"] = outcome_lengths(result)
+        def check_assumptions() -> list[str]:
+            mismatches.extend(assumption_mismatches(item.rules_assumed, result, rules))
+            return []
+
+        contract += check("assumptions", check_assumptions)
+        if item.expect and not mismatches:
+            expected = check(
+                "expectations", lambda: expectation_problems(item.expect, result, meter=meter)
+            )
+
+        def summarize() -> list[str]:
+            record["outcome_lengths_ft"] = outcome_lengths(result)
+            return []
+
+        contract += check("outcome lengths", summarize)
+    if "decision" in result:
+        record["decision"] = result["decision"]
     if mismatches:
         record["assumption_mismatches"] = mismatches
+    record["verification_samples"] = meter.samples
     record["contract_problems"] = contract
     record["expectation_problems"] = expected
-    record["problems"] = problems
-    record["status"] = "fail" if problems else "assumption mismatch" if mismatches else "pass"
+    record["problems"] = contract + expected
+    record["status"] = (
+        "fail" if record["problems"] else "assumption mismatch" if mismatches else "pass"
+    )
     return record
 
 
 def property_problems(
-    url: str, endpoint: Endpoint, item: SceneInput, result: dict, schemas: dict, rules: RuleSet
+    url: str,
+    endpoint: Endpoint,
+    item: SceneInput,
+    result: dict,
+    schemas: dict,
+    rules: RuleSet,
+    *,
+    meter: WorkMeter | None = None,
+    rule_checks: bool = True,
 ) -> list[str]:
     """The same scene resent unchanged and transformed. Every answer to a transformed scene must
     also satisfy the invariants, and the transforms that only lose information must not make
     the server surer."""
+    meter = meter if meter is not None else WorkMeter()
+    checked_rules = rules if rule_checks else None
+    if admission := geometry_admission_problems(item.scene, result, checked_rules, meter=meter):
+        return admission
     problems: list[str] = []
 
     def resend(name: str, scene: dict) -> dict | None:
@@ -537,14 +599,29 @@ def property_problems(
         if failure:
             problems.append(f"{name}: {failure}")
             return None
-        errors = schema_errors(other, schemas["result"])
-        if errors:
-            problems.append(f"{name}: result schema: {errors[0]}")
+        check_name = "result schema"
+        try:
+            errors = schema_errors(other, schemas["result"])
+            if errors:
+                problems.append(f"{name}: result schema: {errors[0]}")
+                return None
+            check_name = "geometry admission"
+            admission = geometry_admission_problems(scene, other, checked_rules, meter=meter)
+            if admission:
+                problems.extend(f"{name}: {p}" for p in admission)
+                return None
+            check_name = "invariants"
+            invariants = invariant_problems(
+                scene, other, sent=transformed.raw, rules=checked_rules, meter=meter
+            )
+            if invariants:
+                problems.extend(f"{name}: {p}" for p in invariants)
+                return None
+        except WorkLimitExceeded:
+            raise
+        except Exception as exc:
+            problems.append(f"{name} {check_name}: {type(exc).__name__}: {exc}")
             return None
-        problems.extend(
-            f"{name}: {p}"
-            for p in invariant_problems(scene, other, sent=transformed.raw, rules=rules)
-        )
         return other
 
     # 1. Same input, same answer.
@@ -572,19 +649,22 @@ def property_problems(
     if "coverage" in item.scene:
         bare = {k: v for k, v in item.scene.items() if k != "coverage"}
         if (other := resend("no coverage", bare)) is not None:
-            problems += less_coverage_problems(result, other, "no coverage")
-    for name, scene in (
-        ("less coverage", with_less_coverage(item.scene)),
-        ("ground short of the largest clearance", with_ground_short_of(item.scene, rules)),
-    ):
+            problems += less_coverage_problems(result, other, "no coverage", meter=meter)
+    coverage_variants = [("less coverage", with_less_coverage(item.scene))]
+    if rule_checks:
+        coverage_variants.append(
+            ("ground short of the largest clearance", with_ground_short_of(item.scene, rules))
+        )
+    for name, scene in coverage_variants:
         if scene is not None and (other := resend(name, scene)) is not None:
-            problems += less_coverage_problems(result, other, name)
-    for name, scene in (
-        ("more error", with_more_error(item.scene, rules)),
-        ("tape re-measured by tap", tape_to_tap(item.scene)),
-    ):
-        if scene is not None and (other := resend(name, scene)) is not None:
-            problems += more_error_problems(result, other, name)
+            problems += less_coverage_problems(result, other, name, meter=meter)
+    if rule_checks:
+        for name, scene in (
+            ("more error", with_more_error(item.scene, rules)),
+            ("tape re-measured by tap", tape_to_tap(item.scene)),
+        ):
+            if scene is not None and (other := resend(name, scene)) is not None:
+                problems += more_error_problems(result, other, name, meter=meter)
 
     # 4. Showing everything the result asked for settles every check that was unsure only
     # because an area was unobserved (the chosen spot may move; three rounds at most).
