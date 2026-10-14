@@ -821,3 +821,97 @@ def test_stalled_local_tls_handshake_ends_with_overall_deadline():
     finally:
         server.join(3)
         assert not server.is_alive() and stopped.is_set()
+
+
+def hostile_records():
+    return [
+        {
+            "name": name,
+            "hostile": True,
+            "hostile_probe_executed": True,
+            "http_status": 422,
+            "latency_ms": 1.0,
+            "status": "pass",
+            "contract_problems": [],
+        }
+        for name in e2e.HOSTILE_PROBE_NAMES
+    ]
+
+
+@pytest.mark.parametrize("missing", range(5))
+def test_every_required_hostile_probe_must_be_exercised(tmp_path, missing):
+    probes = hostile_records()
+    omitted = probes.pop(missing)
+    probes.append(probes[0].copy())  # duplicate evidence cannot replace the missing probe
+    report = e2e.write_report(tmp_path, META, [CHECKED, *probes])
+    assert report["all_passed"] and report["contract_ok"]
+    assert not report["hostile_probes_complete"] and not report["full_contract_ok"]
+    assert omitted["name"] not in report["hostile_probes_executed"]
+
+
+def test_probe_name_without_execution_is_not_full_evidence(tmp_path):
+    probes = hostile_records()
+    del probes[0]["hostile_probe_executed"]
+    assert not e2e.write_report(tmp_path, META, [CHECKED, *probes])["full_contract_ok"]
+    assert e2e.write_report(tmp_path, META, [CHECKED, *hostile_records()])["full_contract_ok"]
+
+
+def test_hostile_execution_is_recorded_only_after_sending(monkeypatch):
+    monkeypatch.setattr(e2e, "post", lambda *args, **kwargs: (422, b"{}", 1.0))
+    probe = SceneInput(e2e.HOSTILE_PROBE_NAMES[0], {}, b"{}", hostile=True)
+    record = judge("unused", Endpoint("/place", "application/json"), probe, SCHEMAS, RULES)
+    assert record["hostile_probe_executed"] is True
+    probe.bundle = b"archive"
+    record = judge("unused", Endpoint("/place", "application/json"), probe, SCHEMAS, RULES)
+    assert not record.get("hostile_probe_executed", False)
+
+
+@pytest.mark.parametrize("no_hostile", [False, True])
+def test_cli_shortened_run_cannot_claim_full_contract(tmp_path, monkeypatch, no_hostile):
+    from pathlib import Path
+
+    # Only public rules are read. All HTTP, git and hostile payload generation are mocked.
+    public_rules = (Path(__file__).resolve().parents[2] / "server" / "rules.yaml").read_text()
+    cases = tmp_path / "cases"
+    cases.mkdir()
+    (cases / "scene.json").write_text(json.dumps(SCENE))
+    monkeypatch.setattr(e2e.gitref, "fetch", lambda: None)
+    monkeypatch.setattr(e2e.gitref, "resolve", lambda _: "a" * 40)
+    monkeypatch.setattr(
+        e2e.gitref, "show", lambda sha, path: public_rules if path.endswith("rules.yaml") else "{}"
+    )
+    monkeypatch.setattr(
+        e2e.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: io.BytesIO(json.dumps(openapi({"/place": json_op()})).encode()),
+    )
+    monkeypatch.setattr(
+        e2e,
+        "hostile_inputs",
+        lambda: [SceneInput(name, {}, b"{}", hostile=True) for name in e2e.HOSTILE_PROBE_NAMES],
+    )
+
+    def fake_judge(url, endpoint, probe, *args):
+        if probe.hostile:
+            return next(r for r in hostile_records() if r["name"] == probe.name)
+        return CHECKED | {"name": probe.name}
+
+    monkeypatch.setattr(e2e, "judge", fake_judge)
+    monkeypatch.setattr(e2e, "peak_rss_mb", lambda: {})
+    out = tmp_path / "out"
+    args = ["--server-url", "http://unused", "--cases", str(cases), "--out", str(out)]
+    if no_hostile:
+        args.append("--no-hostile")
+    assert e2e.main(args) == 0
+    data = json.loads((out / "report.json").read_text())
+    assert data["all_passed"] and data["contract_ok"]
+    assert data["full_contract_ok"] is (not no_hostile)
+    assert data["hostile_probes_executed"] == (
+        [] if no_hostile else sorted(e2e.HOSTILE_PROBE_NAMES)
+    )
+    from hsverify import scoreboard
+
+    metric = next(m for m in scoreboard.load_metrics()[1] if m.id == "S2-8")
+    metric.probe["glob"] = str(out / "report.json")
+    status = scoreboard.probe_report(metric.probe, data["sha"]).status
+    assert status == ("gap" if no_hostile else "met")

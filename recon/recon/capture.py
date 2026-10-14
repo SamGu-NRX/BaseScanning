@@ -182,16 +182,20 @@ def _zip_directory_limits(path: Path) -> None:
         size = path.stat().st_size
         f.seek(max(0, size - 22 - 65535))
         tail = f.read(22 + 65535)
-        end = len(tail)
-        while True:
-            pos = tail.rfind(b"PK\x05\x06", 0, end)
-            if pos < 0:
-                raise ValueError(f"{path}: missing ZIP end record")
-            if pos + 22 <= len(tail):
-                record = struct.unpack("<4s4H2IH", tail[pos : pos + 22])
-                if pos + 22 + record[-1] == len(tail):
-                    break
-            end = pos
+        # Match ZipFile's footer selection: a no-comment footer at EOF, otherwise the last
+        # signature. Backtracking past malformed signatures can validate a different directory
+        # from the one ZipFile later allocates. Refuse that ambiguity before constructing it.
+        if len(tail) >= 22 and tail[-22:-18] == b"PK\x05\x06" and tail[-2:] == b"\0\0":
+            pos = len(tail) - 22
+        else:
+            pos = tail.rfind(b"PK\x05\x06")
+        if pos < 0:
+            raise ValueError(f"{path}: missing ZIP end record")
+        if pos + 22 > len(tail):
+            raise ValueError(f"{path}: truncated ZIP end record")
+        record = struct.unpack("<4s4H2IH", tail[pos : pos + 22])
+        if pos + 22 + record[-1] != len(tail):
+            raise ValueError(f"{path}: ambiguous ZIP end record or invalid comment length")
         _, disk, central_disk, disk_entries, total_entries, length, offset, _ = record
         if disk or central_disk or disk_entries != total_entries:
             raise ValueError(f"{path}: split ZIP archives are not supported")
@@ -199,6 +203,12 @@ def _zip_directory_limits(path: Path) -> None:
             raise ValueError(f"{path}: {total_entries} entries, limit {MAX_BUNDLE_ENTRIES}")
         directory_end = offset + length
         end_offset = size - len(tail) + pos
+        # ZipFile checks this locator even when the ordinary footer has no ZIP64 sentinels.
+        # It must not replace the directory fields after the bounded scan below.
+        if end_offset >= 20:
+            f.seek(end_offset - 20)
+            if f.read(4) == b"PK\x06\x07":
+                raise ValueError(f"{path}: ZIP64 archive metadata is not supported")
         if length == 0xFFFFFFFF or offset == 0xFFFFFFFF or directory_end != end_offset:
             raise ValueError(f"{path}: ZIP64 or inconsistent ZIP directory")
         f.seek(offset)

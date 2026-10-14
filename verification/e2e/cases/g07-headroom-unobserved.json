@@ -102,6 +102,7 @@
     }
   },
   "rules_assumed": {
+    "battery_width": 2.5833333333333335,
     "headroom": 6.5
   },
   "expect": {

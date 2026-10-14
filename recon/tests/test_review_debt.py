@@ -353,6 +353,49 @@ def test_zip_entry_count_is_checked_before_metadata_allocation(tmp_path, monkeyp
         cap.unpack(path, tmp_path / "work")
 
 
+@pytest.mark.parametrize("truncated", [False, True])
+def test_zip_comment_cannot_select_a_different_footer(tmp_path, monkeypatch, truncated):
+    path = tmp_path / "bundle.zip"
+    fake = struct.pack("<4s4H2IH", b"PK\x05\x06", 0, 0, 4, 4, 184, 0, 1)
+    comment = b"PK\x05\x06x" if truncated else fake + b"tail"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("one", b"one")
+        z.comment = comment
+    # The private stdlib parser reads only the bounded footer, without constructing ZipInfo
+    # objects. It chooses the later signature despite its claimed one-byte comment ending early.
+    if not truncated:
+        with path.open("rb") as f:
+            parsed = zipfile._EndRecData(f)
+        assert parsed[zipfile._ECD_ENTRIES_TOTAL] == 4
+        assert parsed[zipfile._ECD_LOCATION] == path.stat().st_size - len(comment)
+    monkeypatch.setattr(zipfile, "ZipFile", lambda *_: pytest.fail("allocated ZIP metadata"))
+    with pytest.raises(ValueError, match=r"ambiguous ZIP end record|truncated ZIP end record"):
+        cap.unpack(path, tmp_path / "work")
+    assert not (tmp_path / "work").exists()
+
+
+def test_zip_with_an_ordinary_comment_extracts(tmp_path):
+    path = tmp_path / "bundle.zip"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("scan/scene.json", '{"schema_version": "1.0"}')
+        z.comment = b"ordinary scan bundle comment"
+    out = cap.unpack(path, tmp_path / "work")
+    assert json.loads((out / "scan/scene.json").read_text()) == {"schema_version": "1.0"}
+
+
+def test_zip64_locator_cannot_override_a_checked_ordinary_footer(tmp_path, monkeypatch):
+    path = tmp_path / "bundle.zip"
+    info = zipfile.ZipInfo("one")
+    # A locator in the final central record's file comment is immediately before the footer,
+    # where stdlib probes for ZIP64 even without sentinel values in the ordinary footer.
+    info.comment = struct.pack("<4sIQI", b"PK\x06\x07", 0, 0, 1)
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(info, b"one")
+    monkeypatch.setattr(zipfile, "ZipFile", lambda *_: pytest.fail("allocated ZIP metadata"))
+    with pytest.raises(ValueError, match="ZIP64 archive metadata is not supported"):
+        cap.unpack(path, tmp_path / "work")
+
+
 def test_failed_zip_extraction_does_not_publish_partial_bundle(tmp_path, monkeypatch):
     path = tmp_path / "bundle.zip"
     with zipfile.ZipFile(path, "w") as z:

@@ -87,9 +87,10 @@ meter-closeup:
 	$(call require,$(METER_CLOSEUP),#16)
 	$(MAKE) -C experiments/meter-closeup check
 
-# PR #13 added this suite; leaving it out lets `make check` skip the independent verifier.
+# Match verification CI's locked sync so a stale lockfile cannot pass the local check.
 verification:
 	$(call require,$(VERIFICATION),#13)
+	cd verification && uv sync --locked
 	$(MAKE) -C verification test
 
 # Posts each scene in server/examples to a placement server and prints its decision:

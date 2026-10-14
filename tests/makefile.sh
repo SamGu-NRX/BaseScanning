@@ -106,7 +106,8 @@ expect_commands evals "experiments/evals uv sync --locked
 experiments/evals make test"
 expect_commands recon "recon make test"
 expect_commands meter-closeup "experiments/meter-closeup make check"
-expect_commands verification "verification make test"
+expect_commands verification "verification uv sync --locked
+verification make test"
 
 # 3. Naming a missing suite fails loudly and runs nothing.
 for suite in $suites; do
@@ -120,7 +121,7 @@ done
 
 # 4. A failing command inside a present suite fails `make check`, and nothing runs after it.
 for FAIL_AT in "experiments/scoring uv" "experiments/measure-lab make" "experiments/evals uv" \
-	"experiments/evals make" "recon make" "experiments/meter-closeup make" "verification make"; do
+	"experiments/evals make" "recon make" "experiments/meter-closeup make" "verification uv" "verification make"; do
 	make_tree $suites
 	if run_make check; then
 		fail "check passed although $FAIL_AT failed"

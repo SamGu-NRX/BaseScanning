@@ -687,6 +687,15 @@ def property_problems(
 HOSTILE_BUDGET_MS = 10_000.0
 
 
+HOSTILE_PROBE_NAMES = (
+    "hostile: 150 objects, each its own error",
+    "hostile: coordinates of 1e300 ft",
+    "hostile: a 5000 ft wall",
+    "hostile: nested 5000 deep",
+    "hostile: 400 MB scene.json in a small zip",
+)
+
+
 def hostile_inputs() -> list[SceneInput]:
     """Small requests that cost a careless server a lot. Built here, not stored, so the
     repository carries no blobs; none takes the harness more than a few MB to build."""
@@ -730,13 +739,11 @@ def hostile_inputs() -> list[SceneInput]:
     }
     nested = ('{"meter": ' + "[" * 5000 + "]" * 5000 + "}").encode()
     items = [
-        SceneInput(
-            "hostile: 150 objects, each its own error", crowded, json.dumps(crowded).encode()
-        ),
-        SceneInput("hostile: coordinates of 1e300 ft", huge, json.dumps(huge).encode()),
-        SceneInput("hostile: a 5000 ft wall", long_wall, json.dumps(long_wall).encode()),
-        SceneInput("hostile: nested 5000 deep", {}, nested),
-        SceneInput("hostile: 400 MB scene.json in a small zip", {}, b"", bundle=zip_bomb(400)),
+        SceneInput(HOSTILE_PROBE_NAMES[0], crowded, json.dumps(crowded).encode()),
+        SceneInput(HOSTILE_PROBE_NAMES[1], huge, json.dumps(huge).encode()),
+        SceneInput(HOSTILE_PROBE_NAMES[2], long_wall, json.dumps(long_wall).encode()),
+        SceneInput(HOSTILE_PROBE_NAMES[3], {}, nested),
+        SceneInput(HOSTILE_PROBE_NAMES[4], {}, b"", bundle=zip_bomb(400)),
     ]
     for item in items:
         item.hostile = True
@@ -786,7 +793,7 @@ def judge_hostile(
         }
     before = limit.reset() if limit else 0.0
     status, payload, ms = post(url, endpoint, item, timeout_s=HOSTILE_BUDGET_MS / 1000 + 5)
-    record = {"http_status": status, "latency_ms": round(ms, 1)}
+    record = {"http_status": status, "latency_ms": round(ms, 1), "hostile_probe_executed": True}
     grew = limit.peak_mb - before if limit else 0.0
     if limit:
         record["server_growth_mb"] = round(grew, 1)
@@ -830,10 +837,16 @@ def write_report(out: Path, meta: dict, records: list[dict]) -> dict:
     exported = [r for r in records if r.get("app_export")]
     contract_problems = sum(len(r.get("contract_problems", [])) for r in records)
     killed = bool(meta["peak_memory"].get("server_killed"))
+    all_passed = all(r["status"] == "pass" for r in records) and bool(checked) and not killed
+    contract_ok = bool(checked) and contract_problems == 0 and not killed
+    executed = sorted(
+        {r["name"] for r in records if r.get("hostile") and r.get("hostile_probe_executed") is True}
+    )
+    hostile_complete = set(HOSTILE_PROBE_NAMES).issubset(executed)
     report = meta | {
         "counts": counts,
         # A missing listed scene leaves the run incomplete, even when other scenes passed.
-        "all_passed": all(r["status"] == "pass" for r in records) and bool(checked) and not killed,
+        "all_passed": all_passed,
         "latency_ms": max(real) if real else None,
         "scenes_answered": sum(1 for r in records if "decision" in r),
         "scenes_checked": len(checked),
@@ -843,7 +856,12 @@ def write_report(out: Path, meta: dict, records: list[dict]) -> dict:
         # expectations are counted separately because a case can be wrong itself.
         "contract_problem_count": contract_problems,
         # The contract holds only on evidence: at least one scene checked, none broken.
-        "contract_ok": bool(checked) and contract_problems == 0 and not killed,
+        "contract_ok": contract_ok,
+        "hostile_probes_required": list(HOSTILE_PROBE_NAMES),
+        "hostile_probes_executed": executed,
+        "hostile_probes_complete": hostile_complete,
+        # Local --no-hostile success proves only that shortened run, not S2-8's full guarantee.
+        "full_contract_ok": all_passed and contract_ok and hostile_complete,
         "expectation_problem_count": sum(len(r.get("expectation_problems", [])) for r in records),
         "real_scene_passed": any(r.get("real") and r["status"] == "pass" for r in records),
         # Null when the run had no app export, so the scoreboard looks for an older run.
