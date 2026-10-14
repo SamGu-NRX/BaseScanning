@@ -37,6 +37,8 @@ Electro: 3,000 edge points on 21 laser wall planes, 2,258 in-plane and 742 proud
 
 Added after the run: M2 with the true pixel still gives 11.5. The MoGe-2 wall plane misses the edge point by 10.0 at p90, where the laser plane misses it by 1.4. A snap started at the true pixel moves 8.8 px on vertical edges, so the snap's pixel error is ill-posed for these points. M3 matches within 2 px give 2.9 with exact poses and 8.9 with `modern_assumed`. Facade has 866 points but no wall within 6 m, so only M0 runs there.
 
+Added after review: M3 pairs each point with the narrowest qualifying ray angle (at least 5°), which may triangulate worse than a wider pair. `uv run python run.py --pair=widest` reruns it with the widest angle ([results/edge_geometry_widest_pair.md](results/edge_geometry_widest_pair.md)). On electro it is no better: with `modern_assumed` poses M3's 3-D p90 is 158.7 in against 154.6, and 41% of points match either way. With exact poses the wide pair is worse, 156.4 in against 112.5, because fewer of its matches land within 2 px (35% against 49%). P4 fails under both, so the narrow pair is not what makes M3 look bad. The single-photo tables came out identical to the committed ones.
+
 Run: `uv run python run.py`. It takes 2 minutes and 0.9 GB. It needs the evals checkout at `190ed33` (`EDGE_EVALS_DIR`) and its ETH3D, MoGe-2 and pose caches.
 
 What it changes: the wall plane's depth error times tan(view angle) sets the edge error, so get the edge photo within 30° of head-on. A snapped tap can't beat the plane's error, and patch matching at edges fails on more than half the points.
