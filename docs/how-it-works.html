@@ -11,6 +11,10 @@
     --sky:#e2edf8; --wall:#e8dcc4; --eave:#6b5a4a; --ground:#c9dcb0; --bush:#6f9a52;
     --tape:#f3cf4b; --tape-ink:#3d3106;
     --phone:#2a78d6; --server:#eb6834; --fog:#8d8d86; --battery:#2f3e4e;
+    /* Text in the phone and server colours. The fills above are 4.0:1 and 2.9:1 on --bg, too
+       faint for small text; these keep the hue with OKLCH lightness lowered until text clears
+       4.5:1 on --bg (4.63 and 4.61) and on --card (5.06 and 5.03). */
+    --phone-ink:#1e6ecb; --server-ink:#c44400;
     --meterbox:#6f7680; --meter:#a9d3f2; --gas:#b9b3a6; --glass:#bfe0f5;
     --zone:rgba(208,59,59,.14); --zone-line:#d03b3b;
     --pass:#107a2a; --fail:#b83232; --fail-ink:#a12b2b; --unsure:#fab219;
@@ -24,6 +28,8 @@
       --sky:#1c2734; --wall:#4a4033; --eave:#8a7562; --ground:#2f4128; --bush:#5d8a45;
       --tape:#7a6016; --tape-ink:#fff3c4;
       --phone:#3987e5; --server:#e8683a; --fog:#6e6e68; --battery:#cfd8e3;
+      /* The dark fills already read as text: 4.69:1 and 5.26:1 on --card. */
+      --phone-ink:#3987e5; --server-ink:#e8683a;
       --meterbox:#8f97a3; --meter:#5c8fb8; --gas:#7d786d; --glass:#6f9fbf;
       --zone:rgba(230,103,103,.22); --zone-line:#e66767;
       --pass:#107a2a; --fail:#b83232; --fail-ink:#f28b8b; --unsure:#fab219;
@@ -42,7 +48,7 @@
   .prose{max-width:58ch}
   .meta{font-family:var(--sans);color:var(--muted);font-size:15px}
   .lede{font-size:20px;line-height:1.45;max-width:60ch}
-  a{color:var(--phone);text-underline-offset:3px}
+  a{color:var(--phone-ink);text-underline-offset:3px}
   a:focus-visible,summary:focus-visible{outline:2px solid var(--phone);outline-offset:3px;border-radius:2px}
   code{font-family:var(--mono);font-size:.86em;background:var(--code-bg);padding:1px 5px;border-radius:3px;overflow-wrap:anywhere}
   ul,ol{padding-left:1.3em}
@@ -99,8 +105,8 @@
   .lab.s{font-size:16px}
   .lab.b{font-weight:600}
   /* Colour utilities come after .lab and .t so they win at equal specificity. */
-  .lab.blue,.t.blue{fill:var(--phone)}
-  .lab.orange,.t.orange{fill:var(--server)}
+  .lab.blue,.t.blue{fill:var(--phone-ink)}
+  .lab.orange,.t.orange{fill:var(--server-ink)}
   .lab.red,.t.red{fill:var(--fail-ink)}
   .lab.mu,.t.mu{fill:var(--muted)}
   .tp{font-family:var(--sans);font-size:15px;fill:var(--tape-ink);font-weight:600}
@@ -715,43 +721,48 @@
 </figure>
 
 <h3>Coverage is a fixed zone</h3>
-<p class="prose">Not the whole house, just a zone around the meter. The app always knows exactly what's left.</p>
+<p class="prose">Not the whole house. The zone is every spot the cable can reach, plus everything the checks on those spots look at. The rules fix it before the scan starts, so the app always knows exactly what's left.</p>
 <figure class="narrow">
   <svg viewBox="0 0 480 300" role="img" aria-labelledby="cvt cvd">
     <title id="cvt">The zone a scan must cover, seen from above</title>
-    <desc id="cvd">A plan view of the house with the electric meter on its front wall. A dashed blue rectangle marks the zone the checks need: the wall 20 feet either side of the meter and the ground in front of it out to 13 feet. Everything outside it is grey haze labelled not needed. Inside, a bush stands in front of the wall, and the strip of wall behind it is unseen, so checks there are UNSURE. A dotted path shows the phone walking along the zone.</desc>
-    <!-- 1 ft = 8 px, meter at x=240, wall face at y=110 -->
+    <desc id="cvd">A plan view of the house with the electric meter on its front wall. An orange band along the wall marks the candidate battery spots, 20 feet of cable either side of the meter. A dashed blue outline marks the zone the checks need: that band grown by how far each check reaches, so it runs past the cable's reach at both ends and out over the ground in front, with rounded front corners. A bracket under it reads needed: all of it, past the cable's reach too. Everything outside is washed out and labelled no check looks here. Inside the zone, a bush stands in front of the wall, and the strip of wall behind it is unseen, so checks there are UNSURE. A dotted path shows the phone walking through the zone.</desc>
+    <!-- 1 ft = 7 px, meter at x=240, wall face at y=110. Candidate footprints (22 in deep, 13 px)
+         fill a band within 20 ft of cable, x 100 to 380. The zone is that band grown by the
+         farthest check. Its front sits at the 13 ft of ground the pool and driveway checks need
+         (docs/00-overview.md), y=201, so it grows the band by about 11 ft (78 px): the same
+         reach puts its ends at x 22 and 458 and rounds its front corners. -->
     <rect width="480" height="300" fill="var(--ground)"/>
-    <rect x="40" y="16" width="400" height="88" fill="var(--eave)"/>
-    <rect x="40" y="104" width="400" height="6" fill="var(--wall)"/>
-    <text class="lab b" x="240" y="48" text-anchor="middle">house, seen from above</text>
-    <!-- cable reach bracket -->
-    <g stroke="var(--phone)" stroke-width="2.5">
-      <line x1="80" y1="88" x2="400" y2="88"/><line x1="80" y1="81" x2="80" y2="95"/><line x1="240" y1="81" x2="240" y2="95"/><line x1="400" y1="81" x2="400" y2="95"/>
+    <rect x="0" y="16" width="480" height="88" fill="var(--eave)"/>
+    <rect x="0" y="104" width="480" height="6" fill="var(--wall)"/>
+    <text class="lab b" x="240" y="44" text-anchor="middle">house, seen from above</text>
+    <!-- candidate spots: cable reach bracket and the band of footprints -->
+    <g stroke="var(--server)" stroke-width="2.5">
+      <line x1="100" y1="88" x2="380" y2="88"/><line x1="100" y1="81" x2="100" y2="95"/><line x1="240" y1="81" x2="240" y2="95"/><line x1="380" y1="81" x2="380" y2="95"/>
     </g>
-    <text class="lab" x="240" y="76" text-anchor="middle">cable reach: 20 ft either side</text>
-    <!-- haze outside the needed zone -->
-    <rect x="0" y="102" width="80" height="198" fill="url(#fogpat)"/>
-    <rect x="400" y="102" width="80" height="198" fill="url(#fogpat)"/>
-    <rect x="80" y="214" width="320" height="86" fill="url(#fogpat)"/>
-    <text class="lab b" x="240" y="266" text-anchor="middle">not needed</text>
-    <!-- needed zone -->
-    <rect x="80" y="104" width="320" height="110" fill="none" stroke="var(--phone)" stroke-width="2.5" stroke-dasharray="7 4"/>
+    <text class="lab s" x="240" y="74" text-anchor="middle">candidate spots: 20 ft of cable either side</text>
+    <rect x="100" y="110" width="280" height="13" fill="var(--server)" fill-opacity=".22" stroke="var(--server)" stroke-width="2"/>
+    <!-- outside the zone: washed out, not hazed, because haze means unseen and needed -->
+    <path d="M0 104 H480 V300 H0 Z M22 104 V123 A78 78 0 0 0 100 201 H380 A78 78 0 0 0 458 123 V104 Z" fill="var(--card)" fill-opacity=".6" fill-rule="evenodd"/>
+    <!-- the zone -->
+    <path d="M22 104 V123 A78 78 0 0 0 100 201 H380 A78 78 0 0 0 458 123 V104" fill="none" stroke="var(--phone)" stroke-width="2.5" stroke-dasharray="7 4"/>
+    <g stroke="var(--phone)" stroke-width="2.5">
+      <line x1="22" y1="214" x2="458" y2="214"/><line x1="22" y1="207" x2="22" y2="221"/><line x1="458" y1="207" x2="458" y2="221"/>
+    </g>
+    <text class="lab s b blue" x="240" y="238" text-anchor="middle">needed: all of it, past the cable's reach too</text>
+    <text class="lab mu" x="240" y="280" text-anchor="middle">no check looks here</text>
     <!-- meter -->
     <rect x="234" y="101" width="12" height="9" rx="1.5" fill="var(--meterbox)"/>
-    <text class="lab" x="252" y="130">meter</text>
+    <text class="lab" x="228" y="142" text-anchor="end">meter</text>
     <!-- bush hiding a strip of wall -->
-    <rect x="318" y="101" width="24" height="9" fill="url(#fogpat)" stroke="var(--fail-ink)" stroke-width="1.5"/>
-    <circle cx="330" cy="124" r="12" fill="var(--bush)"/>
-    <text class="lab" x="320" y="158" text-anchor="middle">wall behind the bush:</text>
-    <text class="lab" x="320" y="178" text-anchor="middle">unseen, so UNSURE</text>
+    <rect x="333" y="101" width="24" height="9" fill="url(#fogpat)" stroke="var(--fail-ink)" stroke-width="1.5"/>
+    <circle cx="345" cy="124" r="11" fill="var(--bush)"/>
+    <text class="lab s" x="345" y="152" text-anchor="middle">wall behind the bush:</text>
+    <text class="lab s" x="345" y="170" text-anchor="middle">unseen, so UNSURE</text>
     <!-- the phone's path -->
-    <line x1="96" y1="186" x2="384" y2="186" stroke="var(--phone)" stroke-width="3" stroke-dasharray="1 7" stroke-linecap="round"/>
-    <use href="#phone" x="140" y="173"/>
-    <text class="lab b blue" x="90" y="132">needed: all of it</text>
-    <text class="lab" x="392" y="208" text-anchor="end">ground out to 13 ft</text>
+    <line x1="70" y1="186" x2="410" y2="186" stroke="var(--phone)" stroke-width="3" stroke-dasharray="1 7" stroke-linecap="round"/>
+    <use href="#phone" x="150" y="173"/>
   </svg>
-  <figcaption>The zone: wall within 20 ft of cable each side, ground out to 6 to 13 ft, and headroom above. It reaches a little past 20 ft for clearances at the edge.</figcaption>
+  <figcaption>Each check reaches out from the spot it tests: 3 ft along the wall for gas meters, AC units, doors and windows, 5 ft for a driveway and 10 ft for a pool (both placeholders, with no public value), and up for headroom and wall equipment. So the zone runs past the 20 ft of cable at both ends, and over the ground out to 13 ft. Any part of it nobody saw keeps its checks UNSURE.</figcaption>
 </figure>
 
 <h3>LiDAR helps but isn't required</h3>
