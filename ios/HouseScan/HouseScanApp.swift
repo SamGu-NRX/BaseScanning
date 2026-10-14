@@ -10,10 +10,22 @@ struct HouseScanApp: App {
         Task.detached(priority: .utility) { staging.removeOtherSessions() }
     }
 
+    private var checksPastEndReplay: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-enginePastEndReplayCheck")
+        #else
+        false
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
-                if ProcessInfo.processInfo.arguments.contains("-uiDemo") {
+                if checksPastEndReplay {
+                    #if DEBUG
+                    Text(ScanEngine.checkPastEndReplay()).accessibilityIdentifier("engine.check")
+                    #endif
+                } else if ProcessInfo.processInfo.arguments.contains("-uiDemo") {
                     UIDemo.makeRoot()
                 } else {
                     AppRuntime.makeRoot()

@@ -31,8 +31,8 @@ struct WayfindingOverlay: View {
     /// fixed bands stand in.
     var cameraWindow: CameraWindow? = nil
     /// Called with what stands for an aim step's filling target on screen: its ring, or an arrow
-    /// and the way it points; nil when neither is drawn. The card's title follows it, so the
-    /// words name what is drawn: the camera's angle to the target and the open part of the
+    /// and the way it points, or covered when neither can be drawn; nil without an aim. The
+    /// card's title follows it, so the words name what is drawn: the camera's angle to the target and the open part of the
     /// screen disagree near the card and the screen's edges (review of #120).
     var onAimMarker: ((AimMarker?) -> Void)? = nil
 
@@ -187,7 +187,7 @@ struct WayfindingOverlay: View {
     /// direction named before, the other axis must be `AimHint.axisBias` times larger to change
     /// it, as for the hint itself.
     static func direction(of angle: Angle, previous: AimDirection?) -> AimDirection {
-        let prior: AimHint? = previous.flatMap {
+        let prior: OpenCameraDirection.Direction? = previous.flatMap {
             switch $0 {
             case .above: .above
             case .below: .below
@@ -201,7 +201,6 @@ struct WayfindingOverlay: View {
         case .below: return .below
         case .left: return .left
         case .right: return .right
-        case .onScreen, .behind: preconditionFailure("A screen direction must name an axis")
         }
     }
 

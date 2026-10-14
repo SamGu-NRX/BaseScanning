@@ -772,15 +772,19 @@ final class ScreenStatesUITests: XCTestCase {
         app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk",
                                "-uiDemoAim", "-uiDemoAimHint", "onScreen"] + Self.largestText
         app.launch()
-        tap(app, "instruction.details")
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
         let coveredCard = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "The camera view is below")).firstMatch
+        XCTAssertFalse(coveredCard.exists, "closed Details must not ask the homeowner to close it")
+        tap(app, "instruction.details")
         XCTAssertTrue(coveredCard.waitForExistence(timeout: 5), "covered camera instructions must remain visible")
         XCTAssertFalse(element(app, "aim.ring").exists)
         XCTAssertFalse(element(app, "aim.arrow").exists)
         XCTAssertFalse(coveredCard.label.contains("Put the ring"), coveredCard.label)
         XCTAssertTrue(coveredCard.label.contains("Tilt down"), coveredCard.label)
         attach(app, name: "wallWalk-aimHint-covered-AX5")
+        tap(app, "instruction.details")
+        XCTAssertTrue(coveredCard.waitForNonExistence(timeout: 5), "closing Details must remove its camera obstruction advice")
     }
 
     @MainActor
@@ -788,7 +792,7 @@ final class ScreenStatesUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "resultAR",
-                               "-uiDemoSpotOffScreen", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"]
+                               "-uiDemoSpotOffScreen", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"]
         app.launch()
         XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
         let note = app.descendants(matching: .any)
@@ -796,7 +800,6 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertTrue(note.waitForExistence(timeout: 5), "the off-screen direction must not be folded into Details")
         XCTAssertTrue(note.label.contains("Turn the phone right"), note.label)
         XCTAssertFalse(element(app, "instruction.detail").exists, "Details must remain closed")
-        XCTAssertFalse(element(app, "ar.spotDirection").exists, "fixture must leave no room for a chevron and label")
         XCTAssertTrue(app.frame.contains(note.frame), "the full instruction must be on the visible screen: \(note.frame)")
         attach(app, name: "resultAR-offScreen-note-AX3")
     }

@@ -2,16 +2,20 @@ import CoreGraphics
 
 /// A direction to a projected spot outside the visible camera between the card and actions.
 public enum OpenCameraDirection {
+    public enum Direction: Sendable, Equatable {
+        case above, below, left, right
+    }
+
     /// Names the direction drawn toward the open camera window. Keeping the previous axis
     /// prevents diagonal jitter from changing the card's sentence on every frame.
-    public static func classify(_ direction: CGVector, previous: AimHint? = nil) -> AimHint {
+    public static func classify(_ direction: CGVector, previous: Direction? = nil) -> Direction {
         let horizontal = abs(direction.dx), vertical = abs(direction.dy)
         let bias = CGFloat(AimHint.axisBias)
         let useVertical: Bool
         switch previous {
         case .above?, .below?: useVertical = vertical * bias >= horizontal
         case .left?, .right?: useVertical = vertical > horizontal * bias
-        case .onScreen?, .behind?, nil: useVertical = vertical >= horizontal
+        case nil: useVertical = vertical >= horizontal
         }
         if useVertical { return direction.dy < 0 ? .above : .below }
         return direction.dx < 0 ? .left : .right

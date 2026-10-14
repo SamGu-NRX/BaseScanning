@@ -14,9 +14,9 @@ struct ResultARScreen: View {
     @State private var appeared = false
     /// The open camera between the card and Done, for the chevron (`CameraChrome`).
     @State private var cameraWindow = CameraWindow()
-    /// Which way the spot lies while it is off screen and the open camera can't hold the
-    /// chevron (`SpotDirection`); nil otherwise.
-    @State private var spotUnshown: AimDirection? = nil
+    /// An off-screen spot's written direction, always present at accessibility sizes and also
+    /// when the open camera cannot hold its chevron and label.
+    @State private var spotInstructionDirection: AimDirection? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -40,8 +40,8 @@ struct ResultARScreen: View {
                         .accessibilityIdentifier("ar.overlay")
                 }
                 if let spot = result.spotCenter(on: wall) {
-                    SpotDirection(projection: projection, spot: spot, cameraWindow: cameraWindow) { unshown in
-                        if spotUnshown != unshown { spotUnshown = unshown }
+                    SpotDirection(projection: projection, spot: spot, cameraWindow: cameraWindow) { direction in
+                        if spotInstructionDirection != direction { spotInstructionDirection = direction }
                     }
                 }
             }
@@ -81,7 +81,7 @@ struct ResultARScreen: View {
 
     private var visibleInstruction: Instruction {
         var copy = instruction
-        if showsSpot, let spotUnshown { copy.note = ScanCopy.proposedSpotOffScreen(turn: spotUnshown) }
+        if showsSpot, let spotInstructionDirection { copy.note = ScanCopy.proposedSpotOffScreen(turn: spotInstructionDirection) }
         return copy
     }
 
@@ -128,15 +128,16 @@ private struct SpotDirection: View {
     /// The open camera between the card and Done (`CameraChrome`). The spot counts as in view
     /// only there, and the chevron keeps to it. Fixed bands stand in until the chrome reports it.
     var cameraWindow: CameraWindow
-    /// Called with the way to turn while the spot is off screen and the open camera is too short
-    /// to hold the chevron and its words, so the card can say it instead; nil otherwise.
-    var onUnshown: (AimDirection?) -> Void
+    /// Accessibility sizes keep the written direction on the card even when the chevron fits.
+    /// Other sizes need the card only when the camera window cannot hold the chevron and label.
+    var onInstructionDirection: (AimDirection?) -> Void
 
     /// The chevron's words as laid out at the current text size. Measured from an unseen copy
     /// that is always laid out, so the chevron can be placed before it first shows; the guess
     /// stands in for the first layout pass only.
     @State private var labelHeight: CGFloat = 36
     @State private var previousDirection: AimDirection?
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     enum Layout: Equatable {
         case none
@@ -162,6 +163,7 @@ private struct SpotDirection: View {
             let size = proxy.size
             let band = WayfindingOverlay.verticalBand(clearArea, origin: proxy.frame(in: .global).origin, height: size.height)
             let layout = Self.layout(projection: projection, spot: spot, in: size, band: band, labelHeight: labelHeight, previous: previousDirection)
+            let instructionDirection = typeSize.isAccessibilitySize ? layout.direction : layout.unshownDirection
             ZStack {
                 label
                     .hidden()
@@ -183,8 +185,8 @@ private struct SpotDirection: View {
                 Color.clear
                     .frame(width: 0, height: 0)
                     .onChange(of: layout.direction, initial: true) { _, direction in previousDirection = direction }
-                    .onChange(of: layout.unshownDirection, initial: true) { _, direction in onUnshown(direction) }
-                    .onDisappear { onUnshown(nil) }
+                    .onChange(of: instructionDirection, initial: true) { _, direction in onInstructionDirection(direction) }
+                    .onDisappear { onInstructionDirection(nil) }
             }
         }
         .ignoresSafeArea()

@@ -2677,3 +2677,40 @@ extension ScanEngine {
         }
     }
 }
+
+#if DEBUG
+extension ScanEngine {
+    /// Checks the server-request entry point without running a camera or sending a capture.
+    static func checkPastEndReplay() -> String {
+        guard let wall = WallFrame(meter: SIMD3(0, 1.5, 0), outward: SIMD3(0, 0, 1), groundY: 0),
+              let item = try? JSONDecoder().decode(PlacementMissingEvidence.self,
+                  from: Data(#"{"kind":"past_end","side":"right","message":"Look past the end"}"#.utf8)) else {
+            return "invalid past-end fixture"
+        }
+        for count in [2, 10] {
+            let engine = ScanEngine(options: LaunchOptions(arguments: ["-sampleResult"], defaultServerURL: nil))
+            var map = CoverageMap(wall: wall)
+            map.setEnd(.right, at: 0)
+            for index in 0..<count {
+                let camera = CameraFrame(cameraToWorld: simd_float4x4(
+                    SIMD4(0, 0, 1, 0), SIMD4(1, 0, 0, 0), SIMD4(0, 1, 0, 0),
+                    SIMD4(Float(index) * 0.3, 1, 0.6, 1)),
+                    intrinsics: SIMD4(500, 500, 320, 240), imageSize: SIMD2(640, 480))
+                map.observe(camera, trackingNormal: true)
+            }
+            let plan = engine.gapPlanner.pastEndPlan(side: .right, end: 0)
+            guard engine.gapPlanner.progress(of: plan, map) == 0 else { return "fixture was not clipped by the end" }
+            engine.coverage = map
+            engine.state.phase = .result
+            engine.beginServerGap(item, plan: plan)
+            guard engine.coverage?.rightEnd == nil, let request = engine.state.gap else { return "request did not clear the end" }
+            let expected = engine.coverage.map { engine.gapPlanner.progress(of: plan, $0) }
+            guard request.progress == expected, request.progress > 0 else { return "request lost restored sightings" }
+            if count == 2, request.progress >= 1 { return "partial fixture unexpectedly completed coverage" }
+            if count == 10, request.progress != 1 { return "complete fixture lost coverage" }
+            guard !request.isSatisfied else { return "old sightings bypassed the fresh-photo requirement" }
+        }
+        return "passed"
+    }
+}
+#endif

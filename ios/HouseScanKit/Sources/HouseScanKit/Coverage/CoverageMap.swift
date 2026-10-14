@@ -1314,6 +1314,8 @@ public struct CoverageMap: Sendable {
     }
 
     /// Forgets a marked end, for example to walk past it when the server asks what lies beyond.
+    /// Replays the kept cameras to restore sightings the end clipped, preserving skipped and
+    /// withdrawn cells. Without kept cameras, sightings supplied through `record` stay as they are.
     public mutating func clearEnd(_ side: WalkSide) {
         switch side {
         case .left: leftEnd = nil
@@ -1378,8 +1380,8 @@ public struct CoverageMap: Sendable {
     /// the air. So seen and covered cells are rebuilt by replaying `observedCameras`; marked ends
     /// move exactly (s is measured from the meter, so moving it by d along the wall moves every
     /// end by -d), and skipped cells move by whole cells, the remainder (under half a cell,
-    /// 7.6 cm, below tap error) waiting for later moves. The replay clips to the current ends, so
-    /// cells beyond an end seen before it was marked are gone until a new frame sees them.
+    /// 7.6 cm, below tap error) waiting for later moves. The replay clips to the current ends.
+    /// Clearing an end replays the kept cameras and restores sightings it clipped.
     /// Corners the walk followed move like the ends, so they keep their place in the world: pass
     /// `frame` with the corners it had (a copy of `wall` with a new meter or ground).
     ///

@@ -120,10 +120,16 @@ struct WallWalkScreen: View {
             return ScanCopy.withCoaching(Instruction(title: ScanCopy.wallTooShort, detail: step, folded: folded), coaching)
         }
         var copy = ScanCopy.withCoaching(ScanCopy.guidance(state.guidance, hint: shownHint), coaching)
-        if aimMarker == .covered {
+        if aimMarker == .covered, detailsCoverCamera {
             copy.note = [copy.note, "The camera view is below. Close Details or scroll."].compactMap { $0 }.joined(separator: " ")
         }
         return copy
+    }
+
+    private var detailsCoverCamera: Bool {
+        guard cameraWindow.detailsShown, cameraSize.height > 0,
+              let band = WayfindingOverlay.verticalBand(cameraWindow.frame, origin: .zero, height: cameraSize.height) else { return false }
+        return band.bottom - band.top < WayfindingOverlay.arrowDiameter
     }
 
     /// The card follows every marker the overlay draws. For a target behind the camera the

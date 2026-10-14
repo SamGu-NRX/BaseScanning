@@ -69,7 +69,8 @@ struct CameraChrome<Bottom: View>: View {
             .frame(minHeight: 36)
             InstructionCard(
                 instruction: instruction, tone: tone, reply: reply, eyebrow: eyebrow,
-                foldsDetail: folds, legend: folds ? legend : nil
+                foldsDetail: folds, legend: folds ? legend : nil,
+                onDetailsShown: { shown in cameraWindow?.detailsShown = shown }
             )
             if let legend, !folds {
                 legendLine(legend)
@@ -109,12 +110,13 @@ struct CameraChrome<Bottom: View>: View {
 }
 
 /// The open camera between the instruction card and the actions, in global coordinates.
-/// `CameraChrome` writes it and only `WayfindingOverlay` reads it, so scrolling the chrome
-/// redraws the aim overlay, not the whole screen.
+/// `CameraChrome` writes its frame and disclosure state. The overlay uses the frame; the walk
+/// uses both to explain when open Details has pushed the camera below the screen.
 @MainActor
 @Observable
 final class CameraWindow {
     var frame: CGRect?
+    var detailsShown = false
 }
 
 /// `CameraChrome`'s layout constants, outside it because a generic type can't hold stored

@@ -6,8 +6,16 @@ import Testing
     private static let camera = CGSize(width: 402, height: 874)
     private static let window = CGRect(x: 24, y: 550, width: 354, height: 230)
 
-    @Test(arguments: [AimHint.above, .below, .left, .right])
-    func diagonalJitterKeepsTheLastDirection(previous: AimHint) {
+    @Test func withoutPreviousDirectionUsesTheDominantAxis() {
+        #expect(OpenCameraDirection.classify(CGVector(dx: 1, dy: -2)) == .above)
+        #expect(OpenCameraDirection.classify(CGVector(dx: -1, dy: 2)) == .below)
+        #expect(OpenCameraDirection.classify(CGVector(dx: -2, dy: 1)) == .left)
+        #expect(OpenCameraDirection.classify(CGVector(dx: 2, dy: -1)) == .right)
+        #expect(OpenCameraDirection.classify(CGVector(dx: 1, dy: -1)) == .above)
+    }
+
+    @Test(arguments: [OpenCameraDirection.Direction.above, .below, .left, .right])
+    func diagonalJitterKeepsTheLastDirection(previous: OpenCameraDirection.Direction) {
         let dx: CGFloat = previous == .left ? -1 : 1
         let dy: CGFloat = previous == .above ? -1 : 1
         var last = previous

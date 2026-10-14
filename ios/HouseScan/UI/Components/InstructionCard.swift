@@ -43,6 +43,7 @@ struct InstructionCard: View {
     /// The aim ring's legend, inside the folded details (`foldsDetail`). Otherwise the legend
     /// is the chrome's own line under the card (`CameraChrome.legend`).
     var legend: String? = nil
+    var onDetailsShown: ((Bool) -> Void)? = nil
 
     /// How long a new card's reply ignores taps, so a tap meant for the card that just left
     /// can't answer the next one: in the 4.1 field test, quick taps on "Can't get there" each
@@ -113,6 +114,7 @@ struct InstructionCard: View {
         // Only the scrim's height eases. Reduce Motion asks for no size changes, so it snaps.
         .animation(reduceMotion ? nil : Motion.text, value: instruction)
         .animation(reduceMotion ? nil : Motion.text, value: reply == nil)
+        .onChange(of: detailsShown && hasDetails, initial: true) { _, shown in onDetailsShown?(shown) }
         // Every aim uses the same reserved titles, so those words alone cannot identify a task.
         .onChange(of: instruction.aimTarget) { _, _ in detailsShown = false }
         .onChange(of: instruction.title) { old, new in
