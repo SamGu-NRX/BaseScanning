@@ -508,7 +508,8 @@ def test_outcome_not_rules_out_one_outcome_and_tolerates_no_runs():
         ]
     }
     assert expectation_problems(bad, r) == [
-        "sweep w1 starts [2.1, 3.0] is pass, which this case rules out (window)"
+        "sweep expectation w1 starts (0.5, 2.5) failed for 1 runs; "
+        "expected {'outcome_not': 'pass'}; examples: w1 starts [2.1, 3.0] is pass; reason: window"
     ]
 
 

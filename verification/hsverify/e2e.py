@@ -57,6 +57,7 @@ from pathlib import Path
 
 from hsverify import gitref, memory
 from hsverify.bundle_limits import zip_directory_limits
+from hsverify.diagnostics import bounded_report_records
 from hsverify.memory import peak_rss_mb
 from hsverify.resultcheck import (
     RuleSet,
@@ -962,6 +963,10 @@ def write_report(out: Path, meta: dict, records: list[dict]) -> dict:
         "app_export_source": [r["source"] for r in exported],
         "records": records,
     }
+    records, omitted = bounded_report_records(records)
+    report["records"] = records
+    if omitted:
+        report["diagnostic_summary"] = omitted
     (out / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     lines = [
         f"# End-to-end run against `{meta['server_ref']}` at `{meta['server_sha'][:12]}`",
@@ -992,6 +997,7 @@ def write_report(out: Path, meta: dict, records: list[dict]) -> dict:
             f"| {r['name']}{' (real)' if r.get('real') else ''} | {r['status']} | "
             f"{r.get('decision', '')} | {r.get('latency_ms', '')} | {issues.replace('|', '/')} |"
         )
+    lines.extend(omitted)
     (out / "report.md").write_text("\n".join(lines) + "\n")
     return report
 

@@ -3,8 +3,22 @@
 from __future__ import annotations
 
 import heapq
+import itertools
+import math
 from dataclasses import dataclass
 from typing import Protocol
+
+
+def numeric_key(value: int | float) -> str:
+    """Hash numbers as exact strings so adversarial JSON integers cannot collide cheaply.
+
+    Python hashes integers modulo a public prime. Rational form also keeps equal integer
+    and float inputs in one cache entry without rounding distinct large integers together.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return repr(value)
+    numerator, denominator = value.as_integer_ratio()
+    return f"{numerator}/{denominator}"
 
 
 class Meter(Protocol):
@@ -61,8 +75,8 @@ class SweepIndex:
             _charge(self.meter)
             a, b = run["start_ft"]
             events.extend(((a - eps, 0, rank), (b + eps, 1, rank)))
-            starts.setdefault(a, run["outcome"])
-            ends.setdefault(b, run["outcome"])
+            starts.setdefault(numeric_key(a), (a, run["outcome"]))
+            ends.setdefault(numeric_key(b), (b, run["outcome"]))
         events.sort()
         active = [False] * len(runs)
         heap: list[int] = []
@@ -93,15 +107,15 @@ class SweepIndex:
                 _charge(self.meter)
                 active[rank] = False
             after_endpoint.append(first())
-        start_values, end_values = sorted(starts), sorted(ends)
+        start_entries, end_entries = sorted(starts.values()), sorted(ends.values())
         return _WallIndex(
             endpoints,
             at_endpoint,
             after_endpoint,
-            start_values,
-            [starts[a] for a in start_values],
-            end_values,
-            [ends[b] for b in end_values],
+            [value for value, _ in start_entries],
+            [outcome for _, outcome in start_entries],
+            [value for value, _ in end_entries],
+            [outcome for _, outcome in end_entries],
         )
 
     def outcome_at(self, wall_id: str, start_ft: float) -> str | None:
@@ -129,16 +143,16 @@ class SweepIndex:
 
 
 def probe_starts(*results: dict, meter: Meter | None = None) -> list[tuple[str, float]]:
-    points = set()
+    points = []
     for result in results:
         for run in result.get("sweep", []):
             _charge(meter, 3)
             a, b = run["start_ft"]
             # Halving first avoids overflowing the sum of two admitted finite endpoints.
-            points.update(
+            points.extend(
                 ((run["wall_id"], a), (run["wall_id"], b), (run["wall_id"], a / 2 + b / 2))
             )
-    return sorted(points)
+    return [point for point, _ in itertools.groupby(sorted(points))]
 
 
 def more_error_problems(
