@@ -22,7 +22,8 @@ def sim_app_problems(sequence: str) -> list[str]:
     assert orders and pairs, recipe
     states = [shot(name) for name in sequence.split(">")]
     problems = [p for order in orders for p in out_of_order(order.split(","), states)]
-    return problems + unanswered([state_pair(p) for p in pairs], states)
+    closing = frozenset(order.split(",")[-1] for order in orders)
+    return problems + unanswered([state_pair(p) for p in pairs], states, closing)
 
 
 # State sequences of recorded `make sim-app` runs on t3/ios-mvf (report.json in
@@ -58,7 +59,24 @@ def test_the_recorded_flows_pass(sequence):
         # The answer asked for more, the app showed the request, then the result without sending.
         (
             "onboarding>findMeter>meterCloseUp>wallWalk>markFeatures>uploading>gapRequest>result",
-            "state 7 gapRequest was never followed by uploading",
+            "state 7 gapRequest was not followed by uploading before result",
+        ),
+        # The request's upload came only after the app had already shown a result.
+        (
+            "onboarding>findMeter>meterCloseUp>wallWalk>markFeatures>uploading>gapRequest>result"
+            ">uploading>result",
+            "state 7 gapRequest was not followed by uploading before result",
+        ),
+        # Two requests, one upload: the first request was never sent on its own.
+        (
+            "onboarding>findMeter>meterCloseUp>wallWalk>markFeatures>gapRequest>gapRequest"
+            ">uploading>result",
+            "state 6 gapRequest was not followed by uploading before gapRequest",
+        ),
+        # The request at the end of the run was never answered at all.
+        (
+            "onboarding>findMeter>meterCloseUp>wallWalk>markFeatures>uploading>result>gapRequest",
+            "state 8 gapRequest was never followed by uploading",
         ),
     ],
 )

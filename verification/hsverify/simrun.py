@@ -10,7 +10,8 @@ captured immediately and flagged `transient`, because its image may already show
 state. The run ends at `--until`, after `--idle` seconds without a new state, or at
 `--timeout`. A state named with `--require` that never appeared makes the run fail, as do
 states missing from a `--require-order` sequence or out of its order, and a FIRST state of a
-`--require-then FIRST:THEN` pair that no THEN state came after. If the app
+`--require-then FIRST:THEN` pair that no THEN state answered before the next FIRST or the
+last state of a `--require-order` sequence. If the app
 logged a scan bundle, it is copied into the report as scan.zip (required with `--require-export`)
 and named in report.json's
 `app_export`, so the report folder can be replayed as an app export. Reports go outside git
@@ -342,15 +343,29 @@ def out_of_order(order: list[str], states: list[ShotRecord]) -> list[str]:
     return []
 
 
-def unanswered(pairs: list[tuple[str, str]], states: list[ShotRecord]) -> list[str]:
-    """For each (first, then): every `first` state must be followed later by a `then` state."""
+def unanswered(
+    pairs: list[tuple[str, str]], states: list[ShotRecord], closing: frozenset[str] = frozenset()
+) -> list[str]:
+    """For each (first, then): every `first` state must be followed by a `then` state within its
+    own round, which ends at the next `first` or at a `closing` state. A later upload therefore
+    cannot answer a request after the app showed a result, nor answer two requests at once."""
     names = [s.state for s in states]
-    return [
-        f"state {i + 1} {first} was never followed by {then}"
-        for first, then in pairs
-        for i, name in enumerate(names)
-        if name == first and then not in names[i + 1 :]
-    ]
+    problems = []
+    for first, then in pairs:
+        for i, name in enumerate(names):
+            if name != first:
+                continue
+            for later in names[i + 1 :]:
+                if later == then:
+                    break
+                if later == first or later in closing:
+                    problems.append(
+                        f"state {i + 1} {first} was not followed by {then} before {later}"
+                    )
+                    break
+            else:
+                problems.append(f"state {i + 1} {first} was never followed by {then}")
+    return problems
 
 
 def state_pair(text: str) -> tuple[str, str]:
@@ -595,7 +610,8 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         type=state_pair,
         metavar="FIRST:THEN",
-        help="every FIRST state must be followed later in the run by a THEN state",
+        help="every FIRST state must be followed by a THEN state before the next FIRST or the last "
+        "state of a --require-order sequence",
     )
     parser.add_argument(
         "--require-export",
@@ -697,7 +713,9 @@ def main(argv: list[str] | None = None) -> int:
             rep.problems += missing_required(args.require, rep.states)
             for order in args.require_order:
                 rep.problems += out_of_order(order, rep.states)
-            rep.problems += unanswered(args.require_then, rep.states)
+            # Each --require-order sequence ends at the state that closes a round (the result).
+            closing = frozenset(order[-1] for order in args.require_order)
+            rep.problems += unanswered(args.require_then, rep.states, closing)
             rep.app_export, export_problems = app_export(out, args.require_export)
             rep.problems += export_problems
         rep.crash_reports = collect_crashes(started, out)
