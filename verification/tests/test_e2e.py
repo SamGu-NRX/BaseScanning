@@ -423,6 +423,49 @@ def test_a_trickled_answer_stops_at_the_overall_deadline(unending_url, monkeypat
     assert 500 <= ms < 2500
 
 
+class ShortServer(BaseHTTPRequestHandler):
+    """Answers `status`, then closes before the body is done: 10 of a promised 100 bytes
+    (`length`), or partway through a chunked body (`chunked`)."""
+
+    status = 200
+    mode = "length"
+
+    def do_POST(self):
+        self.rfile.read(int(self.headers["Content-Length"]))
+        self.protocol_version = "HTTP/1.1"
+        self.send_response(self.status)
+        self.send_header("Content-Type", "application/json")
+        if self.mode == "length":
+            self.send_header("Content-Length", "100")
+            self.end_headers()
+            self.wfile.write(b'{"outcome"')
+        else:
+            self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+            self.wfile.write(b'a\r\n{"outcome"\r\n14\r\n: "pa')
+        self.wfile.flush()
+        self.close_connection = True
+
+    def log_message(self, *args):
+        pass
+
+
+@pytest.mark.parametrize("status", [200, 500])
+@pytest.mark.parametrize("mode", ["length", "chunked"])
+def test_an_answer_cut_short_is_no_answer(monkeypatch, status, mode):
+    monkeypatch.setattr(ShortServer, "status", status)
+    monkeypatch.setattr(ShortServer, "mode", mode)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), ShortServer)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        url = f"http://127.0.0.1:{server.server_port}"
+        got, payload, _ = e2e.post(url, Endpoint("/p", "application/json"), item(), 5)
+    finally:
+        server.shutdown()
+        server.server_close()
+    assert got is None and payload.startswith(b"IncompleteRead")
+
+
 def test_hostile_inputs_are_small_to_send():
     items = hostile_inputs()
     assert all(i.hostile for i in items)

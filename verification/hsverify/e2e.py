@@ -371,7 +371,8 @@ def post(
     """Send one scene and read the whole answer within `timeout_s`, headers and body together.
 
     Status None means no complete answer, and the payload then says why: the deadline passed,
-    the body ran past MAX_RESPONSE_BYTES, or the connection failed. A socket timeout alone bounds
+    the body ran past MAX_RESPONSE_BYTES, it ended short of its Content-Length or chunk framing,
+    or the connection failed. A socket timeout alone bounds
     each read, not the response, so a server trickling bytes would never trip it; a timer shuts
     the socket down at the deadline instead, which wakes any read in progress."""
     if item.bundle is not None and endpoint.accepts_zip:
@@ -421,6 +422,11 @@ def post(
         response = conn.getresponse()
         while len(payload) <= MAX_RESPONSE_BYTES and (chunk := response.read(READ_CHUNK_BYTES)):
             payload += chunk
+        # read(amt) returns b"" when the server closes early, even short of Content-Length
+        # (http.client stays quiet there for compatibility), and `length` keeps what never came.
+        # A body cut short is not an answer, whatever its status says.
+        if len(payload) <= MAX_RESPONSE_BYTES and response.length:
+            raise http.client.IncompleteRead(bytes(payload), response.length)
         status = response.status
     except TimeoutError:
         # One socket operation waited the whole timeout_s, so the deadline has passed too.
