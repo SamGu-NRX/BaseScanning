@@ -19,7 +19,7 @@ from PIL import Image, ImageOps
 
 from meter_eval import retake
 from meter_eval.locate import candidates, ranked, top_candidate
-from meter_eval.match import match_serial, number_core
+from meter_eval.match import match_serial, number_core, serial_groups
 from meter_eval.ocr import Reader
 from meter_eval.quality import gray
 
@@ -64,6 +64,10 @@ def main() -> None:
         parser.error("--number contains an unsupported character in a serial group")
     if not target_core:
         parser.error("--number must contain letters or digits")
+    if any(kind == "rating" for _, _, _, kind in serial_groups(args.number, ocr_ratings=True)):
+        parser.error(
+            "--number contains a rating-shaped part; such a serial is not supported by the OCR contract"
+        )
     photos = sorted(p for p in args.folder.iterdir() if p.suffix.lower() in SUFFIXES)
     if not photos:
         raise SystemExit(f"no .jpg, .png or .heic photos in {args.folder}")

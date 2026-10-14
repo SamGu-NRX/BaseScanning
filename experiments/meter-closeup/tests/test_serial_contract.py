@@ -640,3 +640,54 @@ def test_field_help_describes_blind_ranking(tmp_path, monkeypatch, capsys):
     assert "blind heuristic ranking" in help_text
     assert "--number only scores" in help_text
     assert "exact --number match first" not in help_text
+
+
+@pytest.mark.parametrize("target", ["1234567-2S", "ABC 240V", "Serial No: 1234567-2S"])
+def test_cli_rejects_a_serial_with_a_rating_shaped_part(tmp_path, monkeypatch, capsys, target):
+    import sys
+
+    from meter_eval import fieldtest
+
+    monkeypatch.setattr(sys, "argv", ["fieldtest", str(tmp_path), "--number", target])
+    with pytest.raises(SystemExit) as error:
+        fieldtest.main()
+    assert error.value.code == 2
+    assert "rating-shaped part" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "serial,normalised",
+    [
+        ("1234567-2S", "12345672S"),
+        ("ABC 240V", "ABC240V"),
+        ("Serial No: SN1234567-2S", "12345672S"),
+    ],
+)
+def test_supplied_serial_normalisation_never_strips_rating_shaped_parts(serial, normalised):
+    assert number_core(serial) == normalised
+    assert not reads_number(observations("1234567"), serial)
+
+
+@pytest.mark.parametrize(
+    "payload,target,confirmed",
+    [
+        ("1234567-2S", "1234567", False),
+        ("12345678", "1234567", False),
+        ("12345678", "12345678", True),
+        ("1234567-2S", "12345672S", True),
+    ],
+)
+def test_barcode_confirmation_requires_the_whole_normalised_field(payload, target, confirmed):
+    from meter_eval.locate import barcode_stats, payload_tokens
+
+    barcodes = [{"payload": payload, "box": [0.1, 0.5, 0.4, 0.1]}]
+    assert (target in payload_tokens(barcodes)) is confirmed
+    found = candidates({"lines": observations(target), "barcodes": barcodes})
+    candidate = next(candidate for candidate in found if candidate["core"] == target)
+    assert candidate["barcode_confirmed"] is confirmed
+    row = {
+        "number_hmac": digest(target),
+        "number_core_hmac": digest(target),
+        "number_core_len": len(target),
+    }
+    assert barcode_stats(row, {"barcodes": barcodes})["barcode_has_number"] == int(confirmed)

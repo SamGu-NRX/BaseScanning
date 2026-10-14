@@ -189,12 +189,7 @@ def barcode_stats(row: dict, result: dict) -> dict:
     barcodes = result.get("barcodes") or []
     payloads = [b["payload"] for b in barcodes if b.get("payload")]
     target = row["number_core_hmac"]
-    length = int(row["number_core_len"] or 0)
-    has_number = any(
-        digest(token[i : i + length]) == target
-        for token in payload_fields(barcodes)
-        for i in range(len(token) - length + 1)
-    )
+    has_number = any(digest(token) == target for token in payload_fields(barcodes))
     return {
         "barcode_found": int(bool(barcodes)),
         "barcode_decoded": int(bool(payloads)),

@@ -80,7 +80,7 @@ def number_core(text: str) -> str | None:
     return target.upper() if target is not None else None
 
 
-# Ratings are boundaries, never serial groups: plate units and class/form prefixes.
+# Ratings are OCR boundaries: plate units and class/form prefixes.
 SERIAL_RATINGS = {
     "units": (
         "V",
@@ -120,8 +120,11 @@ _RATING = re.compile(
 )
 
 
-def serial_groups(text: str) -> list[tuple[int, int, str, str]]:
-    """Shared target/OCR groups with source offsets and repeated label-prefix boundaries."""
+def serial_groups(text: str, *, ocr_ratings: bool = False) -> list[tuple[int, int, str, str]]:
+    """Shared label stripping and validation, preserving supplied serial identities.
+
+    OCR rating boundaries are opt-in so target and barcode suffixes are never removed.
+    """
     text = serial_text(text)
     masked = list(text)
     boundary_spans = []
@@ -132,11 +135,11 @@ def serial_groups(text: str) -> list[tuple[int, int, str, str]]:
         cursor = token.start()
         while label := _GROUP_LABEL.match(text, cursor):
             label_end = label.end()
-            boundary_spans.append((label.start(), label.end()))
+            boundary_spans.append((label.start(), label.end(), "boundary"))
             masked[label.start() : label.end()] = [" "] * (label.end() - label.start())
             cursor = label.end()
     labelled_text = "".join(masked)
-    for rating in _RATING.finditer(labelled_text):
+    for rating in _RATING.finditer(labelled_text) if ocr_ratings else ():
         # Never extract a rating from inside a group containing an unsupported character.
         neighbours = labelled_text[rating.start() - 1 : rating.start()] if rating.start() else ""
         neighbours += labelled_text[rating.end() : rating.end() + 1]
@@ -145,22 +148,20 @@ def serial_groups(text: str) -> list[tuple[int, int, str, str]]:
             for character in neighbours
         ):
             continue
-        boundary_spans.append((rating.start(), rating.end()))
+        boundary_spans.append((rating.start(), rating.end(), "rating"))
         masked[rating.start() : rating.end()] = [" "] * (rating.end() - rating.start())
-    spans = [(start, end, "", True) for start, end in boundary_spans]
+    spans = [(start, end, "", kind) for start, end, kind in boundary_spans]
     spans.extend(
-        (token.start(), token.end(), token.group(), False)
+        (token.start(), token.end(), token.group(), "")
         for token in _SERIAL_GROUP.finditer("".join(masked))
     )
     groups = []
-    for start, end, word, boundary in sorted(spans):
-        if boundary:
-            kind = "boundary"
-        elif any(character not in _SERIAL_ALPHABET for character in word):
+    for start, end, word, kind in sorted(spans):
+        if not kind and any(character not in _SERIAL_ALPHABET for character in word):
             kind = "invalid"
-        elif word.isdigit():
+        elif not kind and word.isdigit():
             kind = "numeric"
-        else:
+        elif not kind:
             kind = "text"
         groups.append((start, end, word, kind))
     return groups
@@ -205,13 +206,13 @@ def match_serial(
         row_text = " ".join(normalized)
         groups = []
         kinds = []
-        for start, end, word, kind in serial_groups(row_text):
+        for start, end, word, kind in serial_groups(row_text, ocr_ratings=True):
             boxes = []
             for box in owners[start:end]:
                 if box is not None and box not in boxes:
                     boxes.append(box)
             groups.append((word, boxes))
-            kinds.append(kind)
+            kinds.append("boundary" if kind == "rating" else kind)
         words = [word for word, _ in groups]
         for start in range(len(words)):
             if kinds[start] in ("boundary", "invalid") or (
