@@ -750,11 +750,14 @@ final class ScreenStatesUITests: XCTestCase {
         // The engine already calls the target off screen to the left, but the tall card puts
         // its drawn arrow above. The card must follow the arrow, not that engine classification.
         app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk",
-                               "-uiDemoAim", "-uiDemoAimHint", "left"] + Self.largestText
+                               "-uiDemoAim", "-uiDemoAimHint", "left", "-uiDemoAimHintLater", "above"] + Self.largestText
         app.launch()
         XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
-        tap(app, "instruction.details")
-        XCTAssertTrue(element(app, "instruction.detail").waitForExistence(timeout: 5))
+        // Expanded Details fills the camera at AX5. Keep the tall card collapsed so its
+        // covered target has an open lane in which an arrow can actually be drawn.
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("dev.housescanning.uiDemo.aimHintLater" as CFString),
+            nil, nil, true)
         let arrow = element(app, "aim.arrow")
         XCTAssertTrue(arrow.waitForExistence(timeout: 5))
         XCTAssertTrue(arrow.label.contains("above"), arrow.label)
@@ -804,14 +807,12 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertNotEqual(near.title, away.title, "the two states must show different titles for the check to mean anything")
         XCTAssertEqual(near.detailsTop, away.detailsTop, accuracy: 0.5, "the aim card's height changed with its title: \(near) vs \(away)")
 
-        // Stationary at the card's edge, with Details open: the card is at its tallest and the
-        // open camera at its shortest. Sampled for 4 s, nothing may change. Then the test tells
-        // the demo to move the camera until the same target's arrow points left (`-uiDemoAimHintLater`, by
-        // Darwin notification), so the title swaps from "Tilt up a little" to the step's own,
-        // both reserved: Details must stay open and the card must not move (2d67632). The test
-        // sends it only after reading the card as it was, so no timer can outrun it.
-        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAim",
-                               "-uiDemoAimHint", "above", "-uiDemoAimHintLater", "left"] + Self.largestText
+        // AX5 expanded Details fills the camera. At AX1 an arrow still fits beside the
+        // expanded card, so this checks an actual marker-driven title swap for one target.
+        // A left arrow becomes an above arrow after the camera moves; the engine stays left.
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAimOffScreen",
+                               "-uiDemoAimHint", "left", "-uiDemoAimHintLater", "above",
+                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
         app.launch()
         let instruction = element(app, "instruction")
         XCTAssertTrue(instruction.waitForExistence(timeout: 15))
@@ -833,6 +834,7 @@ final class ScreenStatesUITests: XCTestCase {
         }
         XCTAssertEqual(Set(before).count, 1, "a still target flipped with Details open: \(before)")
         let held = sample()
+        XCTAssertTrue(element(app, "aim.arrow").label.contains("left"), "the baseline needs a drawn left arrow")
         XCTAssertTrue(held.line.contains("Details open true"), "Details closed by itself: \(held)")
 
         // `DemoEngine.aimHintNotification`.
@@ -842,6 +844,7 @@ final class ScreenStatesUITests: XCTestCase {
         let swapped = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier == 'instruction' AND label != %@", held.title)).firstMatch
         XCTAssertTrue(swapped.waitForExistence(timeout: 10), "the drawn marker's new direction never reached the card")
+        XCTAssertTrue(element(app, "aim.arrow").label.contains("above"), "the same target needs a drawn above arrow")
         Thread.sleep(forTimeInterval: 1)
         var after: [String] = []
         for _ in 0..<5 {
@@ -852,7 +855,7 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertEqual(Set(after).count, 1, "the card kept changing after the swap: \(after)")
         XCTAssertNotEqual(sample().title, held.title)
         XCTAssertEqual(sample().line, held.line, "a swap between reserved titles closed Details or moved the card")
-        attach(app, name: "wallWalk-aimCard-detailsOpen-AX5")
+        attach(app, name: "wallWalk-aimCard-detailsOpen-AX1")
     }
 
     /// A new target closes Details even when it shares the old target's reserved titles or

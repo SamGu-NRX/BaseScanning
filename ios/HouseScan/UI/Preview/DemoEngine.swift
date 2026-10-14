@@ -429,7 +429,8 @@ final class DemoEngine: ScanActions {
             let local: SIMD4<Float> = switch laterAimHint {
             case .left: SIMD4(0, -5, -3, 0)
             case .right: SIMD4(0, 5, -3, 0)
-            case .above: SIMD4(-5, 0, -3, 0)
+            // Above the tall card's open lane, but still within the full camera image.
+            case .above: SIMD4(-1, 0, -3, 0)
             case .below: SIMD4(5, 0, -3, 0)
             case .onScreen: SIMD4(0, 0, -3, 0)
             case .behind: SIMD4(0, 1, 3, 0)
@@ -437,7 +438,7 @@ final class DemoEngine: ScanActions {
             let offset = projection.cameraToWorld * local
             projection.cameraToWorld.columns.3 = SIMD4(target, 1) - offset
             state.projection = projection
-            state.guidanceHint?.aim = laterAimHint
+            // Retain the engine hint so the test can expose disagreement with the marker.
         }
     }
 
