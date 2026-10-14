@@ -785,21 +785,50 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertNotEqual(near.title, away.title, "the two states must show different titles for the check to mean anything")
         XCTAssertEqual(near.detailsTop, away.detailsTop, accuracy: 0.5, "the aim card's height changed with its title: \(near) vs \(away)")
 
-        // Stationary at the card's edge: sampled for 4 s, nothing may change.
-        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAim", "-uiDemoAimHint", "above"] + Self.largestText
+        // Stationary at the card's edge, with Details open: the card is at its tallest and the
+        // open camera at its shortest. Sampled for 4 s, nothing may change. 20 s after launch the
+        // engine's direction turns from above to left (`-uiDemoAimHintLater`), so the title
+        // swaps from "Tilt up a little" to the step's own, both reserved: Details must stay open
+        // and the card must not move (2d67632).
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAim",
+                               "-uiDemoAimHint", "above", "-uiDemoAimHintLater", "left"] + Self.largestText
         app.launch()
         let instruction = element(app, "instruction")
         XCTAssertTrue(instruction.waitForExistence(timeout: 15))
-        Thread.sleep(forTimeInterval: 1.5)
-        var seen: [String] = []
-        for _ in 0..<10 {
+        tap(app, "instruction.details")
+        XCTAssertTrue(element(app, "instruction.detail").waitForExistence(timeout: 5), "Details must open")
+        Thread.sleep(forTimeInterval: 1)
+        func sample() -> (title: String, line: String) {
             let title = ElementRead.snapshot(instruction)?.label ?? "?"
             let ring = element(app, "aim.ring").exists
+            let open = element(app, "instruction.detail").exists
             let details = ElementRead.snapshot(element(app, "instruction.details"))?.frame.minY ?? -1
-            seen.append("\(title) | ring \(ring) | Details at \(Int(details)) pt")
+            return (title, "ring \(ring) | Details open \(open) at \(Int(details)) pt")
+        }
+        var before: [String] = []
+        for _ in 0..<10 {
+            let (title, line) = sample()
+            before.append("\(title) | \(line)")
             Thread.sleep(forTimeInterval: 0.4)
         }
-        XCTAssertEqual(Set(seen).count, 1, "a still target flipped: \(seen)")
+        XCTAssertEqual(Set(before).count, 1, "a still target flipped with Details open: \(before)")
+        let held = sample()
+        XCTAssertTrue(held.line.contains("Details open true"), "Details closed by itself: \(held)")
+
+        let swapped = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label != %@", held.title)).firstMatch
+        XCTAssertTrue(swapped.waitForExistence(timeout: 25), "the engine's new direction never reached the card")
+        Thread.sleep(forTimeInterval: 1)
+        var after: [String] = []
+        for _ in 0..<5 {
+            let (title, line) = sample()
+            after.append("\(title) | \(line)")
+            Thread.sleep(forTimeInterval: 0.4)
+        }
+        XCTAssertEqual(Set(after).count, 1, "the card kept changing after the swap: \(after)")
+        XCTAssertNotEqual(sample().title, held.title)
+        XCTAssertEqual(sample().line, held.line, "a swap between reserved titles closed Details or moved the card")
+        attach(app, name: "wallWalk-aimCard-detailsOpen-AX5")
     }
 
     /// #81: the first aim ring comes with a line under the card saying what it is for, clear of

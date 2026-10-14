@@ -200,15 +200,15 @@ final class DemoEngine: ScanActions {
             enterAim(offScreen: arguments.contains("-uiDemoAimOffScreen"))
             // The engine's direction to the target, which can disagree with what the overlay
             // draws near the card or an edge (review of #120): the card must follow the drawing.
-            let hint: AimDirection? = switch value("-uiDemoAimHint") {
-            case "onScreen": .onScreen
-            case "above": .above
-            case "below": .below
-            case "left": .left
-            case "right": .right
-            default: nil
+            if let hint = value("-uiDemoAimHint").flatMap(Self.aimDirection) { state.guidanceHint = GuidanceHint(aim: hint) }
+            // The engine's direction changing once, `aimHintDelay` after launch, frozen or not:
+            // the card's title then swaps between titles it reserved room for (review of #241).
+            if let later = value("-uiDemoAimHintLater").flatMap(Self.aimDirection) {
+                Task { [weak self] in
+                    try? await Task.sleep(for: Self.aimHintDelay)
+                    self?.state.guidanceHint?.aim = later
+                }
             }
-            if let hint { state.guidanceHint = GuidanceHint(aim: hint) }
         }
         if arguments.contains("-uiDemoCorner") {
             // The walk followed an outside corner right of the meter, between the battery spot and
@@ -399,6 +399,21 @@ final class DemoEngine: ScanActions {
     /// there, and the ring is half full: 2 of the 5 ground cells within 0.3 m of it are covered,
     /// and 80 % completes it. `-uiDemoAimOffScreen`: the same ask for ground left of the view, so
     /// the edge arrow stands in for the ring.
+    /// When `-uiDemoAimHintLater` changes the engine's direction: long enough for a UI test to
+    /// open Details and see the card hold still first.
+    static let aimHintDelay: Duration = .seconds(20)
+
+    static func aimDirection(_ raw: String) -> AimDirection? {
+        switch raw {
+        case "onScreen": .onScreen
+        case "above": .above
+        case "below": .below
+        case "left": .left
+        case "right": .right
+        default: nil
+        }
+    }
+
     private func enterAim(offScreen: Bool) {
         let s: Float = offScreen ? -2.4 : 0.4
         state.guidance = .aimAtGround(s: s)
