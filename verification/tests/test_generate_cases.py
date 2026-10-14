@@ -101,7 +101,10 @@ def test_real_case_rule_override_skips_stale_expectation(tmp_path, monkeypatch, 
         {"scene": {}, "result": {}},
         rules,
     )
-    assert record["status"] == "assumption mismatch" and record["assumption_mismatches"]
+    assert record["status"] == "assumptions unverified" and record["assumption_warnings"]
+    assert "assumed public rules; server may override" in record["assumption_warnings"][0]
+    assert record["rule_checks_unverified"]
+    assert record["contract_problems"] == []
     assert record["expectation_problems"] == []
     meta = {
         "peak_memory": {},

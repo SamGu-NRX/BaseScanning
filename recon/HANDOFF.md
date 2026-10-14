@@ -128,9 +128,12 @@ In `recon/` on this branch:
 
 These defects remain after the review-debt repairs. They can let the server settle a check on evidence the worker does not have. The saved ETH3D results above predate those repairs; dataset acceptance has not been rerun.
 
-- **One view can count as two for free space.** `recon/coverage.py:189-193, 208-246`: `_slab` treats a voxel as observed when its fused weight is above zero, and any single frame gives it weight. Repro: a capture in which one frame alone sees the space in front of a wall cell reports a facing clearance there. Wall and ground cells need two positions 0.25 m apart for the same claim. The server at 903d86f can settle a check on that clearance. A fix needs visibility kept per frame for free space, with the same two-position test as the wall and ground.
 - **The overhead strip is narrower than a battery.** `recon/coverage.py:42, 236-245`: overhead space is sampled only 0.10 to 0.56 m out from the wall front. Repro: an eave 0.05 m out from the wall, or 0.7 m out over a 3 ft deep battery, is not found, and the cell reports clearance above it. A fix needs the footprint of the battery the chosen rule places, passed from the server's rules or request.
 - **The photos-only clearance error is not calibrated.** `recon/pipeline.py:29-35`: facing gaps and overhead clearances from photos carry ±0.56 ft. That comes from the 95% interval of the evals' surface pair-error p90 over 1 to 3 m spans, not from any measurement of where the fused volume puts a boundary. The evals put surface p90 at 5.64 in [4.63, 6.66] and edges at 9.65 in [4.93, 15.01]. Repro: a photos-only overhead clearance measured at 7.10 ft passes the 6.5 ft headroom rule, since 7.10 − 0.56 = 6.54 > 6.5. A fix needs the clearance estimator's own measured uncertainty, or a gate that returns the check unresolved until that exists.
+
+### Fixed in the worker
+
+Free-space coverage now uses `SeenFromTwo` in `compute()`: facing and overhead samples need visibility from two camera positions at least 0.25 m apart. One-view and nearby-camera regressions are in `tests/test_coverage_views.py`.
 
 The worker now replaces the target wall's prior measurements, stops clearance at any occupied sampled voxel, and refuses LiDAR without a confidence map. Ground coverage follows the fitted slope, and only whole cells within the fitted wall extent are exported. The regressions are in `tests/test_review_debt.py`; they do not validate the remaining clearance policies above.
 

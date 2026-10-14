@@ -6,6 +6,7 @@ import re
 import threading
 import time
 import zipfile
+from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from typing import ClassVar
 
@@ -867,7 +868,10 @@ def test_hostile_execution_is_recorded_only_after_sending(monkeypatch):
 
 
 @pytest.mark.parametrize("no_hostile", [False, True])
-def test_cli_shortened_run_cannot_claim_full_contract(tmp_path, monkeypatch, no_hostile):
+@pytest.mark.parametrize("unverified", [False, True])
+def test_cli_shortened_run_cannot_claim_full_contract(
+    tmp_path, monkeypatch, no_hostile, unverified
+):
     from pathlib import Path
 
     # Only public rules are read. All HTTP, git and hostile payload generation are mocked.
@@ -894,7 +898,19 @@ def test_cli_shortened_run_cannot_claim_full_contract(tmp_path, monkeypatch, no_
     def fake_judge(url, endpoint, probe, *args):
         if probe.hostile:
             return next(r for r in hostile_records() if r["name"] == probe.name)
-        return CHECKED | {"name": probe.name}
+        return (
+            CHECKED
+            | {"name": probe.name}
+            | (
+                {
+                    "status": "assumptions unverified",
+                    "rule_checks_unverified": True,
+                    "assumption_warnings": ["assumed public rules; server may override"],
+                }
+                if unverified
+                else {}
+            )
+        )
 
     monkeypatch.setattr(e2e, "judge", fake_judge)
     monkeypatch.setattr(e2e, "peak_rss_mb", lambda: {})
@@ -902,10 +918,11 @@ def test_cli_shortened_run_cannot_claim_full_contract(tmp_path, monkeypatch, no_
     args = ["--server-url", "http://unused", "--cases", str(cases), "--out", str(out)]
     if no_hostile:
         args.append("--no-hostile")
-    assert e2e.main(args) == 0
+    assert e2e.main(args) == (2 if unverified else 0)
     data = json.loads((out / "report.json").read_text())
-    assert data["all_passed"] and data["contract_ok"]
-    assert data["full_contract_ok"] is (not no_hostile)
+    assert data["all_passed"] is (not unverified)
+    assert data["contract_ok"] is (not unverified)
+    assert data["full_contract_ok"] is (not no_hostile and not unverified)
     assert data["hostile_probes_executed"] == (
         [] if no_hostile else sorted(e2e.HOSTILE_PROBE_NAMES)
     )
@@ -914,4 +931,69 @@ def test_cli_shortened_run_cannot_claim_full_contract(tmp_path, monkeypatch, no_
     metric = next(m for m in scoreboard.load_metrics()[1] if m.id == "S2-8")
     metric.probe["glob"] = str(out / "report.json")
     status = scoreboard.probe_report(metric.probe, data["sha"]).status
-    assert status == ("gap" if no_hostile else "met")
+    assert status == ("gap" if no_hostile or unverified else "met")
+
+
+@pytest.mark.parametrize("reported_width", [None, 31 / 12, 4])
+@pytest.mark.parametrize("contract_failure", [False, True])
+def test_judge_distinguishes_reported_override_mismatch_and_unverified_defaults(
+    tmp_path, monkeypatch, reported_width, contract_failure
+):
+    answer = {"decision": "manual_review", "spot": None, "checks": [], "sweep": []}
+    if reported_width is not None:
+        answer["checks"] = [
+            {
+                "id": "wall_backing",
+                "threshold_ft": reported_width,
+                "rule": {"key": "battery.width_ft"},
+            }
+        ]
+    monkeypatch.setattr(e2e, "post", lambda *args: (200, json.dumps(answer).encode(), 1))
+    monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
+    seen = []
+
+    def invariants(scene, result, sent=None, rules=None):
+        seen.append(None if rules is None else rules.width_ft)
+        return (
+            ["stats.input_sha256 does not match the scene bytes sent"] if contract_failure else []
+        )
+
+    monkeypatch.setattr(e2e, "invariant_problems", invariants)
+    properties = []
+    monkeypatch.setattr(
+        e2e, "property_problems", lambda *args: properties.append(args[-1].width_ft) or []
+    )
+    expectations = []
+    monkeypatch.setattr(e2e, "expectation_problems", lambda *args: expectations.append(True) or [])
+    item = SceneInput(
+        "override",
+        SCENE,
+        b"{}",
+        expect={"decision_in": ["manual_review"]},
+        rules_assumed={"battery_width": 31 / 12},
+    )
+    record = judge(
+        "unused", Endpoint("/place", "application/json"), item, SCHEMAS, replace(RULES, width_ft=4)
+    )
+    assert seen == [reported_width]
+    if contract_failure:
+        assert record["status"] == "fail" and record["contract_problems"]
+        assert record["problems"] == ["stats.input_sha256 does not match the scene bytes sent"]
+    else:
+        assert record["problems"] == []
+    if reported_width is None:
+        assert record["status"] == ("fail" if contract_failure else "assumptions unverified")
+        assert "assumed public rules; server may override" in record["assumption_warnings"][0]
+        assert not properties and not expectations
+    elif reported_width == 31 / 12:
+        assert record["status"] == ("fail" if contract_failure else "pass")
+        assert properties == [31 / 12] and expectations == [True]
+    else:
+        assert record["status"] == ("fail" if contract_failure else "assumption mismatch")
+        assert record["assumption_mismatches"] and not expectations
+    report = e2e.write_report(tmp_path, META, [record, *hostile_records()])
+    assert report["all_passed"] is (reported_width == 31 / 12 and not contract_failure)
+    assert report["full_contract_ok"] is (reported_width == 31 / 12 and not contract_failure)
+    if reported_width is None:
+        assert not report["contract_ok"]
+        assert "assumed public rules; server may override" in (tmp_path / "report.md").read_text()

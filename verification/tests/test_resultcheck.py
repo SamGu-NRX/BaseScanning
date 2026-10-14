@@ -29,7 +29,9 @@ from hsverify.resultcheck import (
     observed,
     outcome_at,
     outcome_lengths,
+    public_assumption_warnings,
     reach_gaps,
+    reported_rules,
     run_starts,
     straight_pieces,
     tape_to_tap,
@@ -1558,15 +1560,87 @@ def test_ground_trimming_keeps_omitted_reach_at_zero():
     assert trimmed["coverage"]["observed"][0]["out_ft"] == 0
 
 
-def test_geometric_assumptions_compare_active_rules():
-    rules = replace(RULES, corner_allowance_ft=0.5)
-    assert (
-        len(assumption_mismatches({"battery_width": 100, "corner_allowance": 100}, {}, rules)) == 2
+def test_geometric_assumptions_use_reported_override_instead_of_public_defaults():
+    public = replace(RULES, width_ft=4, corner_allowance_ft=10)
+    answer = result()
+    answer["checks"].append(
+        {
+            "id": "corner_allowance",
+            "threshold_ft": 0.5,
+            "rule": {"key": "route.corner_allowance_ft"},
+        }
     )
+    assumed = {"battery_width": RULES.width_ft, "corner_allowance": 0.5}
+    assert assumption_mismatches(assumed, answer) == []
+    assert public_assumption_warnings(assumed, answer, public) == []
+    active = reported_rules(answer, public)
+    assert (active.width_ft, active.corner_allowance_ft) == (RULES.width_ft, 0.5)
+    assert (public.width_ft, public.corner_allowance_ft) == (4, 10)
+
+
+def test_geometric_assumptions_detect_a_real_reported_mismatch():
+    answer = {
+        "spot": {"width_ft": 4},
+        "checks": [
+            {
+                "id": "route_corner",
+                "threshold_ft": 10,
+                "rule": {"key": "route.corner_allowance_ft"},
+            }
+        ],
+    }
     assert (
-        assumption_mismatches({"battery_width": rules.width_ft, "corner_allowance": 0.5}, {}, rules)
-        == []
+        len(
+            assumption_mismatches(
+                {"battery_width": RULES.width_ft, "corner_allowance": 0.5}, answer
+            )
+        )
+        == 2
     )
+
+
+def test_unreported_geometric_override_is_a_warning_not_a_mismatch():
+    public = replace(RULES, width_ft=4, corner_allowance_ft=10)
+    assumed = {"battery_width": RULES.width_ft, "corner_allowance": 0.5}
+    assert assumption_mismatches(assumed, {}) == []
+    warnings = public_assumption_warnings(assumed, {}, public)
+    assert len(warnings) == 2
+    assert all("assumed public rules; server may override" in text for text in warnings)
+    assert (
+        public_assumption_warnings({"battery_width": 4, "corner_allowance": 10}, {}, public) == []
+    )
+
+
+@pytest.mark.parametrize("source", ["spot", "nearest_considered", "check"])
+def test_reported_width_sources_override_public_width(source):
+    answer = (
+        {
+            "checks": [
+                {
+                    "id": "wall_backing",
+                    "threshold_ft": RULES.width_ft,
+                    "rule": {"key": "battery.width_ft"},
+                }
+            ]
+        }
+        if source == "check"
+        else {source: {"width_ft": RULES.width_ft}}
+    )
+    assert reported_rules(answer, replace(RULES, width_ft=4)).width_ft == RULES.width_ft
+    assert assumption_mismatches({"battery_width": RULES.width_ft}, answer) == []
+
+
+def test_other_width_thresholds_do_not_report_battery_width():
+    answer = {
+        "checks": [
+            {
+                "id": "meter_working_space",
+                "threshold_ft": 4,
+                "rule": {"key": "meter_working_space.width_ft"},
+            }
+        ]
+    }
+    assert reported_rules(answer, RULES).width_ft == RULES.width_ft
 
 
 @pytest.mark.parametrize("outcome", ["pass", "unsure"])
@@ -1623,3 +1697,13 @@ def test_in_scan_sweep_with_tiny_rule_step_fails_loudly():
     assert invariant_problems(SCENE, r, rules=replace(RULES, step_ft=1e-300)) == [
         "sweep unsure starts [0, 1]: sweep sampling exceeds the 10000 sample limit"
     ]
+
+
+def test_reported_override_prevents_a_false_footprint_failure():
+    public = replace(RULES, width_ft=4)
+    answer = result(spot=False, sweep=[pass_run(9, 9) | {"outcome": "unsure"}])
+    backing = next(c for c in answer["checks"] if c["id"] == "wall_backing")
+    backing["threshold_ft"] = RULES.width_ft
+    backing["rule"]["key"] = "battery.width_ft"
+    assert footprint_problems(SCENE, answer, public)
+    assert footprint_problems(SCENE, answer, reported_rules(answer, public)) == []

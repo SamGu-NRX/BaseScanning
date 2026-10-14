@@ -19,6 +19,14 @@ Reports go to `~/house-scanning-data/reports/`, outside git, because replay fram
 non-commercial datasets. What each check asserts is in the docstrings of `hsverify/e2e.py`,
 `resultcheck.py` and `simrun.py`.
 
+When a case's battery width or corner allowance differs from public rules, e2e uses the
+value reported in the result's spot or rule-keyed check threshold. If the result omits it,
+the report says "assumed public rules; server may override" and marks the case
+`assumptions unverified`. It skips the rule-dependent checks and case expectations, while
+retaining rule-independent invariants. These records cannot establish acceptance. Exit
+code 2 means the run is inconclusive for this reason; exit code 1 still means another
+failure or incomplete check. The verifier does not read private backend files.
+
 **Result.** At `t3/server` `3baa338`, with the app's upload from `c820cf1` (#10's freeze, synthetic
 replay, hosted server), 49 of 50 scenes pass (45 answered and checked; slowest real scene 0.48 s).
 The ETH3D scene fails: after its one requested capture the server leaves pool unsure with no

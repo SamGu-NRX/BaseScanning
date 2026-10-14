@@ -30,7 +30,7 @@ import hashlib
 import itertools
 import math
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import yaml
@@ -1149,28 +1149,57 @@ def with_past_ends_asked(scene: dict, requests: list[dict], rules: RuleSet) -> d
 # --- Case expectations -----------------------------------------------------------------------
 
 
-def assumption_mismatches(
-    assumed: dict[str, float], result: dict, rules: RuleSet | None = None
+def reported_assumption_values(key: str, result: dict) -> list[tuple[str, float]]:
+    """Rule values carried by C2 spots or check thresholds, without reading server files."""
+    values = []
+    if key == "battery_width":
+        for name in ("spot", "nearest_considered"):
+            spot = result.get(name)
+            if spot is not None and "width_ft" in spot:
+                values.append((f"{name}.width_ft", spot["width_ft"]))
+    rule_key = {
+        "battery_width": "battery.width_ft",
+        "corner_allowance": "route.corner_allowance_ft",
+    }.get(key)
+    for check in result.get("checks", []):
+        threshold = check.get("threshold_ft")
+        matches = check.get("rule", {}).get("key") == rule_key if rule_key else key in check["id"]
+        if matches and threshold is not None:
+            values.append((check["id"], threshold))
+    return values
+
+
+def reported_rules(result: dict, rules: RuleSet) -> RuleSet:
+    """Use reported geometry for invariants too, so public defaults cannot reject an override."""
+    changes = {}
+    for key, field in (("battery_width", "width_ft"), ("corner_allowance", "corner_allowance_ft")):
+        if values := reported_assumption_values(key, result):
+            changes[field] = values[0][1]
+    return replace(rules, **changes)
+
+
+def assumption_mismatches(assumed: dict[str, float], result: dict) -> list[str]:
+    return [
+        f"case assumes {key} threshold {value}, server's {source} uses {actual}"
+        for key, value in assumed.items()
+        for source, actual in reported_assumption_values(key, result)
+        if abs(actual - value) > EPS
+    ]
+
+
+def public_assumption_warnings(
+    assumed: dict[str, float], result: dict, rules: RuleSet
 ) -> list[str]:
-    out = []
-    configured = (
-        {"battery_width": rules.width_ft, "corner_allowance": rules.corner_allowance_ft}
-        if rules
-        else {}
-    )
-    for key, value in assumed.items():
-        actual = configured.get(key)
-        if actual is not None and abs(actual - value) > EPS:
-            out.append(f"case assumes {key} {value}, rules use {actual}")
-    for key, value in assumed.items():
-        for check in result.get("checks", []):
-            threshold = check.get("threshold_ft")
-            if key in check["id"] and threshold is not None and abs(threshold - value) > EPS:
-                out.append(
-                    f"case assumes {key} threshold {value}, server's {check['id']} uses "
-                    f"{check['threshold_ft']}"
-                )
-    return out
+    configured = {"battery_width": rules.width_ft, "corner_allowance": rules.corner_allowance_ft}
+    return [
+        f"case assumes {key} {value}, public rules use {configured[key]}; "
+        "assumed public rules; server may override; result does not report this value, "
+        "so case expectations are unverified"
+        for key, value in assumed.items()
+        if configured.get(key) is not None
+        and not reported_assumption_values(key, result)
+        and abs(configured[key] - value) > EPS
+    ]
 
 
 def expectation_problems(expect: dict, result: dict) -> list[str]:
