@@ -8,17 +8,19 @@ import pytest
 from recon import coverage
 from recon.capture import Frame
 from recon.depth import Depth
+from recon.fusion import Volume
 from recon.geometry import WallFrame
 
 
 class ClearVolume:
     voxel = 0.05
+    blocked = Volume.blocked
 
     def observed(self, points):
-        return np.ones(len(points), bool)
+        return np.ones(points.shape[:-1], bool)
 
     def occupied(self, points):
-        return np.zeros(len(points), bool)
+        return np.zeros(points.shape[:-1], bool)
 
 
 def views(count):
@@ -127,8 +129,8 @@ class FirstSlabObstacle(ClearVolume):
     def occupied(self, points):
         if self.band == "facing":
             # A thin hit in the first outward slab, too small to become the wall front.
-            return np.isclose(points[:, 2], 0.1) & np.isclose(points[:, 1], 1.0)
-        return np.isclose(points[:, 1], 0.3) & np.isclose(points[:, 2], 0.3)
+            return np.isclose(points[..., 2], 0.1) & np.isclose(points[..., 1], 1.0)
+        return np.isclose(points[..., 1], 0.3) & np.isclose(points[..., 2], 0.3)
 
 
 def free_space_from_positions(raw, xs):
@@ -186,3 +188,37 @@ def test_empty_volume_needs_two_views_before_exporting_clear_space(xs, supported
     else:
         assert cov.facing_clear[0] == cov.overhead_clear[0] == 0.0
         assert entries == []
+
+
+@pytest.mark.parametrize(
+    ("obstruction_z", "visible"),
+    [(2.0, False), (None, True), (0.0, True)],
+    ids=["fused_obstruction", "clear_ray", "supported_surface"],
+)
+def test_free_space_rays_respect_fused_obstructions_but_not_the_sample_surface(
+    obstruction_z, visible
+):
+    frames, depths = views(2)
+    for frame, x in zip(frames, [-0.2, 0.2], strict=True):
+        frame.cam_to_world[:3, :3] = np.eye(3)
+        frame.cam_to_world[:3, 3] = [x, 1.0, 4.0]
+        depths[frame.id].depth[:] = 4.0
+    shape = (21, 31, 51)
+    tsdf = np.ones(shape, np.float32)
+    if obstruction_z is not None:
+        tsdf[:, :, round(obstruction_z / 0.1)] = -1.0
+    raw = Volume(
+        origin=np.array([-1.0, 0.0, 0.0]),
+        voxel=0.1,
+        shape=shape,
+        tsdf=tsdf,
+        weight=np.ones(shape, np.float32),
+        color=np.zeros((*shape, 3), np.float32),
+        color_n=np.zeros(shape, np.float32),
+    )
+    view = coverage.SeenFromTwo(raw, frames, depths)
+    points = np.array([[0.0, 1.0, 0.0]])
+    # Both depth maps put the sample on a surface. Fusion independently retains a
+    # nearer obstacle in the failing case; a hit on the sample itself remains supported.
+    np.testing.assert_array_equal(view.seen_through(points), [[visible, visible]])
+    np.testing.assert_array_equal(view.observed(points), [visible])

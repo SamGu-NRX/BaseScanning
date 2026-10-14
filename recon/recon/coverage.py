@@ -164,8 +164,14 @@ class SeenFromTwo:
             du = np.clip((u[n_i] * scale).astype(np.int64), 0, dw - 1)
             dv = np.clip((v[n_i] * scale).astype(np.int64), 0, dh - 1)
             measured = depth_map[dv, du]
-            reached = np.isfinite(measured) & (measured >= z[n_i] - tolerance(dist[n_i]))
-            out[n_i[reached], j] = True
+            tol = tolerance(dist[n_i])
+            reached = np.isfinite(measured) & (measured >= z[n_i] - tol)
+            keep = n_i[reached]
+            if len(keep):
+                # A depth map may miss an obstruction retained by fusion. Ignore only the
+                # sample's own surface, using the same stop-short distance as seen_by.
+                blocked = self.vol.blocked(self.C[j], points[keep], tol[reached] + self.voxel)
+                out[keep[~blocked], j] = True
 
         return out
 
