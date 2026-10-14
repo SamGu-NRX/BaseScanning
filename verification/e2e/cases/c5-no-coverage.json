@@ -67,7 +67,9 @@
       }
     ]
   },
-  "rules_assumed": {},
+  "rules_assumed": {
+    "battery_width": 2.5833333333333335
+  },
   "expect": {
     "decision_in": [
       "manual_review"

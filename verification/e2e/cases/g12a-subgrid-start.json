@@ -140,6 +140,7 @@
     }
   },
   "rules_assumed": {
+    "battery_width": 2.5833333333333335,
     "opening": 3.0
   },
   "expect": {

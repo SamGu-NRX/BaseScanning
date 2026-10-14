@@ -17,6 +17,8 @@ SERVER_SHA = "69c6c3c"
 # Battery footprint from the lane C review's parameter table: 31 in wide, 22 in deep.
 W = 31 / 12
 D = 11 / 6
+# Public server/rules.yaml route.corner_allowance_ft, a day-1 placeholder, not measured.
+CORNER_ALLOWANCE = 0.5
 METER_Y = 4.0
 # Walls placed at z = -D put a flush battery's front edge at z = 0 exactly in floating point,
 # so a gas strip at z = d is measured as exactly d. The margin cases need that: 3.3 - 0.3 and
@@ -159,7 +161,8 @@ def case(cid, source, description, scene, expect, rules_assumed=None):
             "source": source,
             "description": description,
             "scene": scene,
-            "rules_assumed": rules_assumed or {},
+            # The fixed fixture spans and sweep ranges were derived with this battery width.
+            "rules_assumed": {"battery_width": W} | (rules_assumed or {}),
             "expect": expect,
         }
     )
@@ -230,6 +233,7 @@ case(
         "sweep_runs": [{"wall_id": "w1", "start_ft": [-8.4, 6.9], "outcome": "fail"}],
         "missing_evidence_empty": True,
     },
+    {"corner_allowance": CORNER_ALLOWANCE},
 )
 
 # g05: inside corner, gas meter on the return wall at [4, 4].
@@ -258,7 +262,7 @@ case(
             {"wall_id": "w1", "start_ft": [6, 7.4], "outcome": "fail", "failing_match": "gas"}
         ],
     },
-    {"gas": 3.0},
+    {"gas": 3.0, "corner_allowance": CORNER_ALLOWANCE},
 )
 
 # g06: gas meter body 10 ft out, regulator reaching [7, 23/6].
@@ -448,7 +452,7 @@ case(
             {"wall_id": "w2", "start_ft": [8, 11.4], "outcome": "fail", "failing_match": "gas"},
         ],
     },
-    {"gas": 3.0},
+    {"gas": 3.0, "corner_allowance": CORNER_ALLOWANCE},
 )
 
 # g11c: observed starts fail gas; the ground right of s = 1 was never seen (closed gate).
@@ -531,6 +535,7 @@ case(
         "coverage": full_coverage((-3, 6 + W)),
     },
     {"spot": {"wall_id": "w1", "span_within": [6, 6 + W]}, "missing_evidence_empty": True},
+    {"corner_allowance": CORNER_ALLOWANCE},
 )
 
 

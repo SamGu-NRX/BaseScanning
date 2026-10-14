@@ -168,7 +168,10 @@
       ]
     }
   },
-  "rules_assumed": {},
+  "rules_assumed": {
+    "battery_width": 2.5833333333333335,
+    "corner_allowance": 0.5
+  },
   "expect": {
     "spot": {
       "wall_id": "w1",

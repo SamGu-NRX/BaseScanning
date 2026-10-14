@@ -700,3 +700,15 @@ def test_s2_contract_credit_requires_successful_full_run(tmp_path):
         100,
     )
     assert sb.probe_report(metric.probe, SHA).status == "gap"
+
+
+@pytest.mark.parametrize("full", [None, False, True])
+def test_s2_requires_hostile_execution_evidence_from_report(tmp_path, full):
+    metric = real_metric("S2-8")
+    metric.probe["glob"] = str(tmp_path / "*" / "report.json")
+    data = {"sha": SHA, "contract_ok": True, "all_passed": True}
+    if full is not None:
+        data["full_contract_ok"] = full
+    write_report(tmp_path / "r" / "report.json", data, 100)
+    status = sb.probe_report(metric.probe, SHA).status
+    assert (status == "met") is (full is True)
