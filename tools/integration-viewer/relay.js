@@ -20,6 +20,7 @@ const PREVIEW_MAX_BYTES = 64 * 1024 * 1024;
 const JSON_MAX_BYTES = 8 * 1024 * 1024;
 const RUN_ID = /^[A-Za-z0-9_-]{1,80}$/;
 const WITHHELD = "withheld-by-viewer-relay";
+const previewArtifactId = (url) => createHash("sha256").update(url.split(/[?#]/, 1)[0]).digest("hex");
 
 /**
  * @param {object} options
@@ -83,7 +84,12 @@ export function createViewerServer({ upstreams, publicDir, log = () => {} }) {
       timeoutMs = Number(wait) * 1000 + 15_000;
     } else if (leaf === "preview") {
       const run = params.get("run");
-      if (run == null || !RUN_ID.test(run) || [...params.keys()].length !== 1) return refuse(res, 400, "query_invalid", "preview takes run=<run id>");
+      const artifact = params.get("artifact");
+      if (run == null || !RUN_ID.test(run) || params.getAll("run").length !== 1 ||
+          (artifact != null && (!/^[a-f0-9]{64}$/.test(artifact) || params.getAll("artifact").length !== 1)) ||
+          [...params.keys()].some((key) => key !== "run" && key !== "artifact")) {
+        return refuse(res, 400, "query_invalid", "preview takes run=<run id> and optional artifact=<preview artifact id>");
+      }
     } else if (query !== "") {
       return refuse(res, 400, "query_invalid", "this route takes no query");
     }
@@ -92,7 +98,7 @@ export function createViewerServer({ upstreams, publicDir, log = () => {} }) {
     res.on("close", () => abort.abort());
     const signal = AbortSignal.any([abort.signal, AbortSignal.timeout(timeoutMs)]);
 
-    if (leaf === "preview") return relayPreview(res, upstream, upstreamPath, params.get("run"), signal);
+    if (leaf === "preview") return relayPreview(res, upstream, upstreamPath, params.get("run"), params.get("artifact"), signal);
 
     const reply = await upstreamGet(upstream.base + upstreamPath, signal);
     if (reply.failure) return refuse(res, reply.failure.status, reply.failure.code, reply.failure.message);
@@ -102,7 +108,7 @@ export function createViewerServer({ upstreams, publicDir, log = () => {} }) {
       // A renewed signed query is not a new file. The digest distinguishes files without
       // exposing their URL; query-only changes conservatively keep the same retry delay.
       body.previewArtifactId = typeof body.previewUrl === "string" && body.previewUrl !== ""
-        ? createHash("sha256").update(body.previewUrl.split(/[?#]/, 1)[0]).digest("hex") : null;
+        ? previewArtifactId(body.previewUrl) : null;
       // Only a real URL is replaced; an empty value still means "no preview" to the page.
       for (const field of ["previewUrl", "verdictUrl"]) if (typeof body[field] === "string" && body[field] !== "") body[field] = WITHHELD;
     }
@@ -113,13 +119,16 @@ export function createViewerServer({ upstreams, publicDir, log = () => {} }) {
     return `relay ${key} ${leaf ?? (captureId ? "status" : "healthz")}`;
   }
 
-  async function relayPreview(res, upstream, resultPath, runId, signal) {
+  async function relayPreview(res, upstream, resultPath, runId, artifactId, signal) {
     const result = await upstreamGet(`${upstream.base}${resultPath}/result`, signal);
     if (result.failure) return refuse(res, result.failure.status, result.failure.code, result.failure.message);
     if (result.status !== 200) return refuse(res, result.status, "result_unavailable", "the result could not be read", result.retryAfter ? { "retry-after": result.retryAfter } : {});
     if (result.json?.runId !== runId) return refuse(res, 409, "preview_run_changed", "the latest result belongs to another run");
     const signed = result.json?.previewUrl;
     if (typeof signed !== "string" || signed === "") return refuse(res, 404, "preview_not_available", "the result has no preview");
+    // A same-run result may move to another file after the page read it. Refuse before
+    // fetching so a storage Retry-After cannot be attributed to the page's older file.
+    if (artifactId != null && artifactId !== previewArtifactId(signed)) return refuse(res, 409, "preview_artifact_changed", "the latest result references another preview artifact");
     let target;
     try {
       target = new URL(signed, new URL(upstream.base).origin);

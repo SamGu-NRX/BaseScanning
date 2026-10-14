@@ -203,6 +203,39 @@ describe("refusals", () => {
     assert.equal((await raw("/relay/hostile/captures/cap_HOSTILE_1/preview")).json.errors[0].code, "query_invalid");
   });
 
+  test("a same-run preview file change is refused before storage is fetched", async () => {
+    let storageReads = 0;
+    let previewUrl = "/v1/file-a.ply";
+    hostileHandler = (req, res) => {
+      if (req.url.endsWith("/result")) {
+        res.writeHead(200, { "content-type": "application/json" });
+        return res.end(JSON.stringify({ runId: "r", previewUrl }));
+      }
+      storageReads += 1;
+      res.writeHead(503, { "retry-after": "120" });
+      res.end("busy");
+    };
+    try {
+      const path = "/relay/hostile/captures/cap_HOSTILE_1";
+      const first = await raw(`${path}/result`);
+      previewUrl = "/v1/file-b.ply";
+      const stale = await raw(`${path}/preview?run=r&artifact=${first.json.previewArtifactId}`);
+      assert.equal(stale.status, 409);
+      assert.equal(stale.json.errors[0].code, "preview_artifact_changed");
+      assert.equal(storageReads, 0);
+      assert.equal(stale.headers["retry-after"], undefined);
+      const current = await raw(`${path}/result`);
+      const failed = await raw(`${path}/preview?run=r&artifact=${current.json.previewArtifactId}`);
+      assert.equal(failed.status, 502);
+      assert.equal(failed.headers["retry-after"], "120");
+      assert.equal(storageReads, 1);
+      for (const query of ["run=r&artifact=not-a-digest", `run=r&artifact=${current.json.previewArtifactId}&artifact=${current.json.previewArtifactId}`, "run=r&run=r"]) {
+        assert.equal((await raw(`${path}/preview?${query}`)).status, 400);
+      }
+      assert.equal(storageReads, 1);
+    } finally { hostileHandler = null; }
+  });
+
   test("a preview URL that redirects is not followed", async () => {
     hostileHandler = (req, res) => {
       if (req.url.endsWith("/result")) {

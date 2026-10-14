@@ -60,9 +60,10 @@ GET /relay/<source>/captures/<id>
 GET /relay/<source>/captures/<id>/events?after=<n>&wait=<0-25>
 GET /relay/<source>/captures/<id>/result
 GET /relay/<source>/captures/<id>/preview?run=<run id>
+GET /relay/<source>/captures/<id>/preview?run=<run id>&artifact=<previewArtifactId>
 ```
 
-Sources are fixed at startup. The relay refuses other methods and paths, and any other query. It also refuses encoded or dot segments and any Host header that is not loopback, which stops DNS rebinding. Signed URLs in the result are replaced before the page sees them. For `/preview`, the relay reads the result itself and fetches the signed URL only if it points at the source's own host or at `storage.googleapis.com`. It answers 409 if the latest result belongs to a different run than the page asked about. It follows no redirects, reads at most 64 MiB of preview and 8 MiB of JSON, and passes the API's `Retry-After` through. The log records each route and status, never a URL or query.
+Sources are fixed at startup. The relay refuses other methods and paths, and any other query. It also refuses encoded or dot segments and any Host header that is not loopback, which stops DNS rebinding. Signed URLs in the result are replaced before the page sees them. For `/preview`, the relay reads the result itself and fetches the signed URL only if it points at the source's own host or at `storage.googleapis.com`. It answers 409 if the latest result belongs to a different run than the page asked about. The page also sends the result's opaque `previewArtifactId` as `artifact`; a different file in the same run returns 409 before storage is fetched. This keeps a storage `Retry-After` attached to the file it came from. Run-only requests remain supported. It follows no redirects, reads at most 64 MiB of preview and 8 MiB of JSON, and passes the API's `Retry-After` through. The log records each route and status, never a URL or query.
 
 ## Files
 

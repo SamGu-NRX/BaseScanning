@@ -2,6 +2,7 @@
 // sped up. This is the same code path a page uses, minus the DOM.
 
 import assert from "node:assert/strict";
+import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -453,4 +454,57 @@ for (const response of [
     assert.ok(previewAt[1] >= 60_000, "a changed identity allows the preview to load");
     assert.equal(h.state.preview.runId, change === "run" ? "run_b" : "run_s");
   } finally { h.follower.stop(); await h.follower.done; }
+});
+
+test("a same-run file switch cannot misattribute the next file's preview delay", async () => {
+  let clock = 0;
+  let resultReads = 0;
+  const storageReads = [];
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const upstream = createServer((req, res) => {
+    res.setHeader("content-type", "application/json");
+    if (req.url.endsWith("/result")) {
+      resultReads += 1;
+      // The page receives A, but the relay's prerequisite result read already names B.
+      return res.end(JSON.stringify({ runId: "run_s", status: "complete", outcome: { kind: "eligible" }, previewUrl: resultReads === 1 ? "/file-a.ply" : "/file-b.ply" }));
+    }
+    if (req.url.endsWith(".ply")) {
+      storageReads.push({ path: req.url, at: clock });
+      if (storageReads.length === 1) {
+        res.writeHead(503, { "retry-after": "120" });
+        return res.end("busy");
+      }
+      return res.end(ply);
+    }
+    if (req.url.includes("/events")) {
+      const after = new URL(req.url, "http://x").searchParams.get("after");
+      const changed = clock >= 6_000;
+      return res.end(JSON.stringify({ status: "complete", next: changed ? 1 : 0, events: changed && after === "0"
+        ? [{ seq: 1, type: "verdict_ready", data: { runId: "run_s", kind: "eligible" } }] : [] }));
+    }
+    res.end(JSON.stringify({ runId: "run_s", status: "complete" }));
+  });
+  await new Promise((resolve) => upstream.listen(0, "127.0.0.1", resolve));
+  const relay = createViewerServer({ upstreams: { s: { base: `http://127.0.0.1:${upstream.address().port}/v1`, label: "Two files", kind: "synthetic" } },
+    publicDir: join(dirname(fileURLToPath(import.meta.url)), "..", "public") });
+  let follower;
+  try {
+    const relayOrigin = `http://127.0.0.1:${await relay.listen(0)}`;
+    let state = reduce(initialState(), { type: "select", mode: "live", source: { key: "s", kind: "synthetic" }, captureId: "cap_TWO_FILES" });
+    follower = followCapture({ sourceKey: "s", captureId: "cap_TWO_FILES", session: state.session,
+      dispatch: (a) => { state = reduce(state, a); }, getState: () => state,
+      fetchImpl: (path, init) => fetch(relayOrigin + path, init), now: () => clock,
+      sleep: async (ms) => { clock += ms; }, online: () => true });
+    await until(() => state.preview.phase === "ready");
+    assert.equal(storageReads.length, 2);
+    assert.ok(storageReads.every((read) => read.path === "/file-b.ply"));
+    assert.ok(storageReads[1].at - storageReads[0].at >= 120_000, `B was fetched at ${storageReads.map((read) => read.at)}`);
+    assert.equal(state.result.body.runId, "run_s");
+  } finally {
+    follower?.stop();
+    await follower?.done;
+    await relay.close();
+    upstream.closeAllConnections();
+    await new Promise((resolve) => upstream.close(resolve));
+  }
 });

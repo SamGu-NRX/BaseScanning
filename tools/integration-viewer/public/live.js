@@ -156,8 +156,10 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
         previewKey = revisionKey;
         send({ type: "preview-loading", runId });
         try {
-          // The relay refuses with 409 if the latest result is no longer this run's.
-          const cloud = parsePly(await get(`/captures/${captureId}/preview?run=${encodeURIComponent(runId)}`, "bytes"));
+          // Bind the fetch to the file shown, so any Retry-After belongs to this artifact.
+          const artifact = result.body.previewArtifactId;
+          const artifactQuery = artifact == null ? "" : `&artifact=${encodeURIComponent(artifact)}`;
+          const cloud = parsePly(await get(`/captures/${captureId}/preview?run=${encodeURIComponent(runId)}${artifactQuery}`, "bytes"));
           send({ type: "preview", runId, cloud });
         } catch (error) {
           if (signal.aborted) return;
