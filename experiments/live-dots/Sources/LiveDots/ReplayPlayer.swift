@@ -23,7 +23,7 @@ final class ReplayPlayer {
     @ObservationIgnored private var frameInterval: Float = 1 / 60
 
     /// Playback runs this long past the last keyframe so its births finish.
-    private var end: Float { Schedule.end(count: keyframeCount) + Tuning.birthDuration }
+    private var end: Float { Schedule.playbackEnd(count: keyframeCount) }
 
     init(keyframeCount: Int, reduceMotion: Bool) {
         self.keyframeCount = keyframeCount

@@ -60,12 +60,14 @@ enum Exporter {
             throw Failure(description: "--still \(number) is past the last keyframe, \(data.keyframeCount)")
         }
         // Stills are named and compared by keyframe, so an offset that plays into the next
-        // keyframe would label one keyframe's image with another's number.
-        if let offset, Schedule.keyframe(at: Schedule.start(of: number - 1) + offset, count: data.keyframeCount) != number - 1 {
-            let slot = Schedule.start(of: number) - Schedule.start(of: number - 1)
+        // keyframe would label one keyframe's image with another's number, and one past the end
+        // of playback shows a moment the replay never reaches.
+        let shown = Schedule.onScreen(number - 1, count: data.keyframeCount)
+        if let offset, offset >= shown {
+            let next = number < data.keyframeCount ? " or --still \(number + 1)" : ""
             throw Failure(description: String(
-                format: "--at %g is past keyframe %d, which is on screen for %g s; use a smaller --at or --still %d",
-                offset, number, slot, number + 1))
+                format: "--at %g is past keyframe %d, which is on screen for %g s; use a smaller --at",
+                offset, number, shown) + next)
         }
         let renderer = try DotRenderer(data: data)
         let target = try OffscreenTarget(renderer: renderer)
