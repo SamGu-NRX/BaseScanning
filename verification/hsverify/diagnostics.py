@@ -70,10 +70,11 @@ def bounded_report_records(records: list[dict]) -> tuple[list[dict], list[str]]:
     bounded = []
     for record in records:
         copy = dict(record)
+        # Markdown renders problems; retain its explanations before their JSON duplicates.
         for field in (
+            "problems",
             "contract_problems",
             "expectation_problems",
-            "problems",
             "assumption_mismatches",
             "assumption_warnings",
         ):
