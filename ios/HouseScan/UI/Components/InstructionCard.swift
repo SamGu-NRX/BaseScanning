@@ -148,7 +148,7 @@ struct InstructionCard: View {
                 }
                 ZStack(alignment: .topLeading) {
                     // As tall as the tallest title this card may swap to (`Instruction.titleReserve`).
-                    ForEach(foldsDetail && instruction.folded != nil ? [] : instruction.titleReserve, id: \.self) { reserved in
+                    ForEach(instruction.titleReserve, id: \.self) { reserved in
                         Text(reserved)
                             .font(Typeface.instruction)
                             .fixedSize(horizontal: false, vertical: true)

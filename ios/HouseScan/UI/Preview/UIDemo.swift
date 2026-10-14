@@ -49,6 +49,8 @@ import SwiftUI
 /// - `-uiDemoCorner`: the wall turns an outside corner 1.8 m right of the meter and the walk
 ///   followed it, so the window and part of its clearance zone are round the corner. For the
 ///   result model: `-uiDemoPhase result -uiDemoCorner`.
+/// - `-uiDemoAimCardTitles`: an isolated folded aim card, cycling ring, arrow and covered
+///   titles for the same target. Exercises a nonempty reserve alongside a folded title.
 /// - `-uiDemoSpotOffScreen`: with `-uiDemoPhase resultAR`, place the camera 10 m left so the
 ///   proposed spot needs an off-screen direction, including at accessibility text sizes.
 /// - `-uiDemoPhase spotConfirm`: the spot check before the result, on the made-up sample spot.
@@ -68,8 +70,13 @@ import SwiftUI
 /// when the answer lists a view the camera can take.
 enum UIDemo {
     @MainActor
+    @ViewBuilder
     static func makeRoot() -> some View {
-        DemoHost()
+        if ProcessInfo.processInfo.arguments.contains("-uiDemoAimCardTitles") {
+            FoldedAimCardDemo()
+        } else {
+            DemoHost()
+        }
     }
 }
 
@@ -78,5 +85,50 @@ private struct DemoHost: View {
 
     var body: some View {
         ScanRootView(state: engine.state, actions: engine)
+    }
+}
+
+/// The card contract permits a folded lead and reserved titles together, even though today's
+/// live ground/wall aims have no separate folded lead. Keep that combination stable at AX5.
+private struct FoldedAimCardDemo: View {
+    private enum Variant {
+        case ring, arrow, covered
+
+        var hint: AimDirection? {
+            switch self {
+            case .ring: .onScreen
+            case .arrow: .above
+            case .covered: nil
+            }
+        }
+    }
+
+    @State private var variant = Variant.ring
+
+    private var instruction: Instruction {
+        var copy = ScanCopy.guidance(.aimAtGround(s: 0.4), hint: GuidanceHint(aim: variant.hint))
+        copy.folded = Instruction.Folded(title: copy.title, detail: copy.detail ?? "")
+        return copy
+    }
+
+    var body: some View {
+        VStack(spacing: 24) {
+            InstructionCard(instruction: instruction, foldsDetail: true)
+                .environment(\.accessibilityReduceMotion, true)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("demo.aimCard")
+            Button("Next title") {
+                switch variant {
+                case .ring: variant = .arrow
+                case .arrow: variant = .covered
+                case .covered: variant = .ring
+                }
+            }
+            .frame(minHeight: Metrics.minTarget)
+            .accessibilityIdentifier("demo.nextAimTitle")
+            Spacer()
+        }
+        .padding(Metrics.edge)
+        .background(Palette.ink)
     }
 }

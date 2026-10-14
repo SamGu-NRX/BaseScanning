@@ -892,6 +892,28 @@ final class ScreenStatesUITests: XCTestCase {
         attach(app, name: "wallWalk-aimCard-detailsOpen-AX1")
     }
 
+    @MainActor
+    func testFoldedAimCardKeepsItsHeightAcrossMarkerTitlesAtAX5() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoAimCardTitles"] + Self.largestText
+        app.launch()
+        let card = element(app, "demo.aimCard")
+        XCTAssertTrue(card.waitForExistence(timeout: 15))
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 5))
+        let height = card.frame.height
+        XCTAssertGreaterThan(height, 0)
+        let titles = ["Put the ring on the strip", "Tilt up a little", "Tilt down to show the ground", "Put the ring on the strip"]
+        for (index, title) in titles.enumerated() {
+            let instruction = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", title)).firstMatch
+            XCTAssertTrue(instruction.waitForExistence(timeout: 5), "expected marker title: \(title)")
+            XCTAssertEqual(card.frame.height, height, accuracy: 0.5, "folded card moved for \(title)")
+            if index < titles.count - 1 { tap(app, "demo.nextAimTitle") }
+        }
+        attach(app, name: "foldedAim-cardHeight-AX5")
+    }
+
     /// A new target closes Details even when it shares the old target's reserved titles or
     /// rounds to the same displayed distance. The notification advances the actual demo aim.
     @MainActor
