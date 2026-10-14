@@ -1,4 +1,4 @@
-import HouseScanKit
+@testable import HouseScanKit
 import simd
 import Testing
 
@@ -299,6 +299,43 @@ import Testing
         #expect(map.level(.ground, 7) == .skipped)
         #expect(map.rightEnd == 3)
         #expect(map.level(.wall, 0) == .seen)
+    }
+
+    @Test func clearingAnEndReplaysSightingsPastIt() {
+        var map = CoverageMap(wall: standardWall())
+        map.setEnd(.right, at: 0)
+        map.observe(Self.frontCamera(), trackingNormal: true)
+        #expect(map.level(.ground, 1) == .unseen)
+        map.clearEnd(.right)
+        #expect(map.level(.ground, 1) == .seen)
+        #expect(map.level(.wall, 1) == .seen)
+    }
+
+    @Test func clearingAnEndTwiceDoesNotCountSightingsTwice() {
+        var map = CoverageMap(wall: standardWall())
+        map.setEnd(.right, at: 0)
+        map.observe(Self.frontCamera(), trackingNormal: true)
+        map.clearEnd(.right)
+        let once = map
+        map.clearEnd(.right)
+        #expect(map.stateDifferences(from: once).filter { $0 != "revision" }.isEmpty)
+        #expect(map.level(.ground, 1) == .seen)
+        #expect(map.coveredCount == 0)
+    }
+
+    @Test func clearingAndRemarkingAnEndKeepsTheSameCoverage() {
+        var map = CoverageMap(wall: standardWall())
+        map.setEnd(.right, at: 0)
+        map.observe(Self.frontCamera(), trackingNormal: true)
+        map.observe(Self.frontCamera(x: 0.3), trackingNormal: true)
+        let neverCleared = map
+        map.clearEnd(.right)
+        map.setEnd(.right, at: 0)
+        #expect(map.stateDifferences(from: neverCleared).filter { $0 != "revision" }.isEmpty)
+        var expected = neverCleared
+        expected.clearEnd(.right)
+        map.clearEnd(.right)
+        #expect(map.stateDifferences(from: expected).filter { $0 != "revision" }.isEmpty)
     }
 
     @Test func coveredIntervalsOfHandBuiltRuns() {
