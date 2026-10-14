@@ -213,8 +213,8 @@ private struct SpotDirection: View {
         let labelRoom = labelGap + labelHeight
         let clear = band.map { CGRect(x: 24, y: $0.top, width: size.width - 48, height: $0.bottom - $0.top) }
             ?? CGRect(x: 24, y: 260, width: size.width - 48, height: max(size.height - 260 - 160, 80))
-        if let point = projection.viewPoint(for: spot, in: size), clear.contains(point) { return .none }
-        guard let direction = projection.screenDirection(toward: spot) else { return .none }
+        guard let direction = OpenCameraDirection.toward(
+            projection.viewPoint(for: spot, in: size), in: clear, fallback: projection.screenDirection(toward: spot)) else { return .none }
         let lane: CGRect
         if let band {
             guard band.bottom - band.top >= disc + labelRoom else {

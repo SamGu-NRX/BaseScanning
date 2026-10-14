@@ -118,7 +118,9 @@ final class ScreenStatesUITests: XCTestCase {
         "markFeatures-groundAnswered": [("ground.answered", "Mulch")],
         "markFeatures-lostPlace": [("review.lostPlace", "Your phone lost its place")],
         // Review of #53: a mark wholly past a marked end says so on its row.
-        "markFeatures-pastEnd": [(nil, "Past the end of your scan")],
+        "markFeatures-pastEnd": [("review.featurePastEnd", "Window"),
+                                 ("review.featurePastEnd", "About 12 ft left of your meter"),
+                                 ("review.featurePastEnd", "Past the end of your scan")],
         // #80, #26: the gate's coaching rides on the task card.
         "wallWalk-slowDown": [("instruction", "Walk slowly to your right")],
         "wallWalk-tooDark": [("instruction", "It's dark here")],

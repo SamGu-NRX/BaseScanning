@@ -254,7 +254,14 @@ final class DemoEngine: ScanActions {
         // A mark past a marked end: flagged on the review, and on the result set aside by the
         // server (`objects_not_used`), as for run 2's window (#42, review of #53).
         if arguments.contains("-uiDemoMarkPastEnd") {
-            if let first = state.features.first { state.featuresPastEnds = [first.id] }
+            let span: ClosedRange<Float> = -4.1 ... -3.3
+            let window = MarkedFeature(
+                id: UUID(), kind: .window, span: span, bottom: DemoScene.windowHeights.lowerBound,
+                top: DemoScene.windowHeights.upperBound, out: nil,
+                points: [DemoScene.wall.world(s: span.lowerBound, height: DemoScene.windowHeights.lowerBound),
+                         DemoScene.wall.world(s: span.upperBound, height: DemoScene.windowHeights.upperBound)], opens: false)
+            state.features.append(window)
+            state.featuresPastEnds = [window.id]
             state.result?.marksNotUsed = [Self.markNotUsedSample]
         }
         if arguments.contains("-uiDemoNoFeed") {

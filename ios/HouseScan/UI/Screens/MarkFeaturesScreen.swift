@@ -255,6 +255,7 @@ private struct FeatureRow: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
+                .accessibilityIdentifier(pastEnd ? "review.featurePastEnd" : "review.feature")
                 Button(role: .destructive) {
                     actions.deleteFeature(feature.id)
                 } label: {

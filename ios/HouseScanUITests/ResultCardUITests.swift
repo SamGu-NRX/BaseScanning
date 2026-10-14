@@ -150,6 +150,7 @@ final class ResultCardUITests: XCTestCase {
         details.tap()
         let mark = element(app, "result.markNotUsed")
         XCTAssertTrue(mark.waitForExistence(timeout: 10), "the set-aside mark is missing under Details")
+        XCTAssertTrue(mark.label.contains("The window marked 12 ft left of the meter"), mark.label)
         XCTAssertTrue(mark.label.contains("so it was not used"), mark.label)
         scrollIntoView(mark, in: app)
         attach(app, name: "result-marksNotUsed")
