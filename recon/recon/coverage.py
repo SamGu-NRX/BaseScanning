@@ -99,10 +99,20 @@ def seen_by(
     return out
 
 
-def two_positions(saw: np.ndarray, centres: np.ndarray) -> np.ndarray:
-    far = (np.linalg.norm(centres[:, None] - centres[None], axis=-1) >= BASELINE_M).astype(
+def far_pairs(centres: np.ndarray) -> np.ndarray:
+    """(frames, frames) float32: 1 where two camera positions are at least BASELINE_M apart."""
+    return (np.linalg.norm(centres[:, None] - centres[None], axis=-1) >= BASELINE_M).astype(
         np.float32
     )
+
+
+def two_positions(
+    saw: np.ndarray, centres: np.ndarray, far: np.ndarray | None = None
+) -> np.ndarray:
+    """Per row of `saw` (N, frames), whether two frames at least BASELINE_M apart both saw it.
+    `far` is `far_pairs(centres)`, for a caller that asks many times about the same frames."""
+    if far is None:
+        far = far_pairs(centres)
     s = saw.astype(np.float32)
     return ((s @ far) * s).sum(axis=-1) > 0
 
@@ -119,6 +129,8 @@ class SeenFromTwo:
     def __init__(self, vol: Volume, frames: list[Frame], depths: dict[str, Depth]):
         self.vol, self.voxel = vol, vol.voxel
         self.centres = np.array([f.center for f in frames]).reshape(-1, 3)
+        # free_space asks once per slab, thousands of times, about the same frames.
+        self.far = far_pairs(self.centres)
         T = np.array([f.cam_to_world for f in frames]).reshape(-1, 4, 4)
         self.R, self.C = T[:, :3, :3], T[:, :3, 3]
         self.K = np.array([f.intrinsics for f in frames], float).reshape(-1, 4)
@@ -164,7 +176,7 @@ class SeenFromTwo:
         seen = self.vol.observed(points)
         if not seen.any():
             return seen
-        return seen & two_positions(self.seen_through(points), self.centres)
+        return seen & two_positions(self.seen_through(points), self.centres, self.far)
 
 
 def face_offsets(wall: WallFrame, mesh: Mesh, cells: np.ndarray) -> np.ndarray:
