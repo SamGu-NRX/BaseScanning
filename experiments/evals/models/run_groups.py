@@ -108,6 +108,12 @@ def main() -> None:
         "growing: the weights take 2.64 GB, and 2- and 4-view groups at 392 px fit under 3.8",
     )
     args = ap.parse_args()
+    # One model stays loaded across all groups, so serialize the whole output-root run.
+    with output_lock(args.out, wait=True):
+        run_scene(args)
+
+
+def run_scene(args) -> None:
     set_cache_dirs()
     groups = json.loads((args.scene_dir / "subsets.json").read_text())
     if args.sizes:

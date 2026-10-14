@@ -404,14 +404,17 @@ def test_staging_recovery_preserves_a_replaced_directory(tmp_path):
     assert json.loads(owner.read_text()) == record
 
 
-def test_concurrent_group_runs_infer_once(tmp_path):
+def test_concurrent_group_runs_load_once_across_multiple_groups(tmp_path):
     from models import run_groups
 
     (tmp_path / "images_1024").mkdir()
     (tmp_path / "images_1024/a.jpg").write_bytes(b"image")
+    (tmp_path / "images_1024/b.jpg").write_bytes(b"image b")
     (tmp_path / "model_inputs").mkdir()
-    (tmp_path / "model_inputs/intrinsics.json").write_text(json.dumps({"a": [1, 1, 0, 0]}))
-    (tmp_path / "subsets.json").write_text(json.dumps({"1": [["a"]]}))
+    (tmp_path / "model_inputs/intrinsics.json").write_text(
+        json.dumps({"a": [1, 1, 0, 0], "b": [1, 1, 0, 0]})
+    )
+    (tmp_path / "subsets.json").write_text(json.dumps({"1": [["a"], ["b"]]}))
     script = """
 import fcntl, sys, types
 from pathlib import Path
@@ -431,7 +434,7 @@ def load(device):
     return object()
 def infer(model, inputs):
     with (root / 'inferences.txt').open('a') as file:
-        file.write(role + '\\n')
+        file.write(role + ':' + inputs.images[0].stem + '\\n')
     return [types.SimpleNamespace(
         path=inputs.images[0], depth=np.ones((2, 2), np.float32),
         valid=np.ones((2, 2), bool), intrinsics=np.array([1., 1., 0., 0.]),
@@ -439,12 +442,15 @@ def infer(model, inputs):
         extra={'metric_scaling_factor': 1.})]
 run_groups.load = load
 run_groups.run = infer
-if role == 'second':
-    flock = fcntl.flock
-    def announce_wait(file, operation):
-        print('nonblocking' if operation & fcntl.LOCK_NB else 'waiting', flush=True)
-        return flock(file, operation)
-    fcntl.flock = announce_wait
+flock = fcntl.flock
+def announce_wait(file, operation):
+    if role == 'second':
+        print('root' if Path(file.name).name == '.outputs.runner.lock' else 'group', flush=True)
+    elif Path(file.name).name == '.n1-b.runner.lock':
+        print('next-group', flush=True)
+        sys.stdin.readline()
+    return flock(file, operation)
+fcntl.flock = announce_wait
 sys.argv = ['run_groups', '--scene-dir', str(root), '--out', str(root / 'outputs')]
 run_groups.main()
 """
@@ -470,25 +476,33 @@ run_groups.main()
         first = launch("first")
         assert await_line(first) == "loaded"
         second = launch("second")
-        lock_mode = await_line(second)
-        assert lock_mode in ("waiting", "nonblocking")
-        if lock_mode == "nonblocking":
-            # Make the old cache-check-only lock reproduce both misses before publication.
+        lock_scope = await_line(second)
+        assert lock_scope in ("root", "group")
+        first.stdin.write("\n")
+        first.stdin.flush()
+        assert await_line(first) == "next-group"
+        if lock_scope == "group":
+            assert await_line(second) == "group"
+            # Allow the old per-group design to overtake the first runner at group b.
             assert await_line(second) == "loaded"
+            _, errors = second.communicate(input="\n", timeout=10)
+            assert second.returncode == 0, errors
         _, errors = first.communicate(input="\n", timeout=10)
         assert first.returncode == 0, errors
-        _, errors = second.communicate(input="\n", timeout=10)
-        assert second.returncode == 0, errors
+        if lock_scope == "root":
+            _, errors = second.communicate(input="\n", timeout=10)
+            assert second.returncode == 0, errors
     finally:
         for process in processes:
             if process.poll() is None:
                 process.kill()
                 process.communicate(timeout=10)
-    assert (tmp_path / "inferences.txt").read_text().splitlines() == ["first"]
+    assert (tmp_path / "inferences.txt").read_text().splitlines() == ["first:a", "first:b"]
     assert (tmp_path / "loads.txt").read_text().splitlines() == ["first"]
-    group = tmp_path / "outputs/n1-a"
-    record = json.loads((group / "run.json").read_text())
-    assert run_groups.cached_group(group, record["fingerprint"], ["a"])
+    for member in ("a", "b"):
+        group = tmp_path / f"outputs/n1-{member}"
+        record = json.loads((group / "run.json").read_text())
+        assert run_groups.cached_group(group, record["fingerprint"], [member])
 
 
 def test_a_run_that_fails_midway_leaves_the_previous_run_intact(tmp_path, monkeypatch):

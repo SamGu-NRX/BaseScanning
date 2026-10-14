@@ -12,7 +12,7 @@ cleanup() {
     trap - EXIT HUP INT TERM
     if [ "$published" -eq 0 ] && [ -d "$stage/previous" ]; then
         if [ ! -e "$here/Fixtures" ] && [ ! -L "$here/Fixtures" ] && \
-            mv "$stage/previous" "$here/Fixtures"; then
+            python3 "$here/rename-fixtures.py" "$stage/previous" "$here/Fixtures"; then
             :
         else
             echo "Could not restore fixtures; backup preserved at $stage/previous" >&2
@@ -32,8 +32,8 @@ if [ ! -f "$stage/Fixtures/synthetic-wall-lidar/session.json" ]; then
     exit 1
 fi
 if [ -e "$here/Fixtures" ]; then
-    mv "$here/Fixtures" "$stage/previous"
+    python3 "$here/rename-fixtures.py" "$here/Fixtures" "$stage/previous"
 fi
-mv "$stage/Fixtures" "$here/Fixtures"
+python3 "$here/rename-fixtures.py" "$stage/Fixtures" "$here/Fixtures"
 published=1
 ls "$here/Fixtures"

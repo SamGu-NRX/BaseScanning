@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -24,6 +25,8 @@ def contents(folder):
         "missing-session",
         "move",
         "occupied",
+        "reappeared",
+        "reappeared-empty",
         "restore",
         "success",
     ],
@@ -31,6 +34,9 @@ def contents(folder):
 def test_failed_refresh_preserves_existing_fixtures(tmp_path, failure):
     script = tmp_path / "fetch-fixtures.sh"
     script.write_text(SCRIPT.read_text())
+    (tmp_path / "rename-fixtures.py").write_text(
+        SCRIPT.with_name("rename-fixtures.py").read_text()
+    )
     fixtures = tmp_path / "Fixtures"
     fixtures.mkdir()
     (fixtures / "old.json").write_text("working replay")
@@ -56,7 +62,7 @@ esac
 mkdir -p "$4/Fixtures"
 case "$FAILURE" in
 missing-session) echo unrelated > "$4/Fixtures/new.json" ;;
-success|move|occupied|restore)
+success|move|occupied|restore|reappeared|reappeared-empty)
     mkdir -p "$4/Fixtures/synthetic-wall-lidar"
     echo replacement > "$4/Fixtures/synthetic-wall-lidar/session.json"
     ;;
@@ -81,16 +87,35 @@ if [ "$FAILURE" = restore ] && [ "${1##*/}" = previous ]; then
     echo failed > "$TEST_ROOT/restore-failed"
     exit 1
 fi
+if [ "${1##*/}" = Fixtures ] && [ "$1" != "$TEST_ROOT/Fixtures" ]; then
+    case "$FAILURE" in
+    reappeared|reappeared-empty)
+        mkdir "$TEST_ROOT/Fixtures"
+        if [ "$FAILURE" = reappeared ]; then
+            echo concurrent > "$TEST_ROOT/Fixtures/other.json"
+        fi
+        ;;
+    esac
+fi
 exec /bin/mv "$@"
 """)
+    python = bin_dir / "python3"
+    python.write_text(
+        '#!/bin/sh\nhelper="$1"\nshift\n'
+        + mv.read_text()
+        .removeprefix("#!/bin/sh\n")
+        .replace('exec /bin/mv "$@"', 'exec "$TEST_PYTHON" "$helper" "$@"')
+    )
     git.chmod(0o755)
     tar.chmod(0o755)
     mv.chmod(0o755)
+    python.chmod(0o755)
     env = dict(
         os.environ,
         PATH=f"{bin_dir}:/usr/bin:/bin",
         TEST_ROOT=str(tmp_path),
         FAILURE=failure,
+        TEST_PYTHON=sys.executable,
     )
     result = subprocess.run(
         ["/bin/sh", str(script)], env=env, capture_output=True, text=True, check=False
@@ -101,17 +126,20 @@ exec /bin/mv "$@"
             fixtures / "synthetic-wall-lidar/session.json"
         ).read_text() == "replacement\n"
         assert not (fixtures / "old.json").exists()
-    elif failure in ("occupied", "restore"):
+    elif failure in ("occupied", "restore", "reappeared", "reappeared-empty"):
         assert result.returncode != 0
-        assert (tmp_path / "final-move-failed").read_text() == "failed\n"
+        if failure in ("occupied", "restore"):
+            assert (tmp_path / "final-move-failed").read_text() == "failed\n"
         stages = list(tmp_path.glob(".fixtures.*"))
         assert len(stages) == 1
         backup = stages[0] / "previous"
         assert contents(backup) == original
         assert f"backup preserved at {backup}" in result.stderr
-        if failure == "occupied":
+        if failure in ("occupied", "reappeared"):
             assert (fixtures / "other.json").read_text() == "concurrent\n"
             assert list(fixtures.iterdir()) == [fixtures / "other.json"]
+        elif failure == "reappeared-empty":
+            assert list(fixtures.iterdir()) == []
         else:
             assert (tmp_path / "restore-failed").read_text() == "failed\n"
             assert not fixtures.exists()
@@ -122,5 +150,5 @@ exec /bin/mv "$@"
             assert (tmp_path / "final-move-failed").read_text() == "failed\n"
         if failure == "missing-session":
             assert "lack synthetic-wall-lidar/session.json" in result.stderr
-    if failure not in ("occupied", "restore"):
+    if failure not in ("occupied", "restore", "reappeared", "reappeared-empty"):
         assert not list(tmp_path.glob(".fixtures.*"))
