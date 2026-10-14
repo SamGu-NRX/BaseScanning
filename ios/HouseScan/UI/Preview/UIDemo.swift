@@ -51,6 +51,7 @@ import SwiftUI
 ///   result model: `-uiDemoPhase result -uiDemoCorner`.
 /// - `-uiDemoAimCardTitles`: an isolated folded aim card, cycling ring, arrow and covered
 ///   titles for the same target. Exercises a nonempty reserve alongside a folded title.
+///   `-uiDemoAimSecondPositionToggle` also lets the test toggle second-position advice.
 /// - `-uiDemoSpotOffScreen`: with `-uiDemoPhase resultAR`, place the camera 10 m left so the
 ///   proposed spot needs an off-screen direction, including at accessibility text sizes.
 /// - `-uiDemoPhase spotConfirm`: the spot check before the result, on the made-up sample spot.
@@ -104,9 +105,11 @@ private struct FoldedAimCardDemo: View {
     }
 
     @State private var variant = Variant.ring
+    @State private var needsSecondPosition = false
+    private let showsPositionToggle = ProcessInfo.processInfo.arguments.contains("-uiDemoAimSecondPositionToggle")
 
     private var instruction: Instruction {
-        var copy = ScanCopy.guidance(.aimAtGround(s: 0.4), hint: GuidanceHint(aim: variant.hint))
+        var copy = ScanCopy.guidance(.aimAtGround(s: 0.4), hint: GuidanceHint(aim: variant.hint, needsSecondPosition: needsSecondPosition))
         copy.folded = Instruction.Folded(title: copy.title, detail: copy.detail ?? "")
         return copy
     }
@@ -129,6 +132,11 @@ private struct FoldedAimCardDemo: View {
             }
             .frame(minHeight: Metrics.minTarget)
             .accessibilityIdentifier("demo.nextAimTitle")
+            if showsPositionToggle {
+                Button("Change position advice") { needsSecondPosition.toggle() }
+                    .frame(minHeight: Metrics.minTarget)
+                    .accessibilityIdentifier("demo.toggleAimPosition")
+            }
             Spacer()
         }
         .padding(Metrics.edge)

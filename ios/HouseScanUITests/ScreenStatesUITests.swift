@@ -917,6 +917,29 @@ final class ScreenStatesUITests: XCTestCase {
         attach(app, name: "foldedAim-cardHeight-AX5")
     }
 
+    @MainActor
+    func testSecondPositionAdviceKeepsTheSameAimCardHeightAtAccessibilitySize() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoAimCardTitles", "-uiDemoAimSecondPositionToggle",
+                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
+        app.launch()
+        defer { app.terminate() }
+        let card = element(app, "demo.aimCard")
+        XCTAssertTrue(card.waitForExistence(timeout: 15))
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 5))
+        let height = card.frame.height
+        XCTAssertGreaterThan(height, 0)
+        for title in ["Now take one step to the side and look again", "Put the ring on the strip", "Now take one step to the side and look again"] {
+            tap(app, "demo.toggleAimPosition")
+            let instruction = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", title)).firstMatch
+            XCTAssertTrue(instruction.waitForExistence(timeout: 5), "missing position advice: \(title)")
+            XCTAssertEqual(card.frame.height, height, accuracy: 0.5, "same-target card moved for \(title)")
+        }
+        attach(app, name: "foldedAim-secondPosition-cardHeight-AX1")
+    }
+
     /// A new target closes Details even when it shares the old target's reserved titles or
     /// rounds to the same displayed distance. The notification advances the actual demo aim.
     @MainActor
@@ -1082,7 +1105,9 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertTrue(reply.isHittable, "the card's reply must be reachable without scrolling")
         let cardBottom = max(card.frame.maxY, details.frame.maxY, reply.frame.maxY)
         let openCamera = CGRect(x: window.minX, y: cardBottom, width: window.width, height: mark.frame.minY - cardBottom)
-        XCTAssertGreaterThanOrEqual(openCamera.height, 150, "the camera must stay open between the card and the actions: \(openCamera)")
+        let visibleCamera = openCamera.intersection(window)
+        print("AX5 aim: cardBottom=\(cardBottom), openCamera=\(openCamera), visibleCamera=\(visibleCamera)")
+        XCTAssertGreaterThanOrEqual(visibleCamera.height, 150, "the camera must stay visibly open between the card and the actions: \(visibleCamera)")
 
         let ring = element(app, "aim.ring")
         let arrow = element(app, "aim.arrow")

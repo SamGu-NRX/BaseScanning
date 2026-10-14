@@ -139,10 +139,14 @@ enum ScanCopy {
     /// the side is the whole instruction (#77). Too close, "step back" joins the same card
     /// instead of replacing it with another (#77).
     private static func aim(_ base: Instruction, ground: Bool, hint: GuidanceHint?) -> Instruction {
-        guard let hint else { return base }
         var copy = base
+        // The same target can gain or lose its second-position advice without moving the card.
+        copy.titleReserve = ground
+            ? [base.title, aimTiltUp, aimRingOnStrip, aimSecondPosition]
+            : [base.title, aimTiltDown, aimSecondPosition]
+        guard let hint else { return copy }
         if hint.needsSecondPosition {
-            copy.title = "Now take one step to the side and look again"
+            copy.title = aimSecondPosition
         } else {
             switch hint.aim {
             case .above? where ground:
@@ -154,8 +158,6 @@ enum ScanCopy {
             default:
                 break
             }
-            // Every title the direction can swap this one to.
-            copy.titleReserve = ground ? [base.title, aimTiltUp, aimRingOnStrip] : [base.title, aimTiltDown]
         }
         if hint.stepBack {
             copy.detail = [copy.detail, "Step back a little."].compactMap { $0 }.joined(separator: " ")
@@ -163,6 +165,7 @@ enum ScanCopy {
         return copy
     }
 
+    private static let aimSecondPosition = "Now take one step to the side and look again"
     private static let aimTiltUp = "Tilt up a little"
     private static let aimTiltDown = "Tilt down a little"
     private static let aimRingOnStrip = "Put the ring on the strip"
