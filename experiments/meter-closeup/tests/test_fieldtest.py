@@ -66,9 +66,9 @@ def test_the_orientation_tag_is_applied(tmp_path):
         ("1234567", "12345678", "no", None),
         ("1234567", "91234567", "no", None),
         ("1234567", "No. 123 4567", "yes", 1),
-        ("1234567", "1234567 240 V", "yes", None),
-        ("1234567", "123 4567 240 V", "yes", None),
-        ("1234567", "1234567 8", "yes", None),
+        ("1234567", "1234567 240 V", "yes", 1),
+        ("1234567", "123 4567 240 V", "yes", 1),
+        ("1234567", "1234567 8", "no", None),
         ("1234567", "123 4567", "yes", 1),
         ("1234567", "1234567", "yes", 1),
         ("123ABC456789", "123ABC456789", "yes", 1),
@@ -158,7 +158,8 @@ def test_read_number_matches_joined_target_groups(text, target, expected):
 )
 @pytest.mark.parametrize("suffix", ["", ".", ":", "#"])
 def test_read_target_strips_only_recognised_label_words(label, suffix):
-    from meter_eval.fieldtest import read_target, reads_number
+    from meter_eval.fieldtest import reads_number
+    from meter_eval.match import read_target
 
     target = f" ({label.swapcase()}{suffix}) AB-12345 "
     assert read_target(target) == "ab12345"
@@ -169,6 +170,6 @@ def test_read_target_strips_only_recognised_label_words(label, suffix):
 
 @pytest.mark.parametrize("serial", ["ABC1234567", "NO1234567", "SN1234567", "METER1234567"])
 def test_read_target_preserves_serial_letters_without_a_label_boundary(serial):
-    from meter_eval.fieldtest import read_target
+    from meter_eval.match import read_target
 
     assert read_target(serial) == serial.casefold()

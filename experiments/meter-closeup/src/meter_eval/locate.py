@@ -19,7 +19,7 @@ import csv
 import json
 import re
 
-from meter_eval.match import KEYWORD, digest, number_core, number_read
+from meter_eval.match import KEYWORD, digest, match_serial, number_core
 from meter_eval.ocr import Reader
 from meter_eval.paths import DATA_DIR, MANIFEST, RESULTS_DIR
 from meter_eval.stats import share
@@ -73,44 +73,26 @@ def payload_tokens(barcodes: list[dict]) -> set[str]:
     return parts
 
 
-def candidates(result: dict) -> list[dict]:
-    """Every candidate with the features the rules use.
-
-    A text token that equals a barcode payload part is confirmed. One that sits inside a
-    longer payload part (at least 6 characters) is a partial read of it, as when Vision drops
-    a digit or a prefix printed apart; the candidate then takes the payload's full string. If
-    two payloads of the same length both contain it, the read is ambiguous and not promoted.
-    """
+def candidates(
+    result: dict, target: str | None = None, *, target_digest: str | None = None
+) -> list[dict]:
+    """Admissible OCR candidates under the shared serial contract, with ranking features."""
     payloads = payload_tokens(result.get("barcodes") or [])
-    found = []
-    for line in result["lines"]:
-        text = line["text"]
-        _, _, w, h = line["box"]
-        for token in tokens(text):
-            token_core = number_core(token)
-            confirmed = token_core in payloads
-            if not confirmed and len(token_core) >= 6:
-                longer = [p for p in payloads if token_core in p]
-                shortest = min((len(p) for p in longer), default=0)
-                closest = [p for p in longer if len(p) == shortest]
-                # Promote only when one payload is the closest match; a tie is ambiguous.
-                if len(closest) == 1:
-                    token_core, confirmed = closest[0], True
-            found.append(
-                {
-                    "core": token_core,
-                    "box": line["box"],
-                    "barcode_confirmed": confirmed,
-                    "keyword": bool(KEYWORD.match(text))
-                    and not re.match(r"\s*CAT", text, re.IGNORECASE),
-                    "alone": number_core(KEYWORD.sub("", text)) == token_core,
-                    "spec": bool(SPEC.search(text)),
-                    "vertical": h > w,
-                    "zeros": set(token_core) <= {"0"},
-                    "length_ok": 6 <= len(token_core) <= 14 and digits(token_core) >= 5,
-                    "height": h,
-                }
-            )
+    found = match_serial(result["lines"], target, target_digest=target_digest)
+    for candidate in found:
+        token = candidate["core"]
+        _, _, width, height = candidate["box"]
+        candidate.update(
+            {
+                "barcode_confirmed": token in payloads,
+                "alone": len(found) == 1,
+                "spec": bool(SPEC.search(candidate["text"])),
+                "vertical": height > width,
+                "zeros": set(token) <= {"0"},
+                "length_ok": 6 <= len(token) <= 14 and digits(token) >= 5,
+                "height": height,
+            }
+        )
     return found
 
 
@@ -144,14 +126,14 @@ def score(c: dict) -> float:
     )
 
 
-def top_candidate(result: dict) -> dict | None:
-    """The phone's best guess at the number's line: the highest-scoring candidate."""
-    return best(candidates(result))
+def top_candidate(result: dict, target: str | None = None) -> dict | None:
+    """Best admissible candidate, with an exact supplied target first."""
+    return best(candidates(result, target))
 
 
 def ranked(found: list[dict]) -> list[str]:
     """Candidate cores, best first, each core once."""
-    order = sorted(found, key=score, reverse=True)
+    order = sorted(found, key=lambda c: (c.get("matches_target", False), score(c)), reverse=True)
     return list(dict.fromkeys(c["core"] for c in order))
 
 
@@ -160,7 +142,7 @@ def tallest(pool: list[dict]) -> dict | None:
 
 
 def best(pool: list[dict]) -> dict | None:
-    return max(pool, key=score, default=None)
+    return max(pool, key=lambda c: (c.get("matches_target", False), score(c)), default=None)
 
 
 def rules(found: list[dict], barcodes: list[dict]) -> dict[str, dict | None]:
@@ -242,11 +224,9 @@ def evaluate(row: dict, result: dict, split: str) -> dict:
     out |= barcode_stats(row, result)
     if row["number_agreed"] != "yes":
         return out
-    out["read"] = int(
-        number_read(result["lines"], row["number_hmac"], int(row["number_len"]), lenient=False)
-    )
-    found = candidates(result)
     target = row["number_core_hmac"]
+    found = candidates(result, target_digest=target)
+    out["read"] = int(any(candidate["matches_target"] for candidate in found))
     order = ranked(found)
     hits = [i for i, c in enumerate(order) if digest(c) == target]
     out["rank"] = hits[0] + 1 if hits else ""

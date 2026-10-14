@@ -51,14 +51,14 @@ def test_barcode_equal_to_a_text_token_confirms_it():
     assert only["barcode_confirmed"] and only["core"] == "123ABC456789"
 
 
-def test_partial_text_read_takes_the_barcodes_full_string():
+def test_partial_text_read_is_not_promoted_to_an_unread_barcode():
     # Vision dropped the leading 1; the QR payload has the whole number.
     result = {
         "lines": [line("2345678")],
         "barcodes": [{"payload": "X0YZ01234567;12345678", "box": [0.8, 0.3, 0.1, 0.05]}],
     }
     [only] = candidates(result)
-    assert only["core"] == "12345678" and only["barcode_confirmed"]
+    assert only["core"] == "2345678" and not only["barcode_confirmed"]
 
 
 def test_short_token_inside_a_payload_is_not_confirmed():
@@ -132,7 +132,7 @@ def test_a_tie_between_two_payloads_is_not_promoted():
     assert only["core"] == "2345678" and not only["barcode_confirmed"]
 
 
-def test_a_single_closest_payload_is_still_promoted():
+def test_a_single_closest_payload_does_not_override_the_ocr_contract():
     result = {
         "lines": [line("2345678")],
         "barcodes": [
@@ -141,7 +141,7 @@ def test_a_single_closest_payload_is_still_promoted():
         ],
     }
     [only] = candidates(result)
-    assert only["core"] == "12345678" and only["barcode_confirmed"]
+    assert only["core"] == "2345678" and not only["barcode_confirmed"]
 
 
 def test_scan_creates_its_output_directory(tmp_path, monkeypatch):

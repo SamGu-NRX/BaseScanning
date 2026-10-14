@@ -15,6 +15,7 @@ import re
 from collections.abc import Sequence
 
 from meter_eval.paths import KEY_PATH
+from meter_eval.quality import union_box
 
 # Lenient mode maps letters Vision commonly returns for digits. Applied to both the label and
 # the output, so it can only add matches.
@@ -54,6 +55,115 @@ def read_target(text: str) -> str:
 
 def number_core(text: str) -> str:
     return read_target(text).upper()
+
+
+# Ratings are boundaries, never serial groups: plate units and class/form prefixes.
+SERIAL_RATINGS = {
+    "units": (
+        "V",
+        "VAC",
+        "A",
+        "AMP",
+        "AMPS",
+        "HZ",
+        "W",
+        "KW",
+        "KWH",
+        "VA",
+        "KH",
+        "TA",
+        "PH",
+        "WIRE",
+    ),
+    "classes": ("CL", "FM", "2S", "3W"),
+}
+
+
+def match_serial(
+    lines: Sequence[dict], target: str | None = None, *, target_digest: str | None = None
+) -> list[dict]:
+    """Admissible row candidates, exact target matches first, with source and union boxes.
+
+    Labels and ratings split runs. Numeric neighbours disallow a partial number;
+    alphabetic neighbours permit a serial inside surrounding printed words.
+    """
+    rows = []
+    for line in sorted(lines, key=lambda item: item["box"][1]):
+        _, y, _, h = line["box"]
+        for row in rows:
+            _, ry, _, rh = row[0]["box"]
+            if min(y + h, ry + rh) - max(y, ry) >= 0.5 * min(h, rh):
+                row.append(line)
+                break
+        else:
+            rows.append([line])
+    wanted = number_core(target) if target is not None else None
+    found = []
+    label_groups = [
+        tuple(re.findall(r"N°|№|#|[A-Z0-9]+", label.upper())) for label in NUMBER_LABELS
+    ]
+    units = set(SERIAL_RATINGS["units"])
+    classes = set(SERIAL_RATINGS["classes"])
+    for row in rows:
+        groups = [
+            (token.group(), piece["box"])
+            for piece in sorted(row, key=lambda p: p["box"][0])
+            for token in re.finditer(r"N°|№|#|[A-Z0-9]+", piece["text"].upper())
+        ]
+        words = [word for word, _ in groups]
+        kinds = ["numeric" if word.isdigit() else "text" for word in words]
+        i = 0
+        while i < len(words):
+            label = next(
+                (parts for parts in label_groups if tuple(words[i : i + len(parts)]) == parts), None
+            )
+            if label:
+                kinds[i : i + len(label)] = ["boundary"] * len(label)
+                i += len(label)
+            else:
+                i += 1
+        label_positions = {i for i, kind in enumerate(kinds) if kind == "boundary"}
+        for i, word in enumerate(words):
+            if kinds[i] == "boundary":
+                continue
+            attached = re.fullmatch(r"([0-9]+)([A-Z]+)", word)
+            if (
+                word in units
+                or word in classes
+                or re.fullmatch(r"CL[0-9]+", word)
+                or (attached and attached[2] in units)
+            ):
+                kinds[i] = "boundary"
+                if word in units and i and kinds[i - 1] == "numeric":
+                    kinds[i - 1] = "boundary"
+                if word in ("CL", "FM") and i + 1 < len(words) and kinds[i + 1] == "numeric":
+                    kinds[i + 1] = "boundary"
+        for start in range(len(words)):
+            if kinds[start] == "boundary" or (start and kinds[start - 1] == "numeric"):
+                continue
+            joined = ""
+            boxes = []
+            for end in range(start, len(words)):
+                if kinds[end] == "boundary":
+                    break
+                joined += words[end]
+                if groups[end][1] not in boxes:
+                    boxes.append(groups[end][1])
+                if end + 1 < len(words) and kinds[end + 1] == "numeric":
+                    continue
+                found.append(
+                    {
+                        "core": joined,
+                        "boxes": boxes.copy(),
+                        "box": union_box(boxes),
+                        "keyword": any(i < start for i in label_positions),
+                        "text": " ".join(piece["text"] for piece in row),
+                        "matches_target": joined == wanted
+                        if wanted is not None
+                        else target_digest is not None and digest(joined) == target_digest,
+                    }
+                )
+    return sorted(found, key=lambda candidate: candidate["matches_target"], reverse=True)
 
 
 def normalize(text: str) -> str:

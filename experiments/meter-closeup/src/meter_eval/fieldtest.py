@@ -3,15 +3,15 @@
     uv run python -m meter_eval.fieldtest PHOTO_DIR --number "12 345 678"
 
 For each photo: whether Vision read the number, where the number-finding ranking put it, the
-checks the app would run, and whether they would have asked for a retake. As in the app, the
-checks use the ranking's top candidate, not the true number; --number only scores the
-outcome. The summary counts the two costly outcomes: a retake asked for a photo that read (a
+retake check values and whether they would ask for a retake. The checks use the contract
+ranking's top candidate, putting an exact --number match first when present. This is an
+evaluation ordering, not a prediction of the app's selection. The summary counts a retake
+asked for a photo that read (a
 wasted retake) and a photo accepted that did not read (a re-request later). The meter number
 is taken from the command line and is never written to disk.
 """
 
 import argparse
-import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -20,29 +20,16 @@ from PIL import Image, ImageOps
 
 from meter_eval import retake
 from meter_eval.locate import candidates, ranked, top_candidate
-from meter_eval.match import normalize, number_core, read_target, rows_of_text
+from meter_eval.match import match_serial, normalize, number_core
 from meter_eval.ocr import Reader
 from meter_eval.quality import gray
 
 SUFFIXES = {".jpg", ".jpeg", ".png", ".heic"}
 
 
-def reads_number(text: str, target: str) -> bool:
-    # OCR cannot distinguish a trailing group from a separate field, so any
-    # contiguous sequence of alphanumeric groups can count as a read.
-    target = read_target(target)
-    if not target:
-        return False
-    groups = re.findall(r"[^\W_]+", text.casefold())
-    for start in range(len(groups)):
-        joined = ""
-        for group in groups[start:]:
-            joined += group
-            if joined == target:
-                return True
-            if len(joined) >= len(target):
-                break
-    return False
+def reads_number(text: str | list[dict], target: str) -> bool:
+    lines = [{"text": text, "box": [0, 0, 1, 1]}] if isinstance(text, str) else text
+    return any(candidate["matches_target"] for candidate in match_serial(lines, target))
 
 
 def upright_pixels(photo: Path, scratch: Path) -> Image.Image:
@@ -98,10 +85,10 @@ def main() -> None:
             image.save(upright)
             g = gray(image)
             result = reader.read(upright, barcodes=True)
-            read = any(reads_number(text, args.number) for text, _ in rows_of_text(result["lines"]))
-            order = ranked(candidates(result))
+            read = reads_number(result["lines"], args.number)
+            order = ranked(candidates(result, args.number))
             rank = next((i + 1 for i, c in enumerate(order) if c == target_core), None)
-            guess = top_candidate(result)
+            guess = top_candidate(result, args.number)
             box = guess and guess["box"]
             why = retake.reasons(g, box)
             wasted += read and bool(why)

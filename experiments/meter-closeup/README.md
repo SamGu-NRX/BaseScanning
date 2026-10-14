@@ -16,7 +16,8 @@
 - The labels come from two AI readers, not people.
 
 These figures use the earlier matcher that discarded arbitrary leading serial letters. The current
-ranking and read scorer remove only recognised printed labels. Rebuild the private number-core
+ranking and read scorer share a row matcher: labels and ratings are boundaries, adjacent
+numeric groups cannot be omitted, and an admissible exact target match ranks first. Rebuild the private number-core
 labels and rerun the ranking evaluation before attributing those figures to the current code;
 that dataset rerun has not been performed.
 
