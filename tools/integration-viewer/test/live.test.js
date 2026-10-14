@@ -508,3 +508,34 @@ test("a same-run file switch cannot misattribute the next file's preview delay",
     await new Promise((resolve) => upstream.close(resolve));
   }
 });
+
+test("a forced refresh answered by a retired-run replica returns to normal polling", async () => {
+  const statusAt = [];
+  let clock = 0;
+  let state = reduce(initialState(), { type: "select", mode: "live", source: { key: "s", kind: "synthetic" }, captureId: "cap_STALE_REPLICA" });
+  state = reduce(state, { type: "status", session: state.session, body: { runId: "run_retired", status: "processing" } });
+  state = reduce(state, { type: "status", session: state.session, body: { runId: "run_s", status: "processing" } });
+  const fetchImpl = (path) => {
+    if (path.endsWith("/healthz")) return stubJson({ status: "ok" });
+    if (path.includes("/events")) {
+      const after = Number(new URL(path, "http://x").searchParams.get("after"));
+      return stubJson({ status: "processing", next: 1, events: after === 0
+        ? [{ seq: 1, type: "stage", data: { runId: "run_unknown", stage: "reconstruct", status: "running" } }] : [] });
+    }
+    if (path.endsWith("/result")) return stubResult();
+    statusAt.push(clock);
+    return stubJson({ runId: "run_retired", status: "failed", filesRegistered: 999 });
+  };
+  const follower = followCapture({
+    sourceKey: "s", captureId: "cap_STALE_REPLICA", session: state.session,
+    dispatch: (a) => { state = reduce(state, a); }, getState: () => state, fetchImpl, now: () => clock,
+    sleep: (ms) => new Promise((resolve) => { clock += ms; setTimeout(resolve, 1); }), online: () => true,
+  });
+  try {
+    await until(() => statusAt.length >= 5);
+    assert.equal(state.statusRefreshWanted, false);
+    assert.equal(state.currentRunId, "run_s");
+    assert.equal(state.counts.registered, null);
+    assert.deepEqual(statusAt.slice(0, 5), [0, 0, 5_000, 10_000, 15_000]);
+  } finally { follower.stop(); await follower.done; }
+});

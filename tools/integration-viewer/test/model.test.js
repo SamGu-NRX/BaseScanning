@@ -349,6 +349,10 @@ describe("run identity: the status names the run shown", () => {
     assert.equal(s.currentRunId, "run_b");
     assert.equal(s.result.phase, "ready");
     assert.equal(s, current, "no retired-run status fields are applied");
+    const forced = run(current, events([runEvent(2, "run_unknown", "retake_request")], 2));
+    assert.equal(forced.statusRefreshWanted, true);
+    const refreshed = run(forced, { type: "status", body: { runId: "run_a", status: "failed", filesRegistered: 99 } });
+    assert.deepEqual(refreshed, { ...forced, statusRefreshWanted: false }, "the completed refresh clears only the request flag");
   });
 
   test("a result without a nonempty run identity is deferred", () => {

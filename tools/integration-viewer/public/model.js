@@ -157,7 +157,10 @@ function select(state, action) {
 
 function applyStatus(state, body) {
   if (!isObject(body) || (body.captureId && body.captureId !== state.captureId)) return state;
-  if (typeof body.runId === "string" && state.retiredRuns.has(body.runId)) return state;
+  if (typeof body.runId === "string" && state.retiredRuns.has(body.runId)) {
+    // The requested refresh completed, even though this replica still names an old run.
+    return state.statusRefreshWanted ? { ...state, statusRefreshWanted: false } : state;
+  }
   const next = {
     ...state,
     status: typeof body.status === "string" ? body.status : state.status,
