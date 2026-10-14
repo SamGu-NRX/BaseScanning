@@ -1502,13 +1502,14 @@ def test_ground_trimming_keeps_omitted_reach_at_zero():
     assert trimmed["coverage"]["observed"][0]["out_ft"] == 0
 
 
-def test_geometric_assumptions_compare_active_rules():
-    rules = replace(RULES, corner_allowance_ft=0.5)
-    assert (
-        len(assumption_mismatches({"battery_width": 100, "corner_allowance": 100}, {}, rules)) == 2
+def test_geometric_assumptions_compare_reported_rules():
+    answer = result()
+    answer["checks"].append(
+        {"id": "route_corner", "threshold_ft": 0.5, "rule": {"key": "route.corner_allowance_ft"}}
     )
+    assert len(assumption_mismatches({"battery_width": 100, "corner_allowance": 100}, answer)) == 2
     assert (
-        assumption_mismatches({"battery_width": rules.width_ft, "corner_allowance": 0.5}, {}, rules)
+        assumption_mismatches({"battery_width": RULES.width_ft, "corner_allowance": 0.5}, answer)
         == []
     )
 

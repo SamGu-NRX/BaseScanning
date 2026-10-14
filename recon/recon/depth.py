@@ -217,6 +217,8 @@ def _moge_locked(capture: Capture, work: Path) -> dict[str, Depth]:
                 KeyError,
                 EOFError,
                 TypeError,
+                # A damaged ZIP encryption flag makes NumPy request a password.
+                RuntimeError,
                 # ZIP corruption can name an unsupported compression method.
                 NotImplementedError,
                 zipfile.BadZipFile,

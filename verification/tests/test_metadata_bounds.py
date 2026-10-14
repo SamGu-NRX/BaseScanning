@@ -110,6 +110,11 @@ def test_named_result_caps_allow_schema_valid_responses(field):
         (Path(__file__).parents[2] / "server/schemas/result.schema.json").read_text()
     )
     assert checks.schema_errors(answer, schema) == []
+    if field == "sweep":
+        answer["spot"] = answer["route"] = None
+        answer["decision"] = "reject"
+    elif field == "missing_evidence":
+        answer["decision"] = "manual_review"
     rules = checks.RuleSet.from_yaml((Path(__file__).parents[2] / "server/rules.yaml").read_text())
     assert checks.invariant_problems(fixture["scene"], answer, rules=rules) == []
 

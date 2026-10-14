@@ -74,6 +74,8 @@ from hsverify.resultcheck import (
     mirror_scene,
     more_error_problems,
     outcome_lengths,
+    public_assumption_warnings,
+    reported_rules,
     schema_errors,
     tape_to_tap,
     unobserved_checks,
@@ -517,7 +519,7 @@ def judge(
         failure = [
             f"HTTP {status} for a scene that validates: {payload[:500]!r}"
             if status is not None
-            else f"no answer within 60 s: {payload[:200]!r}"
+            else payload.decode(errors="replace")[:200]
         ]
         return record | {"status": "fail", "problems": failure, "contract_problems": failure}
     result = parse_result(payload)
@@ -552,29 +554,53 @@ def judge(
         lambda: geometry_admission_problems(item.scene, result, rules, meter=meter),
     )
     admitted = not contract
+    mismatches: list[str] = []
+    warnings: list[str] = []
+    active_rules = rules
+    expected: list[str] = []
+    if admitted:
+
+        def check_reported_rules() -> list[str]:
+            nonlocal active_rules
+            mismatches.extend(assumption_mismatches(item.rules_assumed, result))
+            warnings.extend(public_assumption_warnings(item.rules_assumed, result, rules))
+            active_rules = reported_rules(result, rules)
+            return []
+
+        contract += check("reported rules", check_reported_rules)
+        admitted = not contract
+    if warnings:
+        record["rule_checks_unverified"] = True
     if admitted:
         contract += check(
             "invariants",
-            lambda: invariant_problems(item.scene, result, sent=item.raw, rules=rules, meter=meter),
+            lambda: invariant_problems(
+                item.scene,
+                result,
+                sent=item.raw,
+                rules=None if warnings else active_rules,
+                meter=meter,
+            ),
         )
     if not contract:
         contract += check(
             "properties",
-            lambda: property_problems(url, endpoint, item, result, schemas, rules, meter=meter),
+            lambda: property_problems(
+                url,
+                endpoint,
+                item,
+                result,
+                schemas,
+                active_rules,
+                meter=meter,
+                rule_checks=not warnings,
+            ),
         )
     if item.real and ms > LATENCY_BUDGET_MS:
         contract.append(f"real-derived scene took {ms:.0f} ms, budget {LATENCY_BUDGET_MS:.0f}")
-    mismatches: list[str] = []
-    expected: list[str] = []
     exhausted = any(p.startswith("verification work limit exceeded (") for p in contract)
     if admitted and not exhausted:
-
-        def check_assumptions() -> list[str]:
-            mismatches.extend(assumption_mismatches(item.rules_assumed, result, rules))
-            return []
-
-        contract += check("assumptions", check_assumptions)
-        if item.expect and not mismatches:
+        if item.expect and not mismatches and not warnings:
             expected = check(
                 "expectations", lambda: expectation_problems(item.expect, result, meter=meter)
             )
@@ -588,12 +614,20 @@ def judge(
         record["decision"] = result["decision"]
     if mismatches:
         record["assumption_mismatches"] = mismatches
+    if warnings:
+        record["assumption_warnings"] = warnings
     record["verification_samples"] = meter.samples
     record["contract_problems"] = contract
     record["expectation_problems"] = expected
     record["problems"] = contract + expected
     record["status"] = (
-        "fail" if record["problems"] else "assumption mismatch" if mismatches else "pass"
+        "fail"
+        if record["problems"]
+        else "assumption mismatch"
+        if mismatches
+        else "assumptions unverified"
+        if warnings
+        else "pass"
     )
     return record
 
@@ -639,8 +673,9 @@ def property_problems(
                 problems.extend(f"{name}: {p}" for p in admission)
                 return None
             check_name = "invariants"
+            variant_rules = reported_rules(other, rules) if rule_checks else None
             invariants = invariant_problems(
-                scene, other, sent=transformed.raw, rules=checked_rules, meter=meter
+                scene, other, sent=transformed.raw, rules=variant_rules, meter=meter
             )
             if invariants:
                 problems.extend(f"{name}: {p}" for p in invariants)
@@ -876,7 +911,12 @@ def write_report(out: Path, meta: dict, records: list[dict]) -> dict:
     contract_problems = sum(len(r.get("contract_problems", [])) for r in records)
     killed = bool(meta["peak_memory"].get("server_killed"))
     all_passed = all(r["status"] == "pass" for r in records) and bool(checked) and not killed
-    contract_ok = bool(checked) and contract_problems == 0 and not killed
+    contract_ok = (
+        bool(checked)
+        and contract_problems == 0
+        and not killed
+        and not any(r.get("rule_checks_unverified") for r in checked)
+    )
     executed = sorted(
         {r["name"] for r in records if r.get("hostile") and r.get("hostile_probe_executed") is True}
     )
@@ -935,7 +975,11 @@ def write_report(out: Path, meta: dict, records: list[dict]) -> dict:
         "| --- | --- | --- | --- | --- |",
     ]
     for r in records:
-        issues = "; ".join(r.get("problems", []) + r.get("assumption_mismatches", []))
+        issues = "; ".join(
+            r.get("problems", [])
+            + r.get("assumption_mismatches", [])
+            + r.get("assumption_warnings", [])
+        )
         issues = issues or r.get("skip_reason", "")
         lines.append(
             f"| {r['name']}{' (real)' if r.get('real') else ''} | {r['status']} | "
@@ -1054,7 +1098,16 @@ def main(argv: list[str] | None = None) -> int:
     }
     report = write_report(out, meta, records)
     print(f"Report: {out / 'report.md'}")
-    return 0 if report["all_passed"] else 1
+    if report["all_passed"]:
+        return 0
+    # An unreported override is incomplete evidence, not a proven server failure.
+    if (
+        not meta["peak_memory"].get("server_killed")
+        and all(r["status"] in ("pass", "assumptions unverified") for r in records)
+        and any(r["status"] == "assumptions unverified" for r in records)
+    ):
+        return 2
+    return 1
 
 
 if __name__ == "__main__":

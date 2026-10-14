@@ -206,6 +206,18 @@ def unsupported_compression_npz() -> bytes:
     return bytes(raw)
 
 
+def encrypted_flag_npz() -> bytes:
+    archive = io.BytesIO()
+    np.savez(archive, depth=np.ones((2, 2), np.float32))
+    raw = bytearray(archive.getvalue())
+    central = raw.index(b"PK\x01\x02")
+    # Corrupt only the directory's encryption bit. zipfile uses that bit when
+    # NumPy reads depth.npy, so a normal cache read now asks for a password.
+    flags = struct.unpack_from("<H", raw, central + 8)[0]
+    struct.pack_into("<H", raw, central + 8, flags | 1)
+    return bytes(raw)
+
+
 @pytest.mark.parametrize(
     "bad",
     [
@@ -213,8 +225,15 @@ def unsupported_compression_npz() -> bytes:
         b"not an npz",
         corrupt_compressed_npz(),
         unsupported_compression_npz(),
+        encrypted_flag_npz(),
     ],
-    ids=["truncated_zip", "not_npz", "damaged_deflate", "unsupported_compression"],
+    ids=[
+        "truncated_zip",
+        "not_npz",
+        "damaged_deflate",
+        "unsupported_compression",
+        "encrypted_flag",
+    ],
 )
 def test_corrupt_moge_cache_is_recomputed(tmp_path, monkeypatch, bad):
     capture = _capture_named_scan(tmp_path, 10)
