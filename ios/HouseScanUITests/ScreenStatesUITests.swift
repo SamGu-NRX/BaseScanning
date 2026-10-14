@@ -786,10 +786,11 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertEqual(near.detailsTop, away.detailsTop, accuracy: 0.5, "the aim card's height changed with its title: \(near) vs \(away)")
 
         // Stationary at the card's edge, with Details open: the card is at its tallest and the
-        // open camera at its shortest. Sampled for 4 s, nothing may change. 20 s after launch the
-        // engine's direction turns from above to left (`-uiDemoAimHintLater`), so the title
-        // swaps from "Tilt up a little" to the step's own, both reserved: Details must stay open
-        // and the card must not move (2d67632).
+        // open camera at its shortest. Sampled for 4 s, nothing may change. Then the test tells
+        // the demo to turn the engine's direction from above to left (`-uiDemoAimHintLater`, by
+        // Darwin notification), so the title swaps from "Tilt up a little" to the step's own,
+        // both reserved: Details must stay open and the card must not move (2d67632). The test
+        // sends it only after reading the card as it was, so no timer can outrun it.
         app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAim",
                                "-uiDemoAimHint", "above", "-uiDemoAimHintLater", "left"] + Self.largestText
         app.launch()
@@ -815,9 +816,13 @@ final class ScreenStatesUITests: XCTestCase {
         let held = sample()
         XCTAssertTrue(held.line.contains("Details open true"), "Details closed by itself: \(held)")
 
+        // `DemoEngine.aimHintNotification`.
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("dev.housescanning.uiDemo.aimHintLater" as CFString),
+            nil, nil, true)
         let swapped = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier == 'instruction' AND label != %@", held.title)).firstMatch
-        XCTAssertTrue(swapped.waitForExistence(timeout: 25), "the engine's new direction never reached the card")
+        XCTAssertTrue(swapped.waitForExistence(timeout: 10), "the engine's new direction never reached the card")
         Thread.sleep(forTimeInterval: 1)
         var after: [String] = []
         for _ in 0..<5 {

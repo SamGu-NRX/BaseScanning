@@ -201,13 +201,17 @@ final class DemoEngine: ScanActions {
             // The engine's direction to the target, which can disagree with what the overlay
             // draws near the card or an edge (review of #120): the card must follow the drawing.
             if let hint = value("-uiDemoAimHint").flatMap(Self.aimDirection) { state.guidanceHint = GuidanceHint(aim: hint) }
-            // The engine's direction changing once, `aimHintDelay` after launch, frozen or not:
-            // the card's title then swaps between titles it reserved room for (review of #241).
+            // The engine's direction changing once, when a UI test says so: the card's title then
+            // swaps between titles it reserved room for (review of #241). The test sends
+            // `aimHintNotification` once it has read the card as it was; a timer from launch
+            // raced the test on a slow simulator.
             if let later = value("-uiDemoAimHintLater").flatMap(Self.aimDirection) {
-                Task { [weak self] in
-                    try? await Task.sleep(for: Self.aimHintDelay)
-                    self?.state.guidanceHint?.aim = later
-                }
+                laterAimHint = later
+                Self.listeningForAimHint = self
+                CFNotificationCenterAddObserver(
+                    CFNotificationCenterGetDarwinNotifyCenter(), nil,
+                    { _, _, _, _, _ in Task { @MainActor in DemoEngine.listeningForAimHint?.applyLaterAimHint() } },
+                    Self.aimHintNotification as CFString, nil, .deliverImmediately)
             }
         }
         if arguments.contains("-uiDemoCorner") {
@@ -395,13 +399,18 @@ final class DemoEngine: ScanActions {
         run { engine in await engine.walkScript() }
     }
 
-    /// `-uiDemoAim`: the ground lags the wall right of the meter, so the walk asks to tilt down
-    /// there, and the ring is half full: 2 of the 5 ground cells within 0.3 m of it are covered,
-    /// and 80 % completes it. `-uiDemoAimOffScreen`: the same ask for ground left of the view, so
-    /// the edge arrow stands in for the ring.
-    /// When `-uiDemoAimHintLater` changes the engine's direction: long enough for a UI test to
-    /// open Details and see the card hold still first.
-    static let aimHintDelay: Duration = .seconds(20)
+    /// The Darwin notification a UI test posts for `-uiDemoAimHintLater`. ScreenStatesUITests
+    /// sends the same name.
+    static let aimHintNotification = "dev.housescanning.uiDemo.aimHintLater"
+    /// The demo waiting for `aimHintNotification`; the notification's C callback can't capture.
+    private static weak var listeningForAimHint: DemoEngine?
+    /// The direction `-uiDemoAimHintLater` turns the engine's hint to.
+    private var laterAimHint: AimDirection?
+
+    private func applyLaterAimHint() {
+        guard let laterAimHint else { return }
+        state.guidanceHint?.aim = laterAimHint
+    }
 
     static func aimDirection(_ raw: String) -> AimDirection? {
         switch raw {
@@ -414,6 +423,10 @@ final class DemoEngine: ScanActions {
         }
     }
 
+    /// `-uiDemoAim`: the ground lags the wall right of the meter, so the walk asks to tilt down
+    /// there, and the ring is half full: 2 of the 5 ground cells within 0.3 m of it are covered,
+    /// and 80 % completes it. `-uiDemoAimOffScreen`: the same ask for ground left of the view, so
+    /// the edge arrow stands in for the ring.
     private func enterAim(offScreen: Bool) {
         let s: Float = offScreen ? -2.4 : 0.4
         state.guidance = .aimAtGround(s: s)
