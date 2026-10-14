@@ -39,7 +39,7 @@ WALL_ROWS = 9  # about 0.25 m apart, so a box mounted between rows cannot slip t
 GROUND_MAX_M = 3.048  # 10 ft out
 FACING_MAX_M = 6.0
 FACING_BAND_M = (0.3, 1.8)
-OVERHEAD_OUT_M = (0.1, 0.56)  # above the battery's footprint (1.83 ft deep)
+OVERHEAD_OUT_M = (0.0, 0.56)  # the whole existing 1.83 ft footprint, from the first free wall step
 OVERHEAD_MAX_M = 3.0
 MAX_ANGLE = np.radians(65)  # the app's limit on how oblique a view may be
 IMAGE_MARGIN = 0.03
@@ -233,7 +233,11 @@ def free_space(wall: WallFrame, vol: Volume, cells: np.ndarray):
             if not seen:
                 break
             facing_clear[c] = out - front
-        oo = front + np.arange(OVERHEAD_OUT_M[0], OVERHEAD_OUT_M[1] + 1e-9, step)
+        # Include both footprint edges. Skipping the first 10 cm missed a 1.90 m eave in the
+        # full-depth regression, while a voxel step alone can end short of the outer edge.
+        oo = front + np.append(
+            np.arange(OVERHEAD_OUT_M[0], OVERHEAD_OUT_M[1], step), OVERHEAD_OUT_M[1]
+        )
         for h in np.arange(0.3, OVERHEAD_MAX_M, step):
             share, seen = _slab(wall, vol, across, [h], oo)
             if share > 0:

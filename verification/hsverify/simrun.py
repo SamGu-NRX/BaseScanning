@@ -8,7 +8,7 @@ The app is launched with the contract C4 arguments (`-replay <path>`, `-autopilo
 a screenshot once it has been on screen for `--settle` seconds; a state replaced sooner is
 captured immediately and flagged `transient`, because its image may already show the next
 state. The run ends at `--until`, after `--idle` seconds without a new state, or at
-`--timeout`. A state named with `--require` that never appeared makes the run fail. If the app
+`--timeout`. States named with `--require` must appear in the order given. If the app
 logged a scan bundle, it is copied into the report as scan.zip (required with `--require-export`)
 and named in report.json's
 `app_export`, so the report folder can be replayed as an app export. Reports go outside git
@@ -331,7 +331,17 @@ def wait_for_log_stream(events: queue.Queue, timeout_s: float) -> str | None:
 
 def missing_required(required: list[str], states: list[ShotRecord]) -> list[str]:
     seen = {s.state for s in states}
-    return [f"required state {name} never appeared" for name in required if name not in seen]
+    missing = [f"required state {name} never appeared" for name in required if name not in seen]
+    if missing:
+        return missing
+    remaining = iter(required)
+    next_required = next(remaining, None)
+    for state in states:
+        if state.state == next_required:
+            next_required = next(remaining, None)
+    if next_required is not None:
+        return [f"required states did not appear in order: {' -> '.join(required)}"]
+    return []
 
 
 def logged_message(line: str) -> str:
@@ -563,7 +573,7 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         default=[],
         metavar="STATE",
-        help="a state the run must reach; one that never appears is a problem (exit 1)",
+        help="a state the run must reach; repeat in the required journey order (exit 1 on failure)",
     )
     parser.add_argument(
         "--require-export",

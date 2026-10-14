@@ -36,6 +36,7 @@ import argparse
 import contextlib
 import datetime as dt
 import hashlib
+import http.client
 import io
 import json
 import os
@@ -55,6 +56,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from hsverify import gitref, memory
+from hsverify.bundle_limits import zip_directory_limits
 from hsverify.memory import peak_rss_mb
 from hsverify.resultcheck import (
     RuleSet,
@@ -144,13 +146,20 @@ def read_bounded(bundle: zipfile.ZipFile, info: zipfile.ZipInfo, limit: int) -> 
 
 def read_bundle(path: Path) -> tuple[bytes, dict[str, bytes]]:
     """scene.json and the JPEGs of a C1 zip bundle, within the limits above."""
+    if path.stat().st_size > MAX_BUNDLE_BYTES:
+        raise SystemExit(f"{path}: archive exceeds {MAX_BUNDLE_BYTES} bytes")
+    try:
+        zip_directory_limits(path, MAX_BUNDLE_ENTRIES, MAX_BUNDLE_BYTES)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     with zipfile.ZipFile(path) as bundle:
-        infos = [i for i in bundle.infolist() if not i.is_dir()]
+        infos = bundle.infolist()
         if len(infos) > MAX_BUNDLE_ENTRIES:
             raise SystemExit(f"{path}: {len(infos)} entries, limit {MAX_BUNDLE_ENTRIES}")
         declared = sum(i.file_size for i in infos)
         if declared > MAX_BUNDLE_BYTES:
             raise SystemExit(f"{path}: declares {declared} bytes, limit {MAX_BUNDLE_BYTES}")
+        infos = [i for i in infos if not i.is_dir()]
         scenes = [i for i in infos if i.filename == "scene.json"]
         if len(scenes) != 1:
             raise SystemExit(
@@ -357,6 +366,27 @@ def bundle_zip(item: SceneInput) -> bytes:
     return buf.getvalue()
 
 
+# Fixed harness admission limit to bound answers from a server under test. This is not a
+# measured maximum result size; it matches the 4 MiB transport policy in PR #242.
+MAX_RESPONSE_BYTES = 4 * 2**20
+
+
+def read_response(response) -> bytes:
+    declared = response.headers.get("Content-Length")
+    if declared is not None:
+        declared = int(declared)
+        if declared < 0:
+            raise ValueError("negative response Content-Length")
+        if declared > MAX_RESPONSE_BYTES:
+            raise ValueError(f"response exceeds {MAX_RESPONSE_BYTES} bytes")
+    payload = response.read(MAX_RESPONSE_BYTES + 1)
+    if len(payload) > MAX_RESPONSE_BYTES:
+        raise ValueError(f"response exceeds {MAX_RESPONSE_BYTES} bytes")
+    if declared is not None and len(payload) < declared:
+        raise ValueError(f"truncated response: {len(payload)} bytes, expected {declared}")
+    return payload
+
+
 def post(
     url: str, endpoint: Endpoint, item: SceneInput, timeout_s: float = 60
 ) -> tuple[int | None, bytes, float]:
@@ -381,11 +411,19 @@ def post(
     )
     start = time.perf_counter()
     try:
-        with urllib.request.urlopen(request, timeout=timeout_s) as response:
-            status, payload = response.status, response.read()
-    except urllib.error.HTTPError as exc:
-        status, payload = exc.code, exc.read()
-    except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+        try:
+            response = urllib.request.urlopen(request, timeout=timeout_s)
+        except urllib.error.HTTPError as exc:
+            response = exc
+        with response:
+            status, payload = response.status, read_response(response)
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        ConnectionError,
+        http.client.HTTPException,
+        ValueError,
+    ) as exc:
         status, payload = None, str(exc).encode()
     return status, payload, (time.perf_counter() - start) * 1000
 

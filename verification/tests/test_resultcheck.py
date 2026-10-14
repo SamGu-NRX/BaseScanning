@@ -6,6 +6,7 @@ from dataclasses import replace
 import pytest
 
 from hsverify.resultcheck import (
+    MAX_GEOMETRY_SAMPLES,
     MAX_SWEEP_SAMPLES,
     GroundPlan,
     Need,
@@ -753,9 +754,9 @@ def test_an_overhead_seen_clear_all_the_way_up_settles_headroom():
 
 
 def test_battery_clearance_is_needed_when_its_rule_reaches_past_gas_or_a_battery_is_marked():
-    # BAND_RULES set battery_clearance's radius (100) above gas's (1): the server evaluates it,
+    # BAND_RULES set battery_clearance's radius (2) above gas's (1): the server evaluates it,
     # so a result that leaves it out is flagged and its coverage is needed anyway.
-    wide = replace(RULES, needs=RULES.needs | {"battery_clearance": (Need("ground", 100.0),)})
+    wide = replace(RULES, needs=RULES.needs | {"battery_clearance": (Need("ground", 2.0),)})
     r = result(checks=[check()], sweep=[PASS_RUN])
     msgs = invariant_problems(SCENE, r, rules=wide)
     assert "the result leaves out check battery_clearance, which the rules define" in msgs
@@ -1223,9 +1224,9 @@ def test_a_passing_spot_must_stand_on_the_scanned_wall():
         ],
     )
     r["spot"]["span_ft"] = [11.0, 11.0 + 31 / 12]
+    r["spot"]["footprint"] = [[11, 0], [11 + 31 / 12, 0], [11 + 31 / 12, 22 / 12], [11, 22 / 12]]
     msgs = invariant_problems(broadly_seen(), r, rules=RULES)
-    assert any("spot [11.00, 13.58] runs past its straight wall [-12.00, 12.00]" in m for m in msgs)
-    assert any("sweep pass start 11.00 runs past its straight wall" in m for m in msgs)
+    assert msgs == ["spot: span_ft exceeds scanned range [-12.0, 12.0]"]
 
 
 def test_walls_meeting_in_a_straight_line_are_one_stretch_and_a_corner_is_not():
@@ -1564,4 +1565,116 @@ def test_in_scan_sweep_with_tiny_rule_step_fails_loudly():
     r = result(spot=False, sweep=[pass_run(0, 1) | {"outcome": "unsure"}])
     assert invariant_problems(SCENE, r, rules=replace(RULES, step_ft=1e-300)) == [
         "sweep unsure starts [0, 1]: sweep sampling exceeds the 10000 sample limit"
+    ]
+
+
+@pytest.mark.parametrize("outcome", ["pass", "unsure", "fail"])
+@pytest.mark.parametrize("span", [[float("nan"), 1], [0, float("inf")], [2, 1]])
+def test_vet_all_sweep_spans_are_validated_before_downstream(monkeypatch, outcome, span):
+    def no_downstream(*args):
+        pytest.fail("invalid geometry reached downstream sampling")
+
+    monkeypatch.setattr("hsverify.resultcheck.run_starts", no_downstream)
+    answer = result(spot=False, sweep=[pass_run(*span) | {"outcome": outcome}])
+    assert any("finite and ordered" in p for p in invariant_problems(SCENE, answer, rules=RULES))
+
+
+def test_vet_identical_unsure_runs_are_sampled_only_once(monkeypatch):
+    calls = []
+
+    def starts(*args):
+        calls.append(True)
+        return iter([1.0])
+
+    monkeypatch.setattr("hsverify.resultcheck.run_starts", starts)
+    run = pass_run(1, 9) | {"outcome": "unsure"}
+    answer = result(spot=False, sweep=[copy.deepcopy(run) for _ in range(10_000)])
+    assert footprint_problems(SCENE, answer, RULES) == []
+    assert len(calls) == 1
+
+
+def test_vet_many_distinct_admissible_runs_exceed_one_response_budget(monkeypatch):
+    def no_sampling(*args):
+        pytest.fail("over-budget response reached sampling")
+
+    monkeypatch.setattr("hsverify.resultcheck.run_starts", no_sampling)
+    scene = copy.deepcopy(SCENE)
+    scene["walls"][0]["baseline"] = [[-2000, 0], [2000, 0]]
+    runs = [pass_run(i / 1000, 1000 + i / 1000) | {"outcome": "unsure"} for i in range(5000)]
+    answer = result(spot=False, sweep=runs)
+    assert invariant_problems(scene, answer, rules=RULES) == [
+        f"response geometry sample budget exceeds {MAX_GEOMETRY_SAMPLES} samples"
+    ]
+
+
+def test_vet_huge_spot_with_empty_sweep_stops_before_geometry(monkeypatch):
+    def no_geometry(*args):
+        pytest.fail("invalid spot reached the ground grid")
+
+    monkeypatch.setattr(GroundPlan, "_samples", no_geometry)
+    answer = result(sweep=[])
+    answer["spot"]["span_ft"] = [1, 1e9]
+    problems = invariant_problems(SCENE, answer, rules=RULES)
+    assert problems and any("span_ft" in p for p in problems)
+
+
+def test_vet_geometry_budget_counts_spot_ground_grid_before_iteration(monkeypatch):
+    def no_geometry(*args):
+        pytest.fail("over-budget spot reached the ground grid")
+
+    monkeypatch.setattr(GroundPlan, "_samples", no_geometry)
+    answer = result(sweep=[])
+    huge_reach = replace(RULES, needs={"gas_clearance": (Need("ground", 1e9),)})
+    assert invariant_problems(SCENE, answer, rules=huge_reach) == [
+        f"response geometry sample budget exceeds {MAX_GEOMETRY_SAMPLES} samples"
+    ]
+
+
+def test_vet_geometry_budget_counts_check_only_reported_width(monkeypatch):
+    answer = result(spot=False, sweep=[])
+    answer["checks"].append(
+        {"id": "width", "threshold_ft": 1e9, "rule": {"key": "battery.width_ft"}}
+    )
+    assert invariant_problems(SCENE, answer, rules=RULES) == [
+        f"response geometry sample budget exceeds {MAX_GEOMETRY_SAMPLES} samples"
+    ]
+
+
+def test_vet_ground_samples_are_lazy_and_preserve_grid_edges_and_centres():
+    points = GroundPlan._samples(0, 0.1)
+    assert iter(points) is points
+    assert list(points) == pytest.approx([0, 0.025, 0.05, 0.075, 0.1])
+
+
+def test_vet_repeated_spot_checks_count_toward_the_shared_budget(monkeypatch):
+    def no_geometry(*args):
+        pytest.fail("repeated checks reached geometry sampling")
+
+    monkeypatch.setattr(GroundPlan, "_samples", no_geometry)
+    answer = result(sweep=[], checks=[passing("ground_surface") for _ in range(1000)])
+    broad = replace(RULES, needs={"ground_surface": (Need("ground", 10),)})
+    assert invariant_problems(SCENE, answer, rules=broad) == [
+        f"response geometry sample budget exceeds {MAX_GEOMETRY_SAMPLES} samples"
+    ]
+
+
+def test_vet_budget_includes_midpoint_direction_switches(monkeypatch):
+    scene = copy.deepcopy(SCENE)
+    scene["meter"]["plus_minus_ft"] = 8.8
+    scene["walls"] = [
+        {"id": "w1", "baseline": [[0, 0], [10, 0]], "plus_minus_ft": 0},
+        {"id": "w2", "baseline": [[10, 0], [9, 0]], "plus_minus_ft": 0},
+        {"id": "w3", "baseline": [[9, 0], [109, 0]], "plus_minus_ft": 0},
+    ]
+    broad = replace(
+        RULES, width_ft=10, depth_ft=2, step_ft=0.1, needs={"ground_surface": (Need("ground", 0),)}
+    )
+    answer = result(spot=False, sweep=[pass_run(0, 10)])
+
+    def no_sampling(*args):
+        pytest.fail("midpoint error exceeded budget after admission")
+
+    monkeypatch.setattr("hsverify.resultcheck.run_starts", no_sampling)
+    assert invariant_problems(scene, answer, rules=broad) == [
+        f"response geometry sample budget exceeds {MAX_GEOMETRY_SAMPLES} samples"
     ]

@@ -138,6 +138,9 @@ def run(
         overlap = bundle_path.is_relative_to(out_path) or out_path.is_relative_to(bundle_path)
     else:
         overlap = bundle_path in {(out_path / name).resolve() for name in owned}
+        if not overlap and bundle.is_file():
+            capture_root = cap.bundle_root(bundle, work).resolve()
+            overlap = capture_root.is_relative_to(out_path) or out_path.is_relative_to(capture_root)
     if overlap:
         raise ValueError(
             f"output {out} overlaps capture input {bundle}; use a separate output folder"

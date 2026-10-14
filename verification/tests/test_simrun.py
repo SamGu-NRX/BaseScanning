@@ -109,6 +109,25 @@ def test_missing_required_state_is_a_problem():
     assert missing_required([], []) == []
 
 
+def test_required_states_reject_reversed_complete_journey():
+    required = ["onboarding", "capture", "uploading", "result"]
+    assert missing_required(required, [shot(name) for name in reversed(required)]) == [
+        "required states did not appear in order: onboarding -> capture -> uploading -> result"
+    ]
+
+
+def test_required_states_allow_other_states_and_a_repeated_journey():
+    required = ["capture", "uploading", "result"]
+    states = ["result", "capture", "capture", "review", "uploading", "result"]
+    assert missing_required(required, [shot(name) for name in states]) == []
+
+
+def test_repeated_required_state_needs_a_separate_occurrence():
+    assert missing_required(["capture", "capture"], [shot("capture")]) == [
+        "required states did not appear in order: capture -> capture"
+    ]
+
+
 def test_sim_app_requires_the_result_state():
     makefile = (Path(__file__).resolve().parents[1] / "Makefile").read_text()
     recipe = makefile.split("\nsim-app:\n", 1)[1].split("\n\n", 1)[0]

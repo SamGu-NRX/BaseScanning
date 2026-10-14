@@ -23,6 +23,7 @@ must be a single safe file-name component (`frame_id`).
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import re
@@ -30,6 +31,7 @@ import shutil
 import struct
 import tempfile
 import zipfile
+import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -122,32 +124,78 @@ def outward_of(along: np.ndarray) -> np.ndarray:
     return np.array([-along[2], 0.0, along[0]])
 
 
-def unpack(path: Path, work: Path) -> Path:
-    """A folder as is; a zip extracted once under `work`, keyed by its sha256."""
+def bundle_root(path: Path, work: Path) -> Path:
+    """The capture folder, including a ZIP's cache path before extraction or cleanup."""
     if path.is_dir():
         return path
     if path.stat().st_size > MAX_BUNDLE_BYTES:
         raise ValueError(f"{path}: archive exceeds {MAX_BUNDLE_BYTES} bytes")
     with path.open("rb") as f:
         digest = hashlib.file_digest(f, "sha256").hexdigest()[:16]
-    out = work / "bundles" / digest
-    if not out.exists():
-        _zip_directory_limits(path)
-        with zipfile.ZipFile(path) as z:
-            infos = z.infolist()
-            if len(infos) > MAX_BUNDLE_ENTRIES:
-                raise ValueError(f"{path}: {len(infos)} entries, limit {MAX_BUNDLE_ENTRIES}")
-            if sum(i.file_size for i in infos) > MAX_BUNDLE_BYTES:
-                raise ValueError(f"{path}: expanded archive exceeds {MAX_BUNDLE_BYTES} bytes")
-            members = [i for i in infos if not i.filename.startswith("__MACOSX/")]
-            for info in members:
-                n = info.filename
-                if n.startswith("/") or ".." in Path(n).parts:
-                    raise ValueError(f"{path}: unsafe entry {n!r}")
-            out.parent.mkdir(parents=True, exist_ok=True)
+    return work / "bundles" / digest
+
+
+def _bundle_intact(root: Path, members: list[zipfile.ZipInfo]) -> bool:
+    """Check the extracted file set and each file's size and CRC against the archive."""
+    if root.is_symlink() or not root.is_dir():
+        return False
+    files = {Path(i.filename): i for i in members if not i.is_dir()}
+    directories = {Path(i.filename) for i in members if i.is_dir()}
+    for name in files.keys() | directories:
+        directories.update(p for p in name.parents if p != Path("."))
+    expected = files.keys() | directories
+    try:
+        for entry in root.rglob("*"):
+            name = entry.relative_to(root)
+            if entry.is_symlink() or name not in expected:
+                return False
+        if any(not (root / name).is_dir() for name in directories):
+            return False
+        for name, info in files.items():
+            entry = root / name
+            if not entry.is_file() or entry.stat().st_size != info.file_size:
+                return False
+            crc, size = 0, 0
+            with entry.open("rb") as source:
+                while chunk := source.read(2**20):
+                    size += len(chunk)
+                    if size > info.file_size:
+                        return False
+                    crc = zlib.crc32(chunk, crc)
+            if size != info.file_size or crc != info.CRC:
+                return False
+    except OSError:
+        return False
+    return True
+
+
+def unpack(path: Path, work: Path) -> Path:
+    """A folder as is; a ZIP cache reused only while its extracted members remain intact."""
+    out = bundle_root(path, work)
+    if path.is_dir():
+        return out
+    _zip_directory_limits(path)
+    with zipfile.ZipFile(path) as z:
+        infos = z.infolist()
+        if len(infos) > MAX_BUNDLE_ENTRIES:
+            raise ValueError(f"{path}: {len(infos)} entries, limit {MAX_BUNDLE_ENTRIES}")
+        if sum(i.file_size for i in infos) > MAX_BUNDLE_BYTES:
+            raise ValueError(f"{path}: expanded archive exceeds {MAX_BUNDLE_BYTES} bytes")
+        members = [i for i in infos if not i.filename.startswith("__MACOSX/")]
+        for info in members:
+            n = info.filename
+            if n.startswith("/") or ".." in Path(n).parts:
+                raise ValueError(f"{path}: unsafe entry {n!r}")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        # Cache verification and replacement share a lock so one repair cannot delete another
+        # run's newly published extraction. The lock stays outside the replaceable directory.
+        with (work / f".bundle-{out.name}.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            if _bundle_intact(out, members):
+                return out
             # Extraction stays private until every CRC-checked member finishes. Failed extraction
             # cannot leave a partial cache directory that a later run mistakes for a complete one.
-            stage = Path(tempfile.mkdtemp(dir=out.parent, prefix=f".{digest}-"))
+            stage = Path(tempfile.mkdtemp(dir=out.parent, prefix=f".{out.name}-"))
             try:
                 written = 0
                 for info in members:
@@ -162,12 +210,11 @@ def unpack(path: Path, work: Path) -> Path:
                             if written > MAX_BUNDLE_BYTES:
                                 raise ValueError(f"{path}: expanded archive exceeds byte limit")
                             dst.write(chunk)
-                try:
-                    stage.rename(out)
-                except OSError:
-                    # Another run of this exact content may have finished first.
-                    if not out.is_dir():
-                        raise
+                if out.is_symlink() or out.is_file():
+                    out.unlink()
+                elif out.exists():
+                    shutil.rmtree(out)
+                stage.rename(out)
             finally:
                 if stage.exists():
                     shutil.rmtree(stage)

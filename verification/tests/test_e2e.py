@@ -2,6 +2,7 @@ import hashlib
 import io
 import json
 import re
+import struct
 import threading
 import time
 import zipfile
@@ -473,6 +474,87 @@ def test_a_bundle_with_too_many_entries_is_refused(tmp_path, monkeypatch):
             z.writestr(f"k{i}.jpg", b"x")
     with pytest.raises(SystemExit, match="4 entries, limit 3"):
         load_input(archive)
+
+
+@pytest.mark.parametrize("false_footer_count", [False, True])
+def test_bundle_counts_directories_before_zipfile_allocation(
+    tmp_path, monkeypatch, false_footer_count
+):
+    monkeypatch.setattr(e2e, "MAX_BUNDLE_ENTRIES", 3)
+    archive = tmp_path / "directories.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("scene.json", b"{}")
+        for i in range(3):
+            z.writestr(f"directory{i}/", b"")
+    if false_footer_count:
+        data = bytearray(archive.read_bytes())
+        struct.pack_into("<HH", data, len(data) - 22 + 8, 1, 1)
+        archive.write_bytes(data)
+
+    def metadata_allocation_forbidden(*args, **kwargs):
+        pytest.fail("ZipFile allocated metadata before archive admission")
+
+    monkeypatch.setattr(e2e.zipfile, "ZipFile", metadata_allocation_forbidden)
+    with pytest.raises(SystemExit, match="4 entries, limit 3"):
+        e2e.read_bundle(archive)
+
+
+@pytest.mark.parametrize("status", [200, 413])
+def test_response_read_is_bounded_for_success_and_http_error(monkeypatch, status):
+    from urllib.error import HTTPError
+
+    class Response(io.BytesIO):
+        headers: ClassVar[dict] = {}
+
+        def read(self, size=-1):
+            assert 0 <= size <= 4 * 2**20 + 1, "response read must have a byte limit"
+            return super().read(size)
+
+    response = Response(b"x" * (4 * 2**20 + 1))
+    response.status = status
+
+    def urlopen(*args, **kwargs):
+        if status != 200:
+            raise HTTPError("http://unused", status, "too large", {}, response)
+        return response
+
+    monkeypatch.setattr(e2e.urllib.request, "urlopen", urlopen)
+    code, body, _ = e2e.post("http://unused", Endpoint("/place", "application/json"), item())
+    assert code is None
+    assert b"response exceeds" in body
+
+
+@pytest.mark.parametrize("status", [200, 413])
+def test_incomplete_response_is_a_clean_transport_failure(monkeypatch, status):
+    from http.client import IncompleteRead
+    from urllib.error import HTTPError
+
+    class Response(io.BytesIO):
+        headers: ClassVar[dict] = {}
+
+        def read(self, size=-1):
+            raise IncompleteRead(b"partial", 50)
+
+    response = Response()
+    response.status = status
+
+    def urlopen(*args, **kwargs):
+        if status != 200:
+            raise HTTPError("http://unused", status, "truncated", {}, response)
+        return response
+
+    monkeypatch.setattr(e2e.urllib.request, "urlopen", urlopen)
+    code, body, _ = e2e.post("http://unused", Endpoint("/place", "application/json"), item())
+    assert code is None and b"IncompleteRead" in body
+
+
+def test_short_content_length_response_is_a_clean_transport_failure(monkeypatch):
+    response = io.BytesIO(b"{}")
+    response.status = 200
+    response.headers = {"Content-Length": "10"}
+    monkeypatch.setattr(e2e.urllib.request, "urlopen", lambda *args, **kwargs: response)
+    code, body, _ = e2e.post("http://unused", Endpoint("/place", "application/json"), item())
+    assert code is None and b"truncated response" in body
 
 
 def test_a_200_that_is_not_a_json_object_is_a_failure_not_a_crash(monkeypatch):
