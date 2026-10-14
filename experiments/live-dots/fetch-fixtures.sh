@@ -3,6 +3,9 @@
 # without adding ios/ to a sparse checkout. Fixtures/ is git-ignored.
 set -eu
 here="$(cd "$(dirname "$0")" && pwd)"
+if [ "${1-}" != --lock-held ]; then
+    exec python3 "$here/rename-fixtures.py" --refresh "$here/fetch-fixtures.sh"
+fi
 # A hard kill skips the trap; recover our recorded backup before any git/network work.
 python3 "$here/rename-fixtures.py" --recover "$here"
 root="$(git -C "$here" rev-parse --show-toplevel)"

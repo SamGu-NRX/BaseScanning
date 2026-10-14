@@ -28,18 +28,20 @@ SUFFIXES = {".jpg", ".jpeg", ".png", ".heic"}
 
 
 def reads_number(text: str, target: str) -> bool:
-    # OCR cannot distinguish a trailing digit group from a separate field, so any
-    # contiguous sequence of whitespace-separated digit groups can count as a read.
-    for run in re.findall(r"[0-9]+(?:\s+[0-9]+)*", text):
-        groups = run.split()
-        for start in range(len(groups)):
-            joined = ""
-            for group in groups[start:]:
-                joined += group
-                if joined == target:
-                    return True
-                if len(joined) >= len(target):
-                    break
+    # OCR cannot distinguish a trailing group from a separate field, so any
+    # contiguous sequence of alphanumeric groups can count as a read.
+    target = "".join(re.findall(r"[^\W_]+", target)).casefold()
+    if not target:
+        return False
+    groups = re.findall(r"[^\W_]+", text.casefold())
+    for start in range(len(groups)):
+        joined = ""
+        for group in groups[start:]:
+            joined += group
+            if joined == target:
+                return True
+            if len(joined) >= len(target):
+                break
     return False
 
 
@@ -96,7 +98,7 @@ def main() -> None:
             image.save(upright)
             g = gray(image)
             result = reader.read(upright, barcodes=True)
-            read = any(reads_number(text, target_core) for text, _ in rows_of_text(result["lines"]))
+            read = any(reads_number(text, args.number) for text, _ in rows_of_text(result["lines"]))
             order = ranked(candidates(result))
             rank = next((i + 1 for i, c in enumerate(order) if c == target_core), None)
             guess = top_candidate(result)

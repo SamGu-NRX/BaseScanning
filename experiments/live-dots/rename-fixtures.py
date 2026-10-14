@@ -1,11 +1,21 @@
 """Rename a fixture directory without nesting or replacing an existing destination."""
 
 import ctypes
+import fcntl
 import json
 import os
 import shutil
 import sys
 from pathlib import Path
+
+
+def refresh(script: Path) -> None:
+    # Exec keeps the lock in the shell itself, including its cleanup trap. A hard
+    # exit releases it without leaving a supervisor that can block recovery.
+    with (script.parent / ".fixtures-refresh.lock").open("a") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        os.set_inheritable(lock.fileno(), True)
+        os.execv("/bin/sh", ["/bin/sh", str(script), "--lock-held"])
 
 
 def identity(path: Path) -> list[int]:
@@ -80,7 +90,9 @@ def rename_exclusive(source: str, destination: str) -> None:
 
 
 if __name__ == "__main__":
-    if sys.argv[1] == "--recover":
+    if sys.argv[1] == "--refresh":
+        refresh(Path(sys.argv[2]))
+    elif sys.argv[1] == "--recover":
         recover_backup(Path(sys.argv[2]))
     elif sys.argv[1] == "--mark-backup":
         mark_backup(Path(sys.argv[2]), Path(sys.argv[3]))

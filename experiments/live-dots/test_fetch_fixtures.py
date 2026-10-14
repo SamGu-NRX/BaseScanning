@@ -214,3 +214,103 @@ exec "$TEST_PYTHON" "$helper" "$@"''',
             assert "lack synthetic-wall-lidar/session.json" in result.stderr
     if failure not in ("occupied", "restore", "reappeared", "reappeared-empty"):
         assert not list(tmp_path.glob(".fixtures.*"))
+
+
+def test_overlapping_refresh_waits_before_recovery(tmp_path):
+    import fcntl
+    import select
+
+    script = tmp_path / SCRIPT.name
+    script.write_text(SCRIPT.read_text())
+    helper = tmp_path / "rename-fixtures.py"
+    source = SCRIPT.with_name(helper.name).read_text()
+    # Pause the first process after backup creation, before publication. Announce
+    # the second lock attempt so the test does not depend on process startup speed.
+    source = source.replace(
+        "def rename_exclusive(source: str, destination: str) -> None:",
+        """def rename_exclusive(source: str, destination: str) -> None:
+    if os.environ.get("REFRESH") == "first" and Path(source).name == "Fixtures" and Path(destination).name == "Fixtures" and Path(source).parent != Path(destination).parent:
+        print("first paused", flush=True)
+        input()
+""",
+    ).replace(
+        "fcntl.flock(lock.fileno(), fcntl.LOCK_EX)",
+        """if os.environ.get("REFRESH") == "second":
+            print("second waiting", flush=True)
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        if os.environ.get("REFRESH") == "second":
+            print("second locked", flush=True)""",
+    )
+    helper.write_text(source)
+    fixtures = tmp_path / "Fixtures"
+    fixtures.mkdir()
+    (fixtures / "old.json").write_text("original")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for name, text in {
+        "git": """#!/bin/sh
+case "$3" in
+rev-parse) echo "$TEST_ROOT" ;;
+archive) : > "${4#--output=}" ;;
+esac
+""",
+        "tar": """#!/bin/sh
+mkdir -p "$4/Fixtures/synthetic-wall-lidar"
+echo "$REFRESH" > "$4/Fixtures/synthetic-wall-lidar/session.json"
+""",
+        "python3": f'#!/bin/sh\nexec "{sys.executable}" "$@"\n',
+    }.items():
+        path = bin_dir / name
+        path.write_text(text)
+        path.chmod(0o755)
+    env = {**os.environ, "PATH": f"{bin_dir}:/usr/bin:/bin", "TEST_ROOT": str(tmp_path)}
+    processes = []
+
+    def start(label):
+        process = subprocess.Popen(
+            ["/bin/sh", str(script)],
+            env={**env, "REFRESH": label},
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        processes.append(process)
+        return process
+
+    def line(process):
+        assert select.select([process.stdout], [], [], 5)[0], (
+            "refresh did not reach barrier"
+        )
+        return process.stdout.readline().strip()
+
+    try:
+        first = start("first")
+        assert line(first) == "first paused"
+        (stage,) = tmp_path.glob(".fixtures.*")
+        assert not fixtures.exists()
+        before = contents(stage)
+        second = start("second")
+        assert line(second) == "second waiting"
+        with (
+            (tmp_path / ".fixtures-refresh.lock").open("a") as lock,
+            pytest.raises(BlockingIOError),
+        ):
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        assert contents(stage) == before
+        first.stdin.write("continue\n")
+        first.stdin.flush()
+        _, err = first.communicate(timeout=5)
+        assert first.returncode == 0, err
+        output, err = second.communicate(timeout=5)
+        assert second.returncode == 0, err
+        assert "second locked" in output
+        assert (
+            fixtures / "synthetic-wall-lidar/session.json"
+        ).read_text() == "second\n"
+        assert not list(tmp_path.glob(".fixtures.*"))
+    finally:
+        for process in processes:
+            if process.poll() is None:
+                process.kill()
+            process.communicate(timeout=5)

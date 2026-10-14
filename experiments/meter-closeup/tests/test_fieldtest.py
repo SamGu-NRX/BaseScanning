@@ -60,7 +60,7 @@ def test_the_orientation_tag_is_applied(tmp_path):
     "number, text, expected, expected_rank",
     [
         ("12-34567", "No. 1234567", "yes", 1),
-        ("No. 1234567", "1234567", "yes", 1),
+        ("No. 1234567", "No. 1234567", "yes", 1),
         ("1234567", "12345678", "no", None),
         ("1234567", "91234567", "no", None),
         ("1234567", "No. 123 4567", "yes", 1),
@@ -69,6 +69,9 @@ def test_the_orientation_tag_is_applied(tmp_path):
         ("1234567", "1234567 8", "yes", None),
         ("1234567", "123 4567", "yes", 1),
         ("1234567", "1234567", "yes", 1),
+        ("123ABC456789", "123ABC456789", "yes", 1),
+        ("123ABC456789", "123abc456789", "yes", 1),
+        ("123ABC456789", "123ABC 456789", "yes", 1),
     ],
 )
 def test_fieldtest_scores_reads_and_ranks_without_a_dataset_key(
@@ -102,8 +105,24 @@ def test_fieldtest_scores_reads_and_ranks_without_a_dataset_key(
     assert f"1 photos; {int(expected == 'yes')} retakes asked for photos that read" in output
 
 
-@pytest.mark.parametrize("text", ["123 V 4567", "123-4567", "12345678"])
-def test_read_number_does_not_join_across_non_digits(text):
+@pytest.mark.parametrize("text", ["123 V 4567", "12345678"])
+def test_read_number_does_not_remove_letters_or_match_partial_groups(text):
     from meter_eval.fieldtest import reads_number
 
     assert not reads_number(text, "1234567")
+
+
+@pytest.mark.parametrize(
+    "text,target,expected",
+    [
+        ("123-4567", "1234567", True),
+        ("123ABC 456789", "123abc-456789", True),
+        ("ABC1234567", "ABC1234567", True),
+        ("1234567", "ABC1234567", False),
+        ("X123ABC456789", "123ABC456789", False),
+    ],
+)
+def test_read_number_matches_joined_target_groups(text, target, expected):
+    from meter_eval.fieldtest import reads_number
+
+    assert reads_number(text, target) is expected
