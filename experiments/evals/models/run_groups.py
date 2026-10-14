@@ -74,8 +74,12 @@ def file_hash(path: Path) -> str:
 def cached_group(out: Path, key: str, members: list[str]) -> bool:
     try:
         record = json.loads((out / "run.json").read_text())
+        if not isinstance(record, dict):
+            return False
         expected = {f"{m}.npz" for m in members}
         hashes = record.get("outputs", {})
+        if not isinstance(hashes, dict) or any(not isinstance(sha, str) for sha in hashes.values()):
+            return False
         return (
             record.get("fingerprint") == key
             and set(hashes) == expected

@@ -852,3 +852,15 @@ def test_publication_failure_removes_only_owned_staging(tmp_path, monkeypatch, w
         assert _snapshot(backup) == backup_before
     else:
         assert not backup.exists()
+
+
+@pytest.mark.parametrize(
+    "record", [None, [], {"outputs": None}, {"outputs": ["a.npz"]}, {"outputs": {"a.npz": None}}]
+)
+def test_malformed_group_cache_is_a_miss(tmp_path, record):
+    from models.run_groups import cached_group
+
+    if isinstance(record, dict):
+        record["fingerprint"] = "k"
+    (tmp_path / "run.json").write_text(json.dumps(record))
+    assert not cached_group(tmp_path, "k", ["a"])

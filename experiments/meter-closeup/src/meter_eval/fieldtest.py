@@ -11,6 +11,7 @@ is taken from the command line and is never written to disk.
 """
 
 import argparse
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -18,12 +19,28 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 from meter_eval import retake
-from meter_eval.locate import candidates, ranked, tokens, top_candidate
+from meter_eval.locate import candidates, ranked, top_candidate
 from meter_eval.match import core, normalize, rows_of_text
 from meter_eval.ocr import Reader
 from meter_eval.quality import gray
 
 SUFFIXES = {".jpg", ".jpeg", ".png", ".heic"}
+
+
+def reads_number(text: str, target: str) -> bool:
+    # OCR cannot distinguish a trailing digit group from a separate field, so any
+    # contiguous sequence of whitespace-separated digit groups can count as a read.
+    for run in re.findall(r"[0-9]+(?:\s+[0-9]+)*", text):
+        groups = run.split()
+        for start in range(len(groups)):
+            joined = ""
+            for group in groups[start:]:
+                joined += group
+                if joined == target:
+                    return True
+                if len(joined) >= len(target):
+                    break
+    return False
 
 
 def upright_pixels(photo: Path, scratch: Path) -> Image.Image:
@@ -79,12 +96,7 @@ def main() -> None:
             image.save(upright)
             g = gray(image)
             result = reader.read(upright, barcodes=True)
-            # Keep standalone numbers as well as joined groups: 1234567 followed by 240 is a read.
-            read = any(
-                core(token) == target_core
-                for text, _ in rows_of_text(result["lines"])
-                for token in [*text.split(), *tokens(text)]
-            )
+            read = any(reads_number(text, target_core) for text, _ in rows_of_text(result["lines"]))
             order = ranked(candidates(result))
             rank = next((i + 1 for i, c in enumerate(order) if c == target_core), None)
             guess = top_candidate(result)

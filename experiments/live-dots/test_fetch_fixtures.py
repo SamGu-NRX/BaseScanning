@@ -1,4 +1,6 @@
+import json
 import os
+import runpy
 import subprocess
 import sys
 from pathlib import Path
@@ -6,6 +8,33 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).resolve().parent / "fetch-fixtures.sh"
+
+
+@pytest.mark.parametrize(
+    "ownership", [None, "malformed", "wrong-stage", "wrong-backup"]
+)
+def test_recovery_preserves_unowned_fixture_backups(tmp_path, ownership):
+    helper = runpy.run_path(str(SCRIPT.with_name("rename-fixtures.py")))
+    stage = tmp_path / ".fixtures.caller"
+    previous = stage / "previous"
+    previous.mkdir(parents=True)
+    (previous / "session.json").write_text("caller data")
+    if ownership is not None:
+        record = {
+            "stage": helper["identity"](stage),
+            "previous": helper["identity"](previous),
+        }
+        if ownership == "wrong-stage":
+            record["stage"] = [-1, -1]
+        elif ownership == "wrong-backup":
+            record["previous"] = [-1, -1]
+        (stage / "ownership.json").write_text(
+            "{" if ownership == "malformed" else json.dumps(record)
+        )
+    before = contents(stage)
+    helper["recover_backup"](tmp_path)
+    assert not (tmp_path / "Fixtures").exists()
+    assert contents(stage) == before
 
 
 def contents(folder):
@@ -28,6 +57,7 @@ def contents(folder):
         "reappeared",
         "reappeared-empty",
         "restore",
+        "hard-kill",
         "success",
     ],
 )
@@ -62,7 +92,7 @@ esac
 mkdir -p "$4/Fixtures"
 case "$FAILURE" in
 missing-session) echo unrelated > "$4/Fixtures/new.json" ;;
-success|move|occupied|restore|reappeared|reappeared-empty)
+success|move|occupied|restore|reappeared|reappeared-empty|hard-kill)
     mkdir -p "$4/Fixtures/synthetic-wall-lidar"
     echo replacement > "$4/Fixtures/synthetic-wall-lidar/session.json"
     ;;
@@ -104,7 +134,15 @@ exec /bin/mv "$@"
         '#!/bin/sh\nhelper="$1"\nshift\n'
         + mv.read_text()
         .removeprefix("#!/bin/sh\n")
-        .replace('exec /bin/mv "$@"', 'exec "$TEST_PYTHON" "$helper" "$@"')
+        .replace(
+            'exec /bin/mv "$@"',
+            '''if [ "$FAILURE" = hard-kill ] && [ "$1" = "$TEST_ROOT/Fixtures" ]; then
+    "$TEST_PYTHON" "$helper" "$@" || exit 1
+    kill -KILL "$PPID"
+    exit 0
+fi
+exec "$TEST_PYTHON" "$helper" "$@"''',
+        )
     )
     git.chmod(0o755)
     tar.chmod(0o755)
@@ -120,7 +158,31 @@ exec /bin/mv "$@"
     result = subprocess.run(
         ["/bin/sh", str(script)], env=env, capture_output=True, text=True, check=False
     )
-    if failure == "success":
+    if failure == "hard-kill":
+        assert result.returncode == -9, result.stderr
+        assert not fixtures.exists()
+        stages = list(tmp_path.glob(".fixtures.*"))
+        assert len(stages) == 1
+        assert (stages[0] / "ownership.json").is_file()
+        assert contents(stages[0] / "previous") == original
+        # The first git invocation must already see the restored fixtures. Then fail
+        # archive creation, so neither fetching nor a successful swap can mask recovery.
+        git.write_text(
+            git.read_text().replace(
+                'rev-parse) echo "$TEST_ROOT" ;;',
+                'rev-parse) test -f "$TEST_ROOT/Fixtures/old.json" || exit 2; echo "$TEST_ROOT" ;;',
+            )
+        )
+        again = subprocess.run(
+            ["/bin/sh", str(script)],
+            env={**env, "FAILURE": "archive"},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert again.returncode == 1, again.stderr
+        assert contents(fixtures) == original
+    elif failure == "success":
         assert result.returncode == 0, result.stderr
         assert (
             fixtures / "synthetic-wall-lidar/session.json"

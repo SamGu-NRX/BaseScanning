@@ -65,6 +65,8 @@ def test_the_orientation_tag_is_applied(tmp_path):
         ("1234567", "91234567", "no", None),
         ("1234567", "No. 123 4567", "yes", 1),
         ("1234567", "1234567 240 V", "yes", None),
+        ("1234567", "123 4567 240 V", "yes", None),
+        ("1234567", "1234567 8", "yes", None),
         ("1234567", "123 4567", "yes", 1),
         ("1234567", "1234567", "yes", 1),
     ],
@@ -98,3 +100,10 @@ def test_fieldtest_scores_reads_and_ranks_without_a_dataset_key(
     output = capsys.readouterr().out
     assert f"| photo.jpg | {expected} | {expected_rank or '–'} |" in output
     assert f"1 photos; {int(expected == 'yes')} retakes asked for photos that read" in output
+
+
+@pytest.mark.parametrize("text", ["123 V 4567", "123-4567", "12345678"])
+def test_read_number_does_not_join_across_non_digits(text):
+    from meter_eval.fieldtest import reads_number
+
+    assert not reads_number(text, "1234567")

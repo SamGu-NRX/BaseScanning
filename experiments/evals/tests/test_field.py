@@ -747,11 +747,47 @@ def test_image_decoder_keeps_sensor_orientation(tmp_path):
     assert field.read_session_image(path).shape[:2] == (8, 12)
 
 
-def test_jpeg_header_does_not_scan_non_header_payload(tmp_path):
+def test_jpeg_header_rejects_a_frame_beyond_the_scan_budget(tmp_path):
     path = tmp_path / "invalid.jpg"
-    path.write_bytes(b"\xff\xd8" + b"a" * 1024)
+    # Valid APP segments lead to a valid frame beyond the budget; an unbounded scan accepts it.
+    segment = b"\xff\xe0\xff\xff" + b"a" * 65533
+    path.write_bytes(b"\xff\xd8" + segment * 17 + b"\xff\xc0\x00\x07\x08\x00\x08\x00\x0c")
     with pytest.raises(ValueError, match="frame header"):
         field.image_size(path)
+
+
+def test_jpeg_frame_header_cannot_cross_scan_budget(tmp_path, monkeypatch):
+    monkeypatch.setattr(field, "MAX_JPEG_HEADER_BYTES", 32)
+    path = tmp_path / "crosses-budget.jpg"
+    path.write_bytes(
+        b"\xff\xd8\xff\xe0\x00\x1a" + b"a" * 24 + b"\xff\xc0\x00\x07\x08\x00\x08\x00\x0c"
+    )
+    with pytest.raises(ValueError, match="frame header"):
+        field.image_size(path)
+
+
+@pytest.mark.parametrize("input_name", ["session", "truth", "map", "rules"])
+@pytest.mark.parametrize("symlink", [False, True])
+def test_score_preserves_inputs_inside_cleanup_directory(case, input_name, symlink):
+    archive, paths, _capture, out = case
+    scored = out / "scored"
+    scored.mkdir(parents=True)
+    inputs = {"session": archive, **paths}
+    original = inputs[input_name].read_bytes()
+    inside = scored / inputs[input_name].name
+    inside.write_bytes(original)
+    if symlink:
+        alias = out.parent / f"{input_name}-alias"
+        alias.symlink_to(inside)
+        inputs[input_name] = alias
+    else:
+        inputs[input_name] = inside
+    report = out / "field_report.md"
+    report.write_text("previous report")
+    with pytest.raises(ValueError, match="overlaps scoring output cleanup"):
+        field.score(inputs["session"], inputs["truth"], inputs["map"], inputs["rules"], out)
+    assert inside.read_bytes() == original
+    assert report.read_text() == "previous report"
 
 
 def test_score_clears_old_reports_before_a_failure(case):

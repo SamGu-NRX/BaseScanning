@@ -196,22 +196,33 @@ def write_record(archive: Archive, names: list[str]) -> None:
 def is_complete(archive: Archive) -> bool:
     """True when this archive's record matches its pinned sha256 and every recorded file exists at
     its recorded size and content hash. Old size-only records require a fresh verified extraction."""
-    path = record_path(archive)
-    if not path.exists():
-        return False
-    record = json.loads(path.read_text())
-    if record.get("sha256") != archive.sha256 or not record.get("files"):
-        return False
-    for name, identity in record["files"].items():
-        f = archive.dest / name
-        if (
-            not isinstance(identity, dict)
-            or not f.is_file()
-            or f.stat().st_size != identity["bytes"]
-            or sha256_of(f) != identity["sha256"]
-        ):
+    try:
+        record = json.loads(record_path(archive).read_text())
+        if not isinstance(record, dict) or record.get("sha256") != archive.sha256:
             return False
-    return True
+        files = record.get("files")
+        if not isinstance(files, dict) or not files:
+            return False
+        for name, identity in files.items():
+            if (
+                Path(name).is_absolute()
+                or ".." in Path(name).parts
+                or not isinstance(identity, dict)
+                or type(identity.get("bytes")) is not int
+                or identity["bytes"] < 0
+                or not isinstance(identity.get("sha256"), str)
+            ):
+                return False
+            f = archive.dest / name
+            if (
+                not f.is_file()
+                or f.stat().st_size != identity["bytes"]
+                or sha256_of(f) != identity["sha256"]
+            ):
+                return False
+        return True
+    except (OSError, ValueError):
+        return False
 
 
 def main() -> None:
@@ -224,7 +235,7 @@ def main() -> None:
     )
     args = ap.parse_args()
     for a in ADVIO if args.dataset == "advio" else ETH3D:
-        if is_complete(a) and not args.force:
+        if not args.force and is_complete(a):
             print(f"{a.name}: already unpacked and recorded complete ({record_path(a)})")
             continue
         fetch(a)

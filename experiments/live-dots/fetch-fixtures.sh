@@ -3,6 +3,8 @@
 # without adding ios/ to a sparse checkout. Fixtures/ is git-ignored.
 set -eu
 here="$(cd "$(dirname "$0")" && pwd)"
+# A hard kill skips the trap; recover our recorded backup before any git/network work.
+python3 "$here/rename-fixtures.py" --recover "$here"
 root="$(git -C "$here" rev-parse --show-toplevel)"
 git -C "$root" fetch --quiet origin t3/ios-mvf
 stage="$(mktemp -d "$here/.fixtures.XXXXXX")"
@@ -32,6 +34,7 @@ if [ ! -f "$stage/Fixtures/synthetic-wall-lidar/session.json" ]; then
     exit 1
 fi
 if [ -e "$here/Fixtures" ]; then
+    python3 "$here/rename-fixtures.py" --mark-backup "$stage" "$here/Fixtures"
     python3 "$here/rename-fixtures.py" "$here/Fixtures" "$stage/previous"
 fi
 python3 "$here/rename-fixtures.py" "$stage/Fixtures" "$here/Fixtures"

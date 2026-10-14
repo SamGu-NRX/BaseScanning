@@ -232,6 +232,60 @@ def test_an_interrupted_unpack_is_not_complete(tmp_path: Path):
     assert not datasets.is_complete(archive)
 
 
+@pytest.mark.parametrize(
+    "files",
+    [
+        None,
+        [],
+        ["d/a.csv"],
+        {"d/a.csv": None},
+        {"d/a.csv": {"bytes": 1}},
+        {"d/a.csv": {"sha256": "f" * 64}},
+        {"d/a.csv": {"bytes": "1", "sha256": "f" * 64}},
+    ],
+)
+def test_malformed_dataset_file_records_are_cache_misses(tmp_path, files):
+    from evals import datasets
+
+    archive = _archive(tmp_path)
+    (tmp_path / "d").mkdir()
+    (tmp_path / "d/a.csv").write_text("a")
+    path = datasets.record_path(archive)
+    path.parent.mkdir()
+    path.write_text(json.dumps({"sha256": archive.sha256, "files": files}))
+    assert not datasets.is_complete(archive)
+
+
+@pytest.mark.parametrize("record", ["null", "[]", "{"])
+def test_malformed_dataset_record_is_a_cache_miss(tmp_path, record):
+    from evals import datasets
+
+    archive = _archive(tmp_path)
+    path = datasets.record_path(archive)
+    path.parent.mkdir()
+    path.write_text(record)
+    assert not datasets.is_complete(archive)
+
+
+def test_forced_dataset_fetch_never_checks_completion(tmp_path, monkeypatch):
+    import sys
+
+    from evals import datasets
+
+    archive = _archive(tmp_path)
+    monkeypatch.setattr(datasets, "ADVIO", [archive])
+    monkeypatch.setattr(sys, "argv", ["datasets", "advio", "--force"])
+
+    def unexpected_check(_archive):
+        raise AssertionError("--force must skip cache validation")
+
+    monkeypatch.setattr(datasets, "is_complete", unexpected_check)
+    fetched = []
+    monkeypatch.setattr(datasets, "fetch", fetched.append)
+    datasets.main()
+    assert fetched == [archive]
+
+
 def test_a_recorded_unpack_is_complete_until_a_file_goes_missing_or_changes_size(tmp_path: Path):
     from evals import datasets
 

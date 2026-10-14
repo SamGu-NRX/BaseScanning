@@ -327,8 +327,12 @@ def image_size(path: Path) -> tuple[int, int]:
                 continue
             if m in (0xD9, 0xDA):  # end of image, or start of scan before any frame header
                 break
+            if f.tell() + 2 > MAX_JPEG_HEADER_BYTES:
+                break
             length = int.from_bytes(f.read(2), "big")
             if m in _JPEG_SOF:
+                if f.tell() + 5 > MAX_JPEG_HEADER_BYTES:
+                    break
                 frame = f.read(5)
                 if len(frame) == 5:
                     return int.from_bytes(frame[3:5], "big"), int.from_bytes(frame[1:3], "big")
@@ -796,6 +800,20 @@ def score(
     out_dir: Path,
     tap_error_in: float = TAP_ERROR_IN,
 ) -> str:
+    session_path = Path(session_path).resolve()
+    truth_path, map_path, rules_path = (
+        Path(path).resolve() if path is not None else None
+        for path in (truth_path, map_path, rules_path)
+    )
+    out_dir = out_dir.resolve()
+    scored = (out_dir / "scored").resolve()
+    generated = {(out_dir / name).resolve() for name in (*ROW_FILES, "field_report.md")}
+    # Check before any cleanup: callers can keep an archive or survey under the output root.
+    for path in (session_path, truth_path, map_path, rules_path):
+        if path is not None and (path.is_relative_to(scored) or path in generated):
+            raise ValueError(
+                f"input {path} overlaps scoring output cleanup; choose another out-dir"
+            )
     # First: a re-run, even one that stops early below, must not leave an earlier run's rows
     # for `score` to pick up.
     out_dir.mkdir(parents=True, exist_ok=True)
