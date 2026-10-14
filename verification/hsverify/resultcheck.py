@@ -29,7 +29,7 @@ import copy
 import hashlib
 import itertools
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -38,6 +38,8 @@ from jsonschema import Draft202012Validator
 
 EPS = 1e-6
 NUMBER_TOL_FT = 1e-5
+# Bound verifier work even when a server span or rules step requests billions of samples.
+MAX_SWEEP_SAMPLES = 10_000
 # Spot centres and offsets are rounded by the server; a hundredth of a foot is 1/8 inch.
 OFFSET_TOL_FT = 0.01
 
@@ -306,6 +308,8 @@ def margin_problem(check: dict) -> str | None:
 def invariant_problems(
     scene: dict, result: dict, sent: bytes | None = None, rules: RuleSet | None = None
 ) -> list[str]:
+    if rules is not None and (sampling := sweep_sampling_problems(scene, result, rules)):
+        return sampling
     problems: list[str] = []
     decision = result["decision"]
     spot = result.get("spot")
@@ -419,6 +423,8 @@ def footprint_problems(scene: dict, result: dict, rules: RuleSet) -> list[str]:
     """A battery that passes or is left to a person backs onto one straight stretch of scanned
     wall along its whole width; a footprint past the stretch's end (a corner, the end of the
     wall, a gap) can't sit flush, so the server fails it (server/solver.py check_backing)."""
+    if sampling := sweep_sampling_problems(scene, result, rules):
+        return sampling
     pieces = straight_pieces(scene, rules)
     if not pieces:
         return []
@@ -673,17 +679,44 @@ def measured_band_gap(
     return None
 
 
-def run_starts(span: list[float], step_ft: float | None) -> list[float]:
-    """Starts sampled from a sweep run: its first, every step after it, and its last.
+def run_starts(span: list[float], step_ft: float | None) -> Iterator[float]:
+    """Validate eagerly, then sample a run lazily: first, every step after it, and last.
 
     A sample, not the server's own list: the server also evaluates boundaries and midpoints
-    that a run reports only as its two ends."""
-    if step_ft is None or step_ft <= 0:
-        raise ValueError("checking a sweep run needs the rules' sweep.step_ft")
+    that a run reports only as its two ends. Oversized runs fail rather than lose coverage
+    through truncation."""
+    if step_ft is None or not math.isfinite(step_ft) or step_ft <= 0:
+        raise ValueError("checking a sweep run needs finite positive rules' sweep.step_ft")
     a, b = span
+    if not math.isfinite(a) or not math.isfinite(b) or a > b:
+        raise ValueError("sweep start_ft must be finite and ordered")
+    steps = (b - a) / step_ft
+    if not math.isfinite(steps) or steps > MAX_SWEEP_SAMPLES:
+        raise ValueError(f"sweep sampling exceeds the {MAX_SWEEP_SAMPLES} sample limit")
     # Every step strictly before the last start, the first included however short the run.
-    count = max(0, math.ceil((b - a) / step_ft - EPS))
-    return [a + k * step_ft for k in range(count)] + [b]
+    count = max(int(a < b), math.ceil(steps - EPS))
+    if count + 1 > MAX_SWEEP_SAMPLES:
+        raise ValueError(f"sweep sampling exceeds the {MAX_SWEEP_SAMPLES} sample limit")
+    return itertools.chain((a + k * step_ft for k in range(count)), (b,))
+
+
+def sweep_sampling_problems(scene: dict, result: dict, rules: RuleSet) -> list[str]:
+    """Reject invalid runs before footprint, coverage or height checks sample them."""
+    ends = chain_ends_s(scene, rules)
+    problems = []
+    for run in result.get("sweep", []):
+        if run["outcome"] not in ("pass", "unsure"):
+            continue
+        a, b = run["start_ft"]
+        prefix = f"sweep {run['outcome']} starts {run['start_ft']}: "
+        if ends is not None and (a < ends[0] - COLLINEAR_FT or b > ends[1] + COLLINEAR_FT):
+            problems.append(prefix + f"start_ft span exceeds scanned range [{ends[0]}, {ends[1]}]")
+            continue
+        try:
+            run_starts(run["start_ft"], rules.step_ft)
+        except ValueError as exc:
+            problems.append(prefix + str(exc))
+    return problems
 
 
 # Checks every result lists besides those with coverage needs (server README, "What settles
@@ -717,6 +750,8 @@ def coverage_problems(scene: dict, result: dict, rules: RuleSet) -> list[str]:
     check's area around that start's battery with that battery's own position error, and the
     wall and cable route back to the meter over the whole run. Checking the whole run as one
     battery at its farthest start's error would ask for more than any single start needs."""
+    if sampling := sweep_sampling_problems(scene, result, rules):
+        return sampling
     problems: list[str] = []
     route_wall = observed(
         scene, "wall", rules.route_height_ft, beyond=True, wall_default_ft=rules.headroom_ft
@@ -1048,6 +1083,8 @@ def declared_height_problems(scene: dict, result: dict, rules: RuleSet) -> list[
     it unsure for one within the battery's error of it (server/solver.py at 7133283,
     check_backing), so wall_backing passes only if every declared wall overlapping
     [s0 - e, s1 + e] is taller than battery.height_ft."""
+    if sampling := sweep_sampling_problems(scene, result, rules):
+        return sampling
     declared = {w["id"]: w["height_ft"] for w in scene.get("walls", []) if "height_ft" in w}
     if not declared or rules.battery_height_ft is None:
         return []
