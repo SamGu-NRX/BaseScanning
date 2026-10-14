@@ -32,6 +32,7 @@ import json
 import re
 import shutil
 import sys
+import tempfile
 import time
 import zipfile
 from dataclasses import dataclass
@@ -111,12 +112,11 @@ def file_sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def zip_member_sha256(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> str:
-    h = hashlib.sha256()
-    with archive.open(info) as src:
-        while block := src.read(1 << 20):
-            h.update(block)
-    return h.hexdigest()
+def write_cache_manifest(path: Path, manifest: dict) -> None:
+    with tempfile.TemporaryDirectory(dir=path.parent) as directory:
+        temporary = Path(directory) / "manifest.json"
+        temporary.write_text(json.dumps(manifest), encoding="utf-8")
+        temporary.replace(path)
 
 
 def check_zip_directory(session: Path) -> None:
@@ -157,6 +157,7 @@ def unpack(session: Path) -> tuple[Path, str | None]:
     check_zip_directory(session)
     digest = file_sha256(session)
     out = FIELD_DIR / digest[:16]
+    manifest_path = out.with_suffix(".members.json")
     with zipfile.ZipFile(session) as z:
         infos = z.infolist()
         if len(infos) > MAX_ZIP_ENTRIES:
@@ -179,10 +180,23 @@ def unpack(session: Path) -> tuple[Path, str | None]:
         if len(roots) != 1:
             raise ValueError(f"{session}: expected one session.json, found {roots}")
         root = out / roots[0]
-        intact = root.exists() and all(
-            (out.joinpath(*rel.parts)).is_file()
-            and file_sha256(out.joinpath(*rel.parts)) == zip_member_sha256(z, info)
-            for info, rel in members
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            manifest = None
+        # Hashes recorded while extracting avoid decompressing the ZIP in every field stage.
+        # Bind them to the full archive digest and still hash cached files to detect local edits.
+        hashes = manifest.get("files") if isinstance(manifest, dict) else None
+        intact = (
+            isinstance(hashes, dict)
+            and manifest.get("archive_sha256") == digest
+            and set(hashes) == {str(rel) for _, rel in members}
+            and root.exists()
+            and all(
+                (out.joinpath(*rel.parts)).is_file()
+                and file_sha256(out.joinpath(*rel.parts)) == hashes[str(rel)]
+                for _, rel in members
+            )
         )
         if not intact:
             FIELD_DIR.mkdir(parents=True, exist_ok=True)
@@ -196,17 +210,22 @@ def unpack(session: Path) -> tuple[Path, str | None]:
             shutil.rmtree(tmp, ignore_errors=True)
             try:
                 written = 0
+                hashes = {}
                 for info, rel in members:
                     dest = tmp.joinpath(*rel.parts)
                     dest.parent.mkdir(parents=True, exist_ok=True)
+                    member_hash = hashlib.sha256()
                     with z.open(info) as src, dest.open("wb") as dst:
                         while block := src.read(1 << 20):
                             written += len(block)
                             if written > MAX_ZIP_BYTES:
                                 raise ValueError(f"{session}: expands past {MAX_ZIP_BYTES} bytes")
                             dst.write(block)
+                            member_hash.update(block)
+                    hashes[str(rel)] = member_hash.hexdigest()
                 shutil.rmtree(out, ignore_errors=True)
                 tmp.rename(out)
+                write_cache_manifest(manifest_path, {"archive_sha256": digest, "files": hashes})
             except BaseException:
                 shutil.rmtree(tmp, ignore_errors=True)
                 raise

@@ -653,6 +653,63 @@ def test_stamp_refuses_a_survey_already_bound_to_another_capture(case):
     field.stamp(archive, paths["truth"], paths["map"], out)
 
 
+def test_cached_extraction_skips_zip_decompression(tmp_path, monkeypatch):
+    monkeypatch.setattr(field, "FIELD_DIR", tmp_path / "cache")
+    archive = tmp_path / "session.zip"
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        z.writestr("s/session.json", SESSION_JSON)
+        z.writestr("s/keyframe.jpg", b"photo")
+    folder, digest = field.unpack(archive)
+
+    def no_decompression(*args, **kwargs):
+        pytest.fail("cached field stages must not open ZIP members")
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", no_decompression)
+    for _ in range(3):
+        assert field.unpack(archive) == (folder, digest)
+
+    manifest = json.loads((field.FIELD_DIR / f"{digest[:16]}.members.json").read_text())
+    assert manifest == {
+        "archive_sha256": digest,
+        "files": {
+            "s/session.json": hashlib.sha256(SESSION_JSON.encode()).hexdigest(),
+            "s/keyframe.jpg": hashlib.sha256(b"photo").hexdigest(),
+        },
+    }
+
+
+@pytest.mark.parametrize("invalid", [None, "{", "[]", "wrong-archive", "missing-member"])
+def test_cached_extraction_rebuilds_without_valid_manifest(tmp_path, monkeypatch, invalid):
+    monkeypatch.setattr(field, "FIELD_DIR", tmp_path / "cache")
+    archive = tmp_path / "session.zip"
+    _zip(archive, [("session.json", SESSION_JSON), ("keyframe.jpg", b"photo")])
+    folder, digest = field.unpack(archive)
+    reference = field.FIELD_DIR / f"{digest[:16]}.members.json"
+    expected = json.loads(reference.read_text())
+    if invalid is None:
+        reference.unlink()
+    elif invalid in ("{", "[]"):
+        reference.write_text(invalid)
+    else:
+        broken = json.loads(reference.read_text())
+        if invalid == "wrong-archive":
+            broken["archive_sha256"] = "0" * 64
+        else:
+            del broken["files"]["keyframe.jpg"]
+        reference.write_text(json.dumps(broken))
+    opened = []
+    original_open = zipfile.ZipFile.open
+
+    def record_open(self, member, *args, **kwargs):
+        opened.append(member.filename)
+        return original_open(self, member, *args, **kwargs)
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", record_open)
+    assert field.unpack(archive) == (folder, digest)
+    assert opened == ["session.json", "keyframe.jpg"]
+    assert json.loads(reference.read_text()) == expected
+
+
 def test_cached_extraction_recreates_modified_files(tmp_path, monkeypatch):
     monkeypatch.setattr(field, "FIELD_DIR", tmp_path / "cache")
     archive = tmp_path / "session.zip"
