@@ -608,23 +608,36 @@ def test_bundle_reads_one_wrapped_capture_and_ignores_macos_metadata(tmp_path):
     assert e2e.read_bundle(archive) == (b"canonical", {"frame.jpg": b"photo"})
 
 
-def test_bundle_root_scene_takes_precedence_over_wrapped_scene(tmp_path):
+def test_bundle_accepts_public_api_finder_fixture_shape(tmp_path):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("capture-2026-09-26/scene.json", b"canonical")
+        z.writestr("__MACOSX/capture-2026-09-26/._scene.json", b"resource fork")
+    assert e2e.read_bundle(archive) == (b"canonical", {})
+
+
+@pytest.mark.parametrize("wrapped_scene", ["capture/scene.json", "a/b/scene.json"])
+def test_bundle_rejects_root_and_wrapped_scene_together(tmp_path, wrapped_scene):
     archive = tmp_path / "scene.zip"
     with zipfile.ZipFile(archive, "w") as z:
         z.writestr("scene.json", b"canonical")
-        z.writestr("capture/scene.json", b"other")
-    assert e2e.read_bundle(archive)[0] == b"canonical"
+        z.writestr(wrapped_scene, b"other")
+    with pytest.raises(SystemExit, match=r"ambiguous scene\.json"):
+        e2e.read_bundle(archive)
 
 
 @pytest.mark.parametrize(
     "names",
     [
         ["old-scene.json"],
+        ["not-scene.json"],
         ["scene.json", "scene.json"],
         ["capture/scene.json", "capture/scene.json"],
         ["first/scene.json", "second/scene.json"],
         ["capture/scene.json", "other/frame.jpg"],
         ["capture/nested/scene.json"],
+        ["capture/scene.json", "other/"],
+        ["capture/scene.json", "capture"],
     ],
 )
 def test_bundle_rejects_missing_or_duplicate_canonical_scene(tmp_path, names):
@@ -632,7 +645,9 @@ def test_bundle_rejects_missing_or_duplicate_canonical_scene(tmp_path, names):
     with zipfile.ZipFile(archive, "w") as z:
         for name in names:
             z.writestr(name, b"{}")
-    with pytest.raises(SystemExit, match=r"exactly one canonical scene\.json"):
+    with pytest.raises(
+        SystemExit, match=r"exactly one canonical scene\.json|ambiguous scene\.json"
+    ):
         e2e.read_bundle(archive)
 
 

@@ -162,14 +162,21 @@ def read_bundle(path: Path) -> tuple[bytes, dict[str, bytes]]:
         declared = sum(i.file_size for i in infos)
         if declared > MAX_BUNDLE_BYTES:
             raise SystemExit(f"{path}: declares {declared} bytes, limit {MAX_BUNDLE_BYTES}")
-        infos = [i for i in infos if not i.is_dir() and not i.filename.startswith("__MACOSX/")]
+        capture_infos = [i for i in infos if not i.filename.startswith("__MACOSX/")]
+        infos = [i for i in capture_infos if not i.is_dir()]
+        # Mirror the public API layouts, but refuse competing scenes instead of
+        # preferring the root: the verifier must know which input it is testing.
+        candidates = [i for i in infos if i.filename.split("/")[-1] == "scene.json"]
+        if len({i.filename for i in candidates}) > 1:
+            raise SystemExit(f"{path}: ambiguous scene.json paths")
         scene_name = "scene.json"
         if not any(i.filename == scene_name for i in infos):
             # The public API also accepts a capture wrapped in one top-level folder.
-            tops = {i.filename.split("/", 1)[0] for i in infos}
+            tops = {i.filename.split("/", 1)[0] for i in capture_infos}
             if len(tops) == 1:
                 (top,) = tops
-                scene_name = f"{top}/scene.json"
+                if all(i.filename.startswith(f"{top}/") for i in capture_infos):
+                    scene_name = f"{top}/scene.json"
         scenes = [i for i in infos if i.filename == scene_name]
         if len(scenes) != 1:
             raise SystemExit(
