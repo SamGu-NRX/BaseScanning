@@ -100,6 +100,23 @@ def test_headroom_comes_from_rules_yaml_and_a_missing_one_is_loud():
         build_scene.rules_headroom_ft("battery: {}\n", "rules.yaml")
 
 
+@pytest.mark.parametrize(("value", "ok"), [(6.5, True), (12.0, False)])
+def test_a_headroom_above_the_scanned_overheads_is_refused(monkeypatch, value, ok):
+    """Overhead returns stop at OVERHEAD_MAX_FT (12 ft), so a headroom there or above would
+    read an obstruction above 12 ft as clear."""
+
+    def fake_git(args, **_):
+        out = "abc123\n" if args[1] == "rev-parse" else f"headroom:\n  min_ft: {{value: {value}}}\n"
+        return build_scene.subprocess.CompletedProcess(args, 0, out, "")
+
+    monkeypatch.setattr(build_scene.subprocess, "run", fake_git)
+    if ok:
+        assert build_scene.read_rules_headroom("origin/t3/server") == ("abc123", value)
+        return
+    with pytest.raises(SystemExit, match=r"headroom\.min_ft to 12 ft.*OVERHEAD_MAX_FT = 12 ft"):
+        build_scene.read_rules_headroom("origin/t3/server")
+
+
 def test_the_case_pins_the_headroom_the_scene_was_built_with():
     """A server applying another headroom (changed rules or a private override) reports it as
     the headroom check's threshold, and the case then stops judging a scene probed elsewhere."""

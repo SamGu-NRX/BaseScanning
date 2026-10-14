@@ -468,7 +468,15 @@ def read_rules_headroom(ref: str) -> tuple[str, float]:
         return done.stdout
 
     sha = git("rev-parse", "--verify", f"{ref}^{{commit}}").strip()
-    return sha, rules_headroom_ft(git("show", f"{sha}:server/rules.yaml"), f"rules.yaml at {ref}")
+    headroom_ft = rules_headroom_ft(git("show", f"{sha}:server/rules.yaml"), f"rules.yaml at {ref}")
+    # scan_profiles drops returns at or above OVERHEAD_MAX_FT, so an overhead probe that high
+    # would read an obstruction above that height as clear space.
+    if headroom_ft >= OVERHEAD_MAX_FT:
+        raise SystemExit(
+            f"rules.yaml at {ref} sets headroom.min_ft to {headroom_ft:g} ft, but the scene only "
+            f"reports overheads below OVERHEAD_MAX_FT = {OVERHEAD_MAX_FT:g} ft"
+        )
+    return sha, headroom_ft
 
 
 def band_reach(
