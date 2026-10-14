@@ -57,17 +57,20 @@ def test_the_orientation_tag_is_applied(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "number, text, expected",
+    "number, text, expected, expected_rank",
     [
-        ("12-34567", "No. 1234567", "yes"),
-        ("No. 1234567", "1234567", "yes"),
-        ("1234567", "12345678", "no"),
-        ("1234567", "91234567", "no"),
-        ("1234567", "No. 123 4567", "yes"),
+        ("12-34567", "No. 1234567", "yes", 1),
+        ("No. 1234567", "1234567", "yes", 1),
+        ("1234567", "12345678", "no", None),
+        ("1234567", "91234567", "no", None),
+        ("1234567", "No. 123 4567", "yes", 1),
+        ("1234567", "1234567 240 V", "yes", None),
+        ("1234567", "123 4567", "yes", 1),
+        ("1234567", "1234567", "yes", 1),
     ],
 )
 def test_fieldtest_scores_reads_and_ranks_without_a_dataset_key(
-    tmp_path, monkeypatch, capsys, number, text, expected
+    tmp_path, monkeypatch, capsys, number, text, expected, expected_rank
 ):
     import sys
 
@@ -93,6 +96,5 @@ def test_fieldtest_scores_reads_and_ranks_without_a_dataset_key(
         without_key.setattr(match, "key", no_key)
         fieldtest.main()
     output = capsys.readouterr().out
-    assert f"| photo.jpg | {expected} |" in output
-    if expected == "yes":
-        assert "| photo.jpg | yes | 1 | yes |" in output
+    assert f"| photo.jpg | {expected} | {expected_rank or '–'} |" in output
+    assert f"1 photos; {int(expected == 'yes')} retakes asked for photos that read" in output

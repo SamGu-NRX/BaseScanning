@@ -79,11 +79,11 @@ def main() -> None:
             image.save(upright)
             g = gray(image)
             result = reader.read(upright, barcodes=True)
-            # Use complete OCR tokens, including joined number fragments, without barcode promotion.
+            # Keep standalone numbers as well as joined groups: 1234567 followed by 240 is a read.
             read = any(
                 core(token) == target_core
                 for text, _ in rows_of_text(result["lines"])
-                for token in tokens(text)
+                for token in [*text.split(), *tokens(text)]
             )
             order = ranked(candidates(result))
             rank = next((i + 1 for i, c in enumerate(order) if c == target_core), None)
