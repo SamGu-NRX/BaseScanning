@@ -157,6 +157,9 @@ describe("results", () => {
   test("a minimal result while processing stays pending", () => {
     const s = run(selected(), { type: "result", body: { runId: "run_a", status: "processing", outcome: null, viewsNeeded: [], memberActions: [] } });
     assert.equal(s.result.phase, "pending");
+    const refreshing = run(s, { type: "result-loading" });
+    assert.equal(refreshing.result.phase, "pending");
+    assert.equal(refreshing.result.body, s.result.body);
   });
 
   test("a model with zero points is empty, not ready", () => {
@@ -258,6 +261,52 @@ test("a failed refresh keeps the result already shown", () => {
   assert.equal(s.result.error, "network error");
 });
 
+test("a null result refresh keeps the accepted eligible result and shows a refresh error", () => {
+  const accepted = run(selected(), { type: "result", body: { runId: "run_a", status: "complete", outcome: { kind: "eligible" } } });
+  const refreshed = run(accepted, { type: "result-loading" }, { type: "result", body: null });
+  assert.equal(refreshed.result.phase, "ready");
+  assert.equal(refreshed.result.body, accepted.result.body);
+  assert.equal(refreshed.result.revision, accepted.result.revision);
+  assert.equal(refreshed.preview, accepted.preview);
+  assert.equal(refreshed.result.error, "Result was not a JSON object");
+  assert.equal(run(selected(), { type: "result", body: null }).result.phase, "error");
+});
+
+for (const body of [null, [], "invalid"]) {
+  test(`a pending result followed by ${JSON.stringify(body)} keeps its body with a refresh error`, () => {
+    const pending = run(selected(), { type: "result", body: { runId: "run_a", status: "processing", outcome: null } });
+    assert.equal(pending.result.phase, "pending");
+    const failed = run(pending, { type: "result-loading" }, { type: "result", body });
+    assert.equal(failed.result.phase, "pending");
+    assert.equal(failed.result.body, pending.result.body);
+    assert.equal(failed.result.error, "Result was not a JSON object");
+    assert.equal(failed.result.revision, pending.result.revision);
+  });
+}
+
+test("a pending result followed by a fetch failure keeps its body with a refresh error", () => {
+  const pending = run(selected(), { type: "result", body: { runId: "run_a", status: "processing", outcome: null } });
+  const failed = run(pending, { type: "result-loading" }, { type: "result-error", error: "network error" });
+  assert.equal(failed.result.phase, "pending");
+  assert.equal(failed.result.body, pending.result.body);
+  assert.equal(failed.result.error, "network error");
+});
+
+for (const withRetake of [false, true]) {
+  test(`a needs_views refresh failure retains titled prompts ${withRetake ? "over event IDs" : "without retake events"}`, () => {
+    const actions = withRetake ? [events([{ seq: 1, type: "retake_request", data: { runId: "run_a", viewsNeeded: ["view_left"] } }])] : [];
+    const pending = run(selected(), ...actions, { type: "result", body: {
+      runId: "run_a", status: "needs_views", outcome: null,
+      viewsNeeded: [{ id: "view_left", prompt: { title: "Show the left edge" } }],
+    } });
+    const failed = run(pending, { type: "result-loading" }, { type: "result", body: null });
+    assert.deepEqual(viewsToShow(failed), [{ id: "view_left", title: "Show the left edge" }]);
+    assert.equal(failed.result.body, pending.result.body);
+    assert.equal(failed.result.phase, "pending");
+    assert.equal(failed.result.error, "Result was not a JSON object");
+  });
+}
+
 test("the eligible illustration leaves no check unsure", async () => {
   const { resultBody } = await import("../public/scenario.js");
   const body = resultBody("complete", "complete");
@@ -341,9 +390,23 @@ describe("run identity: the status names the run shown", () => {
   });
 
   test("a delayed status naming a retired run does not bring it back", () => {
-    const s = run(selected(), status("run_a"), status("run_b"), eligible("run_b"), status("run_a"));
+    const current = run(selected(), status("run_a"), status("run_b"), eligible("run_b"));
+    const s = run(current, { type: "status", body: { runId: "run_a", status: "failed", filesRegistered: 99 } });
     assert.equal(s.currentRunId, "run_b");
     assert.equal(s.result.phase, "ready");
+    assert.equal(s, current, "no retired-run status fields are applied");
+    const forced = run(current, events([runEvent(2, "run_unknown", "retake_request")], 2));
+    assert.equal(forced.statusRefreshWanted, true);
+    const refreshed = run(forced, { type: "status", body: { runId: "run_a", status: "failed", filesRegistered: 99 } });
+    assert.deepEqual(refreshed, { ...forced, statusRefreshWanted: false }, "the completed refresh clears only the request flag");
+  });
+
+  test("a result without a nonempty run identity is deferred", () => {
+    const current = run(selected(), status("run_a"), status("run_b"), eligible("run_b"));
+    for (const runId of [undefined, null, 42, ""]) {
+      const s = run(current, { type: "result", body: { runId, status: "complete", outcome: { kind: "not_eligible" } } });
+      assert.equal(s, current);
+    }
   });
 
   test("reproduced: a run the status named without events, then retired, cannot return through a late event", () => {

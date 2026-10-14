@@ -59,6 +59,114 @@ const READ_PAGE = `(() => {
   };
 })()`;
 
+for (const [phase, switchRun] of [["needs_views", false], ["pending", false], ["ready", false], ["pending", true], ["needs_views", true]]) {
+  test(`${phase} result followed by null shows the error in the page${switchRun ? " and clears the note on a run switch" : ""}`, { skip: chromePath ? false : "no Chrome found; set CHROME_PATH" }, async () => {
+    const chrome = await launchChrome(chromePath);
+    try {
+      await chrome.send("Page.enable");
+      await chrome.send("Page.addScriptToEvaluateOnNewDocument", { source: RARE_FRAMES + `
+        const originalFetch = window.fetch;
+        window.__resultReads = 0;
+        window.__refreshResult = false;
+        window.fetch = async (input, init) => {
+          const path = new URL(input, location.href).pathname;
+          const json = (body) => new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } });
+          if (path.endsWith("/result")) {
+            window.__resultReads += 1;
+            if (window.__reportedNextRun) {
+              await new Promise((resolve) => { window.__finishNextResult = resolve; });
+              return json(null);
+            }
+            return json(window.__resultReads > 1 ? null : {
+              runId: "run_a", status: ${JSON.stringify(phase === "needs_views" ? "needs_views" : "complete")},
+              viewsNeeded: ${phase === "needs_views" ? '[{ id: "view_left", prompt: { title: "Show the left edge" } }]' : '[]'},
+              outcome: ${phase === "ready" ? '{ kind: "eligible", message: "Accepted result" }' : 'null'},
+            });
+          }
+          if (path.endsWith("/events")) return json({ status: "complete", events: window.__refreshResult ? [
+            { seq: 1, type: "verdict_ready", data: { runId: "run_a", kind: "eligible" } },
+          ] : [] });
+          if (path.includes("/captures/")) {
+            window.__reportedNextRun = !!window.__switchRun;
+            return json({ runId: window.__reportedNextRun ? "run_b" : "run_a", status: "complete" });
+          }
+          return originalFetch(input, init);
+        };
+      ` });
+      await chrome.send("Page.navigate", { url: `${origin}/?mode=live&source=synthetic&capture=cap_TEST_REFRESH` });
+      let page;
+      const started = Date.now();
+      while (Date.now() - started < 10_000) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        page = await chrome.evaluate(`(() => {
+          if (!window.__flushFrames || !document.getElementById("outcome")) return null;
+          window.__flushFrames();
+          if (window.__resultReads === 1) window.__refreshResult = true;
+          const box = document.getElementById("outcome");
+          const note = document.getElementById("outcome-note");
+          return { reads: window.__resultReads, visible: !box.hidden,
+            kind: document.getElementById("outcome-kind").textContent,
+            message: document.getElementById("outcome-msg").textContent,
+            note: note.hidden ? "" : note.textContent,
+            views: document.getElementById("views").hidden ? "" : document.getElementById("views-list").textContent };
+        })()`);
+        if (page?.reads >= 2 && /Result was not a JSON object/.test(page.message + page.note)) break;
+      }
+      assert.ok(page?.reads >= 2, "the follower did not refresh the result");
+      assert.equal(page.visible, true, "the error must be visible");
+      if (phase === "ready") {
+        assert.equal(page.kind, "A battery fits");
+        assert.equal(page.message, "Accepted result");
+        assert.match(page.note, /Refreshing the result failed.*Result was not a JSON object/);
+      } else {
+        assert.equal(page.kind, "No outcome");
+        assert.match(page.note, /Refreshing the result failed.*Result was not a JSON object/);
+        if (phase === "needs_views") assert.equal(page.views, "Show the left edgeview_left");
+      }
+      if (switchRun) {
+        await chrome.evaluate("window.__switchRun = true");
+        const readNote = `(() => {
+          window.__flushFrames();
+          const box = document.getElementById("outcome");
+          const note = document.getElementById("outcome-note");
+          return { reading: !!window.__finishNextResult, hidden: box.hidden,
+            noteHidden: note.hidden, note: note.textContent,
+            kind: document.getElementById("outcome-kind").textContent,
+            message: document.getElementById("outcome-msg").textContent };
+        })()`;
+        let loading;
+        const switchedAt = Date.now();
+        while (Date.now() - switchedAt < 8_000) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          loading = await chrome.evaluate(readNote);
+          if (loading.reading) break;
+        }
+        assert.ok(loading?.reading, "the new run did not request its first result");
+        await chrome.evaluate("window.__finishNextResult()");
+        let failed;
+        const releasedAt = Date.now();
+        while (Date.now() - releasedAt < 2_000) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          failed = await chrome.evaluate(readNote);
+          if (failed.kind === "Could not read the result") break;
+        }
+        assert.equal(failed.hidden, false);
+        assert.equal(failed.kind, "Could not read the result");
+        assert.equal((failed.message.match(/Result was not a JSON object/g) ?? []).length, 1);
+        assert.deepEqual({
+          loading: { hidden: loading.hidden, noteHidden: loading.noteHidden, note: loading.note },
+          failed: { noteHidden: failed.noteHidden, note: failed.note },
+        }, {
+          loading: { hidden: true, noteHidden: true, note: "" },
+          failed: { noteHidden: true, note: "" },
+        }, "neither early return may keep the previous run's refresh note");
+      }
+    } finally {
+      await chrome.close();
+    }
+  });
+}
+
 test("with the animation clock stopped, counts and stage marks still follow the server", { skip: chromePath ? false : "no Chrome found; set CHROME_PATH" }, async () => {
   const chrome = await launchChrome(chromePath);
   try {

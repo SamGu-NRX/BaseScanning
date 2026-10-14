@@ -29,8 +29,9 @@ source and not run. Every blocker and major entry was re-read in the source by a
 **B-03. Failures other than an unsupported phone never reach the screen.** Only the failure screen
 shows a failure, and the app switches to it only for an unsupported phone
 (`HouseScan/Runtime/ScanEngine.swift:91-93`). A denied camera, a failed session or an unreadable
-replay set the failure without changing screen (lines 105, 379, 381). The homeowner stays on
+replay set the failure without changing screen (lines 105, 379, 381). With a denied camera or failed live session, the homeowner stays on
 "Find your electric meter" with no camera and taps do nothing; "Open Settings" is unreachable.
+An unreadable replay can fail while still on onboarding, because it loads in the background.
 Seen with `-replay /nonexistent`: the app logged "replay unreadable: cannot read
 /nonexistent/session.json" and stayed on onboarding (report
 `sim/20260926-044618-5520229-5520229d-preview-bad-replay`).

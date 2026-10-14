@@ -113,14 +113,15 @@ The battery measures 31 × 22 × 39.5 in, a bit bigger than a dishwasher. It sta
 | Cable route | Can't cross a door, a garage or a gap in the wall | Demo choice |
 | Driveway | At least 5 ft away | Placeholder, no public value |
 | Pool | At least 10 ft away | Placeholder, no public value |
+| Existing battery, when the scene marks one or its configured clearance exceeds the AC clearance | At least 3 ft away with shipped rules; the cable detours over it | Base's help page; IRC 2021 R328, cited in `server/rules.yaml` |
 
-Each check comes back PASS, FAIL or UNSURE, along with what the server measured, how far off that measurement could be and a reason in plain English. NEC is the National Electrical Code and IRC is the International Residential Code, the two building codes behind several of these rules. The numbers themselves live in `server/rules.yaml` on PR #11's branch, each one next to its source, and [docs/04](docs/04-prior-art-and-codes.md) has the full citations.
+Each check comes back PASS, FAIL or UNSURE, along with what the server measured, how far off that measurement could be and a reason in plain English. NEC is the National Electrical Code and IRC is the International Residential Code, the two building codes behind several of these rules. The first 13 checks run at each spot. `battery_clearance` also runs when the scene marks an existing battery or the configured battery clearance exceeds the AC clearance. The shipped public rules give both a 3 ft limit, so a scene without a battery omits that extra check. The numbers themselves live in `server/rules.yaml`, each one next to its source, and [docs/04](docs/04-prior-art-and-codes.md) has the full citations.
 
 The server then gives one of three answers for the whole scan. It says `pass` when a spot passes every check. It says `reject` only when every spot within cable reach fails and the app knows where the wall ends on both sides. Anything in between is `manual_review`, and it goes to a person.
 
 ### One request, start to finish
 
-Here's what that looks like in practice. We took the example scene from the server's tests in PR #11 and sent it to the demo server. The scene is made up. We wrote it by hand, with a gas meter, a window and an AC unit spread over two walls. The reply is real, though, trimmed to the parts worth reading.
+Here's what that looks like in practice. We took the example scene from the server's tests in PR #11 and sent it to the demo server. The scene is made up. We wrote it by hand, with a gas meter, a window and an AC unit spread over two walls. The reply is real, though, trimmed to the parts worth reading. The abbreviated scene below omits fields needed to reproduce it. Use [the complete test fixture](server/tests/fixtures/example-scene.json) for a runnable request.
 
 The server stopped short of placing the battery itself. Its best spot was 9 ft 11 in left of the meter. From there, the AC unit around the corner measured 4 ft 1 in away, against a 3 ft rule. That sounds like a pass until you see the margin of error, which is give or take 3 ft 10 in. It's that wide because the AC unit sits far along the wall from the meter, where tracking error piles up the most. With an error that wide, the result is too close to call. So the answer is a manual review, plus a request to keep walking past the left end of the scan, because a spot within cable reach might be there.
 
@@ -174,7 +175,7 @@ The server stopped short of placing the battery itself. Its best spot was 9 ft 1
     {
       "id": "ac_clearance", "outcome": "unsure",
       "measured_ft": 4.08, "plus_minus_ft": 3.8, "threshold_ft": 3.0, "comparison": "at_least",
-      "reason": "objects[3] ac is 4 ft 1 in (± 3 ft 10 in) from the battery against a 3 ft 0 in rule: too close to call."
+      "reason": "The ac is 4 ft 1 in (± 3 ft 10 in) from the battery against a 3 ft 0 in rule: too close to call."
     }
   ],
   "missing_evidence": [
@@ -277,7 +278,7 @@ A few terms first, in case they're new to you. Tracking drift is how far the pho
 | Tracking drift, older iPhone | Two to three times over that allowance | ADVIO, iPhone 6s, PR #12 |
 | Learned depth on its own | Scale 4 to 12% off, which puts walls about 20 in out (p90) | ETH3D, PR #12 |
 | Learned depth, rescaled with the phone's poses | Walls within about 5 in (p90), or 2.8 in with exact poses. Edges stay at 8 in or worse | ETH3D, PR #12 |
-| Reconstruction worker | Walls within 2.1 in (p90) with a laser scan standing in for LiDAR, and 2.8 in from photos only | ETH3D, PR #20 |
+| Reconstruction worker | Wall pair-error p90 of 1.8 in with a laser scan standing in for LiDAR, and 1.5 in from photos only. Both fit stretches of the same wall, with different lengths | ETH3D, PR #20 |
 | Reading the meter number | Read in full on 71 of 73 photos, but the right line on only 21 of 75. A list of three candidates held it on 27 of 34 held-out photos | Photos of real meters, PR #16 |
 | First run on our phone | Both wall ends landed at the meter, so the server placed no spot. Two of five features came within 4 in of the tape | TestFlight build, PR #23 |
 
@@ -287,7 +288,7 @@ Here's what we know is either missing or broken:
 
 - **Most of it isn't merged.** Guided capture is in PR #10, the rules engine in PR #11, reconstruction in PR #20 and the packet spec in PR #22. All four still live on their own branches.
 - **Our first real phone run placed nothing.** The app put both ends of the wall right at the meter, which left the server a wall with no length to search (PR #23).
-- **We haven't settled on how to build the 3D model.** A depth model on its own puts walls about 20 in off. Correcting its scale with the phone's poses brings that down to about 5 in, but edges stay 8 in off or worse, and the clearance rules measure from edges. With a laser scan standing in for LiDAR, walls land within 2.1 in.
+- **We haven't settled on how to build the 3D model.** A depth model on its own puts walls about 20 in off. Correcting its scale with the phone's poses brings that down to about 5 in, but edges stay 8 in off or worse, and the clearance rules measure from edges. With a laser scan standing in for LiDAR, the worker reports wall pair-error p90 of 1.8 in, as recorded in [the reconstruction handoff](recon/HANDOFF.md).
 - **Our best tracking result came from a phone with LiDAR.** An iPhone 14 Pro Max stayed inside the error allowance, but it has LiDAR, and most homeowners' phones don't. An older iPhone 6s ran two to three times over.
 - **Nobody has taken on hidden walls yet.** A bush or a trash can in front of the wall can hide what's behind it, and on phones without LiDAR, nothing checks for that.
 - **Two rules use placeholder numbers.** We couldn't find a public value for how far a battery should sit from a pool or a driveway, so for now they're 10 ft and 5 ft.

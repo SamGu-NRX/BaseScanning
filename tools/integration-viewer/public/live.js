@@ -1,4 +1,4 @@
-// Follows one capture through the loopback relay: health once, then an events long-poll loop,
+// Follows one capture through the loopback relay: health until it answers, then an events long-poll loop,
 // with status refreshes and the result and preview fetched when the events say they exist.
 // Every dispatch carries the session it started under; the reducer ignores it after a switch,
 // and stop() aborts whatever request is in flight.
@@ -43,6 +43,7 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
   const abort = new AbortController();
   const { signal } = abort;
   const base = `/relay/${sourceKey}`;
+  const artifactKeyFor = (body) => JSON.stringify([body?.runId ?? null, body?.previewArtifactId ?? body?.previewUrl]);
   const send = (action) => {
     if (!signal.aborted) dispatch({ ...action, session });
   };
@@ -52,7 +53,9 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
     if (!reply.ok) {
       const body = await reply.json().catch(() => null);
       const error = body?.errors?.[0];
-      const retryAfter = Number(reply.headers.get("retry-after"));
+      const retryHeader = reply.headers.get("retry-after") ?? "";
+      let retryAfter = Number(retryHeader);
+      if (!/^\d+$/.test(retryHeader)) retryAfter = /[A-Za-z]/.test(retryHeader) ? (Date.parse(retryHeader) - now()) / 1000 : NaN;
       throw new HttpError(reply.status, error?.code ?? `http_${reply.status}`, error?.message ?? `HTTP ${reply.status}`, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null);
     }
     return as === "json" ? reply.json() : reply.arrayBuffer();
@@ -61,107 +64,144 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
   async function run() {
     let failures = 0;
     let statusAt = -Infinity;
-    let triesKey = null;
-    let readyKey = null;
-    let resultTries = 0;
-    let resultAt = -Infinity;
+    const resultPoll = { key: null, readyKey: null, tries: 0, at: -Infinity };
+    // Server deadlines are independent of polling cadence and survive result refreshes.
+    // Result reads obey the later of cadence and result delay. Preview reads obey both
+    // endpoint delays because the relay reads /result before fetching the artifact.
     let resultNotBefore = -Infinity;
+    const previewNotBefore = new Map();
     let previewKey = null;
-    let previewRetryAt = -Infinity;
+    let invalidatedArtifactKey = null;
+    let contactNotBefore = -Infinity;
+
+    function resultDue(state) {
+      const key = resultKey(state);
+      if (!resultExpected(state) || resultPoll.readyKey === key) return Infinity;
+      const tries = resultPoll.key === key ? resultPoll.tries : 0;
+      const interval = tries < RESULT_QUICK_TRIES ? RESULT_RETRY_MS : RESULT_SLOW_MS;
+      return Math.max(resultPoll.at + interval, resultNotBefore);
+    }
+
+    function previewDue(result) {
+      const runId = result.body?.runId;
+      const artifactKey = artifactKeyFor(result.body);
+      if (result.phase !== "ready" || !hasPreview(result.body) || typeof runId !== "string"
+        || previewKey === `${runId}|${result.revision}` || artifactKey === invalidatedArtifactKey) return Infinity;
+      return Math.max(resultNotBefore, previewNotBefore.get(artifactKey) ?? -Infinity);
+    }
     // Reads start without waiting and repeat while pages come back full. They return what happened
     // before the viewer connected, which the reducer marks as backlog so it does not animate.
     let catchUp = true;
     let waitS = 0;
 
     while (!signal.aborted) {
-      try {
-        // An event or result named a run the status has not named yet: ask the status now.
-        if (getState().statusRefreshWanted) statusAt = -Infinity;
-        if (now() - statusAt >= STATUS_EVERY_MS) {
-          // Health is read until it answers once, so the build shown survives a failed first read.
-          if (!getState().identity) get("/healthz").then((body) => send({ type: "health", body }), () => {});
-          send({ type: "status", body: await get(`/captures/${captureId}`) });
-          statusAt = now();
-          send({ type: "contact-ok", at: now() });
+      if (now() >= contactNotBefore) {
+        try {
+          // An event or result named a run the status has not named yet: ask the status now.
+          if (getState().statusRefreshWanted) statusAt = -Infinity;
+          if (now() - statusAt >= STATUS_EVERY_MS) {
+            // Health is read until it answers once, so the build shown survives a failed first read.
+            if (!getState().identity) get("/healthz").then((body) => send({ type: "health", body }), () => {});
+            send({ type: "status", body: await get(`/captures/${captureId}`) });
+            statusAt = now();
+            send({ type: "contact-ok", at: now() });
+          }
+          const cursor = getState().cursor;
+          const asked = now();
+          // The wait ends by the next status refresh, so a status change with no event still shows.
+          const untilStatusS = Math.ceil(Math.max(0, STATUS_EVERY_MS - (now() - statusAt)) / 1000);
+          const body = await get(`/captures/${captureId}/events?after=${cursor}&wait=${catchUp ? 0 : Math.min(waitS, untilStatusS)}`);
+          const count = Array.isArray(body?.events) ? body.events.length : 0;
+          send({ type: "events", body, at: now(), catchUp });
+          failures = 0;
+          if (catchUp && count >= PAGE_SIZE) continue;
+          catchUp = false;
+          if (count === 0 && now() - asked < MIN_EMPTY_POLL_MS) await sleep(MIN_EMPTY_POLL_MS - (now() - asked), signal).catch(() => {});
+        } catch (error) {
+          if (signal.aborted) return;
+          if (error instanceof HttpError && (error.status === 404 || error.status === 410)) {
+            send({ type: "gone", error: error.status === 410 ? "The capture was deleted (410)." : "The API has no capture with this id (404)." });
+            return;
+          }
+          const detail = error instanceof HttpError ? `${error.code} (${error.status})` : "network error";
+          send({ type: "contact-failed", error: detail, offline: !online() });
+          const backoff = BACKOFF_MS[Math.min(failures, BACKOFF_MS.length - 1)];
+          const asked = error instanceof HttpError && error.retryAfterS ? Math.min(error.retryAfterS * 1000, RETRY_AFTER_CAP_MS) : 0;
+          contactNotBefore = now() + Math.max(backoff, asked);
+          failures += 1;
         }
-        const cursor = getState().cursor;
-        const asked = now();
-        // The wait ends by the next status refresh, so a status change with no event still shows.
-        const untilStatusS = Math.ceil(Math.max(0, STATUS_EVERY_MS - (now() - statusAt)) / 1000);
-        const body = await get(`/captures/${captureId}/events?after=${cursor}&wait=${catchUp ? 0 : Math.min(waitS, untilStatusS)}`);
-        const count = Array.isArray(body?.events) ? body.events.length : 0;
-        send({ type: "events", body, at: now(), catchUp });
-        failures = 0;
-        if (catchUp && count >= PAGE_SIZE) continue;
-        catchUp = false;
-        if (count === 0 && now() - asked < MIN_EMPTY_POLL_MS) await sleep(MIN_EMPTY_POLL_MS - (now() - asked), signal).catch(() => {});
-      } catch (error) {
-        if (signal.aborted) return;
-        if (error instanceof HttpError && (error.status === 404 || error.status === 410)) {
-          send({ type: "gone", error: error.status === 410 ? "The capture was deleted (410)." : "The API has no capture with this id (404)." });
-          return;
-        }
-        const detail = error instanceof HttpError ? `${error.code} (${error.status})` : "network error";
-        send({ type: "contact-failed", error: detail, offline: !online() });
-        const backoff = BACKOFF_MS[Math.min(failures, BACKOFF_MS.length - 1)];
-        const asked = error instanceof HttpError && error.retryAfterS ? Math.min(error.retryAfterS * 1000, RETRY_AFTER_CAP_MS) : 0;
-        await sleep(Math.max(backoff, asked), signal).catch(() => {});
-        failures += 1;
-        continue;
       }
 
       const state = getState();
       if (state.session !== session) return;
       const key = resultKey(state);
-      if (key !== triesKey) {
-        triesKey = key;
-        resultTries = 0;
-        resultNotBefore = -Infinity; // backpressure applied to the previous key's reads
+      if (key !== resultPoll.key) {
+        resultPoll.key = key;
+        resultPoll.tries = 0;
       }
-      const pending = resultExpected(state) && readyKey !== key;
-      const interval = resultTries < RESULT_QUICK_TRIES ? RESULT_RETRY_MS : RESULT_SLOW_MS;
-      if (pending && now() - resultAt >= interval && now() >= resultNotBefore) {
-        resultTries += 1;
-        resultAt = now();
+      if (now() >= resultDue(state)) {
+        resultPoll.tries += 1;
+        resultPoll.at = now();
         send({ type: "result-loading" });
         try {
           const body = await get(`/captures/${captureId}/result`);
           send({ type: "result", body });
           // Only a response the reducer accepted settles this key; a discarded one is read again.
-          if (getState().result.body === body && getState().result.phase === "ready") readyKey = key;
+          if (getState().result.body === body && getState().result.phase === "ready") {
+            // Keep refreshing an invalidated artifact at the normal result cadence.
+            if (!hasPreview(body) || artifactKeyFor(body) !== invalidatedArtifactKey) {
+              invalidatedArtifactKey = null;
+              resultPoll.readyKey = key;
+            }
+          }
         } catch (error) {
           if (signal.aborted) return;
           if (error instanceof HttpError && error.retryAfterS) resultNotBefore = now() + Math.min(error.retryAfterS * 1000, RETRY_AFTER_CAP_MS);
           send({ type: "result-error", error: error instanceof HttpError ? `${error.code} (${error.status})` : "network error" });
         }
       }
-      waitS = resultExpected(getState()) && readyKey !== key && resultTries < RESULT_QUICK_TRIES ? WAIT_EXPECTING_S : WAIT_S;
+      waitS = resultExpected(getState()) && resultPoll.readyKey !== key && resultPoll.tries < RESULT_QUICK_TRIES ? WAIT_EXPECTING_S : WAIT_S;
 
       const result = getState().result;
       const runId = result.body?.runId ?? null;
       const revisionKey = `${runId}|${result.revision}`;
-      if (result.phase === "ready" && hasPreview(result.body) && typeof runId === "string" && previewKey !== revisionKey && now() >= previewRetryAt) {
+      const artifactKey = artifactKeyFor(result.body);
+      for (const [artifact, deadline] of previewNotBefore) if (deadline <= now()) previewNotBefore.delete(artifact);
+      if (now() >= previewDue(result)) {
         previewKey = revisionKey;
         send({ type: "preview-loading", runId });
         try {
-          // The relay refuses with 409 if the latest result is no longer this run's.
-          const cloud = parsePly(await get(`/captures/${captureId}/preview?run=${encodeURIComponent(runId)}`, "bytes"));
+          // Bind the fetch to the file shown, so any Retry-After belongs to this artifact.
+          const artifact = result.body.previewArtifactId;
+          const artifactQuery = artifact == null ? "" : `&artifact=${encodeURIComponent(artifact)}`;
+          const cloud = parsePly(await get(`/captures/${captureId}/preview?run=${encodeURIComponent(runId)}${artifactQuery}`, "bytes"));
           send({ type: "preview", runId, cloud });
         } catch (error) {
           if (signal.aborted) return;
-          if (error instanceof HttpError && error.status === 409) {
-            previewKey = null; // the run moved on; the next result read decides what to show
-            readyKey = null;
-            continue;
-          }
-          if (error instanceof PlyError) send({ type: "preview-error", runId, unsupported: true, error: error.message });
+          if (error instanceof HttpError && (error.status === 409 || error.code === "preview_not_available")) {
+            invalidatedArtifactKey = artifactKey; // a new read revision does not mean the artifact changed
+            resultPoll.readyKey = null;
+            // This result is stale; do not carry over its slow polling schedule.
+            resultPoll.tries = 0;
+            resultPoll.at = -Infinity;
+            waitS = 0;
+          } else if (error instanceof PlyError) send({ type: "preview-error", runId, unsupported: true, error: error.message });
           else {
             // A fetch failure may pass; an unreadable file will not. Only the first is retried.
             send({ type: "preview-error", runId, error: error instanceof HttpError ? error.message : "network error" });
             previewKey = null;
-            previewRetryAt = now() + PREVIEW_RETRY_MS;
+            const asked = error instanceof HttpError && error.retryAfterS ? Math.min(error.retryAfterS * 1000, RETRY_AFTER_CAP_MS) : 0;
+            // The relay identifies failures of its prerequisite result read separately.
+            if (error instanceof HttpError && error.code === "result_unavailable") resultNotBefore = Math.max(resultNotBefore, now() + asked);
+            previewNotBefore.set(artifactKey, now() + Math.max(PREVIEW_RETRY_MS, asked));
           }
         }
+      }
+      if (now() < contactNotBefore) {
+        // Contact throttling must not delay independent result or preview retries.
+        const current = getState();
+        const wakeAt = Math.min(contactNotBefore, resultDue(current), previewDue(current.result));
+        await sleep(Math.max(0, wakeAt - now()), signal).catch(() => {});
       }
     }
   }

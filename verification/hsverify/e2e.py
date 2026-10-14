@@ -162,8 +162,15 @@ def read_bundle(path: Path) -> tuple[bytes, dict[str, bytes]]:
         declared = sum(i.file_size for i in infos)
         if declared > MAX_BUNDLE_BYTES:
             raise SystemExit(f"{path}: declares {declared} bytes, limit {MAX_BUNDLE_BYTES}")
-        infos = [i for i in infos if not i.is_dir()]
-        scenes = [i for i in infos if i.filename == "scene.json"]
+        infos = [i for i in infos if not i.is_dir() and not i.filename.startswith("__MACOSX/")]
+        scene_name = "scene.json"
+        if not any(i.filename == scene_name for i in infos):
+            # The public API also accepts a capture wrapped in one top-level folder.
+            tops = {i.filename.split("/", 1)[0] for i in infos}
+            if len(tops) == 1:
+                (top,) = tops
+                scene_name = f"{top}/scene.json"
+        scenes = [i for i in infos if i.filename == scene_name]
         if len(scenes) != 1:
             raise SystemExit(
                 f"{path}: expected exactly one canonical scene.json, found {len(scenes)}"
