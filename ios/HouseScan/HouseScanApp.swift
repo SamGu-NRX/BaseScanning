@@ -10,21 +10,21 @@ struct HouseScanApp: App {
         Task.detached(priority: .utility) { staging.removeOtherSessions() }
     }
 
-    private var engineCheckScenario: String? {
+    private static let engineCheckResult: String? = {
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
-        if let index = arguments.firstIndex(of: "-engineGuidanceCheck"), index + 1 < arguments.count { return arguments[index + 1] }
+        if let index = arguments.firstIndex(of: "-engineGuidanceCheck"), index + 1 < arguments.count {
+            return ScanEngine.checkGuidanceEngine(arguments[index + 1])
+        }
         #endif
         return nil
-    }
+    }()
 
     var body: some Scene {
         WindowGroup {
             Group {
-                if let scenario = engineCheckScenario {
-                    #if DEBUG
-                    Text(ScanEngine.checkGuidanceEngine(scenario)).accessibilityIdentifier("engine.check")
-                    #endif
+                if let result = Self.engineCheckResult {
+                    Text(result).accessibilityIdentifier("engine.check")
                 } else if ProcessInfo.processInfo.arguments.contains("-uiDemo") {
                     UIDemo.makeRoot()
                 } else {

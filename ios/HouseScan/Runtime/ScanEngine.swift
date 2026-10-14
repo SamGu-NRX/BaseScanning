@@ -2839,6 +2839,28 @@ extension ScanEngine {
             engine.coverage = CoverageMap(wall: wall)
             update()
             return aimHeld()
+        case "skipLaggingStretch":
+            var map = CoverageMap(wall: wall)
+            let width = map.config.cellWidth
+            let target = 15.5 * width
+            for band in SurfaceBand.allCases { map.markSkipped(band, -0.3...0.3) }
+            map.markSkipped(.wall, (10.5 * width)...(20.5 * width))
+            engine.coverage = map
+            engine.planner.reset()
+            engine.state.guidance = .aimAtGround(s: target)
+            engine.cannotAccessArea()
+            guard let skipped = engine.coverage else { return "skip lost coverage" }
+            // Eleven lagging cells surround the refused aim. Refusing only its 0.6 m window
+            // leaves three-cell runs on either side, which immediately ask for another aim.
+            for position: Float in [2, 3] {
+                var transform = camera.cameraToWorld
+                transform.columns.3.x = position
+                let besideSkip = CameraFrame(cameraToWorld: transform, intrinsics: camera.intrinsics, imageSize: camera.imageSize)
+                var probe = GuidancePlanner()
+                let task = probe.update(coverage: skipped, camera: besideSkip, time: 0).task
+                guard task == .walk(.left) else { return "refused stretch immediately requested \(task) at \(position)" }
+            }
+            return "passed"
         case "trimmedProgress":
             var map = CoverageMap(wall: wall)
             for band in SurfaceBand.allCases { map.markSkipped(band, -0.3...0.3) }

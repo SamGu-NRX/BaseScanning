@@ -558,13 +558,15 @@ extension ScanEngine: ScanActions {
             }
             switch state.guidance {
             case .aimAtGround(let s):
-                if let span = aimWindow(for: .aimAtGround(s: s)) {
-                    updateCoverage { $0.markSkipped(.ground, span) }
-                }
+                // Keep the original 1 m refusal span as well as the requested window. A narrow
+                // aim-only skip can leave adjacent three-cell runs and immediately ask again.
+                let requested = aimWindow(for: .aimAtGround(s: s))
+                let span = min(s - 0.5, requested?.lowerBound ?? s)...max(s + 0.5, requested?.upperBound ?? s)
+                updateCoverage { $0.markSkipped(.ground, span) }
             case .aimAtWall(let s):
-                if let span = aimWindow(for: .aimAtWall(s: s)) {
-                    updateCoverage { $0.markSkipped(.wall, span) }
-                }
+                let requested = aimWindow(for: .aimAtWall(s: s))
+                let span = min(s - 0.5, requested?.lowerBound ?? s)...max(s + 0.5, requested?.upperBound ?? s)
+                updateCoverage { $0.markSkipped(.wall, span) }
             case .seeBehind(let s):
                 // Whatever is in the way can't be seen past: its hidden cells go to review. Only
                 // those: open cells beside them can still be seen and stay asked for.
