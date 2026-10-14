@@ -421,3 +421,36 @@ test("a delayed prerequisite result read also delays direct result refreshes", a
     assert.equal(previewAt.length, 1);
   } finally { h.follower.stop(); await h.follower.done; }
 });
+
+for (const response of [
+  { status: 409, code: "preview_run_changed" },
+  { status: 404, code: "preview_not_available" },
+]) for (const change of ["artifact", "run"]) test(`unchanged ${response.code} stays suppressed until the ${change} changes`, async () => {
+  const resultAt = [];
+  const previewAt = [];
+  const runAt = (clock) => change === "run" && clock >= 60_000 ? "run_b" : "run_s";
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) return stubEvents();
+    if (path.endsWith("/result")) {
+      resultAt.push(clock);
+      return stubJson({ runId: runAt(clock), status: "complete", outcome: { kind: "eligible" }, previewUrl: "withheld-by-viewer-relay",
+        previewArtifactId: change === "artifact" && clock >= 60_000 ? "artifact_b" : "artifact_a" });
+    }
+    if (path.includes("/preview")) {
+      previewAt.push(clock);
+      return clock < 60_000 ? stubJson({ errors: [{ code: response.code }] }, response.status) : new Response(ply);
+    }
+    return stubJson({ runId: runAt(clock), status: "complete" });
+  });
+  try {
+    await until(() => h.state.preview.phase === "ready");
+    assert.equal(previewAt.length, 2, "an identical refreshed result cannot retry the invalidated artifact");
+    const beforeChange = resultAt.filter((at) => at < 60_000);
+    assert.ok(beforeChange.length >= 8, "results keep refreshing while the preview is suppressed");
+    assert.ok(beforeChange.length <= 10, `result refreshes remain bounded: ${beforeChange}`);
+    assert.ok(beforeChange.slice(2).every((at, i) => at - beforeChange[i + 1] >= 4_000));
+    assert.ok(previewAt[1] >= 60_000, "a changed identity allows the preview to load");
+    assert.equal(h.state.preview.runId, change === "run" ? "run_b" : "run_s");
+  } finally { h.follower.stop(); await h.follower.done; }
+});

@@ -43,6 +43,7 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
   const abort = new AbortController();
   const { signal } = abort;
   const base = `/relay/${sourceKey}`;
+  const artifactKeyFor = (body) => JSON.stringify([body?.runId ?? null, body?.previewArtifactId ?? body?.previewUrl]);
   const send = (action) => {
     if (!signal.aborted) dispatch({ ...action, session });
   };
@@ -70,6 +71,7 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
     let resultNotBefore = -Infinity;
     const previewNotBefore = new Map();
     let previewKey = null;
+    let invalidatedArtifactKey = null;
     // Reads start without waiting and repeat while pages come back full. They return what happened
     // before the viewer connected, which the reducer marks as backlog so it does not animate.
     let catchUp = true;
@@ -129,7 +131,13 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
           const body = await get(`/captures/${captureId}/result`);
           send({ type: "result", body });
           // Only a response the reducer accepted settles this key; a discarded one is read again.
-          if (getState().result.body === body && getState().result.phase === "ready") resultPoll.readyKey = key;
+          if (getState().result.body === body && getState().result.phase === "ready") {
+            // Keep refreshing an invalidated artifact at the normal result cadence.
+            if (!hasPreview(body) || artifactKeyFor(body) !== invalidatedArtifactKey) {
+              invalidatedArtifactKey = null;
+              resultPoll.readyKey = key;
+            }
+          }
         } catch (error) {
           if (signal.aborted) return;
           if (error instanceof HttpError && error.retryAfterS) resultNotBefore = now() + Math.min(error.retryAfterS * 1000, RETRY_AFTER_CAP_MS);
@@ -141,10 +149,10 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
       const result = getState().result;
       const runId = result.body?.runId ?? null;
       const revisionKey = `${runId}|${result.revision}`;
-      const artifactKey = JSON.stringify([runId, result.body?.previewArtifactId ?? result.body?.previewUrl]);
+      const artifactKey = artifactKeyFor(result.body);
       for (const [artifact, deadline] of previewNotBefore) if (deadline <= now()) previewNotBefore.delete(artifact);
       const previewDue = Math.max(resultNotBefore, previewNotBefore.get(artifactKey) ?? -Infinity);
-      if (result.phase === "ready" && hasPreview(result.body) && typeof runId === "string" && previewKey !== revisionKey && now() >= previewDue) {
+      if (result.phase === "ready" && hasPreview(result.body) && typeof runId === "string" && previewKey !== revisionKey && artifactKey !== invalidatedArtifactKey && now() >= previewDue) {
         previewKey = revisionKey;
         send({ type: "preview-loading", runId });
         try {
@@ -154,7 +162,7 @@ export function followCapture({ sourceKey, captureId, session, dispatch, getStat
         } catch (error) {
           if (signal.aborted) return;
           if (error instanceof HttpError && (error.status === 409 || error.code === "preview_not_available")) {
-            previewKey = revisionKey; // do not retry this artifact until a fresh result is accepted
+            invalidatedArtifactKey = artifactKey; // a new read revision does not mean the artifact changed
             resultPoll.readyKey = null;
             // This result is stale; do not carry over its slow polling schedule.
             resultPoll.tries = 0;
