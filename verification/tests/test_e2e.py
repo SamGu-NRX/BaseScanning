@@ -492,7 +492,7 @@ def test_a_prebuilt_zip_goes_as_application_zip_when_the_endpoint_takes_it(refus
     RefusingServer.content_types.clear()
     bomb = hostile_inputs()[4]
     json_only = Endpoint("/p", "application/json")
-    assert judge_hostile(refusing_url, json_only, bomb, SCHEMAS)["status"] == "skipped"
+    assert judge_hostile(refusing_url, json_only, bomb, SCHEMAS)["status"] == "fail"
     zip_too = Endpoint("/p", "application/json", accepts_zip=True)
     assert judge_hostile(refusing_url, zip_too, bomb, SCHEMAS)["status"] == "pass"
     assert RefusingServer.content_types == ["application/zip"]
@@ -592,3 +592,68 @@ def test_a_200_that_is_not_a_json_object_is_a_failure_not_a_crash(monkeypatch):
         assert "not a JSON object" in record["contract_problems"][0]
         hostile = judge_hostile("http://unused", endpoint, hostile_inputs()[3], SCHEMAS)
         assert hostile["status"] == "fail" and "not a JSON object" in hostile["problems"][0]
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"status": "skipped", "skip_reason": "missing scene"},
+        {"status": "fail", "expectation_problems": ["wrong decision"], "contract_problems": []},
+    ],
+)
+def test_run_acceptance_is_separate_from_contract_invariants(tmp_path, extra):
+    report = e2e.write_report(tmp_path, META, [CHECKED, {"name": "other", **extra}])
+    assert not report["all_passed"]
+    assert report["contract_ok"]
+
+
+def test_unexercised_large_input_probe_fails_contract():
+    item = hostile_inputs()[-1]
+    item.bundle = b"archive"
+    record = judge_hostile("unused", Endpoint("/place", "application/json"), item, {})
+    assert record["status"] == "fail" and record["contract_problems"]
+
+
+def test_bundle_uses_exact_canonical_scene(tmp_path):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("old-scene.json", b"old")
+        z.writestr("scene.json", b"canonical")
+    assert e2e.read_bundle(archive)[0] == b"canonical"
+
+
+@pytest.mark.parametrize("names", [["old-scene.json"], ["scene.json", "scene.json"]])
+def test_bundle_rejects_missing_or_duplicate_canonical_scene(tmp_path, names):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        for name in names:
+            z.writestr(name, b"{}")
+    with pytest.raises(SystemExit, match=r"exactly one canonical scene\.json"):
+        e2e.read_bundle(archive)
+
+
+def test_transformed_answer_checks_its_own_hash(monkeypatch):
+    calls = []
+    original = {"decision": "pass", "stats": {}, "sweep": []}
+    monkeypatch.setattr(
+        e2e, "post", lambda *args, **kwargs: (200, json.dumps(original).encode(), 1)
+    )
+    monkeypatch.setattr(e2e, "answer", lambda *args: (original, None))
+    monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
+
+    def check_hash(scene, result, sent=None, rules=None):
+        calls.append((scene, sent))
+        return ["stale input hash"] if sent is not None else []
+
+    monkeypatch.setattr(e2e, "invariant_problems", check_hash)
+    monkeypatch.setattr(e2e, "with_ground_short_of", lambda *args: None)
+    monkeypatch.setattr(e2e, "with_more_error", lambda *args: None)
+    monkeypatch.setattr(e2e, "tape_to_tap", lambda *args: None)
+    monkeypatch.setattr(e2e, "with_less_coverage", lambda *args: None)
+    scene = {"walls": [{"id": "w1", "baseline": [[-1, 0], [1, 0]]}], "meter": {"pos": [0, 1, 0]}}
+    probe = SceneInput(name="test", scene=scene, raw=json.dumps(scene).encode(), source="test")
+    failures = e2e.property_problems(
+        "unused", Endpoint("/p", "application/json"), probe, original, {"result": {}}, RULES
+    )
+    assert calls and all(raw == json.dumps(scene, indent=1).encode() for scene, raw in calls)
+    assert any("stale input hash" in p for p in failures)

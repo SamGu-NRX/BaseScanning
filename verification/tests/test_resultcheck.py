@@ -412,7 +412,7 @@ clearances: {gas_ft: {value: 3}, ac_ft: {value: 3}, battery_ft: {value: 3}, driv
 openings: {exempt_bottom_above_ft: null}
 facing: {min_ft: {value: 3}}
 headroom: {min_ft: {value: 6.5}}
-route: {height_ft: {value: 1}}
+route: {height_ft: {value: 1}, corner_allowance_ft: {value: 0.5}}
 sweep: {step_ft: {value: 0.166666666667}, wall_join_ft: {value: 0.6}}
 """
     rules = RuleSet.from_yaml(text)
@@ -1393,7 +1393,7 @@ def test_a_passing_footprint_keeps_the_wall_error_clear_of_its_stretch_end():
     ]
     r = result(spot=False, sweep=[pass_run(6.846, 10.0 - 31 / 12)])
     assert footprint_problems(scene, r, RULES) == [
-        "sweep pass start 7.42 ends within its error (0.60 ft) of its straight wall's end at 10.00"
+        "sweep pass start 7.01 ends within its error (0.60 ft) of its straight wall's end at 10.00"
     ]
     r["sweep"][0]["outcome"] = "unsure"  # unsure may stand that close
     assert footprint_problems(scene, r, RULES) == []
@@ -1537,3 +1537,32 @@ def test_a_band_gap_under_the_coverage_tolerance_is_rounding():
     assert gaps_over([(-6.5, 18.0)], 9.94, 18.011) == [(18.0, 18.011)]
     assert gaps_over([(0.0, 1.0), (1.009, 3.0)], 0.5, 2.0) == []
     assert gaps_over([(0.0, 1.0), (1.011, 3.0)], 0.5, 2.0) == [(1.0, 1.011)]
+
+
+@pytest.mark.parametrize("outcome", ["pass", "unsure"])
+def test_interior_sweep_start_cannot_cross_a_corner(outcome):
+    scene = copy.deepcopy(SCENE)
+    scene["walls"][0]["baseline"] = [[-12.0, 0.0], [5.0, 0.0], [5.0, 7.0]]
+    result = {"sweep": [{"wall_id": "w1", "start_ft": [1.0, 8.0], "outcome": outcome}]}
+    assert footprint_problems(scene, result, RULES)
+
+
+def test_ground_trimming_keeps_omitted_reach_at_zero():
+    scene = copy.deepcopy(SCENE)
+    scene["coverage"]["observed"] = [
+        {"band": "ground", "span_ft": [-12, 0]},
+        {"band": "ground", "span_ft": [0, 12], "out_ft": 100},
+    ]
+    trimmed = with_ground_short_of(scene, RULES)
+    assert trimmed["coverage"]["observed"][0]["out_ft"] == 0
+
+
+def test_geometric_assumptions_compare_active_rules():
+    rules = replace(RULES, corner_allowance_ft=0.5)
+    assert (
+        len(assumption_mismatches({"battery_width": 100, "corner_allowance": 100}, {}, rules)) == 2
+    )
+    assert (
+        assumption_mismatches({"battery_width": rules.width_ft, "corner_allowance": 0.5}, {}, rules)
+        == []
+    )

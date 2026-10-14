@@ -57,7 +57,7 @@ def reconstruct(
     # Only frames with a depth map can see anything (depth.depth_maps: LiDAR frames saved
     # without depth get none).
     seeing = [f for f in capture.frames if f.id in depths]
-    cov = coverage.compute(wall, seeing, depths, vol, surface)
+    cov = coverage.compute(wall, seeing, depths, vol, surface, ground)
     _log(f"coverage over {len(cov.cells)} cells ({time.perf_counter() - t0:.0f} s)")
     return {
         "depths": depths,
@@ -124,7 +124,28 @@ def write_model(r: dict, path: Path) -> None:
 def run(
     bundle: Path, out: Path, work: Path, depth_mode: str, server_url: str | None, move_meter: bool
 ) -> dict:
+    owned = (
+        "model.glb",
+        "geometry.json",
+        "scene.json",
+        "coverage.json",
+        "report.md",
+        "result.json",
+        "site-plan.svg",
+    )
+    bundle_path, out_path = bundle.resolve(), out.resolve()
+    if bundle.is_dir():
+        overlap = bundle_path.is_relative_to(out_path) or out_path.is_relative_to(bundle_path)
+    else:
+        overlap = bundle_path in {(out_path / name).resolve() for name in owned}
+    if overlap:
+        raise ValueError(
+            f"output {out} overlaps capture input {bundle}; use a separate output folder"
+        )
     out.mkdir(parents=True, exist_ok=True)
+    # A failed or --no-server rerun must not leave an earlier run's answer beside new outputs.
+    for name in owned:
+        (out / name).unlink(missing_ok=True)
     capture = cap.load(bundle, work)
     _log(f"{capture.source}: {len(capture.frames)} frames from {bundle}")
     t0 = time.perf_counter()

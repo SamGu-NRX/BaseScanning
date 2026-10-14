@@ -1,11 +1,15 @@
+import contextlib
 import datetime as dt
 import io
 import json
 import queue
 import subprocess
+import sys
 from pathlib import Path
 
-from hsverify import simrun
+import pytest
+
+from hsverify import gitref, simrun
 from hsverify.simrun import (
     ShotRecord,
     app_export,
@@ -180,3 +184,76 @@ def test_a_run_installs_its_own_copy_of_the_app_it_built(tmp_path, monkeypatch):
     assert (app / "Info.plist").read_text() == "run A"
     simrun.discard_app(app)
     assert not app.parent.exists() and out.exists()
+
+
+def test_shared_output_keeps_both_app_copies(tmp_path, monkeypatch):
+    derived = tmp_path / "derived"
+    built = derived / "Build" / "Products" / "Debug-iphonesimulator" / "HouseScan.app"
+    monkeypatch.setattr(simrun, "DERIVED_DATA", derived)
+    monkeypatch.setattr(simrun, "BUILD_LOCK", tmp_path / "lock")
+    monkeypatch.setattr(simrun, "wait_for_other_builds", lambda _: 0.0)
+
+    def fake_build(cmd, **kwargs):
+        built.mkdir(parents=True, exist_ok=True)
+        (built / "Info.plist").write_text("app")
+        kwargs["stdout"].write("warning: Run script build phase\n/path/File: warning: warning\n")
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(simrun.subprocess, "run", fake_build)
+    tree, out = tmp_path / "tree", tmp_path / "report"
+    (tree / "ios" / "HouseScan.xcodeproj").mkdir(parents=True)
+    out.mkdir()
+    result, first = simrun.build_app(tree, out, 0, "ios/HouseScan.xcodeproj", "HouseScan")
+    _, second = simrun.build_app(tree, out, 0, "ios/HouseScan.xcodeproj", "HouseScan")
+    assert first != second and first.exists() and second.exists()
+    assert len(result["warnings"]) == 2
+    simrun.discard_app(first)
+    assert not first.exists() and second.exists()
+
+
+@pytest.mark.parametrize("failure", ["device", "bundle", "install"])
+def test_failed_preparation_discards_app_copy(tmp_path, monkeypatch, failure):
+    out = tmp_path / "out"
+    app = out / "built-app-unique" / "HouseScan.app"
+    app.mkdir(parents=True)
+    monkeypatch.setattr(simrun, "DEVICE_LOCK", tmp_path / "device.lock")
+    monkeypatch.setattr(gitref, "fetch", lambda: None)
+    monkeypatch.setattr(gitref, "resolve", lambda _: "a" * 40)
+    monkeypatch.setattr(
+        gitref, "detached_worktree", lambda *args, **kwargs: contextlib.nullcontext(tmp_path)
+    )
+    monkeypatch.setattr(simrun, "static_c4_check", lambda _: {})
+    monkeypatch.setattr(simrun, "build_app", lambda *args: ({"ok": True}, app))
+
+    def fail():
+        raise RuntimeError("preparation failed")
+
+    monkeypatch.setattr(
+        simrun, "ensure_device", lambda _: fail() if failure == "device" else {"udid": "mock"}
+    )
+    monkeypatch.setattr(simrun, "bundle_id_of", lambda _: fail() if failure == "bundle" else "mock")
+    monkeypatch.setattr(simrun, "prepare_display", lambda *args: None)
+    monkeypatch.setattr(simrun, "simctl", lambda *args: fail() if args[0] == "install" else "")
+    monkeypatch.setattr(
+        simrun.subprocess, "run", lambda *args, **kwargs: subprocess.CompletedProcess([], 0)
+    )
+    monkeypatch.setattr(simrun, "peak_rss_mb", lambda: {})
+    monkeypatch.setattr(simrun.report, "write_sim_report", lambda *args: None)
+    with pytest.raises(RuntimeError, match="preparation failed"):
+        simrun.main(["--out", str(out)])
+    assert not app.parent.exists()
+
+
+def test_device_lock_excludes_another_runner_and_releases(tmp_path, monkeypatch):
+    monkeypatch.setattr(simrun, "DEVICE_LOCK", tmp_path / "device.lock")
+    script = """import fcntl, sys
+with open(sys.argv[1]) as lock:
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        sys.exit(43)
+"""
+    cmd = [sys.executable, "-c", script, str(simrun.DEVICE_LOCK)]
+    with simrun.device_lock():
+        assert subprocess.run(cmd, timeout=5, check=False).returncode == 43
+    assert subprocess.run(cmd, timeout=5, check=False).returncode == 0

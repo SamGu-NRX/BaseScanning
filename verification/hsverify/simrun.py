@@ -33,6 +33,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from collections.abc import Iterable
@@ -55,6 +56,7 @@ DEVICE_TYPE = "com.apple.CoreSimulator.SimDeviceType.iPhone-17"
 DEFAULT_REPORTS = Path.home() / "house-scanning-data" / "reports" / "sim"
 DERIVED_DATA = Path("/tmp/hs-verify-derived-data")
 BUILD_LOCK = Path("/tmp/hs-verify-xcodebuild.lock")
+DEVICE_LOCK = Path("/tmp/hs-verify-simulator.lock")
 BUILT_APP_DIR = "built-app"  # in the report folder, until the Simulator has installed it
 
 
@@ -222,11 +224,14 @@ def build_app(
         built = DERIVED_DATA / "Build" / "Products" / "Debug-iphonesimulator" / f"{scheme}.app"
         app = None
         if code == 0 and built.exists():
-            app = out / BUILT_APP_DIR / built.name
-            shutil.rmtree(app.parent, ignore_errors=True)
-            shutil.copytree(built, app, symlinks=True)
+            app = Path(tempfile.mkdtemp(prefix=f"{BUILT_APP_DIR}-", dir=out)) / built.name
+            try:
+                shutil.copytree(built, app, symlinks=True)
+            except BaseException:
+                discard_app(app)
+                raise
     text = log_path.read_text(errors="replace")
-    warnings = sorted(set(re.findall(r"^.*: warning: .*$", text, re.M)))
+    warnings = sorted(set(re.findall(r"^(?:.*: )?warning: .*$", text, re.M)))
     errors = sorted(set(re.findall(r"^.*: error: .*$", text, re.M)))
     result = {
         "ok": code == 0,
@@ -242,7 +247,7 @@ def build_app(
 
 def discard_app(app: Path) -> None:
     """Remove this run's copy of the app once the Simulator has installed its own."""
-    if app.parent.name == BUILT_APP_DIR:
+    if app.parent.name.startswith(f"{BUILT_APP_DIR}-"):
         shutil.rmtree(app.parent, ignore_errors=True)
 
 
@@ -575,6 +580,16 @@ def collect_crashes(since: float, out: Path) -> list[str]:
     return found
 
 
+@contextlib.contextmanager
+def device_lock():
+    """Hold the shared Simulator until install, capture and shutdown have finished."""
+    DEVICE_LOCK.touch()
+    with DEVICE_LOCK.open() as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+@device_lock()
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--ref", default="origin/main", help="git ref to build")
@@ -671,7 +686,12 @@ def main(argv: list[str] | None = None) -> int:
         flush=True,
     )
 
-    device = ensure_device(args.udid)
+    try:
+        device = ensure_device(args.udid)
+    except BaseException:
+        if app is not None:
+            discard_app(app)
+        raise
     rep = RunReport(
         ref=args.ref,
         sha=sha,
@@ -722,6 +742,8 @@ def main(argv: list[str] | None = None) -> int:
         if rep.crash_reports:
             rep.problems.append(f"Crash reports: {', '.join(rep.crash_reports)}")
     finally:
+        if app is not None:
+            discard_app(app)
         services.close()
         rep.peak_memory = peak_rss_mb()
         if not args.keep_booted:

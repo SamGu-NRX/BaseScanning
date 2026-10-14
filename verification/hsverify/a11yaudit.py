@@ -91,7 +91,7 @@ def audit_problems(screens: list[dict], harness_ran: bool, min_screens: int) -> 
     """Why this run is not evidence of an audit; empty when it is."""
     problems = []
     if not harness_ran:
-        problems.append("the audit harness did not run (no TEST SUCCEEDED or TEST FAILED line)")
+        problems.append("the audit harness did not finish successfully")
     problems += [f"screen {s.get('index')}: {s['error']}" for s in screens if "error" in s]
     audited = audited_screens(screens)
     if not audited:
@@ -103,7 +103,7 @@ def audit_problems(screens: list[dict], harness_ran: bool, min_screens: int) -> 
 
 def run_harness(
     udid: str, bundle_id: str, args: argparse.Namespace, launch: list[str], out: Path
-) -> str:
+) -> tuple[str, int]:
     env = os.environ | {
         "TEST_RUNNER_AUDIT_BUNDLE": bundle_id,
         "TEST_RUNNER_AUDIT_ARGS": ARG_SEPARATOR.join(launch),
@@ -127,7 +127,7 @@ def run_harness(
     simrun.wait_for_other_builds(args.build_wait)
     result = subprocess.run(cmd, env=env, capture_output=True, text=True)
     (out / "xcodebuild-test.log").write_text(result.stdout + result.stderr)
-    return result.stdout
+    return result.stdout, result.returncode
 
 
 def write_report(out: Path, data: dict) -> None:
@@ -172,6 +172,7 @@ def write_report(out: Path, data: dict) -> None:
     (out / "index.html").write_text(page)
 
 
+@simrun.device_lock()
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--ref", default="origin/t3/ios-mvf")
@@ -223,7 +224,11 @@ def main(argv: list[str] | None = None) -> int:
     if app is None:
         print(f"Build failed; see {out / 'build.log'}")
         return 1
-    device = simrun.ensure_device()
+    try:
+        device = simrun.ensure_device()
+    except BaseException:
+        simrun.discard_app(app)
+        raise
     udid = device["udid"]
     try:
         bundle_id = simrun.bundle_id_of(app)
@@ -235,13 +240,18 @@ def main(argv: list[str] | None = None) -> int:
             ["xcrun", "simctl", "privacy", udid, "grant", "camera", bundle_id], capture_output=True
         )
         print(f"Auditing {bundle_id} at {sha[:12]}...", flush=True)
-        output = run_harness(udid, bundle_id, args, launch, out)
+        output, test_returncode = run_harness(udid, bundle_id, args, launch, out)
     finally:
+        simrun.discard_app(app)
         subprocess.run(["xcrun", "simctl", "shutdown", udid], capture_output=True)
 
     screens, issues = parse_output(output)
     symbols = symbol_name_labels(screens)
-    harness_ran = "** TEST SUCCEEDED **" in output or "** TEST FAILED **" in output
+    harness_ran = (
+        test_returncode == 0
+        and "** TEST SUCCEEDED **" in output
+        and "** TEST FAILED **" not in output
+    )
     problems = audit_problems(screens, harness_ran, args.min_screens)
     data = {
         # ok: the run is evidence of an audit. Issues found are counted separately below.
