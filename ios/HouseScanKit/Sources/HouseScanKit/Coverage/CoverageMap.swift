@@ -1299,15 +1299,8 @@ public struct CoverageMap: Sendable {
         case .left: leftEnd = s
         case .right: rightEnd = s
         }
-        // Precomputed `record` maps have no kept frames to replay.
-        if observedCameras.isEmpty {
-            if limitEnds.remove(side) != nil { replayPastLimits() }
-            revision += 1
-        } else {
-            limitEnds.remove(side)
-            // Re-marking after a clear applies the same bounds to the restored sightings.
-            replayObservedCameras(shiftingSkippedBy: 0)
-        }
+        limitEnds.remove(side)
+        replayForChangedEnd()
     }
 
     /// Says whether the marked end on `side` is a real limit (scene.json's `limit`) or not
@@ -1327,8 +1320,18 @@ public struct CoverageMap: Sendable {
         case .right: rightEnd = nil
         }
         limitEnds.remove(side)
-        // Kept frames were clipped to the old end. Rebuild rather than merge so repeated clears
-        // restore those sightings without counting the same view twice.
+        replayForChangedEnd()
+    }
+
+    private mutating func replayForChangedEnd() {
+        // Precomputed `record` maps have no kept frames to replay; preserve their sightings.
+        guard !observedCameras.isEmpty else {
+            replayPastLimits()
+            revision += 1
+            return
+        }
+        // Rebuild rather than merge: clear restores clipped sightings, and re-mark clips them
+        // again, without counting the same view twice.
         replayObservedCameras(shiftingSkippedBy: 0)
     }
 

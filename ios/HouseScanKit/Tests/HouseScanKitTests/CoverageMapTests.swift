@@ -311,6 +311,19 @@ import Testing
         #expect(map.level(.wall, 1) == .seen)
     }
 
+    @Test func clearingAnEndPreservesPrecomputedSightingsWithoutKeptFrames() {
+        var map = CoverageMap(wall: standardWall())
+        map.setEnd(.right, at: 0)
+        let sighting = CoverageMap.Sighting(band: .ground, index: -1, rows: Set(0...2), hiddenRows: [])
+        map.record([sighting], from: Self.front)
+        #expect(map.level(.ground, -1) == .seen)
+        map.clearEnd(.right)
+        #expect(map.level(.ground, -1) == .seen)
+        map.clearEnd(.right)
+        #expect(map.level(.ground, -1) == .seen)
+        #expect(map.coveredCount == 0)
+    }
+
     @Test func clearingAnEndTwiceDoesNotCountSightingsTwice() {
         var map = CoverageMap(wall: standardWall())
         map.setEnd(.right, at: 0)
