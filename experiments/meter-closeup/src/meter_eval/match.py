@@ -38,18 +38,24 @@ NUMBER_LABELS = (
     "№",
     "#",
 )
+# Label wrappers are explicit so format characters cannot disappear around a label.
+_LABEL_SEPARATOR = r"[\s().:/#-]"
 KEYWORD = re.compile(
-    r"^[\W_]*(?:"
+    rf"^{_LABEL_SEPARATOR}*(?:"
     + "|".join(
-        re.escape(label).replace(r"\ ", r"[\W_]+") + (r"(?=$|[\W_])" if label[-1].isalnum() else "")
+        re.escape(label).replace(r"\ ", _LABEL_SEPARATOR + "+")
+        + (rf"(?=$|{_LABEL_SEPARATOR})" if label[-1].isalnum() else "")
         for label in NUMBER_LABELS
     )
-    + r")[\W_]*",
+    + rf"){_LABEL_SEPARATOR}*",
     re.IGNORECASE,
 )
 
 
 _SERIAL_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+# Only these punctuation marks and Unicode whitespace split a serial group.
+_SERIAL_SEPARATORS = "-/.:"
+_SERIAL_GROUP = re.compile(r"[^\s" + re.escape(_SERIAL_SEPARATORS) + r"]+")
 
 
 def serial_text(text: str) -> str:
@@ -66,11 +72,15 @@ def serial_text(text: str) -> str:
 
 
 def read_target(text: str) -> str | None:
-    """Label-stripped serial text, or None for an unsupported letter or digit."""
+    """Label-stripped serial text, or None for any unsupported group character."""
     text = serial_text(text)
-    if any(character.isalnum() and character not in _SERIAL_ALPHABET for character in text):
-        return None
     text = KEYWORD.sub("", text, count=1)
+    if any(
+        character not in _SERIAL_ALPHABET
+        for group in _SERIAL_GROUP.findall(text)
+        for character in group
+    ):
+        return None
     return "".join(character for character in text if character in _SERIAL_ALPHABET).lower()
 
 
@@ -160,26 +170,37 @@ def match_serial(
             owners.extend([piece["box"]] * len(text))
         row_text = " ".join(normalized)
         masked = list(row_text)
+        rating_starts = set()
         for rating in _RATING.finditer(row_text):
+            # Never extract a rating from inside a group containing an unsupported character.
+            neighbours = row_text[rating.start() - 1 : rating.start()] if rating.start() else ""
+            neighbours += row_text[rating.end() : rating.end() + 1]
+            if any(
+                not character.isspace() and character not in _SERIAL_SEPARATORS
+                for character in neighbours
+            ):
+                continue
+            rating_starts.add(rating.start())
             # Preserve offsets for source boxes while making the entire rating a boundary.
             masked[rating.start() : rating.end()] = ["\0"] + [" "] * (
                 rating.end() - rating.start() - 1
             )
         groups = []
-        for token in re.finditer(r"N°|№|#|\x00|[^\W_]+", "".join(masked)):
+        boundaries = set()
+        for token in _SERIAL_GROUP.finditer("".join(masked)):
             boxes = []
             for box in owners[token.start() : token.end()]:
                 if box is not None and box not in boxes:
                     boxes.append(box)
+            if token.start() in rating_starts:
+                boundaries.add(len(groups))
             groups.append((token.group(), boxes))
         words = [word for word, _ in groups]
         kinds = []
-        for word in words:
-            if word == "\0":
+        for index, word in enumerate(words):
+            if index in boundaries:
                 kind = "boundary"
-            elif any(
-                character.isalnum() and character not in _SERIAL_ALPHABET for character in word
-            ):
+            elif any(character not in _SERIAL_ALPHABET for character in word):
                 kind = "invalid"
             elif word.isdigit():
                 kind = "numeric"

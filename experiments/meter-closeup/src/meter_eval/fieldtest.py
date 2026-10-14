@@ -62,7 +62,7 @@ def main() -> None:
 
     target_core = number_core(args.number)
     if target_core is None:
-        parser.error("--number contains unsupported non-ASCII letters or digits")
+        parser.error("--number contains an unsupported character in a serial group")
     if not target_core:
         parser.error("--number must contain letters or digits")
     photos = sorted(p for p in args.folder.iterdir() if p.suffix.lower() in SUFFIXES)

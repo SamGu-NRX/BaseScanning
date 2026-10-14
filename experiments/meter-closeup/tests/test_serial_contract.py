@@ -243,7 +243,7 @@ def test_invalid_target_is_a_loud_argument_error(tmp_path, monkeypatch, capsys, 
     with pytest.raises(SystemExit) as error:
         fieldtest.main()
     assert error.value.code == 2
-    assert "unsupported non-ASCII" in capsys.readouterr().err
+    assert "--number contains an unsupported character" in capsys.readouterr().err
 
 
 def test_standalone_label_shape_inside_a_split_serial_is_unsupported():
@@ -310,7 +310,7 @@ def test_only_fullwidth_ascii_is_mapped(target, text):
     ] == number_core(target)
 
 
-@pytest.mark.parametrize("payload", ["é1234567", "序號1234", "ß1234", "ﬀ1234"])
+@pytest.mark.parametrize("payload", ["é1234567", "序號1234", "ß1234", "ﬀ1234", "e\u03011234567"])
 def test_invalid_barcodes_do_not_abort_photo_scoring(tmp_path, monkeypatch, capsys, payload):
     import sys
 
@@ -359,7 +359,7 @@ def test_invalid_barcodes_do_not_abort_photo_scoring(tmp_path, monkeypatch, caps
     assert "| photo.jpg | yes | 1 |" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("target", ["ß1234", "ﬀ1234"])
+@pytest.mark.parametrize("target", ["ß1234", "ﬀ1234", "e\u03011234567", "１２３４５６７\u0301"])
 def test_unicode_expansion_target_is_a_cli_argument_error(tmp_path, monkeypatch, capsys, target):
     import sys
 
@@ -369,4 +369,38 @@ def test_unicode_expansion_target_is_a_cli_argument_error(tmp_path, monkeypatch,
     with pytest.raises(SystemExit) as error:
         fieldtest.main()
     assert error.value.code == 2
-    assert "--number contains unsupported non-ASCII" in capsys.readouterr().err
+    assert "--number contains an unsupported character" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "target,text",
+    [
+        ("E1234567", "e\u03011234567"),
+        ("1234567", "1234567\u200b8"),
+        ("1234567", "１２３４５６７\u0301"),
+    ],
+)
+def test_undefined_characters_invalidate_the_entire_ocr_group(target, text):
+    assert not reads_number(observations(text), target)
+    # No longer serial may be assembled by dropping the unsupported character either.
+    assert candidates({"lines": observations(text), "barcodes": []}, target) == []
+    assert number_core(text) is None
+
+
+@pytest.mark.parametrize("character", ["\u0301", "\u200b", "\u200d", "\ufeff", "😀", "♥", "\0"])
+def test_unsupported_marks_symbols_and_format_characters_are_not_separators(character):
+    for text in (f"123{character}4567", f"{character} 1234567", f"1234567 {character}"):
+        assert not reads_number(observations(text), "1234567")
+    assert number_core(f"No. {character}1234567") is None
+
+
+@pytest.mark.parametrize("separator", [" ", "\t", "\n", "\u00a0", "\u2003", "-", "/", ".", ":"])
+def test_only_defined_separators_split_serial_groups(separator):
+    text = f"123{separator}4567"
+    assert reads_number(observations(text), "1234567")
+    assert number_core(text) == "1234567"
+
+
+@pytest.mark.parametrize("text", ["240V\u200b", "\u0301240V", "240V😀"])
+def test_invalid_rating_shaped_group_is_not_extracted_as_a_boundary(text):
+    assert not reads_number(observations(f"1234567 {text}"), "1234567")
