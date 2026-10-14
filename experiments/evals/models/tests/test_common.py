@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -349,9 +351,12 @@ def test_a_publication_that_fails_twice_keeps_the_previous_run(tmp_path, monkeyp
         shutil.rmtree(stage)
 
 
-def test_publication_refuses_an_existing_backup_directory(tmp_path):
+@pytest.mark.parametrize("out_exists", [False, True])
+def test_publication_refuses_an_existing_backup_directory(tmp_path, out_exists):
     from models import run
 
+    if out_exists:
+        _complete_run(tmp_path / "out", "current")
     _complete_run(tmp_path / "out.previous", "caller-owned")
     before = _snapshot(tmp_path / "out.previous")
     stage = tmp_path / "stage"
@@ -360,6 +365,136 @@ def test_publication_refuses_an_existing_backup_directory(tmp_path):
         run.publish(stage, tmp_path / "out")
     assert _snapshot(tmp_path / "out.previous") == before
     assert stage.exists()
+
+
+@pytest.mark.parametrize("record", ["{", "[]", '{"old": null, "new": null}'])
+def test_publication_preserves_an_invalid_ownership_record(tmp_path, record):
+    from models import run
+
+    owner = tmp_path / "out.publication.json"
+    owner.write_text(record)
+    backup, stage = tmp_path / "out.previous", tmp_path / "stage"
+    _complete_run(backup, "caller-owned")
+    _complete_run(stage, "new")
+    before = _snapshot(backup)
+    with pytest.raises(RuntimeError, match="invalid publication record"):
+        run.publish(stage, tmp_path / "out")
+    assert _snapshot(backup) == before
+    assert owner.read_text() == record
+    assert stage.exists()
+
+
+@pytest.mark.parametrize("after_rename", ["out", "stage", "cleanup"])
+def test_publication_recovers_after_a_process_is_killed(tmp_path, monkeypatch, after_rename):
+    from models import run
+
+    out, stage = tmp_path / "out", tmp_path / "stage"
+    _complete_run(out, "previous")
+    _complete_run(stage, "interrupted")
+    previous_bytes, new_bytes = _snapshot(out), _snapshot(stage)
+    # Hard exit after the real rename bypasses publish's exception rollback.
+    script = """
+import os, shutil, sys
+from pathlib import Path
+from models.run import publish
+out, stage, after_rename = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
+rename = Path.rename
+def interrupted(self, target):
+    result = rename(self, target)
+    if self.name == after_rename:
+        os._exit(137)
+    return result
+Path.rename = interrupted
+rmtree = shutil.rmtree
+def interrupted_cleanup(path, *args, **kwargs):
+    result = rmtree(path, *args, **kwargs)
+    if after_rename == "cleanup" and Path(path) == out.with_name(out.name + ".previous"):
+        os._exit(137)
+    return result
+shutil.rmtree = interrupted_cleanup
+publish(stage, out)
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(out), str(stage), after_rename],
+        cwd=Path(run.__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 137, result.stderr
+    backup = tmp_path / "out.previous"
+    if after_rename == "cleanup":
+        assert not backup.exists()
+    else:
+        assert _snapshot(backup) == previous_bytes
+    retry = tmp_path / "retry"
+    _complete_run(retry, "retry")
+    rename = Path.rename
+
+    def fail_retry(self, target):
+        if self == retry:
+            raise OSError("injected replacement failure")
+        return rename(self, target)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "rename", fail_retry)
+        with pytest.raises(OSError, match="injected replacement failure"):
+            run.publish(retry, out)
+    assert _snapshot(out) == (previous_bytes if after_rename == "out" else new_bytes)
+    assert not backup.exists()
+    assert not (tmp_path / "out.publication.json").exists()
+    expected = _snapshot(retry)
+    run.publish(retry, out)
+    assert _snapshot(out) == expected
+
+
+def test_publication_record_cannot_claim_a_replaced_backup(tmp_path):
+    from models import run
+
+    out, stage = tmp_path / "out", tmp_path / "stage"
+    _complete_run(out, "previous")
+    _complete_run(stage, "new")
+    owner = tmp_path / "out.publication.json"
+    owner.write_text(
+        json.dumps({"old": run.directory_identity(out), "new": run.directory_identity(stage)})
+    )
+    out.rename(tmp_path / "saved-original")
+    backup = tmp_path / "out.previous"
+    _complete_run(backup, "caller-owned")
+    before = _snapshot(backup)
+    with pytest.raises(RuntimeError, match="directories differ"):
+        run.publish(stage, out)
+    assert _snapshot(backup) == before
+    assert stage.exists()
+    assert owner.exists()
+
+
+@pytest.mark.parametrize("writer", ["single", "group"])
+def test_runners_recover_before_a_new_model_failure(tmp_path, monkeypatch, writer):
+    from models import run, run_groups
+
+    main, out = _fake_model_run(tmp_path, monkeypatch, fail_on="a")
+    _complete_run(out, "previous")
+    before = _snapshot(out)
+    stage = tmp_path / "interrupted-stage"
+    _complete_run(stage, "interrupted")
+    owner = tmp_path / "out.publication.json"
+    owner.write_text(
+        json.dumps({"old": run.directory_identity(out), "new": run.directory_identity(stage)})
+    )
+    out.rename(tmp_path / "out.previous")
+
+    def fail_results():
+        raise MemoryError("injected")
+        yield  # the failure happens when the group writer starts consuming results
+
+    with pytest.raises(MemoryError):
+        if writer == "single":
+            main()
+        else:
+            run_groups.write_group(out, fail_results(), {})
+    assert _snapshot(out) == before
+    assert not (tmp_path / "out.previous").exists()
+    assert not owner.exists()
 
 
 def test_run_preserves_a_caller_owned_staging_sibling(tmp_path, monkeypatch):

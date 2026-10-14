@@ -113,6 +113,7 @@ def pick_device(requested: str) -> str:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
+    recover_publication(args.out)
     caches = set_cache_dirs()
 
     images = read_image_list(args.images)
@@ -145,20 +146,68 @@ def main(argv: list[str] | None = None) -> None:
     print(f"wrote the run's npz files and run.json to {args.out}", file=sys.stderr)
 
 
+def directory_identity(path: Path) -> list[int] | None:
+    try:
+        stat = path.lstat()
+    except FileNotFoundError:
+        return None
+    return [stat.st_dev, stat.st_ino]
+
+
+def recover_publication(out: Path) -> None:
+    """Restore or clean a runner-owned backup after interruption, preserving unknown siblings."""
+    previous = out.with_name(out.name + ".previous")
+    owner = out.with_name(out.name + ".publication.json")
+    if directory_identity(owner) is None:
+        if directory_identity(previous) is not None:
+            raise RuntimeError(f"refusing to modify existing backup directory {previous}")
+        return
+    try:
+        record = json.loads(owner.read_text(encoding="utf-8"))
+        old, new = record["old"], record["new"]
+        identities = (new,) if old is None else (old, new)
+        for identity in identities:
+            if (
+                not isinstance(identity, list)
+                or len(identity) != 2
+                or any(type(value) is not int for value in identity)
+            ):
+                raise ValueError("invalid directory identity")
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise RuntimeError(f"invalid publication record {owner}; inspect it by hand") from e
+    current_id, previous_id = directory_identity(out), directory_identity(previous)
+    if previous_id is not None:
+        if previous_id != old or current_id not in (None, new):
+            raise RuntimeError(f"publication directories differ from {owner}; inspect them by hand")
+        if current_id is None:
+            previous.rename(out)
+        else:
+            shutil.rmtree(previous)
+    elif current_id not in (old, new):
+        raise RuntimeError(f"publication directory differs from {owner}; inspect it by hand")
+    owner.unlink()
+
+
 def publish(stage: Path, out: Path) -> None:
     """Publish a complete run, preserving the old directory if its replacement fails."""
+    recover_publication(out)
     previous = out.with_name(out.name + ".previous")
-    if previous.exists():
-        raise RuntimeError(f"refusing to modify existing backup directory {previous}")
-    if out.exists():
-        out.rename(previous)
+    owner = out.with_name(out.name + ".publication.json")
+    # Record directory identities before either rename, so recovery cannot mistake a caller's
+    # .previous sibling for the runner's backup. Publish the record atomically as well.
+    record = {"old": directory_identity(out), "new": directory_identity(stage)}
+    with tempfile.TemporaryDirectory(prefix=out.name + ".publication-", dir=out.parent) as tmp:
+        temporary = Path(tmp) / "directories.json"
+        temporary.write_text(json.dumps(record), encoding="utf-8")
+        owner.hardlink_to(temporary)
     try:
+        if out.exists():
+            out.rename(previous)
         stage.rename(out)
     except BaseException:
-        if previous.exists() and not out.exists():
-            previous.rename(out)
+        recover_publication(out)
         raise
-    shutil.rmtree(previous, ignore_errors=True)
+    recover_publication(out)
 
 
 def run_into(args, out: Path, images, intrinsics, poses, caches, module, device, torch) -> None:

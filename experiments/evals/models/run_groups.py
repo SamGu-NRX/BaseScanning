@@ -36,13 +36,14 @@ from models.common import (
     write_npz,
 )
 from models.map_anything import load, run
-from models.run import pick_device, publish
+from models.run import pick_device, publish, recover_publication
 
 
 def write_group(out: Path, results, summary: dict) -> None:
     """Write one group's depth maps and run.json, all or nothing: they go to a staging folder
     that `publish` swaps in for `out` only once every file is written, so a failure partway
     leaves the previous outputs and run.json as they were, never a mix of old and new views."""
+    recover_publication(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix=out.name + ".staging-", dir=out.parent))
     try:
@@ -123,6 +124,7 @@ def main() -> None:
         for members in members_list:
             gid = f"n{n}-{members[0]}"
             out = args.out / gid
+            recover_publication(out)
             poses = None
             if pose_sets is not None:
                 poses = [np.array(pose_sets[gid]["poses"][m]) for m in members]
