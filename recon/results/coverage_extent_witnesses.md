@@ -79,3 +79,23 @@ errors. The five reported items are the per-keyframe `depth` blocks the input bu
 (one per input keyframe), which `scene.build` passes through unchanged; the schema does not
 define that input extension, so the receipt reports it separately rather than folding it into
 a pass. Full suite rerun after the schema script: 98 passed, ruff check and format clean.
+
+## Server suite (the repository's own server/tests, Linux sandbox, head c404045)
+
+The schema receipt above checked the exported document against the committed schema; this run
+exercises the server itself — `make server`'s battery at the PR head, first run of this suite
+for this branch (run 2026-10-15, Linux x86_64 sandbox, uv 0.11.33 as the lockfile requires,
+Python 3.12 venv):
+
+| Command (in `server/`) | Result |
+| --- | --- |
+| `uv sync --locked` | Resolved cleanly from `uv.lock` |
+| `uv run ruff check .` | All checks passed |
+| `uv run ruff format --check .` | 29 files already formatted |
+| `uv run pytest -q` | **312 passed**, 1 warning, 74.5 s |
+
+Zero failures, so no baseline attribution was needed. The suite drives the FastAPI app
+in-process (`fastapi.testclient`), including the API routes, policy/auth, schemas and solver
+tests; the schema-compat receipt's bar (`server/schemas/scene.schema.json`) is the same schema
+these tests enforce. Nothing here touched the deployed Vercel services — that round-trip stays
+unrun, as do the depth/model path, ETH3D and iOS checks.
