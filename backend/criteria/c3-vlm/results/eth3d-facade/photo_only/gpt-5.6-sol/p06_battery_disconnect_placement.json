@@ -1,0 +1,35 @@
+{
+ "model": "gpt-5.6-sol",
+ "text": "{\"decision\":\"manual_review\",\"disconnect_location\":null,\"battery_location\":null,\"distance_ft\":null,\"reference_object\":\"Exterior doors and windows are visible, but no reliable meter-scale reference is available\",\"needs_more_photos\":true,\"missing_views\":[\"Clear close-up of the electrical meter and all equipment on the same wall\",\"Wide view showing at least 15 ft of wall around the meter and the ground in front of it\",\"Photos showing the full proposed disconnect-to-battery wall route\",\"Views identifying any nearby gas meter, regulator, or shutoff\",\"Views showing whether any pool or car-reachable/drivable surface is within 5\u20137 ft of the proposed battery location\"],\"justification\":\"The photos show building fa\u00e7ades and courtyard areas, but no electrical meter or identifiable installation location. Disconnect clearance, battery space, required setbacks, distance, and a continuous routing path cannot be verified.\"}",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "distance_ft": null,
+  "reference_object": "Exterior doors and windows are visible, but no reliable meter-scale reference is available",
+  "needs_more_photos": true,
+  "missing_views": [
+   "Clear close-up of the electrical meter and all equipment on the same wall",
+   "Wide view showing at least 15 ft of wall around the meter and the ground in front of it",
+   "Photos showing the full proposed disconnect-to-battery wall route",
+   "Views identifying any nearby gas meter, regulator, or shutoff",
+   "Views showing whether any pool or car-reachable/drivable surface is within 5\u20137 ft of the proposed battery location"
+  ],
+  "justification": "The photos show building fa\u00e7ades and courtyard areas, but no electrical meter or identifiable installation location. Disconnect clearance, battery space, required setbacks, distance, and a continuous routing path cannot be verified."
+ },
+ "usage": {
+  "input_tokens": 29577,
+  "cached_tokens": 0,
+  "output_tokens": 229,
+  "reasoning_tokens": 43
+ },
+ "cost_usd": 0.122888,
+ "latency_s": 8.64,
+ "stop": "completed",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

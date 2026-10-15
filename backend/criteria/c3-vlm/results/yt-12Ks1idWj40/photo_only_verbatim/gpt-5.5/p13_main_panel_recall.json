@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The main panel is only shown from a distance; I cannot read a brand label or the ON/OFF markings on the breakers to confirm orientation. Several views show the panel open with wiring exposed during work, but there is no clearly legible recalled brand or heavy rust visible, so this should be checked manually.\",\"decision\":\"manual_review\"}",
+ "json": {
+  "justification": "The main panel is only shown from a distance; I cannot read a brand label or the ON/OFF markings on the breakers to confirm orientation. Several views show the panel open with wiring exposed during work, but there is no clearly legible recalled brand or heavy rust visible, so this should be checked manually.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 24653,
+  "cached_tokens": 0,
+  "output_tokens": 528,
+  "reasoning_tokens": 451
+ },
+ "cost_usd": 0.139105,
+ "latency_s": 8.75,
+ "stop": "completed",
+ "prompt_id": "p13_main_panel_recall",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p13": "manual_review"
+ }
+}

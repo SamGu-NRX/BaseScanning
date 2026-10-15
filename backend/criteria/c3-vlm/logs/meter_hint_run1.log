@@ -1,0 +1,13 @@
+meter cross drawn in photos [8]
+claude-sonnet-5 p08_battery_space {'p08': 'reject'} $0.085
+claude-sonnet-5 p07_window_rule_3ft {'p07': 'manual_review'} $0.075
+claude-sonnet-5 p06_battery_disconnect_placement {'p06': 'manual_review'} $0.068
+claude-sonnet-5 p12_meter_panel_location {'p12.meterNotAccessible': 'manual_review', 'p12.panelNotAccessible': 'manual_review', 'p12.panelInHouse': 'manual_review', 'p12.notSameWall': 'manual_review'} $0.076
+claude-opus-5-5 p06_battery_disconnect_placement {'p06': 'manual_review'} $0.138
+claude-opus-5-5 p07_window_rule_3ft {'p07': 'manual_review'} $0.157
+claude-opus-5-5 p12_meter_panel_location {'p12.meterNotAccessible': 'no', 'p12.panelNotAccessible': 'manual_review', 'p12.panelInHouse': 'manual_review', 'p12.notSameWall': 'manual_review'} $0.152
+gpt-5.5 p06_battery_disconnect_placement {'p06': 'manual_review'} $0.168
+claude-opus-5-5 p08_battery_space {'p08': 'manual_review'} $0.188
+gpt-5.5 p12_meter_panel_location {'p12.meterNotAccessible': 'no', 'p12.panelNotAccessible': 'manual_review', 'p12.panelInHouse': 'manual_review', 'p12.notSameWall': 'manual_review'} $0.178
+gpt-5.5 p07_window_rule_3ft {'p07': 'manual_review'} $0.211
+gpt-5.5 p08_battery_space {'p08': 'pass'} $0.282

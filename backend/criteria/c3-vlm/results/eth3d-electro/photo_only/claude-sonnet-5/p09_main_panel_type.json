@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"explanation\": \"These photos show a commercial/institutional building (ETH facility) with multiple transformer/electrical rooms (labeled 'Traforaum'), switchgear cabinets, and a delivery door, but no interior panel photos showing main breakers are visible. It's not possible to determine the main panel configuration from these exterior shots alone; the actual electrical panels are behind closed doors and not photographed.\"}",
+ "json": {
+  "decision": "manual_review",
+  "explanation": "These photos show a commercial/institutional building (ETH facility) with multiple transformer/electrical rooms (labeled 'Traforaum'), switchgear cabinets, and a delivery door, but no interior panel photos showing main breakers are visible. It's not possible to determine the main panel configuration from these exterior shots alone; the actual electrical panels are behind closed doors and not photographed."
+ },
+ "usage": {
+  "input_tokens": 358,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 147
+ },
+ "cost_usd": 0.008620200000000001,
+ "latency_s": 3.99,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

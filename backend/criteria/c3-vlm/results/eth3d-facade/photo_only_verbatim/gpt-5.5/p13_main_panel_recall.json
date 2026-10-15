@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The provided photos show only exterior views of a building and do not show the main breaker box, open breaker panel, labels, breakers, or disconnect equipment. There is not enough visual information to assess brand, rust, breaker orientation, or panel condition.\", \"decision\":\"manual_review\"}",
+ "json": {
+  "justification": "The provided photos show only exterior views of a building and do not show the main breaker box, open breaker panel, labels, breakers, or disconnect equipment. There is not enough visual information to assess brand, rust, breaker orientation, or panel condition.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 30714,
+  "cached_tokens": 0,
+  "output_tokens": 102,
+  "reasoning_tokens": 36
+ },
+ "cost_usd": 0.15663,
+ "latency_s": 5.25,
+ "stop": "completed",
+ "prompt_id": "p13_main_panel_recall",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p13": "manual_review"
+ }
+}

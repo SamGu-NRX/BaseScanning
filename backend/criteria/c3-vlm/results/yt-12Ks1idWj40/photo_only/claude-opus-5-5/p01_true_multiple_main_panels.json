@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\"trueMultipleMainPanels\": false,\n \"panelLayout\": \"single_main\",\n \"evidence\": \"Photo 1 (before work) shows one utility meter and one gray load-center panel beside it, and no other panel on this wall. Photos 2, 3, 4 and 13 show that same panel with its door open and a single breaker array inside. Photos 4-14 show equipment added during the install: a white BASE-labeled enclosure, two small disconnects on the wall, and white battery units on pads. Photos 11 and 14 show conduit running from the meter/panel into the BASE enclosure, which suggests it is fed from the existing service rather than being an independent service.\",\n \"notes\": \"Only one meter and one main panel appear. The BASE enclosure, small disconnects and batteries are battery-system equipment, not extra service mains. The camera resolution is too low to read breaker labels, but nothing suggests a second independent service.\",\n \"insufficientEvidence\": false}\n```",
+ "json": {
+  "trueMultipleMainPanels": false,
+  "panelLayout": "single_main",
+  "evidence": "Photo 1 (before work) shows one utility meter and one gray load-center panel beside it, and no other panel on this wall. Photos 2, 3, 4 and 13 show that same panel with its door open and a single breaker array inside. Photos 4-14 show equipment added during the install: a white BASE-labeled enclosure, two small disconnects on the wall, and white battery units on pads. Photos 11 and 14 show conduit running from the meter/panel into the BASE enclosure, which suggests it is fed from the existing service rather than being an independent service.",
+  "notes": "Only one meter and one main panel appear. The BASE enclosure, small disconnects and batteries are battery-system equipment, not extra service mains. The camera resolution is too low to read breaker labels, but nothing suggests a second independent service.",
+  "insufficientEvidence": false
+ },
+ "usage": {
+  "input_tokens": 442,
+  "cache_creation_input_tokens": 25329,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 560
+ },
+ "cost_usd": 0.139613,
+ "latency_s": 10.94,
+ "stop": "end_turn",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p01": "single_main"
+ }
+}

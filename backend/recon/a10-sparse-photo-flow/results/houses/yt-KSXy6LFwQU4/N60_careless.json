@@ -1,0 +1,103 @@
+{
+ "house": "yt-KSXy6LFwQU4",
+ "set": "N60_careless",
+ "n": 60,
+ "images": [
+  "t0708.00.jpg",
+  "t0708.40.jpg",
+  "t0708.80.jpg",
+  "t0709.20.jpg",
+  "t0709.60.jpg",
+  "t0710.00.jpg",
+  "t0710.40.jpg",
+  "t0710.80.jpg",
+  "t0711.20.jpg",
+  "t0711.60.jpg",
+  "t0712.00.jpg",
+  "t0712.40.jpg",
+  "t0712.80.jpg",
+  "t0713.20.jpg",
+  "t0713.60.jpg",
+  "t0714.00.jpg",
+  "t0714.40.jpg",
+  "t0714.80.jpg",
+  "t0715.20.jpg",
+  "t0715.60.jpg",
+  "t0716.00.jpg",
+  "t0716.40.jpg",
+  "t0716.80.jpg",
+  "t0717.20.jpg",
+  "t0717.60.jpg",
+  "t0718.00.jpg",
+  "t0718.40.jpg",
+  "t0718.80.jpg",
+  "t0719.20.jpg",
+  "t0719.60.jpg",
+  "t0720.00.jpg",
+  "t0720.40.jpg",
+  "t0720.80.jpg",
+  "t0721.20.jpg",
+  "t0721.60.jpg",
+  "t0722.00.jpg",
+  "t0722.40.jpg",
+  "t0722.80.jpg",
+  "t0723.20.jpg",
+  "t0723.60.jpg",
+  "t0724.00.jpg",
+  "t0724.40.jpg",
+  "t0724.80.jpg",
+  "t0725.20.jpg",
+  "t0725.60.jpg",
+  "t0726.00.jpg",
+  "t0726.40.jpg",
+  "t0726.80.jpg",
+  "t0727.20.jpg",
+  "t0727.60.jpg",
+  "t0728.00.jpg",
+  "t0728.40.jpg",
+  "t0728.80.jpg",
+  "t0729.20.jpg",
+  "t0729.60.jpg",
+  "t0730.00.jpg",
+  "t0730.40.jpg",
+  "t0730.80.jpg",
+  "t0731.20.jpg",
+  "t0731.60.jpg"
+ ],
+ "colmap": {
+  "match_s": 105.3,
+  "mapper_s": 41.9,
+  "models": 1,
+  "registered": 60,
+  "model_sizes": [
+   60
+  ],
+  "points3D": 12913,
+  "mean_reproj_px": 0.7774410121224977
+ },
+ "tagged_registered": {
+  "meter": [
+   true,
+   true,
+   true
+  ],
+  "corners": [],
+  "ground_14ft": [],
+  "overhangs": []
+ },
+ "pi3": {
+  "infer_s": 349.3,
+  "net": [
+   518,
+   294
+  ],
+  "agreement": {
+   "frames": 60,
+   "centre_rms_pct_extent": 0.9959368890968195,
+   "centre_p90_pct_extent": 1.4810210111465152,
+   "rot_err_median_deg": 7.153946482023148,
+   "rot_err_p90_deg": 7.588911591940944,
+   "consistent_frames": 14
+  }
+ }
+}

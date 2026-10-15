@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"justification\": \"None of the provided photos show the main breaker box or panel interior\u2014only exterior siding, gas meter, electric meter, AC units, and deck are visible. There is no view of the breaker panel or dead-front label to assess brand, rust, or breaker orientation.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "None of the provided photos show the main breaker box or panel interior\u2014only exterior siding, gas meter, electric meter, AC units, and deck are visible. There is no view of the breaker panel or dead-front label to assess brand, rust, or breaker orientation.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 6312,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 102
+ },
+ "cost_usd": 0.013644,
+ "latency_s": 2.87,
+ "stop": "end_turn",
+ "prompt_id": "p13_main_panel_recall",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p13": "manual_review"
+ }
+}

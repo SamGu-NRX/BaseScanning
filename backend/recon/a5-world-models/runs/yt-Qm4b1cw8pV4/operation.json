@@ -1,0 +1,100 @@
+{
+ "name": "a5-yt-Qm4b1cw8pV4",
+ "model": "marble-1.1",
+ "images": [
+  "yt-Qm4b1cw8pV4/inputs/t0000.00.jpg",
+  "yt-Qm4b1cw8pV4/inputs/t0001.33.jpg",
+  "yt-Qm4b1cw8pV4/inputs/t0003.00.jpg",
+  "yt-Qm4b1cw8pV4/inputs/t0004.67.jpg",
+  "yt-Qm4b1cw8pV4/inputs/t0006.00.jpg",
+  "yt-Qm4b1cw8pV4/inputs/t0007.67.jpg",
+  "yt-Qm4b1cw8pV4/inputs/t0009.33.jpg",
+  "yt-Qm4b1cw8pV4/inputs/t0012.33.jpg"
+ ],
+ "credits_before": 3800.0,
+ "submitted_unix": 1790446080.8447714,
+ "operation": {
+  "operation_id": "2a902b4b-89db-4b5a-8a5c-e3eb6482b6ae",
+  "created_at": "2026-09-26T18:08:02Z",
+  "updated_at": "2026-09-26T18:08:02Z",
+  "expires_at": "2026-09-26T19:08:02Z",
+  "done": false,
+  "error": null,
+  "metadata": null,
+  "response": null,
+  "cost": null
+ },
+ "result": {
+  "operation_id": "2a902b4b-89db-4b5a-8a5c-e3eb6482b6ae",
+  "created_at": "2026-09-26T18:08:07Z",
+  "updated_at": "2026-09-26T18:14:05Z",
+  "expires_at": "2026-09-26T21:08:07Z",
+  "done": true,
+  "error": null,
+  "metadata": {
+   "progress": {
+    "status": "SUCCEEDED",
+    "description": "World generation completed successfully"
+   },
+   "world_id": "c91df304-0cc2-4bb6-8a34-8f6d40c76382",
+   "operation_type": "world_generation",
+   "public_model_name": "marble-1.1"
+  },
+  "response": {
+   "world_id": "c91df304-0cc2-4bb6-8a34-8f6d40c76382",
+   "display_name": "",
+   "tags": null,
+   "assets": {
+    "mesh": {
+     "collider_mesh_url": "https://cdn.marble.worldlabs.ai/c91df304-0cc2-4bb6-8a34-8f6d40c76382/290fa774.glb",
+     "hq_mesh_url": null,
+     "full_res_mesh_url": null
+    },
+    "imagery": {
+     "pano_url": "https://cdn.marble.worldlabs.ai/c91df304-0cc2-4bb6-8a34-8f6d40c76382/a585fd3e-4ec1-4d18-8895-108ba8e80ef6_panos/rgb_0.png"
+    },
+    "splats": {
+     "spz_urls": {
+      "500k": "https://cdn.marble.worldlabs.ai/c91df304-0cc2-4bb6-8a34-8f6d40c76382/efb8e7a1-9568-4435-b56a-92a3bc921680_ceramic_500k.spz",
+      "100k": "https://cdn.marble.worldlabs.ai/c91df304-0cc2-4bb6-8a34-8f6d40c76382/a9f6af1a-5e74-494c-8a30-4cb59e8891f6_dust_100k.spz",
+      "150k": "https://cdn.marble.worldlabs.ai/c91df304-0cc2-4bb6-8a34-8f6d40c76382/833d2187-38ee-4175-be52-e8572e9f64ba_ceramic_150k.spz",
+      "full_res": "https://cdn.marble.worldlabs.ai/c91df304-0cc2-4bb6-8a34-8f6d40c76382/95f81955-09c1-4736-8fd4-077faeb968a1_ceramic.spz"
+     },
+     "semantics_metadata": {
+      "metric_scale_factor": 2.5630884,
+      "ground_plane_offset": 1.5101204
+     }
+    },
+    "thumbnail_url": "https://cdn.marble.worldlabs.ai/c91df304-0cc2-4bb6-8a34-8f6d40c76382/233ca3d4-5935-4a17-a2aa-ace0fae4c727_sand_mpi/thumbnail.webp",
+    "caption": "The scene is a newly built suburban home, captured in a realistic style, with a clean and bright tone suggesting a fresh start. The house features a light-colored stucco exterior with dark gray stone accents on the columns flanking the garage and front entrance, providing a modern yet classic aesthetic. A two-car garage with an open door reveals a bare interior, indicating the house is currently unoccupied. The driveway is made of light gray concrete, leading up to the garage and extending to a small front porch area. Lush, green grass covers the lawn, meticulously cut and well-maintained. Small, dark green shrubbery is planted in a mulched bed near the front of the house, adding a touch of landscaping. To the left of the driveway, a large, green utility box sits partially obscured in the grass, connected by a black cable running across the lawn. Orange marker flags are visible in the grass near the utility box and along the edge of the driveway, likely indicating recent utility work or property boundaries. The side of the house is also covered in light-colored stucco, with an electrical meter box mounted on the wall, showing exposed wiring. Further down the street, additional houses of similar modern design are visible, each with dark roofs and well-kept lawns, suggesting a newly developed community. The backyard of the house extends outward from the visible side, likely featuring more green lawn space. The front entrance, situated to the right of the visible garage, features a covered porch area with a dark-colored door, flanked by the same stone accents as the garage. The electrical meter box is positioned on the left side of the house, near the front corner, with a black cable running from it along the base of the house. The other houses are aligned in a row along the street, maintaining a consistent architectural style. The 360 scene is faultless."
+   },
+   "created_at": null,
+   "updated_at": null,
+   "permission": {
+    "public": false,
+    "allowed_readers": [],
+    "allowed_writers": [],
+    "allow_id_access": false
+   },
+   "world_prompt": null,
+   "world_marble_url": "https://marble.worldlabs.ai/world/c91df304-0cc2-4bb6-8a34-8f6d40c76382",
+   "model": null
+  },
+  "cost": {
+   "total_credits": 1600,
+   "line_items": [
+    {
+     "name": "Pano generation (multi-image)",
+     "credits": 100
+    },
+    {
+     "name": "World generation",
+     "credits": 1500
+    }
+   ]
+  }
+ },
+ "done_unix": 1790446448.2622032,
+ "runtime_s": 367.41743183135986,
+ "credits_after": 2200.0
+}

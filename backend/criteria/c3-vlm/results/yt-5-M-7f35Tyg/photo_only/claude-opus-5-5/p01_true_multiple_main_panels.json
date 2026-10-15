@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"trueMultipleMainPanels\": false,\n \"panelLayout\": \"unclear\",\n \"evidence\": \"Photos 1-4 show the gas meter and regulator on the siding. Photos 6-10 show the AC condenser, a small gray AC disconnect box, and its conduit/whips. Photo 11 shows one electric meter on the siding. Photos 12-15 show the siding, foundation and stones. Photo 16 shows a deck. No photo shows an electrical panel, main breaker, or open panel interior.\",\n \"notes\": \"Only one electric meter is visible, and no panels are pictured, so the panel layout cannot be determined. The AC disconnect is equipment-level, not a main. Multiple mains are not proven, but a single main is not proven either.\",\n \"insufficientEvidence\": true}",
+ "json": {
+  "trueMultipleMainPanels": false,
+  "panelLayout": "unclear",
+  "evidence": "Photos 1-4 show the gas meter and regulator on the siding. Photos 6-10 show the AC condenser, a small gray AC disconnect box, and its conduit/whips. Photo 11 shows one electric meter on the siding. Photos 12-15 show the siding, foundation and stones. Photo 16 shows a deck. No photo shows an electrical panel, main breaker, or open panel interior.",
+  "notes": "Only one electric meter is visible, and no panels are pictured, so the panel layout cannot be determined. The AC disconnect is equipment-level, not a main. Multiple mains are not proven, but a single main is not proven either.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 442,
+  "cache_creation_input_tokens": 4005,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 344
+ },
+ "cost_usd": 0.028673,
+ "latency_s": 5.52,
+ "stop": "end_turn",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p01": "unclear"
+ }
+}

@@ -1,0 +1,745 @@
+{
+ "registered": 39,
+ "dropped": [
+  "DSC_0366"
+ ],
+ "view_scales": {
+  "DSC_0419": 1.001,
+  "DSC_0362": 0.999,
+  "DSC_0420": 1.017,
+  "DSC_0361": 0.989,
+  "DSC_0360": 0.989,
+  "DSC_0363": 1.022,
+  "DSC_0359": 0.995,
+  "DSC_0324": 1.015,
+  "DSC_0333": 0.999,
+  "DSC_0339": 0.999,
+  "DSC_0345": 1.0,
+  "DSC_0351": 0.998,
+  "DSC_0404": 1.001,
+  "DSC_0412": 0.997,
+  "DSC_0364": 0.964,
+  "DSC_0396": 1.001,
+  "DSC_0355": 0.998,
+  "DSC_0328": 0.995,
+  "DSC_0395": 1.004,
+  "DSC_0393": 1.0,
+  "DSC_0336": 0.997,
+  "DSC_0348": 0.997,
+  "DSC_0342": 0.998,
+  "DSC_0401": 1.004,
+  "DSC_0386": 1.015,
+  "DSC_0330": 1.0,
+  "DSC_0407": 1.001,
+  "DSC_0353": 0.997,
+  "DSC_0357": 1.004,
+  "DSC_0410": 1.0,
+  "DSC_0366": 0.921,
+  "DSC_0326": 1.001,
+  "DSC_0398": 1.0,
+  "DSC_0408": 1.003,
+  "DSC_0331": 1.001,
+  "DSC_0411": 1.001,
+  "DSC_0422": 0.97,
+  "DSC_0405": 0.999,
+  "DSC_0389": 1.001,
+  "DSC_0415": 0.991
+ },
+ "reconcile": {
+  "ratio_history": [
+   [
+    1.012,
+    1.012,
+    0.994,
+    1.022,
+    1.016,
+    0.987,
+    1.01,
+    0.994,
+    1.008,
+    1.007,
+    1.006,
+    1.009,
+    1.006,
+    1.009,
+    1.045,
+    1.005,
+    1.009,
+    1.01,
+    1.002,
+    1.006,
+    1.008,
+    1.009,
+    1.008,
+    1.002,
+    0.998,
+    1.006,
+    1.005,
+    1.009,
+    1.0,
+    1.006,
+    1.071,
+    1.007,
+    1.006,
+    1.003,
+    1.005,
+    1.005,
+    1.035,
+    1.008,
+    1.007,
+    1.015
+   ],
+   [
+    1.001,
+    1.005,
+    1.003,
+    1.004,
+    1.009,
+    1.006,
+    1.007,
+    1.007,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.007,
+    1.005,
+    1.005,
+    1.006,
+    1.006,
+    1.006,
+    1.007,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    0.999,
+    1.006,
+    1.006,
+    1.006,
+    1.007,
+    1.007,
+    1.025,
+    1.004,
+    1.006,
+    1.006,
+    1.006,
+    1.007,
+    1.008,
+    1.005,
+    1.004,
+    1.006
+   ],
+   [
+    1.005,
+    1.003,
+    1.004,
+    1.004,
+    1.004,
+    1.004,
+    1.007,
+    1.004,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.007,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.007,
+    1.006,
+    1.006,
+    1.006,
+    1.007,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.006,
+    1.007,
+    1.006,
+    1.006,
+    1.006
+   ]
+  ],
+  "agree": [
+   0.84,
+   0.84,
+   0.77,
+   0.83,
+   0.89,
+   0.76,
+   0.92,
+   0.77,
+   0.87,
+   0.86,
+   0.87,
+   0.83,
+   0.86,
+   0.79,
+   0.5,
+   0.85,
+   0.88,
+   0.95,
+   0.81,
+   0.95,
+   0.85,
+   0.85,
+   0.86,
+   0.85,
+   0.68,
+   0.94,
+   0.85,
+   0.85,
+   0.94,
+   0.85,
+   0.25,
+   0.9,
+   0.84,
+   0.88,
+   0.93,
+   0.84,
+   0.58,
+   0.86,
+   0.88,
+   0.71
+  ]
+ },
+ "centre_rms_sim3_m": 0.2016956699631855,
+ "scene": "facade",
+ "quality": "dslr_ref",
+ "set": "N40_guided",
+ "method": "pi3c",
+ "n": 40,
+ "score": {
+  "kd": {
+   "n": 6,
+   "median_in": 14.97,
+   "p90_in": 28.69,
+   "max_in": 28.93,
+   "share_le_2in": 0.167,
+   "share_le_4in": 0.167,
+   "share_le_6in": 0.167,
+   "calibration": 0.667
+  },
+  "kd_observed": {
+   "n": 6,
+   "median_in": 14.97,
+   "p90_in": 28.69,
+   "max_in": 28.93,
+   "share_le_2in": 0.167,
+   "share_le_4in": 0.167,
+   "share_le_6in": 0.167,
+   "calibration": 0.667
+  },
+  "status": {
+   "scored": 6,
+   "missing": 50,
+   "extent_limited": 1,
+   "phantom": 24,
+   "scale_reference": 0
+  },
+  "false_observed_claims": 0,
+  "scale_error_pct": null,
+  "cloud_scale_error_pct": 0.011,
+  "anchor_m": 1.6358,
+  "completeness_10cm_icp": {
+   "meter_wall": 0.0675,
+   "wall_face": 0.0646,
+   "ground_strip": 0.0577,
+   "overhead": 0.0587
+  },
+  "coverage_by_rule": {
+   "meter_wall": {
+    "truly_observed_by_rule": 0.9992,
+    "claimed_by_rule": 0.8998,
+    "false_observed_by_rule": 0.0005,
+    "claimed_observed": 0.4085,
+    "truly_seen": 0.9995,
+    "sensitivity": null
+   },
+   "wall_face": {
+    "truly_observed_by_rule": 0.8942,
+    "claimed_by_rule": 0.8567,
+    "false_observed_by_rule": 0.0485,
+    "claimed_observed": 0.4191,
+    "truly_seen": 0.902,
+    "sensitivity": null
+   },
+   "ground_strip": {
+    "truly_observed_by_rule": 0.1099,
+    "claimed_by_rule": 0.0219,
+    "false_observed_by_rule": 0.0219,
+    "claimed_observed": 0.0185,
+    "truly_seen": 0.0316,
+    "sensitivity": [
+     {
+      "max_incidence_deg": 75.0,
+      "truth_by_rule": "grazing",
+      "truly_observed_by_rule": 0.0,
+      "truly_grazing_only": 0.5079,
+      "rule_id": "angle75",
+      "claimed_by_rule": 0.0,
+      "false_observed_by_rule": 0.0
+     },
+     {
+      "max_incidence_deg": 80.0,
+      "truth_by_rule": "partial",
+      "truly_observed_by_rule": 0.1099,
+      "truly_grazing_only": 0.398,
+      "rule_id": "angle80",
+      "claimed_by_rule": 0.0219,
+      "false_observed_by_rule": 0.0219
+     },
+     {
+      "max_incidence_deg": 88.0,
+      "truth_by_rule": "partial",
+      "truly_observed_by_rule": 0.3916,
+      "truly_grazing_only": 0.1163,
+      "rule_id": "footprint3in",
+      "max_footprint_m": 0.0762,
+      "claimed_by_rule": 0.0187,
+      "false_observed_by_rule": 0.0023
+     }
+    ]
+   },
+   "overhead": {
+    "truly_observed_by_rule": 0.9947,
+    "claimed_by_rule": 0.9597,
+    "false_observed_by_rule": 0.0046,
+    "claimed_observed": 0.5721,
+    "truly_seen": 1.0,
+    "sensitivity": null
+   }
+  },
+  "rows": {
+   "meter.height": {
+    "err_in": 1.831,
+    "gt": 1.524,
+    "status": "scored"
+   },
+   "corner.s[c1]": {
+    "err_in": null,
+    "gt": 3.0179,
+    "status": "missing"
+   },
+   "corner.turn[c1]": {
+    "err_in": null,
+    "gt": 91.11,
+    "status": "missing"
+   },
+   "corner.s[c2]": {
+    "err_in": null,
+    "gt": 6.5604,
+    "status": "missing"
+   },
+   "corner.turn[c2]": {
+    "err_in": null,
+    "gt": -91.08,
+    "status": "missing"
+   },
+   "wall.length[w1]": {
+    "err_in": -349.531,
+    "gt": 15.85,
+    "status": "extent_limited"
+   },
+   "wall.length[w2]": {
+    "err_in": null,
+    "gt": 3.5426,
+    "status": "missing"
+   },
+   "wall.length[w3]": {
+    "err_in": null,
+    "gt": 4.9485,
+    "status": "missing"
+   },
+   "opening.edge_s[win1:left]": {
+    "err_in": null,
+    "gt": -12.2164,
+    "status": "missing"
+   },
+   "opening.edge_s[win1:right]": {
+    "err_in": null,
+    "gt": -10.6588,
+    "status": "missing"
+   },
+   "opening.bottom[win1]": {
+    "err_in": null,
+    "gt": 0.9144,
+    "status": "missing"
+   },
+   "opening.top[win1]": {
+    "err_in": null,
+    "gt": 3.3882,
+    "status": "missing"
+   },
+   "opening.width[win1]": {
+    "err_in": null,
+    "gt": 1.5576,
+    "status": "missing"
+   },
+   "opening.edge_s[win2:left]": {
+    "err_in": null,
+    "gt": -8.9181,
+    "status": "missing"
+   },
+   "opening.edge_s[win2:right]": {
+    "err_in": null,
+    "gt": -7.3281,
+    "status": "missing"
+   },
+   "opening.bottom[win2]": {
+    "err_in": null,
+    "gt": 0.8755,
+    "status": "missing"
+   },
+   "opening.top[win2]": {
+    "err_in": null,
+    "gt": 3.4292,
+    "status": "missing"
+   },
+   "opening.width[win2]": {
+    "err_in": null,
+    "gt": 1.59,
+    "status": "missing"
+   },
+   "opening.edge_s[win3:left]": {
+    "err_in": null,
+    "gt": -5.6655,
+    "status": "missing"
+   },
+   "opening.edge_s[win3:right]": {
+    "err_in": null,
+    "gt": -4.043,
+    "status": "missing"
+   },
+   "opening.bottom[win3]": {
+    "err_in": null,
+    "gt": 0.958,
+    "status": "missing"
+   },
+   "opening.top[win3]": {
+    "err_in": null,
+    "gt": 3.5282,
+    "status": "missing"
+   },
+   "opening.width[win3]": {
+    "err_in": null,
+    "gt": 1.6225,
+    "status": "missing"
+   },
+   "opening.edge_s[win4:left]": {
+    "err_in": null,
+    "gt": -2.4778,
+    "status": "missing"
+   },
+   "opening.edge_s[win4:right]": {
+    "err_in": null,
+    "gt": -0.7831,
+    "status": "missing"
+   },
+   "opening.bottom[win4]": {
+    "err_in": null,
+    "gt": 1.0116,
+    "status": "missing"
+   },
+   "opening.top[win4]": {
+    "err_in": null,
+    "gt": 3.5756,
+    "status": "missing"
+   },
+   "opening.width[win4]": {
+    "err_in": null,
+    "gt": 1.6947,
+    "status": "missing"
+   },
+   "opening.edge_s[win5:left]": {
+    "err_in": -6.799,
+    "gt": 0.7754,
+    "status": "scored"
+   },
+   "opening.edge_s[win5:right]": {
+    "err_in": -28.929,
+    "gt": 2.4127,
+    "status": "scored"
+   },
+   "opening.bottom[win5]": {
+    "err_in": 7.803,
+    "gt": 1.0732,
+    "status": "scored"
+   },
+   "opening.top[win5]": {
+    "err_in": -28.453,
+    "gt": 3.6508,
+    "status": "scored"
+   },
+   "opening.width[win5]": {
+    "err_in": -22.13,
+    "gt": 1.6373,
+    "status": "scored"
+   },
+   "opening.edge_s[win_w2_arch:left]": {
+    "err_in": null,
+    "gt": 3.3227,
+    "status": "missing"
+   },
+   "opening.edge_s[win_w2_arch:right]": {
+    "err_in": null,
+    "gt": 4.9991,
+    "status": "missing"
+   },
+   "opening.bottom[win_w2_arch]": {
+    "err_in": null,
+    "gt": 1.0668,
+    "status": "missing"
+   },
+   "opening.top[win_w2_arch]": {
+    "err_in": null,
+    "gt": 3.9624,
+    "status": "missing"
+   },
+   "opening.width[win_w2_arch]": {
+    "err_in": null,
+    "gt": 1.6764,
+    "status": "missing"
+   },
+   "opening.edge_s[door:left]": {
+    "err_in": null,
+    "gt": 7.2624,
+    "status": "missing"
+   },
+   "opening.edge_s[door:right]": {
+    "err_in": null,
+    "gt": 9.4522,
+    "status": "missing"
+   },
+   "opening.bottom[door]": {
+    "err_in": null,
+    "gt": 0.2116,
+    "status": "missing"
+   },
+   "opening.top[door]": {
+    "err_in": null,
+    "gt": 4.074,
+    "status": "missing"
+   },
+   "opening.width[door]": {
+    "err_in": null,
+    "gt": 2.1898,
+    "status": "missing"
+   },
+   "opening.gap[win1~win2]": {
+    "err_in": null,
+    "gt": 1.7407,
+    "status": "missing"
+   },
+   "opening.gap[win2~win3]": {
+    "err_in": null,
+    "gt": 1.6626,
+    "status": "missing"
+   },
+   "opening.gap[win3~win4]": {
+    "err_in": null,
+    "gt": 1.5652,
+    "status": "missing"
+   },
+   "opening.gap[win4~win5]": {
+    "err_in": null,
+    "gt": 1.5585,
+    "status": "missing"
+   },
+   "opening.gap[win5~win_w2_arch]": {
+    "err_in": null,
+    "gt": 0.91,
+    "status": "missing"
+   },
+   "opening.gap[win_w2_arch~door]": {
+    "err_in": null,
+    "gt": 2.2633,
+    "status": "missing"
+   },
+   "facing.depth[w1@2.79]": {
+    "err_in": null,
+    "gt": 0.309,
+    "status": "missing"
+   },
+   "facing.depth[w2@3.14]": {
+    "err_in": null,
+    "gt": 0.315,
+    "status": "missing"
+   },
+   "facing.depth[w3@6.68]": {
+    "err_in": null,
+    "gt": 0.749,
+    "status": "missing"
+   },
+   "facing.depth[w3@6.93]": {
+    "err_in": null,
+    "gt": 0.749,
+    "status": "missing"
+   },
+   "facing.depth[w3@9.94]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "facing.depth[w3@10.19]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "facing.depth[w3@10.44]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "overhead.clearance[w1@2.79]": {
+    "err_in": null,
+    "gt": 2.136,
+    "status": "missing"
+   },
+   "corner.s[rc:c1]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "corner.turn[rc:c1]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "corner.s[rc:c2]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "corner.turn[rc:c2]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "wall.length[rc:w2]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "wall.length[rc:w3]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.edge_s[rc:door:left]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.edge_s[rc:door:right]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.bottom[rc:door]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.top[rc:door]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.width[rc:door]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.edge_s[rc:win4:left]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.edge_s[rc:win4:right]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.bottom[rc:win4]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.top[rc:win4]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.width[rc:win4]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.edge_s[rc:win3:left]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.edge_s[rc:win3:right]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.bottom[rc:win3]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.top[rc:win3]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.width[rc:win3]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.gap[win5~rc:door]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.gap[rc:door~rc:win4]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   },
+   "opening.gap[rc:win4~rc:win3]": {
+    "err_in": null,
+    "gt": null,
+    "status": "phantom"
+   }
+  },
+  "score_s": 54.5
+ },
+ "c1": {
+  "g80": {
+   "error": "arse_scene\n    span = _span(obj[\"span_ft\"], f\"{path}/span_ft\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/a10/harness/vendor/hs11_server/scene.py\", line 485, in _span\n    raise SceneError(path, f\"span_ft must be [start, end] with start <= end, got [{a}, {b}]\")\nscene.SceneError: /objects/0/span_ft: span_ft must be [start, end] with start <= end, got [68.1299, 62.6434]\n"
+  },
+  "g75": {
+   "error": "arse_scene\n    span = _span(obj[\"span_ft\"], f\"{path}/span_ft\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/a10/harness/vendor/hs11_server/scene.py\", line 485, in _span\n    raise SceneError(path, f\"span_ft must be [start, end] with start <= end, got [{a}, {b}]\")\nscene.SceneError: /objects/0/span_ft: span_ft must be [start, end] with start <= end, got [68.1299, 62.6434]\n"
+  }
+ },
+ "total_s": 64.4
+}

@@ -1,0 +1,12 @@
+{
+  "scaleReference": {
+    "meterCloseUp": {
+      "captured": true
+    },
+    "meterIdentity": {
+      "source": "on_device_text",
+      "make": "Itron",
+      "model": "CENTRON"
+    }
+  }
+}

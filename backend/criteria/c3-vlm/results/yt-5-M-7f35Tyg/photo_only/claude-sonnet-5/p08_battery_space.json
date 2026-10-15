@@ -1,0 +1,35 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\n  \"reference_object\": \"vinyl siding coursing (~8 in exposed per lath) and standard 32 in exterior door width, used to gauge distances\",\n  \"distance_ft\": 12,\n  \"front_clearance_ft\": 5,\n  \"drive_path_ft\": null,\n  \"requires_member_action\": true,\n  \"decision\": \"manual_review\",\n  \"needs_more_photos\": true,\n  \"missing_views\": [\n    \"Wider shot showing the full wall length between the electric meter (photo 11) and the red-shutter corner (photos 12-15) to confirm continuous, unobstructed wall footage\",\n    \"A shot showing the distance from the red-shutter wall to the paver walkway/deck to confirm 5 ft clearance is met\",\n    \"A ground-level shot of the red-shutter window to confirm sill height and whether it is an operable ground-level window\",\n    \"A photo showing the gas meter and AC unit together on the same wall to measure the exact gap between them and the 3 ft/6 ft gas exclusion zone\"\n  ],\n  \"justification\": \"The site shows a gas meter (photos 1-4) that excludes roughly 6 ft of contiguous wall, and an AC unit (photos 6-9) occupying further wall space with a wall-mounted box above it that needs to stay clear-both reduce usable width along that stretch. The electric meter (photo 11) sits close to a corner that leads directly into a deck/stair area, leaving little clear run before the obstruction. Rounding the corner, photos 12-15 show a promising stretch of plain siding wall with mulch/dirt ground and only decorative, movable foundation rocks, which could offer 3ft+ width and adequate footprint. However, a paver walkway runs parallel to this wall (photo 12) and a shuttered window sits near the corner, so it isn't clear whether the 5 ft facing clearance and window/walkway setback rules are satisfied, or whether this is a secondary walkway that must stay clear. The harness route from the electric meter to this candidate wall appears short (roughly 10-15 ft based on siding panel counts) but the exact length and unobstructed continuity across the corner are not fully confirmed. Because the strongest candidate spot has unresolved clearance/window/walkway questions and the exact route length is borderline, this requires manual review rather than an outright pass or reject.\"\n}",
+ "json": {
+  "reference_object": "vinyl siding coursing (~8 in exposed per lath) and standard 32 in exterior door width, used to gauge distances",
+  "distance_ft": 12,
+  "front_clearance_ft": 5,
+  "drive_path_ft": null,
+  "requires_member_action": true,
+  "decision": "manual_review",
+  "needs_more_photos": true,
+  "missing_views": [
+   "Wider shot showing the full wall length between the electric meter (photo 11) and the red-shutter corner (photos 12-15) to confirm continuous, unobstructed wall footage",
+   "A shot showing the distance from the red-shutter wall to the paver walkway/deck to confirm 5 ft clearance is met",
+   "A ground-level shot of the red-shutter window to confirm sill height and whether it is an operable ground-level window",
+   "A photo showing the gas meter and AC unit together on the same wall to measure the exact gap between them and the 3 ft/6 ft gas exclusion zone"
+  ],
+  "justification": "The site shows a gas meter (photos 1-4) that excludes roughly 6 ft of contiguous wall, and an AC unit (photos 6-9) occupying further wall space with a wall-mounted box above it that needs to stay clear-both reduce usable width along that stretch. The electric meter (photo 11) sits close to a corner that leads directly into a deck/stair area, leaving little clear run before the obstruction. Rounding the corner, photos 12-15 show a promising stretch of plain siding wall with mulch/dirt ground and only decorative, movable foundation rocks, which could offer 3ft+ width and adequate footprint. However, a paver walkway runs parallel to this wall (photo 12) and a shuttered window sits near the corner, so it isn't clear whether the 5 ft facing clearance and window/walkway setback rules are satisfied, or whether this is a secondary walkway that must stay clear. The harness route from the electric meter to this candidate wall appears short (roughly 10-15 ft based on siding panel counts) but the exact length and unobstructed continuity across the corner are not fully confirmed. Because the strongest candidate spot has unresolved clearance/window/walkway questions and the exact route length is borderline, this requires manual review rather than an outright pass or reject."
+ },
+ "usage": {
+  "input_tokens": 2229,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 4005,
+  "output_tokens": 5767
+ },
+ "cost_usd": 0.062929,
+ "latency_s": 69.75,
+ "stop": "end_turn",
+ "prompt_id": "p08_battery_space",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p08": "manual_review"
+ }
+}

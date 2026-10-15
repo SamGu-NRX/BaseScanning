@@ -1,0 +1,40 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"meterNotAccessible\": {\"verdict\": \"manual_review\", \"reasoning\": \"The electric meter sits near an outside corner of the house (Photo 11). The orange cord and wiring below it match those beside the gas meter in Photo 4. Photo 1 also shows the gas piping and regulator directly next to and below the electric meter, so gas equipment appears to be within about 3 ft.\"}, \"panelNotAccessible\": {\"verdict\": \"manual_review\", \"reasoning\": \"None of the photos show the main breaker box or its surroundings, so its working clearance cannot be judged.\"}, \"panelInHouse\": {\"verdict\": \"manual_review\", \"reasoning\": \"There are no photos of the main panel, so it cannot be placed in a garage, outside, or in interior living space.\"}, \"notSameWall\": {\"verdict\": \"manual_review\", \"reasoning\": \"Only the exterior electric meter is visible and the main panel is not shown anywhere, so it cannot be confirmed that both are on the same exterior wall.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "The electric meter sits near an outside corner of the house (Photo 11). The orange cord and wiring below it match those beside the gas meter in Photo 4. Photo 1 also shows the gas piping and regulator directly next to and below the electric meter, so gas equipment appears to be within about 3 ft."
+  },
+  "panelNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "None of the photos show the main breaker box or its surroundings, so its working clearance cannot be judged."
+  },
+  "panelInHouse": {
+   "verdict": "manual_review",
+   "reasoning": "There are no photos of the main panel, so it cannot be placed in a garage, outside, or in interior living space."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reasoning": "Only the exterior electric meter is visible and the main panel is not shown anywhere, so it cannot be confirmed that both are on the same exterior wall."
+  }
+ },
+ "usage": {
+  "input_tokens": 6947,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 642
+ },
+ "cost_usd": 0.040628,
+ "latency_s": 7.95,
+ "stop": "end_turn",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "manual_review",
+  "p12.panelNotAccessible": "manual_review",
+  "p12.panelInHouse": "manual_review",
+  "p12.notSameWall": "manual_review"
+ }
+}

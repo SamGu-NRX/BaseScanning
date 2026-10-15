@@ -1,0 +1,29 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meter_head_y_min\":205,\"meter_head_y_max\":263,\"meter_can_y_min\":184,\"meter_can_y_max\":320,\"distance_ratio\":2.34,\"reasoning\":\"Photo 1 clearly shows a single round residential meter on its own rectangular metal can, with both the top and bottom edges visible. The can is a little over two meter-head heights tall and is separate from the nearby breaker panel, so it fits a standard meter enclosure rather than oversized, undersized, or combined.\",\"type\":\"standardMeter\",\"clean-decision\":true}",
+ "json": {
+  "meter_head_y_min": 205,
+  "meter_head_y_max": 263,
+  "meter_can_y_min": 184,
+  "meter_can_y_max": 320,
+  "distance_ratio": 2.34,
+  "reasoning": "Photo 1 clearly shows a single round residential meter on its own rectangular metal can, with both the top and bottom edges visible. The can is a little over two meter-head heights tall and is separate from the nearby breaker panel, so it fits a standard meter enclosure rather than oversized, undersized, or combined.",
+  "type": "standardMeter",
+  "clean-decision": true
+ },
+ "usage": {
+  "input_tokens": 24894,
+  "cached_tokens": 0,
+  "output_tokens": 1153,
+  "reasoning_tokens": 1034
+ },
+ "cost_usd": 0.15906,
+ "latency_s": 18.24,
+ "stop": "completed",
+ "prompt_id": "p11_meter_type",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p11": "standardMeter"
+ }
+}

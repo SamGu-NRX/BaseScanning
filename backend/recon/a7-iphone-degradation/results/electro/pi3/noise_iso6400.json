@@ -1,0 +1,86 @@
+{
+ "scene": "electro",
+ "condition": "noise_iso6400",
+ "model": "pi3",
+ "net": [
+  518,
+  392
+ ],
+ "infer_s": 93.6,
+ "conf_median": 0.4143904149532318,
+ "pose_centre_rms_sim3_m": 0.05319672566112367,
+ "pose_rot_err_median_deg": 0.7249297177420041,
+ "alignment": {
+  "camera_rms_m": 0.06240879933707927
+ },
+ "score_skipped": "pi3 own-pose cloud: surface metric only (time budget)",
+ "score_gtpose": {
+  "kd": {
+   "n": 14,
+   "median_in": 0.67,
+   "p90_in": 9.73,
+   "max_in": 17.49,
+   "share_le_2in": 0.714,
+   "share_le_4in": 0.786,
+   "share_le_6in": 0.786,
+   "calibration": 1.0
+  },
+  "kd_observed": {
+   "n": 6,
+   "median_in": 4.95,
+   "p90_in": 14.34,
+   "max_in": 17.49,
+   "share_le_2in": 0.333,
+   "share_le_4in": 0.5,
+   "share_le_6in": 0.5,
+   "calibration": 1.0
+  },
+  "status": {
+   "scored": 14,
+   "missing": 59,
+   "extent_limited": 1,
+   "phantom": 0,
+   "scale_reference": 0
+  },
+  "false_observed_claims": 0,
+  "scale_error_pct": null,
+  "anchor_m": 0.08,
+  "wall_face_10cm_icp": 0.9314,
+  "meter_wall_10cm_icp": 0.9158,
+  "rows": {
+   "meter.height": 0.0,
+   "opening.edge_s[door_4:left]": 6.291,
+   "opening.edge_s[door_4:right]": 17.488,
+   "opening.bottom[door_4]": 0.0,
+   "opening.top[door_4]": 3.61,
+   "opening.width[door_4]": 11.197,
+   "overhead.clearance[w2@0.50]": 0.669,
+   "overhead.clearance[w2@0.75]": 0.669,
+   "overhead.clearance[w2@1.00]": 0.669,
+   "overhead.clearance[w2@1.25]": 0.669,
+   "overhead.clearance[w2@1.50]": 0.669,
+   "overhead.clearance[w2@1.75]": 0.669,
+   "overhead.clearance[w2@2.00]": 0.669,
+   "overhead.clearance[w2@2.25]": 0.669
+  },
+  "score_s": 28.5
+ },
+ "surface": {
+  "points": 224676,
+  "acc_med_in": 1.5480429200573151,
+  "acc_p90_in": 4.331456068041133,
+  "within_2in": 0.5998816072922787,
+  "off_surface_share": 0.011460948209866652,
+  "compl_5cm": 0.8842552527969438,
+  "icp": true
+ },
+ "surface_gtpose": {
+  "points": 136707,
+  "acc_med_in": 1.3484219220929103,
+  "acc_p90_in": 4.771601242965272,
+  "within_2in": 0.6525342520865793,
+  "off_surface_share": 0.013283884512131786,
+  "compl_5cm": 0.8529762600865396,
+  "icp": true
+ }
+}

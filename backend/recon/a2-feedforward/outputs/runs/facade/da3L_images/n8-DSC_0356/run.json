@@ -1,0 +1,58 @@
+{
+ "scene": "facade",
+ "model": "da3L",
+ "checkpoint": "depth-anything/DA3-LARGE-1.1",
+ "license": "Apache-2.0 (DA3-LARGE-1.1)",
+ "mode": "images",
+ "members": [
+  "DSC_0356",
+  "DSC_0414",
+  "DSC_0357",
+  "DSC_0355",
+  "DSC_0358",
+  "DSC_0354",
+  "DSC_0415",
+  "DSC_0359"
+ ],
+ "network_wh": [
+  504,
+  336
+ ],
+ "seconds_total": 8.7,
+ "device": "cpu (4 threads, bf16 autocast trunk)",
+ "views": {
+  "DSC_0356": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.855
+  },
+  "DSC_0414": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.925
+  },
+  "DSC_0357": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.805
+  },
+  "DSC_0355": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.867
+  },
+  "DSC_0358": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.871
+  },
+  "DSC_0354": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.865
+  },
+  "DSC_0415": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.918
+  },
+  "DSC_0359": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.849
+  }
+ },
+ "frame": "model frame"
+}

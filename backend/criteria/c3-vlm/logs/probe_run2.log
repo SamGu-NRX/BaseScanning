@@ -1,0 +1,4 @@
+meter cross drawn in photos [8]
+photo_only gpt-5.5#1 {'gap_w4_w5_ft': 4.5, 'window4_width_ft': 5.2, 'window4_sill_height_ft': 2.8, 'meter_to_tower_corner_ft': 8.6, 'tower_projection_ft': 7.0, 'door_width_ft': 6.3}
+photo_only gpt-5.5#2 {'gap_w4_w5_ft': 4.8, 'window4_width_ft': 4.9, 'window4_sill_height_ft': 2.8, 'meter_to_tower_corner_ft': 10.2, 'tower_projection_ft': 6.0, 'door_width_ft': 7.0}
+tools_laser_gt gpt-5.5 {'gap_w4_w5_ft': 4.7, 'window4_width_ft': 6.5, 'window4_sill_height_ft': 3.8, 'meter_to_tower_corner_ft': 9.5, 'tower_projection_ft': 11.4, 'door_width_ft': 8.6}

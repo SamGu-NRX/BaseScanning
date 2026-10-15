@@ -1,0 +1,28 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"main_panel_location\":\"not_visible\",\"meter_relative_to_garage\":\"non_garage_wall\",\"relationship\":\"insufficient_evidence\",\"subtype\":\"main_panel_not_visible\",\"confidence\":\"high\",\"rationale\":\"The outside electric meter is visible on an exterior siding wall near the house corner/deck area, but no main electrical panel is shown, so a back-to-back or other relationship cannot be established.\",\"insufficientEvidence\":true}",
+ "json": {
+  "main_panel_location": "not_visible",
+  "meter_relative_to_garage": "non_garage_wall",
+  "relationship": "insufficient_evidence",
+  "subtype": "main_panel_not_visible",
+  "confidence": "high",
+  "rationale": "The outside electric meter is visible on an exterior siding wall near the house corner/deck area, but no main electrical panel is shown, so a back-to-back or other relationship cannot be established.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 3951,
+  "cached_tokens": 3328,
+  "output_tokens": 610,
+  "reasoning_tokens": 516
+ },
+ "cost_usd": 0.023079,
+ "latency_s": 30.71,
+ "stop": "completed",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p05": "insufficient_evidence"
+ }
+}

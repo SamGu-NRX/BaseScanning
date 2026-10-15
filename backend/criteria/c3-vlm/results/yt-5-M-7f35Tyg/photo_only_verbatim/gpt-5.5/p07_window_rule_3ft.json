@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The electric meter area has clear siding around/above it for the disconnect and a short conduit route, and the wiring can turn the corner without crossing a door or garage. A reachable ground-level mulch/landscaped stretch on the adjacent wall, to the right of the side window and before the raised deck, appears wide enough for the battery with ComEd window clearance, no visible window well, and no gas meter or drivable surface within 5 ft.\",\"decision\":\"pass\"}",
+ "json": {
+  "justification": "The electric meter area has clear siding around/above it for the disconnect and a short conduit route, and the wiring can turn the corner without crossing a door or garage. A reachable ground-level mulch/landscaped stretch on the adjacent wall, to the right of the side window and before the raised deck, appears wide enough for the battery with ComEd window clearance, no visible window well, and no gas meter or drivable surface within 5 ft.",
+  "decision": "pass"
+ },
+ "usage": {
+  "input_tokens": 6708,
+  "cached_tokens": 0,
+  "output_tokens": 4766,
+  "reasoning_tokens": 4660
+ },
+ "cost_usd": 0.17652,
+ "latency_s": 72.85,
+ "stop": "completed",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p07": "pass"
+ }
+}

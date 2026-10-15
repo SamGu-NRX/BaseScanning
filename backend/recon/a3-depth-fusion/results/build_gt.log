@@ -1,0 +1,102 @@
+{
+ "ground": {
+  "inliers": 1858655,
+  "rms_m": 0.009711975464963106,
+  "tilt_from_scan_z_deg": 1.2985418220632825
+ },
+ "laser_points": 2136930,
+ "occluder_points": 521025,
+ "t_coverage_s": 154.4,
+ "scene_sha256": "e6fdaec896f8bd130b4e9b7c481a007d2d234ab8ae2cc71f727c4ad96c4fd19b",
+ "walls": [
+  [
+   "w1",
+   [
+    -12.8321,
+    3.0179
+   ],
+   0.998
+  ],
+  [
+   "w2",
+   [
+    3.0179,
+    6.5604
+   ],
+   0.0
+  ],
+  [
+   "w3",
+   [
+    6.5604,
+    11.509
+   ],
+   0.926
+  ]
+ ]
+}
+bands:
+   {'wall_id': 'w1', 'band': 'wall', 's_m': [np.float64(-12.832), np.float64(-11.582)], 'views': 5, 'best_incidence_deg': 17.8}
+   {'wall_id': 'w1', 'band': 'wall', 's_m': [np.float64(-11.332), np.float64(-10.332)], 'views': 6, 'best_incidence_deg': 16.6}
+   {'wall_id': 'w1', 'band': 'wall', 's_m': [np.float64(-10.082), np.float64(2.668)], 'views': 4, 'best_incidence_deg': 28.6}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(-11.582), np.float64(-11.332)], 'out_m': 2.6}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(-11.082), np.float64(-10.582)], 'out_m': 2.5}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(-10.582), np.float64(-9.332)]}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(-9.082), np.float64(-8.332)]}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(-7.082), np.float64(-5.332)]}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(-3.832), np.float64(-2.332)]}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(-2.332), np.float64(-2.082)], 'out_m': 2.6}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(-1.832), np.float64(-1.582)]}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(-1.332), np.float64(-1.082)]}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(-0.832), np.float64(0.918)]}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(1.168), np.float64(1.418)]}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(1.668), np.float64(1.918)]}
+   {'wall_id': 'w1', 'band': 'overhead', 's_m': [np.float64(2.168), np.float64(2.668)]}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-12.832), np.float64(-12.582)], 'out_m': 0.4}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-12.582), np.float64(-12.082)], 'out_m': 18.3}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-12.082), np.float64(-11.582)], 'out_m': 1.7}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-11.582), np.float64(-11.332)], 'out_m': 0.7}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-11.332), np.float64(-5.332)], 'out_m': 18.3}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-5.332), np.float64(-5.082)], 'out_m': 12.7}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-5.082), np.float64(-3.582)], 'out_m': 18.3}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-3.582), np.float64(-3.332)], 'out_m': 13.6}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-3.332), np.float64(-2.582)], 'out_m': 12.1}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-2.582), np.float64(-2.082)], 'out_m': 11.6}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-2.082), np.float64(-1.582)], 'out_m': 11.1}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-1.582), np.float64(-1.082)], 'out_m': 10.7}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-1.082), np.float64(-0.832)], 'out_m': 11.0}
+   {'wall_id': 'w1', 'band': 'facing', 's_m': [np.float64(-0.832), np.float64(2.918)], 'out_m': 10.5}
+   {'wall_id': 'w2', 'band': 'overhead', 's_m': [np.float64(4.018), np.float64(6.518)]}
+   {'wall_id': 'w2', 'band': 'facing', 's_m': [np.float64(3.018), np.float64(3.268)], 'out_m': 11.9}
+   {'wall_id': 'w2', 'band': 'facing', 's_m': [np.float64(3.268), np.float64(3.518)], 'out_m': 15.8}
+   {'wall_id': 'w2', 'band': 'facing', 's_m': [np.float64(3.518), np.float64(3.768)], 'out_m': 16.0}
+   {'wall_id': 'w2', 'band': 'facing', 's_m': [np.float64(3.768), np.float64(4.018)], 'out_m': 15.6}
+   {'wall_id': 'w2', 'band': 'facing', 's_m': [np.float64(4.018), np.float64(4.518)], 'out_m': 14.4}
+   {'wall_id': 'w2', 'band': 'facing', 's_m': [np.float64(4.518), np.float64(4.768)], 'out_m': 16.2}
+   {'wall_id': 'w2', 'band': 'facing', 's_m': [np.float64(4.768), np.float64(5.268)], 'out_m': 14.3}
+   {'wall_id': 'w2', 'band': 'facing', 's_m': [np.float64(5.268), np.float64(5.518)], 'out_m': 16.3}
+   {'wall_id': 'w2', 'band': 'facing', 's_m': [np.float64(5.518), np.float64(5.768)], 'out_m': 15.2}
+   {'wall_id': 'w2', 'band': 'facing', 's_m': [np.float64(5.768), np.float64(6.518)], 'out_m': 15.6}
+   {'wall_id': 'w3', 'band': 'wall', 's_m': [np.float64(7.31), np.float64(7.56)], 'views': 5, 'best_incidence_deg': 12.3}
+   {'wall_id': 'w3', 'band': 'wall', 's_m': [np.float64(8.06), np.float64(8.56)], 'views': 5, 'best_incidence_deg': 17.1}
+   {'wall_id': 'w3', 'band': 'wall', 's_m': [np.float64(9.06), np.float64(9.31)], 'views': 5, 'best_incidence_deg': 20.9}
+   {'wall_id': 'w3', 'band': 'wall', 's_m': [np.float64(9.56), np.float64(9.81)], 'views': 5, 'best_incidence_deg': 23.5}
+   {'wall_id': 'w3', 'band': 'wall', 's_m': [np.float64(10.81), np.float64(11.56)], 'views': 2, 'best_incidence_deg': 27.3}
+   {'wall_id': 'w3', 'band': 'overhead', 's_m': [np.float64(7.06), np.float64(7.31)]}
+   {'wall_id': 'w3', 'band': 'overhead', 's_m': [np.float64(8.06), np.float64(8.31)]}
+   {'wall_id': 'w3', 'band': 'overhead', 's_m': [np.float64(9.06), np.float64(10.06)]}
+   {'wall_id': 'w3', 'band': 'overhead', 's_m': [np.float64(10.81), np.float64(11.56)]}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(6.56), np.float64(6.81)], 'out_m': 0.5}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(7.06), np.float64(7.31)], 'out_m': 1.7}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(7.31), np.float64(7.56)], 'out_m': 1.1}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(8.06), np.float64(8.31)], 'out_m': 7.7}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(8.31), np.float64(8.56)], 'out_m': 0.6}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(9.06), np.float64(9.31)], 'out_m': 9.1}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(9.31), np.float64(9.56)], 'out_m': 9.8}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(9.56), np.float64(9.81)], 'out_m': 10.4}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(9.81), np.float64(10.06)], 'out_m': 13.3}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(10.06), np.float64(10.31)], 'out_m': 0.3}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(10.56), np.float64(10.81)], 'out_m': 15.1}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(10.81), np.float64(11.31)], 'out_m': 14.8}
+   {'wall_id': 'w3', 'band': 'facing', 's_m': [np.float64(11.31), np.float64(11.56)], 'out_m': 15.0}
+EXIT 0

@@ -1,0 +1,24 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"reasoning\": \"The only glimpses of an electric meter are small, partial views: one cut off at the right edge of the brick wall in photo 2, and a small gray box in the distance in photo 14. It appears to be a single meter on the home's exterior wall, but no photo shows it close up and unobstructed enough to confirm the mounting.\", \"type\": \"standardMeter\", \"clean-decision\": false}",
+ "json": {
+  "reasoning": "The only glimpses of an electric meter are small, partial views: one cut off at the right edge of the brick wall in photo 2, and a small gray box in the distance in photo 14. It appears to be a single meter on the home's exterior wall, but no photo shows it close up and unobstructed enough to confirm the mounting.",
+  "type": "standardMeter",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 20731,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 213
+ },
+ "cost_usd": 0.087184,
+ "latency_s": 6.39,
+ "stop": "end_turn",
+ "prompt_id": "p10_meter_mount",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p10": "standardMeter(unclean)"
+ }
+}

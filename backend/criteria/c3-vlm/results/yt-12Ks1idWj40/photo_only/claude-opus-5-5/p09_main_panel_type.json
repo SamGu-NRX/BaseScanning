@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\"decision\": \"pass\", \"explanation\": \"The photos show one utility meter feeding one gray load-center panel on the wall. Open-door views (photos 2, 3, 13) show a single breaker panel. No second service panel with its own main is visible. The white BASE box and small disconnects added during the install are battery/backup equipment, not additional service mains. This is consistent with a single main.\"}\n```",
+ "json": {
+  "decision": "pass",
+  "explanation": "The photos show one utility meter feeding one gray load-center panel on the wall. Open-door views (photos 2, 3, 13) show a single breaker panel. No second service panel with its own main is visible. The white BASE box and small disconnects added during the install are battery/backup equipment, not additional service mains. This is consistent with a single main."
+ },
+ "usage": {
+  "input_tokens": 360,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 25329,
+  "output_tokens": 305
+ },
+ "cost_usd": 0.012605799999999999,
+ "latency_s": 6.3,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p09": "pass"
+ }
+}

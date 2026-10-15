@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"feature\": \"cl320_unclear\", \"label\": \"\", \"evidence\": \"Meter is visible in photos 1-14 mounted on the wall, but the meter face/label text is not legible in any of the provided images due to distance and resolution.\", \"notes\": \"Cannot confirm class rating text without a clear close-up of the meter face.\", \"insufficientEvidence\": true}",
+ "json": {
+  "feature": "cl320_unclear",
+  "label": "",
+  "evidence": "Meter is visible in photos 1-14 mounted on the wall, but the meter face/label text is not legible in any of the provided images due to distance and resolution.",
+  "notes": "Cannot confirm class rating text without a clear close-up of the meter face.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 309,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 25329,
+  "output_tokens": 120
+ },
+ "cost_usd": 0.0068838,
+ "latency_s": 4.18,
+ "stop": "end_turn",
+ "prompt_id": "p03_cl320_meter",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

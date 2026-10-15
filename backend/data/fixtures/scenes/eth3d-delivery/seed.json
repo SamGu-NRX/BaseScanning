@@ -1,0 +1,186 @@
+{
+ "id": "eth3d-delivery-garage",
+ "real": true,
+ "source": "ETH3D delivery_area (dslr_scan_eval laser scans); labels hand-placed from laser profiles and DSLR photos; meter invented; AC synthetic.",
+ "license": "ETH3D: CC BY-NC-SA 4.0 (research, non-commercial)",
+ "frame": "ETH3D scan frame, metres, z up",
+ "roi": {
+  "min": [
+   -13.0,
+   -7.0,
+   -5.7589999999999995
+  ],
+  "max": [
+   7.5,
+   8.0,
+   -0.45899999999999963
+  ]
+ },
+ "ground_z_hint": -4.959,
+ "meter": {
+  "pos": [
+   5.97,
+   -4.2,
+   -3.4589999999999996
+  ],
+  "plus_minus_m": 0.05,
+  "real": false,
+  "note": "INVENTED: on the jamb south of the sliding door, 1.5 m up"
+ },
+ "objects": [
+  {
+   "id": "sliding_door",
+   "type": "garage_door",
+   "real": true,
+   "plan_polygon": [
+    [
+     5.8,
+     5.1
+    ],
+    [
+     6.05,
+     5.1
+    ],
+    [
+     6.05,
+     -3.3
+    ],
+    [
+     5.8,
+     -3.3
+    ]
+   ],
+   "z_range": [
+    -4.959,
+    -0.859
+   ],
+   "plus_minus_m": 0.05,
+   "provenance": "laser: panelled face x=5.92 over y -3.3..5.1, 4.1 m tall; photos: large sliding door with striped jambs"
+  },
+  {
+   "id": "mesh_cage",
+   "type": "fence",
+   "real": true,
+   "plan_polygon": [
+    [
+     -0.5,
+     -5.05
+    ],
+    [
+     -0.5,
+     -4.9
+    ],
+    [
+     -7.0,
+     -4.9
+    ],
+    [
+     -7.0,
+     -5.05
+    ]
+   ],
+   "z_range": [
+    -4.959,
+    -2.659
+   ],
+   "plus_minus_m": 0.05,
+   "provenance": "laser: sparse mesh returns 0.08 m in front of the back wall; photos: wire-mesh storage cage with gates"
+  },
+  {
+   "id": "ac_synthetic",
+   "type": "ac",
+   "synthetic": true,
+   "real": false,
+   "plan_polygon": [
+    [
+     4.2,
+     -5.0
+    ],
+    [
+     5.0,
+     -5.0
+    ],
+    [
+     5.0,
+     -4.2
+    ],
+    [
+     4.2,
+     -4.2
+    ]
+   ],
+   "z_range": [
+    -4.959,
+    -4.159
+   ],
+   "plus_minus_m": 0.0,
+   "provenance": "SYNTHETIC: 0.8 x 0.8 x 0.8 m condenser on the floor near the corner, inserted as occupied voxels"
+  }
+ ],
+ "ground_types": [
+  {
+   "type": "concrete",
+   "plan_polygon": [
+    [
+     -13,
+     -7
+    ],
+    [
+     7.5,
+     -7
+    ],
+    [
+     7.5,
+     8
+    ],
+    [
+     -13,
+     8
+    ]
+   ],
+   "provenance": "photos: concrete garage floor"
+  }
+ ],
+ "keyframes": [],
+ "reference_chain": {
+  "walls": [
+   {
+    "id": "w1",
+    "a": [
+     5.92,
+     5.1
+    ],
+    "b": [
+     5.92,
+     -5.06
+    ],
+    "length_ft": 33.33333333333333,
+    "s0_ft": -30.511811023622048
+   },
+   {
+    "id": "w2",
+    "a": [
+     5.92,
+     -5.06
+    ],
+    "b": [
+     -12.5,
+     -5.06
+    ],
+    "length_ft": 60.43307086614173,
+    "s0_ft": 2.821522309711284
+   }
+  ],
+  "ends": {
+   "left": {
+    "kind": "unexplored",
+    "note": "the door wall continues north"
+   },
+   "right": {
+    "kind": "unexplored",
+    "note": "the back wall continues west past the ROI"
+   }
+  },
+  "note": "w1 east wall (sliding door + jamb), w2 south back wall (cages, clutter in front)"
+ }
+}

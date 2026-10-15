@@ -1,0 +1,24 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"reasoning\":\"A single electric meter is visible mounted directly on the home's exterior siding in Photo 11. There is no standalone pole and no row of multiple aligned meters indicating a meter bank.\",\"type\":\"standardMeter\",\"clean-decision\":true}",
+ "json": {
+  "reasoning": "A single electric meter is visible mounted directly on the home's exterior siding in Photo 11. There is no standalone pole and no row of multiple aligned meters indicating a meter bank.",
+  "type": "standardMeter",
+  "clean-decision": true
+ },
+ "usage": {
+  "input_tokens": 4528,
+  "cached_tokens": 0,
+  "output_tokens": 153,
+  "reasoning_tokens": 97
+ },
+ "cost_usd": 0.02723,
+ "latency_s": 2.77,
+ "stop": "completed",
+ "prompt_id": "p10_meter_mount",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p10": "standardMeter"
+ }
+}

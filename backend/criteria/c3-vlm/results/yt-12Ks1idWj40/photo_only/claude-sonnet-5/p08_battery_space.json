@@ -1,0 +1,30 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"requires_member_action\": false, \"reference_object\": \"electrical meter can (~14 in tall) mounted on wall, used for scale\", \"decision\": \"pass\", \"distance_ft\": 4, \"needs_more_photos\": false, \"front_clearance_ft\": 12, \"missing_views\": [], \"drive_path_ft\": null, \"justification\": \"Photo 14 shows the completed installation: a Base battery unit mounted on a concrete pad flush against the brick wall immediately left of the meter/panel/disconnect stack, with a second unit (inverter/other equipment) also installed further left near the AC condenser. The harness conduit runs a short, fully supported path directly from the meter/panel assembly down and over to the battery, well under 16 ft. Ground in front of the battery is dirt/grass with several feet of clearance to the wooden fence line (visible in photo 1 as fence set back well beyond typical yard depth, easily 10+ ft), satisfying the ~5 ft facing clearance. No gas equipment, pool, driveway, or operable window/door is in this footprint. Since the installation is already shown complete and functional in photo 14, this confirms a valid, workable battery spot was found and used.\"}",
+ "json": {
+  "requires_member_action": false,
+  "reference_object": "electrical meter can (~14 in tall) mounted on wall, used for scale",
+  "decision": "pass",
+  "distance_ft": 4,
+  "needs_more_photos": false,
+  "front_clearance_ft": 12,
+  "missing_views": [],
+  "drive_path_ft": null,
+  "justification": "Photo 14 shows the completed installation: a Base battery unit mounted on a concrete pad flush against the brick wall immediately left of the meter/panel/disconnect stack, with a second unit (inverter/other equipment) also installed further left near the AC condenser. The harness conduit runs a short, fully supported path directly from the meter/panel assembly down and over to the battery, well under 16 ft. Ground in front of the battery is dirt/grass with several feet of clearance to the wooden fence line (visible in photo 1 as fence set back well beyond typical yard depth, easily 10+ ft), satisfying the ~5 ft facing clearance. No gas equipment, pool, driveway, or operable window/door is in this footprint. Since the installation is already shown complete and functional in photo 14, this confirms a valid, workable battery spot was found and used."
+ },
+ "usage": {
+  "input_tokens": 2229,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 25329,
+  "output_tokens": 745
+ },
+ "cost_usd": 0.0169738,
+ "latency_s": 11.81,
+ "stop": "end_turn",
+ "prompt_id": "p08_battery_space",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p08": "pass"
+ }
+}

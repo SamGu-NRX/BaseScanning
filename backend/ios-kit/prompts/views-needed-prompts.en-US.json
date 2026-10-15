@@ -1,0 +1,1033 @@
+{
+ "format": "views-needed-prompts",
+ "version": "0.4.0",
+ "locale": "en-US",
+ "limits": {
+  "title_chars": 40,
+  "body_chars": 140
+ },
+ "vars": {
+  "side": [
+   "to the left of your meter",
+   "to the right of your meter",
+   "at your meter"
+  ],
+  "s_ft": "int",
+  "out_ft": "int",
+  "what": "class map",
+  "threshold_ft": "int"
+ },
+ "prompts": [
+  {
+   "prompt_id": "vn.wall.grazing",
+   "match": {
+    "kind": [
+     "band"
+    ],
+    "band": [
+     "wall"
+    ],
+    "cause": [
+     "grazing"
+    ]
+   },
+   "title": "Face the wall straight on",
+   "body": "We only saw this stretch from the side. From 8\u201312 ft back, {side}, {s_ft} ft along, photograph it head-on.",
+   "camera": {
+    "standoff_m": 3.0,
+    "height_m": 1.4,
+    "pitch_deg": 0
+   }
+  },
+  {
+   "prompt_id": "vn.wall.unobserved",
+   "match": {
+    "kind": [
+     "band"
+    ],
+    "band": [
+     "wall"
+    ]
+   },
+   "title": "One more wall photo",
+   "body": "Stand 8\u201312 ft back from the wall {side}, {s_ft} ft along, face it squarely and take a photo.",
+   "camera": {
+    "standoff_m": 3.0,
+    "height_m": 1.4,
+    "pitch_deg": 0
+   }
+  },
+  {
+   "prompt_id": "vn.ground.unobserved",
+   "match": {
+    "kind": [
+     "band"
+    ],
+    "band": [
+     "ground"
+    ]
+   },
+   "title": "Show us the ground",
+   "body": "From chest height, point the phone down at the ground {side}, {s_ft} ft along, so we see about {out_ft} ft out from the wall.",
+   "camera": {
+    "standoff_m": 1.0,
+    "height_m": 1.3,
+    "pitch_deg": -50
+   }
+  },
+  {
+   "prompt_id": "vn.overhead.unobserved",
+   "match": {
+    "kind": [
+     "band"
+    ],
+    "band": [
+     "overhead"
+    ]
+   },
+   "title": "Show what's above",
+   "body": "From about 10 ft back, tilt the phone up so the wall {side} is in frame from the ground to the eaves."
+  },
+  {
+   "prompt_id": "vn.facing.unobserved",
+   "match": {
+    "kind": [
+     "band"
+    ],
+    "band": [
+     "facing"
+    ]
+   },
+   "title": "What faces this wall?",
+   "body": "Stand with your back to the wall {side}, {s_ft} ft along, and photograph straight out: fence, hedge, driveway or yard."
+  },
+  {
+   "prompt_id": "vn.past_end",
+   "match": {
+    "kind": [
+     "past_end"
+    ]
+   },
+   "title": "Where does the wall end?",
+   "body": "Walk to the {side} end of this wall and photograph the corner and what comes after it."
+  },
+  {
+   "prompt_id": "vn.close_up.meter",
+   "match": {
+    "kind": [
+     "close_up"
+    ],
+    "target_class": [
+     "meter"
+    ]
+   },
+   "title": "Two close-ups of the meter",
+   "body": "From about 3 ft, photograph your electric meter straight on, then from one step to the side. Keep the label readable."
+  },
+  {
+   "prompt_id": "vn.close_up.panel",
+   "match": {
+    "kind": [
+     "close_up"
+    ],
+    "target_class": [
+     "panel"
+    ]
+   },
+   "title": "Electrical panel close-up",
+   "body": "From about 3 ft, photograph the electrical panel with the door closed, then open, so the labels are readable. Touch nothing inside."
+  },
+  {
+   "prompt_id": "vn.close_up.object",
+   "match": {
+    "kind": [
+     "close_up"
+    ]
+   },
+   "title": "A closer look",
+   "body": "Take a closer photo of the {what} {side}, {s_ft} ft along, so we can see it clearly."
+  },
+  {
+   "prompt_id": "vn.confirm.window",
+   "match": {
+    "kind": [
+     "confirm_attribute"
+    ],
+    "target_class": [
+     "window"
+    ]
+   },
+   "title": "Does this window open?",
+   "body": "Photograph the window {side}, {s_ft} ft along, close enough to show its frame and latch."
+  },
+  {
+   "prompt_id": "vn.confirm.door",
+   "match": {
+    "kind": [
+     "confirm_attribute"
+    ],
+    "target_class": [
+     "door",
+     "garage_door"
+    ]
+   },
+   "title": "A closer look at the door",
+   "body": "Photograph the door {side} straight on from about 10 ft back, full frame and sill in view."
+  },
+  {
+   "prompt_id": "vn.confirm.ground",
+   "match": {
+    "kind": [
+     "confirm_attribute"
+    ],
+    "target_class": [
+     "ground"
+    ]
+   },
+   "title": "What's on the ground here?",
+   "body": "From chest height, photograph the ground {side}, {s_ft} ft along, so we can see what it is made of."
+  },
+  {
+   "prompt_id": "vn.confirm.attribute",
+   "match": {
+    "kind": [
+     "confirm_attribute"
+    ]
+   },
+   "title": "One closer photo",
+   "body": "Photograph that spot {side}, {s_ft} ft along, close enough that we can see it clearly."
+  },
+  {
+   "prompt_id": "vn.close_up.meter",
+   "match": {
+    "capture_check_code": [
+     "meter_close",
+     "meter_closeups_in_session"
+    ]
+   },
+   "title": "Two close-ups of the meter",
+   "body": "From about 3 ft, photograph your electric meter straight on, then from one step to the side. Keep the label readable."
+  },
+  {
+   "prompt_id": "vn.close_up.meter",
+   "match": {
+    "hint_code": [
+     "meter_close",
+     "meter_closeups_in_session"
+    ]
+   },
+   "title": "Two close-ups of the meter",
+   "body": "From about 3 ft, photograph your electric meter straight on, then from one step to the side. Keep the label readable."
+  },
+  {
+   "prompt_id": "vn.close_up.meter",
+   "match": {
+    "member_action": [
+     "retake_meter_closeups"
+    ]
+   },
+   "title": "Two close-ups of the meter",
+   "body": "From about 3 ft, photograph your electric meter straight on, then from one step to the side. Keep the label readable."
+  },
+  {
+   "prompt_id": "vn.close_up.meter_oblique",
+   "match": {
+    "capture_check_code": [
+     "meter_oblique"
+    ]
+   },
+   "title": "One more meter photo",
+   "body": "Take one step to the side and photograph the meter again from about 3 ft, label readable."
+  },
+  {
+   "prompt_id": "vn.close_up.meter_oblique",
+   "match": {
+    "hint_code": [
+     "meter_oblique"
+    ]
+   },
+   "title": "One more meter photo",
+   "body": "Take one step to the side and photograph the meter again from about 3 ft, label readable."
+  },
+  {
+   "prompt_id": "capture_check.meter_tap",
+   "match": {
+    "capture_check_code": [
+     "meter_tap"
+    ]
+   },
+   "title": "Tap your meter",
+   "body": "Point the phone at your electric meter and tap it on the screen once."
+  },
+  {
+   "prompt_id": "capture_check.meter_tap",
+   "match": {
+    "hint_code": [
+     "meter_tap"
+    ]
+   },
+   "title": "Tap your meter",
+   "body": "Point the phone at your electric meter and tap it on the screen once."
+  },
+  {
+   "prompt_id": "vn.close_up.panel",
+   "match": {
+    "capture_check_code": [
+     "panel_close",
+     "panel_open",
+     "main_disconnect"
+    ]
+   },
+   "title": "Electrical panel close-up",
+   "body": "From about 3 ft, photograph the electrical panel with the door closed, then open, so the labels are readable. Touch nothing inside."
+  },
+  {
+   "prompt_id": "vn.close_up.panel",
+   "match": {
+    "hint_code": [
+     "panel_close",
+     "panel_open",
+     "main_disconnect"
+    ]
+   },
+   "title": "Electrical panel close-up",
+   "body": "From about 3 ft, photograph the electrical panel with the door closed, then open, so the labels are readable. Touch nothing inside."
+  },
+  {
+   "prompt_id": "capture_check.wall_left_of_meter",
+   "match": {
+    "capture_check_code": [
+     "wall_left_of_meter"
+    ]
+   },
+   "title": "Walk the wall",
+   "body": "Walk slowly along the wall to the left of your meter, 8\u201312 ft back, keeping the wall in frame."
+  },
+  {
+   "prompt_id": "capture_check.wall_left_of_meter",
+   "match": {
+    "hint_code": [
+     "wall_left_of_meter"
+    ]
+   },
+   "title": "Walk the wall",
+   "body": "Walk slowly along the wall to the left of your meter, 8\u201312 ft back, keeping the wall in frame."
+  },
+  {
+   "prompt_id": "capture_check.wall_right_of_meter",
+   "match": {
+    "capture_check_code": [
+     "wall_right_of_meter"
+    ]
+   },
+   "title": "Walk the wall",
+   "body": "Walk slowly along the wall to the right of your meter, 8\u201312 ft back, keeping the wall in frame."
+  },
+  {
+   "prompt_id": "capture_check.wall_right_of_meter",
+   "match": {
+    "hint_code": [
+     "wall_right_of_meter"
+    ]
+   },
+   "title": "Walk the wall",
+   "body": "Walk slowly along the wall to the right of your meter, 8\u201312 ft back, keeping the wall in frame."
+  },
+  {
+   "prompt_id": "capture_check.ground_downward_left",
+   "match": {
+    "capture_check_code": [
+     "ground_downward_left"
+    ]
+   },
+   "title": "Show the ground",
+   "body": "From chest height, point the phone down at the ground in front of the wall {side}."
+  },
+  {
+   "prompt_id": "capture_check.ground_downward_left",
+   "match": {
+    "hint_code": [
+     "ground_downward_left"
+    ]
+   },
+   "title": "Show the ground",
+   "body": "From chest height, point the phone down at the ground in front of the wall {side}."
+  },
+  {
+   "prompt_id": "capture_check.ground_downward_left",
+   "match": {
+    "hint_code": [
+     "ground_not_seen_left"
+    ]
+   },
+   "title": "Show the ground",
+   "body": "From chest height, point the phone down at the ground in front of the wall {side}."
+  },
+  {
+   "prompt_id": "capture_check.ground_downward_right",
+   "match": {
+    "capture_check_code": [
+     "ground_downward_right"
+    ]
+   },
+   "title": "Show the ground",
+   "body": "From chest height, point the phone down at the ground in front of the wall {side}."
+  },
+  {
+   "prompt_id": "capture_check.ground_downward_right",
+   "match": {
+    "hint_code": [
+     "ground_downward_right"
+    ]
+   },
+   "title": "Show the ground",
+   "body": "From chest height, point the phone down at the ground in front of the wall {side}."
+  },
+  {
+   "prompt_id": "capture_check.ground_downward_right",
+   "match": {
+    "hint_code": [
+     "ground_not_seen_right"
+    ]
+   },
+   "title": "Show the ground",
+   "body": "From chest height, point the phone down at the ground in front of the wall {side}."
+  },
+  {
+   "prompt_id": "capture_check.door_view_meter_side",
+   "match": {
+    "capture_check_code": [
+     "door_view_meter_side"
+    ]
+   },
+   "title": "Photograph a door",
+   "body": "Photograph any entry or garage door on this side of the house straight on, from about 10 ft back."
+  },
+  {
+   "prompt_id": "capture_check.door_view_meter_side",
+   "match": {
+    "hint_code": [
+     "door_view_meter_side"
+    ]
+   },
+   "title": "Photograph a door",
+   "body": "Photograph any entry or garage door on this side of the house straight on, from about 10 ft back."
+  },
+  {
+   "prompt_id": "capture_check.keyframe_count",
+   "match": {
+    "capture_check_code": [
+     "keyframe_count"
+    ]
+   },
+   "title": "Keep going",
+   "body": "Keep filming while you walk slowly along the wall so we get enough views."
+  },
+  {
+   "prompt_id": "capture_check.keyframe_count",
+   "match": {
+    "hint_code": [
+     "keyframe_count"
+    ]
+   },
+   "title": "Keep going",
+   "body": "Keep filming while you walk slowly along the wall so we get enough views."
+  },
+  {
+   "prompt_id": "capture_check.keyframe_cadence",
+   "match": {
+    "capture_check_code": [
+     "keyframe_cadence"
+    ]
+   },
+   "title": "Keep going",
+   "body": "Keep filming while you walk slowly along the wall so we get enough views."
+  },
+  {
+   "prompt_id": "capture_check.keyframe_cadence",
+   "match": {
+    "hint_code": [
+     "keyframe_cadence"
+    ]
+   },
+   "title": "Keep going",
+   "body": "Keep filming while you walk slowly along the wall so we get enough views."
+  },
+  {
+   "prompt_id": "capture_check.photo_count",
+   "match": {
+    "capture_check_code": [
+     "photo_count"
+    ]
+   },
+   "title": "Keep going",
+   "body": "Photograph a few more spots along the wall."
+  },
+  {
+   "prompt_id": "capture_check.photo_count",
+   "match": {
+    "hint_code": [
+     "photo_count"
+    ]
+   },
+   "title": "Keep going",
+   "body": "Photograph a few more spots along the wall."
+  },
+  {
+   "prompt_id": "capture_check.tracking_quality",
+   "match": {
+    "capture_check_code": [
+     "tracking_quality"
+    ]
+   },
+   "title": "Hold steady",
+   "body": "Move a bit more slowly and keep the wall in frame while the phone catches up."
+  },
+  {
+   "prompt_id": "capture_check.tracking_quality",
+   "match": {
+    "hint_code": [
+     "tracking_quality"
+    ]
+   },
+   "title": "Hold steady",
+   "body": "Move a bit more slowly and keep the wall in frame while the phone catches up."
+  },
+  {
+   "prompt_id": "hint.meter_number_confirm",
+   "match": {
+    "hint_code": [
+     "meter_number_confirm"
+    ]
+   },
+   "title": "Is this your meter number?",
+   "body": "Check the meter number we read and tap to confirm, or pick the right one."
+  },
+  {
+   "prompt_id": "hint.meter_plate_unreadable",
+   "match": {
+    "hint_code": [
+     "meter_plate_unreadable"
+    ]
+   },
+   "title": "Step a little closer",
+   "body": "Step a little closer so the meter label is sharp."
+  },
+  {
+   "prompt_id": "hint.panel_label_unreadable",
+   "match": {
+    "hint_code": [
+     "panel_label_unreadable"
+    ]
+   },
+   "title": "Panel label not readable",
+   "body": "Move closer to the electrical panel so the breaker labels are sharp."
+  },
+  {
+   "prompt_id": "hint.frames_blurry",
+   "match": {
+    "hint_code": [
+     "frames_blurry"
+    ]
+   },
+   "title": "Hold steady",
+   "body": "Move a bit more slowly and keep the phone steady."
+  },
+  {
+   "prompt_id": "hint.frames_dark",
+   "match": {
+    "hint_code": [
+     "frames_dark"
+    ]
+   },
+   "title": "Too dark",
+   "body": "Step back so more light reaches the wall."
+  },
+  {
+   "prompt_id": "hint.frames_overexposed",
+   "match": {
+    "hint_code": [
+     "frames_overexposed"
+    ]
+   },
+   "title": "Too bright",
+   "body": "Move so the sun is not directly in the picture."
+  },
+  {
+   "prompt_id": "hint.wall_gap_left",
+   "match": {
+    "hint_code": [
+     "wall_gap_left"
+    ]
+   },
+   "title": "Missing a stretch of wall",
+   "body": "Walk back along the wall to the left of your meter and film it again from 8\u201312 ft back."
+  },
+  {
+   "prompt_id": "hint.wall_gap_right",
+   "match": {
+    "hint_code": [
+     "wall_gap_right"
+    ]
+   },
+   "title": "Missing a stretch of wall",
+   "body": "Walk back along the wall to the right of your meter and film it again from 8\u201312 ft back."
+  },
+  {
+   "prompt_id": "ma.truedepth_meter_scan",
+   "match": {
+    "member_action": [
+     "truedepth_meter_scan"
+    ]
+   },
+   "title": "A quick scan of the meter",
+   "body": "Turn the phone around so the screen faces the meter, hold it about a foot away and keep it still for 2 seconds."
+  },
+  {
+   "prompt_id": "outcome.eligible",
+   "match": {
+    "outcome": [
+     "eligible"
+    ]
+   },
+   "title": "Your home looks eligible",
+   "body": "Your home looks eligible. Here's where the battery would go."
+  },
+  {
+   "prompt_id": "outcome.needs_more_photos",
+   "match": {
+    "outcome": [
+     "needs_more_photos"
+    ]
+   },
+   "title": "Almost there",
+   "body": "One more photo helps us finish your check."
+  },
+  {
+   "prompt_id": "outcome.manual_review",
+   "match": {
+    "outcome": [
+     "manual_review"
+    ]
+   },
+   "title": "We have what we need",
+   "body": "We have what we need. Our team will follow up."
+  },
+  {
+   "prompt_id": "outcome.not_eligible",
+   "match": {
+    "outcome": [
+     "not_eligible"
+    ]
+   },
+   "title": "Not a fit at this spot",
+   "body": "This spot doesn't meet the installation rules."
+  },
+  {
+   "prompt_id": "outcome.failed",
+   "match": {
+    "outcome": [
+     "failed"
+    ]
+   },
+   "title": "Something went wrong",
+   "body": "We couldn't process this capture. Please try again, or our team will follow up."
+  },
+  {
+   "prompt_id": "reason.wall_backing",
+   "match": {
+    "criterion": [
+     "wall_backing"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The battery needs solid wall behind it."
+  },
+  {
+   "prompt_id": "reason.ground_surface",
+   "match": {
+    "criterion": [
+     "ground_surface"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The ground under this spot is not a fit."
+  },
+  {
+   "prompt_id": "reason.meter_working_space",
+   "match": {
+    "criterion": [
+     "meter_working_space"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "This spot is inside the open space in front of the meter."
+  },
+  {
+   "prompt_id": "reason.gas_clearance",
+   "match": {
+    "criterion": [
+     "gas_clearance"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The spot is closer than {threshold_ft} ft to the gas meter."
+  },
+  {
+   "prompt_id": "reason.ac_clearance",
+   "match": {
+    "criterion": [
+     "ac_clearance"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The spot is closer than {threshold_ft} ft to the air-conditioning unit."
+  },
+  {
+   "prompt_id": "reason.drive_clearance",
+   "match": {
+    "criterion": [
+     "drive_clearance"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The spot is closer than {threshold_ft} ft to the driveway."
+  },
+  {
+   "prompt_id": "reason.pool_clearance",
+   "match": {
+    "criterion": [
+     "pool_clearance"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The spot is closer than {threshold_ft} ft to the pool."
+  },
+  {
+   "prompt_id": "reason.opening_clearance",
+   "match": {
+    "criterion": [
+     "opening_clearance"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The spot is closer than {threshold_ft} ft to a door or window."
+  },
+  {
+   "prompt_id": "reason.wall_equipment_above",
+   "match": {
+    "criterion": [
+     "wall_equipment_above"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "There is equipment on the wall above this spot."
+  },
+  {
+   "prompt_id": "reason.facing_gap",
+   "match": {
+    "criterion": [
+     "facing_gap"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "There is not enough open space in front of this wall."
+  },
+  {
+   "prompt_id": "reason.headroom",
+   "match": {
+    "criterion": [
+     "headroom"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "There is not enough open space above this spot."
+  },
+  {
+   "prompt_id": "reason.route_path",
+   "match": {
+    "criterion": [
+     "route_path"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The path from the meter to this spot crosses something it should not."
+  },
+  {
+   "prompt_id": "reason.route_length",
+   "match": {
+    "criterion": [
+     "route_length"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The run from the meter is longer than {threshold_ft} ft."
+  },
+  {
+   "prompt_id": "reason.disconnect_space",
+   "match": {
+    "criterion": [
+     "disconnect_space"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "There is not enough open wall beside the meter."
+  },
+  {
+   "prompt_id": "reason.walkway",
+   "match": {
+    "criterion": [
+     "walkway"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "This spot blocks a walkway."
+  },
+  {
+   "prompt_id": "reason.street_facing",
+   "match": {
+    "criterion": [
+     "street_facing"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "This spot faces the street."
+  },
+  {
+   "prompt_id": "reason.requires_member_action",
+   "match": {
+    "criterion": [
+     "requires_member_action"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "Something in the way has to be moved by our team."
+  },
+  {
+   "prompt_id": "reason.placement",
+   "match": {
+    "criterion": [
+     "placement"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "This spot is not a fit for the battery."
+  },
+  {
+   "prompt_id": "reason.meter_number",
+   "match": {
+    "criterion": [
+     "meter_number"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "We could not confirm the meter number."
+  },
+  {
+   "prompt_id": "reason.cl320",
+   "match": {
+    "criterion": [
+     "cl320"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "This meter is a larger service than we install on."
+  },
+  {
+   "prompt_id": "reason.oversized_can",
+   "match": {
+    "criterion": [
+     "oversized_can"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The meter box is larger than we install on."
+  },
+  {
+   "prompt_id": "reason.meter_type",
+   "match": {
+    "criterion": [
+     "meter_type"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "This kind of meter is not one we install on."
+  },
+  {
+   "prompt_id": "reason.meter_mount",
+   "match": {
+    "criterion": [
+     "meter_mount"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "How this meter is mounted is not a fit."
+  },
+  {
+   "prompt_id": "reason.multiple_mains",
+   "match": {
+    "criterion": [
+     "multiple_mains"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "This home has more than one main service."
+  },
+  {
+   "prompt_id": "reason.main_panel_type",
+   "match": {
+    "criterion": [
+     "main_panel_type"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The main panel is not a fit for this install."
+  },
+  {
+   "prompt_id": "reason.meter_panel_relationship",
+   "match": {
+    "criterion": [
+     "meter_panel_relationship"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The meter and panel are not arranged the way we need."
+  },
+  {
+   "prompt_id": "reason.meter_not_accessible",
+   "match": {
+    "criterion": [
+     "meter_not_accessible"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "We cannot reach the meter."
+  },
+  {
+   "prompt_id": "reason.panel_not_accessible",
+   "match": {
+    "criterion": [
+     "panel_not_accessible"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "We cannot reach the electrical panel."
+  },
+  {
+   "prompt_id": "reason.panel_in_house",
+   "match": {
+    "criterion": [
+     "panel_in_house"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The electrical panel is inside the house."
+  },
+  {
+   "prompt_id": "reason.not_same_wall",
+   "match": {
+    "criterion": [
+     "not_same_wall"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "The meter and panel are on different walls."
+  },
+  {
+   "prompt_id": "reason.panel_recall",
+   "match": {
+    "criterion": [
+     "panel_recall"
+    ]
+   },
+   "title": "Not a fit here",
+   "body": "This panel needs a follow-up from our team."
+  },
+  {
+   "prompt_id": "vn.cause.generated_only",
+   "match": {
+    "cause": [
+     "generated_only"
+    ]
+   },
+   "title": "One more photo",
+   "body": "Photograph the area {side}, {s_ft} ft along the wall, from about 10 ft back."
+  },
+  {
+   "prompt_id": "vn.cause.unobserved",
+   "match": {
+    "cause": [
+     "unobserved"
+    ]
+   },
+   "title": "One more photo",
+   "body": "Photograph the area {side}, {s_ft} ft along the wall, from about 10 ft back."
+  },
+  {
+   "prompt_id": "vn.cause.partial",
+   "match": {
+    "cause": [
+     "partial"
+    ]
+   },
+   "title": "One more photo",
+   "body": "Photograph the area {side}, {s_ft} ft along the wall, from about 10 ft back."
+  },
+  {
+   "prompt_id": "vn.cause.grazing",
+   "match": {
+    "cause": [
+     "grazing"
+    ]
+   },
+   "title": "One more photo",
+   "body": "Photograph the area {side}, {s_ft} ft along the wall, from about 10 ft back."
+  },
+  {
+   "prompt_id": "vn.cause.unknown_attribute",
+   "match": {
+    "cause": [
+     "unknown_attribute"
+    ]
+   },
+   "title": "One more photo",
+   "body": "Photograph the area {side}, {s_ft} ft along the wall, from about 10 ft back."
+  },
+  {
+   "prompt_id": "vn.cause.margin",
+   "match": {
+    "cause": [
+     "margin"
+    ]
+   },
+   "title": "One more photo",
+   "body": "Photograph the area {side}, {s_ft} ft along the wall, from about 10 ft back."
+  },
+  {
+   "prompt_id": "vn.cause.rule_requires_review",
+   "match": {
+    "cause": [
+     "rule_requires_review"
+    ]
+   },
+   "title": "One more photo",
+   "body": "Photograph the area {side}, {s_ft} ft along the wall, from about 10 ft back."
+  },
+  {
+   "prompt_id": "vn.cause.not_evaluated",
+   "match": {
+    "cause": [
+     "not_evaluated"
+    ]
+   },
+   "title": "One more photo",
+   "body": "Photograph the area {side}, {s_ft} ft along the wall, from about 10 ft back."
+  },
+  {
+   "prompt_id": "vn.generic",
+   "match": {},
+   "title": "One more photo",
+   "body": "Photograph the area {side}, {s_ft} ft along the wall, from about 10 ft back."
+  }
+ ]
+}

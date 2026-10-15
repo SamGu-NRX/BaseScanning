@@ -1,0 +1,28 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"mainPanelLocation\":\"not_visible\",\"meterGaragePosition\":\"not_garage_wall\",\"meterPanelRelationship\":\"insufficient_evidence\",\"relationshipSubtype\":\"unknown\",\"evidenceSufficiency\":\"insufficient\",\"confidence\":0.78,\"rationale\":\"Exterior utility/meter equipment is only briefly visible on a brick exterior wall, with no visible garage opening or interior main electrical panel shown to establish any through-wall relationship.\"}",
+ "json": {
+  "mainPanelLocation": "not_visible",
+  "meterGaragePosition": "not_garage_wall",
+  "meterPanelRelationship": "insufficient_evidence",
+  "relationshipSubtype": "unknown",
+  "evidenceSufficiency": "insufficient",
+  "confidence": 0.78,
+  "rationale": "Exterior utility/meter equipment is only briefly visible on a brick exterior wall, with no visible garage opening or interior main electrical panel shown to establish any through-wall relationship."
+ },
+ "usage": {
+  "input_tokens": 18248,
+  "cached_tokens": 0,
+  "output_tokens": 606,
+  "reasoning_tokens": 516
+ },
+ "cost_usd": 0.10942,
+ "latency_s": 9.35,
+ "stop": "completed",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p05": "insufficient_evidence"
+ }
+}

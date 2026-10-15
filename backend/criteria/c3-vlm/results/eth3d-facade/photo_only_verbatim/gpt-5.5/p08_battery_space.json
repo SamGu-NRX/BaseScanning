@@ -1,0 +1,35 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The photos show wide exterior walls and open gravel areas, but the electric meter itself is not clearly identifiable, so the required starting point and continuous harness route cannot be confirmed. More direct photos of the actual meter and the wall/ground immediately to both sides are needed before approving a battery spot.\", \"reference_object\":\"standard exterior door about 3 ft wide\", \"distance_ft\":null, \"front_clearance_ft\":99, \"drive_path_ft\":null, \"requires_member_action\":false, \"decision\":\"manual_review\", \"needs_more_photos\":true, \"missing_views\":[\"close-up photo of the electric meter\", \"wide photo showing the meter and the ground below it\", \"photo looking left along the wall from the meter\", \"photo looking right along the wall from the meter\"]}",
+ "json": {
+  "justification": "The photos show wide exterior walls and open gravel areas, but the electric meter itself is not clearly identifiable, so the required starting point and continuous harness route cannot be confirmed. More direct photos of the actual meter and the wall/ground immediately to both sides are needed before approving a battery spot.",
+  "reference_object": "standard exterior door about 3 ft wide",
+  "distance_ft": null,
+  "front_clearance_ft": 99,
+  "drive_path_ft": null,
+  "requires_member_action": false,
+  "decision": "manual_review",
+  "needs_more_photos": true,
+  "missing_views": [
+   "close-up photo of the electric meter",
+   "wide photo showing the meter and the ground below it",
+   "photo looking left along the wall from the meter",
+   "photo looking right along the wall from the meter"
+  ]
+ },
+ "usage": {
+  "input_tokens": 35537,
+  "cached_tokens": 0,
+  "output_tokens": 686,
+  "reasoning_tokens": 516
+ },
+ "cost_usd": 0.198265,
+ "latency_s": 11.87,
+ "stop": "completed",
+ "prompt_id": "p08_battery_space",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p08": "manual_review"
+ }
+}

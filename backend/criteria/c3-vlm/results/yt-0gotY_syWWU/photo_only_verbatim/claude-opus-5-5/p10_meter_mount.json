@@ -1,0 +1,24 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"reasoning\": \"Photo 3 gives a clear, reasonably close view of a single round meter mounted directly on the red siding of the house, just right of the front door. Photo 6 confirms the same wall-mounted meter from another angle, with no pole mount and no other meters in a row.\", \"type\": \"standardMeter\", \"clean-decision\": true}",
+ "json": {
+  "reasoning": "Photo 3 gives a clear, reasonably close view of a single round meter mounted directly on the red siding of the house, just right of the front door. Photo 6 confirms the same wall-mounted meter from another angle, with no pole mount and no other meters in a row.",
+  "type": "standardMeter",
+  "clean-decision": true
+ },
+ "usage": {
+  "input_tokens": 8219,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 290
+ },
+ "cost_usd": 0.038676,
+ "latency_s": 5.57,
+ "stop": "end_turn",
+ "prompt_id": "p10_meter_mount",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p10": "standardMeter"
+ }
+}

@@ -1,0 +1,34 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"reference_object\":\"gray double transformer-room door, assumed about 7 ft tall\",\"distance_ft\":null,\"front_clearance_ft\":null,\"drive_path_ft\":null,\"requires_member_action\":false,\"decision\":\"manual_review\",\"needs_more_photos\":true,\"missing_views\":[\"Photo of the electric meter/main service location with standing working room visible\",\"Wide photos looking left and right from the meter along the same wall to the wall ends or corners\",\"Close photos of any proposed battery wall area showing at least 3 ft of wall width, ground/footprint, and the 5 ft space in front\"],\"justification\":\"No electric meter or clear meter-to-battery starting point is visible in the submitted photos, so the harness route and distance cannot be verified. The visible areas are mostly transformer/electrical room doors, building entrances, scaffolding/temporary cable runs, and a paved vehicle-access area; these visible spots do not clearly provide a compliant battery footprint and supported route. Because other relevant wall areas or the actual meter wall may be off-frame, this cannot be rejected from the photos alone.\"}",
+ "json": {
+  "reference_object": "gray double transformer-room door, assumed about 7 ft tall",
+  "distance_ft": null,
+  "front_clearance_ft": null,
+  "drive_path_ft": null,
+  "requires_member_action": false,
+  "decision": "manual_review",
+  "needs_more_photos": true,
+  "missing_views": [
+   "Photo of the electric meter/main service location with standing working room visible",
+   "Wide photos looking left and right from the meter along the same wall to the wall ends or corners",
+   "Close photos of any proposed battery wall area showing at least 3 ft of wall width, ground/footprint, and the 5 ft space in front"
+  ],
+  "justification": "No electric meter or clear meter-to-battery starting point is visible in the submitted photos, so the harness route and distance cannot be verified. The visible areas are mostly transformer/electrical room doors, building entrances, scaffolding/temporary cable runs, and a paved vehicle-access area; these visible spots do not clearly provide a compliant battery footprint and supported route. Because other relevant wall areas or the actual meter wall may be off-frame, this cannot be rejected from the photos alone."
+ },
+ "usage": {
+  "input_tokens": 30613,
+  "cached_tokens": 26496,
+  "output_tokens": 1263,
+  "reasoning_tokens": 1034
+ },
+ "cost_usd": 0.071723,
+ "latency_s": 17.06,
+ "stop": "completed",
+ "prompt_id": "p08_battery_space",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p08": "manual_review"
+ }
+}

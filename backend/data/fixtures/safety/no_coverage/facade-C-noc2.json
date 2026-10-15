@@ -1,0 +1,1089 @@
+{
+ "format": "base-verdict/v0",
+ "verdict_id": "eth3d-facade/gt-laser/C",
+ "scene": {
+  "scene_id": "eth3d-facade/gt-laser",
+  "site": "eth3d-facade",
+  "sha256": "3e0acb5003a669f4fce42ea8e41b9e1be59d32eea3a37e757d55d1c8b8ede454",
+  "producer_path": "gt-laser",
+  "data": "real"
+ },
+ "evaluator": {
+  "path": "C1-rules-3d+hs11-chain",
+  "version": "0",
+  "rules_profile": "C",
+  "rules_sha256": "3c762608fc8ded5b1534f81ccb790ed8c44016794768cdfae9302b2df596ad42",
+  "ground_rule": "footprint3in",
+  "ground_incidence_deg": 88.0,
+  "auto_approve": true,
+  "cost_usd": 0.0
+ },
+ "site": {
+  "decision": "manual_review",
+  "reasons": [
+   "fact_absent:main_panel_type",
+   "fact_absent:meter_not_accessible",
+   "fact_absent:panel_in_house",
+   "fact_absent:panel_not_accessible",
+   "fact_absent:panel_recall",
+   "fact_unsure:meter_number",
+   "views_needed"
+  ],
+  "chosen_candidate": "run0"
+ },
+ "criteria": [
+  {
+   "id": "placement",
+   "scope": "site",
+   "outcome": "unsure",
+   "reason": "fact_absent:main_panel_type; fact_absent:meter_not_accessible; fact_absent:panel_in_house; fact_absent:panel_not_accessible; fact_absent:panel_recall; fact_unsure:meter_number; views_needed",
+   "measured": null,
+   "threshold": null,
+   "fact": {
+    "value": "C",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "height_m": [
+        0.05,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "unsure_cause": "rule_requires_review"
+  },
+  {
+   "id": "wall_backing",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "wall_backing unsure",
+   "measured": {
+    "value_ft": 9.543,
+    "plus_minus_ft": 0.0984,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "height_m": [
+        0.05,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 0.0,
+    "comparison": "at_least",
+    "source": "profiles.yaml",
+    "placeholder": false
+   },
+   "unsure_cause": "unobserved",
+   "margin_ft": 9.543,
+   "margin_over_uncertainty": 96.957,
+   "views_needed": [
+    "vn1",
+    "vn2",
+    "vn3"
+   ]
+  },
+  {
+   "id": "ground_surface",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "surface type under the footprint not recorded or near a boundary",
+   "measured": null,
+   "threshold": null,
+   "unsure_cause": "unknown_attribute",
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "out_m": [
+        0.0,
+        0.6096
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "views_needed": [
+    "vn4",
+    "vn5",
+    "vn6"
+   ]
+  },
+  {
+   "id": "meter_working_space",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "coverage: outcome rests on space not observed (contract 3.1)",
+   "measured": {
+    "value_ft": -1.602,
+    "plus_minus_ft": 0.3983,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.381,
+        0.381
+       ],
+       "height_m": [
+        0.05,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ],
+    "subject": "meter"
+   },
+   "threshold": {
+    "value_ft": 0.0,
+    "comparison": "at_least",
+    "source": "profiles.yaml",
+    "placeholder": false
+   },
+   "unsure_cause": "unobserved",
+   "margin_ft": -1.602,
+   "margin_over_uncertainty": -4.022,
+   "views_needed": [
+    "vn1",
+    "vn2",
+    "vn3"
+   ]
+  },
+  {
+   "id": "gas_clearance",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "unobserved wall within 3.10 ft",
+   "measured": null,
+   "threshold": null,
+   "unsure_cause": "unobserved",
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "out_m": [
+        0.0,
+        1.524
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "views_needed": [
+    "vn4",
+    "vn5",
+    "vn6"
+   ]
+  },
+  {
+   "id": "ac_clearance",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "outcome rests on space not observed (contract 3.1)",
+   "measured": null,
+   "threshold": null,
+   "unsure_cause": "unobserved",
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "out_m": [
+        0.0,
+        0.6096
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "views_needed": [
+    "vn1",
+    "vn2",
+    "vn3"
+   ]
+  },
+  {
+   "id": "drive_clearance",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "outcome rests on space not observed (contract 3.1)",
+   "measured": null,
+   "threshold": null,
+   "unsure_cause": "unobserved",
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "out_m": [
+        0.0,
+        1.524
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "views_needed": [
+    "vn4",
+    "vn5",
+    "vn6"
+   ]
+  },
+  {
+   "id": "pool_clearance",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "unobserved ground within 10.10 ft",
+   "measured": null,
+   "threshold": null,
+   "unsure_cause": "unobserved",
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "out_m": [
+        0.0,
+        3.6576
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "views_needed": [
+    "vn4",
+    "vn5",
+    "vn6"
+   ]
+  },
+  {
+   "id": "opening_clearance",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "opening_clearance unsure",
+   "measured": {
+    "value_ft": 0.1358,
+    "plus_minus_ft": 0.3701,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "height_m": [
+        0.05,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ],
+    "subject": "win4"
+   },
+   "threshold": {
+    "value_ft": 0.0,
+    "comparison": "at_least",
+    "source": "profiles.yaml",
+    "placeholder": false
+   },
+   "unsure_cause": "margin",
+   "margin_ft": 0.1358,
+   "margin_over_uncertainty": 0.367,
+   "views_needed": [
+    "vn1"
+   ]
+  },
+  {
+   "id": "wall_equipment_above",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "wall_equipment_above unsure",
+   "measured": null,
+   "threshold": null,
+   "unsure_cause": "unobserved",
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "height_m": [
+        0.05,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "views_needed": [
+    "vn1",
+    "vn2",
+    "vn3"
+   ]
+  },
+  {
+   "id": "facing_gap",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "outcome rests on space not observed (contract 3.1)",
+   "measured": null,
+   "threshold": null,
+   "unsure_cause": "unobserved",
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "out_m": [
+        0.1,
+        0.5587998984000001
+       ],
+       "height_m": [
+        0.3,
+        1.83
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "views_needed": [
+    "vn1",
+    "vn2",
+    "vn3"
+   ]
+  },
+  {
+   "id": "headroom",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "headroom unsure",
+   "measured": null,
+   "threshold": null,
+   "unsure_cause": "unobserved",
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "out_m": [
+        0.1,
+        0.91
+       ],
+       "height_m": [
+        0.3,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "views_needed": [
+    "vn2",
+    "vn3"
+   ]
+  },
+  {
+   "id": "footprint_clear",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "outcome rests on space not observed (contract 3.1)",
+   "measured": null,
+   "threshold": null,
+   "unsure_cause": "unobserved",
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "out_m": [
+        0.0,
+        0.6096
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "views_needed": [
+    "vn1",
+    "vn2",
+    "vn3"
+   ]
+  },
+  {
+   "id": "route_path",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "route_path unsure",
+   "measured": null,
+   "threshold": null,
+   "unsure_cause": "unobserved",
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "out_m": [
+        0.0,
+        0.6096
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "views_needed": [
+    "vn1",
+    "vn2",
+    "vn3"
+   ]
+  },
+  {
+   "id": "route_length",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "route_length unsure",
+   "measured": {
+    "value_ft": 0.0,
+    "plus_minus_ft": 0.3983,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.7417,
+        0.0457
+       ],
+       "out_m": [
+        0.0,
+        8.5344
+       ]
+      },
+      "status": "unobserved",
+      "probes": 0,
+      "observed_share": 0.0,
+      "views_median": 0.0,
+      "views_min": 0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9,
+       "surface": "wall"
+      },
+      "method": "no coverage query"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 26.0,
+    "comparison": "at_most",
+    "source": "profiles.yaml",
+    "placeholder": false
+   },
+   "unsure_cause": "unobserved",
+   "margin_ft": 26.0,
+   "margin_over_uncertainty": 65.278,
+   "views_needed": [
+    "vn1",
+    "vn2"
+   ]
+  },
+  {
+   "id": "oversized_can",
+   "scope": "site",
+   "outcome": "unsure",
+   "unsure_cause": "not_evaluated",
+   "reason": "c3 disabled",
+   "measured": null,
+   "threshold": null
+  },
+  {
+   "id": "meter_type",
+   "scope": "site",
+   "outcome": "unsure",
+   "unsure_cause": "not_evaluated",
+   "reason": "c3 disabled",
+   "measured": null,
+   "threshold": null
+  },
+  {
+   "id": "meter_mount",
+   "scope": "site",
+   "outcome": "unsure",
+   "unsure_cause": "not_evaluated",
+   "reason": "c3 disabled",
+   "measured": null,
+   "threshold": null
+  },
+  {
+   "id": "multiple_mains",
+   "scope": "site",
+   "outcome": "unsure",
+   "unsure_cause": "not_evaluated",
+   "reason": "c3 disabled",
+   "measured": null,
+   "threshold": null
+  },
+  {
+   "id": "main_panel_type",
+   "scope": "site",
+   "outcome": "unsure",
+   "unsure_cause": "not_evaluated",
+   "reason": "c3 disabled",
+   "measured": null,
+   "threshold": null
+  },
+  {
+   "id": "meter_panel_relationship",
+   "scope": "site",
+   "outcome": "unsure",
+   "unsure_cause": "not_evaluated",
+   "reason": "c3 disabled",
+   "measured": null,
+   "threshold": null
+  },
+  {
+   "id": "meter_not_accessible",
+   "scope": "site",
+   "outcome": "unsure",
+   "unsure_cause": "not_evaluated",
+   "reason": "c3 disabled",
+   "measured": null,
+   "threshold": null
+  },
+  {
+   "id": "panel_not_accessible",
+   "scope": "site",
+   "outcome": "unsure",
+   "unsure_cause": "not_evaluated",
+   "reason": "c3 disabled",
+   "measured": null,
+   "threshold": null
+  },
+  {
+   "id": "panel_in_house",
+   "scope": "site",
+   "outcome": "unsure",
+   "unsure_cause": "not_evaluated",
+   "reason": "c3 disabled",
+   "measured": null,
+   "threshold": null
+  },
+  {
+   "id": "not_same_wall",
+   "scope": "site",
+   "outcome": "unsure",
+   "unsure_cause": "not_evaluated",
+   "reason": "c3 disabled",
+   "measured": null,
+   "threshold": null
+  }
+ ],
+ "candidates": [
+  {
+   "id": "run0",
+   "wall_id": "w1",
+   "start_s_m": [
+    -12.8321,
+    2.2305
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "headroom",
+    "meter_working_space",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run1",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.0179,
+    5.7731
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "headroom",
+    "meter_working_space",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run2",
+   "wall_id": "w3",
+   "start_s_m": [
+    6.5605,
+    10.7215
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "headroom",
+    "meter_working_space",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  }
+ ],
+ "views_needed": [
+  {
+   "kind": "band",
+   "band": "wall",
+   "wall_id": "w2",
+   "s_m": [
+    3.0179,
+    5.7731
+   ],
+   "criteria": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "meter_working_space",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ],
+   "why": "unobserved",
+   "target": "head-on photo of this wall section from 2-4 m",
+   "id": "vn1"
+  },
+  {
+   "kind": "band",
+   "band": "wall",
+   "wall_id": "w1",
+   "s_m": [
+    -12.8321,
+    2.2305
+   ],
+   "criteria": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "headroom",
+    "meter_working_space",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ],
+   "why": "unobserved",
+   "target": "head-on photo of this wall section from 2-4 m",
+   "id": "vn2"
+  },
+  {
+   "kind": "band",
+   "band": "wall",
+   "wall_id": "w3",
+   "s_m": [
+    6.5605,
+    10.7215
+   ],
+   "criteria": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "headroom",
+    "meter_working_space",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ],
+   "why": "unobserved",
+   "target": "head-on photo of this wall section from 2-4 m",
+   "id": "vn3"
+  },
+  {
+   "kind": "band",
+   "band": "ground",
+   "wall_id": "w2",
+   "s_m": [
+    3.0179,
+    5.7731
+   ],
+   "criteria": [
+    "drive_clearance",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ],
+   "why": "unobserved; unknown_attribute",
+   "target": "downward photo of the ground in front of this wall, from chest height",
+   "id": "vn4"
+  },
+  {
+   "kind": "band",
+   "band": "ground",
+   "wall_id": "w1",
+   "s_m": [
+    -12.8321,
+    2.2305
+   ],
+   "criteria": [
+    "drive_clearance",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ],
+   "why": "unobserved; unknown_attribute",
+   "target": "downward photo of the ground in front of this wall, from chest height",
+   "id": "vn5"
+  },
+  {
+   "kind": "band",
+   "band": "ground",
+   "wall_id": "w3",
+   "s_m": [
+    6.5605,
+    10.7215
+   ],
+   "criteria": [
+    "drive_clearance",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ],
+   "why": "unobserved; unknown_attribute",
+   "target": "downward photo of the ground in front of this wall, from chest height",
+   "id": "vn6"
+  },
+  {
+   "kind": "past_end",
+   "side": "right",
+   "wall_id": "w3",
+   "s_m": [
+    11.509,
+    12.009
+   ],
+   "criteria": [
+    "placement"
+   ],
+   "why": "unobserved",
+   "target": "walk past the end of this wall and photograph the next stretch",
+   "id": "vn7"
+  },
+  {
+   "kind": "past_end",
+   "side": "left",
+   "wall_id": "w1",
+   "s_m": [
+    -13.3321,
+    -12.8321
+   ],
+   "criteria": [
+    "placement"
+   ],
+   "why": "unobserved",
+   "target": "walk past the end of this wall and photograph the next stretch",
+   "id": "vn8"
+  }
+ ]
+}

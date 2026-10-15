@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"hasLargeOrOversizedMeterCan\": false, \"meterCanLabel\": \"normal_meter_can\", \"insufficientEvidence\": false, \"evidence\": \"Photo 3 shows the round meter mounted beside the front door in a small, compact enclosure that is only slightly larger than the meter itself, a standard residential socket. Photo 6 shows the same small meter can from a distance. No large rectangular or tall can holds the meter.\", \"notes\": \"The meter can is judged from moderate-distance photos and no close-up is available, but its compact size is clear relative to the door and window trim. The small box in Photo 9 is separate and does not hold the meter.\"}",
+ "json": {
+  "hasLargeOrOversizedMeterCan": false,
+  "meterCanLabel": "normal_meter_can",
+  "insufficientEvidence": false,
+  "evidence": "Photo 3 shows the round meter mounted beside the front door in a small, compact enclosure that is only slightly larger than the meter itself, a standard residential socket. Photo 6 shows the same small meter can from a distance. No large rectangular or tall can holds the meter.",
+  "notes": "The meter can is judged from moderate-distance photos and no close-up is available, but its compact size is clear relative to the door and window trim. The small box in Photo 9 is separate and does not hold the meter."
+ },
+ "usage": {
+  "input_tokens": 7791,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 218
+ },
+ "cost_usd": 0.035524,
+ "latency_s": 6.19,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p02": "normal_meter_can"
+ }
+}

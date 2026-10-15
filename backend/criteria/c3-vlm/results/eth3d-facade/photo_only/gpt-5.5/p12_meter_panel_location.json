@@ -1,0 +1,40 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meterNotAccessible\":{\"verdict\":\"manual_review\",\"reason\":\"Electric meter is not visible, so frontage/access cannot be verified.\"},\"panelNotAccessible\":{\"verdict\":\"manual_review\",\"reason\":\"Electrical panel is not visible, so working space/access cannot be verified.\"},\"panelInHouse\":{\"verdict\":\"manual_review\",\"reason\":\"Panel location is not shown, so interior vs garage/outside cannot be determined.\"},\"notSameWall\":{\"verdict\":\"manual_review\",\"reason\":\"Meter and panel are not both visible on the same exterior wall; insufficient proof.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "manual_review",
+   "reason": "Electric meter is not visible, so frontage/access cannot be verified."
+  },
+  "panelNotAccessible": {
+   "verdict": "manual_review",
+   "reason": "Electrical panel is not visible, so working space/access cannot be verified."
+  },
+  "panelInHouse": {
+   "verdict": "manual_review",
+   "reason": "Panel location is not shown, so interior vs garage/outside cannot be determined."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reason": "Meter and panel are not both visible on the same exterior wall; insufficient proof."
+  }
+ },
+ "usage": {
+  "input_tokens": 29699,
+  "cached_tokens": 26496,
+  "output_tokens": 327,
+  "reasoning_tokens": 209
+ },
+ "cost_usd": 0.039073,
+ "latency_s": 7.18,
+ "stop": "completed",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p12.meterNotAccessible": "manual_review",
+  "p12.panelNotAccessible": "manual_review",
+  "p12.panelInHouse": "manual_review",
+  "p12.notSameWall": "manual_review"
+ }
+}

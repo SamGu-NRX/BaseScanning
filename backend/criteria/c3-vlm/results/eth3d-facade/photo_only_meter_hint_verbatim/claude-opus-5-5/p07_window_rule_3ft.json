@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"justification\": \"In Photo 8 the marked meter sits in a narrow brick pier between two closely spaced, operable ground-level arched windows, with the entry door just to the right. Photos 1, 2, 9, 10 and 11 show the same window pattern continuing around the courtyard, with only about 3\u20134 ft of wall between openings, far short of the ~8 ft needed for ComEd's 3 ft clearance on each side. The surrounding surface is also an open gravel courtyard that may be drivable, so no spot can be confirmed and the room for the disconnect is doubtful.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "In Photo 8 the marked meter sits in a narrow brick pier between two closely spaced, operable ground-level arched windows, with the entry door just to the right. Photos 1, 2, 9, 10 and 11 show the same window pattern continuing around the courtyard, with only about 3\u20134 ft of wall between openings, far short of the ~8 ft needed for ComEd's 3 ft clearance on each side. The surrounding surface is also an open gravel courtyard that may be drivable, so no spot can be confirmed and the room for the disconnect is doubtful.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 36868,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 456
+ },
+ "cost_usd": 0.156592,
+ "latency_s": 13.6,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "eth3d-facade",
+ "variant": "photo_only_meter_hint_verbatim",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

@@ -1,0 +1,18 @@
+{
+ "meter": {
+  "status": "auto_fill",
+  "value": "000000000",
+  "agree": false,
+  "barcode_match": true,
+  "candidates": []
+ },
+ "confirm": {
+  "still_id": "s01"
+ },
+ "facts": [
+  {
+   "id": "meter_number",
+   "clean": true
+  }
+ ]
+}

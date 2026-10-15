@@ -1,0 +1,25 @@
+{
+ "scene": "facade",
+ "condition": "blur_16",
+ "images": 76,
+ "models": 2,
+ "keypoints_median": 9700.5,
+ "extract_s": 39.716760873794556,
+ "match_s": 1145.4910068511963,
+ "mapper_s": 24.259235858917236,
+ "prior_drawn_scale": 0.9833565193944482,
+ "inlier_pairs": 1165,
+ "inliers_per_pair_median": 49.0,
+ "registered": 65,
+ "model_sizes": [
+  65,
+  27
+ ],
+ "points3D": 15516,
+ "mean_reproj_px": 0.737405879628149,
+ "mean_track_length": 4.5586491363753545,
+ "centre_rms_rigid_m": 0.1539166427063979,
+ "centre_rms_sim3_m": 0.027649729306168477,
+ "scale_error_pct": -1.6908566709849415,
+ "score_error": "scorer failed: RuntimeError: meter clicks hit no wall"
+}

@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"justification\": \"The electric meter's exact position is unclear. The wall near the gas meter and chimney (Photo 14) sits right beside a car parked on the gravel/concrete-strip driveway that runs along the house (Photos 9\u201311), so the 5 ft clearances from the driveway and gas meter are doubtful there. The narrow side yard with the meter by a window (Photo 2) is not documented well enough to confirm a spot meeting the ComEd 3 ft window gaps and driveway clearance.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "The electric meter's exact position is unclear. The wall near the gas meter and chimney (Photo 14) sits right beside a car parked on the gravel/concrete-strip driveway that runs along the house (Photos 9\u201311), so the 5 ft clearances from the driveway and gas meter are doubtful there. The narrow side yard with the meter by a window (Photo 2) is not documented well enough to confirm a spot meeting the ComEd 3 ft window gaps and driveway clearance.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 24016,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 580
+ },
+ "cost_usd": 0.107664,
+ "latency_s": 10.51,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

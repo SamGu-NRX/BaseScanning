@@ -1,0 +1,924 @@
+{
+ "scene": "electro",
+ "model": "unidepth2-vits",
+ "poses": "nonlidar_modern@0",
+ "scale": "tri",
+ "voxel": 0.04,
+ "min_weight": 1.0,
+ "trunc_vox": 4.0,
+ "tag": "unidepth2-vits__nonlidar_modern-0__tri__v4",
+ "pose_info": {
+  "mode": "nonlidar_modern@0",
+  "session_scale": 0.9968848783536307,
+  "session_multiplier": 1.0619325744957164,
+  "path_m": 50.4648242391737,
+  "centre_error_m": {
+   "median": 0.5948550223175253,
+   "p90": 1.221363037875984,
+   "max": 1.2936570564515029
+  },
+  "yaw_error_deg_final": -1.9240768558966141
+ },
+ "depth_stats": {
+  "scaled_views": 41,
+  "views": 45,
+  "scale_median": 0.9287705628701263,
+  "scale_p10_p90": [
+   0.7485432443799298,
+   1.2334233196558793
+  ]
+ },
+ "seconds": {
+  "scale": 7.874850151999453,
+  "fuse": 3.2557048480002777,
+  "total": 137.59718178999992
+ },
+ "pairs_fused": {
+  "all points": {
+   "surface interior": {
+    "none": {
+     "1-3m": {
+      "pairs": 135000,
+      "failed_pct": 35.38,
+      "median_in": 20.93,
+      "p90_in": Infinity,
+      "scale_error_pct": -2.89
+     },
+     "3-10m": {
+      "pairs": 135000,
+      "failed_pct": 42.71,
+      "median_in": 53.55,
+      "p90_in": Infinity,
+      "scale_error_pct": -5.17
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 3375000,
+      "failed_pct": 50.65,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": -0.14
+     },
+     "3-10m": {
+      "pairs": 3375000,
+      "failed_pct": 55.62,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": -3.5
+     }
+    },
+    "tape_calibration_success_pct": 65.5,
+    "seeds": 45
+   },
+   "surface interior | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 86628,
+      "failed_pct": 0.0,
+      "median_in": 8.84,
+      "p90_in": 37.23,
+      "scale_error_pct": -2.85
+     },
+     "3-10m": {
+      "pairs": 77284,
+      "failed_pct": 0.0,
+      "median_in": 18.7,
+      "p90_in": 58.49,
+      "scale_error_pct": -5.18
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 1665581,
+      "failed_pct": 0.0,
+      "median_in": 13.14,
+      "p90_in": 51.85,
+      "scale_error_pct": -0.14
+     },
+     "3-10m": {
+      "pairs": 1497965,
+      "failed_pct": 0.0,
+      "median_in": 28.81,
+      "p90_in": 99.91,
+      "scale_error_pct": -3.5
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 40
+   },
+   "vertical interior": {
+    "none": {
+     "1-3m": {
+      "pairs": 135000,
+      "failed_pct": 30.1,
+      "median_in": 18.22,
+      "p90_in": Infinity,
+      "scale_error_pct": -2.71
+     },
+     "3-10m": {
+      "pairs": 133158,
+      "failed_pct": 41.37,
+      "median_in": 52.01,
+      "p90_in": Infinity,
+      "scale_error_pct": -5.27
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 3375000,
+      "failed_pct": 47.55,
+      "median_in": 75.88,
+      "p90_in": Infinity,
+      "scale_error_pct": -0.22
+     },
+     "3-10m": {
+      "pairs": 3328950,
+      "failed_pct": 54.27,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": -4.77
+     }
+    },
+    "tape_calibration_success_pct": 65.5,
+    "seeds": 45
+   },
+   "vertical interior | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 93588,
+      "failed_pct": 0.0,
+      "median_in": 8.79,
+      "p90_in": 42.16,
+      "scale_error_pct": -2.67
+     },
+     "3-10m": {
+      "pairs": 78001,
+      "failed_pct": 0.0,
+      "median_in": 18.27,
+      "p90_in": 61.28,
+      "scale_error_pct": -5.27
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 1770291,
+      "failed_pct": 0.0,
+      "median_in": 13.15,
+      "p90_in": 54.29,
+      "scale_error_pct": -0.22
+     },
+     "3-10m": {
+      "pairs": 1522387,
+      "failed_pct": 0.0,
+      "median_in": 29.69,
+      "p90_in": 96.61,
+      "scale_error_pct": -4.77
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 40
+   },
+   "edges": {
+    "none": {
+     "1-3m": {
+      "pairs": 135000,
+      "failed_pct": 45.51,
+      "median_in": 72.97,
+      "p90_in": Infinity,
+      "scale_error_pct": 13.81
+     },
+     "3-10m": {
+      "pairs": 132648,
+      "failed_pct": 55.7,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 0.37
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 3375000,
+      "failed_pct": 58.98,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 14.26
+     },
+     "3-10m": {
+      "pairs": 3316200,
+      "failed_pct": 64.52,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 1.78
+     }
+    },
+    "tape_calibration_success_pct": 65.5,
+    "seeds": 45
+   },
+   "edges | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 71845,
+      "failed_pct": 0.0,
+      "median_in": 17.67,
+      "p90_in": 63.34,
+      "scale_error_pct": 13.34
+     },
+     "3-10m": {
+      "pairs": 58492,
+      "failed_pct": 0.0,
+      "median_in": 25.26,
+      "p90_in": 89.18,
+      "scale_error_pct": 0.49
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 1384288,
+      "failed_pct": 0.0,
+      "median_in": 22.63,
+      "p90_in": 74.34,
+      "scale_error_pct": 14.26
+     },
+     "3-10m": {
+      "pairs": 1176662,
+      "failed_pct": 0.0,
+      "median_in": 39.11,
+      "p90_in": 117.8,
+      "scale_error_pct": 1.78
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 40
+   }
+  },
+  "within 6 m": {
+   "surface interior": {
+    "none": {
+     "1-3m": {
+      "pairs": 135000,
+      "failed_pct": 31.02,
+      "median_in": 15.77,
+      "p90_in": Infinity,
+      "scale_error_pct": -1.83
+     },
+     "3-10m": {
+      "pairs": 135000,
+      "failed_pct": 36.26,
+      "median_in": 26.75,
+      "p90_in": Infinity,
+      "scale_error_pct": -2.31
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 3375000,
+      "failed_pct": 45.67,
+      "median_in": 52.19,
+      "p90_in": Infinity,
+      "scale_error_pct": 0.25
+     },
+     "3-10m": {
+      "pairs": 3375000,
+      "failed_pct": 48.98,
+      "median_in": 132.94,
+      "p90_in": Infinity,
+      "scale_error_pct": -0.51
+     }
+    },
+    "tape_calibration_success_pct": 69.0,
+    "seeds": 45
+   },
+   "surface interior | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 93123,
+      "failed_pct": 0.0,
+      "median_in": 8.09,
+      "p90_in": 34.95,
+      "scale_error_pct": -1.83
+     },
+     "3-10m": {
+      "pairs": 86052,
+      "failed_pct": 0.0,
+      "median_in": 13.0,
+      "p90_in": 40.36,
+      "scale_error_pct": -2.31
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 1833780,
+      "failed_pct": 0.0,
+      "median_in": 10.33,
+      "p90_in": 46.5,
+      "scale_error_pct": 0.25
+     },
+     "3-10m": {
+      "pairs": 1721916,
+      "failed_pct": 0.0,
+      "median_in": 20.69,
+      "p90_in": 75.42,
+      "scale_error_pct": -0.51
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 44
+   },
+   "vertical interior": {
+    "none": {
+     "1-3m": {
+      "pairs": 102000,
+      "failed_pct": 22.34,
+      "median_in": 11.83,
+      "p90_in": Infinity,
+      "scale_error_pct": -1.04
+     },
+     "3-10m": {
+      "pairs": 99955,
+      "failed_pct": 31.83,
+      "median_in": 26.4,
+      "p90_in": Infinity,
+      "scale_error_pct": -0.61
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 2550000,
+      "failed_pct": 37.05,
+      "median_in": 30.94,
+      "p90_in": Infinity,
+      "scale_error_pct": 0.93
+     },
+     "3-10m": {
+      "pairs": 2498875,
+      "failed_pct": 42.77,
+      "median_in": 66.82,
+      "p90_in": Infinity,
+      "scale_error_pct": 0.03
+     }
+    },
+    "tape_calibration_success_pct": 73.3,
+    "seeds": 34
+   },
+   "vertical interior | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 79211,
+      "failed_pct": 0.0,
+      "median_in": 6.98,
+      "p90_in": 42.22,
+      "scale_error_pct": -1.04
+     },
+     "3-10m": {
+      "pairs": 68135,
+      "failed_pct": 0.0,
+      "median_in": 12.16,
+      "p90_in": 52.11,
+      "scale_error_pct": -0.61
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 1605287,
+      "failed_pct": 0.0,
+      "median_in": 9.96,
+      "p90_in": 49.5,
+      "scale_error_pct": 0.93
+     },
+     "3-10m": {
+      "pairs": 1430009,
+      "failed_pct": 0.0,
+      "median_in": 20.39,
+      "p90_in": 74.57,
+      "scale_error_pct": 0.03
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 33
+   },
+   "edges": {
+    "none": {
+     "1-3m": {
+      "pairs": 102000,
+      "failed_pct": 45.0,
+      "median_in": 59.94,
+      "p90_in": Infinity,
+      "scale_error_pct": 16.42
+     },
+     "3-10m": {
+      "pairs": 99802,
+      "failed_pct": 51.49,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 13.27
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 2550000,
+      "failed_pct": 53.75,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 16.46
+     },
+     "3-10m": {
+      "pairs": 2495050,
+      "failed_pct": 57.25,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 13.16
+     }
+    },
+    "tape_calibration_success_pct": 74.1,
+    "seeds": 34
+   },
+   "edges | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 56105,
+      "failed_pct": 0.0,
+      "median_in": 16.0,
+      "p90_in": 58.43,
+      "scale_error_pct": 16.42
+     },
+     "3-10m": {
+      "pairs": 48416,
+      "failed_pct": 0.0,
+      "median_in": 24.3,
+      "p90_in": 71.91,
+      "scale_error_pct": 13.27
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 1179500,
+      "failed_pct": 0.0,
+      "median_in": 18.54,
+      "p90_in": 65.49,
+      "scale_error_pct": 16.46
+     },
+     "3-10m": {
+      "pairs": 1066556,
+      "failed_pct": 0.0,
+      "median_in": 31.08,
+      "p90_in": 89.93,
+      "scale_error_pct": 13.16
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 33
+   }
+  }
+ },
+ "pairs_single": {
+  "all points": {
+   "surface interior": {
+    "none": {
+     "1-3m": {
+      "pairs": 135000,
+      "failed_pct": 11.93,
+      "median_in": 9.08,
+      "p90_in": Infinity,
+      "scale_error_pct": -2.01
+     },
+     "3-10m": {
+      "pairs": 135000,
+      "failed_pct": 13.85,
+      "median_in": 24.45,
+      "p90_in": Infinity,
+      "scale_error_pct": -2.59
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 3375000,
+      "failed_pct": 14.46,
+      "median_in": 4.6,
+      "p90_in": Infinity,
+      "scale_error_pct": -0.01
+     },
+     "3-10m": {
+      "pairs": 3375000,
+      "failed_pct": 16.31,
+      "median_in": 12.28,
+      "p90_in": Infinity,
+      "scale_error_pct": -0.56
+     }
+    },
+    "tape_calibration_success_pct": 88.4,
+    "seeds": 45
+   },
+   "surface interior | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 118892,
+      "failed_pct": 0.0,
+      "median_in": 7.41,
+      "p90_in": 24.81,
+      "scale_error_pct": -2.01
+     },
+     "3-10m": {
+      "pairs": 116299,
+      "failed_pct": 0.0,
+      "median_in": 18.6,
+      "p90_in": 62.05,
+      "scale_error_pct": -2.59
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 2886899,
+      "failed_pct": 0.0,
+      "median_in": 3.55,
+      "p90_in": 15.57,
+      "scale_error_pct": -0.01
+     },
+     "3-10m": {
+      "pairs": 2824686,
+      "failed_pct": 0.0,
+      "median_in": 9.01,
+      "p90_in": 38.0,
+      "scale_error_pct": -0.56
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 41
+   },
+   "vertical interior": {
+    "none": {
+     "1-3m": {
+      "pairs": 135000,
+      "failed_pct": 14.21,
+      "median_in": 9.52,
+      "p90_in": Infinity,
+      "scale_error_pct": -1.79
+     },
+     "3-10m": {
+      "pairs": 133158,
+      "failed_pct": 16.97,
+      "median_in": 24.33,
+      "p90_in": Infinity,
+      "scale_error_pct": -1.93
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 3375000,
+      "failed_pct": 16.67,
+      "median_in": 5.23,
+      "p90_in": Infinity,
+      "scale_error_pct": 0.13
+     },
+     "3-10m": {
+      "pairs": 3328950,
+      "failed_pct": 19.36,
+      "median_in": 13.92,
+      "p90_in": Infinity,
+      "scale_error_pct": -0.39
+     }
+    },
+    "tape_calibration_success_pct": 88.4,
+    "seeds": 45
+   },
+   "vertical interior | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 115810,
+      "failed_pct": 0.0,
+      "median_in": 7.44,
+      "p90_in": 23.99,
+      "scale_error_pct": -1.79
+     },
+     "3-10m": {
+      "pairs": 110560,
+      "failed_pct": 0.0,
+      "median_in": 17.56,
+      "p90_in": 55.44,
+      "scale_error_pct": -1.93
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 2812245,
+      "failed_pct": 0.0,
+      "median_in": 3.83,
+      "p90_in": 15.9,
+      "scale_error_pct": 0.13
+     },
+     "3-10m": {
+      "pairs": 2684521,
+      "failed_pct": 0.0,
+      "median_in": 9.57,
+      "p90_in": 38.97,
+      "scale_error_pct": -0.39
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 41
+   },
+   "edges": {
+    "none": {
+     "1-3m": {
+      "pairs": 135000,
+      "failed_pct": 74.7,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 6.73
+     },
+     "3-10m": {
+      "pairs": 132648,
+      "failed_pct": 76.73,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 1.36
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 3375000,
+      "failed_pct": 75.51,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 4.74
+     },
+     "3-10m": {
+      "pairs": 3316200,
+      "failed_pct": 77.38,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 0.11
+     }
+    },
+    "tape_calibration_success_pct": 88.4,
+    "seeds": 45
+   },
+   "edges | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 34152,
+      "failed_pct": 0.0,
+      "median_in": 11.47,
+      "p90_in": 37.42,
+      "scale_error_pct": 6.73
+     },
+     "3-10m": {
+      "pairs": 30869,
+      "failed_pct": 0.0,
+      "median_in": 16.82,
+      "p90_in": 89.4,
+      "scale_error_pct": 1.36
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 826489,
+      "failed_pct": 0.0,
+      "median_in": 6.68,
+      "p90_in": 33.92,
+      "scale_error_pct": 4.74
+     },
+     "3-10m": {
+      "pairs": 750101,
+      "failed_pct": 0.0,
+      "median_in": 10.82,
+      "p90_in": 70.49,
+      "scale_error_pct": 0.11
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 41
+   }
+  },
+  "within 6 m": {
+   "surface interior": {
+    "none": {
+     "1-3m": {
+      "pairs": 135000,
+      "failed_pct": 13.31,
+      "median_in": 8.58,
+      "p90_in": Infinity,
+      "scale_error_pct": -0.94
+     },
+     "3-10m": {
+      "pairs": 135000,
+      "failed_pct": 14.66,
+      "median_in": 18.02,
+      "p90_in": Infinity,
+      "scale_error_pct": -0.68
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 3375000,
+      "failed_pct": 17.03,
+      "median_in": 2.48,
+      "p90_in": Infinity,
+      "scale_error_pct": 0.11
+     },
+     "3-10m": {
+      "pairs": 3375000,
+      "failed_pct": 18.05,
+      "median_in": 5.11,
+      "p90_in": Infinity,
+      "scale_error_pct": 0.2
+     }
+    },
+    "tape_calibration_success_pct": 86.5,
+    "seeds": 45
+   },
+   "surface interior | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 117030,
+      "failed_pct": 0.0,
+      "median_in": 6.71,
+      "p90_in": 25.9,
+      "scale_error_pct": -0.94
+     },
+     "3-10m": {
+      "pairs": 115213,
+      "failed_pct": 0.0,
+      "median_in": 13.42,
+      "p90_in": 52.43,
+      "scale_error_pct": -0.68
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 2800403,
+      "failed_pct": 0.0,
+      "median_in": 1.84,
+      "p90_in": 7.56,
+      "scale_error_pct": 0.11
+     },
+     "3-10m": {
+      "pairs": 2765935,
+      "failed_pct": 0.0,
+      "median_in": 3.68,
+      "p90_in": 16.34,
+      "scale_error_pct": 0.2
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 41
+   },
+   "vertical interior": {
+    "none": {
+     "1-3m": {
+      "pairs": 102000,
+      "failed_pct": 19.14,
+      "median_in": 8.01,
+      "p90_in": Infinity,
+      "scale_error_pct": 1.46
+     },
+     "3-10m": {
+      "pairs": 99955,
+      "failed_pct": 25.45,
+      "median_in": 15.93,
+      "p90_in": Infinity,
+      "scale_error_pct": 3.85
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 2550000,
+      "failed_pct": 24.21,
+      "median_in": 3.75,
+      "p90_in": Infinity,
+      "scale_error_pct": 0.74
+     },
+     "3-10m": {
+      "pairs": 2498875,
+      "failed_pct": 29.36,
+      "median_in": 9.76,
+      "p90_in": Infinity,
+      "scale_error_pct": 1.34
+     }
+    },
+    "tape_calibration_success_pct": 82.1,
+    "seeds": 34
+   },
+   "vertical interior | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 82479,
+      "failed_pct": 0.0,
+      "median_in": 5.45,
+      "p90_in": 25.76,
+      "scale_error_pct": 1.46
+     },
+     "3-10m": {
+      "pairs": 74521,
+      "failed_pct": 0.0,
+      "median_in": 9.97,
+      "p90_in": 54.93,
+      "scale_error_pct": 3.85
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 1932569,
+      "failed_pct": 0.0,
+      "median_in": 2.28,
+      "p90_in": 11.69,
+      "scale_error_pct": 0.74
+     },
+     "3-10m": {
+      "pairs": 1765110,
+      "failed_pct": 0.0,
+      "median_in": 5.16,
+      "p90_in": 22.08,
+      "scale_error_pct": 1.34
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 30
+   },
+   "edges": {
+    "none": {
+     "1-3m": {
+      "pairs": 102000,
+      "failed_pct": 71.48,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 10.49
+     },
+     "3-10m": {
+      "pairs": 99802,
+      "failed_pct": 75.75,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 18.51
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 2550000,
+      "failed_pct": 73.87,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 3.83
+     },
+     "3-10m": {
+      "pairs": 2495050,
+      "failed_pct": 78.25,
+      "median_in": Infinity,
+      "p90_in": Infinity,
+      "scale_error_pct": 3.09
+     }
+    },
+    "tape_calibration_success_pct": 82.1,
+    "seeds": 34
+   },
+   "edges | predicted": {
+    "none": {
+     "1-3m": {
+      "pairs": 29086,
+      "failed_pct": 0.0,
+      "median_in": 11.41,
+      "p90_in": 45.3,
+      "scale_error_pct": 10.49
+     },
+     "3-10m": {
+      "pairs": 24205,
+      "failed_pct": 0.0,
+      "median_in": 27.12,
+      "p90_in": 75.37,
+      "scale_error_pct": 18.51
+     }
+    },
+    "one_known_distance": {
+     "1-3m": {
+      "pairs": 666405,
+      "failed_pct": 0.0,
+      "median_in": 4.7,
+      "p90_in": 24.52,
+      "scale_error_pct": 3.83
+     },
+     "3-10m": {
+      "pairs": 542590,
+      "failed_pct": 0.0,
+      "median_in": 10.03,
+      "p90_in": 82.14,
+      "scale_error_pct": 3.09
+     }
+    },
+    "tape_calibration_success_pct": 100.0,
+    "seeds": 30
+   }
+  }
+ },
+ "surface": {
+  "vertices": 818945,
+  "unsupported_share": 0.15086483219263813,
+  "align_centre_rms_m": 0.3858196769450001,
+  "accuracy_median_cm": 27.48169081827877,
+  "accuracy_5cm": 0.08836416712803515,
+  "accuracy_10cm": 0.17845828629771568,
+  "accuracy_20cm": 0.3526456186771547,
+  "completeness_5cm": 0.126405,
+  "completeness_10cm": 0.253235,
+  "completeness_20cm": 0.48024
+ }
+}

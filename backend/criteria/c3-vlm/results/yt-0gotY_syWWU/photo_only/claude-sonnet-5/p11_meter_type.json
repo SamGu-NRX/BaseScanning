@@ -1,0 +1,30 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"meter_type\": \"unknown\", \"clean_decision\": false, \"photo\": 0, \"can_top\": 0, \"can_bottom\": 0, \"head_top\": 0, \"head_bottom\": 0, \"ratio\": 0, \"reasoning\": \"No electric meter can is visible in any of the provided photos; only exterior siding, windows, HVAC condenser units, and yard/landscape views are shown.\"}",
+ "json": {
+  "meter_type": "unknown",
+  "clean_decision": false,
+  "photo": 0,
+  "can_top": 0,
+  "can_bottom": 0,
+  "head_top": 0,
+  "head_bottom": 0,
+  "ratio": 0,
+  "reasoning": "No electric meter can is visible in any of the provided photos; only exterior siding, windows, HVAC condenser units, and yard/landscape views are shown."
+ },
+ "usage": {
+  "input_tokens": 599,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 6885,
+  "output_tokens": 131
+ },
+ "cost_usd": 0.003885,
+ "latency_s": 1.96,
+ "stop": "end_turn",
+ "prompt_id": "p11_meter_type",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only",
+ "verdicts": {
+  "p11": "unknown"
+ }
+}

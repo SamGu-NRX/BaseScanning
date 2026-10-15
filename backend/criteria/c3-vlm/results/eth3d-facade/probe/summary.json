@@ -1,0 +1,151 @@
+{
+ "truth": {
+  "gap_w4_w5_ft": [
+   5.11,
+   "laser opening gap 5.10"
+  ],
+  "window4_width_ft": [
+   5.56,
+   "laser opening 5.60"
+  ],
+  "window4_sill_height_ft": [
+   3.32,
+   "top of stone sill; laser brick edge 0.1-0.5 ft lower"
+  ],
+  "meter_to_tower_corner_ft": [
+   9.9,
+   "w1/w2 inside corner"
+  ],
+  "tower_projection_ft": [
+   11.6,
+   "w2 length, 3.54 m"
+  ],
+  "door_width_ft": [
+   7.18,
+   "laser 7.65 incl. recess; +/-0.7"
+  ]
+ },
+ "photo_only": {
+  "gpt-5.5#1": {
+   "gap_w4_w5_ft": {
+    "est": 4.5,
+    "truth": 5.11,
+    "err_ft": -0.61,
+    "ratio": 0.88
+   },
+   "window4_width_ft": {
+    "est": 5.2,
+    "truth": 5.56,
+    "err_ft": -0.36,
+    "ratio": 0.94
+   },
+   "window4_sill_height_ft": {
+    "est": 2.8,
+    "truth": 3.32,
+    "err_ft": -0.52,
+    "ratio": 0.84
+   },
+   "meter_to_tower_corner_ft": {
+    "est": 8.6,
+    "truth": 9.9,
+    "err_ft": -1.3,
+    "ratio": 0.87
+   },
+   "tower_projection_ft": {
+    "est": 7.0,
+    "truth": 11.6,
+    "err_ft": -4.6,
+    "ratio": 0.6
+   },
+   "door_width_ft": {
+    "est": 6.3,
+    "truth": 7.18,
+    "err_ft": -0.88,
+    "ratio": 0.88
+   }
+  },
+  "gpt-5.5#2": {
+   "gap_w4_w5_ft": {
+    "est": 4.8,
+    "truth": 5.11,
+    "err_ft": -0.31,
+    "ratio": 0.94
+   },
+   "window4_width_ft": {
+    "est": 4.9,
+    "truth": 5.56,
+    "err_ft": -0.66,
+    "ratio": 0.88
+   },
+   "window4_sill_height_ft": {
+    "est": 2.8,
+    "truth": 3.32,
+    "err_ft": -0.52,
+    "ratio": 0.84
+   },
+   "meter_to_tower_corner_ft": {
+    "est": 10.2,
+    "truth": 9.9,
+    "err_ft": 0.3,
+    "ratio": 1.03
+   },
+   "tower_projection_ft": {
+    "est": 6.0,
+    "truth": 11.6,
+    "err_ft": -5.6,
+    "ratio": 0.52
+   },
+   "door_width_ft": {
+    "est": 7.0,
+    "truth": 7.18,
+    "err_ft": -0.18,
+    "ratio": 0.97
+   }
+  }
+ },
+ "tools_laser_gt": {
+  "gpt-5.5": {
+   "gap_w4_w5_ft": {
+    "est": 4.7,
+    "truth": 5.11,
+    "err_ft": -0.41,
+    "ratio": 0.92
+   },
+   "window4_width_ft": {
+    "est": 6.5,
+    "truth": 5.56,
+    "err_ft": 0.94,
+    "ratio": 1.17
+   },
+   "window4_sill_height_ft": {
+    "est": 3.8,
+    "truth": 3.32,
+    "err_ft": 0.48,
+    "ratio": 1.14
+   },
+   "meter_to_tower_corner_ft": {
+    "est": 9.5,
+    "truth": 9.9,
+    "err_ft": -0.4,
+    "ratio": 0.96
+   },
+   "tower_projection_ft": {
+    "est": 11.4,
+    "truth": 11.6,
+    "err_ft": -0.2,
+    "ratio": 0.98
+   },
+   "door_width_ft": {
+    "est": 8.6,
+    "truth": 7.18,
+    "err_ft": 1.42,
+    "ratio": 1.2
+   }
+  }
+ },
+ "cost_usd": {
+  "photo:gpt-5.5#1": 0.156139,
+  "photo:gpt-5.5#2": 0.275935,
+  "tools:gpt-5.5": 0.632255
+ }
+}

@@ -1,0 +1,36 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"disconnect_location\": null, \"battery_location\": null, \"route\": \"Cannot be determined - no electrical meter is visible in any of the 16 photos provided.\", \"distance_ft\": null, \"nearest_opening_ft\": null, \"reference_object\": \"Windows appear standard ~3 ft wide, doors ~6.5-7 ft tall, used only for rough scale; no meter reference available\", \"needs_more_photos\": true, \"missing_views\": [\"A clear photo showing the electrical meter location on the house exterior\", \"Wall area immediately surrounding the meter (at least 3 ft on each side) showing any nearby doors, windows, or window wells\", \"A wider shot of the wall containing the meter to assess disconnect and battery placement options\", \"Ground surface/clearance photo at the meter wall to confirm no gas equipment, driveway, or pool nearby\"], \"justification\": \"None of the 16 photos show the electrical meter, so the required meter -> disconnect -> battery layout, conduit exit clearance, and opening offsets cannot be verified. Additional photos of the meter location are needed before a pass/fail determination can be made.\"}",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "route": "Cannot be determined - no electrical meter is visible in any of the 16 photos provided.",
+  "distance_ft": null,
+  "nearest_opening_ft": null,
+  "reference_object": "Windows appear standard ~3 ft wide, doors ~6.5-7 ft tall, used only for rough scale; no meter reference available",
+  "needs_more_photos": true,
+  "missing_views": [
+   "A clear photo showing the electrical meter location on the house exterior",
+   "Wall area immediately surrounding the meter (at least 3 ft on each side) showing any nearby doors, windows, or window wells",
+   "A wider shot of the wall containing the meter to assess disconnect and battery placement options",
+   "Ground surface/clearance photo at the meter wall to confirm no gas equipment, driveway, or pool nearby"
+  ],
+  "justification": "None of the 16 photos show the electrical meter, so the required meter -> disconnect -> battery layout, conduit exit clearance, and opening offsets cannot be verified. Additional photos of the meter location are needed before a pass/fail determination can be made."
+ },
+ "usage": {
+  "input_tokens": 1093,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 6885,
+  "output_tokens": 591
+ },
+ "cost_usd": 0.009473,
+ "latency_s": 7.38,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

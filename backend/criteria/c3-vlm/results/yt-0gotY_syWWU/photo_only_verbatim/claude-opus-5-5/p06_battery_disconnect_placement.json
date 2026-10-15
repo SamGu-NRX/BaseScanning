@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"justification\": \"The electric meter is mounted on the front wall in a narrow gap between the entry door and a shuttered window, with the brick step/bench structure directly beneath and beside it. This leaves little clear wall for an adjacent box, and any wiring run along this wall is interrupted by the door and windows. A car and a light-colored, possibly drivable surface are also visible near that corner in Photo 6, so a compliant install spot within 15 ft cannot be confirmed.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "The electric meter is mounted on the front wall in a narrow gap between the entry door and a shuttered window, with the brick step/bench structure directly beneath and beside it. This leaves little clear wall for an adjacent box, and any wiring run along this wall is interrupted by the door and windows. A car and a light-colored, possibly drivable surface are also visible near that corner in Photo 6, so a compliant install spot within 15 ft cannot be confirmed.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 7908,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 332
+ },
+ "cost_usd": 0.038272,
+ "latency_s": 5.71,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

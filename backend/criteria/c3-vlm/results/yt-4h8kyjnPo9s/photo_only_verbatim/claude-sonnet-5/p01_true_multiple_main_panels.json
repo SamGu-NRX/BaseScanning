@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{ \"hasTrueMultipleMainPanels\": false, \"multipleMainPanelLabel\": \"unclear_or_insufficient_evidence\", \"insufficientEvidence\": true, \"evidence\": \"No electrical panels, load centers, or breaker enclosures are visible in any of the provided images; only exterior brick walls, windows, gas meter, AC unit, fencing, and yard views are shown.\", \"notes\": \"None of the 16 photos show an open or closed electrical panel with a visible main breaker/disconnect, so panel count and independence cannot be assessed.\" }",
+ "json": {
+  "hasTrueMultipleMainPanels": false,
+  "multipleMainPanelLabel": "unclear_or_insufficient_evidence",
+  "insufficientEvidence": true,
+  "evidence": "No electrical panels, load centers, or breaker enclosures are visible in any of the provided images; only exterior brick walls, windows, gas meter, AC unit, fencing, and yard views are shown.",
+  "notes": "None of the 16 photos show an open or closed electrical panel with a visible main breaker/disconnect, so panel count and independence cannot be assessed."
+ },
+ "usage": {
+  "input_tokens": 20246,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 188
+ },
+ "cost_usd": 0.042372,
+ "latency_s": 3.8,
+ "stop": "end_turn",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p01": "unclear_or_insufficient_evidence"
+ }
+}

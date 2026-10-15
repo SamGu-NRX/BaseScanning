@@ -1,0 +1,25 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"feature\": \"standard_meter_can\",\n \"evidence\": \"Photo 11 shows the electric meter mounted on the cream siding near the house corner. All four edges of the enclosure are visible. It is a small rectangular socket only slightly larger than the round meter, spanning about three siding courses, with a conduit running down from the bottom. No other photo shows the electric meter; photos 2\u20134 show the gas meter.\",\n \"notes\": \"The enclosure is compact and sized closely to the meter, with no extended height or width of the kind a large 320A-style can would have.\",\n \"insufficientEvidence\": false}",
+ "json": {
+  "feature": "standard_meter_can",
+  "evidence": "Photo 11 shows the electric meter mounted on the cream siding near the house corner. All four edges of the enclosure are visible. It is a small rectangular socket only slightly larger than the round meter, spanning about three siding courses, with a conduit running down from the bottom. No other photo shows the electric meter; photos 2\u20134 show the gas meter.",
+  "notes": "The enclosure is compact and sized closely to the meter, with no extended height or width of the kind a large 320A-style can would have.",
+  "insufficientEvidence": false
+ },
+ "usage": {
+  "input_tokens": 333,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 4005,
+  "output_tokens": 305
+ },
+ "cost_usd": 0.008233,
+ "latency_s": 5.41,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p02": "standard_meter_can"
+ }
+}

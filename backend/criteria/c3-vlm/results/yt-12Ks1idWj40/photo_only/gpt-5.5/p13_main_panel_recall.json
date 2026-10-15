@@ -1,0 +1,24 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"decision\":\"manual_review\",\"brand\":\"\",\"explanation\":\"The main panel is visible, but the manufacturer label/brand is not readable in the photos. No confirmed listed reject brand, heavy corrosion, or wrong breaker orientation is clearly shown.\"}",
+ "json": {
+  "decision": "manual_review",
+  "brand": "",
+  "explanation": "The main panel is visible, but the manufacturer label/brand is not readable in the photos. No confirmed listed reject brand, heavy corrosion, or wrong breaker orientation is clearly shown."
+ },
+ "usage": {
+  "input_tokens": 23519,
+  "cached_tokens": 22784,
+  "output_tokens": 1088,
+  "reasoning_tokens": 1034
+ },
+ "cost_usd": 0.047707,
+ "latency_s": 15.27,
+ "stop": "completed",
+ "prompt_id": "p13_main_panel_recall",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p13": "manual_review"
+ }
+}

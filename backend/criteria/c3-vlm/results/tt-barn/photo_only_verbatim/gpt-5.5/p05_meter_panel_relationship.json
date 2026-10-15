@@ -1,0 +1,28 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"mainPanelLocation\":\"exterior_service_equipment\",\"meterGaragePosition\":\"wall_immediately_adjacent_to_garage_opening\",\"meterPanelRelationship\":\"co_located_exterior\",\"relationshipSubtype\":\"exterior_service_equipment\",\"evidenceSufficiency\":\"sufficient\",\"confidence\":0.86,\"rationale\":\"Exterior electric meter is visible on the garage/front exterior wall immediately beside a garage door opening, with adjacent gray service cabinet equipment co-located outside; no interior panel view is needed to establish a through-wall relationship.\"}",
+ "json": {
+  "mainPanelLocation": "exterior_service_equipment",
+  "meterGaragePosition": "wall_immediately_adjacent_to_garage_opening",
+  "meterPanelRelationship": "co_located_exterior",
+  "relationshipSubtype": "exterior_service_equipment",
+  "evidenceSufficiency": "sufficient",
+  "confidence": 0.86,
+  "rationale": "Exterior electric meter is visible on the garage/front exterior wall immediately beside a garage door opening, with adjacent gray service cabinet equipment co-located outside; no interior panel view is needed to establish a through-wall relationship."
+ },
+ "usage": {
+  "input_tokens": 26920,
+  "cached_tokens": 0,
+  "output_tokens": 494,
+  "reasoning_tokens": 381
+ },
+ "cost_usd": 0.14942,
+ "latency_s": 8.25,
+ "stop": "completed",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "tt-barn",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p05": "co_located_exterior"
+ }
+}

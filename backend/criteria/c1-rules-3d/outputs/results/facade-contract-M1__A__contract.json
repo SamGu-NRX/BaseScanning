@@ -1,0 +1,3892 @@
+{
+ "scene": "facade-contract-M1",
+ "profile": "A",
+ "decision": "manual_review",
+ "open_ends_in_reach": [],
+ "best": {
+  "wall": "w1",
+  "u": [
+   4.167,
+   6.167
+  ],
+  "outcome": "unsure",
+  "route_ft": 35.933,
+  "route_corners": [],
+  "checks": [
+   {
+    "id": "wall_backing",
+    "outcome": "pass",
+    "measured": 4.1667,
+    "pm": 0.1,
+    "threshold": 0.0
+   },
+   {
+    "id": "ground_surface",
+    "outcome": "unsure",
+    "cause": "unobserved"
+   },
+   {
+    "id": "meter_working_space",
+    "outcome": "pass",
+    "measured": 34.6833,
+    "pm": 0.4,
+    "threshold": 0.0,
+    "subject": "meter"
+   },
+   {
+    "id": "gas_clearance",
+    "outcome": "unsure",
+    "measured": 44.7984,
+    "pm": 0.4,
+    "threshold": 5.0,
+    "subject": "gas_w2",
+    "cause": "unobserved",
+    "reason": "unobserved ground+wall within 5.10 ft"
+   },
+   {
+    "id": "ac_clearance",
+    "outcome": "unsure",
+    "threshold": 3.0,
+    "cause": "unobserved",
+    "reason": "unobserved ground within 3.10 ft"
+   },
+   {
+    "id": "drive_clearance",
+    "outcome": "unsure",
+    "threshold": 5.0,
+    "cause": "unobserved",
+    "reason": "unobserved ground within 5.10 ft"
+   },
+   {
+    "id": "pool_clearance",
+    "outcome": "unsure",
+    "threshold": 5.0,
+    "cause": "unobserved",
+    "reason": "unobserved ground within 5.10 ft"
+   },
+   {
+    "id": "opening_clearance",
+    "outcome": "unsure",
+    "measured": -2.9783,
+    "pm": 1.39,
+    "threshold": 3.0,
+    "subject": "w1_window_1",
+    "cause": "unobserved",
+    "reason": "fail rests on space no camera saw (contract 3.1)"
+   },
+   {
+    "id": "under_window",
+    "outcome": "unsure",
+    "measured": -2.9783,
+    "pm": 1.39,
+    "threshold": 0.0,
+    "subject": "w1_window_1",
+    "cause": "unobserved",
+    "reason": "fail rests on space no camera saw (contract 3.1)"
+   },
+   {
+    "id": "wall_equipment_above",
+    "outcome": "pass",
+    "threshold": 0.0
+   },
+   {
+    "id": "facing_gap",
+    "outcome": "unsure",
+    "threshold": 5.01,
+    "cause": "unobserved"
+   },
+   {
+    "id": "headroom",
+    "outcome": "pass",
+    "threshold": 6.5
+   },
+   {
+    "id": "footprint_clear",
+    "outcome": "unsure",
+    "threshold": 0.0,
+    "cause": "unobserved"
+   },
+   {
+    "id": "route_path",
+    "outcome": "unsure",
+    "measured": 0.0,
+    "subject": "w1_window_1",
+    "cause": "unobserved",
+    "reason": "fail rests on space no camera saw (contract 3.1)"
+   },
+   {
+    "id": "route_length",
+    "outcome": "unsure",
+    "measured": 35.9333,
+    "pm": 0.4,
+    "threshold": 15.0,
+    "cause": "unobserved",
+    "reason": "fail rests on space no camera saw (contract 3.1)"
+   }
+  ]
+ },
+ "stats": {
+  "candidates": 427,
+  "pass": 0,
+  "unsure": 26,
+  "fail": 401
+ },
+ "runs": [
+  {
+   "wall": "w1",
+   "u": [
+    0.0,
+    0.0
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "under_window",
+    "wall_backing"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    0.167,
+    0.333
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    0.5,
+    0.833
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    1.0,
+    1.333
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    1.5,
+    1.833
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    2.0,
+    2.333
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    2.5,
+    2.833
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    3.0,
+    3.333
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    3.5,
+    3.833
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    4.0,
+    4.167
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    4.333,
+    4.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_path",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    4.5,
+    4.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_path",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    5.0,
+    5.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_path",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    5.167,
+    5.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    5.5,
+    5.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    6.0,
+    6.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    6.5,
+    6.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    7.0,
+    7.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    7.5,
+    7.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    8.0,
+    8.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    8.5,
+    8.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    8.667,
+    8.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    9.0,
+    9.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    9.167,
+    9.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    9.5,
+    9.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    10.0,
+    10.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    10.5,
+    10.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    11.0,
+    11.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    11.333,
+    11.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    11.5,
+    11.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    12.0,
+    12.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    12.5,
+    12.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    13.0,
+    13.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    13.5,
+    13.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    14.0,
+    14.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    14.5,
+    14.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    15.0,
+    15.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    15.5,
+    15.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    16.0,
+    16.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    16.5,
+    16.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    17.0,
+    17.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    17.5,
+    17.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    17.667,
+    17.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    18.0,
+    18.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    18.5,
+    18.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    18.667,
+    18.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    19.0,
+    19.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    19.5,
+    19.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    20.0,
+    20.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    20.5,
+    20.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    21.0,
+    21.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    21.167,
+    21.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    21.5,
+    21.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    22.0,
+    22.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    22.5,
+    22.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    23.0,
+    23.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    23.5,
+    23.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    24.0,
+    24.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    24.5,
+    24.667
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    24.833,
+    24.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    25.0,
+    25.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    25.5,
+    25.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    26.0,
+    26.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    26.5,
+    26.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    27.0,
+    27.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    27.5,
+    27.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    28.0,
+    28.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    28.5,
+    28.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    29.0,
+    29.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    29.333,
+    29.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    29.5,
+    29.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    30.0,
+    30.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    30.5,
+    30.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    31.0,
+    31.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    31.5,
+    31.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    31.667,
+    31.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    32.0,
+    32.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    32.5,
+    32.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    33.0,
+    33.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    33.5,
+    33.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    34.0,
+    34.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    34.5,
+    34.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    35.0,
+    35.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    35.5,
+    35.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    36.0,
+    36.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    36.5,
+    36.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    37.0,
+    37.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    37.5,
+    37.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    37.667,
+    37.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    38.0,
+    38.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    38.5,
+    38.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "meter_working_space",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    39.0,
+    39.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    39.333,
+    39.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    39.5,
+    39.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    40.0,
+    40.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    40.5,
+    40.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    41.0,
+    41.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    41.5,
+    41.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    42.0,
+    42.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    42.167,
+    42.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    42.5,
+    42.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "under_window"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    43.0,
+    43.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    43.333,
+    43.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "meter_working_space",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    43.5,
+    43.667
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "meter_working_space",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    43.833,
+    43.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    44.0,
+    44.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    44.5,
+    44.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    44.667,
+    44.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    45.0,
+    45.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    45.5,
+    45.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    46.0,
+    46.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    46.5,
+    46.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    47.0,
+    47.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    47.5,
+    47.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    48.0,
+    48.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    48.5,
+    48.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    49.0,
+    49.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    49.167,
+    49.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path",
+    "under_window"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    49.333,
+    49.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    49.5,
+    49.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    50.0,
+    50.003
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    0.0,
+    0.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    0.5,
+    0.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    1.0,
+    1.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    1.5,
+    1.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    2.0,
+    2.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    2.5,
+    2.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    3.0,
+    3.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    3.5,
+    3.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    4.0,
+    4.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    4.333,
+    4.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    4.5,
+    4.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    5.0,
+    5.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    5.5,
+    5.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    6.0,
+    6.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    6.5,
+    6.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "under_window",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    7.0,
+    7.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    7.5,
+    7.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    8.0,
+    8.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    8.5,
+    8.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    9.0,
+    9.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    9.5,
+    9.625
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    0.0,
+    0.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    0.5,
+    0.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    1.0,
+    1.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    1.5,
+    1.667
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    1.833,
+    1.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    2.0,
+    2.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    2.5,
+    2.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    3.0,
+    3.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    3.5,
+    3.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    4.0,
+    4.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    4.5,
+    4.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    5.0,
+    5.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    5.5,
+    5.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    6.0,
+    6.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    6.5,
+    6.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    7.0,
+    7.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    7.5,
+    7.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    8.0,
+    8.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    8.5,
+    8.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    9.0,
+    9.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    9.5,
+    9.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    10.0,
+    10.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    10.5,
+    10.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    10.667,
+    10.711
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "wall_backing"
+   ]
+  }
+ ],
+ "runtime_s": 3.19,
+ "contract_evidence_rule": true
+}

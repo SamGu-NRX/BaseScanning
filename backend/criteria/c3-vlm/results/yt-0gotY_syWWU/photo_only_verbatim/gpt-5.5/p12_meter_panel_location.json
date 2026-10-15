@@ -1,0 +1,40 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meterNotAccessible\":{\"verdict\":\"manual_review\",\"reasoning\":\"The electric meter is mounted on the exterior wall immediately beside the front door, and a low built-in bench/stoop structure appears to project in front of or directly below it. Because that fixed structure may intrude into the required working space, a human should verify access.\"},\"panelNotAccessible\":{\"verdict\":\"yes\",\"reasoning\":\"The apparent main breaker box is on an exterior wall near the rear/side of the house, with an AC condenser positioned directly in front of/below it. An AC condenser is a fixed added obstruction within the working clearance.\"},\"panelInHouse\":{\"verdict\":\"no\",\"reasoning\":\"The apparent panel is mounted outdoors on the red exterior wall, not in an interior room or living space.\"},\"notSameWall\":{\"verdict\":\"manual_review\",\"reasoning\":\"The meter is visible on the front wall near the entry, while the apparent panel is shown on a different exterior wall near the rear/side; the photos do not plainly show both on the same exterior wall.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "The electric meter is mounted on the exterior wall immediately beside the front door, and a low built-in bench/stoop structure appears to project in front of or directly below it. Because that fixed structure may intrude into the required working space, a human should verify access."
+  },
+  "panelNotAccessible": {
+   "verdict": "yes",
+   "reasoning": "The apparent main breaker box is on an exterior wall near the rear/side of the house, with an AC condenser positioned directly in front of/below it. An AC condenser is a fixed added obstruction within the working clearance."
+  },
+  "panelInHouse": {
+   "verdict": "no",
+   "reasoning": "The apparent panel is mounted outdoors on the red exterior wall, not in an interior room or living space."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reasoning": "The meter is visible on the front wall near the entry, while the apparent panel is shown on a different exterior wall near the rear/side; the photos do not plainly show both on the same exterior wall."
+  }
+ },
+ "usage": {
+  "input_tokens": 7845,
+  "cached_tokens": 1792,
+  "output_tokens": 2294,
+  "reasoning_tokens": 2070
+ },
+ "cost_usd": 0.099981,
+ "latency_s": 27.81,
+ "stop": "completed",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "manual_review",
+  "p12.panelNotAccessible": "yes",
+  "p12.panelInHouse": "no",
+  "p12.notSameWall": "manual_review"
+ }
+}

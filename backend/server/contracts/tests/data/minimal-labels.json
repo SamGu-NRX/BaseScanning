@@ -1,0 +1,25 @@
+{
+  "format": "base-labels/v0",
+  "site": "eth3d-facade",
+  "data": "real",
+  "labeller": "Track C criteria worker (draft, for Hunter's approval)",
+  "method": "Hand review of frames against internal/criteria/SSR_Prompts.md; exported from internal/criteria/house-labels.json by export_labels_v0.py. Site-scope labels plus start_range labels where a scene with a meter exists.",
+  "rules_profile": "C",
+  "site_decision": "manual_review",
+  "labels": [
+    {
+      "id": "eth3d-facade.C.meter_number",
+      "criterion": "meter_number",
+      "scope": "site",
+      "truth": "borderline",
+      "why": "[high] No confirmed electric meter; empty string only if no electric meter number is photographed. Evidence: none."
+    },
+    {
+      "id": "eth3d-facade.C.cl320",
+      "criterion": "cl320",
+      "scope": "site",
+      "truth": "borderline",
+      "why": "[high] truth: not_applicable; expected: {\"cl320Label\": \"cl320_unclear\", \"hasCl320Meter\": false, \"insufficientEvidence\": true} Evidence: none."
+    }
+  ]
+}

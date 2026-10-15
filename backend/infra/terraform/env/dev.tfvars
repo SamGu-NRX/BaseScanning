@@ -1,0 +1,19 @@
+project_id           = "house-scanning"
+region               = "us-central1"
+product_id           = "house-scanning"
+owner                = "huntertcarver"
+github_repository    = "huntertcarver/house-scanning-server"
+fixtures_bucket_name = "hss-fixtures"
+state_bucket_name    = "hss-tfstate"
+environment          = "dev"
+# The dev state owns the project-scoped resources. false would destroy them.
+manage_project_resources   = true
+github_wif_mode            = "own"
+github_wif_pool_name       = null
+github_wif_provider_name   = null
+create_state_bucket        = false
+billing_account            = "017693-94D878-85C8E2"
+monthly_budget_amount      = 50
+modal_workspace_id         = "ac-EB54gLJQudckj2p3SOd5QI"
+github_repository_id       = "1389499780"
+github_repository_owner_id = "43165591"

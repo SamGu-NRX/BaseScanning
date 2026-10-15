@@ -1,0 +1,23 @@
+{
+ "meter": {
+  "status": "choose",
+  "value": "111111111",
+  "agree": true,
+  "barcode_match": false,
+  "candidates": [
+   {
+    "value": "111111111",
+    "rank": 1
+   }
+  ]
+ },
+ "confirm": {
+  "still_id": "s01"
+ },
+ "facts": [
+  {
+   "id": "meter_number",
+   "clean": true
+  }
+ ]
+}

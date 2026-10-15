@@ -1,0 +1,30 @@
+{
+ "model": "gpt-5.6-sol",
+ "text": "{\"meter_type\":\"unknown\",\"clean_decision\":false,\"photo\":0,\"can_top\":0,\"can_bottom\":0,\"head_top\":0,\"head_bottom\":0,\"ratio\":0,\"reasoning\":\"No electrical meter enclosure or round meter head is visible in any photo.\"}",
+ "json": {
+  "meter_type": "unknown",
+  "clean_decision": false,
+  "photo": 0,
+  "can_top": 0,
+  "can_bottom": 0,
+  "head_top": 0,
+  "head_bottom": 0,
+  "ratio": 0,
+  "reasoning": "No electrical meter enclosure or round meter head is visible in any photo."
+ },
+ "usage": {
+  "input_tokens": 29638,
+  "cached_tokens": 0,
+  "output_tokens": 101,
+  "reasoning_tokens": 37
+ },
+ "cost_usd": 0.120572,
+ "latency_s": 4.62,
+ "stop": "completed",
+ "prompt_id": "p11_meter_type",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p11": "unknown"
+ }
+}

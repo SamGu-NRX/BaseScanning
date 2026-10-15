@@ -1,0 +1,23 @@
+I20260926 17:06:56.654752 140147739627648 incremental_pipeline.cc:492] Registering initial image pair #42 and #41
+I20260926 17:06:56.673973 140147739627648 incremental_pipeline.cc:492] Registering initial image pair #35 and #36
+I20260926 17:06:56.693100 140147739627648 incremental_pipeline.cc:620] Registering image #37 (num_reg_frames=2)
+I20260926 17:06:56.724221 140147739627648 incremental_pipeline.cc:620] Registering image #38 (num_reg_frames=3)
+I20260926 17:06:56.755502 140147739627648 incremental_pipeline.cc:620] Registering image #34 (num_reg_frames=4)
+I20260926 17:06:56.787944 140147739627648 incremental_pipeline.cc:620] Registering image #40 (num_reg_frames=5)
+I20260926 17:06:56.821427 140147739627648 incremental_pipeline.cc:620] Registering image #41 (num_reg_frames=6)
+I20260926 17:06:56.856188 140147739627648 incremental_pipeline.cc:620] Registering image #33 (num_reg_frames=7)
+I20260926 17:06:56.892750 140147739627648 incremental_pipeline.cc:620] Registering image #31 (num_reg_frames=8)
+I20260926 17:06:56.925554 140147739627648 incremental_pipeline.cc:620] Registering image #32 (num_reg_frames=9)
+I20260926 17:06:56.963185 140147739627648 incremental_pipeline.cc:620] Registering image #29 (num_reg_frames=10)
+I20260926 17:06:56.997217 140147739627648 incremental_pipeline.cc:620] Registering image #30 (num_reg_frames=11)
+I20260926 17:06:57.020643 140147739627648 incremental_pipeline.cc:620] Registering image #28 (num_reg_frames=12)
+I20260926 17:06:57.077711 140147739627648 incremental_pipeline.cc:620] Registering image #39 (num_reg_frames=13)
+I20260926 17:06:57.099702 140147739627648 incremental_pipeline.cc:620] Registering image #26 (num_reg_frames=14)
+I20260926 17:06:57.142952 140147739627648 incremental_pipeline.cc:620] Registering image #27 (num_reg_frames=15)
+I20260926 17:06:57.281350 140147739627648 incremental_pipeline.cc:826] Keeping successful reconstruction
+I20260926 17:06:57.299702 140147739627648 incremental_pipeline.cc:492] Registering initial image pair #50 and #48
+Traceback (most recent call last):
+subprocess.CalledProcessError: Command '['/home/ubuntu/a1/openmvs_install/bin/OpenMVS/DensifyPointCloud', '/home/ubuntu/a1/work/yt-4h8kyjnPo9s/mvs/scene.mvs', '-w', '/home/ubuntu/a1/work/yt-4h8kyjnPo9s/mvs', '--resolution-level', '0', '--max-threads', '4']' died with <Signals.SIGABRT: 6>.
+  what():  OpenCV(4.6.0) ./modules/core/src/alloc.cpp:73: error: (-4:Insufficient memory) Failed to allocate 262299171710880 bytes in function 'OutOfMemoryError'
+
+EXIT 134

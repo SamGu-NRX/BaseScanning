@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The photos show the building facade and courtyard with many ground-level windows and doors, but no electric meter is visible, so the required disconnect location and rigid meter-to-Disco conduit route cannot be confirmed. Without a visible meter area and hub space, this cannot be auto-approved.\",\"decision\":\"manual_review\"}",
+ "json": {
+  "justification": "The photos show the building facade and courtyard with many ground-level windows and doors, but no electric meter is visible, so the required disconnect location and rigid meter-to-Disco conduit route cannot be confirmed. Without a visible meter area and hub space, this cannot be auto-approved.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 32347,
+  "cached_tokens": 1792,
+  "output_tokens": 306,
+  "reasoning_tokens": 235
+ },
+ "cost_usd": 0.162851,
+ "latency_s": 6.77,
+ "stop": "completed",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "house": "yt-4h8kyjnPo9s",
+ "frames": 148,
+ "models": 6,
+ "model_sizes": [
+  44,
+  38,
+  33,
+  22,
+  16,
+  6
+ ],
+ "registered": 44,
+ "points3D": 18865,
+ "mean_reproj_px": 0.73728375831669,
+ "seconds": {
+  "extract": 70.23808646202087,
+  "match": 543.2293920516968,
+  "map": 184.14553141593933
+ }
+}

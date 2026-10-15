@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{ \"reasoning\": \"None of the photos show a close-up of an actual electric meter face or label with a legible meter number; the images depict transformer room doors, building entrances, and utility cabinets from a distance, none showing meter serial numbers.\", \"meter_number\": \"\", \"clean-decision\": false }",
+ "json": {
+  "reasoning": "None of the photos show a close-up of an actual electric meter face or label with a legible meter number; the images depict transformer room doors, building entrances, and utility cabinets from a distance, none showing meter serial numbers.",
+  "meter_number": "",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 33299,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 97
+ },
+ "cost_usd": 0.067568,
+ "latency_s": 10.75,
+ "stop": "end_turn",
+ "prompt_id": "p04_meter_number",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p04": "none"
+ }
+}

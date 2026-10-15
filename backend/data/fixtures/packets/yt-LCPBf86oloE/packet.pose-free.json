@@ -1,0 +1,7248 @@
+{
+ "format": "house-capture-packet",
+ "formatVersion": "0.4",
+ "packetId": "e366dd83-7606-4f94-ad9f-6b357233e3d6",
+ "createdAt": "2026-09-26T20:54:41.205Z",
+ "units": {
+  "length": "meters",
+  "angle": "degrees",
+  "time": "seconds of device uptime, the clock of ARFrame.timestamp and CMDeviceMotion.timestamp",
+  "image": "pixels of the saved JPEG"
+ },
+ "conventions": {
+  "world": "ARKit world frame with worldAlignment .gravity: right-handed, y up (away from gravity), origin at the device's position when the session (epoch) started, -z the camera's initial facing projected onto the horizontal",
+  "camera": "ARKit camera frame: +x right and +y up in the unrotated landscape sensor image, the camera looks along -z",
+  "pose": "camera-to-world 4x4 matrix, 16 numbers column by column (simd_float4x4 layout), meters",
+  "intrinsics": "[fx, fy, cx, cy] in pixels of the saved, unrotated landscape image",
+  "pixel": "[u, v] continuous image coordinates: (0, 0) is the top-left corner of the top-left pixel, v grows down"
+ },
+ "source": {
+  "kind": "synthetic",
+  "generator": "packetgen 0.1.0",
+  "variant": "pose-free",
+  "noiseProfile": "none",
+  "sourceDataset": "YouTube: Florida new-construction house, exterior walk around; https://www.youtube.com/watch?v=LCPBf86oloE; YouTube standard licence (all rights reserved by uploader)",
+  "synthesizedFields": [
+   "stills[].exif",
+   "stills[].timestamp",
+   "stills[].location",
+   "stills[].intrinsics (from the rounded 35 mm focal length)"
+  ],
+  "notes": "Pose-free control: the poses behind the other variants came from these same images."
+ },
+ "session": {
+  "id": "C7C661F1-9932-5EFB-9DC1-268F9DFA3C47",
+  "startedAt": "2026-09-26T16:37:49.691Z",
+  "startedAtUptime": 90813.7486,
+  "endedAtUptime": 90952.2934,
+  "timeZone": "America/Chicago",
+  "appVersion": "packetgen-synthetic 0.1.0",
+  "deviceModel": "iPhone15,4",
+  "systemVersion": "26.0",
+  "tier": "photo_only",
+  "lidarAvailable": false,
+  "sceneDepthEnabled": false
+ },
+ "keyframes": [],
+ "stills": [
+  {
+   "id": "s00001",
+   "purpose": "house_overview",
+   "img": "keyframes/k00001.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90820.3922,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734998,
+    "longitude": -97.751775,
+    "horizontalAccuracy": 24.87
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.001108619106280346,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.173,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:37:56",
+    "SubsecTimeOriginal": "335",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00002",
+   "purpose": "house_overview",
+   "img": "keyframes/k00002.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90820.9169,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734325,
+    "longitude": -97.7520026,
+    "horizontalAccuracy": 23.37
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0016284193689266294,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.618,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:37:56",
+    "SubsecTimeOriginal": "860",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00003",
+   "purpose": "house_overview",
+   "img": "keyframes/k00003.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90821.4249,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733902,
+    "longitude": -97.7519478,
+    "horizontalAccuracy": 28.9
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010665702816540531,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.229,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:37:57",
+    "SubsecTimeOriginal": "368",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00004",
+   "purpose": "house_overview",
+   "img": "keyframes/k00004.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90822.0735,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2736255,
+    "longitude": -97.7519253,
+    "horizontalAccuracy": 26.15
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0014187270078638735,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.817,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:37:58",
+    "SubsecTimeOriginal": "016",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00005",
+   "purpose": "house_overview",
+   "img": "keyframes/k00005.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90823.5081,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732637,
+    "longitude": -97.7514695,
+    "horizontalAccuracy": 22.67
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0013827036218077781,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.854,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:37:59",
+    "SubsecTimeOriginal": "451",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00006",
+   "purpose": "house_overview",
+   "img": "keyframes/k00006.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90824.2157,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733916,
+    "longitude": -97.7517738,
+    "horizontalAccuracy": 24.38
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0011999229268718143,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.059,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:00",
+    "SubsecTimeOriginal": "158",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00007",
+   "purpose": "house_overview",
+   "img": "keyframes/k00007.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90825.3161,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730836,
+    "longitude": -97.7520498,
+    "horizontalAccuracy": 27.88
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.001442598759236522,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.793,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:01",
+    "SubsecTimeOriginal": "259",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00008",
+   "purpose": "house_overview",
+   "img": "keyframes/k00008.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90825.7575,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734315,
+    "longitude": -97.7517431,
+    "horizontalAccuracy": 16.48
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0016701751369415476,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.582,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:01",
+    "SubsecTimeOriginal": "700",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00009",
+   "purpose": "house_overview",
+   "img": "keyframes/k00009.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90826.5106,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733635,
+    "longitude": -97.7520048,
+    "horizontalAccuracy": 29.61
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0011646226944203616,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.102,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:02",
+    "SubsecTimeOriginal": "453",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00010",
+   "purpose": "house_overview",
+   "img": "keyframes/k00010.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90827.1406,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734947,
+    "longitude": -97.7518478,
+    "horizontalAccuracy": 19.03
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0015384395674455213,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.7,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:03",
+    "SubsecTimeOriginal": "083",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00011",
+   "purpose": "house_overview",
+   "img": "keyframes/k00011.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90827.6658,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2736891,
+    "longitude": -97.7519988,
+    "horizontalAccuracy": 21.43
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010319184918761333,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.277,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:03",
+    "SubsecTimeOriginal": "609",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00012",
+   "purpose": "house_overview",
+   "img": "keyframes/k00012.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90828.1379,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.27345,
+    "longitude": -97.7518926,
+    "horizontalAccuracy": 8.03
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0016281909786110844,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.619,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:04",
+    "SubsecTimeOriginal": "081",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00013",
+   "purpose": "house_overview",
+   "img": "keyframes/k00013.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90828.6752,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2736279,
+    "longitude": -97.7518958,
+    "horizontalAccuracy": 10.88
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0012059297789425228,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.052,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:04",
+    "SubsecTimeOriginal": "618",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00014",
+   "purpose": "house_overview",
+   "img": "keyframes/k00014.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90829.2141,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733848,
+    "longitude": -97.7518086,
+    "horizontalAccuracy": 25.61
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0006375585109249459,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.971,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:05",
+    "SubsecTimeOriginal": "157",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00015",
+   "purpose": "house_overview",
+   "img": "keyframes/k00015.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90829.6502,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734365,
+    "longitude": -97.7521526,
+    "horizontalAccuracy": 26.77
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0006570346954224274,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.928,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:05",
+    "SubsecTimeOriginal": "593",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00016",
+   "purpose": "house_overview",
+   "img": "keyframes/k00016.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90830.2903,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734603,
+    "longitude": -97.7518768,
+    "horizontalAccuracy": 8.95
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009196085489485858,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.443,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:06",
+    "SubsecTimeOriginal": "233",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00017",
+   "purpose": "house_overview",
+   "img": "keyframes/k00017.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90830.9805,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.273493,
+    "longitude": -97.7518519,
+    "horizontalAccuracy": 9.62
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007465475076042778,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.744,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:06",
+    "SubsecTimeOriginal": "923",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00018",
+   "purpose": "house_overview",
+   "img": "keyframes/k00018.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90831.7166,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732488,
+    "longitude": -97.7515342,
+    "horizontalAccuracy": 24.75
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0006447718149317401,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.955,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:07",
+    "SubsecTimeOriginal": "659",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00019",
+   "purpose": "house_overview",
+   "img": "keyframes/k00019.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90832.4031,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734217,
+    "longitude": -97.7519021,
+    "horizontalAccuracy": 13.3
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0011451577420502083,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.126,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:08",
+    "SubsecTimeOriginal": "346",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00020",
+   "purpose": "house_overview",
+   "img": "keyframes/k00020.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90832.8669,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735188,
+    "longitude": -97.7516797,
+    "horizontalAccuracy": 22.63
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0014000421428591332,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.836,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:08",
+    "SubsecTimeOriginal": "810",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00021",
+   "purpose": "house_overview",
+   "img": "keyframes/k00021.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90833.4871,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.273579,
+    "longitude": -97.7517286,
+    "horizontalAccuracy": 24.55
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008476984542755557,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.56,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:09",
+    "SubsecTimeOriginal": "430",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00022",
+   "purpose": "house_overview",
+   "img": "keyframes/k00022.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90834.1221,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733206,
+    "longitude": -97.7517438,
+    "horizontalAccuracy": 19.81
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.000993755016124773,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.331,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:10",
+    "SubsecTimeOriginal": "065",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00023",
+   "purpose": "house_overview",
+   "img": "keyframes/k00023.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90834.9905,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2737174,
+    "longitude": -97.7515082,
+    "horizontalAccuracy": 23.64
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0018601682172992714,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.426,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:10",
+    "SubsecTimeOriginal": "933",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00024",
+   "purpose": "house_overview",
+   "img": "keyframes/k00024.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90835.525,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734899,
+    "longitude": -97.7517611,
+    "horizontalAccuracy": 25.17
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008983874207680182,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.477,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:11",
+    "SubsecTimeOriginal": "468",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00025",
+   "purpose": "house_overview",
+   "img": "keyframes/k00025.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90836.1958,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735004,
+    "longitude": -97.7518897,
+    "horizontalAccuracy": 22.43
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008115417595167734,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.623,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:12",
+    "SubsecTimeOriginal": "139",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00026",
+   "purpose": "house_overview",
+   "img": "keyframes/k00026.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90836.7268,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735439,
+    "longitude": -97.7518472,
+    "horizontalAccuracy": 21.35
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009628352203681574,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.377,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:12",
+    "SubsecTimeOriginal": "670",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00027",
+   "purpose": "house_overview",
+   "img": "keyframes/k00027.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90837.2874,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735771,
+    "longitude": -97.7520144,
+    "horizontalAccuracy": 26.98
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.001296746702045373,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.947,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:13",
+    "SubsecTimeOriginal": "230",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00028",
+   "purpose": "house_overview",
+   "img": "keyframes/k00028.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90838.0381,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734295,
+    "longitude": -97.7515274,
+    "horizontalAccuracy": 22.49
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.001220614446449169,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.034,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:13",
+    "SubsecTimeOriginal": "981",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00029",
+   "purpose": "house_overview",
+   "img": "keyframes/k00029.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90838.4387,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735696,
+    "longitude": -97.7517496,
+    "horizontalAccuracy": 13.32
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0015384551034779957,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.7,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:14",
+    "SubsecTimeOriginal": "381",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00030",
+   "purpose": "house_overview",
+   "img": "keyframes/k00030.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90838.9421,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735006,
+    "longitude": -97.751853,
+    "horizontalAccuracy": 14.92
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.001181203611326847,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.082,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:14",
+    "SubsecTimeOriginal": "885",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00031",
+   "purpose": "house_overview",
+   "img": "keyframes/k00031.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90840.3128,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735059,
+    "longitude": -97.7518352,
+    "horizontalAccuracy": 13.85
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.001104313888235779,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.179,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:16",
+    "SubsecTimeOriginal": "256",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00032",
+   "purpose": "house_overview",
+   "img": "keyframes/k00032.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90840.8112,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735583,
+    "longitude": -97.7518421,
+    "horizontalAccuracy": 11.19
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0014743440472281357,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.762,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:16",
+    "SubsecTimeOriginal": "754",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00033",
+   "purpose": "house_overview",
+   "img": "keyframes/k00033.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90841.4455,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735272,
+    "longitude": -97.7517301,
+    "horizontalAccuracy": 13.95
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0011276933407267829,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.149,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:17",
+    "SubsecTimeOriginal": "388",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00034",
+   "purpose": "house_overview",
+   "img": "keyframes/k00034.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90842.1722,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733846,
+    "longitude": -97.7519502,
+    "horizontalAccuracy": 25.13
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0014212718967397207,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.815,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:18",
+    "SubsecTimeOriginal": "115",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00035",
+   "purpose": "house_overview",
+   "img": "keyframes/k00035.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90842.9481,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732131,
+    "longitude": -97.7517903,
+    "horizontalAccuracy": 21.24
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0013714986490913077,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.866,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:18",
+    "SubsecTimeOriginal": "891",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00036",
+   "purpose": "house_overview",
+   "img": "keyframes/k00036.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90843.7942,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2736194,
+    "longitude": -97.7517941,
+    "horizontalAccuracy": 13.8
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0017417360990470072,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.521,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:19",
+    "SubsecTimeOriginal": "737",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00037",
+   "purpose": "house_overview",
+   "img": "keyframes/k00037.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90844.3444,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733828,
+    "longitude": -97.7519755,
+    "horizontalAccuracy": 16.16
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009473525828675431,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.4,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:20",
+    "SubsecTimeOriginal": "287",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00038",
+   "purpose": "house_overview",
+   "img": "keyframes/k00038.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90845.6988,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2738566,
+    "longitude": -97.7522499,
+    "horizontalAccuracy": 29.04
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0013562441027333311,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.882,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:21",
+    "SubsecTimeOriginal": "642",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00039",
+   "purpose": "house_overview",
+   "img": "keyframes/k00039.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90847.9191,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733604,
+    "longitude": -97.7522106,
+    "horizontalAccuracy": 24.81
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0012804158820359831,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.965,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:23",
+    "SubsecTimeOriginal": "862",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00040",
+   "purpose": "house_overview",
+   "img": "keyframes/k00040.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90849.2282,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.273463,
+    "longitude": -97.7517845,
+    "horizontalAccuracy": 12.88
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0006694952243067564,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.901,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:25",
+    "SubsecTimeOriginal": "171",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00041",
+   "purpose": "house_overview",
+   "img": "keyframes/k00041.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90850.7703,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733998,
+    "longitude": -97.7517629,
+    "horizontalAccuracy": 8.93
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009426449412387628,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.407,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:26",
+    "SubsecTimeOriginal": "713",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00042",
+   "purpose": "house_overview",
+   "img": "keyframes/k00042.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90851.5405,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.273472,
+    "longitude": -97.7517794,
+    "horizontalAccuracy": 16.72
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008915904535974314,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.487,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:27",
+    "SubsecTimeOriginal": "483",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00043",
+   "purpose": "house_overview",
+   "img": "keyframes/k00043.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90852.5323,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734847,
+    "longitude": -97.7518657,
+    "horizontalAccuracy": 11.28
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008720773360923205,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.519,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:28",
+    "SubsecTimeOriginal": "475",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00044",
+   "purpose": "house_overview",
+   "img": "keyframes/k00044.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90854.7668,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733567,
+    "longitude": -97.7518213,
+    "horizontalAccuracy": 10.0
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009085923140592327,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.46,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:30",
+    "SubsecTimeOriginal": "710",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00045",
+   "purpose": "house_overview",
+   "img": "keyframes/k00045.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90855.5893,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732766,
+    "longitude": -97.7518433,
+    "horizontalAccuracy": 24.47
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009081633161328566,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.461,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:31",
+    "SubsecTimeOriginal": "532",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00046",
+   "purpose": "house_overview",
+   "img": "keyframes/k00046.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90856.5376,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734644,
+    "longitude": -97.7519229,
+    "horizontalAccuracy": 9.08
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0006275263046063549,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.994,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:32",
+    "SubsecTimeOriginal": "480",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00047",
+   "purpose": "house_overview",
+   "img": "keyframes/k00047.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90857.2357,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735058,
+    "longitude": -97.7519192,
+    "horizontalAccuracy": 14.12
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009109359605170161,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.457,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:33",
+    "SubsecTimeOriginal": "178",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00048",
+   "purpose": "house_overview",
+   "img": "keyframes/k00048.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90858.1025,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733201,
+    "longitude": -97.752215,
+    "horizontalAccuracy": 22.27
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007340345147626601,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.768,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:34",
+    "SubsecTimeOriginal": "045",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00049",
+   "purpose": "house_overview",
+   "img": "keyframes/k00049.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90859.011,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733252,
+    "longitude": -97.7519291,
+    "horizontalAccuracy": 27.92
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0015530394602309113,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.687,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:34",
+    "SubsecTimeOriginal": "954",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00050",
+   "purpose": "house_overview",
+   "img": "keyframes/k00050.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90859.588,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733846,
+    "longitude": -97.7517489,
+    "horizontalAccuracy": 10.52
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0014107095175307862,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.826,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:35",
+    "SubsecTimeOriginal": "531",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00051",
+   "purpose": "house_overview",
+   "img": "keyframes/k00051.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90860.582,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2736925,
+    "longitude": -97.7517333,
+    "horizontalAccuracy": 18.54
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007486361316316649,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.74,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:36",
+    "SubsecTimeOriginal": "525",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00052",
+   "purpose": "house_overview",
+   "img": "keyframes/k00052.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90861.2535,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733203,
+    "longitude": -97.7518815,
+    "horizontalAccuracy": 24.96
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.001133135564646391,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.142,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:37",
+    "SubsecTimeOriginal": "196",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00053",
+   "purpose": "house_overview",
+   "img": "keyframes/k00053.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90862.1317,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734308,
+    "longitude": -97.7518643,
+    "horizontalAccuracy": 17.51
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0016746022752538003,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.578,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:38",
+    "SubsecTimeOriginal": "074",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00054",
+   "purpose": "house_overview",
+   "img": "keyframes/k00054.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90864.0694,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733876,
+    "longitude": -97.7519874,
+    "horizontalAccuracy": 15.62
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.00166855026455171,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.583,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:40",
+    "SubsecTimeOriginal": "012",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00055",
+   "purpose": "house_overview",
+   "img": "keyframes/k00055.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90864.6409,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734465,
+    "longitude": -97.7519539,
+    "horizontalAccuracy": 10.46
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009778819175051022,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.354,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:40",
+    "SubsecTimeOriginal": "584",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00056",
+   "purpose": "house_overview",
+   "img": "keyframes/k00056.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90865.7461,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2729945,
+    "longitude": -97.7515647,
+    "horizontalAccuracy": 27.57
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0012370304968653918,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.015,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:41",
+    "SubsecTimeOriginal": "689",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00057",
+   "purpose": "house_overview",
+   "img": "keyframes/k00057.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90866.36,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733321,
+    "longitude": -97.7519599,
+    "horizontalAccuracy": 9.16
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009220973203663964,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.439,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:42",
+    "SubsecTimeOriginal": "303",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00058",
+   "purpose": "house_overview",
+   "img": "keyframes/k00058.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90868.3705,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733985,
+    "longitude": -97.7520879,
+    "horizontalAccuracy": 23.56
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010086775784379695,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.309,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:44",
+    "SubsecTimeOriginal": "313",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00059",
+   "purpose": "house_overview",
+   "img": "keyframes/k00059.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90869.0442,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733675,
+    "longitude": -97.7519423,
+    "horizontalAccuracy": 14.24
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008962791127149163,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.48,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:44",
+    "SubsecTimeOriginal": "987",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00060",
+   "purpose": "house_overview",
+   "img": "keyframes/k00060.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90869.8358,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735724,
+    "longitude": -97.7519784,
+    "horizontalAccuracy": 23.44
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0015809303349383062,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.661,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:45",
+    "SubsecTimeOriginal": "779",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00061",
+   "purpose": "house_overview",
+   "img": "keyframes/k00061.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90870.4549,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732515,
+    "longitude": -97.7519928,
+    "horizontalAccuracy": 11.86
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0017293821307792188,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.532,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:46",
+    "SubsecTimeOriginal": "398",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00062",
+   "purpose": "house_overview",
+   "img": "keyframes/k00062.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90871.023,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732632,
+    "longitude": -97.7516758,
+    "horizontalAccuracy": 25.46
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007342465064852074,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.411,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:46",
+    "SubsecTimeOriginal": "966",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00063",
+   "purpose": "house_overview",
+   "img": "keyframes/k00063.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90871.4492,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735758,
+    "longitude": -97.7518887,
+    "horizontalAccuracy": 17.65
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0006559537994845513,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.93,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:47",
+    "SubsecTimeOriginal": "392",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00064",
+   "purpose": "house_overview",
+   "img": "keyframes/k00064.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90872.2534,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733742,
+    "longitude": -97.7519357,
+    "horizontalAccuracy": 23.38
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009301154978304483,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.426,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:48",
+    "SubsecTimeOriginal": "196",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00065",
+   "purpose": "house_overview",
+   "img": "keyframes/k00065.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90873.4248,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733348,
+    "longitude": -97.752074,
+    "horizontalAccuracy": 24.11
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009180055075582752,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.089,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:49",
+    "SubsecTimeOriginal": "368",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00066",
+   "purpose": "house_overview",
+   "img": "keyframes/k00066.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90874.0853,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.273271,
+    "longitude": -97.7519277,
+    "horizontalAccuracy": 10.04
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007959060972902718,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.651,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:50",
+    "SubsecTimeOriginal": "028",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00067",
+   "purpose": "house_overview",
+   "img": "keyframes/k00067.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90874.7094,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733157,
+    "longitude": -97.7519787,
+    "horizontalAccuracy": 9.43
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009407763539253289,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.41,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:50",
+    "SubsecTimeOriginal": "652",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00068",
+   "purpose": "house_overview",
+   "img": "keyframes/k00068.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90875.1886,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732548,
+    "longitude": -97.752048,
+    "horizontalAccuracy": 28.49
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009375543482688613,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.059,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:51",
+    "SubsecTimeOriginal": "131",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00069",
+   "purpose": "house_overview",
+   "img": "keyframes/k00069.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90876.2305,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730565,
+    "longitude": -97.7520291,
+    "horizontalAccuracy": 27.2
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0005543866503375783,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.817,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:52",
+    "SubsecTimeOriginal": "173",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00070",
+   "purpose": "house_overview",
+   "img": "keyframes/k00070.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90876.8183,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732387,
+    "longitude": -97.7519639,
+    "horizontalAccuracy": 19.02
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0006536864826167035,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.935,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:52",
+    "SubsecTimeOriginal": "761",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00071",
+   "purpose": "house_overview",
+   "img": "keyframes/k00071.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90877.3036,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733467,
+    "longitude": -97.7518422,
+    "horizontalAccuracy": 25.19
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007308143632739022,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.418,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:53",
+    "SubsecTimeOriginal": "246",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00072",
+   "purpose": "house_overview",
+   "img": "keyframes/k00072.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90877.9271,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735255,
+    "longitude": -97.7519543,
+    "horizontalAccuracy": 15.93
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009693220840785247,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.011,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:53",
+    "SubsecTimeOriginal": "870",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00073",
+   "purpose": "house_overview",
+   "img": "keyframes/k00073.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90878.4071,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.273326,
+    "longitude": -97.7519448,
+    "horizontalAccuracy": 11.45
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0006935077638216287,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.85,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:54",
+    "SubsecTimeOriginal": "350",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00074",
+   "purpose": "house_overview",
+   "img": "keyframes/k00074.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90878.8926,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735015,
+    "longitude": -97.7518487,
+    "horizontalAccuracy": 15.74
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008846615320427844,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.143,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:54",
+    "SubsecTimeOriginal": "835",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00075",
+   "purpose": "house_overview",
+   "img": "keyframes/k00075.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90879.911,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.273327,
+    "longitude": -97.7518419,
+    "horizontalAccuracy": 12.63
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0011141248407254495,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.166,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:55",
+    "SubsecTimeOriginal": "854",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00076",
+   "purpose": "house_overview",
+   "img": "keyframes/k00076.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90880.3555,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733528,
+    "longitude": -97.751921,
+    "horizontalAccuracy": 11.59
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0014393114016060201,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.797,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:56",
+    "SubsecTimeOriginal": "298",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00077",
+   "purpose": "house_overview",
+   "img": "keyframes/k00077.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90880.7875,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733395,
+    "longitude": -97.7520159,
+    "horizontalAccuracy": 14.94
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0016781107243389961,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.575,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:56",
+    "SubsecTimeOriginal": "730",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00078",
+   "purpose": "house_overview",
+   "img": "keyframes/k00078.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90882.2674,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732464,
+    "longitude": -97.7517819,
+    "horizontalAccuracy": 14.68
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010314805540440652,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.277,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:58",
+    "SubsecTimeOriginal": "210",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00079",
+   "purpose": "house_overview",
+   "img": "keyframes/k00079.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90882.7715,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734398,
+    "longitude": -97.7517347,
+    "horizontalAccuracy": 23.2
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007307806639791482,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.774,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:58",
+    "SubsecTimeOriginal": "714",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00080",
+   "purpose": "house_overview",
+   "img": "keyframes/k00080.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90883.8397,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733931,
+    "longitude": -97.7518961,
+    "horizontalAccuracy": 16.66
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.000848195622630821,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.203,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:38:59",
+    "SubsecTimeOriginal": "782",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00081",
+   "purpose": "house_overview",
+   "img": "keyframes/k00081.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90884.6777,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2735349,
+    "longitude": -97.7519018,
+    "horizontalAccuracy": 15.96
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.000832808234014013,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.586,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:00",
+    "SubsecTimeOriginal": "620",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00082",
+   "purpose": "house_overview",
+   "img": "keyframes/k00082.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90885.3292,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734723,
+    "longitude": -97.7519913,
+    "horizontalAccuracy": 14.69
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008927349095447729,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.486,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:01",
+    "SubsecTimeOriginal": "272",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00083",
+   "purpose": "house_overview",
+   "img": "keyframes/k00083.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90885.9123,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732953,
+    "longitude": -97.7521447,
+    "horizontalAccuracy": 15.76
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007846893950908197,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.672,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:01",
+    "SubsecTimeOriginal": "855",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00084",
+   "purpose": "house_overview",
+   "img": "keyframes/k00084.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90887.3661,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733314,
+    "longitude": -97.7519151,
+    "horizontalAccuracy": 8.14
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0011804611996987795,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.083,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:03",
+    "SubsecTimeOriginal": "309",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00085",
+   "purpose": "house_overview",
+   "img": "keyframes/k00085.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90888.4031,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2734182,
+    "longitude": -97.7517353,
+    "horizontalAccuracy": 22.86
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0006304697832848554,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.987,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:04",
+    "SubsecTimeOriginal": "346",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00086",
+   "purpose": "house_overview",
+   "img": "keyframes/k00086.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90889.0598,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733952,
+    "longitude": -97.7519259,
+    "horizontalAccuracy": 9.67
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008461799477102932,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.207,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:05",
+    "SubsecTimeOriginal": "003",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00087",
+   "purpose": "house_overview",
+   "img": "keyframes/k00087.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90889.6757,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732574,
+    "longitude": -97.7517559,
+    "horizontalAccuracy": 23.42
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010393815848011596,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.266,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:05",
+    "SubsecTimeOriginal": "618",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00088",
+   "purpose": "house_overview",
+   "img": "keyframes/k00088.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90890.4373,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732216,
+    "longitude": -97.7517963,
+    "horizontalAccuracy": 25.91
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008945743012113463,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.483,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:06",
+    "SubsecTimeOriginal": "380",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00089",
+   "purpose": "house_overview",
+   "img": "keyframes/k00089.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90891.8471,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732123,
+    "longitude": -97.7520985,
+    "horizontalAccuracy": 21.45
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0012442621619102598,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.007,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:07",
+    "SubsecTimeOriginal": "790",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00090",
+   "purpose": "house_overview",
+   "img": "keyframes/k00090.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90892.7,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731164,
+    "longitude": -97.7520788,
+    "horizontalAccuracy": 22.51
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010076183310396172,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.311,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:08",
+    "SubsecTimeOriginal": "643",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00091",
+   "purpose": "house_overview",
+   "img": "keyframes/k00091.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90893.4029,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733521,
+    "longitude": -97.7514986,
+    "horizontalAccuracy": 27.74
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0016213192242740715,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.625,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:09",
+    "SubsecTimeOriginal": "346",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00092",
+   "purpose": "house_overview",
+   "img": "keyframes/k00092.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90894.033,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733605,
+    "longitude": -97.7519892,
+    "horizontalAccuracy": 25.12
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008082854911167748,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.629,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:09",
+    "SubsecTimeOriginal": "976",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00093",
+   "purpose": "house_overview",
+   "img": "keyframes/k00093.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90894.9325,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.273072,
+    "longitude": -97.7521404,
+    "horizontalAccuracy": 26.47
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010956977302778743,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.19,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:10",
+    "SubsecTimeOriginal": "875",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00094",
+   "purpose": "house_overview",
+   "img": "keyframes/k00094.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90895.6475,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733033,
+    "longitude": -97.7519317,
+    "horizontalAccuracy": 19.83
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009095207967344868,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.459,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:11",
+    "SubsecTimeOriginal": "590",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00095",
+   "purpose": "house_overview",
+   "img": "keyframes/k00095.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90896.6593,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733406,
+    "longitude": -97.7518732,
+    "horizontalAccuracy": 15.78
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.000996890029091538,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.326,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:12",
+    "SubsecTimeOriginal": "602",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00096",
+   "purpose": "house_overview",
+   "img": "keyframes/k00096.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90897.4792,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.273224,
+    "longitude": -97.7518381,
+    "horizontalAccuracy": 19.03
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009610151068465895,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.023,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:13",
+    "SubsecTimeOriginal": "422",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00097",
+   "purpose": "house_overview",
+   "img": "keyframes/k00097.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90898.7839,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730594,
+    "longitude": -97.7519495,
+    "horizontalAccuracy": 13.22
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008842813425334375,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.499,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:14",
+    "SubsecTimeOriginal": "727",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00098",
+   "purpose": "house_overview",
+   "img": "keyframes/k00098.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90899.3546,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733168,
+    "longitude": -97.751773,
+    "horizontalAccuracy": 15.43
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007935757770098769,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.655,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:15",
+    "SubsecTimeOriginal": "297",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00099",
+   "purpose": "house_overview",
+   "img": "keyframes/k00099.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90899.9079,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733091,
+    "longitude": -97.7520875,
+    "horizontalAccuracy": 19.86
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008261537005772665,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.597,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:15",
+    "SubsecTimeOriginal": "851",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00100",
+   "purpose": "house_overview",
+   "img": "keyframes/k00100.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90901.0483,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732566,
+    "longitude": -97.7517998,
+    "horizontalAccuracy": 25.71
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0011291966636063006,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.147,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:16",
+    "SubsecTimeOriginal": "991",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00101",
+   "purpose": "house_overview",
+   "img": "keyframes/k00101.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90901.6089,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733296,
+    "longitude": -97.7520124,
+    "horizontalAccuracy": 8.34
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0005538087845722982,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.818,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:17",
+    "SubsecTimeOriginal": "552",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00102",
+   "purpose": "house_overview",
+   "img": "keyframes/k00102.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90902.494,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733139,
+    "longitude": -97.7518432,
+    "horizontalAccuracy": 15.46
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.000722431575806436,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.791,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:18",
+    "SubsecTimeOriginal": "437",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00103",
+   "purpose": "house_overview",
+   "img": "keyframes/k00103.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90903.5833,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732095,
+    "longitude": -97.7519103,
+    "horizontalAccuracy": 9.26
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007665717089733099,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.349,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:19",
+    "SubsecTimeOriginal": "526",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00104",
+   "purpose": "house_overview",
+   "img": "keyframes/k00104.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90904.2889,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733527,
+    "longitude": -97.751772,
+    "horizontalAccuracy": 23.85
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008073872625170606,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.274,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:20",
+    "SubsecTimeOriginal": "232",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00105",
+   "purpose": "house_overview",
+   "img": "keyframes/k00105.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90905.7648,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733201,
+    "longitude": -97.7523029,
+    "horizontalAccuracy": 24.64
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.000735198838490169,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.766,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:21",
+    "SubsecTimeOriginal": "708",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00106",
+   "purpose": "house_overview",
+   "img": "keyframes/k00106.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90906.1844,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2729905,
+    "longitude": -97.7517081,
+    "horizontalAccuracy": 23.24
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008352162747824078,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.226,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:22",
+    "SubsecTimeOriginal": "127",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00107",
+   "purpose": "house_overview",
+   "img": "keyframes/k00107.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90906.6983,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730375,
+    "longitude": -97.7518891,
+    "horizontalAccuracy": 15.92
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0006518032365804694,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.939,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:22",
+    "SubsecTimeOriginal": "641",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00108",
+   "purpose": "house_overview",
+   "img": "keyframes/k00108.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90907.6999,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732224,
+    "longitude": -97.7519074,
+    "horizontalAccuracy": 27.02
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009699526906593532,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.366,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:23",
+    "SubsecTimeOriginal": "643",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00109",
+   "purpose": "house_overview",
+   "img": "keyframes/k00109.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90908.1925,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.27303,
+    "longitude": -97.7518987,
+    "horizontalAccuracy": 11.73
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008497918619191163,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.557,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:24",
+    "SubsecTimeOriginal": "135",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00110",
+   "purpose": "house_overview",
+   "img": "keyframes/k00110.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90908.758,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.273225,
+    "longitude": -97.7519197,
+    "horizontalAccuracy": 8.31
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0013229736370851076,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.918,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:24",
+    "SubsecTimeOriginal": "701",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00111",
+   "purpose": "house_overview",
+   "img": "keyframes/k00111.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90909.3245,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732797,
+    "longitude": -97.7519453,
+    "horizontalAccuracy": 22.74
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.000711565714105079,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.813,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:25",
+    "SubsecTimeOriginal": "267",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00112",
+   "purpose": "house_overview",
+   "img": "keyframes/k00112.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90909.9074,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730385,
+    "longitude": -97.7519423,
+    "horizontalAccuracy": 23.6
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0006381132193023915,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.614,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:25",
+    "SubsecTimeOriginal": "850",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00113",
+   "purpose": "house_overview",
+   "img": "keyframes/k00113.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90910.4571,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731029,
+    "longitude": -97.7518241,
+    "horizontalAccuracy": 16.61
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007509071140328717,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.735,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:26",
+    "SubsecTimeOriginal": "400",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00114",
+   "purpose": "house_overview",
+   "img": "keyframes/k00114.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90911.2934,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731498,
+    "longitude": -97.751785,
+    "horizontalAccuracy": 20.09
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.001556947219109131,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.683,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:27",
+    "SubsecTimeOriginal": "236",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00115",
+   "purpose": "house_overview",
+   "img": "keyframes/k00115.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90911.7396,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731589,
+    "longitude": -97.7520066,
+    "horizontalAccuracy": 14.72
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010414096352041895,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.263,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:27",
+    "SubsecTimeOriginal": "682",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00116",
+   "purpose": "house_overview",
+   "img": "keyframes/k00116.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90912.4331,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731847,
+    "longitude": -97.7518878,
+    "horizontalAccuracy": 11.52
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.00088612302544875,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.14,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:28",
+    "SubsecTimeOriginal": "376",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00117",
+   "purpose": "house_overview",
+   "img": "keyframes/k00117.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90912.9149,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731897,
+    "longitude": -97.7520587,
+    "horizontalAccuracy": 14.05
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007258022343393762,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.784,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:28",
+    "SubsecTimeOriginal": "858",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00118",
+   "purpose": "house_overview",
+   "img": "keyframes/k00118.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90913.5786,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731855,
+    "longitude": -97.7518183,
+    "horizontalAccuracy": 12.62
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007123926382766275,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.455,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:29",
+    "SubsecTimeOriginal": "521",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00119",
+   "purpose": "house_overview",
+   "img": "keyframes/k00119.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90914.0061,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732896,
+    "longitude": -97.7519327,
+    "horizontalAccuracy": 8.81
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0005058845817741477,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.949,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:29",
+    "SubsecTimeOriginal": "949",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00120",
+   "purpose": "house_overview",
+   "img": "keyframes/k00120.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90914.455,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730555,
+    "longitude": -97.751711,
+    "horizontalAccuracy": 25.03
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0013307564287219156,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.91,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:30",
+    "SubsecTimeOriginal": "398",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00121",
+   "purpose": "house_overview",
+   "img": "keyframes/k00121.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90914.8992,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732797,
+    "longitude": -97.7517695,
+    "horizontalAccuracy": 13.96
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010466341250134625,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.256,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:30",
+    "SubsecTimeOriginal": "842",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00122",
+   "purpose": "house_overview",
+   "img": "keyframes/k00122.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90916.7826,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732406,
+    "longitude": -97.7519465,
+    "horizontalAccuracy": 9.23
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.00033132262893988785,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 9.559,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:32",
+    "SubsecTimeOriginal": "725",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00123",
+   "purpose": "house_overview",
+   "img": "keyframes/k00123.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90921.2703,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731681,
+    "longitude": -97.7518468,
+    "horizontalAccuracy": 16.57
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0014716537271095723,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.764,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:37",
+    "SubsecTimeOriginal": "213",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00124",
+   "purpose": "house_overview",
+   "img": "keyframes/k00124.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90921.9649,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733512,
+    "longitude": -97.7520268,
+    "horizontalAccuracy": 15.52
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0012233285769819285,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.031,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:37",
+    "SubsecTimeOriginal": "908",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00125",
+   "purpose": "house_overview",
+   "img": "keyframes/k00125.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90922.8609,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731849,
+    "longitude": -97.7518405,
+    "horizontalAccuracy": 9.06
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010392020459687552,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.266,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:38",
+    "SubsecTimeOriginal": "804",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00126",
+   "purpose": "house_overview",
+   "img": "keyframes/k00126.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90923.8528,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731166,
+    "longitude": -97.7519879,
+    "horizontalAccuracy": 12.24
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0013293236454432209,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 5.911,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:39",
+    "SubsecTimeOriginal": "796",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00127",
+   "purpose": "house_overview",
+   "img": "keyframes/k00127.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90924.5533,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732366,
+    "longitude": -97.7517447,
+    "horizontalAccuracy": 24.18
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0013278892900919581,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.913,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:40",
+    "SubsecTimeOriginal": "496",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00128",
+   "purpose": "house_overview",
+   "img": "keyframes/k00128.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90925.6947,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730464,
+    "longitude": -97.751779,
+    "horizontalAccuracy": 24.53
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010604072513338612,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.237,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:41",
+    "SubsecTimeOriginal": "637",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00129",
+   "purpose": "house_overview",
+   "img": "keyframes/k00129.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90927.0939,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731765,
+    "longitude": -97.7517303,
+    "horizontalAccuracy": 12.06
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0012779040525571627,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.968,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:43",
+    "SubsecTimeOriginal": "037",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00130",
+   "purpose": "house_overview",
+   "img": "keyframes/k00130.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90928.0087,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731981,
+    "longitude": -97.7520654,
+    "horizontalAccuracy": 21.86
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0012111027978051194,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.046,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:43",
+    "SubsecTimeOriginal": "951",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00131",
+   "purpose": "house_overview",
+   "img": "keyframes/k00131.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90929.6102,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731182,
+    "longitude": -97.7518026,
+    "horizontalAccuracy": 12.07
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.001042466410933338,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.262,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:45",
+    "SubsecTimeOriginal": "553",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00132",
+   "purpose": "house_overview",
+   "img": "keyframes/k00132.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90930.3543,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733728,
+    "longitude": -97.7519394,
+    "horizontalAccuracy": 15.97
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0011953489069913904,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.064,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:46",
+    "SubsecTimeOriginal": "297",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00133",
+   "purpose": "house_overview",
+   "img": "keyframes/k00133.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90931.3174,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731841,
+    "longitude": -97.751739,
+    "horizontalAccuracy": 18.11
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009964793695004324,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.327,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:47",
+    "SubsecTimeOriginal": "260",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00134",
+   "purpose": "house_overview",
+   "img": "keyframes/k00134.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90932.4144,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731525,
+    "longitude": -97.7518499,
+    "horizontalAccuracy": 15.03
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009856436934508918,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.343,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:48",
+    "SubsecTimeOriginal": "357",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00135",
+   "purpose": "house_overview",
+   "img": "keyframes/k00135.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90933.1326,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731722,
+    "longitude": -97.7519521,
+    "horizontalAccuracy": 21.91
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009493361601057549,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.397,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:49",
+    "SubsecTimeOriginal": "075",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00136",
+   "purpose": "house_overview",
+   "img": "keyframes/k00136.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90933.8153,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2729746,
+    "longitude": -97.7519196,
+    "horizontalAccuracy": 20.87
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0014420290713888096,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.794,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:49",
+    "SubsecTimeOriginal": "758",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00137",
+   "purpose": "house_overview",
+   "img": "keyframes/k00137.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90935.3195,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2733617,
+    "longitude": -97.7517396,
+    "horizontalAccuracy": 21.87
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0013741570277866696,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.863,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:51",
+    "SubsecTimeOriginal": "262",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00138",
+   "purpose": "house_overview",
+   "img": "keyframes/k00138.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90935.796,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730685,
+    "longitude": -97.7518734,
+    "horizontalAccuracy": 10.27
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0012133184411147109,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.043,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:51",
+    "SubsecTimeOriginal": "739",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00139",
+   "purpose": "house_overview",
+   "img": "keyframes/k00139.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90936.5225,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2729406,
+    "longitude": -97.7518237,
+    "horizontalAccuracy": 29.91
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010967000051462304,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.189,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:52",
+    "SubsecTimeOriginal": "465",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00140",
+   "purpose": "house_overview",
+   "img": "keyframes/k00140.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90937.5208,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732228,
+    "longitude": -97.7515641,
+    "horizontalAccuracy": 27.48
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010232700375974173,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.289,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:53",
+    "SubsecTimeOriginal": "464",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00141",
+   "purpose": "house_overview",
+   "img": "keyframes/k00141.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90938.1968,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730734,
+    "longitude": -97.7518467,
+    "horizontalAccuracy": 11.99
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0012015497277788345,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.057,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:54",
+    "SubsecTimeOriginal": "139",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00142",
+   "purpose": "house_overview",
+   "img": "keyframes/k00142.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90938.9695,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730844,
+    "longitude": -97.7519771,
+    "horizontalAccuracy": 20.11
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009218112590537692,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.439,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:54",
+    "SubsecTimeOriginal": "912",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00143",
+   "purpose": "house_overview",
+   "img": "keyframes/k00143.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90939.7471,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2729713,
+    "longitude": -97.7518014,
+    "horizontalAccuracy": 12.87
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0010242648764976067,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.287,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:55",
+    "SubsecTimeOriginal": "690",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00144",
+   "purpose": "house_overview",
+   "img": "keyframes/k00144.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90941.1982,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731782,
+    "longitude": -97.7517401,
+    "horizontalAccuracy": 16.32
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009040656345527017,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.467,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:57",
+    "SubsecTimeOriginal": "141",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00145",
+   "purpose": "house_overview",
+   "img": "keyframes/k00145.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90942.1794,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732099,
+    "longitude": -97.7518286,
+    "horizontalAccuracy": 21.09
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0015257893015879626,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.712,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:58",
+    "SubsecTimeOriginal": "122",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00146",
+   "purpose": "house_overview",
+   "img": "keyframes/k00146.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90942.7969,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2729416,
+    "longitude": -97.7519518,
+    "horizontalAccuracy": 22.01
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0013510092604110868,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.888,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:58",
+    "SubsecTimeOriginal": "740",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00147",
+   "purpose": "house_overview",
+   "img": "keyframes/k00147.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90944.0494,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2731437,
+    "longitude": -97.7517873,
+    "horizontalAccuracy": 18.81
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008607870041703218,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.182,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:39:59",
+    "SubsecTimeOriginal": "992",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00148",
+   "purpose": "house_overview",
+   "img": "keyframes/k00148.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90945.9627,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2732254,
+    "longitude": -97.7517636,
+    "horizontalAccuracy": 12.84
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0015569973057628047,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 6.683,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:40:01",
+    "SubsecTimeOriginal": "905",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00149",
+   "purpose": "house_overview",
+   "img": "keyframes/k00149.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90946.988,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730234,
+    "longitude": -97.7518032,
+    "horizontalAccuracy": 8.03
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009198371472733237,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.442,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:40:02",
+    "SubsecTimeOriginal": "931",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00150",
+   "purpose": "house_overview",
+   "img": "keyframes/k00150.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90947.5755,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730217,
+    "longitude": -97.7517716,
+    "horizontalAccuracy": 9.21
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0009776870442795545,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.354,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:40:03",
+    "SubsecTimeOriginal": "518",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00151",
+   "purpose": "house_overview",
+   "img": "keyframes/k00151.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90949.1011,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730432,
+    "longitude": -97.7517035,
+    "horizontalAccuracy": 25.57
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0008518550556651502,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 8.197,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:40:05",
+    "SubsecTimeOriginal": "044",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00152",
+   "purpose": "house_overview",
+   "img": "keyframes/k00152.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90949.886,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.273049,
+    "longitude": -97.7517079,
+    "horizontalAccuracy": 10.03
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.000774124746706287,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.691,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:40:05",
+    "SubsecTimeOriginal": "829",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  },
+  {
+   "id": "s00153",
+   "purpose": "house_overview",
+   "img": "keyframes/k00153.jpg",
+   "w": 1920,
+   "h": 1080,
+   "timestamp": 90950.2934,
+   "orientation": 1,
+   "intrinsics": [
+    1832.93,
+    1832.93,
+    960.0,
+    540.0
+   ],
+   "intrinsicsSource": "exif_focal35",
+   "location": {
+    "latitude": 30.2730352,
+    "longitude": -97.7515702,
+    "horizontalAccuracy": 26.51
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15",
+    "LensModel": "iPhone 15 back dual wide camera 6.24mm f/1.6",
+    "FocalLength": 6.24,
+    "FocalLenIn35mmFilm": 36,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1080,
+    "ExposureTime": 0.0007165815150996332,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.6,
+    "BrightnessValue": 7.803,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 11:40:06",
+    "SubsecTimeOriginal": "236",
+    "OffsetTimeOriginal": "-05:00",
+    "Orientation": 1
+   }
+  }
+ ],
+ "scaleReference": {
+  "meterCloseUp": {
+   "captured": false,
+   "still": null
+  }
+ },
+ "files": [
+  {
+   "path": "keyframes/k00001.jpg",
+   "bytes": 251826,
+   "sha256": "ce309eda98d528f3ca4effdceb0ea98dab95320d33c88012f4774d54cc616f2e",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00002.jpg",
+   "bytes": 258975,
+   "sha256": "a4f4c302332a83d3040b02f216bb4432bcd596d763139af480e625909b1096b0",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00003.jpg",
+   "bytes": 241191,
+   "sha256": "b3fa03cd60939b08815cb602d6f692f2e4bb223682487d1e79ccd2fc71df2529",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00004.jpg",
+   "bytes": 228590,
+   "sha256": "078d50c4b9bdd795184f28e4c99aa4f2689218c73982c1feba6980e1ad3aa878",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00005.jpg",
+   "bytes": 236394,
+   "sha256": "e1468e16b687c372a529e4c9e021d0644f3af4bf7e113b7a13e040dfebd3ef6c",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00006.jpg",
+   "bytes": 234417,
+   "sha256": "706e54fc6c767c9298414e0489f33964d45dd658a00f17afde7cb62bb7c6b283",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00007.jpg",
+   "bytes": 237239,
+   "sha256": "59fb39ab77a6e12e94962a7046ba90f146c6741b15c84c3bb1c60eefbed0c861",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00008.jpg",
+   "bytes": 234278,
+   "sha256": "6516084fdac71ce93140c6d133e85b00b628100b29c7b6272ba93327c29cc766",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00009.jpg",
+   "bytes": 202641,
+   "sha256": "dee1fcdc529e0a56ae6771545cde6be41660c5d5aa0d637e75470039e42fd34d",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00010.jpg",
+   "bytes": 192884,
+   "sha256": "3dcc0782f5a75f81420ec9aaed9e7a49310006a83092d0ba7bd11f177be6afbc",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00011.jpg",
+   "bytes": 168974,
+   "sha256": "ca657563c8aac2e55ccda16daa5894d471ef439872e1f3ceefe644437af14284",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00012.jpg",
+   "bytes": 163194,
+   "sha256": "8570577021e84147512fe879be8b380b7f31f462c932d2e8723e6557a62b2799",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00013.jpg",
+   "bytes": 146121,
+   "sha256": "e5974c24f11cc73ef7186df95e47932c5eb33d9707779dd072e70875ab2b08ce",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00014.jpg",
+   "bytes": 183621,
+   "sha256": "b08326ee9492f8916e4dc4eb09ed9aed4c4e051ca940ee9eee426e4fc4a064e2",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00015.jpg",
+   "bytes": 223188,
+   "sha256": "1670bf097f1f0f5a8a4a92a2912667a82c74c1d4887835e699bd9a2555002e3e",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00016.jpg",
+   "bytes": 272137,
+   "sha256": "abbc96dbb9c78dc2c0b164099eeec1b6c56c16856c2e93dfdd45577082b4de4b",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00017.jpg",
+   "bytes": 228804,
+   "sha256": "78f9e98b13fe09b87aabc1ecbeffd93ab81129d6131acf47e4005c775a7002fd",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00018.jpg",
+   "bytes": 132191,
+   "sha256": "cf5f215ad2cf001059c5b23a6dd1956697e20fd17707c0eb14e4a7b1c5236551",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00019.jpg",
+   "bytes": 151525,
+   "sha256": "905a0138b24a9cb5c94f9b5cb755e3f2ff85364e03839c898dfe2030fcf0508b",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00020.jpg",
+   "bytes": 152007,
+   "sha256": "89b2f6d8a0d9b83cb719babc8af9cdccc31bf4cd8e1eaeba6f500edf1b405aec",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00021.jpg",
+   "bytes": 158805,
+   "sha256": "6d13f491be1a7573cadb03db73a326b910a947226ae0e4bd7e85db4c33be7df3",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00022.jpg",
+   "bytes": 151869,
+   "sha256": "f253be4b89d8630c1c63ae194e44b84940470ec472996e85b5910128d122a8a5",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00023.jpg",
+   "bytes": 122815,
+   "sha256": "71a1d00c48fcf0c0035e8a6a5f13296f7fae12b726d548dcd645a91690a2ab7a",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00024.jpg",
+   "bytes": 121733,
+   "sha256": "91982dd03cbf81aeeae6c29d4666ef2641dde2e88d67794b867bcaf532ff9a2b",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00025.jpg",
+   "bytes": 185238,
+   "sha256": "d8e41d01853a1755826dac4e18cca05cc05b48408991610afce0254de74ca522",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00026.jpg",
+   "bytes": 160632,
+   "sha256": "572ca16fb8952a3963e45b79e494ffccb94a182ad9a5adf0c9e91c4661c42670",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00027.jpg",
+   "bytes": 189513,
+   "sha256": "de28b1b3fc94757e81a6a6b64577915c02ffe484dd22ac319224efd5cdc84734",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00028.jpg",
+   "bytes": 182802,
+   "sha256": "c5b998559306e480ea42fca64b73e2a2155c7e6a737340c0d1f0fabc6cd3cc04",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00029.jpg",
+   "bytes": 156945,
+   "sha256": "d1ce507fe15bd9c0aa0368b6a52a75424ce7542784ddd1e568ab1b98636da547",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00030.jpg",
+   "bytes": 171429,
+   "sha256": "f839f00f676f2f9bdc7869bf845e08a5d70c1ffd5f02e8e4d4933c76ad307289",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00031.jpg",
+   "bytes": 169551,
+   "sha256": "1fc929af248edddbadc6648035c7e05649b69ea2a4950bba575c56bc6f93f41c",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00032.jpg",
+   "bytes": 176481,
+   "sha256": "742522c9d39425e2f8755bea2d47efbfb8ebd68a3be70c268abad9c16dafcb31",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00033.jpg",
+   "bytes": 152988,
+   "sha256": "1a95f7f47c7af041e49687ab2d7e20fae942e8deffaca6b1b9815bce919e15fc",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00034.jpg",
+   "bytes": 149505,
+   "sha256": "c21c8db7312ee4eaf7d644e1fbefb341e3d80fd13dccb163bf0af4e498e95845",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00035.jpg",
+   "bytes": 183142,
+   "sha256": "f3c719c38b67a9db277628aa94414f67d1216f0904c881c937f5e12340e1b614",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00036.jpg",
+   "bytes": 157624,
+   "sha256": "47810b3fa8662aa29cdcca9f4b71b1c661f46f88a51ff4ff6b0b8790b8d3a709",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00037.jpg",
+   "bytes": 195597,
+   "sha256": "a9c1da98a3487e472d3ceafb6e1af8c3f5d668ddc49130cb0ca9b1679ff66c92",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00038.jpg",
+   "bytes": 204739,
+   "sha256": "fd2be4e2cf12e66f58097ef8ab0217cf7ea76ff9d5a30d00da503ed4d18c1806",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00039.jpg",
+   "bytes": 146631,
+   "sha256": "8401aae944bae48786cf2556f9a455bd75123503d9ff3fd5660820598743c668",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00040.jpg",
+   "bytes": 174272,
+   "sha256": "df421ae87a6babf7b92e14d3b6579be9b809d9718e333e405f36e0136709e350",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00041.jpg",
+   "bytes": 192137,
+   "sha256": "afbe4973eb21d36e24a8a842c7ea6eafaeaf2dbd28c9bfa9eea0e5d3591f0cee",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00042.jpg",
+   "bytes": 185922,
+   "sha256": "31de0059599217f8f882b506380c41e95dde0ad219fc5eb9b8e89e7f547d4e73",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00043.jpg",
+   "bytes": 212358,
+   "sha256": "1179b6f3b021112a86edfcd99c0e654400678331f58cf406a5c5d59a6c9d9b79",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00044.jpg",
+   "bytes": 196006,
+   "sha256": "785109f1f184c1a87681af966413697a3700cbd39e711beeec168e13fed7037e",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00045.jpg",
+   "bytes": 193436,
+   "sha256": "987d5c04fa6710941252da4a4da7a5f7197c8320ab4f57f140cbe46a2dbcd0e1",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00046.jpg",
+   "bytes": 185214,
+   "sha256": "7220607ea4d5817c9db91028e362888ad545b75d22bc06552bfa8d0ef3bd5d75",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00047.jpg",
+   "bytes": 209112,
+   "sha256": "fa969c35ec23bd4e005ac65da5ff82a09207e90038b948e403df598812a95370",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00048.jpg",
+   "bytes": 171680,
+   "sha256": "ebedd7da9f23cacb9d4f2a0e2fb8cdbe9c2f266f2f17eae348c98b744fa84490",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00049.jpg",
+   "bytes": 163728,
+   "sha256": "2dbb105137d98de7f60363a74aeca40712b6f44fded6742d36c27643406cd925",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00050.jpg",
+   "bytes": 197556,
+   "sha256": "f4b2d5733f42bd5309d55cb8d6c79ae7817742687a203ef2b829483c00d54bcc",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00051.jpg",
+   "bytes": 181119,
+   "sha256": "7db2f64661a5474c335e1add437ca131f765a038e8a6ab883384aab4716188d9",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00052.jpg",
+   "bytes": 220307,
+   "sha256": "f94be95b5db2596b88763d8afb21c0b682ae9e882981bd46c21c1c359a89241e",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00053.jpg",
+   "bytes": 230502,
+   "sha256": "74c6abc7586c7a138a780bf25448a5fea113ee5dcecc8cd1a22fca31fb2e0e6c",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00054.jpg",
+   "bytes": 237037,
+   "sha256": "3b5b2ffac8a4d70ea9a8b6b10ddf44fea0bf649753207bfd829242079a0c8bb2",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00055.jpg",
+   "bytes": 301966,
+   "sha256": "67e4fa7d4f8d72051ad43cefe9f15fdb7239aab8383473744e0b4774ba569a01",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00056.jpg",
+   "bytes": 245830,
+   "sha256": "ef37da3c45517efe2cb148b6710951213a528e37592225eab5bd1cb8f655fac5",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00057.jpg",
+   "bytes": 299285,
+   "sha256": "0b8b5bb5e658bcfab00dd970dfbdc89612e8155a13da213ded0868b81c2a831a",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00058.jpg",
+   "bytes": 189060,
+   "sha256": "96f827387d001f5a33f20e87acf4151cc132506d070333c5b375769b424d9acf",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00059.jpg",
+   "bytes": 166040,
+   "sha256": "91ba636b983f6f45062065b12203f66b508fc013cd6f9c76eb2facd636451fa5",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00060.jpg",
+   "bytes": 180700,
+   "sha256": "3c9a48a8c0d29a3ea838b69ed2258067dcba31fe377cdf5047e95d79c5a3100f",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00061.jpg",
+   "bytes": 205639,
+   "sha256": "e017be2eaf140ac597ed99640c243df80749ff13f71fb3eb1ffc99366e4c55d6",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00062.jpg",
+   "bytes": 172760,
+   "sha256": "51341902625c16d99b5e06dd812c022bb89fde525a4ed6807c25232a50c5d92c",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00063.jpg",
+   "bytes": 166492,
+   "sha256": "d4dff1a32b6f8d2df9c6718fa3f661173a02d2df415474f4215dbef28707822a",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00064.jpg",
+   "bytes": 143375,
+   "sha256": "7a95a99934973660760ce875afc7751f035186e145ebe2e57c6dc16a4a7cf533",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00065.jpg",
+   "bytes": 180038,
+   "sha256": "e21dd354482cad1cbda7348ab3ec5518bea3e95015c20f9b1346f34789108dc0",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00066.jpg",
+   "bytes": 173459,
+   "sha256": "c08b4259640f81532692a04b7e2622b63317653e1f8615c84f7d3c275869fb9b",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00067.jpg",
+   "bytes": 194006,
+   "sha256": "aacbe05b70816876ca64281bf4c7ca8d6ffd5b1ad54fefe9a592f12d50a44d9d",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00068.jpg",
+   "bytes": 140502,
+   "sha256": "064a5f2282d47cec2b07ea56877b8fc8af0d0cfef1dcb2b8b6faf16d244ab4e2",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00069.jpg",
+   "bytes": 146705,
+   "sha256": "2677d20d102b93d996f3b5616bbd1f304342f33f9a54f680e49c845924428d46",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00070.jpg",
+   "bytes": 175010,
+   "sha256": "a35f284ffce1a148ca1804ad763e66f437fd88f49347684ac8518773c11a335c",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00071.jpg",
+   "bytes": 199449,
+   "sha256": "3a9917b74fb1115a77cf6d22b274dd055415c9bb75d7e5a011fb299ce286d1ab",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00072.jpg",
+   "bytes": 223340,
+   "sha256": "0ac9ae1a9d37b490a1ce90db1e2d25b3db2b5c1d29eddc6b0cbc7510068ba4c6",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00073.jpg",
+   "bytes": 167903,
+   "sha256": "4dea665f26417a627514649c14992d7b0047f68a5e2d6ca19b0c97eb2166ba8b",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00074.jpg",
+   "bytes": 169441,
+   "sha256": "439746274a35336912bc0906ada7671e796454e8bd767bdd55d7bfad75b2571f",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00075.jpg",
+   "bytes": 130718,
+   "sha256": "665420c4e0656e452445e272063e0b5b4a882d073a4f4ee50e36dcdef7f22881",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00076.jpg",
+   "bytes": 131305,
+   "sha256": "8a1fd9c04439b1a274b7167af4957eda458ca97451caac16ee7ec8de7eae8fb1",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00077.jpg",
+   "bytes": 177056,
+   "sha256": "0b67296483fde0fecb3b48c6077eb436102aac692ff99d3ec8fb764a29c74af2",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00078.jpg",
+   "bytes": 174155,
+   "sha256": "315ebe1da903d6a216b00f7c729afcf5fd4ab191a565997bef50b3b8b5ef5f0b",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00079.jpg",
+   "bytes": 189463,
+   "sha256": "00f519b013dfb031c49f3a434956fc720ee2b7aa72095b99aa9d7aabd4de71ed",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00080.jpg",
+   "bytes": 192062,
+   "sha256": "78ab9cff912ae8b1feb2ca5d9e15bd3012319cdee82903af53eb266f02d025d2",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00081.jpg",
+   "bytes": 202349,
+   "sha256": "28b340a4e9bb10c0dc31a4357d33829d742bb312d09c0575dfe3042790953a84",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00082.jpg",
+   "bytes": 188183,
+   "sha256": "8c7983009228d57709e22e62227275a333449cb332dfb914538fc579e53b4eb2",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00083.jpg",
+   "bytes": 176588,
+   "sha256": "267c901a90ea6aa396b9adf6b730ed9ee7ec069331cb4b8c317ed2d1ba917faf",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00084.jpg",
+   "bytes": 195538,
+   "sha256": "e39ad7a69793d66e490891daedb3a7907bf145fc1f7a36ab1d984371c1053528",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00085.jpg",
+   "bytes": 184369,
+   "sha256": "bdff07ea35475300bcd86bb09f2c712e8ab6c10958e4fbe38e3f41687615c863",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00086.jpg",
+   "bytes": 230462,
+   "sha256": "766a63133235fdfe56b20878c3fd8244664de42ad6efac69f517340fe54c05ad",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00087.jpg",
+   "bytes": 238744,
+   "sha256": "b6a8e77ba561308fcdf7d693663523b7a286358364a7fdc91c92d5ede714c7b1",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00088.jpg",
+   "bytes": 283360,
+   "sha256": "8d13b2df41918f4c8c79b30a38c3fcfcf6748dfa16c390b2d21c5af35552eeb0",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00089.jpg",
+   "bytes": 267128,
+   "sha256": "def4fd8b81284e3366225e5051d06c55dfb8266c59451629cca1de968946eb7a",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00090.jpg",
+   "bytes": 192895,
+   "sha256": "e063c5e215cc210db2953d59f2a328da4113c0c1023c0816e351dc5b68601db7",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00091.jpg",
+   "bytes": 189043,
+   "sha256": "8b0b34c9602ff241e7fa1ea485df9c9fac99a3ec28bb806b1c3536e5723a6324",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00092.jpg",
+   "bytes": 207219,
+   "sha256": "40cc45d1ef70095de1397a05d3c5170db08f58d2a26e016d37f3718a46f82173",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00093.jpg",
+   "bytes": 221147,
+   "sha256": "07545a7fc6e6eb55e5b02a4acbfc9b5fe58cf25c0ab1d3624e1f7790ccd2c065",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00094.jpg",
+   "bytes": 206129,
+   "sha256": "11e916a9cae136aed4f6c3a5fcdf47d12dfaf968dda732fcd0787688aabd41b6",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00095.jpg",
+   "bytes": 185839,
+   "sha256": "f7fa5c4190f78aea705fc91901327d9bb1efbf866a3b2f298e6920dde8a9953a",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00096.jpg",
+   "bytes": 211003,
+   "sha256": "7692bec86556b8dd1f9f12b6a6a584a169478bbdcb45bd13b41eaa5640c52324",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00097.jpg",
+   "bytes": 245769,
+   "sha256": "49ae27cb604ff1ae707ecd89d2072247a492b837e479cce10a992cf80480c146",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00098.jpg",
+   "bytes": 221736,
+   "sha256": "1cb768dbe24cffee2e9118216fb8688c036d3b3f274acb011a162d2035bddddb",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00099.jpg",
+   "bytes": 220877,
+   "sha256": "df46841656a6fe6b869ddb1eb405c73a31dc322466924b054dd4eff92442f368",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00100.jpg",
+   "bytes": 186643,
+   "sha256": "ce415b8fd7a264e9b94469c10f1dc4f5fcf3bda857e63924eb1b8e9f9461f417",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00101.jpg",
+   "bytes": 204588,
+   "sha256": "48f86869d05f97bc144d9ce816b0d9a15c6f2c5de4cbc05b068dc9d696532dbc",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00102.jpg",
+   "bytes": 182516,
+   "sha256": "33f9a26aacf9acf70eb35ecc833f6be93bec9d52992bc5df9aac264dffefad47",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00103.jpg",
+   "bytes": 213130,
+   "sha256": "008b3021caae3f8efc6205353909f88fefb6f11c7c8852866cec129ec690b6b2",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00104.jpg",
+   "bytes": 190934,
+   "sha256": "36ea3564c32c831ce1179b3d479ddffac56116e332fada472ef195284a20d224",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00105.jpg",
+   "bytes": 155954,
+   "sha256": "3e9349478c59bd393116f9666ceb72caa1bf47f04ee77f2b423da7d8e1c531ee",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00106.jpg",
+   "bytes": 129815,
+   "sha256": "5238cf377bdb53e93239df5b7ade3717939e39ae98e6581b69ca950c2cf98650",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00107.jpg",
+   "bytes": 173074,
+   "sha256": "88e80281352c4d35aee3d0c30fa6b313413c9f2884508fd4d27bc310db86b684",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00108.jpg",
+   "bytes": 156991,
+   "sha256": "7d1b1a094e1c08a8fd9d24291fbf715ff1b6efb603719ee675d9129880fbfb70",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00109.jpg",
+   "bytes": 175911,
+   "sha256": "92e698e891eda0a42c6f5a5c19f70c34952f3e1bcd11e01a5da7855a063aad1c",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00110.jpg",
+   "bytes": 146043,
+   "sha256": "47b39170ec1970e072e7fbac5882fcc1e372c531994b4f88fa6072d7f19fbcd3",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00111.jpg",
+   "bytes": 210597,
+   "sha256": "1628fc5e8b4def30008b71be19e0271b91e4af9d506dd90c61975eb98221c2f0",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00112.jpg",
+   "bytes": 276341,
+   "sha256": "963f498280930ca1629069b44f4bb9a01f48ba893f21ba0283812b4c044ccee2",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00113.jpg",
+   "bytes": 275200,
+   "sha256": "7e023c6d16ab09bf1d5d212a5be06a23cd167fd3f1cdc39762d25f58e9417008",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00114.jpg",
+   "bytes": 267047,
+   "sha256": "9b8aaf51c53dde5d755a5606aa408b76738efebf6144033c9fcf2dfaae60ca88",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00115.jpg",
+   "bytes": 288026,
+   "sha256": "bcbd6617b3c67f5fff1233911eedc918a3e4cdbf066c956f42191a155083e7d3",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00116.jpg",
+   "bytes": 281614,
+   "sha256": "614b8a62b822c8bd3f3e4b473576114e7f62326ea9888d1aafea54e0ad3c0bf4",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00117.jpg",
+   "bytes": 162787,
+   "sha256": "482190050c2a95315704648e04dd8ac0502e3bb63a1a61ea12eaa31ddfcba342",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00118.jpg",
+   "bytes": 168829,
+   "sha256": "ca27394cfc96ac67300ebd9ce9bad4ece94d41773a0362a4949561d329497e96",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00119.jpg",
+   "bytes": 267880,
+   "sha256": "094afedc26c36ac03515fd0ef45519031fe800f8218760c4fb5d80388b14d764",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00120.jpg",
+   "bytes": 322099,
+   "sha256": "a94f2d3af97c727c79311cce2a251944cc2c317f08b250b8ba5edda61d64650c",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00121.jpg",
+   "bytes": 353849,
+   "sha256": "4728bf62259c21d8c1357f894129a8030409555d56ee30e2e5d7f6f5006da3e0",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00122.jpg",
+   "bytes": 153518,
+   "sha256": "4417c0e9d699a80a6e7a35e163a63f97aa05332dcdfb98915ee687730345405b",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00123.jpg",
+   "bytes": 161228,
+   "sha256": "cb354abc4100af1bb5c45c1931a9be1054b65814f8f2971069084e2de3cbf4f4",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00124.jpg",
+   "bytes": 205662,
+   "sha256": "6d7adc135c14afc24cf97d08f01245a8c826f671a611c38d5bc52557b1ee1594",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00125.jpg",
+   "bytes": 242794,
+   "sha256": "f2805f23c9e5fd4d439c67e121935a8ab5ac1ac4b1def2026430ff84dd6d9788",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00126.jpg",
+   "bytes": 316364,
+   "sha256": "9d75d36ba0823cfd8db6b246d52610f6369badc8898889c558d05b6e89e793eb",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00127.jpg",
+   "bytes": 249786,
+   "sha256": "a958e29227c587dbcdeb167e90fc3666701038d373073fc96612b8d141755060",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00128.jpg",
+   "bytes": 259797,
+   "sha256": "f0df882ba286a565f0e05ddd6681160ec3b8045ce2a6c4b5254b048866d1a666",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00129.jpg",
+   "bytes": 288893,
+   "sha256": "848e3fa1eccad04e98ec2fe418f9bd49c4e3deeb423b2d2e7702811e06b42e30",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00130.jpg",
+   "bytes": 376622,
+   "sha256": "216f3aed8c378c7d454b1c8c689152c70e3d8580af6197efd8108bd36670aaa6",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00131.jpg",
+   "bytes": 323272,
+   "sha256": "4f2bc22ea9577448f45607c85bca4af7e38d7053fdd06768d32009b1b79f03c1",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00132.jpg",
+   "bytes": 321808,
+   "sha256": "d9bc9e0ffd99fc551559c71358cbf8ec82efac65360b67e6dee75a85d92906fa",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00133.jpg",
+   "bytes": 254021,
+   "sha256": "63fc3d32caefe57eaeeb8694ebcb8b3b0a100f0f58052ea242f66544ca5fd034",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00134.jpg",
+   "bytes": 231315,
+   "sha256": "708e877284282b4f49ee72d2475f4d052446b66684359017de333d6d90c51466",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00135.jpg",
+   "bytes": 265116,
+   "sha256": "e2b0a5b3a4ced66a0a80dba2e316798b5e421625393a59e982bd637a4bfd7243",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00136.jpg",
+   "bytes": 264679,
+   "sha256": "eb390cd6a73b49e982257db7d8255718f23d3e2b4a9d27811bbc8a9b9f146ab4",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00137.jpg",
+   "bytes": 215265,
+   "sha256": "faed95ae082e78a00f50ce596f5f5df8c2022627ed3ff0dac786ec37d203fc7d",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00138.jpg",
+   "bytes": 247390,
+   "sha256": "73df04cf4a6db74b53c662fca9b17cfccbe4da98c9986a4bfc566969ee36cf3a",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00139.jpg",
+   "bytes": 246082,
+   "sha256": "af8eaa98ebfe3f47c2ed57a5cd67b8e2e7112e3a8c92e5ed025a814240305515",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00140.jpg",
+   "bytes": 239505,
+   "sha256": "2ce0553b0eddff9ed3a023f86ac07e30a34b68e617c1a469aed466d2802a8fb4",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00141.jpg",
+   "bytes": 287985,
+   "sha256": "7b9ebc12107eb71735239d8cb237f994fd45ac9bc035ef0664366e44bb5cab5f",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00142.jpg",
+   "bytes": 273965,
+   "sha256": "10b67d8d921cdc3fd0eca259028ce06e0bd4e609a412240e6e980f08b2206c69",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00143.jpg",
+   "bytes": 265382,
+   "sha256": "a7f8b75b619ce4b63b422176a41b3b6af91ef5fa6ea3d21d1bca9bd44f4f8d50",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00144.jpg",
+   "bytes": 236141,
+   "sha256": "cbdff37d12838e86fb5bf4f3afd1d7afd8029bb62a08cc76f69927e7bd6df97a",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00145.jpg",
+   "bytes": 241699,
+   "sha256": "35ba1238ad66e8f04e43d001c7a7c6e851b115682f95c87eed609f1cbf384033",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00146.jpg",
+   "bytes": 273749,
+   "sha256": "685b8ec2a2f515385dd7473f13ba120d5c8fd5e22d9a5d56932f8a80dc4c6f02",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00147.jpg",
+   "bytes": 279868,
+   "sha256": "2d7ac303daf7b0c9e7858c5f06834cb2c6a7e47cc9b2693c4689bd4ac7b638b5",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00148.jpg",
+   "bytes": 278459,
+   "sha256": "67cb3c07af01b45ff372112cea379164edd32f725695b3cc92d9647966f103f7",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00149.jpg",
+   "bytes": 233032,
+   "sha256": "9c7f470e25ce5c6575e3bafc365c48647320ca3ebdbecbdb54c27576421e81b2",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00150.jpg",
+   "bytes": 263932,
+   "sha256": "b7867a988078cbecbc8310033ce7682ce217f209182d90eff9e22485a3d04c76",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00151.jpg",
+   "bytes": 260371,
+   "sha256": "cd241e60fea707ee8685b00c99f7822e3a0c2c354799e2e63e779e329e2186f6",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00152.jpg",
+   "bytes": 259256,
+   "sha256": "7dd885b71bcb3b1a66ac7bc81db7695e7d0fae2de805b06825f876ce80850b03",
+   "role": "still"
+  },
+  {
+   "path": "keyframes/k00153.jpg",
+   "bytes": 279655,
+   "sha256": "164cacee10235aa147ecc1025e904178c4e9502d82a1752b0135e7c4583c356b",
+   "role": "still"
+  }
+ ]
+}

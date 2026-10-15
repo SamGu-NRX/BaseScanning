@@ -1,0 +1,36 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"disconnect_location\": \"On the clear siding directly beside/above the gas meter shown in photos 2-4, where roughly 2 ft of unobstructed wall exists to the left of the meter with a clean exit path below for rigid conduit\", \"battery_location\": \"Uncertain \\u2013 candidate spot on the same wall past the AC condenser (photos 6-9) and electric meter (photo 11), before the red-shuttered windows in photos 12-14\", \"route\": \"Rigid conduit drops from meter to disconnect, then ~1in harness runs along the base of the siding, passing over/around the AC condenser footprint, past the electric meter box and its low-hanging wire, continuing toward the corner near the red-shuttered windows\", \"distance_ft\": 20, \"nearest_opening_ft\": null, \"reference_object\": \"Standard vinyl siding course (~8 in reveal) used to estimate wall run and clearances\", \"needs_more_photos\": true, \"missing_views\": [\"A photo clarifying whether the red-shuttered windows in photos 12-14 are ground-level operable windows or fixed/basement windows\", \"A wider shot showing the full continuous wall run distance from the gas meter to the proposed battery spot, including any doors between the AC unit, electric meter, and the corner\", \"A photo showing what is behind/beyond the deck in photo 16 to confirm whether that is a dead end or a viable adjacent wall\", \"A clearer shot of the fence and gap behind it in photo 1 to confirm it does not block the route\"], \"justification\": \"The gas meter offers a plausible disconnect spot with clear conduit exit, and the wall continues past the AC unit toward an electric meter and a corner with windows, but it is unclear whether those windows are operable (triggering the 3 ft/8 ft clearance rule) and whether total wall run stays within 25 ft once routed around the AC unit and meter. Because openings' status and exact distances are uncertain and no placement is confirmed to clearly satisfy all checks, this requires manual review rather than an automatic pass.\"}",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": "On the clear siding directly beside/above the gas meter shown in photos 2-4, where roughly 2 ft of unobstructed wall exists to the left of the meter with a clean exit path below for rigid conduit",
+  "battery_location": "Uncertain \u2013 candidate spot on the same wall past the AC condenser (photos 6-9) and electric meter (photo 11), before the red-shuttered windows in photos 12-14",
+  "route": "Rigid conduit drops from meter to disconnect, then ~1in harness runs along the base of the siding, passing over/around the AC condenser footprint, past the electric meter box and its low-hanging wire, continuing toward the corner near the red-shuttered windows",
+  "distance_ft": 20,
+  "nearest_opening_ft": null,
+  "reference_object": "Standard vinyl siding course (~8 in reveal) used to estimate wall run and clearances",
+  "needs_more_photos": true,
+  "missing_views": [
+   "A photo clarifying whether the red-shuttered windows in photos 12-14 are ground-level operable windows or fixed/basement windows",
+   "A wider shot showing the full continuous wall run distance from the gas meter to the proposed battery spot, including any doors between the AC unit, electric meter, and the corner",
+   "A photo showing what is behind/beyond the deck in photo 16 to confirm whether that is a dead end or a viable adjacent wall",
+   "A clearer shot of the fence and gap behind it in photo 1 to confirm it does not block the route"
+  ],
+  "justification": "The gas meter offers a plausible disconnect spot with clear conduit exit, and the wall continues past the AC unit toward an electric meter and a corner with windows, but it is unclear whether those windows are operable (triggering the 3 ft/8 ft clearance rule) and whether total wall run stays within 25 ft once routed around the AC unit and meter. Because openings' status and exact distances are uncertain and no placement is confirmed to clearly satisfy all checks, this requires manual review rather than an automatic pass."
+ },
+ "usage": {
+  "input_tokens": 1093,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 4005,
+  "output_tokens": 2925
+ },
+ "cost_usd": 0.032237,
+ "latency_s": 38.0,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

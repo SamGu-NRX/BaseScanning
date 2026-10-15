@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"meter_number\": \"\", \"clean_decision\": false, \"reasoning\": \"Photo 11 shows an electric meter but it is a distant, angled view with no legible meter number/barcode visible; no close-up of the meter face or label is provided.\"}",
+ "json": {
+  "meter_number": "",
+  "clean_decision": false,
+  "reasoning": "Photo 11 shows an electric meter but it is a distant, angled view with no legible meter number/barcode visible; no close-up of the meter face or label is provided."
+ },
+ "usage": {
+  "input_tokens": 310,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 4005,
+  "output_tokens": 80
+ },
+ "cost_usd": 0.002221,
+ "latency_s": 2.39,
+ "stop": "end_turn",
+ "prompt_id": "p04_meter_number",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p04": "none"
+ }
+}

@@ -1,0 +1,30 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"justification\": \"This is clearly a large institutional/university building, not a residential home. The marked 'electric meter' spot in Photo 8 sits on a monumental brick facade above a stone base with no ground-level access shown, and there is no floor-standing residential setting, no yard, no exterior utility area, and no adjacent ground suitable for a battery. This is not a viable residential Base battery installation site.\", \"reference_object\": \"door height (~7 ft) used for general scale\", \"distance_ft\": 0, \"front_clearance_ft\": 99, \"drive_path_ft\": null, \"requires_member_action\": false, \"decision\": \"reject\", \"needs_more_photos\": false, \"missing_views\": []}",
+ "json": {
+  "justification": "This is clearly a large institutional/university building, not a residential home. The marked 'electric meter' spot in Photo 8 sits on a monumental brick facade above a stone base with no ground-level access shown, and there is no floor-standing residential setting, no yard, no exterior utility area, and no adjacent ground suitable for a battery. This is not a viable residential Base battery installation site.",
+  "reference_object": "door height (~7 ft) used for general scale",
+  "distance_ft": 0,
+  "front_clearance_ft": 99,
+  "drive_path_ft": null,
+  "requires_member_action": false,
+  "decision": "reject",
+  "needs_more_photos": false,
+  "missing_views": []
+ },
+ "usage": {
+  "input_tokens": 41469,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 225
+ },
+ "cost_usd": 0.085188,
+ "latency_s": 6.59,
+ "stop": "end_turn",
+ "prompt_id": "p08_battery_space",
+ "house": "eth3d-facade",
+ "variant": "photo_only_meter_hint_verbatim",
+ "verdicts": {
+  "p08": "reject"
+ }
+}

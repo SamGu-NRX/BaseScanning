@@ -1,0 +1,205 @@
+{
+ "measured_in": {
+  "mandoor_h": 86.7977725749948,
+  "mandoor_w": 41.27507678860584,
+  "garage_w": 119.63703239984932,
+  "siding_L": 6.721496539748587,
+  "tape_door_garage": 179.25106528294893
+ },
+ "offcat 0.0 | nonlidar_modern | ARKit only": {
+  "median_abs_pct": 2.420231108159236,
+  "p90_abs_pct": 5.729323084289998,
+  "bias_pct": -1.980132669324439,
+  "bound95_median_pct": 8.507509735759548,
+  "coverage95": 0.96225
+ },
+ "offcat 0.0 | nonlidar_modern | ARKit + garage": {
+  "median_abs_pct": 0.6521170845308074,
+  "p90_abs_pct": 9.108163834632856,
+  "bias_pct": -0.5982035946064409,
+  "bound95_median_pct": 6.336533011713047,
+  "coverage95": 0.94585
+ },
+ "offcat 0.0 | nonlidar_modern | ARKit + door": {
+  "median_abs_pct": 6.011711320891081,
+  "p90_abs_pct": 7.225651367144686,
+  "bias_pct": -5.964705426057107,
+  "bound95_median_pct": 4.427536774742002,
+  "coverage95": 0.25775
+ },
+ "offcat 0.0 | nonlidar_modern | ARKit + siding": {
+  "median_abs_pct": 4.029049888495835,
+  "p90_abs_pct": 10.192347754919723,
+  "bias_pct": 1.9691366860658754,
+  "bound95_median_pct": 8.851737371699583,
+  "coverage95": 0.91005
+ },
+ "offcat 0.0 | nonlidar_modern | ARKit + garage + door + siding": {
+  "median_abs_pct": 9.65188206577791,
+  "p90_abs_pct": 9.697044833112296,
+  "bias_pct": -9.65188206577791,
+  "bound95_median_pct": 1.2871824176702524,
+  "coverage95": 0.0
+ },
+ "offcat 0.0 | nonlidar_modern | ARKit + meter exact (sim.)": {
+  "median_abs_pct": 0.8032085504273774,
+  "p90_abs_pct": 2.663875847566291,
+  "bias_pct": -0.34938821395847747,
+  "bound95_median_pct": 1.9217528790651146,
+  "coverage95": 0.9339
+ },
+ "offcat 0.0 | nonlidar_modern | ARKit + meter exact (sim.) + garage + door + siding": {
+  "median_abs_pct": 9.108163834632856,
+  "p90_abs_pct": 9.60669671141357,
+  "bias_pct": -9.108163834632856,
+  "bound95_median_pct": 5.867298533649158,
+  "coverage95": 0.7104
+ },
+ "offcat 0.0 | nonlidar_2018 | ARKit only": {
+  "median_abs_pct": 6.807226047419945,
+  "p90_abs_pct": 16.598175469652027,
+  "bias_pct": -6.807226047419945,
+  "bound95_median_pct": 22.962915942096547,
+  "coverage95": 1.0
+ },
+ "offcat 0.0 | nonlidar_2018 | ARKit + garage": {
+  "median_abs_pct": 9.697044833112296,
+  "p90_abs_pct": 10.996990302332227,
+  "bias_pct": -9.697044833112296,
+  "bound95_median_pct": 10.867928507766239,
+  "coverage95": 0.88755
+ },
+ "offcat 0.0 | nonlidar_2018 | ARKit + door": {
+  "median_abs_pct": 7.688365361336398,
+  "p90_abs_pct": 8.05687439048751,
+  "bias_pct": -7.688365361336398,
+  "bound95_median_pct": 4.756469771745494,
+  "coverage95": 0.18195
+ },
+ "offcat 0.0 | nonlidar_2018 | ARKit + siding": {
+  "median_abs_pct": 10.595574249964253,
+  "p90_abs_pct": 11.97065841657787,
+  "bias_pct": -10.595574249964253,
+  "bound95_median_pct": 21.63917179831281,
+  "coverage95": 0.98125
+ },
+ "offcat 0.0 | nonlidar_2018 | ARKit + garage + door + siding": {
+  "median_abs_pct": 9.832397725814435,
+  "p90_abs_pct": 9.8774702578795,
+  "bias_pct": -9.832397725814435,
+  "bound95_median_pct": 1.2839684807211884,
+  "coverage95": 0.0
+ },
+ "offcat 0.0 | nonlidar_2018 | ARKit + meter exact (sim.)": {
+  "median_abs_pct": 0.8463977137032971,
+  "p90_abs_pct": 2.8583535533394877,
+  "bias_pct": -0.19980013326666027,
+  "bound95_median_pct": 2.022652631467098,
+  "coverage95": 0.93175
+ },
+ "offcat 0.0 | nonlidar_2018 | ARKit + meter exact (sim.) + garage + door + siding": {
+  "median_abs_pct": 9.742185024707421,
+  "p90_abs_pct": 9.8774702578795,
+  "bias_pct": -9.742185024707421,
+  "bound95_median_pct": 5.219028377849987,
+  "coverage95": 0.3577
+ },
+ "offcat 0.2 | nonlidar_modern | ARKit only": {
+  "median_abs_pct": 2.420231108159236,
+  "p90_abs_pct": 5.729323084289998,
+  "bias_pct": -1.980132669324439,
+  "bound95_median_pct": 8.510545586357082,
+  "coverage95": 0.9637
+ },
+ "offcat 0.2 | nonlidar_modern | ARKit + garage": {
+  "median_abs_pct": 1.0445067432100452,
+  "p90_abs_pct": 8.835078903553804,
+  "bias_pct": -1.0445067432100452,
+  "bound95_median_pct": 6.438539731179022,
+  "coverage95": 0.94155
+ },
+ "offcat 0.2 | nonlidar_modern | ARKit + door": {
+  "median_abs_pct": 5.351485204651587,
+  "p90_abs_pct": 6.993425333972128,
+  "bias_pct": -5.256789349820143,
+  "bound95_median_pct": 5.505517855399275,
+  "coverage95": 0.6792
+ },
+ "offcat 0.2 | nonlidar_modern | ARKit + siding": {
+  "median_abs_pct": 4.2894478750763625,
+  "p90_abs_pct": 9.967547741373417,
+  "bias_pct": -3.391166031350812,
+  "bound95_median_pct": 9.28601472703021,
+  "coverage95": 0.94145
+ },
+ "offcat 0.2 | nonlidar_modern | ARKit + garage + door + siding": {
+  "median_abs_pct": 9.60669671141357,
+  "p90_abs_pct": 9.60669671141357,
+  "bias_pct": -9.60669671141357,
+  "bound95_median_pct": 1.9543250338937945,
+  "coverage95": 0.11415
+ },
+ "offcat 0.2 | nonlidar_modern | ARKit + meter exact (sim.)": {
+  "median_abs_pct": 0.8032085504273774,
+  "p90_abs_pct": 2.663875847566291,
+  "bias_pct": -0.34938821395847747,
+  "bound95_median_pct": 1.9207922428046607,
+  "coverage95": 0.9413
+ },
+ "offcat 0.2 | nonlidar_modern | ARKit + meter exact (sim.) + garage + door + siding": {
+  "median_abs_pct": 1.390245573713778,
+  "p90_abs_pct": 9.380430738572901,
+  "bias_pct": -1.0445067432100452,
+  "bound95_median_pct": 5.750417245450336,
+  "coverage95": 0.82405
+ },
+ "offcat 0.2 | nonlidar_2018 | ARKit only": {
+  "median_abs_pct": 6.807226047419945,
+  "p90_abs_pct": 16.55646413042103,
+  "bias_pct": -6.807226047419945,
+  "bound95_median_pct": 22.962915942096547,
+  "coverage95": 1.0
+ },
+ "offcat 0.2 | nonlidar_2018 | ARKit + garage": {
+  "median_abs_pct": 9.697044833112296,
+  "p90_abs_pct": 11.529409505651623,
+  "bias_pct": -9.697044833112296,
+  "bound95_median_pct": 10.907694936098428,
+  "coverage95": 0.7985
+ },
+ "offcat 0.2 | nonlidar_2018 | ARKit + door": {
+  "median_abs_pct": 7.596007555491295,
+  "p90_abs_pct": 8.240576877984878,
+  "bias_pct": -7.596007555491295,
+  "bound95_median_pct": 7.853421304123087,
+  "coverage95": 0.6449
+ },
+ "offcat 0.2 | nonlidar_2018 | ARKit + siding": {
+  "median_abs_pct": 10.818806158187458,
+  "p90_abs_pct": 16.389410060296434,
+  "bias_pct": -10.818806158187458,
+  "bound95_median_pct": 16.124924082791406,
+  "coverage95": 0.9047
+ },
+ "offcat 0.2 | nonlidar_2018 | ARKit + garage + door + siding": {
+  "median_abs_pct": 9.832397725814435,
+  "p90_abs_pct": 9.92252025931166,
+  "bias_pct": -9.832397725814435,
+  "bound95_median_pct": 1.5306254110349284,
+  "coverage95": 0.0
+ },
+ "offcat 0.2 | nonlidar_2018 | ARKit + meter exact (sim.)": {
+  "median_abs_pct": 0.8463977137032971,
+  "p90_abs_pct": 2.942459447513119,
+  "bias_pct": -0.2496877602539546,
+  "bound95_median_pct": 2.023267636633964,
+  "coverage95": 0.94235
+ },
+ "offcat 0.2 | nonlidar_2018 | ARKit + meter exact (sim.) + garage + door + siding": {
+  "median_abs_pct": 9.471005013149183,
+  "p90_abs_pct": 9.697044833112296,
+  "bias_pct": -9.471005013149183,
+  "bound95_median_pct": 6.1688118125730265,
+  "coverage95": 0.688
+ }
+}

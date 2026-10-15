@@ -1,0 +1,36 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"disconnect_location\": null, \"battery_location\": null, \"route\": \"No electrical meter is visible in any of the submitted photos; the site appears to be a commercial/institutional facility (labeled 'ETH', 'Trafonaum'/transformer rooms, high-voltage warning placards, multiple industrial access doors and a large ventilated switchgear/transformer cabinet) rather than a typical residential meter wall.\", \"distance_ft\": null, \"nearest_opening_ft\": null, \"reference_object\": \"Doors in photos 1,5,6,14,15 appear to be standard ~3 ft wide industrial doors, used only for rough scale; no meter reference object is present.\", \"needs_more_photos\": true, \"missing_views\": [\"Clear photo of the utility electric meter and its mounting wall\", \"Wider shot showing the full wall run around the meter including any doors/windows within 10 ft\", \"Ground-level photo showing surface type (concrete/gravel/etc.) directly beneath the proposed disconnect/battery wall\", \"Photo confirming whether this is a residential service point or a shared commercial/institutional transformer installation\"], \"justification\": \"None of the 15 photos show a home electric meter; the structures shown are labeled transformer rooms ('Trafonaum') with high-voltage warning signs and heavy-duty doors, consistent with a commercial/institutional electrical yard rather than a residential home service. Without a visible meter, the disconnect location, battery placement, and conduit route cannot be verified, so this requires manual review and additional photos of the actual residential meter location before a pass/fail determination can be made.\"}",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "route": "No electrical meter is visible in any of the submitted photos; the site appears to be a commercial/institutional facility (labeled 'ETH', 'Trafonaum'/transformer rooms, high-voltage warning placards, multiple industrial access doors and a large ventilated switchgear/transformer cabinet) rather than a typical residential meter wall.",
+  "distance_ft": null,
+  "nearest_opening_ft": null,
+  "reference_object": "Doors in photos 1,5,6,14,15 appear to be standard ~3 ft wide industrial doors, used only for rough scale; no meter reference object is present.",
+  "needs_more_photos": true,
+  "missing_views": [
+   "Clear photo of the utility electric meter and its mounting wall",
+   "Wider shot showing the full wall run around the meter including any doors/windows within 10 ft",
+   "Ground-level photo showing surface type (concrete/gravel/etc.) directly beneath the proposed disconnect/battery wall",
+   "Photo confirming whether this is a residential service point or a shared commercial/institutional transformer installation"
+  ],
+  "justification": "None of the 15 photos show a home electric meter; the structures shown are labeled transformer rooms ('Trafonaum') with high-voltage warning signs and heavy-duty doors, consistent with a commercial/institutional electrical yard rather than a residential home service. Without a visible meter, the disconnect location, battery placement, and conduit route cannot be verified, so this requires manual review and additional photos of the actual residential meter location before a pass/fail determination can be made."
+ },
+ "usage": {
+  "input_tokens": 1093,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 885
+ },
+ "cost_usd": 0.0174702,
+ "latency_s": 11.7,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

@@ -1,0 +1,30 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"meter_type\": \"unknown\", \"clean_decision\": false, \"photo\": 0, \"can_top\": 0, \"can_bottom\": 0, \"head_top\": 0, \"head_bottom\": 0, \"ratio\": 0, \"reasoning\": \"These photos show exterior facades, courtyards, entrances, and sculptures of a large institutional/historic building. No electrical meter or meter enclosure is visible in any of the provided images.\"}",
+ "json": {
+  "meter_type": "unknown",
+  "clean_decision": false,
+  "photo": 0,
+  "can_top": 0,
+  "can_bottom": 0,
+  "head_top": 0,
+  "head_bottom": 0,
+  "ratio": 0,
+  "reasoning": "These photos show exterior facades, courtyards, entrances, and sculptures of a large institutional/historic building. No electrical meter or meter enclosure is visible in any of the provided images."
+ },
+ "usage": {
+  "input_tokens": 599,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 141
+ },
+ "cost_usd": 0.0090422,
+ "latency_s": 3.36,
+ "stop": "end_turn",
+ "prompt_id": "p11_meter_type",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p11": "unknown"
+ }
+}

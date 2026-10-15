@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"mount\": \"unknown\", \"clean_decision\": false, \"reasoning\": \"These photos show an institutional brick building (likely a school/university) with no visible residential electric meter in any image. No meter mounting context is present.\"}",
+ "json": {
+  "mount": "unknown",
+  "clean_decision": false,
+  "reasoning": "These photos show an institutional brick building (likely a school/university) with no visible residential electric meter in any image. No meter mounting context is present."
+ },
+ "usage": {
+  "input_tokens": 295,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 72
+ },
+ "cost_usd": 0.0077442000000000006,
+ "latency_s": 2.6,
+ "stop": "end_turn",
+ "prompt_id": "p10_meter_mount",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p10": "unknown"
+ }
+}

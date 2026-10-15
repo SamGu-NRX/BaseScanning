@@ -1,0 +1,18 @@
+{
+ "house": "yt-0gotY_syWWU",
+ "frames": 151,
+ "models": 3,
+ "model_sizes": [
+  47,
+  21,
+  11
+ ],
+ "registered": 47,
+ "points3D": 3898,
+ "mean_reproj_px": 0.5019095463183529,
+ "seconds": {
+  "extract": 29.60801386833191,
+  "match": 438.6620030403137,
+  "map": 13.884737253189087
+ }
+}

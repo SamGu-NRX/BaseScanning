@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The meter is on an exterior side wall with clear blank wall space beside it for the disconnect and a short conduit route. Along the same side wall there is a long open grassy area with full overhead clearance; a battery can be placed away from the garage/driveway and the visible ground-level window, with wiring run along the wall without crossing a door or garage.\",\"decision\":\"pass\"}",
+ "json": {
+  "justification": "The meter is on an exterior side wall with clear blank wall space beside it for the disconnect and a short conduit route. Along the same side wall there is a long open grassy area with full overhead clearance; a battery can be placed away from the garage/driveway and the visible ground-level window, with wiring run along the wall without crossing a door or garage.",
+  "decision": "pass"
+ },
+ "usage": {
+  "input_tokens": 10537,
+  "cached_tokens": 0,
+  "output_tokens": 1639,
+  "reasoning_tokens": 1552
+ },
+ "cost_usd": 0.101855,
+ "latency_s": 19.65,
+ "stop": "completed",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-Qm4b1cw8pV4",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p07": "pass"
+ }
+}

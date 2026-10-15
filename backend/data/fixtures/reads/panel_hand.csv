@@ -1,0 +1,26 @@
+id,brand,product_line,main_amps,rating_amps,hazard,source
+p02,eaton,,,,no,PR17 note: Eaton door label
+p04,eaton,,,,no,PR17 note: Eaton logo on door
+p05,,,,,no,checked full-res: generic heavy bolt-on breakers; not Stab-Lok
+p06,,,,,no,checked full-res: pull-out fuse box; not Stab-Lok
+p07,federal_pacific,stab-lok,100,,yes,PR17 note + visible STAB-LOK label
+p12,square_d,,100,,no,PR17 note: Schneider Electric label (Square D parent); eye check: main handle 100 at full res
+p16,frank_adam,,,,no,PR17 note: Frank Adam badge
+p17,,,100,,no,PR17 note: main handle 100; no maker text
+p20,eaton,,,,no,"PR17 note: Eaton door label; eye check: modern Eaton label, not Challenger"
+p27,,,,,no,checked: non-US panel on yellow board; not Stab-Lok
+p33,square_d,multi-breaker,100,,no,PR17 note: Square D Multi-Breaker; handle rating too small; eye check: handle 100A at full res (PR17 said unreadable)
+p37,frank_adam,,,100,no,PR17 note: Frank Adam load center 100 A
+p38,indoasian,,200,,no,PR17 note: Indian 200 A MCCB; INDOASIAN on breaker
+p39,,,150,,no,eye check: 150A on main breaker (PR17 said none legible)
+p40,siemens,,150,,no,PR17 note: Siemens main breaker 150 A
+p56,square_d,,,,no,PR17 note: Square D logos on breakers
+p60,federal_pacific,,,,unknown,"eye check: FEDERAL PIONEER badge on subpanel (Canadian FPE affiliate); hazard status debated, excluded"
+p62,,,,,unknown,rusted illegible badge; brand and hazard unknown
+p63,square_d,qo,50,100,no,PR17 note: Square D QO label 100 A; eye check: breaker labelled MAIN reads 50
+p64,square_d,qo,50,100,no,"PR17 note: same panel as p63; eye check: same panel as p63, MAIN 50"
+p66,ge,,,125,no,PR17 note: GE load center label 125 A
+p71,square_d,,,60,no,PR17 note: Square D switch and fuse cabinet 60 A
+p74,ge,,,,no,PR17 note: GE logo on door label
+p75,square_d,,,,no,PR17 note: Square D door label
+p76,westinghouse,,,,no,PR17 note: Westinghouse 15 A breaker plate (not a main)

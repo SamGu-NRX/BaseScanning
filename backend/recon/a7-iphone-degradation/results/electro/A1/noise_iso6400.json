@@ -1,0 +1,26 @@
+{
+ "scene": "electro",
+ "condition": "noise_iso6400",
+ "images": 45,
+ "models": 3,
+ "keypoints_median": 3427.0,
+ "extract_s": 33.494882345199585,
+ "match_s": 22.120891332626343,
+ "mapper_s": 4.934467554092407,
+ "prior_drawn_scale": 0.9968848783536307,
+ "inlier_pairs": 204,
+ "inliers_per_pair_median": 41.0,
+ "registered": 23,
+ "model_sizes": [
+  23,
+  15,
+  9
+ ],
+ "points3D": 1726,
+ "mean_reproj_px": 0.6802148570039832,
+ "mean_track_length": 3.8800695249130936,
+ "centre_rms_rigid_m": 0.5640924078912486,
+ "centre_rms_sim3_m": 0.5450088056689575,
+ "scale_error_pct": 5.885579421015219,
+ "score_error": "RuntimeError('scorer failed: RuntimeError: meter clicks hit no wall')"
+}

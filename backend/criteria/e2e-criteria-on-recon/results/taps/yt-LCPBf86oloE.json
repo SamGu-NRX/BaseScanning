@@ -1,0 +1,4 @@
+{"site": "yt-LCPBf86oloE", "meter": {"t0182.00": [1112, 60], "t0182.40": [1162, 165], "t0182.80": [1028, 288], "t0183.20": [888, 512]},
+ "fixtures": [{"id": "ac", "class": "ac_unit", "label": "AC condenser, front-right corner tapped", "size_m": 0.8, "pm_m": 0.45,
+   "taps": {"t0179.20": [1448, 912], "t0179.60": [1420, 500], "t0180.00": [1420, 488], "t0180.40": [1268, 260]}}],
+ "ground_material": "lawn", "camera_height_m": 1.5}

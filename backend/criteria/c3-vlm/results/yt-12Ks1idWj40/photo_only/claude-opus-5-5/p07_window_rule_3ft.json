@@ -1,0 +1,31 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\"decision\": \"pass\",\n \"disconnect_location\": \"On the meter wall just right of the existing main panel, in the open brick area between the panel and the window. Photo 1 shows about 5-6 ft of clear wall there.\",\n \"battery_location\": \"On dirt against the same wall, left of the meter/panel, between the meter and the left house corner. The AC condenser sits beyond the corner along the fence side and is not in this footprint.\",\n \"route\": \"Short rigid conduit from the bottom of the meter to the disconnect right of the panel. The roughly 1 in harness then runs low along the brick wall, passing below the meter/panel, to the battery on the left. It crosses no door or garage.\",\n \"distance_ft\": 5,\n \"nearest_opening_ft\": 9,\n \"reference_object\": \"Single-story wall height from grade to eave, assumed about 8 ft (about 5 px/in near the meter); meter socket assumed about 9 in wide as a cross-check.\",\n \"needs_more_photos\": false,\n \"missing_views\": [],\n \"justification\": \"Photo 1 (pre-install) shows a flat dirt/lawn yard under a single-story eave, so headroom is about 8 ft. The meter has open wall below and beside it for rigid conduit bends, and there is ample clear brick right of the panel for the disconnect. About 4 ft of clear wall left of the meter fits a 2 ft battery. The nearest opening is the ground-level window about 9 ft to the right, well over 3 ft even if it is operable; the patio door is farther still. No gas equipment, driveway or pool is visible in this fenced backyard. The AC is outside the battery footprint. The later photos confirm this layout was built.\"}\n```",
+ "json": {
+  "decision": "pass",
+  "disconnect_location": "On the meter wall just right of the existing main panel, in the open brick area between the panel and the window. Photo 1 shows about 5-6 ft of clear wall there.",
+  "battery_location": "On dirt against the same wall, left of the meter/panel, between the meter and the left house corner. The AC condenser sits beyond the corner along the fence side and is not in this footprint.",
+  "route": "Short rigid conduit from the bottom of the meter to the disconnect right of the panel. The roughly 1 in harness then runs low along the brick wall, passing below the meter/panel, to the battery on the left. It crosses no door or garage.",
+  "distance_ft": 5,
+  "nearest_opening_ft": 9,
+  "reference_object": "Single-story wall height from grade to eave, assumed about 8 ft (about 5 px/in near the meter); meter socket assumed about 9 in wide as a cross-check.",
+  "needs_more_photos": false,
+  "missing_views": [],
+  "justification": "Photo 1 (pre-install) shows a flat dirt/lawn yard under a single-story eave, so headroom is about 8 ft. The meter has open wall below and beside it for rigid conduit bends, and there is ample clear brick right of the panel for the disconnect. About 4 ft of clear wall left of the meter fits a 2 ft battery. The nearest opening is the ground-level window about 9 ft to the right, well over 3 ft even if it is operable; the patio door is farther still. No gas equipment, driveway or pool is visible in this fenced backyard. The AC is outside the battery footprint. The later photos confirm this layout was built."
+ },
+ "usage": {
+  "input_tokens": 1095,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 25329,
+  "output_tokens": 1342
+ },
+ "cost_usd": 0.0362858,
+ "latency_s": 19.97,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p07": "pass"
+ }
+}

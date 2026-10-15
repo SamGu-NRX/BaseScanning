@@ -1,0 +1,28 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"mainPanelLocation\":\"not_visible\",\"meterGaragePosition\":\"not_garage_wall\",\"meterPanelRelationship\":\"insufficient_evidence\",\"relationshipSubtype\":\"unknown\",\"evidenceSufficiency\":\"insufficient\",\"confidence\":0.86,\"rationale\":\"Exterior meter is visible on the front wall near the entry door, with no garage opening or interior main panel shown, so the meter-to-panel relationship cannot be established.\"}",
+ "json": {
+  "mainPanelLocation": "not_visible",
+  "meterGaragePosition": "not_garage_wall",
+  "meterPanelRelationship": "insufficient_evidence",
+  "relationshipSubtype": "unknown",
+  "evidenceSufficiency": "insufficient",
+  "confidence": 0.86,
+  "rationale": "Exterior meter is visible on the front wall near the entry door, with no garage opening or interior main panel shown, so the meter-to-panel relationship cannot be established."
+ },
+ "usage": {
+  "input_tokens": 6344,
+  "cached_tokens": 0,
+  "output_tokens": 320,
+  "reasoning_tokens": 230
+ },
+ "cost_usd": 0.04132,
+ "latency_s": 4.83,
+ "stop": "completed",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p05": "insufficient_evidence"
+ }
+}

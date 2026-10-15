@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"brand\": \"\", \"explanation\": \"No main electrical panel is visible in any of the submitted photos; only exterior house views, siding, windows, and yard/landscape are shown. Cannot assess panel condition or brand.\"}",
+ "json": {
+  "decision": "manual_review",
+  "brand": "",
+  "explanation": "No main electrical panel is visible in any of the submitted photos; only exterior house views, siding, windows, and yard/landscape are shown. Cannot assess panel condition or brand."
+ },
+ "usage": {
+  "input_tokens": 613,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 6885,
+  "output_tokens": 84
+ },
+ "cost_usd": 0.003443,
+ "latency_s": 2.03,
+ "stop": "end_turn",
+ "prompt_id": "p13_main_panel_recall",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only",
+ "verdicts": {
+  "p13": "manual_review"
+ }
+}

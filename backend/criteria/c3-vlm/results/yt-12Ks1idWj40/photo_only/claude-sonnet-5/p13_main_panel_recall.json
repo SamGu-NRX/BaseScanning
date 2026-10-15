@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"brand\": \"\", \"explanation\": \"Main panel enclosure is visible in several photos but the interior/brand label is not clearly readable; in photo 3 breakers appear exposed with dead-front partially removed during work, and the panel shows an older gray enclosure. No confirmed reject-listed brand text is visible, so this requires manual review.\"}",
+ "json": {
+  "decision": "manual_review",
+  "brand": "",
+  "explanation": "Main panel enclosure is visible in several photos but the interior/brand label is not clearly readable; in photo 3 breakers appear exposed with dead-front partially removed during work, and the panel shows an older gray enclosure. No confirmed reject-listed brand text is visible, so this requires manual review."
+ },
+ "usage": {
+  "input_tokens": 613,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 25329,
+  "output_tokens": 123
+ },
+ "cost_usd": 0.0075218,
+ "latency_s": 3.04,
+ "stop": "end_turn",
+ "prompt_id": "p13_main_panel_recall",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p13": "manual_review"
+ }
+}

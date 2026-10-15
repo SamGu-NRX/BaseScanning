@@ -1,0 +1,34 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"decision\": \"manual_review\",\n \"disconnect_location\": null,\n \"battery_location\": null,\n \"distance_ft\": null,\n \"reference_object\": \"Standard double steel doors (~7 ft tall, ~4 ft wide) and parking-space striping used for general scale\",\n \"needs_more_photos\": true,\n \"missing_views\": [\n  \"A clear, straight-on photo of the home's electric utility meter, with the wall on both sides of it visible\",\n  \"A wide photo of the full wall the meter is mounted on, showing about 15 ft to the left and right and the ground in front of it\",\n  \"A photo showing the location of the gas meter/regulator, if the property has gas service\",\n  \"A photo showing the distance from the proposed battery spot to any driveway, parking area or pool\"\n ],\n \"justification\": \"No residential electric meter appears in any photo. The photos show a commercial or utility site (the ETH building's 'Anlieferung HPP' delivery door, transformer rooms marked 'Traforaum' with high-voltage warnings, temporary scaffold-supported cable runs, and outdoor transformer/switchgear cabinets). All ground in front of the walls is paved asphalt reachable by vehicles, with parking striping and a road nearby, so the 5 ft clearance from drivable surfaces cannot be met anywhere shown. The walls are lined with electrical equipment doors and columns, so there is no clear wall route. This does not look like a home battery site. Photos of the actual home's meter wall are needed.\"}",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "distance_ft": null,
+  "reference_object": "Standard double steel doors (~7 ft tall, ~4 ft wide) and parking-space striping used for general scale",
+  "needs_more_photos": true,
+  "missing_views": [
+   "A clear, straight-on photo of the home's electric utility meter, with the wall on both sides of it visible",
+   "A wide photo of the full wall the meter is mounted on, showing about 15 ft to the left and right and the ground in front of it",
+   "A photo showing the location of the gas meter/regulator, if the property has gas service",
+   "A photo showing the distance from the proposed battery spot to any driveway, parking area or pool"
+  ],
+  "justification": "No residential electric meter appears in any photo. The photos show a commercial or utility site (the ETH building's 'Anlieferung HPP' delivery door, transformer rooms marked 'Traforaum' with high-voltage warnings, temporary scaffold-supported cable runs, and outdoor transformer/switchgear cabinets). All ground in front of the walls is paved asphalt reachable by vehicles, with parking striping and a road nearby, so the 5 ft clearance from drivable surfaces cannot be met anywhere shown. The walls are lined with electrical equipment doors and columns, so there is no clear wall route. This does not look like a home battery site. Photos of the actual home's meter wall are needed."
+ },
+ "usage": {
+  "input_tokens": 551,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 573
+ },
+ "cost_usd": 0.0200982,
+ "latency_s": 13.03,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

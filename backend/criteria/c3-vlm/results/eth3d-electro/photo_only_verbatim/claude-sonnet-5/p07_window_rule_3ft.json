@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"justification\": \"These photos show a commercial/institutional facility (transformer rooms, industrial doors, parking lot, drivable pavement surrounding the entire structure) rather than a residential meter/battery site; there is no identifiable ground-mounted residential meter, no wall space for a Disco, and the entire area is drivable surface adjacent to the building, making this site fundamentally unsuited for the standard residential Base battery install checks.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "These photos show a commercial/institutional facility (transformer rooms, industrial doors, parking lot, drivable pavement surrounding the entire structure) rather than a residential meter/battery site; there is no identifiable ground-mounted residential meter, no wall space for a Disco, and the entire area is drivable surface adjacent to the building, making this site fundamentally unsuited for the standard residential Base battery install checks.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 36788,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 155
+ },
+ "cost_usd": 0.075126,
+ "latency_s": 4.65,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

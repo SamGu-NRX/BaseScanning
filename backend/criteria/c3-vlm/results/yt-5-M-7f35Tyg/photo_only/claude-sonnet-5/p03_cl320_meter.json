@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"feature\": \"cl320_unclear\", \"label\": \"\", \"evidence\": \"Photos 2-4 show gas meter close-ups, not an electric meter; photo 11 shows electric meter but label not readable\", \"notes\": \"No readable CL class text visible on any meter in the photos; the close-up meters shown appear to be gas meters, and the electric meter in photo 11 is too small/blurry to read any class label.\", \"insufficientEvidence\": true}",
+ "json": {
+  "feature": "cl320_unclear",
+  "label": "",
+  "evidence": "Photos 2-4 show gas meter close-ups, not an electric meter; photo 11 shows electric meter but label not readable",
+  "notes": "No readable CL class text visible on any meter in the photos; the close-up meters shown appear to be gas meters, and the electric meter in photo 11 is too small/blurry to read any class label.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 309,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 4005,
+  "output_tokens": 147
+ },
+ "cost_usd": 0.002889,
+ "latency_s": 2.72,
+ "stop": "end_turn",
+ "prompt_id": "p03_cl320_meter",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

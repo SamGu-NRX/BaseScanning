@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"trueMultipleMainPanels\":false,\"panelLayout\":\"unclear\",\"evidence\":\"Photos 1-15 show exterior views of a large brick building, entrances, windows, courtyard, stairs, and architectural features. No electrical service panels, open breaker panels, main breakers, disconnects, or meter-main equipment are clearly visible.\",\"notes\":\"Cannot determine whether there are multiple independent service mains from these photos.\",\"insufficientEvidence\":true}",
+ "json": {
+  "trueMultipleMainPanels": false,
+  "panelLayout": "unclear",
+  "evidence": "Photos 1-15 show exterior views of a large brick building, entrances, windows, courtyard, stairs, and architectural features. No electrical service panels, open breaker panels, main breakers, disconnects, or meter-main equipment are clearly visible.",
+  "notes": "Cannot determine whether there are multiple independent service mains from these photos.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 29500,
+  "cached_tokens": 0,
+  "output_tokens": 166,
+  "reasoning_tokens": 73
+ },
+ "cost_usd": 0.15248,
+ "latency_s": 6.39,
+ "stop": "completed",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p01": "unclear"
+ }
+}

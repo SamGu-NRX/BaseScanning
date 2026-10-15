@@ -1,0 +1,40 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"meterNotAccessible\": {\"verdict\": \"no\", \"reason\": \"Gas meter area is clear aside from ground vegetation; no fixed obstruction within 3 ft.\"},\n \"panelNotAccessible\": {\"verdict\": \"no\", \"reason\": \"Electric meter/panel on exterior wall (photo 11) has a clear gravel/rock area in front with no fixed obstruction.\"},\n \"panelInHouse\": {\"verdict\": \"no\", \"reason\": \"The electric meter/panel is mounted on the exterior siding, clearly outside the house.\"},\n \"notSameWall\": {\"verdict\": \"manual_review\", \"reason\": \"Gas meter (photos 1-4) is shown against a wooded/fenced backdrop while the electric meter (photo 11) is near a deck/patio, suggesting different walls without clear confirmation.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "no",
+   "reason": "Gas meter area is clear aside from ground vegetation; no fixed obstruction within 3 ft."
+  },
+  "panelNotAccessible": {
+   "verdict": "no",
+   "reason": "Electric meter/panel on exterior wall (photo 11) has a clear gravel/rock area in front with no fixed obstruction."
+  },
+  "panelInHouse": {
+   "verdict": "no",
+   "reason": "The electric meter/panel is mounted on the exterior siding, clearly outside the house."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reason": "Gas meter (photos 1-4) is shown against a wooded/fenced backdrop while the electric meter (photo 11) is near a deck/patio, suggesting different walls without clear confirmation."
+  }
+ },
+ "usage": {
+  "input_tokens": 715,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 4005,
+  "output_tokens": 1078
+ },
+ "cost_usd": 0.013011,
+ "latency_s": 13.04,
+ "stop": "end_turn",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p12.meterNotAccessible": "no",
+  "p12.panelNotAccessible": "no",
+  "p12.panelInHouse": "no",
+  "p12.notSameWall": "manual_review"
+ }
+}

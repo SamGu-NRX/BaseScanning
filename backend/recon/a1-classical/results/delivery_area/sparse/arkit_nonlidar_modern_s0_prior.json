@@ -1,0 +1,9 @@
+{
+  "run": "arkit_nonlidar_modern_s0_prior",
+  "mapper_s": 9.441119194030762,
+  "models": 1,
+  "registered": 44,
+  "points3D": 19746,
+  "mean_reproj_px": 0.3091587706333544,
+  "prior_sigma_m": 0.3
+}

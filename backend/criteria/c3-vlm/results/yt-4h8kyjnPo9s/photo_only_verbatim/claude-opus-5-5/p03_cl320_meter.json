@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"hasCl320Meter\": false, \"cl320Label\": \"cl320_unclear\", \"insufficientEvidence\": true, \"evidence\": \"Photo 2 shows what appears to be an electric meter at the far right edge of the frame, but it is small, distant and cut off, so no text on the face or label can be read. Photo 14 shows a gas meter and small wall boxes, with no readable electric meter label. No other photo shows a readable meter face or service-equipment label.\", \"notes\": \"CL320 cannot be confirmed or ruled out because no meter text is legible. Meter size and equipment were not used as evidence.\"}",
+ "json": {
+  "hasCl320Meter": false,
+  "cl320Label": "cl320_unclear",
+  "insufficientEvidence": true,
+  "evidence": "Photo 2 shows what appears to be an electric meter at the far right edge of the frame, but it is small, distant and cut off, so no text on the face or label can be read. Photo 14 shows a gas meter and small wall boxes, with no readable electric meter label. No other photo shows a readable meter face or service-equipment label.",
+  "notes": "CL320 cannot be confirmed or ruled out because no meter text is legible. Meter size and equipment were not used as evidence."
+ },
+ "usage": {
+  "input_tokens": 19781,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 277
+ },
+ "cost_usd": 0.084664,
+ "latency_s": 6.95,
+ "stop": "end_turn",
+ "prompt_id": "p03_cl320_meter",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

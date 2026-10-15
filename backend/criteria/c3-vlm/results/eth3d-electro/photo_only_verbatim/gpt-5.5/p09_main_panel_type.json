@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"decision\":\"manual_review\",\"justification\":\"The photos show several closed electrical/transformer-room doors and an outdoor louvered electrical enclosure, but no open breaker-box view or clearly visible main breakers/disconnects. Because multiple candidate service enclosures are present but their independent main breakers cannot be observed, the panel count cannot be determined confidently from these photos.\"}",
+ "json": {
+  "decision": "manual_review",
+  "justification": "The photos show several closed electrical/transformer-room doors and an outdoor louvered electrical enclosure, but no open breaker-box view or clearly visible main breakers/disconnects. Because multiple candidate service enclosures are present but their independent main breakers cannot be observed, the panel count cannot be determined confidently from these photos."
+ },
+ "usage": {
+  "input_tokens": 30208,
+  "cached_tokens": 0,
+  "output_tokens": 264,
+  "reasoning_tokens": 185
+ },
+ "cost_usd": 0.15896,
+ "latency_s": 5.56,
+ "stop": "completed",
+ "prompt_id": "p09_main_panel_type",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

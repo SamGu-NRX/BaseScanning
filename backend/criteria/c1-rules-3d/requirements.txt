@@ -1,0 +1,8 @@
+numpy
+scipy
+shapely
+pyyaml
+pillow
+matplotlib
+jsonschema
+opencv-python-headless
