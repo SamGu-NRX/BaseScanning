@@ -204,26 +204,31 @@ private struct SpotDirection: View {
     var onLabelHeight: (CGFloat) -> Void
 
     var body: some View {
-        ZStack {
-            label
-                .hidden()
-                .accessibilityHidden(true)
-                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { onLabelHeight($0) }
-            if case let .chevron(point, angle, label, direction) = layout {
-                ZStack {
-                    TargetMarker(placement: .offScreen(point, angle: angle))
-                    self.label
-                        .position(label)
+        // Keep the drawing from resizing the screen it was measured from. Without this
+        // boundary, the AX3 fixture cycles through screen heights of 874...900.25 pt as the
+        // chevron appears and disappears, keeping SwiftUI in layout before its first frame.
+        GeometryReader { _ in
+            ZStack {
+                label
+                    .hidden()
+                    .accessibilityHidden(true)
+                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { onLabelHeight($0) }
+                if case let .chevron(point, angle, label, direction) = layout {
+                    ZStack {
+                        TargetMarker(placement: .offScreen(point, angle: angle))
+                        self.label
+                            .position(label)
+                    }
+                    .frame(width: size.width, height: size.height)
+                    .accessibilityElement(children: .ignore)
+                    // The way to turn in words: below AX5 the card no longer says it beside a drawn
+                    // chevron, so this is all VoiceOver has.
+                    .accessibilityLabel(ScanCopy.proposedSpotOffScreen(turn: direction))
+                    .accessibilityIdentifier("ar.spotDirection")
                 }
-                .frame(width: size.width, height: size.height)
-                .accessibilityElement(children: .ignore)
-                // The way to turn in words: below AX5 the card no longer says it beside a drawn
-                // chevron, so this is all VoiceOver has.
-                .accessibilityLabel(ScanCopy.proposedSpotOffScreen(turn: direction))
-                .accessibilityIdentifier("ar.spotDirection")
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
         .allowsHitTesting(false)
     }

@@ -837,6 +837,9 @@ final class ScreenStatesUITests: XCTestCase {
         let either = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in chevron.exists || note.exists }, object: nil)
         XCTAssertEqual(XCTWaiter().wait(for: [either], timeout: 5), .completed, "an off-screen spot had neither a chevron nor a line")
         XCTAssertFalse(element(app, "instruction.detail").exists, "Details must remain closed")
+        let done = app.buttons["action.closeAR"]
+        XCTAssertTrue(done.isHittable, "the chevron must not enlarge the screen and push Done away")
+        XCTAssertTrue(app.frame.contains(done.frame), "Done must stay inside the screen")
         if chevron.exists {
             XCTAssertTrue(chevron.label.contains("Turn the phone right"), "VoiceOver must hear the way to turn: \(chevron.label)")
         } else {
