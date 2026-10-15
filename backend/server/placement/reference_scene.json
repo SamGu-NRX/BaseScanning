@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "meter": {"pos": [0.0, 5.0, 0.0], "wall_id": "side", "plus_minus_ft": 0.3},
+  "walls": [
+    {"id": "back", "baseline": [[-14.0, -18.0], [-14.0, 0.0]], "height_ft": 9, "plus_minus_ft": 0.3},
+    {"id": "side", "baseline": [[-14.0, 0.0], [22.0, 0.0]], "height_ft": 9, "plus_minus_ft": 0.3}
+  ],
+  "objects": [
+    {"type": "gas_meter", "wall_id": "side", "span_ft": [-5.0, -4.0], "bottom_ft": 0.5, "top_ft": 2.5,
+     "source": "tap", "plus_minus_ft": 0.3,
+     "footprint": [[-5.0, 0.0], [-4.0, 0.0], [-4.0, 1.0], [-5.0, 1.0]]},
+    {"type": "window", "wall_id": "side", "span_ft": [3.0, 6.0], "bottom_ft": 3.0, "top_ft": 7.0,
+     "attrs": {"operable": true, "well": false}, "source": "vlm", "conf": 0.86},
+    {"type": "door", "wall_id": "side", "span_ft": [17.0, 20.0], "bottom_ft": 0.0, "top_ft": 6.8,
+     "source": "tap"},
+    {"type": "ac", "wall_id": "back", "span_ft": [-20.0, -17.0], "source": "tap",
+     "footprint": [[-17.0, -6.0], [-14.0, -6.0], [-14.0, -3.0], [-17.0, -3.0]]}
+  ],
+  "ground": [
+    {"type": "lawn", "polygon": [[-28.0, -18.0], [-14.0, -18.0], [-14.0, 14.0], [-28.0, 14.0]]},
+    {"type": "mulch", "polygon": [[-14.0, 0.0], [22.0, 0.0], [22.0, 4.0], [-14.0, 4.0]]},
+    {"type": "lawn", "polygon": [[-14.0, 4.0], [22.0, 4.0], [22.0, 14.0], [-14.0, 14.0]]},
+    {"type": "drive", "polygon": [[22.5, 0.0], [34.0, 0.0], [34.0, 30.0], [22.5, 30.0]]}
+  ],
+  "overheads": [],
+  "facing": [{"wall_id": "side", "span_ft": [-14.0, 22.0], "depth_ft": 14.0, "plus_minus_ft": 0.5}],
+  "coverage": {
+    "ends": {"left": {"kind": "unexplored", "note": "back wall continues past the patio"},
+             "right": {"kind": "limit", "note": "front corner, driveway"}},
+    "observed": [
+      {"band": "wall", "span_ft": [-26.0, 22.0]},
+      {"band": "ground", "span_ft": [-26.0, 26.0], "out_ft": 14.0},
+      {"band": "overhead", "span_ft": [-26.0, 22.0]},
+      {"band": "facing", "span_ft": [-26.0, 22.0]}
+    ]
+  },
+  "keyframes": [
+    {"id": "k1", "pose": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 2.0, 4.5, 9.0, 1],
+     "intrinsics": [1450.0, 1450.0, 960.0, 720.0], "w": 1920, "h": 1440, "img": "k1.jpg"}
+  ],
+  "stills": {"meter_close": "meter_close.jpg"},
+  "gps": {"lat": 30.2672, "lon": -97.7431},
+  "heading": {"deg": 181.0, "accuracy_deg": 12.0}
+}

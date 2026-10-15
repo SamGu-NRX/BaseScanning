@@ -51,6 +51,8 @@ CONTRACT_ARTIFACTS = frozenset(
         "scene/build_report.json",
         "scene/coverage_topdown.png",
         "scene/preview.ply",
+        "placement/placement.json",
+        "placement/scene.json",
         "verdicts/verdict.A.json",
         "verdicts/verdict.B.json",
         "verdicts/verdict.C.json",

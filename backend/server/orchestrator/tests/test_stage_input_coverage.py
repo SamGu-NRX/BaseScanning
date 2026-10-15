@@ -9,7 +9,20 @@ from server.orchestrator.graph import STAGE_INPUTS, STAGES, _input_match
 
 _ROOT = Path(__file__).resolve().parents[2]
 _ARTIFACT_ROOTS = frozenset(
-    {"packet", "poses", "objects", "reads", "early", "scale", "dense", "coverage", "scene", "verdicts", "result"}
+    {
+        "packet",
+        "poses",
+        "objects",
+        "reads",
+        "early",
+        "scale",
+        "dense",
+        "coverage",
+        "scene",
+        "placement",
+        "verdicts",
+        "result",
+    }
 )
 _ENTRY = {
     "validate": "packet/__init__.py",
@@ -21,6 +34,7 @@ _ENTRY = {
     "coverage": "coverage/run.py",
     "scene": "scene/run.py",
     "objects_3d": "objects/run.py",
+    "placement": "placement/adapter.py",
     "criteria": "criteria/__init__.py",
     "result": "result/compose.py",
 }
