@@ -938,7 +938,7 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 5))
         let height = card.frame.height
         XCTAssertGreaterThan(height, 0)
-        for title in ["Now take one step to the side and look again", "Put the ring on the strip", "Now take one step to the side and look again"] {
+        for title in ["Step sideways, look again", "Put the ring on the strip", "Step sideways, look again"] {
             tap(app, "demo.toggleAimPosition")
             let instruction = app.descendants(matching: .any)
                 .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", title)).firstMatch

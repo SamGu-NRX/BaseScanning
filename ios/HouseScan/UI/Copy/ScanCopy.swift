@@ -165,7 +165,7 @@ enum ScanCopy {
         return copy
     }
 
-    private static let aimSecondPosition = "Now take one step to the side and look again"
+    private static let aimSecondPosition = "Step sideways, look again"
     private static let aimTiltUp = "Tilt up a little"
     private static let aimTiltDown = "Tilt down a little"
     private static let aimRingOnStrip = "Put the ring on the strip"
