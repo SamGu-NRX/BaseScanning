@@ -849,7 +849,8 @@ final class ScreenStatesUITests: XCTestCase {
         attach(app, name: "resultAR-offScreen-direction-AX3")
     }
 
-    /// At AX5 the folded card leaves the spot in the open camera, and opening Details covers it.
+    /// At AX5 the folded card leaves the spot low in the open camera (`-uiDemoSpotLow`; the
+    /// default pose puts it under the sample's three-line title), and opening Details covers it.
     /// At d5d137ed the card then said "Tilt the phone up" and kept saying it after Details
     /// closed: the five-line note made the card cover the spot itself, and Done went below the
     /// screen (CI run of #241, ProvisionalPlacementUITests). Closed again, the card must be as it
@@ -858,7 +859,7 @@ final class ScreenStatesUITests: XCTestCase {
     func testTheOffScreenNoteDoesNotKeepItselfUpAfterDetailsCloseAtAX5() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "resultAR"] + Self.largestText
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "resultAR", "-uiDemoSpotLow"] + Self.largestText
         app.launch()
         defer { app.terminate() }
         let card = element(app, "instruction")

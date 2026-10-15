@@ -278,6 +278,9 @@ final class DemoEngine: ScanActions {
             state.meterBrand = Self.demoBrand
             state.meterNumber = .choose(Self.demoCandidates)
         }
+        if arguments.contains("-uiDemoSpotLow"), state.phase == .resultAR {
+            state.projection = DemoScene.lowSpotProjection
+        }
         if arguments.contains("-uiDemoSpotOffScreen"), state.phase == .resultAR, var projection = state.projection {
             projection.cameraToWorld.columns.3.x -= 10
             state.projection = projection

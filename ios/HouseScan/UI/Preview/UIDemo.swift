@@ -54,6 +54,8 @@ import SwiftUI
 ///   `-uiDemoAimSecondPositionToggle` also lets the test toggle second-position advice.
 /// - `-uiDemoSpotOffScreen`: with `-uiDemoPhase resultAR`, place the camera 10 m left so the
 ///   proposed spot needs an off-screen direction, including at accessibility text sizes.
+/// - `-uiDemoSpotLow`: with `-uiDemoPhase resultAR`, tilt the camera up so the proposed spot sits
+///   low in the open camera, below the folded card at AX5, where open Details covers it.
 /// - `-uiDemoPhase spotConfirm`: the spot check before the result, on the made-up sample spot.
 /// - `-uiDemoSpotAnswered <clear|somethingThere|cannotCheck>`: with `-uiDemoPhase spotConfirm`,
 ///   the check is answered and says what happens next. With `-uiDemoPhase result`, the result
