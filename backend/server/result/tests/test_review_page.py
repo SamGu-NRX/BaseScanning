@@ -63,6 +63,16 @@ def test_confirmation_form_submits_json_with_bearer_credentials(tmp_path: Path) 
         assert f"{field}:" in html
 
 
+def test_rejection_status_reads_the_errors_shape(tmp_path: Path) -> None:
+    html = _render(tmp_path)
+    # Every API failure path returns {"errors": [{"code", "pointer", "message"}]}
+    # (server.api.errors.error_response, and the RequestValidationError handler
+    # in server.api.app builds the same shape) — body.detail is never set, so
+    # reading it left the reviewer with only "Rejected: HTTP 422".
+    assert "body.errors[0].message" in html
+    assert "body.detail" not in html
+
+
 def test_preview_loads_and_draws_preview_ply(tmp_path: Path) -> None:
     html = _render(tmp_path)
     assert 'fetch("preview.ply")' in html

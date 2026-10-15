@@ -156,7 +156,7 @@
           if (res.ok) {
             report("Confirmed" + (body && body.confirmationId ? " (" + body.confirmationId + ")" : ""));
           } else {
-            report("Rejected: " + ((body && body.detail && body.detail.message) || ("HTTP " + res.status)));
+            report("Rejected: " + ((body && body.errors && body.errors[0] && body.errors[0].message) || ("HTTP " + res.status)));
           }
         } catch {
           report("Network error: the confirmation did not reach the API.");
