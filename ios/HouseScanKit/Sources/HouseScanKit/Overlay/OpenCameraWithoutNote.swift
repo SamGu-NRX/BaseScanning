@@ -22,10 +22,13 @@ public enum OpenCameraWithoutNote {
     ///   - viewport: The safe area the column fills and scrolls in, in global coordinates: at
     ///     rest the column's top is the viewport's top. Not a scroll view's frame that runs under
     ///     the status bar and the home indicator.
-    ///   - noteRoom: How much taller the note makes the card. Zero returns `window`.
+    ///   - noteRoom: How much taller the note makes the card. Zero still restores the minimum
+    ///     camera height and clamps the scroll, which can lag behind the note's removal.
     ///   - minimumHeight: The least open camera the column keeps without the note.
     public static func frame(window: CGRect, content: CGRect, viewport: CGRect, noteRoom: CGFloat, minimumHeight: CGFloat) -> CGRect {
-        guard noteRoom > 0 else { return window }
+        // Reconstruct even with no note: the AX5 Details trace in #241 measured a zero-height
+        // spacer just after note removal, then a collapsed column still scrolled past its end.
+        // Returning either transient window brings the off-screen note straight back.
         // Everything in the column but the open camera, without the note.
         let rest = content.height - window.height - noteRoom
         let height = max(minimumHeight, viewport.height - rest)

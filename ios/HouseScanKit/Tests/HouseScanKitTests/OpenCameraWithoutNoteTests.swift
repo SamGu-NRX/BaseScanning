@@ -40,6 +40,38 @@ import Testing
         #expect(Self.withoutNote(column, minimum: 180) == column.window)
     }
 
+    /// Removing the note and restoring the spacer take separate SwiftUI updates. The AX5
+    /// trace had no note while the spacer still had the note's zero-height minimum.
+    @Test func removingTheNoteRestoresTheCameraBeforeTheSpacerCatchesUp() {
+        let transient = Column(above: 760, below: 81, minimum: 0)
+        let settled = Column(above: 760, below: 81, minimum: 180)
+        #expect(transient.window.height == 0)
+        #expect(Self.withoutNote(transient, minimum: 180) == settled.window)
+    }
+
+    /// Closing Details can leave the now screen-height column at its previous scroll offset
+    /// for one update. It must not report the spot below the camera and reinsert the note.
+    @Test(arguments: [-40, 63, 243, 496] as [CGFloat])
+    func removingTheNoteClampsTheOldScrollOffset(offset: CGFloat) {
+        let settled = Column(above: 364, below: 81, minimum: 180)
+        let result = OpenCameraWithoutNote.frame(
+            window: settled.window.offsetBy(dx: 0, dy: -offset),
+            content: settled.content.offsetBy(dx: 0, dy: -offset), viewport: Self.viewport,
+            noteRoom: 0, minimumHeight: 180)
+        #expect(result == settled.window)
+    }
+
+    @Test func removingTheNoteWhileScrollingRestoresBothMinimumAndScrollLimit() {
+        let transient = Column(above: 760, below: 81, minimum: 0)
+        let settled = Column(above: 760, below: 81, minimum: 180, scroll: 496)
+        let result = OpenCameraWithoutNote.frame(
+            window: transient.window.offsetBy(dx: 0, dy: -496),
+            content: transient.content.offsetBy(dx: 0, dy: -496), viewport: Self.viewport,
+            noteRoom: 0, minimumHeight: 180)
+        #expect(result == settled.window)
+        #expect(result.height == 180)
+    }
+
     /// The column fits: the note pushes the camera's top down and Done stays at the bottom.
     @Test func aNoteThatFitsGivesBackItsRoomAboveTheCamera() {
         let with = Column(above: 300, below: 100, minimum: 180, note: 150)

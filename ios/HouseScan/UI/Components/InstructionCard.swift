@@ -44,10 +44,9 @@ struct InstructionCard: View {
     /// is the chrome's own line under the card (`CameraChrome.legend`).
     var legend: String? = nil
     var onDetailsShown: ((Bool) -> Void)? = nil
-    /// Called with how much taller `Instruction.note` makes the card, 0 without a note. The
-    /// chrome uses it to judge the open camera as it would be without the note
-    /// (`CameraWindow.noteFreeFrame`). Nil skips the measuring.
-    var onNoteRoom: ((CGFloat) -> Void)? = nil
+    /// Reports both message heights with the chrome's other measurements, so it can judge
+    /// the open camera without the note (`CameraWindow.noteFreeFrame`).
+    var measuresNoteRoom = false
 
     /// How long a new card's reply ignores taps, so a tap meant for the card that just left
     /// can't answer the next one: in the 4.1 field test, quick taps on "Can't get there" each
@@ -62,9 +61,6 @@ struct InstructionCard: View {
     /// Whether the folded details are open. Each new aim target closes them; marker titles
     /// within that target and ride-along coaching keep them.
     @State private var detailsShown = false
-    /// The message's height, and its height laid out unseen without the note (`onNoteRoom`).
-    @State private var messageHeight: CGFloat = 0
-    @State private var noteFreeHeight: CGFloat = 0
 
     private var replyTask: Instruction { reply?.task ?? instruction }
 
@@ -81,19 +77,22 @@ struct InstructionCard: View {
             message
                 .id(instruction)
                 .transition(.identity)
-                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
-                    messageHeight = height
-                    onNoteRoom?(max(height - noteFreeHeight, 0))
+                .background {
+                    if measuresNoteRoom {
+                        GeometryReader { geometry in
+                            Color.clear.preference(key: CameraChromeMeasurements.self,
+                                                   value: .init(messageHeight: geometry.size.height))
+                        }
+                    }
                 }
-                // Always laid out, so both heights come from the same layout pass as the open
-                // camera's: a note's room reported apart from that pass, against a camera
-                // measured with or without it, could put back a note just taken down.
                 .background(alignment: .top) {
-                    if onNoteRoom != nil {
+                    if measuresNoteRoom {
                         noteFreeMessage
-                            .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
-                                noteFreeHeight = height
-                                onNoteRoom?(max(messageHeight - height, 0))
+                            .background {
+                                GeometryReader { geometry in
+                                    Color.clear.preference(key: CameraChromeMeasurements.self,
+                                                           value: .init(noteFreeHeight: geometry.size.height))
+                                }
                             }
                     }
                 }
@@ -163,7 +162,7 @@ struct InstructionCard: View {
             .accessibilityIdentifier("instruction")
     }
 
-    /// The message without `Instruction.note`, laid out unseen behind the card for `onNoteRoom`.
+    /// The message without `Instruction.note`, laid out unseen behind the card for `measuresNoteRoom`.
     private var noteFreeMessage: some View {
         var noteFree = instruction
         noteFree.note = nil

@@ -62,18 +62,26 @@ struct CameraChrome<Bottom: View>: View {
                                 .accessibilityHidden(true)
                         }
                     }
-                    .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { content in
-                        cameraWindow?.layout.content = content
+                    .background {
+                        GeometryReader { geometry in
+                            Color.clear.preference(key: CameraChromeMeasurements.self,
+                                                   value: .init(content: geometry.frame(in: .global)))
+                        }
                     }
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
-        }
-        // The safe area the column fills, not the scroll view's frame: that runs under the status
-        // bar and the home indicator (0 to 874 pt on an iPhone 17 against the column's 62 to
-        // 840), which put the camera without the note 62 pt too high (CI run of #241 at 602bd92).
-        .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { viewport in
-            cameraWindow?.layout.viewport = viewport
+            .onPreferenceChange(CameraChromeMeasurements.self) { measurements in
+                // Publish one layout, never a new note height against the old camera frame.
+                // At AX5 that mixed snapshot toggled the note between 0 and 253.33 pt after
+                // scrolling Details, keeping the main thread in layout (PR #241 trace).
+                // This reader is the safe-area viewport. The ScrollView's global frame extends
+                // under the system bars and shifted the reconstructed camera in #241 at 602bd92.
+                guard let layout = measurements.layout(viewport: proxy.frame(in: .global),
+                                                       minimumHeight: leastCameraWindow) else { return }
+                cameraWindow?.layout = layout
+                if noteTakesCameraRoom { noteRoom = layout.noteRoom }
+            }
         }
     }
 
@@ -91,10 +99,7 @@ struct CameraChrome<Bottom: View>: View {
                 instruction: instruction, tone: tone, reply: reply, eyebrow: eyebrow,
                 foldsDetail: folds, legend: folds ? legend : nil,
                 onDetailsShown: { shown in cameraWindow?.detailsShown = shown },
-                onNoteRoom: cameraWindow == nil ? nil : { room in
-                    cameraWindow?.layout.noteRoom = room
-                    if noteTakesCameraRoom, noteRoom != room { noteRoom = room }
-                }
+                measuresNoteRoom: cameraWindow != nil
             )
             if let legend, !folds {
                 legendLine(legend)
@@ -103,11 +108,11 @@ struct CameraChrome<Bottom: View>: View {
             // it (B-36). On an aiming step at the accessibility sizes it keeps at least
             // `minCameraWindow`, and the actions below scroll into reach.
             Spacer(minLength: max(leastCameraWindow - (noteTakesCameraRoom ? noteRoom : 0), 0))
-                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { window in
-                    guard var layout = cameraWindow?.layout else { return }
-                    layout.window = window
-                    layout.minimumHeight = leastCameraWindow
-                    cameraWindow?.layout = layout
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: CameraChromeMeasurements.self,
+                                               value: .init(window: geometry.frame(in: .global)))
+                    }
                 }
             bottom
         }
@@ -145,7 +150,7 @@ final class CameraWindow {
     private(set) var frame: CGRect?
     /// `frame` as it would be if the card had no note (`OpenCameraWithoutNote`). A note shown
     /// because of what the camera holds is judged against this, so its own height can't keep it
-    /// up. Equal to `frame` while the card has no note.
+    /// up. It restores the minimum camera height and settled scroll even just after note removal.
     private(set) var noteFreeFrame: CGRect?
     var detailsShown = false
 
@@ -155,7 +160,7 @@ final class CameraWindow {
         var window: CGRect?
         var content: CGRect?
         var viewport: CGRect?
-        /// How much taller the card's note makes the card (`InstructionCard.onNoteRoom`).
+        /// How much taller the card's note makes the card (`InstructionCard.measuresNoteRoom`).
         var noteRoom: CGFloat = 0
         /// The least open camera the chrome keeps without a note.
         var minimumHeight: CGFloat = 0
