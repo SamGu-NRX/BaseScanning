@@ -1,0 +1,25 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"feature\": \"standard_meter_can\", \"evidence\": \"Photos 1 and 14 give a clear, unobstructed straight-on view of the meter enclosure left of the tall gray panel. The round meter sits in a small, roughly square gray socket enclosure, only slightly larger than the meter face and about two to three brick courses tall. It is much smaller than the adjacent load center. Photos 3, 5, 7, 10, 11 and 13 show the same compact can from the same angle, including with the meter removed (photos 10 and 11).\", \"notes\": \"The large neighbouring panel is a separate load center and does not affect the can size. The meter-holding enclosure itself is a compact socket.\", \"insufficientEvidence\": false}",
+ "json": {
+  "feature": "standard_meter_can",
+  "evidence": "Photos 1 and 14 give a clear, unobstructed straight-on view of the meter enclosure left of the tall gray panel. The round meter sits in a small, roughly square gray socket enclosure, only slightly larger than the meter face and about two to three brick courses tall. It is much smaller than the adjacent load center. Photos 3, 5, 7, 10, 11 and 13 show the same compact can from the same angle, including with the meter removed (photos 10 and 11).",
+  "notes": "The large neighbouring panel is a separate load center and does not affect the can size. The meter-holding enclosure itself is a compact socket.",
+  "insufficientEvidence": false
+ },
+ "usage": {
+  "input_tokens": 333,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 25329,
+  "output_tokens": 301
+ },
+ "cost_usd": 0.0124178,
+ "latency_s": 6.74,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p02": "standard_meter_can"
+ }
+}

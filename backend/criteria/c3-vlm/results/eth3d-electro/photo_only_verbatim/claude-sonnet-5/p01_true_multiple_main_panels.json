@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"hasTrueMultipleMainPanels\": false, \"multipleMainPanelLabel\": \"unclear_or_insufficient_evidence\", \"insufficientEvidence\": true, \"evidence\": \"Images show multiple closed transformer/electrical room doors labeled 'Traforaum' and outdoor transformer/switchgear cabinets, but no interior panel photos reveal any open panel, main breaker, or disconnect switch.\", \"notes\": \"All doors and enclosures are closed; these appear to be transformer rooms and utility switchgear rather than confirmed main electrical panels. No independent main breakers are visible for any candidate, so true multiple main panels cannot be established.\"}",
+ "json": {
+  "hasTrueMultipleMainPanels": false,
+  "multipleMainPanelLabel": "unclear_or_insufficient_evidence",
+  "insufficientEvidence": true,
+  "evidence": "Images show multiple closed transformer/electrical room doors labeled 'Traforaum' and outdoor transformer/switchgear cabinets, but no interior panel photos reveal any open panel, main breaker, or disconnect switch.",
+  "notes": "All doors and enclosures are closed; these appear to be transformer rooms and utility switchgear rather than confirmed main electrical panels. No independent main breakers are visible for any candidate, so true multiple main panels cannot be established."
+ },
+ "usage": {
+  "input_tokens": 33020,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 225
+ },
+ "cost_usd": 0.06829,
+ "latency_s": 11.13,
+ "stop": "end_turn",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p01": "unclear_or_insufficient_evidence"
+ }
+}

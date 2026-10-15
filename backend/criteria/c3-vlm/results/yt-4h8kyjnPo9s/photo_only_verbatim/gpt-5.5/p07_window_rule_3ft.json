@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The electric meter area is only partially visible at the edge of the photos, so I cannot confidently confirm the required clear wall space and bottom/side clearance for the disconnect and rigid conduit. The surrounding walls also have ground-level windows/door, gas meters, and a drivable gravel/concrete parking strip with a car close to the house, making the available battery clearances uncertain from these photos.\",\"decision\":\"manual_review\"}",
+ "json": {
+  "justification": "The electric meter area is only partially visible at the edge of the photos, so I cannot confidently confirm the required clear wall space and bottom/side clearance for the disconnect and rigid conduit. The surrounding walls also have ground-level windows/door, gas meters, and a drivable gravel/concrete parking strip with a car close to the house, making the available battery clearances uncertain from these photos.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 20916,
+  "cached_tokens": 1792,
+  "output_tokens": 3611,
+  "reasoning_tokens": 3517
+ },
+ "cost_usd": 0.204846,
+ "latency_s": 42.67,
+ "stop": "completed",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

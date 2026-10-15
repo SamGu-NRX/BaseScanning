@@ -1,0 +1,353 @@
+{
+ "id": "eth3d-facade-wing",
+ "real": true,
+ "source": "ETH3D facade (dslr_scan_eval laser scans + dslr_undistorted COLMAP poses); labels from PR #13 annotations.json; the electric meter is invented (PR #13).",
+ "license": "ETH3D: CC BY-NC-SA 4.0 (research, non-commercial)",
+ "frame": "ETH3D scan frame, metres, z up",
+ "roi": {
+  "min": [
+   -6.0,
+   -34.0,
+   -2.193521111552058
+  ],
+  "max": [
+   26.0,
+   -5.0,
+   3.106478888447942
+  ]
+ },
+ "ground_z_hint": -1.3935211115520578,
+ "meter": {
+  "pos": [
+   7.54766130178475,
+   -27.40057068063519,
+   0.13008791633295247
+  ],
+  "plus_minus_m": 0.0914,
+  "real": false,
+  "note": "INVENTED: this building has no electric meter here. Placed midway in the gap between w1 windows 4 and 5."
+ },
+ "objects": [
+  {
+   "id": "w1_window_1",
+   "type": "window",
+   "plan_polygon": [
+    [
+     19.572593862951162,
+     -25.08315444153452
+    ],
+    [
+     18.047636263932617,
+     -25.398677033910314
+    ],
+    [
+     18.004449769003102,
+     -25.189743566344895
+    ],
+    [
+     19.529407368021644,
+     -24.874220973969102
+    ]
+   ],
+   "z_range": [
+    -0.24477838533642005,
+    2.228443230408753
+   ],
+   "plus_minus_m": 0.3932,
+   "provenance": "PR #13 hand clicks in 2-3 DSLR photos ray-cast through COLMAP poses",
+   "real": true,
+   "pr11": {
+    "wall_id": "w1",
+    "span_ft": [
+     -40.08,
+     -34.97
+    ],
+    "bottom_ft": 3.0,
+    "top_ft": 11.12
+   }
+  },
+  {
+   "id": "w1_window_2",
+   "type": "window",
+   "plan_polygon": [
+    [
+     16.34343149334528,
+     -25.75128690811336
+    ],
+    [
+     14.786697979012239,
+     -26.073384122092794
+    ],
+    [
+     14.743511484082722,
+     -25.864450654527374
+    ],
+    [
+     16.300244998415764,
+     -25.54235344054794
+    ]
+   ],
+   "z_range": [
+    -0.3516119315706492,
+    2.201416429375044
+   ],
+   "plus_minus_m": 0.1097,
+   "provenance": "PR #13 hand clicks in 2-3 DSLR photos ray-cast through COLMAP poses",
+   "real": true,
+   "pr11": {
+    "wall_id": "w1",
+    "span_ft": [
+     -29.26,
+     -24.04
+    ],
+    "bottom_ft": 2.87,
+    "top_ft": 11.25
+   }
+  },
+  {
+   "id": "w1_window_3",
+   "type": "window",
+   "plan_polygon": [
+    [
+     13.158952971557923,
+     -26.41017402681492
+    ],
+    [
+     11.570419414709118,
+     -26.738850854456196
+    ],
+    [
+     11.5272329197796,
+     -26.52991738689078
+    ],
+    [
+     13.115766476628405,
+     -26.201240559249502
+    ]
+   ],
+   "z_range": [
+    -0.3361623906243536,
+    2.2333884914176148
+   ],
+   "plus_minus_m": 0.1018,
+   "provenance": "PR #13 hand clicks in 2-3 DSLR photos ray-cast through COLMAP poses",
+   "real": true,
+   "pr11": {
+    "wall_id": "w1",
+    "span_ft": [
+     -18.59,
+     -13.26
+    ],
+    "bottom_ft": 3.14,
+    "top_ft": 11.58
+   }
+  },
+  {
+   "id": "w1_window_4",
+   "type": "window",
+   "plan_polygon": [
+    [
+     10.037947232461907,
+     -27.055928257787034
+    ],
+    [
+     8.378837281338894,
+     -27.399207751690156
+    ],
+    [
+     8.335650786409378,
+     -27.19027428412474
+    ],
+    [
+     9.99476073753239,
+     -26.846994790221615
+    ]
+   ],
+   "z_range": [
+    -0.34877706851329404,
+    2.2146339687304675
+   ],
+   "plus_minus_m": 0.0828,
+   "provenance": "PR #13 hand clicks in 2-3 DSLR photos ray-cast through COLMAP poses",
+   "real": true,
+   "pr11": {
+    "wall_id": "w1",
+    "span_ft": [
+     -8.13,
+     -2.57
+    ],
+    "bottom_ft": 3.32,
+    "top_ft": 11.73
+   }
+  },
+  {
+   "id": "w1_window_5",
+   "type": "window",
+   "plan_polygon": [
+    [
+     6.852933306613903,
+     -27.714926154701242
+    ],
+    [
+     5.2499076879110635,
+     -28.0466014741878
+    ],
+    [
+     5.206721192981547,
+     -27.83766800662238
+    ],
+    [
+     6.809746811684387,
+     -27.505992687135823
+    ]
+   ],
+   "z_range": [
+    -0.353322751382261,
+    2.223611318438051
+   ],
+   "plus_minus_m": 0.1214,
+   "provenance": "PR #13 hand clicks in 2-3 DSLR photos ray-cast through COLMAP poses",
+   "real": true,
+   "pr11": {
+    "wall_id": "w1",
+    "span_ft": [
+     2.54,
+     7.92
+    ],
+    "bottom_ft": 3.52,
+    "top_ft": 11.98
+   }
+  },
+  {
+   "id": "w3_entrance_door",
+   "type": "door",
+   "plan_polygon": [
+    [
+     3.320546498680624,
+     -24.82856837408023
+    ],
+    [
+     1.1763674363684915,
+     -25.270713212878313
+    ],
+    [
+     1.1333209204533414,
+     -25.061750831750565
+    ],
+    [
+     3.277499982765474,
+     -24.619605992952486
+    ]
+   ],
+   "z_range": [
+    -1.3134405372580251,
+    2.547946279420877
+   ],
+   "plus_minus_m": 0.2134,
+   "provenance": "PR #13 hand clicks in 2-3 DSLR photos ray-cast through COLMAP poses",
+   "real": true,
+   "pr11": {
+    "wall_id": "w3",
+    "span_ft": [
+     23.83,
+     31.01
+    ],
+    "bottom_ft": 0.69,
+    "top_ft": 13.37
+   }
+  }
+ ],
+ "ground_types": [
+  {
+   "type": "gravel",
+   "plan_polygon": [
+    [
+     -6,
+     -34
+    ],
+    [
+     26,
+     -34
+    ],
+    [
+     26,
+     -5
+    ],
+    [
+     -6,
+     -5
+    ]
+   ],
+   "provenance": "photos: fine gravel courtyard (PR #13 README: gravel drainage slope)"
+  }
+ ],
+ "keyframes": [
+  "DSC_0359",
+  "DSC_0360",
+  "DSC_0361",
+  "DSC_0362",
+  "DSC_0363",
+  "DSC_0419",
+  "DSC_0420"
+ ],
+ "reference_chain": {
+  "walls": [
+   {
+    "id": "w1",
+    "a": [
+     20.144529409031016,
+     -24.809196934732476,
+     -1.1302886639350485
+    ],
+    "b": [
+     4.626587604162138,
+     -28.01994930565749,
+     -1.4554282107931134
+    ],
+    "s0_ft": -42.1,
+    "length_ft": 52.001174102876945
+   },
+   {
+    "id": "w2",
+    "a": [
+     4.626587604162138,
+     -28.01994930565749,
+     -1.4554282107931134
+    ],
+    "b": [
+     3.9771504087393628,
+     -24.537572821592207,
+     -1.4881258578753422
+    ],
+    "s0_ft": 9.901174102876944,
+    "length_ft": 11.622596456763032
+   },
+   {
+    "id": "w3",
+    "a": [
+     3.9771504087393628,
+     -24.537572821592207,
+     -1.4881258578753422
+    ],
+    "b": [
+     -0.8684367083208997,
+     -25.536767045811708,
+     -1.589670853655153
+    ],
+    "s0_ft": 21.523770559639978,
+    "length_ft": 16.235489066572878
+   }
+  ],
+  "ends": {
+   "left": {
+    "kind": "unexplored",
+    "note": "w1 meets the main building in an inside corner and the wall continues along that building; not modelled"
+   },
+   "right": {
+    "kind": "unexplored",
+    "note": "past the tower's west pilaster the wall steps back; the laser scan and the SfM points stop here, so it is not modelled"
+   }
+  },
+  "note": "PR #13 wall chain (scan frame, s in ft from the meter) for mapping C2 spots onto PR #11's along-wall coordinate"
+ }
+}

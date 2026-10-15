@@ -1,0 +1,10 @@
+numpy
+scipy
+jsonschema
+pyyaml
+shapely
+pydantic
+py7zr
+opencv-python-headless
+pillow
+pycolmap==4.2.0

@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"justification\": \"The electric meter in Photos 2 and 14 sits near a gas meter and regulator on the same wall. That wall runs directly beside a gravel/concrete-strip driveway where a car is parked (Photos 9-11, 14), so any install spot would be within 5 ft of both the drive path and the gas equipment. Windows, a chimney column and a window AC unit also interrupt the wall, so the site cannot be confidently approved.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "The electric meter in Photos 2 and 14 sits near a gas meter and regulator on the same wall. That wall runs directly beside a gravel/concrete-strip driveway where a car is parked (Photos 9-11, 14), so any install spot would be within 5 ft of both the drive path and the gas equipment. Windows, a chimney column and a window AC unit also interrupt the wall, so the site cannot be confidently approved.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 20420,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 160
+ },
+ "cost_usd": 0.08488,
+ "latency_s": 7.33,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

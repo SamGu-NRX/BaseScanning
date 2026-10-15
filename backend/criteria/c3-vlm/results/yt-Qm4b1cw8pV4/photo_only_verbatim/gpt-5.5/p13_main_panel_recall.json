@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The main electrical panel is only shown closed from a distance/angle, and no open breaker view or clearly legible brand label is provided. The visible enclosures look modern and not heavily rusted, but there is not enough information to confirm brand or breaker orientation confidently.\",\"decision\":\"manual_review\"}",
+ "json": {
+  "justification": "The main electrical panel is only shown closed from a distance/angle, and no open breaker view or clearly legible brand label is provided. The visible enclosures look modern and not heavily rusted, but there is not enough information to confirm brand or breaker orientation confidently.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 8904,
+  "cached_tokens": 0,
+  "output_tokens": 355,
+  "reasoning_tokens": 286
+ },
+ "cost_usd": 0.05517,
+ "latency_s": 5.34,
+ "stop": "completed",
+ "prompt_id": "p13_main_panel_recall",
+ "house": "yt-Qm4b1cw8pV4",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p13": "manual_review"
+ }
+}

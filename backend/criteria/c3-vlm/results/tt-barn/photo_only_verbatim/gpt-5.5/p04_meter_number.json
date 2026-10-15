@@ -1,0 +1,24 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"reasoning\":\"An electric meter appears on the side of the building in some wider photos, but it is too far away/small in frame to resolve any meter number characters. No close-up or legible meter label/barcode is photographed, so this is not a clean trustworthy read.\",\"meter_number\":\"\",\"clean-decision\":false}",
+ "json": {
+  "reasoning": "An electric meter appears on the side of the building in some wider photos, but it is too far away/small in frame to resolve any meter number characters. No close-up or legible meter label/barcode is photographed, so this is not a clean trustworthy read.",
+  "meter_number": "",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 27243,
+  "cached_tokens": 0,
+  "output_tokens": 447,
+  "reasoning_tokens": 374
+ },
+ "cost_usd": 0.149625,
+ "latency_s": 8.98,
+ "stop": "completed",
+ "prompt_id": "p04_meter_number",
+ "house": "tt-barn",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p04": "none"
+ }
+}

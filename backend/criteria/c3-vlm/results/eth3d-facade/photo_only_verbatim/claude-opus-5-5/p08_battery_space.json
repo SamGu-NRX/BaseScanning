@@ -1,0 +1,35 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"justification\": \"None of the 15 photos shows an electric meter. They show a large multi-story brick institutional building with a grand front staircase and main entrance, a gravel courtyard, bike-rack sculptures and benches. Without the meter, I cannot trace a harness route or check any battery spot, and the building does not look like a typical home. The open gravel courtyard along the walls may have room, but where the harness starts is unknown.\", \"reference_object\": \"ground-floor windows (~4 ft wide) and the main double doors (~6 ft wide)\", \"distance_ft\": null, \"front_clearance_ft\": 99, \"drive_path_ft\": null, \"requires_member_action\": false, \"decision\": \"manual_review\", \"needs_more_photos\": true, \"missing_views\": [\"A close-up photo of your electric meter\", \"A wide photo showing the meter and the wall around it\", \"A photo of the wall to the left of the meter, down to the ground\", \"A photo of the wall to the right of the meter, down to the ground\"]}",
+ "json": {
+  "justification": "None of the 15 photos shows an electric meter. They show a large multi-story brick institutional building with a grand front staircase and main entrance, a gravel courtyard, bike-rack sculptures and benches. Without the meter, I cannot trace a harness route or check any battery spot, and the building does not look like a typical home. The open gravel courtyard along the walls may have room, but where the harness starts is unknown.",
+  "reference_object": "ground-floor windows (~4 ft wide) and the main double doors (~6 ft wide)",
+  "distance_ft": null,
+  "front_clearance_ft": 99,
+  "drive_path_ft": null,
+  "requires_member_action": false,
+  "decision": "manual_review",
+  "needs_more_photos": true,
+  "missing_views": [
+   "A close-up photo of your electric meter",
+   "A wide photo showing the meter and the wall around it",
+   "A photo of the wall to the left of the meter, down to the ground",
+   "A photo of the wall to the right of the meter, down to the ground"
+  ]
+ },
+ "usage": {
+  "input_tokens": 41393,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 501
+ },
+ "cost_usd": 0.175592,
+ "latency_s": 11.78,
+ "stop": "end_turn",
+ "prompt_id": "p08_battery_space",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p08": "manual_review"
+ }
+}

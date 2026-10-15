@@ -1,0 +1,66 @@
+{
+ "scene": "delivery_area",
+ "model": "ma518",
+ "checkpoint": "facebook/map-anything-apache@00f9c245bbcb60522d1ed7f9e9d88462c6e3f38a",
+ "license": "Apache-2.0 (facebook/map-anything-apache)",
+ "mode": "KT:nonlidar_modern.draw0",
+ "members": [
+  "DSC_0675",
+  "DSC_0676",
+  "DSC_0707",
+  "DSC_0708",
+  "DSC_0677",
+  "DSC_0678",
+  "DSC_0679",
+  "DSC_0680"
+ ],
+ "network_wh": [
+  518,
+  336
+ ],
+ "seconds_total": 34.7,
+ "device": "cpu (4 threads, bf16 autocast trunk)",
+ "views": {
+  "DSC_0675": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 4.243,
+   "metric_scaling_factor": 2.617672920227051
+  },
+  "DSC_0676": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 4.263,
+   "metric_scaling_factor": 2.617672920227051
+  },
+  "DSC_0707": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 3.952,
+   "metric_scaling_factor": 2.617672920227051
+  },
+  "DSC_0708": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 3.813,
+   "metric_scaling_factor": 2.617672920227051
+  },
+  "DSC_0677": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 4.209,
+   "metric_scaling_factor": 2.617672920227051
+  },
+  "DSC_0678": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 4.256,
+   "metric_scaling_factor": 2.617672920227051
+  },
+  "DSC_0679": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 4.235,
+   "metric_scaling_factor": 2.617672920227051
+  },
+  "DSC_0680": {
+   "valid_fraction": 0.9736,
+   "median_depth_m": 4.289,
+   "metric_scaling_factor": 2.617672920227051
+  }
+ },
+ "frame": "input poses"
+}

@@ -1,0 +1,40 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"meterNotAccessible\": {\"verdict\": \"no\", \"reasoning\": \"Photo 8 shows the marked meter spot on an exterior brick wall between ground-floor windows, facing an open gravel courtyard with nothing in the frontal envelope. There is no overhang, stairs or soffit directly above, and no gas equipment is visible nearby. The trash bins by the door are farther away and trivially movable.\"}, \"panelNotAccessible\": {\"verdict\": \"manual_review\", \"reasoning\": \"No photo shows the main breaker box, either on the wall or open, so its working space and overhead clearance cannot be judged.\"}, \"panelInHouse\": {\"verdict\": \"manual_review\", \"reasoning\": \"The main panel is not visible in any photo, so it cannot be placed in a garage, outside, or in interior living space.\"}, \"notSameWall\": {\"verdict\": \"manual_review\", \"reasoning\": \"Only the meter location is marked, on an exterior wall. The panel is not shown anywhere, so the same exterior wall cannot be confirmed.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "no",
+   "reasoning": "Photo 8 shows the marked meter spot on an exterior brick wall between ground-floor windows, facing an open gravel courtyard with nothing in the frontal envelope. There is no overhang, stairs or soffit directly above, and no gas equipment is visible nearby. The trash bins by the door are farther away and trivially movable."
+  },
+  "panelNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "No photo shows the main breaker box, either on the wall or open, so its working space and overhead clearance cannot be judged."
+  },
+  "panelInHouse": {
+   "verdict": "manual_review",
+   "reasoning": "The main panel is not visible in any photo, so it cannot be placed in a garage, outside, or in interior living space."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reasoning": "Only the meter location is marked, on an exterior wall. The panel is not shown anywhere, so the same exterior wall cannot be confirmed."
+  }
+ },
+ "usage": {
+  "input_tokens": 35191,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 547
+ },
+ "cost_usd": 0.151704,
+ "latency_s": 12.53,
+ "stop": "end_turn",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "eth3d-facade",
+ "variant": "photo_only_meter_hint_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "no",
+  "p12.panelNotAccessible": "manual_review",
+  "p12.panelInHouse": "manual_review",
+  "p12.notSameWall": "manual_review"
+ }
+}

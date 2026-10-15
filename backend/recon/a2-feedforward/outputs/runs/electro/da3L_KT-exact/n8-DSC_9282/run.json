@@ -1,0 +1,58 @@
+{
+ "scene": "electro",
+ "model": "da3L",
+ "checkpoint": "depth-anything/DA3-LARGE-1.1",
+ "license": "Apache-2.0 (DA3-LARGE-1.1)",
+ "mode": "KT:exact",
+ "members": [
+  "DSC_9282",
+  "DSC_9262",
+  "DSC_9278",
+  "DSC_9261",
+  "DSC_9260",
+  "DSC_9259",
+  "DSC_9277",
+  "DSC_9258"
+ ],
+ "network_wh": [
+  504,
+  336
+ ],
+ "seconds_total": 8.2,
+ "device": "cpu (4 threads, bf16 autocast trunk)",
+ "views": {
+  "DSC_9282": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 5.278
+  },
+  "DSC_9262": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 6.796
+  },
+  "DSC_9278": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 7.237
+  },
+  "DSC_9261": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 7.557
+  },
+  "DSC_9260": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 5.41
+  },
+  "DSC_9259": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 4.685
+  },
+  "DSC_9277": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 9.605
+  },
+  "DSC_9258": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 4.92
+  }
+ },
+ "frame": "input poses"
+}

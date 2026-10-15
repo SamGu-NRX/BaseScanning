@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The marked meter location is on a wall crowded by ground-level windows and a nearby entry door; the visible reachable walls have repeated ground-level window openings with no clearly confirmed ~8 ft clear span needed under ComEd\u2019s 3 ft window/door clearance rule. The gravel courtyard may also be a drivable surface, and the photos do not clearly confirm a compliant battery location within reach.\", \"decision\":\"manual_review\"}",
+ "json": {
+  "justification": "The marked meter location is on a wall crowded by ground-level windows and a nearby entry door; the visible reachable walls have repeated ground-level window openings with no clearly confirmed ~8 ft clear span needed under ComEd\u2019s 3 ft window/door clearance rule. The gravel courtyard may also be a drivable surface, and the photos do not clearly confirm a compliant battery location within reach.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 32400,
+  "cached_tokens": 0,
+  "output_tokens": 1645,
+  "reasoning_tokens": 1552
+ },
+ "cost_usd": 0.21135,
+ "latency_s": 22.38,
+ "stop": "completed",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "eth3d-facade",
+ "variant": "photo_only_meter_hint_verbatim",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

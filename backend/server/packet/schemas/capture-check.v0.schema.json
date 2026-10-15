@@ -1,0 +1,181 @@
+{
+  "$defs": {
+    "CheckItem": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "meter_close",
+            "meter_oblique",
+            "meter_closeups_in_session",
+            "meter_tap",
+            "door_view_meter_side",
+            "panel_close",
+            "panel_open",
+            "main_disconnect",
+            "keyframe_count",
+            "keyframe_cadence",
+            "tracking_quality",
+            "photo_count",
+            "wall_left_of_meter",
+            "wall_right_of_meter",
+            "ground_downward_left",
+            "ground_downward_right"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "evidence": {
+          "additionalProperties": true,
+          "title": "Evidence",
+          "type": "object"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "retake": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retake"
+        },
+        "severity": {
+          "enum": [
+            "required",
+            "recommended"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "present",
+            "missing",
+            "weak",
+            "unknown",
+            "not_applicable"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "status",
+        "severity",
+        "message"
+      ],
+      "title": "CheckItem",
+      "type": "object"
+    }
+  },
+  "$id": "capture-check.v0.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "complete": {
+      "title": "Complete",
+      "type": "boolean"
+    },
+    "format": {
+      "const": "hss-capture-check/v0",
+      "default": "hss-capture-check/v0",
+      "title": "Format",
+      "type": "string"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/CheckItem"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "missing": {
+      "items": {
+        "enum": [
+          "meter_close",
+          "meter_oblique",
+          "meter_closeups_in_session",
+          "meter_tap",
+          "door_view_meter_side",
+          "panel_close",
+          "panel_open",
+          "main_disconnect",
+          "keyframe_count",
+          "keyframe_cadence",
+          "tracking_quality",
+          "photo_count",
+          "wall_left_of_meter",
+          "wall_right_of_meter",
+          "ground_downward_left",
+          "ground_downward_right"
+        ],
+        "type": "string"
+      },
+      "title": "Missing",
+      "type": "array"
+    },
+    "mode": {
+      "enum": [
+        "partial",
+        "final"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "pendingFinal": {
+      "title": "Pendingfinal",
+      "type": "boolean"
+    },
+    "stats": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Stats",
+      "type": "object"
+    },
+    "unknown": {
+      "items": {
+        "enum": [
+          "meter_close",
+          "meter_oblique",
+          "meter_closeups_in_session",
+          "meter_tap",
+          "door_view_meter_side",
+          "panel_close",
+          "panel_open",
+          "main_disconnect",
+          "keyframe_count",
+          "keyframe_cadence",
+          "tracking_quality",
+          "photo_count",
+          "wall_left_of_meter",
+          "wall_right_of_meter",
+          "ground_downward_left",
+          "ground_downward_right"
+        ],
+        "type": "string"
+      },
+      "title": "Unknown",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mode",
+    "complete",
+    "pendingFinal",
+    "missing",
+    "unknown",
+    "items",
+    "stats"
+  ],
+  "title": "CaptureCheck",
+  "type": "object"
+}

@@ -1,0 +1,2103 @@
+{
+ "format": "base-scene/v0",
+ "scene_id": "eth3d-facade/A5-scan-1.20",
+ "provenance": {
+  "data": "real",
+  "site": "eth3d-facade",
+  "producer": {
+   "path": "A5-scan-1.20",
+   "params": {
+    "alignment": {
+     "metric_declared": false,
+     "method": "given transform"
+    },
+    "extract": {
+     "join_m": 1.5,
+     "min_corner_deg": 30.0,
+     "wall_band_m": [
+      0.1,
+      2.5
+     ],
+     "line_thr_m": 0.08,
+     "min_wall_pts": 60,
+     "max_lines": 30,
+     "gap_m": 3.0,
+     "fit_radius_m": 14.0,
+     "fit_voxel_m": 0.05,
+     "merge_angle_deg": 5.0,
+     "merge_offset_m": 0.15,
+     "merge_gap_m": 4.0,
+     "wall_min_high_share": 0.15,
+     "wall_high_m": 1.5,
+     "scale_rel_pm": 0.0,
+     "voxel_m": 0.1,
+     "profile_min_count": 3,
+     "seed": 7
+    },
+    "cloud": "/home/ubuntu/work/a5/eth3d-facade/points_metric.ply"
+   }
+  },
+  "inputs": {
+   "images_used": 7
+  },
+  "scale_source": "ground_truth",
+  "gravity_source": "ground_truth",
+  "notes": [
+   "Scene built by evalharness.geomscore.score_cloud (reference extractor, perfect GT taps and clicks)."
+  ],
+  "runtime_s": 20.7
+ },
+ "frame": {
+  "units": "m",
+  "convention": "meter_anchored/v0",
+  "anchor": {
+   "element_id": "meter",
+   "plus_minus_m": 0.138
+  },
+  "source_frame": "producer_cloud",
+  "from_source": [
+   0.83435036,
+   0.020457463,
+   -0.862230229,
+   0.0,
+   0.027387357,
+   -1.199685827,
+   -0.001962211,
+   0.0,
+   -0.86203794,
+   -0.018314196,
+   -0.834598815,
+   0.0,
+   -2.62978056,
+   1.379273388,
+   8.286829194,
+   1.0
+  ]
+ },
+ "walls": [
+  {
+   "id": "w1",
+   "role": "house",
+   "baseline_m": [
+    [
+     3.0519,
+     -2.2583
+    ],
+    [
+     -11.2153,
+     -6.1389
+    ]
+   ],
+   "height_m": 2.5,
+   "s_range_m": [
+    -34.2166,
+    -19.4311
+   ],
+   "plus_minus_m": 0.126,
+   "evidence": "observed",
+   "support": {
+    "points": 136,
+    "fit_rms_m": 0.0419
+   },
+   "observed_fraction": 0.0
+  },
+  {
+   "id": "w2",
+   "role": "house",
+   "baseline_m": [
+    [
+     -11.2153,
+     -6.1389
+    ],
+    [
+     -13.0297,
+     0.0
+    ]
+   ],
+   "height_m": 2.5,
+   "s_range_m": [
+    -19.4311,
+    -13.0297
+   ],
+   "plus_minus_m": 0.12,
+   "evidence": "observed",
+   "support": {
+    "points": 716,
+    "fit_rms_m": 0.04
+   },
+   "observed_fraction": 0.0
+  },
+  {
+   "id": "w3",
+   "role": "house",
+   "baseline_m": [
+    [
+     -13.0297,
+     0.0
+    ],
+    [
+     12.902,
+     0.0
+    ]
+   ],
+   "height_m": 2.5,
+   "s_range_m": [
+    -13.0297,
+    12.902
+   ],
+   "plus_minus_m": 0.138,
+   "evidence": "observed",
+   "support": {
+    "points": 233,
+    "fit_rms_m": 0.0459
+   },
+   "observed_fraction": 0.809
+  }
+ ],
+ "chain": {
+  "wall_ids": [
+   "w1",
+   "w2",
+   "w3"
+  ],
+  "corners": [
+   {
+    "id": "c1",
+    "left_wall": "w1",
+    "right_wall": "w2",
+    "point_m": [
+     -11.2153,
+     -6.1389
+    ],
+    "s_m": -19.4311,
+    "evidence": "inferred",
+    "turn_deg": -88.75,
+    "plus_minus_m": 0.126
+   },
+   {
+    "id": "c2",
+    "left_wall": "w2",
+    "right_wall": "w3",
+    "point_m": [
+     -13.0297,
+     0.0
+    ],
+    "s_m": -13.0297,
+    "evidence": "inferred",
+    "turn_deg": -106.47,
+    "plus_minus_m": 0.138
+   }
+  ],
+  "ends": {
+   "left": {
+    "kind": "unexplored",
+    "point_m": [
+     3.0519,
+     -2.2583
+    ],
+    "s_m": -34.2166
+   },
+   "right": {
+    "kind": "unexplored",
+    "point_m": [
+     12.902,
+     0.0
+    ],
+    "s_m": 12.902
+   }
+  }
+ },
+ "ground": {
+  "surface": {
+   "kind": "plane",
+   "normal": [
+    -0.019297,
+    0.999806,
+    -0.004062
+   ],
+   "offset_m": -0.0
+  },
+  "plus_minus_m": 0.077,
+  "regions": []
+ },
+ "objects": [
+  {
+   "id": "meter",
+   "class": "meter",
+   "geometry": {
+    "kind": "point",
+    "pos_m": [
+     0.0,
+     1.365,
+     0.0
+    ]
+   },
+   "wall_id": "w3",
+   "confidence": 1.0,
+   "plus_minus_m": 0.138,
+   "source": {
+    "kind": "tap",
+    "views": [
+     {
+      "image": "DSC_0420",
+      "points_px": [
+       [
+        396.4201014544313,
+        1028.0704532649022
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0362",
+      "points_px": [
+       [
+        870.4749659853458,
+        1024.7377620087163
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0363",
+      "points_px": [
+       [
+        205.98492847931556,
+        993.3573909125143
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win1",
+   "class": "window",
+   "label": "w1 window 1",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w3",
+    "s_m": [
+     -7.1972,
+     -6.5167
+    ],
+    "bottom_m": 1.2149,
+    "top_m": 2.49
+   },
+   "wall_id": "w3",
+   "confidence": 1.0,
+   "plus_minus_m": 0.28,
+   "source": {
+    "kind": "annotation",
+    "model": "perfect clicks: GT opening edges projected through GT cameras",
+    "views": [
+     {
+      "image": "DSC_0360",
+      "points_px": [
+       [
+        862.7213487766531,
+        1100.532842621973
+       ],
+       [
+        942.367314692992,
+        1098.4174501091723
+       ],
+       [
+        897.7643439548962,
+        1189.124372222316
+       ],
+       [
+        905.2182846035066,
+        1013.3438241501916
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0359",
+      "points_px": [
+       [
+        1451.6799856920418,
+        1116.7231515177605
+       ],
+       [
+        1542.3911053940842,
+        1111.7949360324794
+       ],
+       [
+        1510.7901510655136,
+        1209.1300930630186
+       ],
+       [
+        1480.4391835707347,
+        1023.7230474769175
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win2",
+   "class": "window",
+   "label": "w1 window 2",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w3",
+    "s_m": [
+     -5.4263,
+     -4.6613
+    ],
+    "bottom_m": 1.157,
+    "top_m": 2.5275
+   },
+   "wall_id": "w3",
+   "confidence": 1.0,
+   "plus_minus_m": 1.049,
+   "source": {
+    "kind": "annotation",
+    "model": "perfect clicks: GT opening edges projected through GT cameras",
+    "views": [
+     {
+      "image": "DSC_0361",
+      "points_px": [
+       [
+        267.61284749310266,
+        961.6579182348142
+       ],
+       [
+        400.19946237447647,
+        965.5769070602362
+       ],
+       [
+        309.0051754040121,
+        1079.0050547150645
+       ],
+       [
+        357.2723554176053,
+        853.1651942770799
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0360",
+      "points_px": [
+       [
+        1041.4494935310565,
+        1095.7042325703578
+       ],
+       [
+        1142.8916520133732,
+        1093.005225541652
+       ],
+       [
+        1092.5760889425505,
+        1198.0633854275256
+       ],
+       [
+        1089.0067643747389,
+        995.6298120824764
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0359",
+      "points_px": [
+       [
+        1662.7979752582244,
+        1105.1618981234224
+       ],
+       [
+        1795.7489065360223,
+        1097.9297348189546
+       ],
+       [
+        1754.4314921138212,
+        1219.3473315786844
+       ],
+       [
+        1699.4473154073369,
+        990.9017840727125
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win3",
+   "class": "window",
+   "label": "w1 window 3",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w3",
+    "s_m": [
+     -3.45,
+     -2.603
+    ],
+    "bottom_m": 1.154,
+    "top_m": 2.5803
+   },
+   "wall_id": "w3",
+   "confidence": 1.0,
+   "plus_minus_m": 1.18,
+   "source": {
+    "kind": "annotation",
+    "model": "perfect clicks: GT opening edges projected through GT cameras",
+    "views": [
+     {
+      "image": "DSC_0361",
+      "points_px": [
+       [
+        542.2006115774311,
+        961.5637562093235
+       ],
+       [
+        681.2975150692209,
+        965.6138975030264
+       ],
+       [
+        594.9703070717178,
+        1081.29119889906
+       ],
+       [
+        627.2821759878295,
+        851.0621131366412
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0362",
+      "points_px": [
+       [
+        353.2147506195602,
+        938.2693417819327
+       ],
+       [
+        503.50396499159865,
+        943.4012383490625
+       ],
+       [
+        405.70891678537265,
+        1063.5418475325496
+       ],
+       [
+        450.1449697745226,
+        823.6521531015566
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0360",
+      "points_px": [
+       [
+        1261.720596360093,
+        1081.9251917609513
+       ],
+       [
+        1393.6205774746877,
+        1077.887833115566
+       ],
+       [
+        1336.4416243432188,
+        1197.6011042869811
+       ],
+       [
+        1315.2506839539176,
+        968.8894919499322
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win4",
+   "class": "window",
+   "label": "w1 window 4",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w3",
+    "s_m": [
+     -1.4957,
+     -0.5403
+    ],
+    "bottom_m": 1.1183,
+    "top_m": 2.5863
+   },
+   "wall_id": "w3",
+   "confidence": 1.0,
+   "plus_minus_m": 0.393,
+   "source": {
+    "kind": "annotation",
+    "model": "perfect clicks: GT opening edges projected through GT cameras",
+    "views": [
+     {
+      "image": "DSC_0420",
+      "points_px": [
+       [
+        93.30289572546349,
+        933.2070447680863
+       ],
+       [
+        315.9671583367066,
+        940.3548046989636
+       ],
+       [
+        174.96512002271916,
+        1085.585989109288
+       ],
+       [
+        238.82283917064598,
+        796.7768412106244
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0362",
+      "points_px": [
+       [
+        648.499928643645,
+        943.5945924014316
+       ],
+       [
+        803.9888413588882,
+        948.9143783783252
+       ],
+       [
+        713.1116410277742,
+        1068.1452194009232
+       ],
+       [
+        738.9583641430494,
+        829.7905879323132
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0361",
+      "points_px": [
+       [
+        817.8594488955989,
+        964.9698005734068
+       ],
+       [
+        967.35616068704,
+        969.2862347423371
+       ],
+       [
+        884.4333812391677,
+        1086.3094175636204
+       ],
+       [
+        899.8413207389622,
+        853.2594596278641
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win5",
+   "class": "window",
+   "label": "w1 window 5",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w3",
+    "s_m": [
+     0.4815,
+     1.5202
+    ],
+    "bottom_m": 1.0836,
+    "top_m": 2.6602
+   },
+   "wall_id": "w3",
+   "confidence": 1.0,
+   "plus_minus_m": 0.373,
+   "source": {
+    "kind": "annotation",
+    "model": "perfect clicks: GT opening edges projected through GT cameras",
+    "views": [
+     {
+      "image": "DSC_0420",
+      "points_px": [
+       [
+        500.8272691134959,
+        939.0797892971509
+       ],
+       [
+        675.1269597124973,
+        945.0273542097433
+       ],
+       [
+        573.8927800012552,
+        1076.294419540676
+       ],
+       [
+        605.5969844399284,
+        814.8130914830961
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0363",
+      "points_px": [
+       [
+        325.0368350506634,
+        904.1404586348914
+       ],
+       [
+        513.7476492089781,
+        914.8755352403065
+       ],
+       [
+        397.67007739109033,
+        1046.8048750941127
+       ],
+       [
+        445.37005116947944,
+        779.3766143420861
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0362",
+      "points_px": [
+       [
+        946.7171111184189,
+        947.3984327715758
+       ],
+       [
+        1095.4597185763641,
+        952.5007601341135
+       ],
+       [
+        1017.1840082062926,
+        1071.9063166420292
+       ],
+       [
+        1024.9708685226203,
+        833.4288466899803
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "door",
+   "class": "door",
+   "label": "w3 entrance door",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w3",
+    "s_m": [
+     2.881,
+     5.2142
+    ],
+    "bottom_m": 0.0883,
+    "top_m": 3.7096
+   },
+   "wall_id": "w3",
+   "confidence": 1.0,
+   "plus_minus_m": 0.301,
+   "source": {
+    "kind": "annotation",
+    "model": "perfect clicks: GT opening edges projected through GT cameras",
+    "views": [
+     {
+      "image": "DSC_0363",
+      "points_px": [
+       [
+        692.0154813743345,
+        921.7566819784407
+       ],
+       [
+        960.4139734997154,
+        937.3059666981765
+       ],
+       [
+        812.9909981550906,
+        1189.6403541703728
+       ],
+       [
+        850.0155834774164,
+        697.6430180947846
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0420",
+      "points_px": [
+       [
+        876.4466558611491,
+        947.6483845348903
+       ],
+       [
+        1129.4916253793272,
+        956.6066835373022
+       ],
+       [
+        1005.0019665266782,
+        1209.6938884488025
+       ],
+       [
+        1011.0172972836282,
+        723.0480827516328
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0362",
+      "points_px": [
+       [
+        1287.2355820482428,
+        956.2377935808811
+       ],
+       [
+        1559.8093722983858,
+        965.5856270451171
+       ],
+       [
+        1442.2878961091926,
+        1223.5402343220894
+       ],
+       [
+        1407.2940951959777,
+        727.1468814102561
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  }
+ ],
+ "coverage": {
+  "method": "rays from each camera to the cloud points it sees (cloud z-buffer)",
+  "grid": {
+   "asset": "coverage",
+   "voxel_m": 0.1,
+   "origin_m": [
+    -17.0297,
+    -0.5,
+    -8.1389
+   ],
+   "shape": [
+    340,
+    65,
+    242
+   ],
+   "min_views": 1
+  },
+  "rule": {
+   "min_views": 2,
+   "max_incidence_deg": {
+    "wall": 75.0,
+    "ground": 80.0
+   },
+   "observed_share": 0.9
+  },
+  "bands": [
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -33.967,
+     -33.217
+    ],
+    "out_m": 0.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -33.217,
+     -32.967
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -32.967,
+     -32.467
+    ],
+    "out_m": 0.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -32.467,
+     -32.217
+    ],
+    "out_m": 0.4
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -32.217,
+     -29.717
+    ],
+    "out_m": 0.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -29.717,
+     -29.467
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -29.467,
+     -28.967
+    ],
+    "out_m": 0.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -28.967,
+     -28.717
+    ],
+    "out_m": 0.4
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -28.717,
+     -28.217
+    ],
+    "out_m": 0.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -28.217,
+     -27.967
+    ],
+    "out_m": 0.4
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -27.967,
+     -27.467
+    ],
+    "out_m": 0.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -27.467,
+     -27.217
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -27.217,
+     -26.717
+    ],
+    "out_m": 0.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -26.717,
+     -24.967
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -24.467,
+     -22.467
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -22.217,
+     -21.467
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -21.217,
+     -20.967
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -20.217,
+     -19.717
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     -1.03,
+     -0.53
+    ],
+    "views": 3,
+    "best_incidence_deg": 9.4
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     -0.28,
+     -0.03
+    ],
+    "views": 4,
+    "best_incidence_deg": 8.6
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     0.47,
+     0.72
+    ],
+    "views": 3,
+    "best_incidence_deg": 11.5
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     1.22,
+     1.47
+    ],
+    "views": 4,
+    "best_incidence_deg": 15.7
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     1.72,
+     1.97
+    ],
+    "views": 3,
+    "best_incidence_deg": 18.8
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     2.22,
+     2.47
+    ],
+    "views": 2,
+    "best_incidence_deg": 24.0
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     3.47,
+     3.97
+    ],
+    "views": 3,
+    "best_incidence_deg": 31.2
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -12.78,
+     -12.53
+    ],
+    "out_m": 0.4
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -12.53,
+     -12.03
+    ],
+    "out_m": 0.6
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -12.03,
+     -11.28
+    ],
+    "out_m": 1.0
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -11.28,
+     -10.78
+    ],
+    "out_m": 1.6
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -10.78,
+     -10.28
+    ],
+    "out_m": 2.0
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -10.28,
+     -10.03
+    ],
+    "out_m": 3.9
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -10.03,
+     -9.78
+    ],
+    "out_m": 4.1
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -9.78,
+     -9.28
+    ],
+    "out_m": 5.2
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -9.28,
+     -9.03
+    ],
+    "out_m": 7.9
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -9.03,
+     -8.78
+    ],
+    "out_m": 5.6
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -8.78,
+     -8.53
+    ],
+    "out_m": 7.6
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -8.53,
+     -8.03
+    ],
+    "out_m": 5.4
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -8.03,
+     -7.78
+    ],
+    "out_m": 5.5
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -7.78,
+     -7.53
+    ],
+    "out_m": 3.9
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -7.53,
+     -7.28
+    ],
+    "out_m": 2.9
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -7.28,
+     -7.03
+    ],
+    "out_m": 2.2
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -7.03,
+     -5.78
+    ],
+    "out_m": 1.1
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -5.78,
+     -5.53
+    ],
+    "out_m": 2.2
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -5.53,
+     -4.03
+    ],
+    "out_m": 2.5
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -4.03,
+     -3.78
+    ],
+    "out_m": 3.0
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -3.78,
+     -3.53
+    ],
+    "out_m": 2.4
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -3.53,
+     -2.53
+    ],
+    "out_m": 2.6
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -2.53,
+     -2.28
+    ],
+    "out_m": 3.0
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -2.28,
+     -2.03
+    ],
+    "out_m": 3.9
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -2.03,
+     -1.78
+    ],
+    "out_m": 2.9
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -1.78,
+     -1.28
+    ],
+    "out_m": 3.6
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -1.28,
+     -1.03
+    ],
+    "out_m": 5.5
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -1.03,
+     -0.53
+    ],
+    "out_m": 3.3
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     -0.53,
+     0.22
+    ],
+    "out_m": 6.5
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     0.22,
+     1.47
+    ],
+    "out_m": 7.0
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     1.97,
+     2.22
+    ],
+    "out_m": 5.5
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     2.22,
+     2.47
+    ],
+    "out_m": 5.4
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     2.47,
+     2.72
+    ],
+    "out_m": 4.4
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     3.22,
+     3.47
+    ],
+    "out_m": 4.9
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     3.72,
+     3.97
+    ],
+    "out_m": 5.2
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     3.97,
+     4.22
+    ],
+    "out_m": 4.7
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     4.47,
+     4.72
+    ],
+    "out_m": 4.4
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     4.72,
+     4.97
+    ],
+    "out_m": 2.2
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     7.47,
+     7.72
+    ],
+    "out_m": 1.1
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     8.22,
+     8.47
+    ],
+    "out_m": 0.6
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     8.47,
+     8.72
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     8.97,
+     9.22
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     9.47,
+     9.97
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     12.22,
+     12.47
+    ],
+    "out_m": 0.3
+   }
+  ],
+  "sensitivity": [
+   {
+    "surface": "ground",
+    "rule_id": "angle75",
+    "max_incidence_deg": 75.0,
+    "bands": []
+   },
+   {
+    "surface": "ground",
+    "rule_id": "angle80",
+    "max_incidence_deg": 80.0,
+    "bands": []
+   },
+   {
+    "surface": "ground",
+    "rule_id": "footprint3in",
+    "max_incidence_deg": 88.0,
+    "max_footprint_m": 0.0762,
+    "bands": []
+   }
+  ]
+ },
+ "keyframes": [
+  {
+   "id": "DSC_0359",
+   "pose": [
+    0.708423,
+    -0.003514,
+    -0.70578,
+    0.0,
+    0.271545,
+    0.92437,
+    0.26796,
+    0.0,
+    0.65146,
+    -0.38148,
+    0.655799,
+    0.0,
+    -3.05615,
+    1.491901,
+    8.683863,
+    1.0
+   ],
+   "intrinsics": [
+    1127.7574,
+    1127.3212,
+    1028.2803,
+    681.825
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0360",
+   "pose": [
+    0.944363,
+    0.015381,
+    -0.328545,
+    0.0,
+    0.107932,
+    0.929098,
+    0.353734,
+    0.0,
+    0.310691,
+    -0.369514,
+    0.875746,
+    0.0,
+    -2.848123,
+    1.515215,
+    8.266154,
+    1.0
+   ],
+   "intrinsics": [
+    1127.1366,
+    1127.7788,
+    1028.1786,
+    682.5397
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0361",
+   "pose": [
+    0.985292,
+    0.040558,
+    0.165999,
+    0.0,
+    -0.088402,
+    0.952312,
+    0.292039,
+    0.0,
+    -0.146238,
+    -0.302419,
+    0.94189,
+    0.0,
+    -1.494099,
+    1.418666,
+    7.496812,
+    1.0
+   ],
+   "intrinsics": [
+    1127.1069,
+    1127.5092,
+    1027.9308,
+    683.6562
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0362",
+   "pose": [
+    0.970069,
+    0.042544,
+    0.239075,
+    0.0,
+    -0.11161,
+    0.952494,
+    0.283368,
+    0.0,
+    -0.215662,
+    -0.30157,
+    0.928733,
+    0.0,
+    -0.752702,
+    1.349234,
+    7.419151,
+    1.0
+   ],
+   "intrinsics": [
+    1127.1366,
+    1127.7788,
+    1028.1786,
+    682.5397
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0363",
+   "pose": [
+    0.769548,
+    0.015814,
+    0.638394,
+    0.0,
+    -0.198207,
+    0.956235,
+    0.21524,
+    0.0,
+    -0.607051,
+    -0.292172,
+    0.739003,
+    0.0,
+    -0.506518,
+    1.237823,
+    7.586692,
+    1.0
+   ],
+   "intrinsics": [
+    1127.1366,
+    1127.7788,
+    1028.1786,
+    682.5397
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0396",
+   "pose": [
+    0.634142,
+    -0.044503,
+    -0.771935,
+    0.0,
+    0.275924,
+    0.945637,
+    0.172154,
+    0.0,
+    0.722309,
+    -0.322165,
+    0.611947,
+    0.0,
+    -6.863186,
+    1.334578,
+    22.289737,
+    1.0
+   ],
+   "intrinsics": [
+    1127.5653,
+    1126.9472,
+    1028.5159,
+    680.2306
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0420",
+   "pose": [
+    0.799819,
+    0.0013,
+    0.60024,
+    0.0,
+    -0.181767,
+    0.953569,
+    0.240138,
+    0.0,
+    -0.572059,
+    -0.301171,
+    0.762919,
+    0.0,
+    -1.247963,
+    1.307718,
+    7.186527,
+    1.0
+   ],
+   "intrinsics": [
+    1127.1366,
+    1127.7788,
+    1028.1786,
+    682.5397
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  }
+ ],
+ "overheads": [
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -34.217,
+    -33.912
+   ],
+   "clearance_m": 1.492,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -33.912,
+    -33.607
+   ],
+   "clearance_m": 3.148,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -33.607,
+    -32.083
+   ],
+   "clearance_m": 1.221,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -32.083,
+    -31.778
+   ],
+   "clearance_m": 1.544,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -31.778,
+    -31.169
+   ],
+   "clearance_m": 1.252,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -31.169,
+    -30.864
+   ],
+   "clearance_m": 1.442,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -30.864,
+    -30.254
+   ],
+   "clearance_m": 1.277,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -30.254,
+    -29.949
+   ],
+   "clearance_m": 1.409,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -29.949,
+    -29.645
+   ],
+   "clearance_m": 1.222,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -29.645,
+    -29.34
+   ],
+   "clearance_m": 1.401,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -29.34,
+    -29.035
+   ],
+   "clearance_m": 1.318,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -27.816,
+    -26.292
+   ],
+   "clearance_m": 1.222,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -25.377,
+    -25.073
+   ],
+   "clearance_m": 2.738,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -25.073,
+    -23.549
+   ],
+   "clearance_m": 1.224,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -22.329,
+    -21.415
+   ],
+   "clearance_m": 1.239,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -21.415,
+    -21.11
+   ],
+   "clearance_m": 1.381,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -21.11,
+    -20.196
+   ],
+   "clearance_m": 1.252,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -19.891,
+    -19.586
+   ],
+   "clearance_m": 1.221,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w2",
+   "s_m": [
+    -18.517,
+    -18.212
+   ],
+   "clearance_m": 1.273,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w2",
+   "s_m": [
+    -18.212,
+    -17.907
+   ],
+   "clearance_m": 2.422,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w2",
+   "s_m": [
+    -16.078,
+    -15.774
+   ],
+   "clearance_m": 1.412,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w2",
+   "s_m": [
+    -15.774,
+    -15.469
+   ],
+   "clearance_m": 1.232,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    -13.03,
+    -12.725
+   ],
+   "clearance_m": 3.012,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    4.344,
+    4.649
+   ],
+   "clearance_m": 3.283,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    4.649,
+    5.258
+   ],
+   "clearance_m": 1.264,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    5.258,
+    5.563
+   ],
+   "clearance_m": 1.425,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    12.574,
+    12.878
+   ],
+   "clearance_m": 2.364,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  }
+ ],
+ "facing": [
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -34.217,
+    -23.549
+   ],
+   "depth_m": 0.308,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -22.025,
+    -20.501
+   ],
+   "depth_m": 0.329,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    -13.03,
+    -12.725
+   ],
+   "depth_m": 0.314,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    -12.725,
+    -12.42
+   ],
+   "depth_m": 11.265,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    -12.42,
+    -12.115
+   ],
+   "depth_m": 4.057,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    -12.115,
+    -11.506
+   ],
+   "depth_m": 8.249,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    -11.506,
+    -11.201
+   ],
+   "depth_m": 4.566,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    -11.201,
+    -10.591
+   ],
+   "depth_m": 2.509,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    -10.591,
+    -10.286
+   ],
+   "depth_m": 2.312,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    -10.286,
+    -9.067
+   ],
+   "depth_m": 12.842,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    -2.057,
+    -1.752
+   ],
+   "depth_m": 18.29,
+   "plus_minus_m": 0.05,
+   "evidence": "observed",
+   "lower_bound": true
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    -0.838,
+    -0.228
+   ],
+   "depth_m": 18.29,
+   "plus_minus_m": 0.05,
+   "evidence": "observed",
+   "lower_bound": true
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    0.077,
+    0.382
+   ],
+   "depth_m": 18.29,
+   "plus_minus_m": 0.05,
+   "evidence": "observed",
+   "lower_bound": true
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    4.954,
+    5.868
+   ],
+   "depth_m": 0.323,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  }
+ ],
+ "assets": [
+  {
+   "id": "points",
+   "kind": "point_cloud",
+   "path": "points.ply",
+   "format": "ply",
+   "in_scene_frame": true,
+   "count": 400000,
+   "sha256": "60b90fe77b426ebae24d54d67ddc9ae3ef879fc8d6298aeec88e2eae5faae976"
+  },
+  {
+   "id": "coverage",
+   "kind": "coverage_grid",
+   "path": "coverage.npz",
+   "format": "npz"
+  }
+ ]
+}

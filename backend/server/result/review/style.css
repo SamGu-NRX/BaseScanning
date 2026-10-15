@@ -1,0 +1,15 @@
+body { font: 15px/1.4 system-ui, sans-serif; margin: 1.5rem; color: #1a1a1a; }
+header { margin-bottom: 1.5rem; }
+.profiles { display: flex; gap: 0.75rem; list-style: none; padding: 0; }
+.profiles li { border: 1px solid #ccc; padding: 0.4rem 0.7rem; }
+.profiles .device { border-color: #0b6; font-weight: 600; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid #ddd; padding: 0.3rem 0.5rem; text-align: left; vertical-align: top; }
+.pass { fill: #2a8f4a; }
+.unsure { fill: #d89a1a; }
+.fail { fill: #c0392b; }
+.strip { background: #f6f6f6; padding: 0.5rem; }
+.photos { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.photos figure { margin: 0; width: 8rem; }
+.todo { color: #666; }
+#three-offline { border: 1px solid #d89a1a; padding: 0.6rem; }

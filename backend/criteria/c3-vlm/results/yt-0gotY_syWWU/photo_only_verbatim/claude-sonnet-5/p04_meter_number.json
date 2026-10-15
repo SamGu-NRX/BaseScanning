@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"reasoning\": \"None of the provided photos show a close-up of an electric meter face or label; the images are all general exterior house and yard shots with no legible meter number visible.\", \"meter_number\": \"\", \"clean-decision\": false}",
+ "json": {
+  "reasoning": "None of the provided photos show a close-up of an electric meter face or label; the images are all general exterior house and yard shots with no legible meter number visible.",
+  "meter_number": "",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 8013,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 74
+ },
+ "cost_usd": 0.016766,
+ "latency_s": 2.57,
+ "stop": "end_turn",
+ "prompt_id": "p04_meter_number",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p04": "none"
+ }
+}

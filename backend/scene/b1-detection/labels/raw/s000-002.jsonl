@@ -1,0 +1,6 @@
+{"id": "eth3d-electro/DSC_9257", "keep": [8, 22], "add": [["door", 0.48, 0.32, 0.70, 0.80], ["door", 0.78, 0.22, 0.98, 0.86]], "present": {"window": false, "driveway": false}, "ignore": ["fence"], "ground": "concrete_or_paving", "note": "industrial yard; double doors boxed as one door"}
+{"id": "eth3d-electro/DSC_9279", "keep": [23], "add": [["door", 0.0, 0.41, 0.09, 0.79], ["door", 0.70, 0.28, 0.98, 0.81]], "present": {"window": false, "fence": false, "driveway": false}, "ignore": ["downspout"], "ground": "concrete_or_paving"}
+{"id": "eth3d-electro/DSC_9303", "keep": [6], "add": [], "present": {"window": false}, "ignore": ["fence", "driveway"], "ground": "concrete_or_paving"}
+{"id": "eth3d-facade/DSC_0344", "keep": [30], "add": [], "present": {"window": true}, "ignore": ["fence", "driveway"], "ground": "concrete_or_paving"}
+{"id": "eth3d-facade/DSC_0359", "keep": [65], "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": [], "ground": "gravel"}
+{"id": "eth3d-facade/DSC_0362", "keep": [64], "add": [["downspout", 0.535, 0.13, 0.56, 0.90]], "present": {"window": true, "fence": false, "driveway": false}, "ignore": [], "ground": "gravel"}

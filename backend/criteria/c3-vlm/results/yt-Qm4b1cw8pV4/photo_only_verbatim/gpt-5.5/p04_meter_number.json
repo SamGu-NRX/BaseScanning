@@ -1,0 +1,24 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"reasoning\":\"The photos show a single exterior electric meter, but the meter face/serial area is too far away and partly cut off in the closest views, so no meter number characters are legible end-to-end. Because no readable electric meter number is photographed, this is not a clean read.\",\"meter_number\":\"\",\"clean-decision\":false}",
+ "json": {
+  "reasoning": "The photos show a single exterior electric meter, but the meter face/serial area is too far away and partly cut off in the closest views, so no meter number characters are legible end-to-end. Because no readable electric meter number is photographed, this is not a clean read.",
+  "meter_number": "",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 8192,
+  "cached_tokens": 0,
+  "output_tokens": 592,
+  "reasoning_tokens": 516
+ },
+ "cost_usd": 0.05872,
+ "latency_s": 9.56,
+ "stop": "completed",
+ "prompt_id": "p04_meter_number",
+ "house": "yt-Qm4b1cw8pV4",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p04": "none"
+ }
+}

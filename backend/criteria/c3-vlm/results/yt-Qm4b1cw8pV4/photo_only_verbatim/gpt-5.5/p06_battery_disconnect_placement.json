@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The meter is on the side wall with some open wall nearby, but the wall directly below/right of the meter contains fixed electrical boxes/outlet equipment and conduit, including a damaged receptacle cover shown in close-up. Because the required clear area below the meter and unobstructed meter-adjacent clearance cannot be confidently confirmed, this should not be auto-approved.\",\"decision\":\"manual_review\"}",
+ "json": {
+  "justification": "The meter is on the side wall with some open wall nearby, but the wall directly below/right of the meter contains fixed electrical boxes/outlet equipment and conduit, including a damaged receptacle cover shown in close-up. Because the required clear area below the meter and unobstructed meter-adjacent clearance cannot be confidently confirmed, this should not be auto-approved.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 8149,
+  "cached_tokens": 0,
+  "output_tokens": 3940,
+  "reasoning_tokens": 3853
+ },
+ "cost_usd": 0.158945,
+ "latency_s": 61.0,
+ "stop": "completed",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "yt-Qm4b1cw8pV4",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

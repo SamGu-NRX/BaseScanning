@@ -1,0 +1,28 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\n  \"mainPanelLocation\": \"exterior_service_equipment\",\n  \"meterGaragePosition\": \"not_garage_wall\",\n  \"meterPanelRelationship\": \"co_located_exterior\",\n  \"relationshipSubtype\": \"exterior_service_equipment\",\n  \"evidenceSufficiency\": \"sufficient\",\n  \"confidence\": 0.85,\n  \"rationale\": \"Photos 2, 3, 7 and 13 show the gray enclosure directly right of the meter opened, with breakers inside. This makes it the main panel, mounted outdoors on the brick wall beside the meter. The wall is a backyard side wall with a regular window and a patio or French door nearby, and no garage door or garage opening is visible. The panel and meter are co-located exterior service equipment, so no through-wall garage relationship applies.\"\n}\n```",
+ "json": {
+  "mainPanelLocation": "exterior_service_equipment",
+  "meterGaragePosition": "not_garage_wall",
+  "meterPanelRelationship": "co_located_exterior",
+  "relationshipSubtype": "exterior_service_equipment",
+  "evidenceSufficiency": "sufficient",
+  "confidence": 0.85,
+  "rationale": "Photos 2, 3, 7 and 13 show the gray enclosure directly right of the meter opened, with breakers inside. This makes it the main panel, mounted outdoors on the brick wall beside the meter. The wall is a backyard side wall with a regular window and a patio or French door nearby, and no garage door or garage opening is visible. The panel and meter are co-located exterior service equipment, so no through-wall garage relationship applies."
+ },
+ "usage": {
+  "input_tokens": 26039,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 442
+ },
+ "cost_usd": 0.112996,
+ "latency_s": 9.56,
+ "stop": "end_turn",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p05": "co_located_exterior"
+ }
+}

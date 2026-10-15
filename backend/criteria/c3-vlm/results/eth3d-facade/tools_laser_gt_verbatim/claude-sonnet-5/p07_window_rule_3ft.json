@@ -1,0 +1,208 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"justification\": \"The meter wall (photo 8) and every adjacent stretch of wall (photos 6,7,9,10,11) front directly onto a continuous, unbroken gravel courtyard with no lawn, mulch, or dirt anywhere near the building base (a manhole cover is even visible in the gravel, and the surface clearly runs unbroken around this large institutional building) - a strong drivable-surface indicator per the site rules, and no alternate non-drivable ground was found within reach of the meter for the required 5 ft clearance. This drivable-surface concern, combined with the meter being squeezed between a window and the main entry doorway with no confirmed 2-2.5 ft clear wall segment for the disconnect, means the site cannot be confidently auto-approved.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "The meter wall (photo 8) and every adjacent stretch of wall (photos 6,7,9,10,11) front directly onto a continuous, unbroken gravel courtyard with no lawn, mulch, or dirt anywhere near the building base (a manhole cover is even visible in the gravel, and the surface clearly runs unbroken around this large institutional building) - a strong drivable-surface indicator per the site rules, and no alternate non-drivable ground was found within reach of the meter for the required 5 ft clearance. This drivable-surface concern, combined with the meter being squeezed between a window and the main entry doorway with no confirmed 2-2.5 ft clear wall segment for the disconnect, means the site cannot be confidently auto-approved.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 7395,
+  "cache_creation_input_tokens": 38621,
+  "cache_read_input_tokens": 77242,
+  "output_tokens": 2413
+ },
+ "cost_usd": 0.1509209,
+ "latency_s": 34.8,
+ "tool_calls": [
+  {
+   "tool": "scene_info",
+   "input": {},
+   "output": {
+    "geometry_source": "laser_scan_ground_truth",
+    "units": "feet; plan x/y are horizontal axes, heights are above the fitted ground plane",
+    "cameras": {
+     "photo 1": {
+      "plan_xy_ft": [
+       4.8,
+       40.4
+      ],
+      "height_ft": 5.7,
+      "heading_deg": 32
+     },
+     "photo 2": {
+      "plan_xy_ft": [
+       -3.3,
+       33.0
+      ],
+      "height_ft": 5.6,
+      "heading_deg": 21
+     },
+     "photo 3": {
+      "plan_xy_ft": [
+       -17.3,
+       17.4
+      ],
+      "height_ft": 5.1,
+      "heading_deg": 10
+     },
+     "photo 4": {
+      "plan_xy_ft": [
+       -12.3,
+       -5.3
+      ],
+      "height_ft": 4.7,
+      "heading_deg": 12
+     },
+     "photo 5": {
+      "plan_xy_ft": [
+       -11.4,
+       -8.3
+      ],
+      "height_ft": 4.6,
+      "heading_deg": 13
+     },
+     "photo 6": {
+      "plan_xy_ft": [
+       4.1,
+       -27.9
+      ],
+      "height_ft": 4.8,
+      "heading_deg": 26
+     },
+     "photo 7": {
+      "plan_xy_ft": [
+       14.8,
+       -44.4
+      ],
+      "height_ft": 4.9,
+      "heading_deg": -18
+     },
+     "photo 8": {
+      "plan_xy_ft": [
+       11.9,
+       -50.0
+      ],
+      "height_ft": 4.9,
+      "heading_deg": -79
+     },
+     "photo 9": {
+      "plan_xy_ft": [
+       -2.6,
+       37.9
+      ],
+      "height_ft": 5.7,
+      "heading_deg": 72
+     },
+     "photo 10": {
+      "plan_xy_ft": [
+       2.4,
+       36.5
+      ],
+      "height_ft": 5.6,
+      "heading_deg": 74
+     },
+     "photo 11": {
+      "plan_xy_ft": [
+       -5.2,
+       49.9
+      ],
+      "height_ft": 5.8,
+      "heading_deg": 15
+     },
+     "photo 12": {
+      "plan_xy_ft": [
+       -0.0,
+       3.5
+      ],
+      "height_ft": 5.1,
+      "heading_deg": 9
+     },
+     "photo 13": {
+      "plan_xy_ft": [
+       0.4,
+       -6.4
+      ],
+      "height_ft": 4.9,
+      "heading_deg": 11
+     },
+     "photo 14": {
+      "plan_xy_ft": [
+       -3.5,
+       -1.6
+      ],
+      "height_ft": 4.9,
+      "heading_deg": 12
+     },
+     "photo 15": {
+      "plan_xy_ft": [
+       10.9,
+       -44.4
+      ],
+      "height_ft": 4.9,
+      "heading_deg": 75
+     }
+    },
+    "anchors": {
+     "electric_meter": {
+      "height_above_ground_ft": 5.0,
+      "plan_xy_ft": [
+       25.53,
+       -89.96
+      ],
+      "horizontal_dist_to_meter_ft": 0.0
+     }
+    },
+    "notes": "Pixel coordinates are normalised 0-1000 in x (left to right) and y (top to bottom) of the packet photo. A pixel with no geometry means that surface was not reconstructed (unobserved)."
+   }
+  },
+  {
+   "tool": "view_photo",
+   "input": {
+    "photo": 8,
+    "x0": 400,
+    "x1": 1000,
+    "y0": 600,
+    "y1": 1000
+   },
+   "output": {
+    "ok": true,
+    "grid": "cyan = x, magenta = y (0-1000 photo coordinates)"
+   }
+  },
+  {
+   "tool": "view_photo",
+   "input": {
+    "photo": 8,
+    "x0": 0,
+    "x1": 500,
+    "y0": 600,
+    "y1": 1000
+   },
+   "output": {
+    "ok": true,
+    "grid": "cyan = x, magenta = y (0-1000 photo coordinates)"
+   }
+  },
+  {
+   "tool": "view_photo",
+   "input": {
+    "photo": 7,
+    "x0": 0,
+    "x1": 1000,
+    "y0": 500,
+    "y1": 1000
+   },
+   "output": {
+    "ok": true,
+    "grid": "cyan = x, magenta = y (0-1000 photo coordinates)"
+   }
+  }
+ ],
+ "n_tool_calls": 4,
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "eth3d-facade",
+ "variant": "tools_laser_gt_verbatim",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

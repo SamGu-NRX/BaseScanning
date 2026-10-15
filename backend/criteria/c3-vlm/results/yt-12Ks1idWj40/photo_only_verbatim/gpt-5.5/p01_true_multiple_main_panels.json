@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasTrueMultipleMainPanels\":false,\"multipleMainPanelLabel\":\"single_main_plus_disconnect_or_subpanel\",\"insufficientEvidence\":false,\"evidence\":\"Images show one primary gray load center/main panel near the meter with breakers visible when open. Other adjacent enclosures are a BASE battery/energy-storage unit, small disconnect/control boxes, and meter equipment, not additional load centers with clearly visible independent service main breakers.\",\"notes\":\"No second true main electrical panel is shown with its own clearly visible independent service main/disconnect; adjacent equipment appears to be disconnects/backup or downstream equipment rather than separate service mains.\"}",
+ "json": {
+  "hasTrueMultipleMainPanels": false,
+  "multipleMainPanelLabel": "single_main_plus_disconnect_or_subpanel",
+  "insufficientEvidence": false,
+  "evidence": "Images show one primary gray load center/main panel near the meter with breakers visible when open. Other adjacent enclosures are a BASE battery/energy-storage unit, small disconnect/control boxes, and meter equipment, not additional load centers with clearly visible independent service main breakers.",
+  "notes": "No second true main electrical panel is shown with its own clearly visible independent service main/disconnect; adjacent equipment appears to be disconnects/backup or downstream equipment rather than separate service mains."
+ },
+ "usage": {
+  "input_tokens": 23656,
+  "cached_tokens": 0,
+  "output_tokens": 341,
+  "reasoning_tokens": 212
+ },
+ "cost_usd": 0.12851,
+ "latency_s": 7.29,
+ "stop": "completed",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p01": "single_main_plus_disconnect_or_subpanel"
+ }
+}

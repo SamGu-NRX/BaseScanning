@@ -1,0 +1,60 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"gap_w4_w5_ft\": 4.8, \"window4_width_ft\": 4.9, \"window4_sill_height_ft\": 2.8, \"meter_to_tower_corner_ft\": 10.2, \"tower_projection_ft\": 6.0, \"door_width_ft\": 7.0, \"scale_cues\": \"Used photo 8: red cross stated ~5 ft high for vertical scale; same-wall window/module pixel ratios for window/gap/meter distances; brick-course spacing and standard glazed double-door/bin sizes as checks.\"}",
+ "json": {
+  "gap_w4_w5_ft": 4.8,
+  "window4_width_ft": 4.9,
+  "window4_sill_height_ft": 2.8,
+  "meter_to_tower_corner_ft": 10.2,
+  "tower_projection_ft": 6.0,
+  "door_width_ft": 7.0,
+  "scale_cues": "Used photo 8: red cross stated ~5 ft high for vertical scale; same-wall window/module pixel ratios for window/gap/meter distances; brick-course spacing and standard glazed double-door/bin sizes as checks."
+ },
+ "usage": {
+  "input_tokens": 29579,
+  "cached_tokens": 0,
+  "output_tokens": 4268,
+  "reasoning_tokens": 4142
+ },
+ "cost_usd": 0.275935,
+ "latency_s": 54.97,
+ "stop": "completed",
+ "errors": {
+  "gap_w4_w5_ft": {
+   "est": 4.8,
+   "truth": 5.11,
+   "err_ft": -0.31,
+   "ratio": 0.94
+  },
+  "window4_width_ft": {
+   "est": 4.9,
+   "truth": 5.56,
+   "err_ft": -0.66,
+   "ratio": 0.88
+  },
+  "window4_sill_height_ft": {
+   "est": 2.8,
+   "truth": 3.32,
+   "err_ft": -0.52,
+   "ratio": 0.84
+  },
+  "meter_to_tower_corner_ft": {
+   "est": 10.2,
+   "truth": 9.9,
+   "err_ft": 0.3,
+   "ratio": 1.03
+  },
+  "tower_projection_ft": {
+   "est": 6.0,
+   "truth": 11.6,
+   "err_ft": -5.6,
+   "ratio": 0.52
+  },
+  "door_width_ft": {
+   "est": 7.0,
+   "truth": 7.18,
+   "err_ft": -0.18,
+   "ratio": 0.97
+  }
+ }
+}

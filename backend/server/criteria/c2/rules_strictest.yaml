@@ -1,0 +1,67 @@
+# C2 placement thresholds: the strictest value across Base's three conflicting placement profiles
+# (A battery disconnect, B ComEd 3 ft window rule, C battery space; internal/house-scanning-context.md
+# section 2) and the repo's public baseline. Lengths in feet unless named _in or _deg.
+# "placeholder" marks a number no profile states, chosen here and open to change.
+
+battery:
+  # Base Core 30.68 x 22 x 39.5 in, rounded to 31 in wide as PR #11 does. Profile A/B's "about
+  # 2 x 2 x 3 ft" is smaller in width; C's 31 in x 22 in x 3 ft matches the footprint.
+  width_ft: 2.583333
+  depth_ft: 1.833333
+  height_ft: 3.291667
+
+clearances:
+  gas_ft: 5.0          # A and B: 5 ft (C and public: 3 ft)
+  drive_ft: 5.0        # A and B: 5 ft (C: 3 ft)
+  pool_ft: 10.0        # C: 10 ft (A and B: 5 ft)
+  ac_ft: 3.0           # public Base help page: 3 ft (profiles: fixed constraint, no number)
+  fence_ft: 3.0        # public Base help page: 3 ft from fences and other batteries
+  opening_ft: 3.0      # B: 3 ft each side of doors, wells, operable ground-level windows; IRC R328.4
+  # Strictest reading: every window counts whatever its height or operability (A: "clear of windows").
+  opening_types: [door, garage_door, window, window_well]
+  wall_equipment_ft: 0.0   # C: not directly under a wall box or vent; 0 means only plan overlap fails
+  wall_equipment_types: [elec_box, vent, panel]
+
+facing:
+  # C: about 5 ft from the wall to the nearest fence or hedge, battery depth included.
+  # Public / NEC 110.26: 3 ft in front of the battery = 4.83 ft from the wall. Strictest: 5 ft.
+  from_wall_ft: 5.0
+  # Working-space width: NEC 110.26 30 in or the equipment width, whichever is larger.
+  min_width_ft: 2.5
+  # Things lower than this above the ground do not count as facing obstacles (ground relief,
+  # gravel, a kerb). placeholder
+  ignore_below_ft: 0.33
+  top_ft: 6.5          # NEC 110.26 working-space height
+
+headroom:
+  min_ft: 7.0          # C: 6-7 ft (NEC 6.5 ft). Strictest: 7 ft above the ground over the footprint.
+
+meter_working_space:   # NEC 110.26 in front of the meter: the battery must stay out of it
+  width_ft: 2.5
+  depth_ft: 3.0
+
+ground:
+  allowed: [concrete, gravel, lawn, mulch, dirt]   # C; decks and steep slopes fail
+  max_slope_deg: 5.0   # C: "mild slope". placeholder
+  max_step_ft: 0.25    # height spread under the footprint after removing the slope. placeholder
+  min_observed_fraction: 0.8   # of footprint cells with an observed ground surface. placeholder
+
+wall_backing:
+  # The rear face must be backed by wall (C: flush against an exterior building wall, not past a
+  # corner, not against a fence only).
+  max_gap_ft: 0.5      # rear face to wall surface. placeholder
+  min_backed_fraction: 0.85    # of the rear face. placeholder
+  min_wall_height_ft: 7.5      # a backing lower than this is a fence or bin, not a building wall. placeholder
+
+route:
+  max_ft: 15.0         # A: 15 ft, same wall (B: ~25 ft, C: ~26 ft with review past 16 ft; public 20 ft)
+  same_wall: true      # A. B and C allow the adjacent wall.
+  corner_turn_deg: 30.0    # a wall-normal change larger than this along the route is a corner. placeholder
+  blocked_by: [door, garage_door, window]   # A blocks windows on the route; every profile blocks doors
+
+unknown:
+  # A clearance envelope that reaches unobserved space is UNSURE. Band tops above the local ground.
+  wall_band_top_ft: 8.0      # gas, AC, openings, fence envelopes
+  ground_band_top_ft: 1.0    # drive and pool envelopes (things on the ground)
+  # Unknown volume allowed inside an envelope before it counts, in 10 cm voxels (sampling holes).
+  tolerance_voxels: 0

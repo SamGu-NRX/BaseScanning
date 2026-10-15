@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"hasLargeOrOversizedMeterCan\": false, \"meterCanLabel\": \"meter_can_unclear\", \"insufficientEvidence\": true, \"evidence\": \"The only visible round electric meter is at the far right edge of Photo 2. It is distant, partly cut off by the frame and backlit, so the full meter-holding enclosure cannot be judged. The visible portion looks like a small socket on the brick wall, with no large rectangular can apparent. Photo 14 shows a small gray box near the chimney corner, but no meter face is visible and it cannot be confirmed as the meter socket. No close-up of the meter or service equipment is provided.\", \"notes\": \"The partial view suggests a compact residential socket, but the cropping and distance prevent a confident normal_meter_can call. No evidence of a 320A-style or oversized can is visible.\"}",
+ "json": {
+  "hasLargeOrOversizedMeterCan": false,
+  "meterCanLabel": "meter_can_unclear",
+  "insufficientEvidence": true,
+  "evidence": "The only visible round electric meter is at the far right edge of Photo 2. It is distant, partly cut off by the frame and backlit, so the full meter-holding enclosure cannot be judged. The visible portion looks like a small socket on the brick wall, with no large rectangular can apparent. Photo 14 shows a small gray box near the chimney corner, but no meter face is visible and it cannot be confirmed as the meter socket. No close-up of the meter or service equipment is provided.",
+  "notes": "The partial view suggests a compact residential socket, but the cropping and distance prevent a confident normal_meter_can call. No evidence of a 320A-style or oversized can is visible."
+ },
+ "usage": {
+  "input_tokens": 20303,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 491
+ },
+ "cost_usd": 0.091032,
+ "latency_s": 8.4,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p02": "meter_can_unclear"
+ }
+}

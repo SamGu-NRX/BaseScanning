@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"trueMultipleMainPanels\": false,\n \"panelLayout\": \"unclear\",\n \"evidence\": \"Photos 1-15 show only the exterior of a large multi-story brick institutional building: facades, windows, the main entrance with a stone portico and staircase (photos 3-6, 12-14), a steel ring sculpture or bike rack in the gravel courtyard (photos 1, 2, 7, 9-11), a smaller annex with a glass entry (photo 8), and a wide courtyard view (photo 15). No photo shows an electrical panel, breaker, meter, disconnect, or service equipment. The only mechanical item visible is a louvered grille beside the entrance stairs (photos 6, 15), and it cannot be identified as electrical equipment.\",\n \"notes\": \"No electrical service equipment is visible, so the panel layout cannot be assessed. The building also appears to be a large commercial or institutional property rather than a single-family home. Multiple mains are not proven, and neither is a single main.\",\n \"insufficientEvidence\": true}",
+ "json": {
+  "trueMultipleMainPanels": false,
+  "panelLayout": "unclear",
+  "evidence": "Photos 1-15 show only the exterior of a large multi-story brick institutional building: facades, windows, the main entrance with a stone portico and staircase (photos 3-6, 12-14), a steel ring sculpture or bike rack in the gravel courtyard (photos 1, 2, 7, 9-11), a smaller annex with a glass entry (photo 8), and a wide courtyard view (photo 15). No photo shows an electrical panel, breaker, meter, disconnect, or service equipment. The only mechanical item visible is a louvered grille beside the entrance stairs (photos 6, 15), and it cannot be identified as electrical equipment.",
+  "notes": "No electrical service equipment is visible, so the panel layout cannot be assessed. The building also appears to be a large commercial or institutional property rather than a single-family home. Multiple mains are not proven, and neither is a single main.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 442,
+  "cache_creation_input_tokens": 32171,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 408
+ },
+ "cost_usd": 0.170783,
+ "latency_s": 11.67,
+ "stop": "end_turn",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p01": "unclear"
+ }
+}

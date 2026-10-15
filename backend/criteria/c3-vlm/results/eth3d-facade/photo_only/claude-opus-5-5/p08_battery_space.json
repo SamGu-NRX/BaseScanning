@@ -1,0 +1,35 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\"reference_object\": \"Standard exterior door and entry stair treads (door about 7 ft tall, treads about 6-7 in rise); ground-floor window sills sit roughly 3 ft above grade on a stone plinth\",\n \"distance_ft\": null,\n \"front_clearance_ft\": null,\n \"drive_path_ft\": null,\n \"requires_member_action\": false,\n \"decision\": \"manual_review\",\n \"needs_more_photos\": true,\n \"missing_views\": [\"A close-up photo of your electric meter showing the wall it is mounted on\", \"A wide photo of the whole wall around the meter, including about 10 ft to the left and right of it and the ground below\", \"A photo looking straight out from the meter wall that shows the nearest fence, wall, driveway or other obstruction\", \"Photos of any gas meter or gas piping near the meter wall\"],\n \"justification\": \"All 15 photos show the same large multi-story brick building with a formal stone entry stair and a gravel courtyard with bike-rack sculptures. It looks like an institutional or university building, not a single-family home. No electric meter, gas meter, electrical panel or utility equipment is visible in any photo, so the harness starting point and route cannot be judged. The courtyard walls have open gravel ground and wide facing clearance. However, the ground-floor windows sit low on the stone plinth, and they are likely operable. A 3 ft tall battery flush to the wall could block them, and that is unresolved. The only disconnect-free open areas are around public entrances and walkways. The meter location and a clear footprint beside it are needed before this site can be approved or rejected. The property type should also be confirmed as eligible.\"}\n```",
+ "json": {
+  "reference_object": "Standard exterior door and entry stair treads (door about 7 ft tall, treads about 6-7 in rise); ground-floor window sills sit roughly 3 ft above grade on a stone plinth",
+  "distance_ft": null,
+  "front_clearance_ft": null,
+  "drive_path_ft": null,
+  "requires_member_action": false,
+  "decision": "manual_review",
+  "needs_more_photos": true,
+  "missing_views": [
+   "A close-up photo of your electric meter showing the wall it is mounted on",
+   "A wide photo of the whole wall around the meter, including about 10 ft to the left and right of it and the ground below",
+   "A photo looking straight out from the meter wall that shows the nearest fence, wall, driveway or other obstruction",
+   "Photos of any gas meter or gas piping near the meter wall"
+  ],
+  "justification": "All 15 photos show the same large multi-story brick building with a formal stone entry stair and a gravel courtyard with bike-rack sculptures. It looks like an institutional or university building, not a single-family home. No electric meter, gas meter, electrical panel or utility equipment is visible in any photo, so the harness starting point and route cannot be judged. The courtyard walls have open gravel ground and wide facing clearance. However, the ground-floor windows sit low on the stone plinth, and they are likely operable. A 3 ft tall battery flush to the wall could block them, and that is unresolved. The only disconnect-free open areas are around public entrances and walkways. The meter location and a clear footprint beside it are needed before this site can be approved or rejected. The property type should also be confirmed as eligible."
+ },
+ "usage": {
+  "input_tokens": 2231,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 739
+ },
+ "cost_usd": 0.0301382,
+ "latency_s": 11.32,
+ "stop": "end_turn",
+ "prompt_id": "p08_battery_space",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p08": "manual_review"
+ }
+}

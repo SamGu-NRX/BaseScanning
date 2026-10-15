@@ -1,0 +1,34 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"reference_object\": \"brick coursing pattern (~2.5 in per course) and entrance stairs (~7 in risers) used for rough scale\", \"distance_ft\": null, \"front_clearance_ft\": null, \"drive_path_ft\": null, \"requires_member_action\": false, \"decision\": \"manual_review\", \"needs_more_photos\": true, \"missing_views\": [\"Photo showing the electrical meter/service panel location on any exterior wall\", \"Photo of the ground-level utility area or mechanical room entrance if one exists\", \"Wider view of any side or rear service yard not shown in the courtyard photos\"], \"justification\": \"All 15 photos show a large multi-story institutional brick building (appears to be a school/university, per the 'Thurgau University' banner) with formal entrances, stone stairs, a courtyard, gravel yard, and a bike-ring sculpture. No electrical meter, service panel, gas meter, HVAC equipment, or any residential single-family features are visible in any frame. Without a visible meter location, the harness starting point cannot be established, and the building context itself does not resemble a typical single-family home battery installation site. Cannot confirm a valid meter-to-battery harness or footprint without additional photos showing the utility/meter area.\"}",
+ "json": {
+  "reference_object": "brick coursing pattern (~2.5 in per course) and entrance stairs (~7 in risers) used for rough scale",
+  "distance_ft": null,
+  "front_clearance_ft": null,
+  "drive_path_ft": null,
+  "requires_member_action": false,
+  "decision": "manual_review",
+  "needs_more_photos": true,
+  "missing_views": [
+   "Photo showing the electrical meter/service panel location on any exterior wall",
+   "Photo of the ground-level utility area or mechanical room entrance if one exists",
+   "Wider view of any side or rear service yard not shown in the courtyard photos"
+  ],
+  "justification": "All 15 photos show a large multi-story institutional brick building (appears to be a school/university, per the 'Thurgau University' banner) with formal entrances, stone stairs, a courtyard, gravel yard, and a bike-ring sculpture. No electrical meter, service panel, gas meter, HVAC equipment, or any residential single-family features are visible in any frame. Without a visible meter location, the harness starting point cannot be established, and the building context itself does not resemble a typical single-family home battery installation site. Cannot confirm a valid meter-to-battery harness or footprint without additional photos showing the utility/meter area."
+ },
+ "usage": {
+  "input_tokens": 2229,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 831
+ },
+ "cost_usd": 0.0192022,
+ "latency_s": 11.9,
+ "stop": "end_turn",
+ "prompt_id": "p08_battery_space",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p08": "manual_review"
+ }
+}

@@ -1,0 +1,35 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\"decision\": \"manual_review\",\n \"disconnect_location\": null,\n \"battery_location\": null,\n \"distance_ft\": null,\n \"reference_object\": \"Electric meter socket, about 12 in wide by 14 in tall; vinyl siding exposure about 4 in per course\",\n \"needs_more_photos\": true,\n \"missing_views\": [\n  \"A straight-on photo of the whole wall around the electric meter, taken from 10-15 ft back, showing at least 3 ft to the left and right of the meter and down to the ground\",\n  \"A close-up of the area directly below the electric meter showing where the pipe running down from it goes\",\n  \"A wide photo showing both the electric meter and the gas meter in one frame, so the distance between them can be judged\",\n  \"A photo of the ground in front of the electric meter wall showing any driveway, parking area or path within about 10 ft\",\n  \"A photo looking along the electric meter wall in both directions, showing windows, corners and any other equipment within 15 ft of the meter\"\n ],\n \"justification\": \"The electric meter (photo 11) is mounted close to an outside corner trim board, and a pipe or conduit runs straight down beneath it. So there is not clearly 2 ft of open wall to the right, and the space directly below the meter is not clearly free. The wall to the left of the meter is not shown. The red/orange cord below the meter looks like the cord beside the gas meter (photo 4), which suggests the gas meter/regulator may be within 5 ft of any battery spot on this wall, but this can't be confirmed. Nearby wall sections (photos 12-15) have windows, a jogged wall and rocks, and a deck is nearby, so a clear battery spot within 15 ft on the same wall can't be confirmed. It is also unclear whether any drivable surface is nearby. Too many checks are uncertain to pass.\"}\n```",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "distance_ft": null,
+  "reference_object": "Electric meter socket, about 12 in wide by 14 in tall; vinyl siding exposure about 4 in per course",
+  "needs_more_photos": true,
+  "missing_views": [
+   "A straight-on photo of the whole wall around the electric meter, taken from 10-15 ft back, showing at least 3 ft to the left and right of the meter and down to the ground",
+   "A close-up of the area directly below the electric meter showing where the pipe running down from it goes",
+   "A wide photo showing both the electric meter and the gas meter in one frame, so the distance between them can be judged",
+   "A photo of the ground in front of the electric meter wall showing any driveway, parking area or path within about 10 ft",
+   "A photo looking along the electric meter wall in both directions, showing windows, corners and any other equipment within 15 ft of the meter"
+  ],
+  "justification": "The electric meter (photo 11) is mounted close to an outside corner trim board, and a pipe or conduit runs straight down beneath it. So there is not clearly 2 ft of open wall to the right, and the space directly below the meter is not clearly free. The wall to the left of the meter is not shown. The red/orange cord below the meter looks like the cord beside the gas meter (photo 4), which suggests the gas meter/regulator may be within 5 ft of any battery spot on this wall, but this can't be confirmed. Nearby wall sections (photos 12-15) have windows, a jogged wall and rocks, and a deck is nearby, so a clear battery spot within 15 ft on the same wall can't be confirmed. It is also unclear whether any drivable surface is nearby. Too many checks are uncertain to pass."
+ },
+ "usage": {
+  "input_tokens": 551,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 4005,
+  "output_tokens": 1044
+ },
+ "cost_usd": 0.023885,
+ "latency_s": 14.08,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

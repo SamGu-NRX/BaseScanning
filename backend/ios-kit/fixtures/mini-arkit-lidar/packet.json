@@ -1,0 +1,1546 @@
+{
+ "format": "house-capture-packet",
+ "formatVersion": "0.4",
+ "packetId": "0be1b513-5a37-5d67-95ac-19d45446c167",
+ "createdAt": "2026-09-26T20:52:10.674Z",
+ "units": {
+  "length": "meters",
+  "angle": "degrees",
+  "time": "seconds of device uptime, the clock of ARFrame.timestamp and CMDeviceMotion.timestamp",
+  "image": "pixels of the saved JPEG",
+  "rotationRate": "radians per second",
+  "acceleration": "g (9.80665 m/s^2)",
+  "magneticField": "microtesla"
+ },
+ "conventions": {
+  "world": "ARKit world frame with worldAlignment .gravity: right-handed, y up (away from gravity), origin at the device's position when the session (epoch) started, -z the camera's initial facing projected onto the horizontal",
+  "camera": "ARKit camera frame: +x right and +y up in the unrotated landscape sensor image, the camera looks along -z",
+  "device": "Core Motion device frame: +x right and +y toward the top with the phone upright in portrait, +z out of the screen",
+  "pose": "camera-to-world 4x4 matrix, 16 numbers column by column (simd_float4x4 layout), meters",
+  "intrinsics": "[fx, fy, cx, cy] in pixels of the saved, unrotated landscape image",
+  "pixel": "[u, v] continuous image coordinates: (0, 0) is the top-left corner of the top-left pixel, v grows down",
+  "ray": "origin is the camera position; direction is a unit vector; camera-space direction ((u - cx)/fx, -(v - cy)/fy, -1)",
+  "geodetic": "WGS84 degrees; altitude above mean sea level, ellipsoidalAltitude above the WGS84 ellipsoid, meters",
+  "heading": "degrees clockwise from north, 0 to 360"
+ },
+ "source": {
+  "kind": "synthetic",
+  "generator": "packetgen 0.1.0",
+  "variant": "arkit-lidar",
+  "noiseProfile": "lidar_modern",
+  "sourceDataset": "ETH3D high-res multi-view benchmark, training scene 'electro'; https://www.eth3d.net/datasets; CC BY-NC-SA 4.0 (ETH3D)",
+  "synthesizedFields": [
+   "keyframes[].pose (clean pose from the source + ARKit-like drift, profile lidar_modern)",
+   "keyframes[].intrinsics (source calibration + per-session focal and principal-point error)",
+   "keyframes[].timestamp (walking-speed model)",
+   "keyframes[].tracking",
+   "epochs",
+   "keyframes[].exposure",
+   "keyframes[].lightEstimate",
+   "keyframes[].features (SfM points re-expressed in the drifted world)",
+   "planes (RANSAC on reference geometry)",
+   "taps (auto reference point)",
+   "streams.motion",
+   "streams.heading",
+   "streams.location",
+   "streams.imuRaw (from streams.motion plus gyro bias and sensor noise)",
+   "streams.arkitPoses (observed trajectory interpolated per epoch at 30 Hz)",
+   "keyframes[].exif",
+   "keyframes[].depth (laser scan rendered from the clean pose + LiDAR noise model)"
+  ],
+  "notes": "mini fixture: transport tests only, too few frames to reconstruct"
+ },
+ "session": {
+  "id": "6859840D-D2D0-5EFD-8D35-FBB5998B0221",
+  "startedAt": "2026-09-26T17:50:19.570Z",
+  "startedAtUptime": 85318.3104,
+  "endedAtUptime": 85424.4107,
+  "timeZone": "America/Chicago",
+  "appVersion": "packetgen-synthetic 0.1.0",
+  "deviceModel": "iPhone16,1",
+  "systemVersion": "26.0",
+  "tier": "arkit_lidar",
+  "lidarAvailable": true,
+  "sceneDepthEnabled": true,
+  "meshReconstructionSupported": true,
+  "sceneReconstruction": "none",
+  "worldAlignment": "gravity",
+  "planeDetection": [
+   "horizontal",
+   "vertical"
+  ],
+  "videoFormat": {
+   "imageResolution": [
+    1920,
+    1440
+   ],
+   "framesPerSecond": 60
+  },
+  "locationAuthorization": "fullAccuracy",
+  "motionReferenceFrame": "xTrueNorthZVertical",
+  "gates": {
+   "trackingStableSeconds": 1.0,
+   "minimumGroundLookDown": 30.0,
+   "minimumContactSeparation": 2.0,
+   "maximumAngleFromWallNormal": 60.0,
+   "wallValidationTolerance": 0.0508,
+   "minimumCameraOffsetFromWall": 0.1,
+   "minimumRayAngle": 15.0,
+   "maximumRayGap": 0.0508,
+   "keyframeSpacingMeters": 0.5,
+   "keyframeSpacingDegrees": 15.0
+  }
+ },
+ "epochs": [
+  {
+   "id": "e1",
+   "startTime": 85318.3104,
+   "reason": "sessionStart"
+  }
+ ],
+ "keyframes": [
+  {
+   "id": "k00020",
+   "img": "keyframes/k00020.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1180.699,
+    1180.615,
+    962.706,
+    719.225
+   ],
+   "pose": [
+    -0.932227,
+    -0.011709,
+    -0.361686,
+    0.0,
+    0.011745,
+    0.997971,
+    -0.062581,
+    0.0,
+    0.361685,
+    -0.062587,
+    -0.930198,
+    0.0,
+    -0.684565,
+    0.066221,
+    -0.035024,
+    1.0
+   ],
+   "timestamp": 85355.2599,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0012703970750196569,
+    "offset": -0.008,
+    "iso": 50,
+    "fNumber": 1.78
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15 Pro",
+    "LensModel": "iPhone 15 Pro back triple camera 6.765mm f/1.78",
+    "FocalLength": 6.765,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0012703970750196569,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.78,
+    "BrightnessValue": 7.284,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:56",
+    "SubsecTimeOriginal": "520",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1064.1,
+    "ambientColorTemperature": 6605.0
+   },
+   "features": {
+    "file": "keyframes/k00020.features.bin",
+    "count": 169
+   },
+   "depth": {
+    "file": "keyframes/k00020.depth.f32",
+    "confidenceFile": "keyframes/k00020.confidence.u8",
+    "w": 256,
+    "h": 192,
+    "smoothed": false
+   }
+  },
+  {
+   "id": "k00021",
+   "img": "keyframes/k00021.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1179.614,
+    1179.431,
+    962.782,
+    719.495
+   ],
+   "pose": [
+    0.404665,
+    -0.027241,
+    -0.91406,
+    0.0,
+    0.105158,
+    0.994312,
+    0.016922,
+    0.0,
+    0.908399,
+    -0.102968,
+    0.405228,
+    0.0,
+    -1.230898,
+    0.078092,
+    -0.283892,
+    1.0
+   ],
+   "timestamp": 85358.1815,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013301569451087405,
+    "offset": -0.155,
+    "iso": 50,
+    "fNumber": 1.78
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15 Pro",
+    "LensModel": "iPhone 15 Pro back triple camera 6.765mm f/1.78",
+    "FocalLength": 6.765,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0013301569451087405,
+    "ISOSpeedRatings": [
+     50
+    ],
+    "FNumber": 1.78,
+    "BrightnessValue": 7.218,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:50:59",
+    "SubsecTimeOriginal": "441",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1059.1,
+    "ambientColorTemperature": 6589.0
+   },
+   "features": {
+    "file": "keyframes/k00021.features.bin",
+    "count": 294
+   },
+   "depth": {
+    "file": "keyframes/k00021.depth.f32",
+    "confidenceFile": "keyframes/k00021.confidence.u8",
+    "w": 256,
+    "h": 192,
+    "smoothed": false
+   }
+  },
+  {
+   "id": "k00022",
+   "img": "keyframes/k00022.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1179.614,
+    1179.431,
+    962.782,
+    719.495
+   ],
+   "pose": [
+    0.421533,
+    -0.036328,
+    -0.906084,
+    0.0,
+    0.105425,
+    0.994384,
+    0.009178,
+    0.0,
+    0.900663,
+    -0.099394,
+    0.422996,
+    0.0,
+    -3.380304,
+    0.122342,
+    -1.405567,
+    1.0
+   ],
+   "timestamp": 85361.0994,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013687760596667537,
+    "offset": -0.05,
+    "iso": 100,
+    "fNumber": 1.78
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15 Pro",
+    "LensModel": "iPhone 15 Pro back triple camera 6.765mm f/1.78",
+    "FocalLength": 6.765,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0013687760596667537,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.78,
+    "BrightnessValue": 6.177,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:02",
+    "SubsecTimeOriginal": "359",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 991.1,
+    "ambientColorTemperature": 6370.0
+   },
+   "features": {
+    "file": "keyframes/k00022.features.bin",
+    "count": 282
+   },
+   "depth": {
+    "file": "keyframes/k00022.depth.f32",
+    "confidenceFile": "keyframes/k00022.confidence.u8",
+    "w": 256,
+    "h": 192,
+    "smoothed": false
+   }
+  },
+  {
+   "id": "k00023",
+   "img": "keyframes/k00023.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1179.614,
+    1179.431,
+    962.782,
+    719.495
+   ],
+   "pose": [
+    0.948512,
+    -0.059081,
+    0.311182,
+    0.0,
+    0.030486,
+    0.994916,
+    0.095971,
+    0.0,
+    -0.315269,
+    -0.081543,
+    0.945492,
+    0.0,
+    -3.331765,
+    0.124278,
+    -1.535309,
+    1.0
+   ],
+   "timestamp": 85363.4654,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.000769865812431241,
+    "offset": 0.133,
+    "iso": 32,
+    "fNumber": 1.78
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15 Pro",
+    "LensModel": "iPhone 15 Pro back triple camera 6.765mm f/1.78",
+    "FocalLength": 6.765,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.000769865812431241,
+    "ISOSpeedRatings": [
+     32
+    ],
+    "FNumber": 1.78,
+    "BrightnessValue": 8.651,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:04",
+    "SubsecTimeOriginal": "725",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1381.9,
+    "ambientColorTemperature": 5892.0
+   },
+   "features": {
+    "file": "keyframes/k00023.features.bin",
+    "count": 300
+   },
+   "depth": {
+    "file": "keyframes/k00023.depth.f32",
+    "confidenceFile": "keyframes/k00023.confidence.u8",
+    "w": 256,
+    "h": 192,
+    "smoothed": false
+   }
+  },
+  {
+   "id": "k00024",
+   "img": "keyframes/k00024.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1180.699,
+    1180.615,
+    962.706,
+    719.225
+   ],
+   "pose": [
+    -0.878559,
+    -0.011433,
+    -0.4775,
+    0.0,
+    0.02409,
+    0.997381,
+    -0.068203,
+    0.0,
+    0.477028,
+    -0.071422,
+    -0.875982,
+    0.0,
+    -3.345784,
+    0.12124,
+    -1.057777,
+    1.0
+   ],
+   "timestamp": 85367.914,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0018478409290348624,
+    "offset": 0.013,
+    "iso": 100,
+    "fNumber": 1.78
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15 Pro",
+    "LensModel": "iPhone 15 Pro back triple camera 6.765mm f/1.78",
+    "FocalLength": 6.765,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0018478409290348624,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.78,
+    "BrightnessValue": 5.744,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:09",
+    "SubsecTimeOriginal": "174",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 864.7,
+    "ambientColorTemperature": 5778.0
+   },
+   "features": {
+    "file": "keyframes/k00024.features.bin",
+    "count": 234
+   },
+   "depth": {
+    "file": "keyframes/k00024.depth.f32",
+    "confidenceFile": "keyframes/k00024.confidence.u8",
+    "w": 256,
+    "h": 192,
+    "smoothed": false
+   }
+  },
+  {
+   "id": "k00025",
+   "img": "keyframes/k00025.jpg",
+   "w": 1920,
+   "h": 1440,
+   "intrinsics": [
+    1179.708,
+    1179.59,
+    962.827,
+    720.094
+   ],
+   "pose": [
+    -0.437819,
+    -0.044412,
+    0.897966,
+    0.0,
+    -0.065336,
+    0.99771,
+    0.017489,
+    0.0,
+    -0.896686,
+    -0.051012,
+    -0.439718,
+    0.0,
+    -2.962883,
+    0.114625,
+    -1.091355,
+    1.0
+   ],
+   "timestamp": 85370.25,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0011065435631634926,
+    "offset": 0.136,
+    "iso": 100,
+    "fNumber": 1.78
+   },
+   "exif": {
+    "Make": "Apple",
+    "Model": "iPhone 15 Pro",
+    "LensModel": "iPhone 15 Pro back triple camera 6.765mm f/1.78",
+    "FocalLength": 6.765,
+    "FocalLenIn35mmFilm": 21,
+    "PixelXDimension": 1920,
+    "PixelYDimension": 1440,
+    "ExposureTime": 0.0011065435631634926,
+    "ISOSpeedRatings": [
+     100
+    ],
+    "FNumber": 1.78,
+    "BrightnessValue": 6.483,
+    "ExposureBiasValue": 0.0,
+    "DateTimeOriginal": "2026:09:26 12:51:11",
+    "SubsecTimeOriginal": "510",
+    "OffsetTimeOriginal": "-05:00"
+   },
+   "lightEstimate": {
+    "ambientIntensity": 975.5,
+    "ambientColorTemperature": 6361.0
+   },
+   "features": {
+    "file": "keyframes/k00025.features.bin",
+    "count": 144
+   },
+   "depth": {
+    "file": "keyframes/k00025.depth.f32",
+    "confidenceFile": "keyframes/k00025.confidence.u8",
+    "w": 256,
+    "h": 192,
+    "smoothed": false
+   }
+  }
+ ],
+ "stills": [],
+ "taps": [
+  {
+   "id": "t1",
+   "time": 85363.5154,
+   "label": "reference_point",
+   "tool": "mark",
+   "step": "single",
+   "keyframe": "k00023",
+   "frozen": false,
+   "pixel": [
+    989.573,
+    712.173
+   ],
+   "rayOrigin": [
+    -3.331765,
+    0.124278,
+    -1.535309
+   ],
+   "rayDirection": [
+    0.33690831,
+    0.08635345,
+    -0.93756913
+   ],
+   "hit": {
+    "position": [
+     -2.7119,
+     0.283156,
+     -3.260309
+    ],
+    "target": "sceneDepth",
+    "alignment": "any",
+    "distance": 1.8399
+   },
+   "confirmedByUser": true,
+   "epoch": "e1"
+  }
+ ],
+ "tracking": [
+  {
+   "time": 85322.1458,
+   "state": "limited.initializing",
+   "epoch": "e1"
+  },
+  {
+   "time": 85323.8338,
+   "state": "normal",
+   "epoch": "e1"
+  },
+  {
+   "time": 85327.9309,
+   "state": "limited.excessiveMotion",
+   "epoch": "e1"
+  },
+  {
+   "time": 85329.1408,
+   "state": "normal",
+   "epoch": "e1"
+  }
+ ],
+ "planes": [
+  {
+   "id": "A1A174D4-A97D-5F58-A3D8-14AEB1062D77",
+   "epoch": "e1",
+   "alignment": "horizontal",
+   "classification": "floor",
+   "transform": [
+    0.888321,
+    -0.024629,
+    0.45856,
+    0.0,
+    0.021329,
+    0.999695,
+    0.012377,
+    0.0,
+    -0.458725,
+    -0.001213,
+    0.888577,
+    0.0,
+    -2.015041,
+    -1.387191,
+    -0.960225,
+    1.0
+   ],
+   "center": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "planeExtent": {
+    "width": 15.7703,
+    "height": 8.378,
+    "rotationOnYAxis": 0.0
+   },
+   "boundary": [
+    [
+     -7.4855,
+     4.162
+    ],
+    [
+     -7.8662,
+     4.0691
+    ],
+    [
+     -7.8696,
+     3.9709
+    ],
+    [
+     -7.8807,
+     1.006
+    ],
+    [
+     -7.884,
+     -1.0067
+    ],
+    [
+     -7.8789,
+     -2.8155
+    ],
+    [
+     -7.8785,
+     -2.8694
+    ],
+    [
+     -7.8387,
+     -3.8021
+    ],
+    [
+     -7.7483,
+     -4.1542
+    ],
+    [
+     -7.6328,
+     -4.1591
+    ],
+    [
+     -4.8969,
+     -4.1873
+    ],
+    [
+     -2.6058,
+     -4.1882
+    ],
+    [
+     2.6597,
+     -4.1888
+    ],
+    [
+     5.8567,
+     -4.1874
+    ],
+    [
+     7.0076,
+     -4.1773
+    ],
+    [
+     7.4946,
+     -4.1621
+    ],
+    [
+     7.7997,
+     -4.1242
+    ],
+    [
+     7.8732,
+     -3.9264
+    ],
+    [
+     7.884,
+     1.6795
+    ],
+    [
+     7.8706,
+     3.2413
+    ],
+    [
+     7.8341,
+     4.1609
+    ],
+    [
+     6.8386,
+     4.1866
+    ],
+    [
+     -2.6784,
+     4.1883
+    ],
+    [
+     -5.2208,
+     4.1854
+    ],
+    [
+     -6.7703,
+     4.1774
+    ]
+   ],
+   "sourceInliers": 35167
+  },
+  {
+   "id": "1448C1DB-F93C-5E22-A43E-0DC50585A24E",
+   "epoch": "e1",
+   "alignment": "vertical",
+   "classification": "wall",
+   "transform": [
+    0.912425,
+    -0.00025,
+    0.409253,
+    0.0,
+    -0.409251,
+    8.7e-05,
+    0.912427,
+    0.0,
+    -0.000269,
+    -1.000003,
+    -2.2e-05,
+    0.0,
+    -0.963751,
+    2.781584,
+    -5.55208,
+    1.0
+   ],
+   "center": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "planeExtent": {
+    "width": 14.7652,
+    "height": 7.9346,
+    "rotationOnYAxis": 0.0
+   },
+   "boundary": [
+    [
+     -5.2023,
+     -3.9671
+    ],
+    [
+     -2.6737,
+     -3.9596
+    ],
+    [
+     7.1975,
+     -0.3918
+    ],
+    [
+     7.3313,
+     -0.3135
+    ],
+    [
+     7.3748,
+     -0.1751
+    ],
+    [
+     7.3674,
+     0.519
+    ],
+    [
+     7.333,
+     0.819
+    ],
+    [
+     5.7555,
+     3.8782
+    ],
+    [
+     5.7368,
+     3.8949
+    ],
+    [
+     5.6123,
+     3.9526
+    ],
+    [
+     5.5587,
+     3.9657
+    ],
+    [
+     -4.5519,
+     3.9672
+    ],
+    [
+     -5.7326,
+     3.964
+    ],
+    [
+     -7.0971,
+     3.945
+    ],
+    [
+     -7.3135,
+     3.9185
+    ],
+    [
+     -7.3725,
+     3.8815
+    ],
+    [
+     -7.3822,
+     3.2901
+    ],
+    [
+     -7.3796,
+     -0.2618
+    ],
+    [
+     -7.3581,
+     -1.2976
+    ],
+    [
+     -7.3372,
+     -1.5548
+    ],
+    [
+     -7.1213,
+     -2.3771
+    ],
+    [
+     -7.047,
+     -2.6506
+    ],
+    [
+     -6.7498,
+     -3.4222
+    ],
+    [
+     -6.3581,
+     -3.8105
+    ],
+    [
+     -6.2747,
+     -3.8873
+    ],
+    [
+     -6.203,
+     -3.9121
+    ]
+   ],
+   "sourceInliers": 9173
+  },
+  {
+   "id": "F660427C-CB52-5926-A5EB-3D2AABA3061D",
+   "epoch": "e1",
+   "alignment": "vertical",
+   "classification": "wall",
+   "transform": [
+    0.913801,
+    0.000196,
+    0.406163,
+    0.0,
+    -0.406163,
+    0.000304,
+    0.913801,
+    0.0,
+    5.5e-05,
+    -1.0,
+    0.000357,
+    0.0,
+    2.193385,
+    0.048877,
+    -4.273652,
+    1.0
+   ],
+   "center": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "planeExtent": {
+    "width": 8.6335,
+    "height": 2.8376,
+    "rotationOnYAxis": 0.0
+   },
+   "boundary": [
+    [
+     4.3166,
+     -0.1045
+    ],
+    [
+     4.3152,
+     1.1552
+    ],
+    [
+     4.2644,
+     1.3056
+    ],
+    [
+     4.1614,
+     1.4026
+    ],
+    [
+     3.829,
+     1.4155
+    ],
+    [
+     1.388,
+     1.4185
+    ],
+    [
+     -2.4296,
+     1.417
+    ],
+    [
+     -4.3037,
+     1.3667
+    ],
+    [
+     -4.3128,
+     1.1903
+    ],
+    [
+     -4.3151,
+     0.5972
+    ],
+    [
+     -4.316,
+     0.2901
+    ],
+    [
+     -4.3142,
+     -0.9087
+    ],
+    [
+     -4.3134,
+     -1.056
+    ],
+    [
+     -4.2978,
+     -1.2694
+    ],
+    [
+     -4.2761,
+     -1.3396
+    ],
+    [
+     -4.2303,
+     -1.4103
+    ],
+    [
+     -3.4495,
+     -1.4175
+    ],
+    [
+     -1.3844,
+     -1.4187
+    ],
+    [
+     1.1835,
+     -1.4164
+    ],
+    [
+     1.406,
+     -1.4112
+    ],
+    [
+     3.3364,
+     -1.3549
+    ],
+    [
+     4.143,
+     -1.305
+    ],
+    [
+     4.2695,
+     -1.1986
+    ],
+    [
+     4.3108,
+     -1.059
+    ],
+    [
+     4.3153,
+     -0.7945
+    ]
+   ],
+   "sourceInliers": 3986
+  },
+  {
+   "id": "5DC8A087-E374-5886-A6A5-A3FFEFD93CD8",
+   "epoch": "e1",
+   "alignment": "vertical",
+   "classification": "wall",
+   "transform": [
+    0.413804,
+    0.000462,
+    -0.910365,
+    0.0,
+    0.910364,
+    0.000482,
+    0.413804,
+    0.0,
+    0.000631,
+    -0.999999,
+    -0.000223,
+    0.0,
+    -10.446325,
+    4.665392,
+    -2.557884,
+    1.0
+   ],
+   "center": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "planeExtent": {
+    "width": 7.384,
+    "height": 1.9326,
+    "rotationOnYAxis": 0.0
+   },
+   "boundary": [
+    [
+     -0.6631,
+     -0.9649
+    ],
+    [
+     3.2176,
+     -0.9622
+    ],
+    [
+     3.6025,
+     -0.9124
+    ],
+    [
+     3.626,
+     -0.8859
+    ],
+    [
+     3.6874,
+     -0.6014
+    ],
+    [
+     3.6781,
+     0.7107
+    ],
+    [
+     3.6389,
+     0.9212
+    ],
+    [
+     3.6299,
+     0.9533
+    ],
+    [
+     2.7375,
+     0.964
+    ],
+    [
+     1.3776,
+     0.9662
+    ],
+    [
+     -0.4234,
+     0.9661
+    ],
+    [
+     -1.6381,
+     0.9651
+    ],
+    [
+     -2.6437,
+     0.9594
+    ],
+    [
+     -3.0869,
+     0.9565
+    ],
+    [
+     -3.6114,
+     0.9511
+    ],
+    [
+     -3.6863,
+     0.9252
+    ],
+    [
+     -3.6736,
+     -0.0026
+    ],
+    [
+     -3.5612,
+     -0.3492
+    ],
+    [
+     -3.4239,
+     -0.4589
+    ],
+    [
+     -3.2635,
+     -0.5743
+    ],
+    [
+     -2.911,
+     -0.8196
+    ],
+    [
+     -2.6665,
+     -0.9511
+    ],
+    [
+     -2.1172,
+     -0.9588
+    ],
+    [
+     -1.9718,
+     -0.96
+    ]
+   ],
+   "sourceInliers": 1833
+  },
+  {
+   "id": "12FF15F9-F5B3-59EA-847F-FAE5660378A4",
+   "epoch": "e1",
+   "alignment": "vertical",
+   "classification": "wall",
+   "transform": [
+    -0.910767,
+    0.00118,
+    -0.412917,
+    0.0,
+    0.412917,
+    0.00014,
+    -0.910768,
+    0.0,
+    -0.001017,
+    -0.999999,
+    -0.000615,
+    0.0,
+    -7.106789,
+    0.399677,
+    1.301575,
+    1.0
+   ],
+   "center": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "planeExtent": {
+    "width": 10.2102,
+    "height": 3.4487,
+    "rotationOnYAxis": 0.0
+   },
+   "boundary": [
+    [
+     -5.1048,
+     1.3148
+    ],
+    [
+     -5.0985,
+     -0.6073
+    ],
+    [
+     -5.0075,
+     -0.6742
+    ],
+    [
+     -2.628,
+     -1.675
+    ],
+    [
+     -1.9252,
+     -1.7233
+    ],
+    [
+     -1.5433,
+     -1.6981
+    ],
+    [
+     5.0834,
+     1.4917
+    ],
+    [
+     4.559,
+     1.5373
+    ],
+    [
+     2.3541,
+     1.6114
+    ],
+    [
+     -0.4576,
+     1.6875
+    ],
+    [
+     -1.0505,
+     1.7035
+    ],
+    [
+     -1.8159,
+     1.7215
+    ],
+    [
+     -3.3033,
+     1.7243
+    ],
+    [
+     -4.3544,
+     1.7241
+    ],
+    [
+     -4.8404,
+     1.7166
+    ],
+    [
+     -5.1013,
+     1.6998
+    ]
+   ],
+   "sourceInliers": 1891
+  }
+ ],
+ "streams": {
+  "motion": {
+   "file": "streams/motion.csv.gz",
+   "rateHz": 100,
+   "referenceFrame": "xTrueNorthZVertical",
+   "columns": [
+    "t",
+    "qx",
+    "qy",
+    "qz",
+    "qw",
+    "rotX",
+    "rotY",
+    "rotZ",
+    "gravX",
+    "gravY",
+    "gravZ",
+    "accX",
+    "accY",
+    "accZ",
+    "magX",
+    "magY",
+    "magZ",
+    "magAccuracy",
+    "heading"
+   ]
+  },
+  "heading": {
+   "file": "streams/heading.csv.gz",
+   "headingOrientation": "portrait",
+   "headingFilter": 1.0,
+   "columns": [
+    "t",
+    "timestamp",
+    "magneticHeading",
+    "trueHeading",
+    "headingAccuracy",
+    "x",
+    "y",
+    "z"
+   ]
+  },
+  "location": {
+   "file": "streams/location.csv.gz",
+   "desiredAccuracy": "best",
+   "columns": [
+    "t",
+    "timestamp",
+    "latitude",
+    "longitude",
+    "altitude",
+    "ellipsoidalAltitude",
+    "horizontalAccuracy",
+    "verticalAccuracy",
+    "course",
+    "courseAccuracy",
+    "speed",
+    "speedAccuracy"
+   ]
+  },
+  "imuRaw": {
+   "file": "streams/imuRaw.csv.gz",
+   "rateHz": 100,
+   "columns": [
+    "t",
+    "ax",
+    "ay",
+    "az",
+    "gx",
+    "gy",
+    "gz"
+   ]
+  },
+  "arkitPoses": {
+   "file": "streams/arkitPoses.csv.gz",
+   "rateHz": 30,
+   "columns": [
+    "t",
+    "epoch",
+    "tracking",
+    "tx",
+    "ty",
+    "tz",
+    "qx",
+    "qy",
+    "qz",
+    "qw",
+    "fx",
+    "fy",
+    "cx",
+    "cy"
+   ]
+  }
+ },
+ "scaleReference": {
+  "meterCloseUp": {
+   "captured": false,
+   "still": null
+  },
+  "ext": {
+   "method": "a9-meter-model",
+   "obliqueCloseUp": {
+    "captured": false,
+    "still": null
+   },
+   "doorViews": [],
+   "doorOnMeterSide": null,
+   "trueDepthScan": {
+    "captured": false
+   }
+  }
+ },
+ "files": [
+  {
+   "path": "keyframes/k00020.confidence.u8",
+   "bytes": 49152,
+   "sha256": "266b79b163b276b68868cfaa930f59bff2e03874d9bf94631516f343601f51b7",
+   "role": "confidence"
+  },
+  {
+   "path": "keyframes/k00020.depth.f32",
+   "bytes": 196608,
+   "sha256": "05a234dad1caa0ce47ddf43ab099fd0ceb915dc588cc5e9195fb51209dfec7a6",
+   "role": "depth"
+  },
+  {
+   "path": "keyframes/k00020.features.bin",
+   "bytes": 3380,
+   "sha256": "ec1d61ca7e10a67163a37decf222ca10128f98d8536f425aa97537730ff7e0ce",
+   "role": "features"
+  },
+  {
+   "path": "keyframes/k00020.jpg",
+   "bytes": 407906,
+   "sha256": "68894caf5a5829ba96405368e467ef743bd920edba34b6dcd2329e836023c0d5",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00021.confidence.u8",
+   "bytes": 49152,
+   "sha256": "c7ba7cd125eb060d87b4bbbef540f97aeeed5eee7993b612ad867bc176ebf52c",
+   "role": "confidence"
+  },
+  {
+   "path": "keyframes/k00021.depth.f32",
+   "bytes": 196608,
+   "sha256": "67c28a3c87eee6e0bb247a849c1558228450ff86bbac483543c2ef7893ca71e7",
+   "role": "depth"
+  },
+  {
+   "path": "keyframes/k00021.features.bin",
+   "bytes": 5880,
+   "sha256": "0c0f802f84d8dbcd8dfa241ee8310d2027256ccd32529a5b2567d2e786c991e0",
+   "role": "features"
+  },
+  {
+   "path": "keyframes/k00021.jpg",
+   "bytes": 483827,
+   "sha256": "d474b22334385f12a36a345b8c2558addac3cb29f8aa1b3dffd36587953683ed",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00022.confidence.u8",
+   "bytes": 49152,
+   "sha256": "cadfc0970dedb99cbdf49238bab3d16010456304b55d9d45a9ee564e175dc5e8",
+   "role": "confidence"
+  },
+  {
+   "path": "keyframes/k00022.depth.f32",
+   "bytes": 196608,
+   "sha256": "21bb9e993c6d8d17d2262c371e54c94369ffec310d72e2614daa2e3c2eabcb61",
+   "role": "depth"
+  },
+  {
+   "path": "keyframes/k00022.features.bin",
+   "bytes": 5640,
+   "sha256": "dba2de02813acccaa83b5349aefe6e9ef6975da014fa8e5d8e4cfb9a487cf596",
+   "role": "features"
+  },
+  {
+   "path": "keyframes/k00022.jpg",
+   "bytes": 448116,
+   "sha256": "cdeae4f51c133f467df92cec0377911a44935f9a465e650b1c5bc9ad0884fbb3",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00023.confidence.u8",
+   "bytes": 49152,
+   "sha256": "1edaf4af25ff158a5124cb1d34046bb34543b5c948b3dc1d787e797157c8933b",
+   "role": "confidence"
+  },
+  {
+   "path": "keyframes/k00023.depth.f32",
+   "bytes": 196608,
+   "sha256": "803451eb808dc0f16d9749a21f392db7e927397c27fe015f9adf345e3ea61659",
+   "role": "depth"
+  },
+  {
+   "path": "keyframes/k00023.features.bin",
+   "bytes": 6000,
+   "sha256": "0652d8cb18c0fb2ab3e3310ef1b8d74345b2a6335d0a9e24dec03cd283ab2f5e",
+   "role": "features"
+  },
+  {
+   "path": "keyframes/k00023.jpg",
+   "bytes": 419209,
+   "sha256": "3c71f2deb8f05eb309bf3ce228804a31ff39be6167ac5a350ff3cdfbfba80996",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00024.confidence.u8",
+   "bytes": 49152,
+   "sha256": "8e210151c4e884b28fb178d60f5689ef71d6997e7ba5d296c4d4c1f85df62354",
+   "role": "confidence"
+  },
+  {
+   "path": "keyframes/k00024.depth.f32",
+   "bytes": 196608,
+   "sha256": "75af99e83e575ec16433f5ddac8a057c62bdc10149d925bb0c87d05ef742283a",
+   "role": "depth"
+  },
+  {
+   "path": "keyframes/k00024.features.bin",
+   "bytes": 4680,
+   "sha256": "9014da110bfdad3765e0f34d2bdc6219cedb4817a7e302aeef43859ddc35c247",
+   "role": "features"
+  },
+  {
+   "path": "keyframes/k00024.jpg",
+   "bytes": 441165,
+   "sha256": "3ed89a02aa759aa32df71b530a055d89c964c9180c9bcb4639e15630a57fddc6",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00025.confidence.u8",
+   "bytes": 49152,
+   "sha256": "3f6eac4ca724cb2c274c5df98316b3dc88816e9e6f712508f6d1e3ce889548c7",
+   "role": "confidence"
+  },
+  {
+   "path": "keyframes/k00025.depth.f32",
+   "bytes": 196608,
+   "sha256": "f16b8b3dcf1a8ce45308795783a2c9bea004edc4cec508ea8fc5004a06371fc1",
+   "role": "depth"
+  },
+  {
+   "path": "keyframes/k00025.features.bin",
+   "bytes": 2880,
+   "sha256": "8b585c6989e0a188486f78a3e207357251fb823ddb487eb037c6e3950f5b58e9",
+   "role": "features"
+  },
+  {
+   "path": "keyframes/k00025.jpg",
+   "bytes": 723715,
+   "sha256": "5e39d77e353ee567aebfdea78a1a52f9a1ef5424903d2d8873ae84cd254c650b",
+   "role": "keyframe"
+  },
+  {
+   "path": "streams/arkitPoses.csv.gz",
+   "bytes": 95626,
+   "sha256": "9bedc283aa1f1f4f81b961b1bd02bba0aeb8163949a01867b1a6d80b91fe26a4",
+   "role": "stream"
+  },
+  {
+   "path": "streams/heading.csv.gz",
+   "bytes": 28404,
+   "sha256": "4fd519aec7a21a71203d585cb5ff4443fe56c487e75a653d488e188096b58742",
+   "role": "stream"
+  },
+  {
+   "path": "streams/imuRaw.csv.gz",
+   "bytes": 249293,
+   "sha256": "794e0fb51864a318c5d0c2eec9890750b7310a4fdbb86d6afb9c38ad83a87574",
+   "role": "stream"
+  },
+  {
+   "path": "streams/location.csv.gz",
+   "bytes": 4885,
+   "sha256": "7e66ba29584350b08dc5f1844fff58116165c7651bab30b4720b25c6eef62d1d",
+   "role": "stream"
+  },
+  {
+   "path": "streams/motion.csv.gz",
+   "bytes": 727486,
+   "sha256": "7363f2c01e5a87ebcbf9a3ab70a7e7acfaca1f9a48d9cf4d2b9ca94574bf6f1d",
+   "role": "stream"
+  }
+ ]
+}

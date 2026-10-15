@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"hasLargeOrOversizedMeterCan\": false, \"meterCanLabel\": \"meter_can_unclear\", \"insufficientEvidence\": true, \"evidence\": \"All 15 photos are exterior architectural views of a large historic brick institutional building: facades, courtyard, entrance stairs and a spiral sculpture/bike rack. No electric meter, meter socket/can, or service equipment is visible in any image.\", \"notes\": \"The meter can size cannot be judged without meter or service-equipment photos. No positive evidence of an oversized meter can, so the result is unclear rather than oversized.\"}",
+ "json": {
+  "hasLargeOrOversizedMeterCan": false,
+  "meterCanLabel": "meter_can_unclear",
+  "insufficientEvidence": true,
+  "evidence": "All 15 photos are exterior architectural views of a large historic brick institutional building: facades, courtyard, entrance stairs and a spiral sculpture/bike rack. No electric meter, meter socket/can, or service equipment is visible in any image.",
+  "notes": "The meter can size cannot be judged without meter or service-equipment photos. No positive evidence of an oversized meter can, so the result is unclear rather than oversized."
+ },
+ "usage": {
+  "input_tokens": 33077,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 199
+ },
+ "cost_usd": 0.136288,
+ "latency_s": 9.27,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p02": "meter_can_unclear"
+ }
+}

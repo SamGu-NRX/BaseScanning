@@ -1,0 +1,72 @@
+{
+ "format": "base-verdict/v0",
+ "verdict_id": "synthetic/pass",
+ "scene": {
+  "scene_id": "synthetic-flatwall",
+  "site": "synthetic-flatwall",
+  "data": "synthetic"
+ },
+ "evaluator": {
+  "path": "server/result/tests"
+ },
+ "site": {
+  "decision": "pass",
+  "reasons": [],
+  "chosen_candidate": "spot"
+ },
+ "criteria": [
+  {
+   "id": "wall_backing",
+   "scope": "candidate",
+   "candidate_id": "spot",
+   "outcome": "pass",
+   "reason": "The footprint sits on one straight wall.",
+   "measured": {
+    "value_ft": 8.0,
+    "plus_minus_ft": 0.2,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -1.0,
+        1.0
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "observed_share": 1.0,
+      "views_median": 4,
+      "best_incidence_deg": 8,
+      "rule": {
+       "min_views": 2,
+       "max_incidence_deg": 75,
+       "surface": "wall",
+       "observed_share": 0.9
+      }
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 3.0,
+    "comparison": "at_least"
+   },
+   "margin_over_uncertainty": 3.0
+  }
+ ],
+ "candidates": [
+  {
+   "id": "spot",
+   "wall_id": "w1",
+   "start_s_m": [
+    -1.0,
+    1.0
+   ],
+   "outcome": "pass"
+  }
+ ],
+ "views_needed": []
+}

@@ -1,0 +1,30 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meter_type\":\"standard\",\"clean_decision\":true,\"photo\":11,\"can_top\":145,\"can_bottom\":365,\"head_top\":170,\"head_bottom\":285,\"ratio\":1.91,\"reasoning\":\"Photo 11 shows a single electric meter can with visible top and bottom edges. The enclosure height is about two meter-head heights, matching a standard meter can.\"}",
+ "json": {
+  "meter_type": "standard",
+  "clean_decision": true,
+  "photo": 11,
+  "can_top": 145,
+  "can_bottom": 365,
+  "head_top": 170,
+  "head_bottom": 285,
+  "ratio": 1.91,
+  "reasoning": "Photo 11 shows a single electric meter can with visible top and bottom edges. The enclosure height is about two meter-head heights, matching a standard meter can."
+ },
+ "usage": {
+  "input_tokens": 3999,
+  "cached_tokens": 3328,
+  "output_tokens": 600,
+  "reasoning_tokens": 516
+ },
+ "cost_usd": 0.023019,
+ "latency_s": 9.03,
+ "stop": "completed",
+ "prompt_id": "p11_meter_type",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p11": "standard"
+ }
+}

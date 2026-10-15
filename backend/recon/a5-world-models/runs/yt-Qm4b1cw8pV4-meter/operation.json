@@ -1,0 +1,100 @@
+{
+ "name": "a5-yt-Qm4b1cw8pV4-meterwall",
+ "model": "marble-1.1",
+ "images": [
+  "yt-Qm4b1cw8pV4-meter/inputs/t0007.67.jpg",
+  "yt-Qm4b1cw8pV4-meter/inputs/t0009.33.jpg",
+  "yt-Qm4b1cw8pV4-meter/inputs/t0010.67.jpg",
+  "yt-Qm4b1cw8pV4-meter/inputs/t0012.33.jpg",
+  "yt-Qm4b1cw8pV4-meter/inputs/t0014.00.jpg",
+  "yt-Qm4b1cw8pV4-meter/inputs/t0017.00.jpg",
+  "yt-Qm4b1cw8pV4-meter/inputs/t0018.67.jpg",
+  "yt-Qm4b1cw8pV4-meter/inputs/t0021.67.jpg"
+ ],
+ "credits_before": 2200.0,
+ "submitted_unix": 1790451303.2493026,
+ "operation": {
+  "operation_id": "cb220785-02fb-43f4-b6ee-fa157322653c",
+  "created_at": "2026-09-26T19:35:04Z",
+  "updated_at": "2026-09-26T19:35:04Z",
+  "expires_at": "2026-09-26T20:35:04Z",
+  "done": false,
+  "error": null,
+  "metadata": null,
+  "response": null,
+  "cost": null
+ },
+ "result": {
+  "operation_id": "cb220785-02fb-43f4-b6ee-fa157322653c",
+  "created_at": "2026-09-26T19:35:10Z",
+  "updated_at": "2026-09-26T19:40:41Z",
+  "expires_at": "2026-09-26T22:35:10Z",
+  "done": true,
+  "error": null,
+  "metadata": {
+   "progress": {
+    "status": "SUCCEEDED",
+    "description": "World generation completed successfully"
+   },
+   "world_id": "07405351-bcec-42a7-8c2b-b80e0c11cf46",
+   "operation_type": "world_generation",
+   "public_model_name": "marble-1.1"
+  },
+  "response": {
+   "world_id": "07405351-bcec-42a7-8c2b-b80e0c11cf46",
+   "display_name": "",
+   "tags": null,
+   "assets": {
+    "mesh": {
+     "collider_mesh_url": "https://cdn.marble.worldlabs.ai/07405351-bcec-42a7-8c2b-b80e0c11cf46/f753fe7a.glb",
+     "hq_mesh_url": null,
+     "full_res_mesh_url": null
+    },
+    "imagery": {
+     "pano_url": "https://cdn.marble.worldlabs.ai/07405351-bcec-42a7-8c2b-b80e0c11cf46/45d57ade-cb49-41dc-829d-b11af1e897a0_panos/rgb_0.png"
+    },
+    "splats": {
+     "spz_urls": {
+      "500k": "https://cdn.marble.worldlabs.ai/07405351-bcec-42a7-8c2b-b80e0c11cf46/04cfb735-7298-40d6-9433-7ffeb655dd47_ceramic_500k.spz",
+      "100k": "https://cdn.marble.worldlabs.ai/07405351-bcec-42a7-8c2b-b80e0c11cf46/2c19ab10-7b1b-4fdd-b56a-79d261333b58_dust_100k.spz",
+      "150k": "https://cdn.marble.worldlabs.ai/07405351-bcec-42a7-8c2b-b80e0c11cf46/d99c0adb-dfb8-4c58-9baf-652253094033_ceramic_150k.spz",
+      "full_res": "https://cdn.marble.worldlabs.ai/07405351-bcec-42a7-8c2b-b80e0c11cf46/3c721abc-dbcd-461c-ba30-4920490bec2e_ceramic.spz"
+     },
+     "semantics_metadata": {
+      "metric_scale_factor": 2.383882,
+      "ground_plane_offset": 1.9134548
+     }
+    },
+    "thumbnail_url": "https://cdn.marble.worldlabs.ai/07405351-bcec-42a7-8c2b-b80e0c11cf46/41cff4b8-6cd1-44e6-a200-8795c09cd834_sand_mpi/thumbnail.webp",
+    "caption": "The scene is a realistic view of a suburban house, captured on a clear day with bright, natural lighting, conveying a functional and well-maintained atmosphere. The single-story house is painted in a textured off-white stucco, extending around the entire perimeter, and features a light gray trim around the base of the garage entrance. A dark gray utility meter is mounted prominently on the side of the house, with white conduit pipes running vertically beneath it and smaller white pipes emerging from the ground nearby. Loose electrical wiring, coiled into an S-shape, hangs from the wall near the meter, indicating ongoing work or an unfinished connection. To the right of the garage entrance, decorative stacked stone, in shades of gray and beige, forms a pilaster from the ground up, adding a touch of architectural detail. Two small, vibrant green bushes with tightly packed foliage are planted in a bed of dark brown mulch directly adjacent to this stone feature, extending into a landscaped area. The garage itself, visible on the right, is open, revealing a smooth concrete floor and exposed metal framing for the ceiling. A well-manicured lawn of green grass extends from the foreground and wraps around the left side of the house, indicating a spacious outdoor area. The entire house maintains a consistent off-white stucco finish, with only minor variations in texture. The utility meter is positioned centrally on the visible wall, with the conduit pipes descending directly below it. The coiled wires are to the right of the meter, slightly above eye level. The stacked stone pilaster is at the corner of the house, marking the transition to the garage opening. The green bushes are in front of the stone pilaster, with the dark mulch surrounding their bases. The lawn spans the length of the house on the left, merging with a similar green expanse that continues beyond the visible frame. The 360 scene is faultless."
+   },
+   "created_at": null,
+   "updated_at": null,
+   "permission": {
+    "public": false,
+    "allowed_readers": [],
+    "allowed_writers": [],
+    "allow_id_access": false
+   },
+   "world_prompt": null,
+   "world_marble_url": "https://marble.worldlabs.ai/world/07405351-bcec-42a7-8c2b-b80e0c11cf46",
+   "model": null
+  },
+  "cost": {
+   "total_credits": 1600,
+   "line_items": [
+    {
+     "name": "Pano generation (multi-image)",
+     "credits": 100
+    },
+    {
+     "name": "World generation",
+     "credits": 1500
+    }
+   ]
+  }
+ },
+ "done_unix": 1790451661.0391963,
+ "runtime_s": 357.78989362716675,
+ "credits_after": 600.0
+}

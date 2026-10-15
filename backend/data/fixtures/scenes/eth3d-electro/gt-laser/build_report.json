@@ -1,0 +1,598 @@
+{
+ "seed": "../breadth/c2-volumetric/scenes/eth3d-electro-doors.json",
+ "ground": {
+  "inliers": 13274307,
+  "rms_m": 0.006497638541070029,
+  "tilt_from_scan_z_deg": 0.6907087301462617
+ },
+ "wall_fit": {
+  "w1": {
+   "points": 395640,
+   "median_offset_m": 0.071,
+   "rms_m": 0.072
+  },
+  "w2": {
+   "points": 1498984,
+   "median_offset_m": -0.154,
+   "rms_m": 0.166
+  }
+ },
+ "laser_points": 455131,
+ "occluder_points": 97497,
+ "t_coverage_s": 10.9,
+ "scene_sha256": "58ba8625f8e90c6ec8e9ec421885735ff0c48a0c459b27be780b0f83575c6557",
+ "walls": [
+  [
+   "w1",
+   [
+    -10.8834,
+    -7.7744
+   ],
+   0.989
+  ],
+  [
+   "w2",
+   [
+    -6.3778,
+    2.9758
+   ],
+   0.978
+  ]
+ ],
+ "bands": [
+  {
+   "wall_id": "w1",
+   "band": "wall",
+   "s_m": [
+    -10.883,
+    -7.883
+   ],
+   "views": 3,
+   "best_incidence_deg": 26.7
+  },
+  {
+   "wall_id": "w1",
+   "band": "ground",
+   "s_m": [
+    -10.883,
+    -10.633
+   ],
+   "out_m": 2.3,
+   "views": 6,
+   "best_incidence_deg": 72.2
+  },
+  {
+   "wall_id": "w1",
+   "band": "ground",
+   "s_m": [
+    -10.633,
+    -9.633
+   ],
+   "out_m": 2.5,
+   "views": 5,
+   "best_incidence_deg": 71.3
+  },
+  {
+   "wall_id": "w1",
+   "band": "ground",
+   "s_m": [
+    -9.633,
+    -8.633
+   ],
+   "out_m": 3.0,
+   "views": 2,
+   "best_incidence_deg": 71.1
+  },
+  {
+   "wall_id": "w1",
+   "band": "ground",
+   "s_m": [
+    -8.633,
+    -7.883
+   ],
+   "out_m": 3.5,
+   "views": 2,
+   "best_incidence_deg": 72.6
+  },
+  {
+   "wall_id": "w1",
+   "band": "overhead",
+   "s_m": [
+    -10.633,
+    -8.883
+   ]
+  },
+  {
+   "wall_id": "w1",
+   "band": "overhead",
+   "s_m": [
+    -8.883,
+    -8.383
+   ],
+   "out_m": 2.2
+  },
+  {
+   "wall_id": "w1",
+   "band": "overhead",
+   "s_m": [
+    -8.383,
+    -8.133
+   ]
+  },
+  {
+   "wall_id": "w1",
+   "band": "overhead",
+   "s_m": [
+    -8.133,
+    -7.883
+   ],
+   "out_m": 2.3
+  },
+  {
+   "wall_id": "w1",
+   "band": "facing",
+   "s_m": [
+    -10.883,
+    -10.633
+   ],
+   "out_m": 0.5
+  },
+  {
+   "wall_id": "w1",
+   "band": "facing",
+   "s_m": [
+    -10.633,
+    -10.383
+   ],
+   "out_m": 2.5
+  },
+  {
+   "wall_id": "w1",
+   "band": "facing",
+   "s_m": [
+    -10.383,
+    -9.633
+   ],
+   "out_m": 3.8
+  },
+  {
+   "wall_id": "w1",
+   "band": "facing",
+   "s_m": [
+    -9.633,
+    -8.883
+   ],
+   "out_m": 4.1
+  },
+  {
+   "wall_id": "w1",
+   "band": "facing",
+   "s_m": [
+    -8.883,
+    -8.633
+   ],
+   "out_m": 3.7
+  },
+  {
+   "wall_id": "w1",
+   "band": "facing",
+   "s_m": [
+    -8.633,
+    -7.883
+   ],
+   "out_m": 4.0
+  },
+  {
+   "wall_id": "w2",
+   "band": "wall",
+   "s_m": [
+    -6.378,
+    -5.628
+   ],
+   "views": 9,
+   "best_incidence_deg": 16.6
+  },
+  {
+   "wall_id": "w2",
+   "band": "wall",
+   "s_m": [
+    -5.128,
+    2.872
+   ],
+   "views": 5,
+   "best_incidence_deg": 37.2
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    -6.378,
+    -5.628
+   ],
+   "out_m": 3.0,
+   "views": 2,
+   "best_incidence_deg": 70.7
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    -5.628,
+    -4.378
+   ],
+   "out_m": 2.8,
+   "views": 2,
+   "best_incidence_deg": 70.8
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    -4.378,
+    -3.878
+   ],
+   "out_m": 3.0,
+   "views": 2,
+   "best_incidence_deg": 71.2
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    -3.878,
+    -3.628
+   ],
+   "out_m": 3.6,
+   "views": 2,
+   "best_incidence_deg": 70.6
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    -3.628,
+    -3.378
+   ],
+   "out_m": 4.1,
+   "views": 2,
+   "best_incidence_deg": 70.5
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    -3.378,
+    -2.878
+   ],
+   "out_m": 6.7,
+   "views": 2,
+   "best_incidence_deg": 70.9
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    -2.878,
+    -1.878
+   ],
+   "out_m": 7.0,
+   "views": 4,
+   "best_incidence_deg": 70.6
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    -1.878,
+    -0.878
+   ],
+   "out_m": 7.5,
+   "views": 6,
+   "best_incidence_deg": 72.9
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    -0.878,
+    1.872
+   ],
+   "out_m": 8.0,
+   "views": 3,
+   "best_incidence_deg": 76.3
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    1.872,
+    2.122
+   ],
+   "out_m": 7.7,
+   "views": 3,
+   "best_incidence_deg": 76.2
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    2.122,
+    2.372
+   ],
+   "out_m": 7.1,
+   "views": 3,
+   "best_incidence_deg": 76.1
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    2.372,
+    2.622
+   ],
+   "out_m": 6.7,
+   "views": 3,
+   "best_incidence_deg": 76.3
+  },
+  {
+   "wall_id": "w2",
+   "band": "ground",
+   "s_m": [
+    2.622,
+    2.872
+   ],
+   "out_m": 6.3,
+   "views": 2,
+   "best_incidence_deg": 76.6
+  },
+  {
+   "wall_id": "w2",
+   "band": "overhead",
+   "s_m": [
+    -6.378,
+    -5.628
+   ],
+   "out_m": 2.9
+  },
+  {
+   "wall_id": "w2",
+   "band": "overhead",
+   "s_m": [
+    -5.628,
+    -4.878
+   ]
+  },
+  {
+   "wall_id": "w2",
+   "band": "overhead",
+   "s_m": [
+    -4.878,
+    -2.878
+   ],
+   "out_m": 2.9
+  },
+  {
+   "wall_id": "w2",
+   "band": "overhead",
+   "s_m": [
+    -2.878,
+    -2.378
+   ]
+  },
+  {
+   "wall_id": "w2",
+   "band": "overhead",
+   "s_m": [
+    -2.378,
+    -0.378
+   ],
+   "out_m": 2.9
+  },
+  {
+   "wall_id": "w2",
+   "band": "overhead",
+   "s_m": [
+    -0.378,
+    0.372
+   ]
+  },
+  {
+   "wall_id": "w2",
+   "band": "overhead",
+   "s_m": [
+    0.372,
+    2.122
+   ],
+   "out_m": 2.9
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -6.378,
+    -6.128
+   ],
+   "out_m": 5.6
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -6.128,
+    -5.878
+   ],
+   "out_m": 13.3
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -5.878,
+    -5.628
+   ],
+   "out_m": 12.6
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -5.628,
+    -5.378
+   ],
+   "out_m": 12.4
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -5.378,
+    -4.878
+   ],
+   "out_m": 12.6
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -4.878,
+    -4.628
+   ],
+   "out_m": 12.4
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -4.628,
+    -4.378
+   ],
+   "out_m": 12.8
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -4.378,
+    -4.128
+   ],
+   "out_m": 11.5
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -4.128,
+    -3.878
+   ],
+   "out_m": 11.4
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -3.878,
+    -3.378
+   ],
+   "out_m": 9.0
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -3.378,
+    -2.878
+   ],
+   "out_m": 8.0
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -2.878,
+    -2.378
+   ],
+   "out_m": 7.5
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -2.378,
+    -1.378
+   ],
+   "out_m": 7.0
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -1.378,
+    -1.128
+   ],
+   "out_m": 6.5
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -1.128,
+    -0.378
+   ],
+   "out_m": 6.3
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    -0.378,
+    0.122
+   ],
+   "out_m": 12.7
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    0.122,
+    0.372
+   ],
+   "out_m": 13.1
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    0.372,
+    0.872
+   ],
+   "out_m": 13.7
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    0.872,
+    1.372
+   ],
+   "out_m": 14.1
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    1.372,
+    2.122
+   ],
+   "out_m": 14.5
+  },
+  {
+   "wall_id": "w2",
+   "band": "facing",
+   "s_m": [
+    2.122,
+    2.622
+   ],
+   "out_m": 0.6
+  }
+ ]
+}

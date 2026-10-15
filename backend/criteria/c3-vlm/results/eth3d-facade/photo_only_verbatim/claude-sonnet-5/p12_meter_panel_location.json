@@ -1,0 +1,40 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"meterNotAccessible\": {\"verdict\": \"manual_review\", \"reasoning\": \"No photos of an electric meter (close-up or surroundings) were provided at all \u2014 these images show only an institutional building's exterior, courtyard, and entrance, with no meter visible.\"}, \"panelNotAccessible\": {\"verdict\": \"manual_review\", \"reasoning\": \"No photos of a main breaker box (wall location or open interior) were provided \u2014 none of the supplied images show any electrical panel.\"}, \"panelInHouse\": {\"verdict\": \"manual_review\", \"reasoning\": \"There is no main panel visible in any of these photos, and the building itself is a large institutional/school structure, not a residential home, so placement cannot be determined.\"}, \"notSameWall\": {\"verdict\": \"manual_review\", \"reasoning\": \"Neither the meter nor the panel is visible in any of the provided photos, so it cannot be confirmed whether they share a wall.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "No photos of an electric meter (close-up or surroundings) were provided at all \u2014 these images show only an institutional building's exterior, courtyard, and entrance, with no meter visible."
+  },
+  "panelNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "No photos of a main breaker box (wall location or open interior) were provided \u2014 none of the supplied images show any electrical panel."
+  },
+  "panelInHouse": {
+   "verdict": "manual_review",
+   "reasoning": "There is no main panel visible in any of these photos, and the building itself is a large institutional/school structure, not a residential home, so placement cannot be determined."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reasoning": "Neither the meter nor the panel is visible in any of the provided photos, so it cannot be confirmed whether they share a wall."
+  }
+ },
+ "usage": {
+  "input_tokens": 35111,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 304
+ },
+ "cost_usd": 0.073262,
+ "latency_s": 6.62,
+ "stop": "end_turn",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "manual_review",
+  "p12.panelNotAccessible": "manual_review",
+  "p12.panelInHouse": "manual_review",
+  "p12.notSameWall": "manual_review"
+ }
+}

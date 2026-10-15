@@ -1,0 +1,4319 @@
+{
+ "format": "base-verdict/v0",
+ "verdict_id": "C1-rules-3d/facade-pr13cov-M1/public",
+ "scene": {
+  "scene_id": "facade-pr13cov-M1",
+  "site": "eth3d-facade-pr13content",
+  "sha256": "3cf47d37547b20614cfe323e9c9784ca3efaaaef993792ecc4ff672ee0a155ab",
+  "producer_path": "C1-build_scene3d",
+  "data": "real"
+ },
+ "evaluator": {
+  "path": "C1-rules-3d",
+  "version": "0",
+  "rules_profile": "public",
+  "rules_sha256": "8a7d023d301d27e99fb440a49cf2c1c45b6d98aac1000828f1f35f64ef016c34",
+  "auto_approve": true,
+  "runtime_s": 16.1,
+  "cost_usd": 0.0
+ },
+ "site": {
+  "decision": "manual_review",
+  "reasons": [
+   "0 pass / 78 unsure / 338 fail of 416 candidates",
+   "best w2 u 1.83-4.42 ft (unsure); route 12.24 ft"
+  ],
+  "chosen_candidate": "best"
+ },
+ "criteria": [
+  {
+   "id": "placement",
+   "scope": "site",
+   "outcome": "unsure",
+   "unsure_cause": "unobserved",
+   "reason": "0 pass / 78 unsure / 338 fail of 416 candidates; best w2 u 1.83-4.42 ft (unsure); route 12.24 ft",
+   "measured": null,
+   "threshold": null,
+   "fact": {
+    "value": "public",
+    "clean": false,
+    "raw": "manual_review",
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 10,
+      "observed_share": 0.0,
+      "views_min": 0,
+      "views_median": 0.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     },
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        0.6096
+       ]
+      },
+      "status": "observed",
+      "probes": 20,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     },
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.381,
+        0.381
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 10,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     },
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        1.524
+       ]
+      },
+      "status": "observed",
+      "probes": 50,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     },
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        2.1336
+       ]
+      },
+      "status": "observed",
+      "probes": 70,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     },
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        3.6576000000000004
+       ]
+      },
+      "status": "observed",
+      "probes": 120,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     },
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        1.524
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 50,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     },
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        0.9144000000000001
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 30,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     },
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        0.0,
+        3.018462408278091
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 40,
+      "observed_share": 0.975,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     },
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.018462408278091,
+        3.5772624082780915
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 7,
+      "observed_share": 0.0,
+      "views_min": 0,
+      "views_median": 0.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   }
+  },
+  {
+   "id": "wall_backing",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "wall_backing unsure",
+   "unsure_cause": "unobserved",
+   "measured": {
+    "value_ft": 1.8333,
+    "plus_minus_ft": 0.11,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 10,
+      "observed_share": 0.0,
+      "views_min": 0,
+      "views_median": 0.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 0.0,
+    "comparison": "at_least",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   },
+   "margin_ft": 1.8333,
+   "margin_over_uncertainty": 16.667
+  },
+  {
+   "id": "ground_surface",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "pass",
+   "reason": "ground_surface pass",
+   "measured": {
+    "value_ft": 0.0645,
+    "plus_minus_ft": 0.0,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        0.6096
+       ]
+      },
+      "status": "observed",
+      "probes": 20,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   },
+   "threshold": null
+  },
+  {
+   "id": "meter_working_space",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "pass",
+   "reason": "meter_working_space pass (meter)",
+   "measured": {
+    "value_ft": 6.7359,
+    "plus_minus_ft": 0.41,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        -0.381,
+        0.381
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 10,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ],
+    "subject": "meter"
+   },
+   "threshold": {
+    "value_ft": 0.0,
+    "comparison": "at_least",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   },
+   "margin_ft": 6.7359,
+   "margin_over_uncertainty": 16.429
+  },
+  {
+   "id": "gas_clearance",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "unobserved wall within 3.11 ft",
+   "unsure_cause": "unobserved",
+   "measured": null,
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        1.524
+       ]
+      },
+      "status": "observed",
+      "probes": 50,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 3.0,
+    "comparison": "at_least",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   }
+  },
+  {
+   "id": "ac_clearance",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "pass",
+   "reason": "ac_clearance pass",
+   "measured": null,
+   "fact": {
+    "value": "nothing found in the checked zone",
+    "clean": true,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        1.524
+       ]
+      },
+      "status": "observed",
+      "probes": 50,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 3.0,
+    "comparison": "at_least",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   }
+  },
+  {
+   "id": "drive_clearance",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "pass",
+   "reason": "drive_clearance pass",
+   "measured": null,
+   "fact": {
+    "value": "nothing found in the checked zone",
+    "clean": true,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        2.1336
+       ]
+      },
+      "status": "observed",
+      "probes": 70,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 5.0,
+    "comparison": "at_least",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   }
+  },
+  {
+   "id": "pool_clearance",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "pass",
+   "reason": "pool_clearance pass",
+   "measured": null,
+   "fact": {
+    "value": "nothing found in the checked zone",
+    "clean": true,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        3.6576000000000004
+       ]
+      },
+      "status": "observed",
+      "probes": 120,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 10.0,
+    "comparison": "at_least",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   }
+  },
+  {
+   "id": "opening_clearance",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "outcome rests on space not observed (contract 3.1)",
+   "unsure_cause": "unobserved",
+   "measured": {
+    "value_ft": 1.8018,
+    "plus_minus_ft": 0.51,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 10,
+      "observed_share": 0.0,
+      "views_min": 0,
+      "views_median": 0.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ],
+    "subject": "w1_window_5"
+   },
+   "threshold": {
+    "value_ft": 3.0,
+    "comparison": "at_least",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   },
+   "margin_ft": -1.1982,
+   "margin_over_uncertainty": -2.349
+  },
+  {
+   "id": "wall_equipment_above",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "wall_equipment_above unsure",
+   "unsure_cause": "unobserved",
+   "measured": null,
+   "fact": {
+    "value": "unsure",
+    "clean": false,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 10,
+      "observed_share": 0.0,
+      "views_min": 0,
+      "views_median": 0.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 0.0,
+    "comparison": "at_least",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   }
+  },
+  {
+   "id": "facing_gap",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "pass",
+   "reason": "facing_gap pass",
+   "measured": null,
+   "fact": {
+    "value": "nothing found in the checked zone",
+    "clean": true,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        1.524
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 50,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 4.863333,
+    "comparison": "at_least",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   }
+  },
+  {
+   "id": "headroom",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "pass",
+   "reason": "headroom pass (ovh36)",
+   "measured": {
+    "value_ft": 14.32,
+    "plus_minus_ft": 0.1,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        0.9144000000000001
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 30,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ],
+    "subject": "ovh36"
+   },
+   "threshold": {
+    "value_ft": 6.5,
+    "comparison": "at_least",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   },
+   "margin_ft": 7.82,
+   "margin_over_uncertainty": 78.2
+  },
+  {
+   "id": "footprint_clear",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "pass",
+   "reason": "footprint_clear pass",
+   "measured": null,
+   "fact": {
+    "value": "nothing found in the checked zone",
+    "clean": true,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.5772624082780915,
+        4.364662306678091
+       ],
+       "out_m": [
+        0.0,
+        0.6096
+       ]
+      },
+      "status": "observed",
+      "probes": 20,
+      "observed_share": 1.0,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 0.0,
+    "comparison": "at_least",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   }
+  },
+  {
+   "id": "route_path",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "route_path unsure",
+   "unsure_cause": "unobserved",
+   "measured": {
+    "value_ft": 1.0,
+    "plus_minus_ft": 0.0,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        0.0,
+        3.018462408278091
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 40,
+      "observed_share": 0.975,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     },
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.018462408278091,
+        3.5772624082780915
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 7,
+      "observed_share": 0.0,
+      "views_min": 0,
+      "views_median": 0.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   },
+   "threshold": null
+  },
+  {
+   "id": "route_length",
+   "scope": "candidate",
+   "candidate_id": "best",
+   "outcome": "unsure",
+   "reason": "outcome rests on space not observed (contract 3.1)",
+   "unsure_cause": "unobserved",
+   "measured": {
+    "value_ft": 12.2364,
+    "plus_minus_ft": 0.41,
+    "coverage": [
+     {
+      "region": {
+       "wall_id": "w1",
+       "s_m": [
+        0.0,
+        3.018462408278091
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "observed",
+      "probes": 40,
+      "observed_share": 0.975,
+      "views_min": 1,
+      "views_median": 1.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     },
+     {
+      "region": {
+       "wall_id": "w2",
+       "s_m": [
+        3.018462408278091,
+        3.5772624082780915
+       ],
+       "height_m": [
+        0.0,
+        2.13
+       ]
+      },
+      "status": "unobserved",
+      "probes": 7,
+      "observed_share": 0.0,
+      "views_min": 0,
+      "views_median": 0.0,
+      "best_incidence_deg": null,
+      "rule": {
+       "min_views": 1,
+       "max_incidence_deg": 75.0,
+       "observed_share": 0.9
+      },
+      "method": "C1 build_scene3d coverage (z-buffer depth test on the laser scan); view counts not recorded"
+     }
+    ]
+   },
+   "threshold": {
+    "value_ft": 20.0,
+    "comparison": "at_most",
+    "source": "PR #11 server/rules.yaml (cd0da8b)"
+   },
+   "margin_ft": 7.7636,
+   "margin_over_uncertainty": 18.936
+  }
+ ],
+ "candidates": [
+  {
+   "id": "run0",
+   "wall_id": "w1",
+   "start_s_m": [
+    -12.832067547339912,
+    -12.832067547339912
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing"
+   ]
+  },
+  {
+   "id": "run1",
+   "wall_id": "w1",
+   "start_s_m": [
+    -12.781165947339911,
+    -12.730569147339914
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run2",
+   "wall_id": "w1",
+   "start_s_m": [
+    -12.679667547339912,
+    -12.578169147339914
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run3",
+   "wall_id": "w1",
+   "start_s_m": [
+    -12.527267547339912,
+    -12.425769147339913
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run4",
+   "wall_id": "w1",
+   "start_s_m": [
+    -12.374867547339912,
+    -12.273369147339913
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run5",
+   "wall_id": "w1",
+   "start_s_m": [
+    -12.222467547339912,
+    -12.120969147339913
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run6",
+   "wall_id": "w1",
+   "start_s_m": [
+    -12.070067547339912,
+    -12.019165947339912
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run7",
+   "wall_id": "w1",
+   "start_s_m": [
+    -11.968569147339913,
+    -11.968569147339913
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run8",
+   "wall_id": "w1",
+   "start_s_m": [
+    -11.917667547339912,
+    -11.816169147339913
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run9",
+   "wall_id": "w1",
+   "start_s_m": [
+    -11.765267547339912,
+    -11.663769147339913
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run10",
+   "wall_id": "w1",
+   "start_s_m": [
+    -11.612867547339912,
+    -11.511369147339913
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run11",
+   "wall_id": "w1",
+   "start_s_m": [
+    -11.460467547339912,
+    -11.358969147339913
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run12",
+   "wall_id": "w1",
+   "start_s_m": [
+    -11.308067547339911,
+    -11.257165947339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run13",
+   "wall_id": "w1",
+   "start_s_m": [
+    -11.206569147339913,
+    -11.206569147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run14",
+   "wall_id": "w1",
+   "start_s_m": [
+    -11.155667547339913,
+    -11.054169147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run15",
+   "wall_id": "w1",
+   "start_s_m": [
+    -11.003267547339913,
+    -10.901769147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run16",
+   "wall_id": "w1",
+   "start_s_m": [
+    -10.850867547339913,
+    -10.749369147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run17",
+   "wall_id": "w1",
+   "start_s_m": [
+    -10.698467547339913,
+    -10.596969147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run18",
+   "wall_id": "w1",
+   "start_s_m": [
+    -10.546067547339913,
+    -10.495165947339911
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run19",
+   "wall_id": "w1",
+   "start_s_m": [
+    -10.444569147339912,
+    -10.444569147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "opening_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run20",
+   "wall_id": "w1",
+   "start_s_m": [
+    -10.393667547339913,
+    -10.292169147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "opening_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run21",
+   "wall_id": "w1",
+   "start_s_m": [
+    -10.241267547339913,
+    -10.190365947339911
+   ],
+   "outcome": "fail",
+   "failing": [
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "opening_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run22",
+   "wall_id": "w1",
+   "start_s_m": [
+    -10.139769147339912,
+    -10.139769147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run23",
+   "wall_id": "w1",
+   "start_s_m": [
+    -10.088867547339913,
+    -9.987369147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run24",
+   "wall_id": "w1",
+   "start_s_m": [
+    -9.936467547339912,
+    -9.834969147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run25",
+   "wall_id": "w1",
+   "start_s_m": [
+    -9.784067547339912,
+    -9.682569147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run26",
+   "wall_id": "w1",
+   "start_s_m": [
+    -9.631667547339912,
+    -9.530169147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run27",
+   "wall_id": "w1",
+   "start_s_m": [
+    -9.479267547339912,
+    -9.377769147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run28",
+   "wall_id": "w1",
+   "start_s_m": [
+    -9.326867547339912,
+    -9.275965947339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run29",
+   "wall_id": "w1",
+   "start_s_m": [
+    -9.225369147339913,
+    -9.225369147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run30",
+   "wall_id": "w1",
+   "start_s_m": [
+    -9.174467547339912,
+    -9.072969147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run31",
+   "wall_id": "w1",
+   "start_s_m": [
+    -9.022067547339912,
+    -9.022067547339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "id": "run32",
+   "wall_id": "w1",
+   "start_s_m": [
+    -8.971165947339912,
+    -8.920569147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run33",
+   "wall_id": "w1",
+   "start_s_m": [
+    -8.869667547339912,
+    -8.768169147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run34",
+   "wall_id": "w1",
+   "start_s_m": [
+    -8.717267547339912,
+    -8.615769147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run35",
+   "wall_id": "w1",
+   "start_s_m": [
+    -8.564867547339912,
+    -8.463369147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run36",
+   "wall_id": "w1",
+   "start_s_m": [
+    -8.412467547339912,
+    -8.412467547339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run37",
+   "wall_id": "w1",
+   "start_s_m": [
+    -8.361565947339912,
+    -8.310969147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run38",
+   "wall_id": "w1",
+   "start_s_m": [
+    -8.260067547339911,
+    -8.158569147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run39",
+   "wall_id": "w1",
+   "start_s_m": [
+    -8.107667547339911,
+    -8.006169147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run40",
+   "wall_id": "w1",
+   "start_s_m": [
+    -7.955267547339912,
+    -7.8537691473399125
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run41",
+   "wall_id": "w1",
+   "start_s_m": [
+    -7.802867547339912,
+    -7.701369147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run42",
+   "wall_id": "w1",
+   "start_s_m": [
+    -7.650467547339912,
+    -7.548969147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run43",
+   "wall_id": "w1",
+   "start_s_m": [
+    -7.498067547339912,
+    -7.396569147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run44",
+   "wall_id": "w1",
+   "start_s_m": [
+    -7.345667547339912,
+    -7.244169147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run45",
+   "wall_id": "w1",
+   "start_s_m": [
+    -7.193267547339912,
+    -7.091769147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run46",
+   "wall_id": "w1",
+   "start_s_m": [
+    -7.0408675473399125,
+    -7.0408675473399125
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run47",
+   "wall_id": "w1",
+   "start_s_m": [
+    -6.989965947339911,
+    -6.939369147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_length"
+   ]
+  },
+  {
+   "id": "run48",
+   "wall_id": "w1",
+   "start_s_m": [
+    -6.888467547339912,
+    -6.786969147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_length"
+   ]
+  },
+  {
+   "id": "run49",
+   "wall_id": "w1",
+   "start_s_m": [
+    -6.736067547339912,
+    -6.634569147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_length"
+   ]
+  },
+  {
+   "id": "run50",
+   "wall_id": "w1",
+   "start_s_m": [
+    -6.583667547339912,
+    -6.482169147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_length"
+   ]
+  },
+  {
+   "id": "run51",
+   "wall_id": "w1",
+   "start_s_m": [
+    -6.431267547339912,
+    -6.3297691473399125
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_length"
+   ]
+  },
+  {
+   "id": "run52",
+   "wall_id": "w1",
+   "start_s_m": [
+    -6.278867547339912,
+    -6.177369147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_length"
+   ]
+  },
+  {
+   "id": "run53",
+   "wall_id": "w1",
+   "start_s_m": [
+    -6.126467547339912,
+    -6.024969147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_length"
+   ]
+  },
+  {
+   "id": "run54",
+   "wall_id": "w1",
+   "start_s_m": [
+    -5.974067547339912,
+    -5.872569147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "route_length"
+   ]
+  },
+  {
+   "id": "run55",
+   "wall_id": "w1",
+   "start_s_m": [
+    -5.821667547339912,
+    -5.720169147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "route_length"
+   ]
+  },
+  {
+   "id": "run56",
+   "wall_id": "w1",
+   "start_s_m": [
+    -5.669267547339912,
+    -5.567769147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "route_length"
+   ]
+  },
+  {
+   "id": "run57",
+   "wall_id": "w1",
+   "start_s_m": [
+    -5.516867547339912,
+    -5.415369147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "route_length"
+   ]
+  },
+  {
+   "id": "run58",
+   "wall_id": "w1",
+   "start_s_m": [
+    -5.364467547339912,
+    -5.262969147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "route_length"
+   ]
+  },
+  {
+   "id": "run59",
+   "wall_id": "w1",
+   "start_s_m": [
+    -5.212067547339912,
+    -5.161165947339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear"
+   ]
+  },
+  {
+   "id": "run60",
+   "wall_id": "w1",
+   "start_s_m": [
+    -5.110569147339913,
+    -5.110569147339913
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run61",
+   "wall_id": "w1",
+   "start_s_m": [
+    -5.059667547339912,
+    -4.9581691473399125
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run62",
+   "wall_id": "w1",
+   "start_s_m": [
+    -4.907267547339912,
+    -4.8057691473399125
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run63",
+   "wall_id": "w1",
+   "start_s_m": [
+    -4.754867547339912,
+    -4.653369147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run64",
+   "wall_id": "w1",
+   "start_s_m": [
+    -4.602467547339912,
+    -4.500969147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run65",
+   "wall_id": "w1",
+   "start_s_m": [
+    -4.450067547339912,
+    -4.348569147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run66",
+   "wall_id": "w1",
+   "start_s_m": [
+    -4.297667547339912,
+    -4.196169147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run67",
+   "wall_id": "w1",
+   "start_s_m": [
+    -4.145267547339912,
+    -4.043769147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run68",
+   "wall_id": "w1",
+   "start_s_m": [
+    -3.992867547339912,
+    -3.8913691473399123
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run69",
+   "wall_id": "w1",
+   "start_s_m": [
+    -3.840467547339912,
+    -3.7389691473399123
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run70",
+   "wall_id": "w1",
+   "start_s_m": [
+    -3.688067547339912,
+    -3.586569147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run71",
+   "wall_id": "w1",
+   "start_s_m": [
+    -3.5356675473399117,
+    -3.4341691473399125
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run72",
+   "wall_id": "w1",
+   "start_s_m": [
+    -3.383267547339912,
+    -3.2817691473399124
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run73",
+   "wall_id": "w1",
+   "start_s_m": [
+    -3.230867547339912,
+    -3.1293691473399123
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run74",
+   "wall_id": "w1",
+   "start_s_m": [
+    -3.078467547339912,
+    -2.9769691473399122
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run75",
+   "wall_id": "w1",
+   "start_s_m": [
+    -2.926067547339912,
+    -2.824569147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run76",
+   "wall_id": "w1",
+   "start_s_m": [
+    -2.7736675473399117,
+    -2.6721691473399125
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run77",
+   "wall_id": "w1",
+   "start_s_m": [
+    -2.621267547339912,
+    -2.5197691473399124
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run78",
+   "wall_id": "w1",
+   "start_s_m": [
+    -2.468867547339912,
+    -2.3673691473399123
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run79",
+   "wall_id": "w1",
+   "start_s_m": [
+    -2.316467547339912,
+    -2.2149691473399122
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run80",
+   "wall_id": "w1",
+   "start_s_m": [
+    -2.164067547339912,
+    -2.062569147339912
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run81",
+   "wall_id": "w1",
+   "start_s_m": [
+    -2.0116675473399117,
+    -1.9101691473399123
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run82",
+   "wall_id": "w1",
+   "start_s_m": [
+    -1.8592675473399118,
+    -1.7577691473399122
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run83",
+   "wall_id": "w1",
+   "start_s_m": [
+    -1.7068675473399118,
+    -1.6053691473399123
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run84",
+   "wall_id": "w1",
+   "start_s_m": [
+    -1.5544675473399119,
+    -1.4529691473399122
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run85",
+   "wall_id": "w1",
+   "start_s_m": [
+    -1.4020675473399118,
+    -1.3005691473399124
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run86",
+   "wall_id": "w1",
+   "start_s_m": [
+    -1.2496675473399117,
+    -1.1481691473399123
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "meter_working_space"
+   ]
+  },
+  {
+   "id": "run87",
+   "wall_id": "w1",
+   "start_s_m": [
+    -1.0972675473399118,
+    -0.9957691473399123
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run88",
+   "wall_id": "w1",
+   "start_s_m": [
+    -0.9448675473399117,
+    -0.8433691473399122
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run89",
+   "wall_id": "w1",
+   "start_s_m": [
+    -0.7924675473399118,
+    -0.6909691473399122
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run90",
+   "wall_id": "w1",
+   "start_s_m": [
+    -0.6400675473399118,
+    -0.5385691473399122
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run91",
+   "wall_id": "w1",
+   "start_s_m": [
+    -0.48766754733991174,
+    -0.3861691473399122
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run92",
+   "wall_id": "w1",
+   "start_s_m": [
+    -0.33526754733991176,
+    -0.23376914733991222
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run93",
+   "wall_id": "w1",
+   "start_s_m": [
+    -0.18286754733991173,
+    -0.08136914733991221
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run94",
+   "wall_id": "w1",
+   "start_s_m": [
+    -0.03046754733991172,
+    0.0710308526600878
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run95",
+   "wall_id": "w1",
+   "start_s_m": [
+    0.12193245266008829,
+    0.2234308526600878
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run96",
+   "wall_id": "w1",
+   "start_s_m": [
+    0.27433245266008827,
+    0.32523405266008876
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run97",
+   "wall_id": "w1",
+   "start_s_m": [
+    0.3758308526600878,
+    0.3758308526600878
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "meter_working_space"
+   ]
+  },
+  {
+   "id": "run98",
+   "wall_id": "w1",
+   "start_s_m": [
+    0.4267324526600883,
+    0.4776340526600888
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "meter_working_space"
+   ]
+  },
+  {
+   "id": "run99",
+   "wall_id": "w1",
+   "start_s_m": [
+    0.5282308526600878,
+    0.5282308526600878
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run100",
+   "wall_id": "w1",
+   "start_s_m": [
+    0.5791324526600883,
+    0.6806308526600878
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run101",
+   "wall_id": "w1",
+   "start_s_m": [
+    0.7315324526600883,
+    0.8330308526600878
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run102",
+   "wall_id": "w1",
+   "start_s_m": [
+    0.8839324526600884,
+    0.9854308526600879
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run103",
+   "wall_id": "w1",
+   "start_s_m": [
+    1.0363324526600883,
+    1.1378308526600878
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run104",
+   "wall_id": "w1",
+   "start_s_m": [
+    1.1887324526600884,
+    1.1887324526600884
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": []
+  },
+  {
+   "id": "run105",
+   "wall_id": "w1",
+   "start_s_m": [
+    1.2396340526600889,
+    1.2902308526600879
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run106",
+   "wall_id": "w1",
+   "start_s_m": [
+    1.3411324526600883,
+    1.442630852660088
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run107",
+   "wall_id": "w1",
+   "start_s_m": [
+    1.4935324526600884,
+    1.5950308526600878
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run108",
+   "wall_id": "w1",
+   "start_s_m": [
+    1.6459324526600883,
+    1.696834052660089
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run109",
+   "wall_id": "w1",
+   "start_s_m": [
+    1.747430852660088,
+    1.747430852660088
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run110",
+   "wall_id": "w1",
+   "start_s_m": [
+    1.7983324526600883,
+    1.7983324526600883
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run111",
+   "wall_id": "w1",
+   "start_s_m": [
+    1.8492340526600888,
+    1.899830852660088
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "ground_surface",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run112",
+   "wall_id": "w1",
+   "start_s_m": [
+    1.9507324526600884,
+    2.001634052660089
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance"
+   ]
+  },
+  {
+   "id": "run113",
+   "wall_id": "w1",
+   "start_s_m": [
+    2.052230852660088,
+    2.052230852660088
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "id": "run114",
+   "wall_id": "w1",
+   "start_s_m": [
+    2.1031324526600885,
+    2.154034052660089
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "id": "run115",
+   "wall_id": "w1",
+   "start_s_m": [
+    2.2046308526600877,
+    2.2046308526600877
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run116",
+   "wall_id": "w1",
+   "start_s_m": [
+    2.231148452660089,
+    2.231148452660089
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run117",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.018462408278091,
+    3.069364008278091
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run118",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.119960808278091,
+    3.119960808278091
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run119",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.170862408278091,
+    3.170862408278091
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run120",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.221764008278091,
+    3.221764008278091
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run121",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.272360808278091,
+    3.272360808278091
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run122",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.323262408278091,
+    3.323262408278091
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "ground_surface"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run123",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.374164008278091,
+    3.424760808278091
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run124",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.475662408278091,
+    3.475662408278091
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run125",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.526564008278091,
+    3.526564008278091
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run126",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.5771608082780912,
+    3.5771608082780912
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run127",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.6280624082780912,
+    3.7295608082780913
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run128",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.7804624082780913,
+    3.881960808278091
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run129",
+   "wall_id": "w2",
+   "start_s_m": [
+    3.932862408278091,
+    4.034360808278091
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run130",
+   "wall_id": "w2",
+   "start_s_m": [
+    4.0852624082780915,
+    4.186760808278091
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run131",
+   "wall_id": "w2",
+   "start_s_m": [
+    4.237662408278091,
+    4.288564008278091
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run132",
+   "wall_id": "w2",
+   "start_s_m": [
+    4.339160808278091,
+    4.339160808278091
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run133",
+   "wall_id": "w2",
+   "start_s_m": [
+    4.390062408278091,
+    4.491560808278091
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run134",
+   "wall_id": "w2",
+   "start_s_m": [
+    4.542462408278091,
+    4.643960808278091
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run135",
+   "wall_id": "w2",
+   "start_s_m": [
+    4.694862408278091,
+    4.7963608082780915
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run136",
+   "wall_id": "w2",
+   "start_s_m": [
+    4.847262408278091,
+    4.948760808278091
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run137",
+   "wall_id": "w2",
+   "start_s_m": [
+    4.999662408278091,
+    5.050564008278092
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run138",
+   "wall_id": "w2",
+   "start_s_m": [
+    5.101160808278091,
+    5.101160808278091
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run139",
+   "wall_id": "w2",
+   "start_s_m": [
+    5.152062408278091,
+    5.202964008278092
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run140",
+   "wall_id": "w2",
+   "start_s_m": [
+    5.253560808278091,
+    5.253560808278091
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run141",
+   "wall_id": "w2",
+   "start_s_m": [
+    5.304462408278091,
+    5.355364008278092
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run142",
+   "wall_id": "w2",
+   "start_s_m": [
+    5.405960808278091,
+    5.405960808278091
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run143",
+   "wall_id": "w2",
+   "start_s_m": [
+    5.456862408278091,
+    5.507764008278092
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run144",
+   "wall_id": "w2",
+   "start_s_m": [
+    5.558360808278091,
+    5.558360808278091
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run145",
+   "wall_id": "w2",
+   "start_s_m": [
+    5.6092624082780915,
+    5.710760808278091
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run146",
+   "wall_id": "w2",
+   "start_s_m": [
+    5.761662408278092,
+    5.774464008278092
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run147",
+   "wall_id": "w3",
+   "start_s_m": [
+    6.561852431289343,
+    6.663350831289343
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run148",
+   "wall_id": "w3",
+   "start_s_m": [
+    6.714252431289343,
+    6.815750831289343
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run149",
+   "wall_id": "w3",
+   "start_s_m": [
+    6.866652431289343,
+    6.968150831289343
+   ],
+   "outcome": "unsure",
+   "failing": [],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run150",
+   "wall_id": "w3",
+   "start_s_m": [
+    7.019052431289343,
+    7.019052431289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run151",
+   "wall_id": "w3",
+   "start_s_m": [
+    7.069954031289344,
+    7.069954031289344
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "id": "run152",
+   "wall_id": "w3",
+   "start_s_m": [
+    7.120550831289343,
+    7.120550831289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run153",
+   "wall_id": "w3",
+   "start_s_m": [
+    7.171452431289343,
+    7.272950831289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run154",
+   "wall_id": "w3",
+   "start_s_m": [
+    7.323852431289343,
+    7.374754031289344
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run155",
+   "wall_id": "w3",
+   "start_s_m": [
+    7.425350831289343,
+    7.425350831289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run156",
+   "wall_id": "w3",
+   "start_s_m": [
+    7.4762524312893435,
+    7.577750831289342
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run157",
+   "wall_id": "w3",
+   "start_s_m": [
+    7.628652431289343,
+    7.730150831289342
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run158",
+   "wall_id": "w3",
+   "start_s_m": [
+    7.781052431289343,
+    7.882550831289342
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run159",
+   "wall_id": "w3",
+   "start_s_m": [
+    7.933452431289343,
+    7.933452431289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run160",
+   "wall_id": "w3",
+   "start_s_m": [
+    7.984354031289343,
+    8.034950831289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run161",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.085852431289343,
+    8.085852431289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run162",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.136754031289344,
+    8.187350831289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run163",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.238252431289343,
+    8.238252431289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run164",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.289154031289344,
+    8.339750831289342
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run165",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.390652431289343,
+    8.390652431289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run166",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.441554031289344,
+    8.492150831289342
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run167",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.543052431289343,
+    8.543052431289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run168",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.593954031289343,
+    8.644550831289342
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run169",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.695452431289343,
+    8.796950831289342
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run170",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.847852431289343,
+    8.847852431289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run171",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.898754031289343,
+    8.898754031289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run172",
+   "wall_id": "w3",
+   "start_s_m": [
+    8.949350831289342,
+    8.949350831289342
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run173",
+   "wall_id": "w3",
+   "start_s_m": [
+    9.000252431289343,
+    9.051154031289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run174",
+   "wall_id": "w3",
+   "start_s_m": [
+    9.101750831289342,
+    9.101750831289342
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run175",
+   "wall_id": "w3",
+   "start_s_m": [
+    9.152652431289344,
+    9.254150831289342
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run176",
+   "wall_id": "w3",
+   "start_s_m": [
+    9.305052431289344,
+    9.355954031289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run177",
+   "wall_id": "w3",
+   "start_s_m": [
+    9.406550831289342,
+    9.406550831289342
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run178",
+   "wall_id": "w3",
+   "start_s_m": [
+    9.457452431289344,
+    9.558950831289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run179",
+   "wall_id": "w3",
+   "start_s_m": [
+    9.609852431289344,
+    9.609852431289344
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path"
+   ]
+  },
+  {
+   "id": "run180",
+   "wall_id": "w3",
+   "start_s_m": [
+    9.648866831289343,
+    9.648866831289343
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "route_length",
+    "route_path",
+    "wall_backing"
+   ]
+  }
+ ],
+ "views_needed": [
+  {
+   "id": "v0",
+   "kind": "band",
+   "band": "wall",
+   "wall_id": "w2",
+   "s_m": [
+    3.5772624082780915,
+    4.364662306678091
+   ],
+   "criteria": [
+    "wall_backing"
+   ],
+   "why": "wall_backing: deciding space not observed",
+   "target": "head-on photo of wall w2 wall at the battery spot"
+  },
+  {
+   "id": "v1",
+   "kind": "band",
+   "band": "ground",
+   "wall_id": "w2",
+   "s_m": [
+    3.5772624082780915,
+    4.364662306678091
+   ],
+   "criteria": [
+    "gas_clearance"
+   ],
+   "why": "unobserved wall within 3.11 ft",
+   "target": "head-on photo of wall w2 ground at the battery spot"
+  },
+  {
+   "id": "v2",
+   "kind": "band",
+   "band": "wall",
+   "wall_id": "w2",
+   "s_m": [
+    3.5772624082780915,
+    4.364662306678091
+   ],
+   "criteria": [
+    "opening_clearance"
+   ],
+   "why": "outcome rests on space not observed (contract 3.1)",
+   "target": "head-on photo of wall w2 wall at the battery spot"
+  },
+  {
+   "id": "v3",
+   "kind": "band",
+   "band": "wall",
+   "wall_id": "w2",
+   "s_m": [
+    3.5772624082780915,
+    4.364662306678091
+   ],
+   "criteria": [
+    "wall_equipment_above"
+   ],
+   "why": "wall_equipment_above: deciding space not observed",
+   "target": "head-on photo of wall w2 wall at the battery spot"
+  },
+  {
+   "id": "v4",
+   "kind": "band",
+   "band": "wall",
+   "wall_id": "w2",
+   "s_m": [
+    3.5772624082780915,
+    4.364662306678091
+   ],
+   "criteria": [
+    "route_path"
+   ],
+   "why": "route_path: deciding space not observed",
+   "target": "head-on photo of wall w2 wall at the battery spot"
+  },
+  {
+   "id": "v5",
+   "kind": "band",
+   "band": "wall",
+   "wall_id": "w2",
+   "s_m": [
+    3.5772624082780915,
+    4.364662306678091
+   ],
+   "criteria": [
+    "route_length"
+   ],
+   "why": "outcome rests on space not observed (contract 3.1)",
+   "target": "head-on photo of wall w2 wall at the battery spot"
+  }
+ ]
+}

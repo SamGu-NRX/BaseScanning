@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{ \"hasCl320Meter\": false, \"cl320Label\": \"cl320_unclear\", \"insufficientEvidence\": true, \"evidence\": \"No meter face or service-equipment label visible in any of the provided images; photos show only building exteriors, windows, entrances, and a bike rack sculpture.\", \"notes\": \"No electrical meter or panel is present in the scene at all, so CL320 text cannot be confirmed or denied.\" }",
+ "json": {
+  "hasCl320Meter": false,
+  "cl320Label": "cl320_unclear",
+  "insufficientEvidence": true,
+  "evidence": "No meter face or service-equipment label visible in any of the provided images; photos show only building exteriors, windows, entrances, and a bike rack sculpture.",
+  "notes": "No electrical meter or panel is present in the scene at all, so CL320 text cannot be confirmed or denied."
+ },
+ "usage": {
+  "input_tokens": 32553,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 142
+ },
+ "cost_usd": 0.066526,
+ "latency_s": 7.83,
+ "stop": "end_turn",
+ "prompt_id": "p03_cl320_meter",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

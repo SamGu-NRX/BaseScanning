@@ -1,0 +1,40 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"meterNotAccessible\":{\"verdict\":\"no\",\"reasoning\":\"The pre-install view (Photo 1) shows the meter on an exterior brick wall with open dirt and lawn in front and nothing within the ~3 ft \u00d7 2.5 ft working envelope. The AC condenser sits well to the left near the fence, outside that envelope. The roof eave is well above 6 ft, and no gas meter or regulator is visible nearby.\"},\"panelNotAccessible\":{\"verdict\":\"no\",\"reasoning\":\"The main panel is mounted right next to the meter on the same open exterior wall, with clear yard in front and no overhead obstruction below the high eave. No gas equipment is visible. The tables and tools in later photos are temporary install-crew items, not permanent obstructions.\"},\"panelInHouse\":{\"verdict\":\"no\",\"reasoning\":\"The panel is clearly mounted outdoors on the exterior brick wall of the house, beside the meter, as seen in every photo.\"},\"notSameWall\":{\"verdict\":\"no\",\"reasoning\":\"The meter and main panel are plainly visible side by side on the same exterior brick wall in the same frame, with the panel directly to the right of the meter.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "no",
+   "reasoning": "The pre-install view (Photo 1) shows the meter on an exterior brick wall with open dirt and lawn in front and nothing within the ~3 ft \u00d7 2.5 ft working envelope. The AC condenser sits well to the left near the fence, outside that envelope. The roof eave is well above 6 ft, and no gas meter or regulator is visible nearby."
+  },
+  "panelNotAccessible": {
+   "verdict": "no",
+   "reasoning": "The main panel is mounted right next to the meter on the same open exterior wall, with clear yard in front and no overhead obstruction below the high eave. No gas equipment is visible. The tables and tools in later photos are temporary install-crew items, not permanent obstructions."
+  },
+  "panelInHouse": {
+   "verdict": "no",
+   "reasoning": "The panel is clearly mounted outdoors on the exterior brick wall of the house, beside the meter, as seen in every photo."
+  },
+  "notSameWall": {
+   "verdict": "no",
+   "reasoning": "The meter and main panel are plainly visible side by side on the same exterior brick wall in the same frame, with the panel directly to the right of the meter."
+  }
+ },
+ "usage": {
+  "input_tokens": 28271,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 713
+ },
+ "cost_usd": 0.127344,
+ "latency_s": 12.66,
+ "stop": "end_turn",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "no",
+  "p12.panelNotAccessible": "no",
+  "p12.panelInHouse": "no",
+  "p12.notSameWall": "no"
+ }
+}

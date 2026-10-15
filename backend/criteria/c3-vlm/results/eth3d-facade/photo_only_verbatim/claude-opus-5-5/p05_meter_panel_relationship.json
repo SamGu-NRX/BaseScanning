@@ -1,0 +1,28 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\n  \"mainPanelLocation\": \"not_visible\",\n  \"meterGaragePosition\": \"not_visible\",\n  \"meterPanelRelationship\": \"insufficient_evidence\",\n  \"relationshipSubtype\": \"unknown\",\n  \"evidenceSufficiency\": \"insufficient\",\n  \"confidence\": 0.95,\n  \"rationale\": \"All 15 photos show exterior facades of a large multi-story historic brick institutional building: courtyard walls, a columned main entrance with stairs, a secondary glazed entry, and a steel ring sculpture. No garage, garage door, electric meter, main panel, service conduit, or interior views are visible, so the meter-to-panel relationship cannot be established.\"\n}\n```",
+ "json": {
+  "mainPanelLocation": "not_visible",
+  "meterGaragePosition": "not_visible",
+  "meterPanelRelationship": "insufficient_evidence",
+  "relationshipSubtype": "unknown",
+  "evidenceSufficiency": "insufficient",
+  "confidence": 0.95,
+  "rationale": "All 15 photos show exterior facades of a large multi-story historic brick institutional building: courtyard walls, a columned main entrance with stairs, a secondary glazed entry, and a steel ring sculpture. No garage, garage door, electric meter, main panel, service conduit, or interior views are visible, so the meter-to-panel relationship cannot be established."
+ },
+ "usage": {
+  "input_tokens": 32881,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 320
+ },
+ "cost_usd": 0.137924,
+ "latency_s": 12.28,
+ "stop": "end_turn",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p05": "insufficient_evidence"
+ }
+}

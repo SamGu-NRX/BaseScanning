@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"justification\": \"The provided photos only show exterior building facades, courtyards, and entrance stairs with no images of the electrical panel, breakers, or any disconnect enclosure. There is insufficient information to determine the number of independent service mains, so this must be sent for manual review.\"}",
+ "json": {
+  "decision": "manual_review",
+  "justification": "The provided photos only show exterior building facades, courtyards, and entrance stairs with no images of the electrical panel, breakers, or any disconnect enclosure. There is insufficient information to determine the number of independent service mains, so this must be sent for manual review."
+ },
+ "usage": {
+  "input_tokens": 33643,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 101
+ },
+ "cost_usd": 0.068296,
+ "latency_s": 4.04,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

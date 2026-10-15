@@ -1,0 +1,23 @@
+id,truth_source,truth_model,gpt55_model_family,evidence,correct
+m01,Commons title,Tatung D4S,Tatung D4S,printed,yes
+m03,Commons title,Tatung D4S,D4S,printed,yes
+m09,Commons title,Chung-Hsin I-70-S,Chung-Hsin I-70-S,printed,yes
+m11,Commons title,Chung-Hsin (GE licence) kV2c,GE kV2c,printed,yes
+m13,Commons title,Tatung D4S,Ta Tung D4S,printed,yes
+m15,Commons title,Chung-Hsin kV2c,kV2c,printed,yes
+m22,Commons title,Aclara I-210+,Aclara I-210+,printed,yes
+m23,Commons title,Aclara kV2c,Aclara kV2c,printed,yes
+m27,Commons title,Chung-Hsin I-70-S,I-70-S,printed,yes
+m28,plate read by eye (TYPE C1SDR3),Itron CENTRON C1SD,Itron CENTRON,printed,yes
+m29,plate read by eye (Type FOCUS RXR-SD),Landis+Gyr FOCUS RXR-SD,Landis+Gyr FOCUS RXR-SD,printed,yes
+m31,plate read by eye (TYPE I-60-S),GE I-60-S,General Electric I-60-S,printed,yes
+m32,plate read by eye (TYPE AB1),Elster AB1,Elster AB1,printed,yes
+m34,plate read by eye (TYPE R1S),Elster REX (R1S),Elster REX R1S,printed,yes
+m35,Commons title,Elster A3 Alpha (A3RAL),Elster A3 Alpha,printed,yes
+m37,not checked,,Sangamo K2A,printed,unverified
+m39,Commons title,Itron OpenWay CENTRON,Itron OpenWay CENTRON,printed,yes
+m44,plate read by eye (iCon TYPE iSA3),Sensus iCon A,Sensus iConA,printed,yes
+m45,same utility and model as m44 (title),Sensus iCon A,Sensus iConA,printed,yes
+m50,Commons title,Tatung TT-001,Tatung TT-001,printed,yes
+m51,Commons title,Tatung TT-001,Tatung TT-001,printed,yes
+m57,plate read by eye (TYPE D5S),Westinghouse D5S,Westinghouse D5S,printed,yes

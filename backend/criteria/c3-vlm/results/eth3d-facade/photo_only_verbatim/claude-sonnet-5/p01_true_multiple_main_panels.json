@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{ \"hasTrueMultipleMainPanels\": false, \"multipleMainPanelLabel\": \"unclear_or_insufficient_evidence\", \"insufficientEvidence\": true, \"evidence\": \"All provided images show only building exterior facades, courtyards, entrances, and a bike rack sculpture; no electrical panels, load centers, or breakers are visible in any photo.\", \"notes\": \"No electrical equipment is depicted in this image set, so the panel feature cannot be evaluated.\" }",
+ "json": {
+  "hasTrueMultipleMainPanels": false,
+  "multipleMainPanelLabel": "unclear_or_insufficient_evidence",
+  "insufficientEvidence": true,
+  "evidence": "All provided images show only building exterior facades, courtyards, entrances, and a bike rack sculpture; no electrical panels, load centers, or breakers are visible in any photo.",
+  "notes": "No electrical equipment is depicted in this image set, so the panel feature cannot be evaluated."
+ },
+ "usage": {
+  "input_tokens": 33020,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 163
+ },
+ "cost_usd": 0.06767,
+ "latency_s": 8.65,
+ "stop": "end_turn",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p01": "unclear_or_insufficient_evidence"
+ }
+}

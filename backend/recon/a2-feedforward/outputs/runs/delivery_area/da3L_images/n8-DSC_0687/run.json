@@ -1,0 +1,58 @@
+{
+ "scene": "delivery_area",
+ "model": "da3L",
+ "checkpoint": "depth-anything/DA3-LARGE-1.1",
+ "license": "Apache-2.0 (DA3-LARGE-1.1)",
+ "mode": "images",
+ "members": [
+  "DSC_0687",
+  "DSC_0686",
+  "DSC_0688",
+  "DSC_0685",
+  "DSC_0689",
+  "DSC_0684",
+  "DSC_0690",
+  "DSC_0691"
+ ],
+ "network_wh": [
+  504,
+  336
+ ],
+ "seconds_total": 9.0,
+ "device": "cpu (4 threads, bf16 autocast trunk)",
+ "views": {
+  "DSC_0687": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.776
+  },
+  "DSC_0686": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.784
+  },
+  "DSC_0688": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.784
+  },
+  "DSC_0685": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.793
+  },
+  "DSC_0689": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.731
+  },
+  "DSC_0684": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.773
+  },
+  "DSC_0690": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.803
+  },
+  "DSC_0691": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.819
+  }
+ },
+ "frame": "model frame"
+}

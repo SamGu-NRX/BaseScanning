@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The photos show a commercial/utility area with transformer-room doors, large conduits/scaffolding, and paved drivable surfaces, but no clear residential electric meter is visible. Without a visible meter and confirmed nearby wall space/conduit route for the disconnect, the site cannot be auto-approved.\",\"decision\":\"manual_review\"}",
+ "json": {
+  "justification": "The photos show a commercial/utility area with transformer-room doors, large conduits/scaffolding, and paved drivable surfaces, but no clear residential electric meter is visible. Without a visible meter and confirmed nearby wall space/conduit route for the disconnect, the site cannot be auto-approved.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 32347,
+  "cached_tokens": 0,
+  "output_tokens": 227,
+  "reasoning_tokens": 154
+ },
+ "cost_usd": 0.168545,
+ "latency_s": 4.84,
+ "stop": "completed",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

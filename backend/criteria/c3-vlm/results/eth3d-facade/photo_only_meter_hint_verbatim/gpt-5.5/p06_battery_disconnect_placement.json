@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The marked meter location is on a brick wall tightly bordered by large windows, and the same-wall areas within about 15 ft are repeatedly interrupted by windows and a doorway/columns, so a clear wiring run and wall clearance for the battery are not confidently available. The ground along the wall is a broad gravel courtyard/drive-like surface, so the required 5 ft clearance from drivable surface also cannot be confirmed.\",\"decision\":\"manual_review\"}",
+ "json": {
+  "justification": "The marked meter location is on a brick wall tightly bordered by large windows, and the same-wall areas within about 15 ft are repeatedly interrupted by windows and a doorway/columns, so a clear wiring run and wall clearance for the battery are not confidently available. The ground along the wall is a broad gravel courtyard/drive-like surface, so the required 5 ft clearance from drivable surface also cannot be confirmed.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 30012,
+  "cached_tokens": 0,
+  "output_tokens": 614,
+  "reasoning_tokens": 516
+ },
+ "cost_usd": 0.16848,
+ "latency_s": 12.93,
+ "stop": "completed",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "eth3d-facade",
+ "variant": "photo_only_meter_hint_verbatim",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

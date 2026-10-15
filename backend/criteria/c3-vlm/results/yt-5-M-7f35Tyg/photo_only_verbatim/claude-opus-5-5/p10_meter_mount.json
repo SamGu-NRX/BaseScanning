@@ -1,0 +1,24 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"reasoning\": \"Photos 2-4 show a gas meter, not the electric meter. Photo 11 shows a single electric meter socket mounted directly on the home's vinyl siding near a corner, with conduit running down the wall. It is not on a pole, and no other electric meters are nearby.\", \"type\": \"standardMeter\", \"clean-decision\": true}",
+ "json": {
+  "reasoning": "Photos 2-4 show a gas meter, not the electric meter. Photo 11 shows a single electric meter socket mounted directly on the home's vinyl siding near a corner, with conduit running down the wall. It is not on a pole, and no other electric meters are nearby.",
+  "type": "standardMeter",
+  "clean-decision": true
+ },
+ "usage": {
+  "input_tokens": 5339,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 484
+ },
+ "cost_usd": 0.031036,
+ "latency_s": 8.11,
+ "stop": "end_turn",
+ "prompt_id": "p10_meter_mount",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p10": "standardMeter"
+ }
+}

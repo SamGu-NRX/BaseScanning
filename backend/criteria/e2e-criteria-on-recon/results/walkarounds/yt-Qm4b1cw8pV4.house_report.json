@@ -1,0 +1,118 @@
+{
+ "scale": 1.061062137449567,
+ "cams": 112,
+ "points": 11713,
+ "meter_taps": 6,
+ "walls": [
+  [
+   "w1",
+   "house",
+   [
+    -1.1527,
+    5.1608
+   ],
+   0.974
+  ]
+ ],
+ "chain": {
+  "wall_ids": [
+   "w1"
+  ],
+  "corners": [],
+  "ends": {
+   "left": {
+    "kind": "unexplored",
+    "point_m": [
+     -1.1527,
+     0.0
+    ],
+    "s_m": -1.1527
+   },
+   "right": {
+    "kind": "unexplored",
+    "point_m": [
+     5.1608,
+     0.0
+    ],
+    "s_m": 5.1608
+   }
+  }
+ },
+ "objects": [
+  "meter"
+ ],
+ "extract": {
+  "ground": {
+   "normal_tilt_deg": 0.4814012433738987,
+   "rms_m": 0.026547205302096675,
+   "points": 9298
+  },
+  "meter_triangulated_w": [
+   -2.573,
+   1.635,
+   -1.989
+  ],
+  "wall_band_points": {
+   "raw": 4650,
+   "thinned": 4650
+  },
+  "segments": [
+   {
+    "len_m": 6.55205761545818,
+    "points": 3049,
+    "rms_m": 0.05673655761952773,
+    "high_share": 0.071
+   },
+   {
+    "len_m": 7.181788601428968,
+    "points": 379,
+    "rms_m": 0.04317456756379435,
+    "high_share": 0.359
+   },
+   {
+    "len_m": 2.7003192050708,
+    "points": 80,
+    "rms_m": 0.04095201831041579,
+    "high_share": 0.275
+   },
+   {
+    "len_m": 5.475721799430727,
+    "points": 254,
+    "rms_m": 0.08356645276518941,
+    "high_share": 0.0
+   },
+   {
+    "len_m": 6.313524164990656,
+    "points": 147,
+    "rms_m": 0.0353822470012029,
+    "high_share": 0.02
+   },
+   {
+    "len_m": 3.9856295374723842,
+    "points": 73,
+    "rms_m": 0.04185409681999043,
+    "high_share": 0.0
+   },
+   {
+    "len_m": 1.7679821503808812,
+    "points": 41,
+    "rms_m": 0.04173644268637933,
+    "high_share": 0.073
+   }
+  ],
+  "segments_merged": 2,
+  "meter_hits": 6,
+  "chain": [
+   [
+    "w1",
+    [
+     -1.1527,
+     5.1608
+    ]
+   ]
+  ],
+  "face_offset_m": {
+   "w1": -0.295
+  }
+ }
+}

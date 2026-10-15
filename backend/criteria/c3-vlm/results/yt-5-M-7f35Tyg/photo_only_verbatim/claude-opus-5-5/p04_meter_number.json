@@ -1,0 +1,24 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"reasoning\": \"The close-ups (Photos 2-4) show only a gas meter. The single electric meter appears only in Photo 11, where it is too distant and small to resolve any characters of its number, so no meter number could be read and the read is not clean.\", \"meter_number\": \"\", \"clean-decision\": false}",
+ "json": {
+  "reasoning": "The close-ups (Photos 2-4) show only a gas meter. The single electric meter appears only in Photo 11, where it is too distant and small to resolve any characters of its number, so no meter number could be read and the read is not clean.",
+  "meter_number": "",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 5135,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 280
+ },
+ "cost_usd": 0.02614,
+ "latency_s": 5.3,
+ "stop": "end_turn",
+ "prompt_id": "p04_meter_number",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p04": "none"
+ }
+}

@@ -1,0 +1,36 @@
+{
+  "about": "Hand-worked answers for the facade ground-truth scenes (all 76 cameras; PR #13 clicked openings plus laser-read w2 arched window and w1 upper windows; INVENTED meters and gas_w2). Arithmetic from wall / opening spans in outputs/scenes/facade-build-summary.txt. ORDER CAVEAT: written after the first engine smoke run on facade, so this is a check of arithmetic, not a blind test (electro and delivery_area are blind).",
+  "geometry": {
+    "w1": "L 52.00, pm 0.10; ground-floor windows [2.04,7.15]+-1.29 [12.86,18.07]+-0.36 [23.53,28.85]+-0.33 [33.99,39.55]+-0.27 [44.66,50.03]+-0.40; upper windows directly above at 17.8-26 ft",
+    "w2": "L 11.63, pm 0.11, unobserved by every camera within 75 deg; arched window [1.0,6.5] sill 3.5 ft +-0.3 (laser); gas_w2 standing at u [1.0,2.2], 0-1 ft proud",
+    "w3": "L 12.71, pm 0.10; door [2.32,9.50]+-0.70",
+    "joints": "w1.b-w2.a inside; w2.b-w3.a outside; corner allowance 0.5 ft",
+    "meters": "M1 w1 u 42.1; M2 w3 u 2.0; M3 w1 u 50.5; +-0.3"
+  },
+  "cases": [
+    {"scene": "facade-M1", "profile": "public", "decision": "reject",
+     "why": "w1: window gaps 5.1-5.7 ft < 2.58 + 2x3 ft; w1 end stub 1.97 ft < 2.58. w2: u0 >= 6.5+3+0.41 = 9.91 but u0 <= 11.63-2.58 = 9.05. w3: door leaves no 3 ft margin either side (needs u0 >= 13.3 > L). Unexplored ends w1.a (42.1 ft) and w3.b (35.2 ft) beyond 20 ft reach, so reject is allowed."},
+    {"scene": "facade-M1", "profile": "A", "decision": "manual_review", "why": "every spot fails (window gaps < 2+6 ft); A never rejects"},
+    {"scene": "facade-M1", "profile": "B", "decision": "manual_review", "why": "all ground-floor windows have sills <= 6 ft so count; same arithmetic as public with a 2 ft battery (needs 8 ft gaps); B never rejects"},
+    {"scene": "facade-M1", "profile": "C", "decision": "pass", "best_wall": "w1", "best_u0": 31.0, "route_ft": 8.5, "n_pass": 11,
+     "why": "C has a 0 ft window rule: spot must sit between windows 3 and 4 with margin > pm: u0 > 28.85+0.43 = 29.28 and u1 < 33.99-0.37 = 33.62 -> u0 < 31.04. Grid 1/6 ft -> u0 in {29.33..31.0}: 11 spots. Shortest route 42.1-33.58 = 8.52 (< 16 confident). The W4-W5 gap is blocked by the meter working space (40.85-43.35)."},
+    {"scene": "facade-M1", "profile": "strictest", "decision": "manual_review", "why": "all fail; strictest never rejects"},
+    {"scene": "facade-M2", "profile": "public", "decision": "manual_review",
+     "why": "all spots fail as for M1, but unexplored end w3.b is 12.71-2.0 = 10.7 ft from the meter (< 20 reach), so reject is blocked"},
+    {"scene": "facade-M2", "profile": "A", "decision": "manual_review", "why": "all fail"},
+    {"scene": "facade-M2", "profile": "B", "decision": "manual_review", "why": "all fail"},
+    {"scene": "facade-M2", "profile": "C", "decision": "manual_review", "best_wall": "w1", "best_u0": 41.5, "route_ft": 22.5,
+     "why": "C spots between w1 windows 4 and 5: u0 in (39.92, 41.58). Route wraps both corners: 2.0 + 0.5 + 11.63 + 0.5 + (52 - 44.08) = 22.5 ft, between C's 16 ft confident reach and 26 ft max -> review; w2 on the route is unobserved -> route_path unsure"},
+    {"scene": "facade-M2", "profile": "strictest", "decision": "manual_review", "why": "all fail; 0 corners allowed so nothing off w3 is reachable"},
+    {"scene": "facade-M3", "profile": "public", "decision": "reject",
+     "why": "all fail; w3.b is 1.5+0.5+11.63+0.5+12.71 = 26.8 ft away (> 20.3), w1.a 50.5 ft"},
+    {"scene": "facade-M3", "profile": "A", "decision": "manual_review", "why": "all fail"},
+    {"scene": "facade-M3", "profile": "B", "decision": "manual_review", "why": "all fail"},
+    {"scene": "facade-M3", "profile": "C", "decision": "pass", "best_wall": "w1", "best_u0": 41.5, "route_ft": 6.4,
+     "why": "W4-W5 gap u0 in (39.92, 41.58); meter working space 49.25-51.75 clear; route 50.5 - 44.08 = 6.42"},
+    {"scene": "facade-M3", "profile": "strictest", "decision": "manual_review", "why": "all fail"},
+    {"scene": "facade-pr13cov-M1", "profile": "public", "decision": "manual_review", "best_wall": "w2", "route_ft": 13.0,
+     "why": "PR #13 content (no w2 window, no gas_w2, 7 keyframes): w2 unobserved so its spots are unsure, not failed. First w2 spot clear of w1 window 5 by plan distance across the inside corner: sqrt(1.97^2 + u0^2) > 3.5 -> u0 ~ 2.6-2.9; route 9.9 + 0.5 + u0 ~ 13.0 (PR #11: 12.97 on the unrolled chain)"}
+  ],
+  "cross_corner_gas_M3": "gas_w2 on w2 at 1.0-2.2 ft from the inside corner, 0-1 ft proud. In w1 coordinates it occupies u 51-52, out 1.0-2.2, so a w1 spot ending at u1 is 51 - u1 away in plan: passes 3 ft only for u1 < 47.6. Unrolled (PR #11 style) the distance would be (52 - u1) + 1.0, 2 ft more."
+}

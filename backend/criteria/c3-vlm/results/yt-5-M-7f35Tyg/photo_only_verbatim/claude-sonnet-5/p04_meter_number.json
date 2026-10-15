@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "```json\n{\"reasoning\": \"The photos show gas meters (photos 2-4) and an electric disconnect/junction box, but no clear close-up of an electric utility meter with a readable dial or label number; photo 11 shows what may be an electric meter but it's too small/obscured to read any number.\", \"meter_number\": \"\", \"clean-decision\": false}\n```",
+ "json": {
+  "reasoning": "The photos show gas meters (photos 2-4) and an electric disconnect/junction box, but no clear close-up of an electric utility meter with a readable dial or label number; photo 11 shows what may be an electric meter but it's too small/obscured to read any number.",
+  "meter_number": "",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 5133,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 116
+ },
+ "cost_usd": 0.011426,
+ "latency_s": 2.8,
+ "stop": "end_turn",
+ "prompt_id": "p04_meter_number",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p04": "none"
+ }
+}

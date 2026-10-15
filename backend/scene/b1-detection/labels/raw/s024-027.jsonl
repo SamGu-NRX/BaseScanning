@@ -1,0 +1,8 @@
+{"id": "yt-5-M-7f35Tyg/t0048.67", "keep": [1], "add": [], "present": {"window": false, "fence": false, "driveway": false}, "ignore": ["downspout"], "ground": "mulch_or_soil", "note": "grey wall box at 0.56-0.64 is an AC disconnect (not a criteria class)"}
+{"id": "yt-5-M-7f35Tyg/t0055.33", "keep": [0], "add": [], "present": {"window": false, "fence": false, "driveway": false}, "ignore": [], "ground": "mulch_or_soil"}
+{"id": "yt-5-M-7f35Tyg/t0062.00", "keep": [], "add": [["ac_condenser", 0.10, 0.30, 0.84, 1.0]], "present": {"window": false, "fence": false, "driveway": false}, "ignore": [], "ground": "mulch_or_soil"}
+{"id": "yt-5-M-7f35Tyg/t0078.67", "keep": [], "add": [], "present": {"window": false, "fence": false, "driveway": false}, "ignore": [], "ground": "mulch_or_soil"}
+{"id": "yt-5-M-7f35Tyg/t0088.67", "keep": [], "add": [], "present": {"window": false, "driveway": false}, "ignore": ["electric_meter", "meter_can", "gas_meter", "fence"], "ground": "mulch_or_soil"}
+{"id": "yt-5-M-7f35Tyg/t0092.00", "keep": [], "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": [], "ground": "mulch_or_soil"}
+{"id": "yt-5-M-7f35Tyg/t0095.33", "keep": [], "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": ["downspout"], "ground": "mulch_or_soil"}
+{"id": "commons/c001", "keep": [0], "add": [], "present": {"window": true, "driveway": false}, "ignore": ["fence"], "ground": "other", "note": "mini-split outdoor unit counted as ac_condenser; razor wire"}

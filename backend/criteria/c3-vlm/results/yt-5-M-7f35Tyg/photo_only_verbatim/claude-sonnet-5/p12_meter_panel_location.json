@@ -1,0 +1,40 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\n  \"meterNotAccessible\": {\n    \"verdict\": \"manual_review\",\n    \"reasoning\": \"The electric meter (seen on the siding) has a gas meter and copper gas piping mounted directly below/adjacent to it (visible in the close-up gas meter shots), placing gas equipment within roughly 3 ft of the electric meter, which per the rules triggers manual review regardless of the frontal clearance.\"\n  },\n  \"panelNotAccessible\": {\n    \"verdict\": \"manual_review\",\n    \"reasoning\": \"None of the provided photos clearly show a main breaker box with visible breakers or a labeled panel enclosure; the exterior shots only show siding, foundation rock beds, AC condensers, and a small disconnect-type box, so there isn't enough information to judge the panel's working clearance.\"\n  },\n  \"panelInHouse\": {\n    \"verdict\": \"manual_review\",\n    \"reasoning\": \"No image clearly identifiable as the main breaker box (interior or garage) was provided, so the panel's location relative to living space vs. garage/exterior cannot be determined from these photos.\"\n  },\n  \"notSameWall\": {\n    \"verdict\": \"manual_review\",\n    \"reasoning\": \"Since the main panel is not clearly identifiable in any of the supplied photos, it cannot be confirmed whether it sits on the same exterior wall as the electric meter.\"\n  }\n}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "The electric meter (seen on the siding) has a gas meter and copper gas piping mounted directly below/adjacent to it (visible in the close-up gas meter shots), placing gas equipment within roughly 3 ft of the electric meter, which per the rules triggers manual review regardless of the frontal clearance."
+  },
+  "panelNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "None of the provided photos clearly show a main breaker box with visible breakers or a labeled panel enclosure; the exterior shots only show siding, foundation rock beds, AC condensers, and a small disconnect-type box, so there isn't enough information to judge the panel's working clearance."
+  },
+  "panelInHouse": {
+   "verdict": "manual_review",
+   "reasoning": "No image clearly identifiable as the main breaker box (interior or garage) was provided, so the panel's location relative to living space vs. garage/exterior cannot be determined from these photos."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reasoning": "Since the main panel is not clearly identifiable in any of the supplied photos, it cannot be confirmed whether it sits on the same exterior wall as the electric meter."
+  }
+ },
+ "usage": {
+  "input_tokens": 6945,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 3824
+ },
+ "cost_usd": 0.05213,
+ "latency_s": 44.18,
+ "stop": "end_turn",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "manual_review",
+  "p12.panelNotAccessible": "manual_review",
+  "p12.panelInHouse": "manual_review",
+  "p12.notSameWall": "manual_review"
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "```json\n{\n  \"hasLargeOrOversizedMeterCan\": false,\n  \"meterCanLabel\": \"normal_meter_can\",\n  \"insufficientEvidence\": false,\n  \"evidence\": \"In photos 1, 5-14, the round meter is housed in a small compact square socket can mounted directly on the brick wall, clearly smaller than the adjacent breaker panel and BASE disconnect/inverter enclosures beside it.\",\n  \"notes\": \"The meter socket itself is compact and standard-sized; the larger enclosures nearby (breaker panel, BASE disconnect, battery/inverter units) are separate equipment not part of the meter can.\"\n}\n```",
+ "json": {
+  "hasLargeOrOversizedMeterCan": false,
+  "meterCanLabel": "normal_meter_can",
+  "insufficientEvidence": false,
+  "evidence": "In photos 1, 5-14, the round meter is housed in a small compact square socket can mounted directly on the brick wall, clearly smaller than the adjacent breaker panel and BASE disconnect/inverter enclosures beside it.",
+  "notes": "The meter socket itself is compact and standard-sized; the larger enclosures nearby (breaker panel, BASE disconnect, battery/inverter units) are separate equipment not part of the meter can."
+ },
+ "usage": {
+  "input_tokens": 26233,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 222
+ },
+ "cost_usd": 0.054686,
+ "latency_s": 5.17,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p02": "normal_meter_can"
+ }
+}

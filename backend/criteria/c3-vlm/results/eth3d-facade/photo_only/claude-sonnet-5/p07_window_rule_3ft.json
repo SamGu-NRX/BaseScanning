@@ -1,0 +1,37 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"disconnect_location\": null, \"battery_location\": null, \"route\": \"No electric meter, meter panel, or utility service equipment visible in any of the 15 photos, which show only exterior views of a large institutional/historic brick building (school or university) with dense window arrangements, a formal entrance with stairs, a courtyard, and a decorative bike rack sculpture.\", \"distance_ft\": null, \"nearest_opening_ft\": null, \"reference_object\": \"Door and window proportions suggest a large multi-story institutional building; no scale reference for equipment placement is available\", \"needs_more_photos\": true, \"missing_views\": [\"Photo showing the electric meter location\", \"Photo of any utility service equipment or panel\", \"Ground-level wall areas without windows suitable for equipment mounting\", \"Any residential or single-family structure if this is meant to be the actual service address\", \"Wider view showing accessible ground-level wall space away from windows/doors\"], \"justification\": \"This appears to be a large historic institutional building (school/university), not a typical single-family home site. No meter, disconnect, or any electrical service equipment is visible in any photo. All ground-floor walls shown are densely lined with windows and doors with minimal clearance, and no utility infrastructure is present to anchor a disconnect/battery placement assessment.\"}",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "route": "No electric meter, meter panel, or utility service equipment visible in any of the 15 photos, which show only exterior views of a large institutional/historic brick building (school or university) with dense window arrangements, a formal entrance with stairs, a courtyard, and a decorative bike rack sculpture.",
+  "distance_ft": null,
+  "nearest_opening_ft": null,
+  "reference_object": "Door and window proportions suggest a large multi-story institutional building; no scale reference for equipment placement is available",
+  "needs_more_photos": true,
+  "missing_views": [
+   "Photo showing the electric meter location",
+   "Photo of any utility service equipment or panel",
+   "Ground-level wall areas without windows suitable for equipment mounting",
+   "Any residential or single-family structure if this is meant to be the actual service address",
+   "Wider view showing accessible ground-level wall space away from windows/doors"
+  ],
+  "justification": "This appears to be a large historic institutional building (school/university), not a typical single-family home site. No meter, disconnect, or any electrical service equipment is visible in any photo. All ground-floor walls shown are densely lined with windows and doors with minimal clearance, and no utility infrastructure is present to anchor a disconnect/battery placement assessment."
+ },
+ "usage": {
+  "input_tokens": 1093,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 433
+ },
+ "cost_usd": 0.0129502,
+ "latency_s": 7.61,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

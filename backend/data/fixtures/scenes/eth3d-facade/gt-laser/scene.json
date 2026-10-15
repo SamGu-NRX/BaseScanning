@@ -1,0 +1,4110 @@
+{
+ "format": "base-scene/v0",
+ "scene_id": "eth3d-facade/gt-laser",
+ "provenance": {
+  "data": "real",
+  "site": "eth3d-facade",
+  "producer": {
+   "path": "gt-laser",
+   "version": "0",
+   "code_ref": "internal/eval-harness/eth3d/build_gt.py + PR #13 build_scene.py @ 52aa87f"
+  },
+  "inputs": {
+   "images_given": 76,
+   "images_used": 76,
+   "sensors_used": [
+    "images",
+    "intrinsics",
+    "laser_scan",
+    "annotations"
+   ]
+  },
+  "scale_source": "ground_truth",
+  "gravity_source": "ground_truth",
+  "license": "ETH3D data: research use only (CC BY-NC-SA)",
+  "notes": [
+   "+y is the fitted courtyard ground normal (PR #13), 1.3 deg off the scanner's vertical.",
+   "The electric meter is invented (PR #13). Openings are hand clicks cast onto laser walls; windows agree with the scan within +/-0.01-0.37 ft.",
+   "Coverage records what the 76 photos saw (laser z-buffer ray casting), not what the laser saw."
+  ],
+  "runtime_s": 57.5,
+  "hardware": "4-core CPU VM, no GPU"
+ },
+ "frame": {
+  "units": "m",
+  "convention": "meter_anchored/v0",
+  "anchor": {
+   "element_id": "meter",
+   "plus_minus_m": 0.0,
+   "heading_plus_minus_deg": 0.1
+  },
+  "source_frame": "eth3d_world",
+  "from_source": [
+   -0.979052559,
+   -0.022038943,
+   -0.202411394,
+   0.0,
+   -0.202571666,
+   0.005276954,
+   0.979253223,
+   0.0,
+   -0.020513591,
+   0.999743186,
+   -0.009630881,
+   0.0,
+   1.841645917,
+   1.704879521,
+   28.361040971,
+   1.0
+  ]
+ },
+ "walls": [
+  {
+   "id": "w1",
+   "role": "house",
+   "baseline_m": [
+    [
+     -12.8321,
+     -0.0
+    ],
+    [
+     3.0179,
+     -0.0
+    ]
+   ],
+   "height_m": 10.211,
+   "s_range_m": [
+    -12.8321,
+    3.0179
+   ],
+   "plus_minus_m": 0.03,
+   "evidence": "observed",
+   "support": {
+    "points": 89160,
+    "fit_rms_m": 0.0072
+   },
+   "observed_fraction": 0.998
+  },
+  {
+   "id": "w2",
+   "role": "house",
+   "baseline_m": [
+    [
+     3.0179,
+     -0.0
+    ],
+    [
+     2.949,
+     3.5419
+    ]
+   ],
+   "height_m": 9.144,
+   "s_range_m": [
+    3.0179,
+    6.5604
+   ],
+   "plus_minus_m": 0.038,
+   "evidence": "observed",
+   "support": {
+    "points": 2801,
+    "fit_rms_m": 0.0127
+   },
+   "observed_fraction": 0.0
+  },
+  {
+   "id": "w3",
+   "role": "house",
+   "baseline_m": [
+    [
+     2.949,
+     3.5419
+    ],
+    [
+     7.8975,
+     3.5452
+    ]
+   ],
+   "height_m": 10.241,
+   "s_range_m": [
+    6.5604,
+    11.509
+   ],
+   "plus_minus_m": 0.03,
+   "evidence": "observed",
+   "support": {
+    "points": 16545,
+    "fit_rms_m": 0.0077
+   },
+   "observed_fraction": 0.926
+  }
+ ],
+ "chain": {
+  "wall_ids": [
+   "w1",
+   "w2",
+   "w3"
+  ],
+  "corners": [
+   {
+    "id": "c1",
+    "left_wall": "w1",
+    "right_wall": "w2",
+    "point_m": [
+     3.0179,
+     -0.0
+    ],
+    "s_m": 3.0179,
+    "turn_deg": 91.11,
+    "plus_minus_m": 0.038,
+    "evidence": "observed"
+   },
+   {
+    "id": "c2",
+    "left_wall": "w2",
+    "right_wall": "w3",
+    "point_m": [
+     2.949,
+     3.5419
+    ],
+    "s_m": 6.5604,
+    "turn_deg": -91.08,
+    "plus_minus_m": 0.038,
+    "evidence": "observed"
+   }
+  ],
+  "ends": {
+   "left": {
+    "kind": "unexplored",
+    "note": "w1 meets the main building in an inside corner and the wall continues along that building; not modelled",
+    "point_m": [
+     -12.8321,
+     -0.0
+    ],
+    "s_m": -12.8321
+   },
+   "right": {
+    "kind": "unexplored",
+    "note": "past the tower's west pilaster the wall steps back; the laser scan and the SfM points stop here, so it is not modelled",
+    "point_m": [
+     7.8975,
+     3.5452
+    ],
+    "s_m": 11.509
+   }
+  }
+ },
+ "ground": {
+  "surface": {
+   "kind": "plane",
+   "normal": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "offset_m": 0.0
+  },
+  "plus_minus_m": 0.029,
+  "regions": []
+ },
+ "objects": [
+  {
+   "id": "meter",
+   "class": "meter",
+   "label": "electric meter (INVENTED: placed by PR #13 between windows 4 and 5)",
+   "geometry": {
+    "kind": "point",
+    "pos_m": [
+     0.0,
+     1.524,
+     0.0
+    ]
+   },
+   "wall_id": "w1",
+   "confidence": 1.0,
+   "plus_minus_m": 0.0914,
+   "source": {
+    "kind": "annotation",
+    "model": "invented by PR #13"
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win1",
+   "class": "window",
+   "label": "w1 window 1",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w1",
+    "s_m": [
+     -12.2164,
+     -10.6588
+    ],
+    "bottom_m": 0.9144,
+    "top_m": 3.3882
+   },
+   "wall_id": "w1",
+   "confidence": 1.0,
+   "plus_minus_m": 0.3932,
+   "source": {
+    "kind": "annotation",
+    "model": "PR #13 hand clicks ray-cast through dataset poses onto laser walls",
+    "views": [
+     {
+      "image": "DSC_0359",
+      "points_px": [
+       [
+        1104.0,
+        911.0
+       ],
+       [
+        1180.0,
+        914.0
+       ],
+       [
+        1142.0,
+        912.0
+       ],
+       [
+        1135.0,
+        776.0
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0360",
+      "points_px": [
+       [
+        660.0,
+        905.0
+       ],
+       [
+        718.0,
+        905.0
+       ],
+       [
+        690.0,
+        905.0
+       ],
+       [
+        690.0,
+        765.0
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win2",
+   "class": "window",
+   "label": "w1 window 2",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w1",
+    "s_m": [
+     -8.9181,
+     -7.3281
+    ],
+    "bottom_m": 0.8755,
+    "top_m": 3.4292
+   },
+   "wall_id": "w1",
+   "confidence": 1.0,
+   "plus_minus_m": 0.1097,
+   "source": {
+    "kind": "annotation",
+    "model": "PR #13 hand clicks ray-cast through dataset poses onto laser walls",
+    "views": [
+     {
+      "image": "DSC_0360",
+      "points_px": [
+       [
+        789.0,
+        907.0
+       ],
+       [
+        869.0,
+        909.0
+       ],
+       [
+        830.0,
+        908.0
+       ],
+       [
+        835.0,
+        755.0
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0361",
+      "points_px": [
+       [
+        190.0,
+        818.0
+       ],
+       [
+        292.0,
+        818.0
+       ],
+       [
+        240.0,
+        818.0
+       ],
+       [
+        264.0,
+        645.0
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win3",
+   "class": "window",
+   "label": "w1 window 3",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w1",
+    "s_m": [
+     -5.6655,
+     -4.043
+    ],
+    "bottom_m": 0.958,
+    "top_m": 3.5282
+   },
+   "wall_id": "w1",
+   "confidence": 1.0,
+   "plus_minus_m": 0.1018,
+   "source": {
+    "kind": "annotation",
+    "model": "PR #13 hand clicks ray-cast through dataset poses onto laser walls",
+    "views": [
+     {
+      "image": "DSC_0361",
+      "points_px": [
+       [
+        402.0,
+        822.0
+       ],
+       [
+        508.0,
+        822.0
+       ],
+       [
+        455.0,
+        822.0
+       ],
+       [
+        465.0,
+        645.0
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0419",
+      "points_px": [
+       [
+        234.0,
+        848.0
+       ],
+       [
+        365.0,
+        848.0
+       ],
+       [
+        300.0,
+        848.0
+       ],
+       [
+        315.0,
+        654.0
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win4",
+   "class": "window",
+   "label": "w1 window 4",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w1",
+    "s_m": [
+     -2.4778,
+     -0.7831
+    ],
+    "bottom_m": 1.0116,
+    "top_m": 3.5756
+   },
+   "wall_id": "w1",
+   "confidence": 1.0,
+   "plus_minus_m": 0.0828,
+   "source": {
+    "kind": "annotation",
+    "model": "PR #13 hand clicks ray-cast through dataset poses onto laser walls",
+    "views": [
+     {
+      "image": "DSC_0419",
+      "points_px": [
+       [
+        487.0,
+        848.0
+       ],
+       [
+        616.0,
+        848.0
+       ],
+       [
+        550.0,
+        848.0
+       ],
+       [
+        556.0,
+        653.0
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0420",
+      "points_px": [
+       [
+        43.0,
+        825.0
+       ],
+       [
+        218.0,
+        824.0
+       ],
+       [
+        130.0,
+        824.0
+       ],
+       [
+        140.0,
+        605.0
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0361",
+      "points_px": [
+       [
+        614.0,
+        823.0
+       ],
+       [
+        730.0,
+        823.0
+       ],
+       [
+        672.0,
+        823.0
+       ],
+       [
+        680.0,
+        647.0
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win5",
+   "class": "window",
+   "label": "w1 window 5",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w1",
+    "s_m": [
+     0.7754,
+     2.4127
+    ],
+    "bottom_m": 1.0732,
+    "top_m": 3.6508
+   },
+   "wall_id": "w1",
+   "confidence": 1.0,
+   "plus_minus_m": 0.1214,
+   "source": {
+    "kind": "annotation",
+    "model": "PR #13 hand clicks ray-cast through dataset poses onto laser walls",
+    "views": [
+     {
+      "image": "DSC_0419",
+      "points_px": [
+       [
+        733.0,
+        842.0
+       ],
+       [
+        848.0,
+        842.0
+       ],
+       [
+        790.0,
+        842.0
+       ],
+       [
+        791.0,
+        653.0
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0420",
+      "points_px": [
+       [
+        368.0,
+        822.0
+       ],
+       [
+        505.0,
+        818.0
+       ],
+       [
+        436.0,
+        820.0
+       ],
+       [
+        440.0,
+        622.0
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0361",
+      "points_px": [
+       [
+        833.0,
+        826.0
+       ],
+       [
+        952.0,
+        827.0
+       ],
+       [
+        892.0,
+        826.0
+       ],
+       [
+        895.0,
+        645.0
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "door",
+   "class": "door",
+   "label": "w3 entrance door",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w3",
+    "s_m": [
+     7.2624,
+     9.4522
+    ],
+    "bottom_m": 0.2116,
+    "top_m": 4.074
+   },
+   "wall_id": "w3",
+   "confidence": 1.0,
+   "plus_minus_m": 0.2134,
+   "source": {
+    "kind": "annotation",
+    "model": "PR #13 hand clicks ray-cast through dataset poses onto laser walls",
+    "views": [
+     {
+      "image": "DSC_0419",
+      "points_px": [
+       [
+        1020.0,
+        700.0
+       ],
+       [
+        1226.0,
+        700.0
+       ],
+       [
+        1150.0,
+        958.0
+       ],
+       [
+        1122.0,
+        567.0
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0420",
+      "points_px": [
+       [
+        666.0,
+        720.0
+       ],
+       [
+        855.0,
+        720.0
+       ],
+       [
+        760.0,
+        919.0
+       ],
+       [
+        760.0,
+        547.0
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win_w2_arch",
+   "class": "window",
+   "label": "w2 tower-side ground-floor arched window (laser elevation: recessed reveal; seen obliquely in DSC_0419; missed by PR #13)",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w2",
+    "s_m": [
+     3.3227,
+     4.9991
+    ],
+    "bottom_m": 1.0668,
+    "top_m": 3.9624
+   },
+   "wall_id": "w2",
+   "confidence": 1.0,
+   "plus_minus_m": 0.0914,
+   "source": {
+    "kind": "laser_scan",
+    "model": "C1 rules-3d worker: laser wall elevation",
+    "views": [
+     {
+      "image": "DSC_0419"
+     }
+    ]
+   },
+   "evidence": "observed"
+  }
+ ],
+ "coverage": {
+  "method": "laser_visibility: rays from all 76 cameras to the laser z-buffer surface; hits over 75 deg incidence do not mark the surface",
+  "grid": {
+   "asset": "coverage",
+   "voxel_m": 0.1,
+   "origin_m": [
+    -16.8321,
+    -0.5,
+    -2.0
+   ],
+   "shape": [
+    288,
+    65,
+    216
+   ],
+   "min_views": 1
+  },
+  "rule": {
+   "min_views": 2,
+   "max_incidence_deg": {
+    "wall": 75.0,
+    "ground": 80.0
+   },
+   "observed_share": 0.9
+  },
+  "bands": [
+   {
+    "wall_id": "w1",
+    "band": "wall",
+    "s_m": [
+     -12.832,
+     -11.582
+    ],
+    "views": 5,
+    "best_incidence_deg": 17.8
+   },
+   {
+    "wall_id": "w1",
+    "band": "wall",
+    "s_m": [
+     -11.332,
+     -10.332
+    ],
+    "views": 6,
+    "best_incidence_deg": 16.6
+   },
+   {
+    "wall_id": "w1",
+    "band": "wall",
+    "s_m": [
+     -10.082,
+     2.668
+    ],
+    "views": 4,
+    "best_incidence_deg": 28.6
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     -11.582,
+     -11.332
+    ],
+    "out_m": 2.6
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     -11.082,
+     -10.582
+    ],
+    "out_m": 2.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     -10.582,
+     -9.332
+    ]
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     -9.082,
+     -8.332
+    ]
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     -7.082,
+     -5.332
+    ]
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     -3.832,
+     -2.332
+    ]
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     -2.332,
+     -2.082
+    ],
+    "out_m": 2.6
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     -1.832,
+     -1.582
+    ]
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     -1.332,
+     -1.082
+    ]
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     -0.832,
+     0.918
+    ]
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     1.168,
+     1.418
+    ]
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     1.668,
+     1.918
+    ]
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     2.168,
+     2.668
+    ]
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -12.832,
+     -12.582
+    ],
+    "out_m": 0.4
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -12.582,
+     -12.082
+    ],
+    "out_m": 18.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -12.082,
+     -11.582
+    ],
+    "out_m": 1.7
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -11.582,
+     -11.332
+    ],
+    "out_m": 0.7
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -11.332,
+     -5.332
+    ],
+    "out_m": 18.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -5.332,
+     -5.082
+    ],
+    "out_m": 12.7
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -5.082,
+     -3.582
+    ],
+    "out_m": 18.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -3.582,
+     -3.332
+    ],
+    "out_m": 13.6
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -3.332,
+     -2.582
+    ],
+    "out_m": 12.1
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -2.582,
+     -2.082
+    ],
+    "out_m": 11.6
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -2.082,
+     -1.582
+    ],
+    "out_m": 11.1
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -1.582,
+     -1.082
+    ],
+    "out_m": 10.7
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -1.082,
+     -0.832
+    ],
+    "out_m": 11.0
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     -0.832,
+     2.918
+    ],
+    "out_m": 10.5
+   },
+   {
+    "wall_id": "w2",
+    "band": "overhead",
+    "s_m": [
+     4.018,
+     6.518
+    ]
+   },
+   {
+    "wall_id": "w2",
+    "band": "facing",
+    "s_m": [
+     3.018,
+     3.268
+    ],
+    "out_m": 11.9
+   },
+   {
+    "wall_id": "w2",
+    "band": "facing",
+    "s_m": [
+     3.268,
+     3.518
+    ],
+    "out_m": 15.8
+   },
+   {
+    "wall_id": "w2",
+    "band": "facing",
+    "s_m": [
+     3.518,
+     3.768
+    ],
+    "out_m": 16.0
+   },
+   {
+    "wall_id": "w2",
+    "band": "facing",
+    "s_m": [
+     3.768,
+     4.018
+    ],
+    "out_m": 15.6
+   },
+   {
+    "wall_id": "w2",
+    "band": "facing",
+    "s_m": [
+     4.018,
+     4.518
+    ],
+    "out_m": 14.4
+   },
+   {
+    "wall_id": "w2",
+    "band": "facing",
+    "s_m": [
+     4.518,
+     4.768
+    ],
+    "out_m": 16.2
+   },
+   {
+    "wall_id": "w2",
+    "band": "facing",
+    "s_m": [
+     4.768,
+     5.268
+    ],
+    "out_m": 14.3
+   },
+   {
+    "wall_id": "w2",
+    "band": "facing",
+    "s_m": [
+     5.268,
+     5.518
+    ],
+    "out_m": 16.3
+   },
+   {
+    "wall_id": "w2",
+    "band": "facing",
+    "s_m": [
+     5.518,
+     5.768
+    ],
+    "out_m": 15.2
+   },
+   {
+    "wall_id": "w2",
+    "band": "facing",
+    "s_m": [
+     5.768,
+     6.518
+    ],
+    "out_m": 15.6
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     7.31,
+     7.56
+    ],
+    "views": 5,
+    "best_incidence_deg": 12.3
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     8.06,
+     8.56
+    ],
+    "views": 5,
+    "best_incidence_deg": 17.1
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     9.06,
+     9.31
+    ],
+    "views": 5,
+    "best_incidence_deg": 20.9
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     9.56,
+     9.81
+    ],
+    "views": 5,
+    "best_incidence_deg": 23.5
+   },
+   {
+    "wall_id": "w3",
+    "band": "wall",
+    "s_m": [
+     10.81,
+     11.56
+    ],
+    "views": 2,
+    "best_incidence_deg": 27.3
+   },
+   {
+    "wall_id": "w3",
+    "band": "overhead",
+    "s_m": [
+     7.06,
+     7.31
+    ]
+   },
+   {
+    "wall_id": "w3",
+    "band": "overhead",
+    "s_m": [
+     8.06,
+     8.31
+    ]
+   },
+   {
+    "wall_id": "w3",
+    "band": "overhead",
+    "s_m": [
+     9.06,
+     10.06
+    ]
+   },
+   {
+    "wall_id": "w3",
+    "band": "overhead",
+    "s_m": [
+     10.81,
+     11.56
+    ]
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     6.56,
+     6.81
+    ],
+    "out_m": 0.5
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     7.06,
+     7.31
+    ],
+    "out_m": 1.7
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     7.31,
+     7.56
+    ],
+    "out_m": 1.1
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     8.06,
+     8.31
+    ],
+    "out_m": 7.7
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     8.31,
+     8.56
+    ],
+    "out_m": 0.6
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     9.06,
+     9.31
+    ],
+    "out_m": 9.1
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     9.31,
+     9.56
+    ],
+    "out_m": 9.8
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     9.56,
+     9.81
+    ],
+    "out_m": 10.4
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     9.81,
+     10.06
+    ],
+    "out_m": 13.3
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     10.06,
+     10.31
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     10.56,
+     10.81
+    ],
+    "out_m": 15.1
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     10.81,
+     11.31
+    ],
+    "out_m": 14.8
+   },
+   {
+    "wall_id": "w3",
+    "band": "facing",
+    "s_m": [
+     11.31,
+     11.56
+    ],
+    "out_m": 15.0
+   }
+  ],
+  "sensitivity": [
+   {
+    "surface": "ground",
+    "rule_id": "angle75",
+    "max_incidence_deg": 75.0,
+    "bands": []
+   },
+   {
+    "surface": "ground",
+    "rule_id": "angle80",
+    "max_incidence_deg": 80.0,
+    "bands": []
+   },
+   {
+    "surface": "ground",
+    "rule_id": "footprint3in",
+    "max_incidence_deg": 88.0,
+    "max_footprint_m": 0.0762,
+    "bands": [
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -12.832,
+       -12.582
+      ],
+      "out_m": 3.1,
+      "views": 2,
+      "best_incidence_deg": 85.4
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -12.332,
+       -12.082
+      ],
+      "out_m": 1.4,
+      "views": 2,
+      "best_incidence_deg": 85.3
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -12.082,
+       -11.332
+      ],
+      "out_m": 0.7,
+      "views": 2,
+      "best_incidence_deg": 85.3
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -11.332,
+       -10.832
+      ],
+      "out_m": 1.0,
+      "views": 3,
+      "best_incidence_deg": 85.2
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -10.832,
+       -10.582
+      ],
+      "out_m": 2.1,
+      "views": 3,
+      "best_incidence_deg": 85.0
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -10.582,
+       -10.332
+      ],
+      "out_m": 6.9,
+      "views": 3,
+      "best_incidence_deg": 85.0
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -10.332,
+       -9.582
+      ],
+      "out_m": 8.0,
+      "views": 2,
+      "best_incidence_deg": 84.9
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -9.582,
+       -9.332
+      ],
+      "out_m": 7.8,
+      "views": 2,
+      "best_incidence_deg": 84.8
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -8.582,
+       -8.082
+      ],
+      "out_m": 7.1,
+      "views": 2,
+      "best_incidence_deg": 84.6
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -8.082,
+       -7.832
+      ],
+      "out_m": 6.7,
+      "views": 2,
+      "best_incidence_deg": 84.4
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -7.832,
+       -7.332
+      ],
+      "out_m": 6.0,
+      "views": 2,
+      "best_incidence_deg": 84.2
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -7.332,
+       -7.082
+      ],
+      "out_m": 5.6,
+      "views": 2,
+      "best_incidence_deg": 84.1
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -7.082,
+       -6.832
+      ],
+      "out_m": 5.2,
+      "views": 2,
+      "best_incidence_deg": 84.0
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -6.832,
+       -6.582
+      ],
+      "out_m": 0.4,
+      "views": 2,
+      "best_incidence_deg": 84.0
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -6.582,
+       -6.082
+      ],
+      "out_m": 5.1,
+      "views": 2,
+      "best_incidence_deg": 83.9
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -6.082,
+       -5.832
+      ],
+      "out_m": 0.5,
+      "views": 3,
+      "best_incidence_deg": 83.8
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -5.832,
+       -5.582
+      ],
+      "out_m": 0.4,
+      "views": 4,
+      "best_incidence_deg": 83.8
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -5.582,
+       -5.082
+      ],
+      "out_m": 5.6,
+      "views": 2,
+      "best_incidence_deg": 83.7
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -4.832,
+       -4.082
+      ],
+      "out_m": 5.1,
+      "views": 2,
+      "best_incidence_deg": 83.6
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -4.082,
+       -3.832
+      ],
+      "out_m": 5.7,
+      "views": 2,
+      "best_incidence_deg": 83.4
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -3.832,
+       -3.582
+      ],
+      "out_m": 6.0,
+      "views": 2,
+      "best_incidence_deg": 83.4
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -3.332,
+       -3.082
+      ],
+      "out_m": 6.6,
+      "views": 2,
+      "best_incidence_deg": 83.3
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -3.082,
+       -2.832
+      ],
+      "out_m": 0.4,
+      "views": 3,
+      "best_incidence_deg": 83.3
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -2.582,
+       -2.082
+      ],
+      "out_m": 7.0,
+      "views": 2,
+      "best_incidence_deg": 83.2
+     },
+     {
+      "wall_id": "w1",
+      "band": "ground",
+      "s_m": [
+       -1.582,
+       -1.332
+      ],
+      "out_m": 0.4,
+      "views": 2,
+      "best_incidence_deg": 83.2
+     }
+    ]
+   }
+  ]
+ },
+ "keyframes": [
+  {
+   "id": "DSC_0324",
+   "image": "DSC_0324.JPG",
+   "pose": [
+    -0.999165,
+    -0.019218,
+    0.036066,
+    0.0,
+    -0.029416,
+    0.950839,
+    -0.308286,
+    0.0,
+    -0.028369,
+    -0.309089,
+    -0.95061,
+    0.0,
+    1.022616,
+    1.732442,
+    41.0284,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0325",
+   "image": "DSC_0325.JPG",
+   "pose": [
+    -0.999858,
+    -0.016505,
+    -0.003427,
+    0.0,
+    -0.014719,
+    0.953895,
+    -0.299779,
+    0.0,
+    0.008217,
+    -0.299686,
+    -0.954003,
+    0.0,
+    -0.154607,
+    1.730392,
+    41.358545,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0326",
+   "image": "DSC_0326.JPG",
+   "pose": [
+    -0.86954,
+    -0.014343,
+    -0.493654,
+    0.0,
+    0.14023,
+    0.951266,
+    -0.274644,
+    0.0,
+    0.473535,
+    -0.308038,
+    -0.825153,
+    0.0,
+    -0.897825,
+    1.728741,
+    41.286426,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0327",
+   "image": "DSC_0327.JPG",
+   "pose": [
+    -0.573531,
+    -0.024185,
+    -0.818827,
+    0.0,
+    0.23934,
+    0.951003,
+    -0.19573,
+    0.0,
+    0.78344,
+    -0.308235,
+    -0.539641,
+    0.0,
+    -1.711473,
+    1.723664,
+    40.76292,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0328",
+   "image": "DSC_0328.JPG",
+   "pose": [
+    -0.346611,
+    -0.019391,
+    -0.937809,
+    0.0,
+    0.322792,
+    0.936258,
+    -0.138662,
+    0.0,
+    0.880719,
+    -0.350778,
+    -0.318258,
+    0.0,
+    -2.08497,
+    1.720758,
+    40.12856,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0329",
+   "image": "DSC_0329.JPG",
+   "pose": [
+    -0.037227,
+    -0.031209,
+    -0.998819,
+    0.0,
+    0.332757,
+    0.942084,
+    -0.041838,
+    0.0,
+    0.942277,
+    -0.333922,
+    -0.024686,
+    0.0,
+    -1.567467,
+    1.713002,
+    39.412046,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0330",
+   "image": "DSC_0330.JPG",
+   "pose": [
+    -0.065422,
+    -0.025714,
+    -0.997526,
+    0.0,
+    0.336488,
+    0.940548,
+    -0.046313,
+    0.0,
+    0.939413,
+    -0.338685,
+    -0.05288,
+    0.0,
+    -0.513205,
+    1.705865,
+    38.911572,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0331",
+   "image": "DSC_0331.JPG",
+   "pose": [
+    -0.182568,
+    -0.04581,
+    -0.982125,
+    0.0,
+    0.331842,
+    0.937427,
+    -0.105412,
+    0.0,
+    0.9255,
+    -0.345155,
+    -0.155943,
+    0.0,
+    0.792691,
+    1.697523,
+    38.413589,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0332",
+   "image": "DSC_0332.JPG",
+   "pose": [
+    -0.222884,
+    -0.032457,
+    -0.974305,
+    0.0,
+    0.321514,
+    0.941076,
+    -0.104901,
+    0.0,
+    0.9203,
+    -0.336633,
+    -0.199315,
+    0.0,
+    3.054649,
+    1.671968,
+    37.972162,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0333",
+   "image": "DSC_0333.JPG",
+   "pose": [
+    -0.187948,
+    -0.034929,
+    -0.981558,
+    0.0,
+    0.332546,
+    0.93808,
+    -0.097058,
+    0.0,
+    0.924169,
+    -0.344654,
+    -0.164694,
+    0.0,
+    3.917047,
+    1.652494,
+    36.927794,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0334",
+   "image": "DSC_0334.JPG",
+   "pose": [
+    -0.014297,
+    -0.044912,
+    -0.998889,
+    0.0,
+    0.352044,
+    0.934799,
+    -0.04707,
+    0.0,
+    0.935874,
+    -0.352326,
+    0.002446,
+    0.0,
+    4.837263,
+    1.623248,
+    36.169486,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0335",
+   "image": "DSC_0335.JPG",
+   "pose": [
+    -0.030883,
+    -0.04549,
+    -0.998487,
+    0.0,
+    0.33684,
+    0.940055,
+    -0.053246,
+    0.0,
+    0.941055,
+    -0.337975,
+    -0.013709,
+    0.0,
+    5.658924,
+    1.599832,
+    35.770147,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0336",
+   "image": "DSC_0336.JPG",
+   "pose": [
+    0.02407,
+    -0.032932,
+    -0.999168,
+    0.0,
+    0.336058,
+    0.941562,
+    -0.022938,
+    0.0,
+    0.941534,
+    -0.335227,
+    0.033731,
+    0.0,
+    5.947806,
+    1.573055,
+    34.621839,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0337",
+   "image": "DSC_0337.JPG",
+   "pose": [
+    0.030684,
+    -0.024293,
+    -0.999234,
+    0.0,
+    0.327441,
+    0.944783,
+    -0.012914,
+    0.0,
+    0.944373,
+    -0.326794,
+    0.036944,
+    0.0,
+    5.997918,
+    1.562229,
+    33.839604,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0338",
+   "image": "DSC_0338.JPG",
+   "pose": [
+    -0.013336,
+    -0.028063,
+    -0.999517,
+    0.0,
+    0.325586,
+    0.945008,
+    -0.030877,
+    0.0,
+    0.945418,
+    -0.32584,
+    -0.003466,
+    0.0,
+    6.010412,
+    1.549306,
+    32.914441,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0339",
+   "image": "DSC_0339.JPG",
+   "pose": [
+    0.028043,
+    -0.049669,
+    -0.998372,
+    0.0,
+    0.32046,
+    0.946496,
+    -0.038087,
+    0.0,
+    0.946847,
+    -0.31887,
+    0.04246,
+    0.0,
+    6.000902,
+    1.528302,
+    31.986502,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0340",
+   "image": "DSC_0340.JPG",
+   "pose": [
+    -0.032166,
+    -0.058087,
+    -0.997793,
+    0.0,
+    0.34395,
+    0.936693,
+    -0.065618,
+    0.0,
+    0.938437,
+    -0.345301,
+    -0.010151,
+    0.0,
+    5.945835,
+    1.491037,
+    31.07646,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0341",
+   "image": "DSC_0341.JPG",
+   "pose": [
+    0.019001,
+    -0.021934,
+    -0.999579,
+    0.0,
+    0.350617,
+    0.936416,
+    -0.013883,
+    0.0,
+    0.936326,
+    -0.350205,
+    0.025483,
+    0.0,
+    6.004008,
+    1.476049,
+    30.09999,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0342",
+   "image": "DSC_0342.JPG",
+   "pose": [
+    -0.031289,
+    0.005833,
+    -0.999493,
+    0.0,
+    0.334927,
+    0.942231,
+    -0.004986,
+    0.0,
+    0.941724,
+    -0.334913,
+    -0.031435,
+    0.0,
+    5.968107,
+    1.470325,
+    29.140883,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0343",
+   "image": "DSC_0343.JPG",
+   "pose": [
+    0.018762,
+    -0.00146,
+    -0.999823,
+    0.0,
+    0.335264,
+    0.942111,
+    0.004916,
+    0.0,
+    0.941937,
+    -0.335297,
+    0.018165,
+    0.0,
+    5.908617,
+    1.461096,
+    28.33068,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0344",
+   "image": "DSC_0344.JPG",
+   "pose": [
+    -0.004366,
+    -0.007289,
+    -0.999964,
+    0.0,
+    0.336004,
+    0.941824,
+    -0.008332,
+    0.0,
+    0.94185,
+    -0.336028,
+    -0.001663,
+    0.0,
+    5.856385,
+    1.44893,
+    27.531595,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0345",
+   "image": "DSC_0345.JPG",
+   "pose": [
+    -0.013082,
+    0.003369,
+    -0.999909,
+    0.0,
+    0.33537,
+    0.942086,
+    -0.001214,
+    0.0,
+    0.941996,
+    -0.335355,
+    -0.013455,
+    0.0,
+    5.760363,
+    1.437945,
+    26.602675,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0346",
+   "image": "DSC_0346.JPG",
+   "pose": [
+    -0.001738,
+    0.000463,
+    -0.999998,
+    0.0,
+    0.336279,
+    0.941762,
+    -0.000148,
+    0.0,
+    0.941761,
+    -0.336279,
+    -0.001792,
+    0.0,
+    5.68507,
+    1.429271,
+    25.70935,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0347",
+   "image": "DSC_0347.JPG",
+   "pose": [
+    -0.155171,
+    -0.003746,
+    -0.98788,
+    0.0,
+    0.342588,
+    0.937733,
+    -0.057368,
+    0.0,
+    0.926583,
+    -0.347337,
+    -0.144226,
+    0.0,
+    5.523272,
+    1.421156,
+    24.952561,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0348",
+   "image": "DSC_0348.JPG",
+   "pose": [
+    -0.265197,
+    0.027299,
+    -0.963808,
+    0.0,
+    0.327097,
+    0.942869,
+    -0.063297,
+    0.0,
+    0.907016,
+    -0.332044,
+    -0.258975,
+    0.0,
+    5.177691,
+    1.419748,
+    24.079758,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0349",
+   "image": "DSC_0349.JPG",
+   "pose": [
+    -0.213015,
+    0.025345,
+    -0.97672,
+    0.0,
+    0.339393,
+    0.939334,
+    -0.049644,
+    0.0,
+    0.916208,
+    -0.342067,
+    -0.208694,
+    0.0,
+    4.554708,
+    1.433892,
+    23.08995,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0350",
+   "image": "DSC_0350.JPG",
+   "pose": [
+    -0.25208,
+    0.011623,
+    -0.967637,
+    0.0,
+    0.315372,
+    0.946324,
+    -0.070791,
+    0.0,
+    0.914875,
+    -0.32301,
+    -0.242215,
+    0.0,
+    4.036632,
+    1.438062,
+    22.165983,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0351",
+   "image": "DSC_0351.JPG",
+   "pose": [
+    -0.332564,
+    0.010999,
+    -0.943017,
+    0.0,
+    0.304435,
+    0.947652,
+    -0.096309,
+    0.0,
+    0.892592,
+    -0.319116,
+    -0.318503,
+    0.0,
+    3.487113,
+    1.444456,
+    21.266003,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0352",
+   "image": "DSC_0352.JPG",
+   "pose": [
+    -0.414764,
+    0.028331,
+    -0.909488,
+    0.0,
+    0.310524,
+    0.943919,
+    -0.112208,
+    0.0,
+    0.855304,
+    -0.328958,
+    -0.400302,
+    0.0,
+    2.88991,
+    1.459104,
+    20.582942,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0353",
+   "image": "DSC_0353.JPG",
+   "pose": [
+    -0.231877,
+    0.031674,
+    -0.972229,
+    0.0,
+    0.327011,
+    0.943839,
+    -0.047243,
+    0.0,
+    0.916132,
+    -0.328884,
+    -0.229212,
+    0.0,
+    2.34516,
+    1.482277,
+    19.787556,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0354",
+   "image": "DSC_0354.JPG",
+   "pose": [
+    -0.148719,
+    -0.014578,
+    -0.988772,
+    0.0,
+    0.394841,
+    0.915854,
+    -0.07289,
+    0.0,
+    0.906633,
+    -0.401247,
+    -0.130449,
+    0.0,
+    1.815834,
+    1.485584,
+    18.776299,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0355",
+   "image": "DSC_0355.JPG",
+   "pose": [
+    -0.265482,
+    0.007966,
+    -0.964083,
+    0.0,
+    0.401649,
+    0.909974,
+    -0.103084,
+    0.0,
+    0.876469,
+    -0.414589,
+    -0.244781,
+    0.0,
+    1.408978,
+    1.481676,
+    17.70012,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0356",
+   "image": "DSC_0356.JPG",
+   "pose": [
+    -0.274717,
+    0.024131,
+    -0.961222,
+    0.0,
+    0.400538,
+    0.911692,
+    -0.091586,
+    0.0,
+    0.874128,
+    -0.410166,
+    -0.260122,
+    0.0,
+    1.046393,
+    1.484174,
+    16.757319,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0357",
+   "image": "DSC_0357.JPG",
+   "pose": [
+    -0.031305,
+    0.004978,
+    -0.999497,
+    0.0,
+    0.377015,
+    0.926179,
+    -0.007196,
+    0.0,
+    0.925678,
+    -0.37705,
+    -0.030871,
+    0.0,
+    0.487519,
+    1.490457,
+    15.955431,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0358",
+   "image": "DSC_0358.JPG",
+   "pose": [
+    0.282859,
+    0.011832,
+    -0.959089,
+    0.0,
+    0.379356,
+    0.917013,
+    0.123194,
+    0.0,
+    0.880954,
+    -0.398682,
+    0.254897,
+    0.0,
+    0.161803,
+    1.500437,
+    15.099099,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0359",
+   "image": "DSC_0359.JPG",
+   "pose": [
+    0.494011,
+    -0.010671,
+    -0.86939,
+    0.0,
+    0.350105,
+    0.917717,
+    0.187675,
+    0.0,
+    0.795852,
+    -0.397091,
+    0.457098,
+    0.0,
+    0.151985,
+    1.50328,
+    14.201051,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0360",
+   "image": "DSC_0360.JPG",
+   "pose": [
+    0.82008,
+    0.002391,
+    -0.572244,
+    0.0,
+    0.216245,
+    0.924549,
+    0.313762,
+    0.0,
+    0.529818,
+    -0.381055,
+    0.757687,
+    0.0,
+    0.337863,
+    1.50254,
+    13.579654,
+    1.0
+   ],
+   "intrinsics": [
+    3412.23,
+    3413.08,
+    3112.65,
+    2065.62
+   ],
+   "w": 6200,
+   "h": 4131,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0361",
+   "image": "DSC_0361.JPG",
+   "pose": [
+    0.998172,
+    0.031201,
+    -0.051755,
+    0.0,
+    -0.013813,
+    0.951531,
+    0.307242,
+    0.0,
+    0.058833,
+    -0.305965,
+    0.950223,
+    0.0,
+    0.59149,
+    1.496748,
+    12.932526,
+    1.0
+   ],
+   "intrinsics": [
+    3412.14,
+    3413.09,
+    3111.9,
+    2069.5
+   ],
+   "w": 6200,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0362",
+   "image": "DSC_0362.JPG",
+   "pose": [
+    0.999152,
+    0.031628,
+    0.026377,
+    0.0,
+    -0.038024,
+    0.954477,
+    0.295852,
+    0.0,
+    -0.015819,
+    -0.296603,
+    0.95487,
+    0.0,
+    1.36309,
+    1.496273,
+    12.711006,
+    1.0
+   ],
+   "intrinsics": [
+    3412.23,
+    3413.08,
+    3112.65,
+    2065.62
+   ],
+   "w": 6200,
+   "h": 4131,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0363",
+   "image": "DSC_0363.JPG",
+   "pose": [
+    0.91045,
+    0.027082,
+    0.412732,
+    0.0,
+    -0.141996,
+    0.957676,
+    0.250389,
+    0.0,
+    -0.388482,
+    -0.286573,
+    0.875761,
+    0.0,
+    2.387469,
+    1.497651,
+    12.578833,
+    1.0
+   ],
+   "intrinsics": [
+    3412.23,
+    3413.08,
+    3112.65,
+    2065.62
+   ],
+   "w": 6200,
+   "h": 4131,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0364",
+   "image": "DSC_0364.JPG",
+   "pose": [
+    0.495315,
+    0.034601,
+    0.868024,
+    0.0,
+    -0.277515,
+    0.953152,
+    0.120362,
+    0.0,
+    -0.823194,
+    -0.300506,
+    0.481713,
+    0.0,
+    3.248876,
+    1.500129,
+    12.786544,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0365",
+   "image": "DSC_0365.JPG",
+   "pose": [
+    0.157254,
+    0.025239,
+    0.987236,
+    0.0,
+    -0.299763,
+    0.953727,
+    0.023366,
+    0.0,
+    -0.940964,
+    -0.299611,
+    0.157544,
+    0.0,
+    3.750109,
+    1.48292,
+    13.408568,
+    1.0
+   ],
+   "intrinsics": [
+    3412.23,
+    3413.08,
+    3112.65,
+    2065.62
+   ],
+   "w": 6200,
+   "h": 4131,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0366",
+   "image": "DSC_0366.JPG",
+   "pose": [
+    -0.162756,
+    0.025349,
+    0.986341,
+    0.0,
+    -0.286014,
+    0.955535,
+    -0.071753,
+    0.0,
+    -0.944302,
+    -0.293785,
+    -0.148268,
+    0.0,
+    4.102731,
+    1.489118,
+    14.240336,
+    1.0
+   ],
+   "intrinsics": [
+    3412.14,
+    3413.09,
+    3111.9,
+    2069.5
+   ],
+   "w": 6200,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0386",
+   "image": "DSC_0386.JPG",
+   "pose": [
+    -0.50897,
+    0.057936,
+    0.858832,
+    0.0,
+    -0.233565,
+    0.951006,
+    -0.202571,
+    0.0,
+    -0.828491,
+    -0.303696,
+    -0.470502,
+    0.0,
+    2.213446,
+    1.689068,
+    38.719038,
+    1.0
+   ],
+   "intrinsics": [
+    3410.3,
+    3411.7,
+    3101.59,
+    2055.56
+   ],
+   "w": 6193,
+   "h": 4127,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0387",
+   "image": "DSC_0387.JPG",
+   "pose": [
+    -0.948856,
+    0.05396,
+    0.311063,
+    0.0,
+    -0.046342,
+    0.950807,
+    -0.306297,
+    0.0,
+    -0.312288,
+    -0.305047,
+    -0.899679,
+    0.0,
+    1.752195,
+    1.71675,
+    39.518481,
+    1.0
+   ],
+   "intrinsics": [
+    3412.23,
+    3413.08,
+    3112.65,
+    2065.62
+   ],
+   "w": 6200,
+   "h": 4131,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0388",
+   "image": "DSC_0388.JPG",
+   "pose": [
+    -0.983235,
+    0.032452,
+    -0.17943,
+    0.0,
+    0.081151,
+    0.959088,
+    -0.271228,
+    0.0,
+    0.163287,
+    -0.281242,
+    -0.945643,
+    0.0,
+    0.95586,
+    1.730011,
+    39.858505,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0389",
+   "image": "DSC_0389.JPG",
+   "pose": [
+    -0.864818,
+    0.014196,
+    -0.501884,
+    0.0,
+    0.160954,
+    0.954685,
+    -0.250342,
+    0.0,
+    0.475587,
+    -0.29728,
+    -0.827914,
+    0.0,
+    0.277292,
+    1.727055,
+    39.818299,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0390",
+   "image": "DSC_0390.JPG",
+   "pose": [
+    -0.589022,
+    0.004621,
+    -0.808103,
+    0.0,
+    -0.031465,
+    0.999094,
+    0.028648,
+    0.0,
+    0.807504,
+    0.042302,
+    -0.588344,
+    0.0,
+    -0.035394,
+    1.715004,
+    39.924135,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0391",
+   "image": "DSC_0391.JPG",
+   "pose": [
+    -0.887104,
+    0.009018,
+    -0.461481,
+    0.0,
+    0.000218,
+    0.999817,
+    0.019118,
+    0.0,
+    0.461569,
+    0.016859,
+    -0.886944,
+    0.0,
+    -1.126937,
+    1.696091,
+    39.097959,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0392",
+   "image": "DSC_0392.JPG",
+   "pose": [
+    -0.445786,
+    -0.006755,
+    -0.895114,
+    0.0,
+    -0.023323,
+    0.99972,
+    0.004071,
+    0.0,
+    0.894836,
+    0.022691,
+    -0.445818,
+    0.0,
+    0.390477,
+    1.727903,
+    41.515401,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0393",
+   "image": "DSC_0393.JPG",
+   "pose": [
+    -0.063255,
+    0.009783,
+    -0.997949,
+    0.0,
+    -0.033174,
+    0.999379,
+    0.011899,
+    0.0,
+    0.997446,
+    0.033859,
+    -0.062892,
+    0.0,
+    0.30703,
+    1.767714,
+    43.577231,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0394",
+   "image": "DSC_0394.JPG",
+   "pose": [
+    0.858515,
+    -0.004513,
+    -0.512768,
+    0.0,
+    0.187216,
+    0.933693,
+    0.305234,
+    0.0,
+    0.477391,
+    -0.358047,
+    0.802434,
+    0.0,
+    0.324634,
+    1.768119,
+    42.944602,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0395",
+   "image": "DSC_0395.JPG",
+   "pose": [
+    0.69217,
+    -0.007401,
+    -0.721697,
+    0.0,
+    0.195514,
+    0.964481,
+    0.177624,
+    0.0,
+    0.694748,
+    -0.264048,
+    0.669032,
+    0.0,
+    1.238526,
+    1.64507,
+    36.709482,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0396",
+   "image": "DSC_0396.JPG",
+   "pose": [
+    0.406368,
+    -0.017374,
+    -0.913544,
+    0.0,
+    0.270613,
+    0.957251,
+    0.10217,
+    0.0,
+    0.872716,
+    -0.288736,
+    0.393698,
+    0.0,
+    1.34515,
+    1.557392,
+    31.940323,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0397",
+   "image": "DSC_0397.JPG",
+   "pose": [
+    0.041261,
+    0.000683,
+    -0.999148,
+    0.0,
+    0.067405,
+    0.99772,
+    0.003465,
+    0.0,
+    0.996872,
+    -0.06749,
+    0.041121,
+    0.0,
+    1.63719,
+    1.547133,
+    29.417637,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0398",
+   "image": "DSC_0398.JPG",
+   "pose": [
+    -0.001346,
+    -0.015404,
+    -0.99988,
+    0.0,
+    0.142147,
+    0.989725,
+    -0.015439,
+    0.0,
+    0.989845,
+    -0.142151,
+    0.000858,
+    0.0,
+    2.158055,
+    1.538562,
+    29.410433,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0399",
+   "image": "DSC_0399.JPG",
+   "pose": [
+    -0.007706,
+    -0.020727,
+    -0.999755,
+    0.0,
+    0.142099,
+    0.989617,
+    -0.021612,
+    0.0,
+    0.989822,
+    -0.142231,
+    -0.004681,
+    0.0,
+    2.19558,
+    1.527344,
+    28.425805,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0400",
+   "image": "DSC_0400.JPG",
+   "pose": [
+    -0.028349,
+    -0.027616,
+    -0.999217,
+    0.0,
+    0.14094,
+    0.989522,
+    -0.031347,
+    0.0,
+    0.989612,
+    -0.141718,
+    -0.02416,
+    0.0,
+    2.105563,
+    1.513325,
+    27.405459,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0401",
+   "image": "DSC_0401.JPG",
+   "pose": [
+    0.001472,
+    -0.016275,
+    -0.999866,
+    0.0,
+    0.140634,
+    0.989934,
+    -0.015906,
+    0.0,
+    0.990061,
+    -0.140592,
+    0.003746,
+    0.0,
+    2.10959,
+    1.501822,
+    26.420261,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0402",
+   "image": "DSC_0402.JPG",
+   "pose": [
+    0.012837,
+    -0.014816,
+    -0.999808,
+    0.0,
+    0.142197,
+    0.989755,
+    -0.012842,
+    0.0,
+    0.989755,
+    -0.142005,
+    0.014813,
+    0.0,
+    1.07448,
+    1.520574,
+    26.342285,
+    1.0
+   ],
+   "intrinsics": [
+    3414.66,
+    3413.37,
+    3113.46,
+    2064.47
+   ],
+   "w": 6201,
+   "h": 4130,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0404",
+   "image": "DSC_0404.JPG",
+   "pose": [
+    0.000703,
+    -0.024883,
+    -0.99969,
+    0.0,
+    0.266202,
+    0.963623,
+    -0.023798,
+    0.0,
+    0.963917,
+    -0.266103,
+    0.007301,
+    0.0,
+    0.739341,
+    1.549369,
+    28.271873,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0405",
+   "image": "DSC_0405.JPG",
+   "pose": [
+    -0.02208,
+    -0.02558,
+    -0.999429,
+    0.0,
+    0.270865,
+    0.962131,
+    -0.030609,
+    0.0,
+    0.962364,
+    -0.271386,
+    -0.014315,
+    0.0,
+    -0.522021,
+    1.57192,
+    28.148992,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0406",
+   "image": "DSC_0406.JPG",
+   "pose": [
+    -0.01386,
+    -0.027191,
+    -0.999534,
+    0.0,
+    0.269825,
+    0.962444,
+    -0.029924,
+    0.0,
+    0.96281,
+    -0.270114,
+    -0.006003,
+    0.0,
+    1.621652,
+    1.535049,
+    28.076254,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0407",
+   "image": "DSC_0407.JPG",
+   "pose": [
+    -0.021052,
+    -0.02484,
+    -0.99947,
+    0.0,
+    0.274177,
+    0.961222,
+    -0.029665,
+    0.0,
+    0.961449,
+    -0.274656,
+    -0.013425,
+    0.0,
+    2.989059,
+    1.506014,
+    28.112867,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0408",
+   "image": "DSC_0408.JPG",
+   "pose": [
+    -0.030064,
+    -0.026227,
+    -0.999204,
+    0.0,
+    0.272711,
+    0.961515,
+    -0.033443,
+    0.0,
+    0.961626,
+    -0.273499,
+    -0.021755,
+    0.0,
+    4.854781,
+    1.475823,
+    28.14344,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0409",
+   "image": "DSC_0409.JPG",
+   "pose": [
+    -0.010501,
+    -0.029411,
+    -0.999512,
+    0.0,
+    0.271482,
+    0.961939,
+    -0.031158,
+    0.0,
+    0.962386,
+    -0.271677,
+    -0.002117,
+    0.0,
+    6.124639,
+    1.452981,
+    28.171228,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0410",
+   "image": "DSC_0410.JPG",
+   "pose": [
+    0.013458,
+    -0.023457,
+    -0.999634,
+    0.0,
+    0.279669,
+    0.959913,
+    -0.018759,
+    0.0,
+    0.960002,
+    -0.279314,
+    0.019479,
+    0.0,
+    7.480811,
+    1.427891,
+    28.193264,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0411",
+   "image": "DSC_0411.JPG",
+   "pose": [
+    0.006714,
+    -0.019806,
+    -0.999781,
+    0.0,
+    0.270997,
+    0.962426,
+    -0.017246,
+    0.0,
+    0.962557,
+    -0.270822,
+    0.011829,
+    0.0,
+    8.850554,
+    1.402856,
+    28.204938,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0412",
+   "image": "DSC_0412.JPG",
+   "pose": [
+    -0.013742,
+    -0.023848,
+    -0.999621,
+    0.0,
+    0.265061,
+    0.963863,
+    -0.026639,
+    0.0,
+    0.964134,
+    -0.265327,
+    -0.006924,
+    0.0,
+    10.558609,
+    1.379036,
+    28.203844,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0413",
+   "image": "DSC_0413.JPG",
+   "pose": [
+    -0.794401,
+    0.015652,
+    -0.607192,
+    0.0,
+    0.1769,
+    0.962293,
+    -0.206636,
+    0.0,
+    0.581063,
+    -0.271564,
+    -0.767215,
+    0.0,
+    2.666917,
+    1.442931,
+    21.765525,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0414",
+   "image": "DSC_0414.JPG",
+   "pose": [
+    -0.871632,
+    -0.001591,
+    -0.490158,
+    0.0,
+    0.134246,
+    0.960983,
+    -0.241846,
+    0.0,
+    0.471419,
+    -0.276603,
+    -0.83741,
+    0.0,
+    1.539677,
+    1.476071,
+    17.485897,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0415",
+   "image": "DSC_0415.JPG",
+   "pose": [
+    -0.891583,
+    0.018395,
+    -0.452484,
+    0.0,
+    0.124442,
+    0.970662,
+    -0.205742,
+    0.0,
+    0.435425,
+    -0.239744,
+    -0.867714,
+    0.0,
+    1.319707,
+    1.489115,
+    14.448473,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0419",
+   "image": "DSC_0419.JPG",
+   "pose": [
+    0.997358,
+    0.009736,
+    0.071983,
+    0.0,
+    -0.032727,
+    0.944927,
+    0.325641,
+    0.0,
+    -0.064848,
+    -0.327137,
+    0.942749,
+    0.0,
+    0.494548,
+    1.496232,
+    12.297265,
+    1.0
+   ],
+   "intrinsics": [
+    3412.23,
+    3413.08,
+    3112.65,
+    2065.62
+   ],
+   "w": 6200,
+   "h": 4131,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0420",
+   "image": "DSC_0420.JPG",
+   "pose": [
+    0.931258,
+    0.007354,
+    0.364285,
+    0.0,
+    -0.115948,
+    0.953804,
+    0.277155,
+    0.0,
+    -0.345418,
+    -0.300341,
+    0.88909,
+    0.0,
+    1.478457,
+    1.485069,
+    12.355388,
+    1.0
+   ],
+   "intrinsics": [
+    3412.23,
+    3413.08,
+    3112.65,
+    2065.62
+   ],
+   "w": 6200,
+   "h": 4131,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0421",
+   "image": "DSC_0421.JPG",
+   "pose": [
+    -0.984147,
+    -0.009762,
+    0.177083,
+    0.0,
+    -0.065111,
+    0.948646,
+    -0.309565,
+    0.0,
+    -0.164968,
+    -0.316188,
+    -0.934244,
+    0.0,
+    2.089217,
+    1.493921,
+    13.23154,
+    1.0
+   ],
+   "intrinsics": [
+    3412.23,
+    3413.08,
+    3112.65,
+    2065.62
+   ],
+   "w": 6200,
+   "h": 4131,
+   "pose_source": "ground_truth"
+  },
+  {
+   "id": "DSC_0422",
+   "image": "DSC_0422.JPG",
+   "pose": [
+    0.977116,
+    0.012387,
+    0.212345,
+    0.0,
+    -0.075547,
+    0.953424,
+    0.292021,
+    0.0,
+    -0.198837,
+    -0.30138,
+    0.932542,
+    0.0,
+    1.624361,
+    1.783279,
+    43.311178,
+    1.0
+   ],
+   "intrinsics": [
+    3415.73,
+    3413.89,
+    3115.68,
+    2060.64
+   ],
+   "w": 6204,
+   "h": 4132,
+   "pose_source": "ground_truth"
+  }
+ ],
+ "overheads": [
+  {
+   "wall_id": "w1",
+   "s_m": [
+    2.713,
+    3.018
+   ],
+   "clearance_m": 2.136,
+   "plus_minus_m": 0.03,
+   "evidence": "observed"
+  }
+ ],
+ "facing": [
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -12.832,
+    -4.907
+   ],
+   "depth_m": 18.29,
+   "plus_minus_m": 0.03,
+   "evidence": "observed",
+   "lower_bound": true
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -4.907,
+    -2.774
+   ],
+   "depth_m": 11.931,
+   "plus_minus_m": 0.03,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    -2.774,
+    2.713
+   ],
+   "depth_m": 18.29,
+   "plus_minus_m": 0.03,
+   "evidence": "observed",
+   "lower_bound": true
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    2.713,
+    3.018
+   ],
+   "depth_m": 0.309,
+   "plus_minus_m": 0.03,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w2",
+   "s_m": [
+    3.018,
+    3.323
+   ],
+   "depth_m": 0.315,
+   "plus_minus_m": 0.03,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w2",
+   "s_m": [
+    3.323,
+    6.56
+   ],
+   "depth_m": 15.859,
+   "plus_minus_m": 0.03,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    6.56,
+    7.17
+   ],
+   "depth_m": 0.749,
+   "plus_minus_m": 0.03,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    7.17,
+    7.78
+   ],
+   "depth_m": 18.29,
+   "plus_minus_m": 0.03,
+   "evidence": "observed",
+   "lower_bound": true
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    8.084,
+    9.913
+   ],
+   "depth_m": 18.29,
+   "plus_minus_m": 0.03,
+   "evidence": "observed",
+   "lower_bound": true
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    9.913,
+    10.523
+   ],
+   "depth_m": 0.708,
+   "plus_minus_m": 0.03,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w3",
+   "s_m": [
+    10.523,
+    10.828
+   ],
+   "depth_m": 18.29,
+   "plus_minus_m": 0.03,
+   "evidence": "observed",
+   "lower_bound": true
+  }
+ ],
+ "assets": [
+  {
+   "id": "laser",
+   "kind": "point_cloud",
+   "path": "laser.ply",
+   "format": "ply",
+   "in_scene_frame": true,
+   "count": 2136930,
+   "fields": [
+    "x",
+    "y",
+    "z"
+   ],
+   "sha256": "e23eb7d1f7a8338a46b499047edb4ef31d4f4cf5df9ea50ee95767cdced9ad3d",
+   "note": "ETH3D dslr_scan_eval laser points, 2 cm voxels"
+  },
+  {
+   "id": "occluders",
+   "kind": "other",
+   "path": "occluders.ply",
+   "format": "ply",
+   "in_scene_frame": true,
+   "count": 521025,
+   "sha256": "fea472d04ebb6fa4a732dce69ceb617b84f423bb6fd39d2a175bf798bc499653",
+   "note": "ETH3D occlusion splats (surfaces the scanner missed); blockers for visibility only"
+  },
+  {
+   "id": "coverage",
+   "kind": "coverage_grid",
+   "path": "coverage.npz",
+   "format": "npz",
+   "sha256": "411ec025aef664f1d401a773dcf3c5cea7a02973b24674bade5c92f19722b293"
+  }
+ ]
+}

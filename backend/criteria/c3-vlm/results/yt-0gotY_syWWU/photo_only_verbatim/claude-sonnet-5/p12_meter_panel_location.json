@@ -1,0 +1,40 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{ \"meterNotAccessible\": { \"verdict\": \"manual_review\", \"reasoning\": \"No clear close-up photo of the electric meter is provided; photos show only general exterior views of the house, so the working clearance around the meter cannot be confidently assessed.\" }, \"panelNotAccessible\": { \"verdict\": \"manual_review\", \"reasoning\": \"No open main breaker box or clear panel location photo is provided. One image shows an AC condenser unit mounted near a small wall-mounted box that could be electrical equipment, but it's not confirmed to be the main panel, so clearance cannot be judged with confidence.\" }, \"panelInHouse\": { \"verdict\": \"manual_review\", \"reasoning\": \"The main panel itself is not clearly identifiable in any photo, so it cannot be confirmed whether it is located in a garage, outside on an exterior wall, or inside living space.\" }, \"notSameWall\": { \"verdict\": \"manual_review\", \"reasoning\": \"Neither the meter nor the panel can be clearly and confidently identified in the photos, so it cannot be confirmed whether they are on the same exterior wall or different walls.\" } }",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "No clear close-up photo of the electric meter is provided; photos show only general exterior views of the house, so the working clearance around the meter cannot be confidently assessed."
+  },
+  "panelNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "No open main breaker box or clear panel location photo is provided. One image shows an AC condenser unit mounted near a small wall-mounted box that could be electrical equipment, but it's not confirmed to be the main panel, so clearance cannot be judged with confidence."
+  },
+  "panelInHouse": {
+   "verdict": "manual_review",
+   "reasoning": "The main panel itself is not clearly identifiable in any photo, so it cannot be confirmed whether it is located in a garage, outside on an exterior wall, or inside living space."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reasoning": "Neither the meter nor the panel can be clearly and confidently identified in the photos, so it cannot be confirmed whether they are on the same exterior wall or different walls."
+  }
+ },
+ "usage": {
+  "input_tokens": 9825,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 1096
+ },
+ "cost_usd": 0.03061,
+ "latency_s": 13.17,
+ "stop": "end_turn",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "manual_review",
+  "p12.panelNotAccessible": "manual_review",
+  "p12.panelInHouse": "manual_review",
+  "p12.notSameWall": "manual_review"
+ }
+}

@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"decision\":\"manual_review\",\"explanation\":\"Photos show the exterior meter area and equipment, but no open main service panel or clearly visible independent main breakers/disconnects. Cannot confirm single main vs true multiple mains from the visible evidence.\"}",
+ "json": {
+  "decision": "manual_review",
+  "explanation": "Photos show the exterior meter area and equipment, but no open main service panel or clearly visible independent main breakers/disconnects. Cannot confirm single main vs true multiple mains from the visible evidence."
+ },
+ "usage": {
+  "input_tokens": 3811,
+  "cached_tokens": 3328,
+  "output_tokens": 161,
+  "reasoning_tokens": 107
+ },
+ "cost_usd": 0.008909,
+ "latency_s": 3.87,
+ "stop": "completed",
+ "prompt_id": "p09_main_panel_type",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

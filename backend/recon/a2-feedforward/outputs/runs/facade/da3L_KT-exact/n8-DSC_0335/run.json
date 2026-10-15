@@ -1,0 +1,58 @@
+{
+ "scene": "facade",
+ "model": "da3L",
+ "checkpoint": "depth-anything/DA3-LARGE-1.1",
+ "license": "Apache-2.0 (DA3-LARGE-1.1)",
+ "mode": "KT:exact",
+ "members": [
+  "DSC_0335",
+  "DSC_0334",
+  "DSC_0336",
+  "DSC_0337",
+  "DSC_0333",
+  "DSC_0338",
+  "DSC_0332",
+  "DSC_0339"
+ ],
+ "network_wh": [
+  504,
+  336
+ ],
+ "seconds_total": 8.9,
+ "device": "cpu (4 threads, bf16 autocast trunk)",
+ "views": {
+  "DSC_0335": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 17.658
+  },
+  "DSC_0334": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 16.885
+  },
+  "DSC_0336": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 17.681
+  },
+  "DSC_0337": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 17.516
+  },
+  "DSC_0333": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 16.076
+  },
+  "DSC_0338": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 17.073
+  },
+  "DSC_0332": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 15.474
+  },
+  "DSC_0339": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 16.955
+  }
+ },
+ "frame": "input poses"
+}

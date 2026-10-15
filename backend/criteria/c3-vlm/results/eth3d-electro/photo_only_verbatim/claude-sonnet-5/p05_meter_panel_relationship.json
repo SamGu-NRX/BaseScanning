@@ -1,0 +1,28 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "```json\n{\n  \"mainPanelLocation\": \"not_visible\",\n  \"meterGaragePosition\": \"not_visible\",\n  \"meterPanelRelationship\": \"insufficient_evidence\",\n  \"relationshipSubtype\": \"unknown\",\n  \"evidenceSufficiency\": \"insufficient\",\n  \"confidence\": 0.15,\n  \"rationale\": \"Photos show a commercial/institutional building with transformer rooms (marked 'Traforaum'), exterior electrical distribution cabinets, conduit/cable runs on scaffolding, and doorways labeled for deliveries/access, but no residential-style garage opening, no visible exterior electric meter, and no visible main breaker panel. There is no garage door or garage structure present, so the meter-to-garage-panel relationship cannot be established from this evidence.\"\n}\n```",
+ "json": {
+  "mainPanelLocation": "not_visible",
+  "meterGaragePosition": "not_visible",
+  "meterPanelRelationship": "insufficient_evidence",
+  "relationshipSubtype": "unknown",
+  "evidenceSufficiency": "insufficient",
+  "confidence": 0.15,
+  "rationale": "Photos show a commercial/institutional building with transformer rooms (marked 'Traforaum'), exterior electrical distribution cabinets, conduit/cable runs on scaffolding, and doorways labeled for deliveries/access, but no residential-style garage opening, no visible exterior electric meter, and no visible main breaker panel. There is no garage door or garage structure present, so the meter-to-garage-panel relationship cannot be established from this evidence."
+ },
+ "usage": {
+  "input_tokens": 32879,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 273
+ },
+ "cost_usd": 0.068488,
+ "latency_s": 12.15,
+ "stop": "end_turn",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p05": "insufficient_evidence"
+ }
+}

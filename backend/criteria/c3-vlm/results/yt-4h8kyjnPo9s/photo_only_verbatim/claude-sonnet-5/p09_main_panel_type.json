@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"justification\": \"None of the provided photos show an open breaker panel or disconnect enclosure with visible main breakers; the images are all exterior shots of siding, brick, windows, yard, and gutters. There is insufficient information to determine the number of main panels at this site.\"}",
+ "json": {
+  "decision": "manual_review",
+  "justification": "None of the provided photos show an open breaker panel or disconnect enclosure with visible main breakers; the images are all exterior shots of siding, brick, windows, yard, and gutters. There is insufficient information to determine the number of main panels at this site."
+ },
+ "usage": {
+  "input_tokens": 20869,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 98
+ },
+ "cost_usd": 0.042718,
+ "latency_s": 3.14,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

@@ -1,0 +1,29 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meter_head_y_min\":218,\"meter_head_y_max\":394,\"meter_can_y_min\":202,\"meter_can_y_max\":470,\"distance_ratio\":1.52,\"reasoning\":\"The electric meter is visible at the far left of Photo 11 on a relatively small rectangular socket/can, with the can only slightly taller than the round meter head and little blank metal above or below it. This best matches an undersized meter can, but the meter is partially at the image edge and not shown in a close, centered view, so the decision is not clean.\",\"type\":\"undersizedMeter\",\"clean-decision\":false}",
+ "json": {
+  "meter_head_y_min": 218,
+  "meter_head_y_max": 394,
+  "meter_can_y_min": 202,
+  "meter_can_y_max": 470,
+  "distance_ratio": 1.52,
+  "reasoning": "The electric meter is visible at the far left of Photo 11 on a relatively small rectangular socket/can, with the can only slightly taller than the round meter head and little blank metal above or below it. This best matches an undersized meter can, but the meter is partially at the image edge and not shown in a close, centered view, so the decision is not clean.",
+  "type": "undersizedMeter",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 5316,
+  "cached_tokens": 0,
+  "output_tokens": 2196,
+  "reasoning_tokens": 2062
+ },
+ "cost_usd": 0.09246,
+ "latency_s": 31.95,
+ "stop": "completed",
+ "prompt_id": "p11_meter_type",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p11": "undersizedMeter(unclean)"
+ }
+}

@@ -1,0 +1,28 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "```json\n{\n  \"mainPanelLocation\": \"not_visible\",\n  \"meterGaragePosition\": \"not_visible\",\n  \"meterPanelRelationship\": \"insufficient_evidence\",\n  \"relationshipSubtype\": \"unknown\",\n  \"evidenceSufficiency\": \"insufficient\",\n  \"confidence\": 0.15,\n  \"rationale\": \"No garage structure is visible in any photo; the images show a red house exterior with windows, doors, a possible electrical meter/service equipment near an AC-unit wall (Photo 9), but no visible garage opening or interior main panel to establish a meter-to-panel wall relationship.\"\n}\n```",
+ "json": {
+  "mainPanelLocation": "not_visible",
+  "meterGaragePosition": "not_visible",
+  "meterPanelRelationship": "insufficient_evidence",
+  "relationshipSubtype": "unknown",
+  "evidenceSufficiency": "insufficient",
+  "confidence": 0.15,
+  "rationale": "No garage structure is visible in any photo; the images show a red house exterior with windows, doors, a possible electrical meter/service equipment near an AC-unit wall (Photo 9), but no visible garage opening or interior main panel to establish a meter-to-panel wall relationship."
+ },
+ "usage": {
+  "input_tokens": 7593,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 214
+ },
+ "cost_usd": 0.017326,
+ "latency_s": 3.67,
+ "stop": "end_turn",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p05": "insufficient_evidence"
+ }
+}

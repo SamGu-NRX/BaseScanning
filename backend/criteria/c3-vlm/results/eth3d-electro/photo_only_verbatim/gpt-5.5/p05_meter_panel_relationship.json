@@ -1,0 +1,28 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"mainPanelLocation\":\"not_visible\",\"meterGaragePosition\":\"not_visible\",\"meterPanelRelationship\":\"insufficient_evidence\",\"relationshipSubtype\":\"unknown\",\"evidenceSufficiency\":\"insufficient\",\"confidence\":0.12,\"rationale\":\"Photos show exterior utility/transformer doors, conduit, and equipment cabinets, but no identifiable electric meter, main electrical panel, or garage interior relationship.\"}",
+ "json": {
+  "mainPanelLocation": "not_visible",
+  "meterGaragePosition": "not_visible",
+  "meterPanelRelationship": "insufficient_evidence",
+  "relationshipSubtype": "unknown",
+  "evidenceSufficiency": "insufficient",
+  "confidence": 0.12,
+  "rationale": "Photos show exterior utility/transformer doors, conduit, and equipment cabinets, but no identifiable electric meter, main electrical panel, or garage interior relationship."
+ },
+ "usage": {
+  "input_tokens": 29679,
+  "cached_tokens": 0,
+  "output_tokens": 345,
+  "reasoning_tokens": 261
+ },
+ "cost_usd": 0.158745,
+ "latency_s": 14.1,
+ "stop": "completed",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p05": "insufficient_evidence"
+ }
+}

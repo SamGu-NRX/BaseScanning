@@ -1,0 +1,1934 @@
+{
+ "facade/A1": {
+  "dslr_ref": {
+   "verdict": "edge",
+   "raw": {
+    "n": 21,
+    "med": 3.165,
+    "p90": 5.461,
+    "max": 5.878
+   },
+   "geom": {
+    "n": 16,
+    "med": 1.5885,
+    "p90": 2.9135,
+    "max": 3.957
+   },
+   "datum": -4.323,
+   "kept": 21,
+   "n": 21,
+   "surface": {
+    "points": 2491,
+    "acc_med_in": 1.722213792584616,
+    "acc_p90_in": 8.953037213319613,
+    "within_2in": 0.5274989963869932,
+    "off_surface_share": 0.04616619831393015,
+    "compl_5cm": 0.1872747167868177,
+    "icp": true
+   }
+  },
+  "base": {
+   "verdict": "out",
+   "raw": {
+    "n": 21,
+    "med": 3.961,
+    "p90": 24.917,
+    "max": 25.807
+   },
+   "geom": {
+    "n": 16,
+    "med": 1.425,
+    "p90": 3.0575,
+    "max": 4.669
+   },
+   "datum": -24.65,
+   "kept": 21,
+   "n": 21,
+   "surface": {
+    "points": 2561,
+    "acc_med_in": 2.23196710009567,
+    "acc_p90_in": 9.88089469095311,
+    "within_2in": 0.41077704021866457,
+    "off_surface_share": 0.1354939476766888,
+    "compl_5cm": 0.15092902506007552,
+    "icp": true
+   }
+  },
+  "noise_iso400": {
+   "verdict": "out",
+   "raw": {
+    "n": 21,
+    "med": 3.646,
+    "p90": 37.728,
+    "max": 93.732
+   },
+   "geom": {
+    "n": 16,
+    "med": 1.5,
+    "p90": 15.877499999999998,
+    "max": 59.263
+   },
+   "datum": -35.709,
+   "kept": 21,
+   "n": 21,
+   "surface": {
+    "points": 2262,
+    "acc_med_in": 1.86561741895343,
+    "acc_p90_in": 8.693535325068531,
+    "within_2in": 0.5013262599469496,
+    "off_surface_share": 0.03580901856763926,
+    "compl_5cm": 0.15480175077239958,
+    "icp": true
+   }
+  },
+  "noise_iso1600": {
+   "verdict": "out",
+   "raw": {
+    "n": 16,
+    "med": 0.5355,
+    "p90": 19.862000000000002,
+    "max": 20.524
+   },
+   "geom": {
+    "n": 12,
+    "med": 0.3405,
+    "p90": 0.8971000000000005,
+    "max": 1.2010000000000005
+   },
+   "datum": -19.323,
+   "kept": 16,
+   "n": 21,
+   "surface": {
+    "points": 1075,
+    "acc_med_in": 1.9675252273768167,
+    "acc_p90_in": 7.728525556881296,
+    "within_2in": 0.4865116279069767,
+    "off_surface_share": 0.03813953488372093,
+    "compl_5cm": 0.07309903879162376,
+    "icp": true
+   }
+  },
+  "noise_iso6400": {
+   "verdict": "broken (no meter wall)",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 21,
+   "surface": null
+  },
+  "blur_8": {
+   "verdict": "out",
+   "raw": {
+    "n": 21,
+    "med": 4.102,
+    "p90": 26.252,
+    "max": 27.516
+   },
+   "geom": {
+    "n": 16,
+    "med": 1.392,
+    "p90": 3.165,
+    "max": 4.87
+   },
+   "datum": -25.846,
+   "kept": 21,
+   "n": 21,
+   "surface": {
+    "points": 950,
+    "acc_med_in": 2.8025360174523817,
+    "acc_p90_in": 8.996267364719072,
+    "within_2in": 0.34,
+    "off_surface_share": 0.08105263157894736,
+    "compl_5cm": 0.04250343288705802,
+    "icp": true
+   }
+  },
+  "blur_16": {
+   "verdict": "broken (registration)",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 21,
+   "surface": null
+  },
+  "hdr_sharp": {
+   "verdict": "out",
+   "raw": {
+    "n": 21,
+    "med": 3.626,
+    "p90": 37.717,
+    "max": 81.378
+   },
+   "geom": {
+    "n": 16,
+    "med": 1.862,
+    "p90": 9.061,
+    "max": 46.909
+   },
+   "datum": -20.228,
+   "kept": 21,
+   "n": 21,
+   "surface": {
+    "points": 2129,
+    "acc_med_in": 1.7552246619032243,
+    "acc_p90_in": 9.686932920710907,
+    "within_2in": 0.4565523720056365,
+    "off_surface_share": 0.14607797087834665,
+    "compl_5cm": 0.14397742876759353,
+    "icp": true
+   }
+  },
+  "combo_day": {
+   "verdict": "out",
+   "raw": {
+    "n": 16,
+    "med": 6.368,
+    "p90": 20.1595,
+    "max": 21.433
+   },
+   "geom": {
+    "n": 12,
+    "med": 1.634,
+    "p90": 4.3232,
+    "max": 8.39
+   },
+   "datum": -19.681,
+   "kept": 16,
+   "n": 21,
+   "surface": {
+    "points": 2854,
+    "acc_med_in": 2.8475959127511126,
+    "acc_p90_in": 9.585080750612299,
+    "within_2in": 0.36965662228451296,
+    "off_surface_share": 0.07252978276103714,
+    "compl_5cm": 0.1513152248541023,
+    "icp": true
+   }
+  },
+  "combo_dusk": {
+   "verdict": "broken (registration)",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 21,
+   "surface": null
+  }
+ },
+ "electro/A1": {
+  "dslr_ref": {
+   "verdict": "edge",
+   "raw": {
+    "n": 21,
+    "med": 2.575,
+    "p90": 5.138,
+    "max": 7.012
+   },
+   "geom": {
+    "n": 16,
+    "med": 3.3209999999999997,
+    "p90": 5.209,
+    "max": 7.012
+   },
+   "datum": 2.366,
+   "kept": 21,
+   "n": 21,
+   "surface": {
+    "points": 2127,
+    "acc_med_in": 0.7526550587201122,
+    "acc_p90_in": 3.877474998371823,
+    "within_2in": 0.7912552891396333,
+    "off_surface_share": 0.016455101081335213,
+    "compl_5cm": 0.09161501578762718,
+    "icp": true
+   }
+  },
+  "base": {
+   "verdict": "out",
+   "raw": {
+    "n": 21,
+    "med": 2.394,
+    "p90": 6.669,
+    "max": 7.756
+   },
+   "geom": {
+    "n": 16,
+    "med": 2.8600000000000003,
+    "p90": 6.6945,
+    "max": 7.756
+   },
+   "datum": 1.161,
+   "kept": 21,
+   "n": 21,
+   "surface": {
+    "points": 2219,
+    "acc_med_in": 0.7673462012583908,
+    "acc_p90_in": 4.63883695143272,
+    "within_2in": 0.750788643533123,
+    "off_surface_share": 0.013519603424966201,
+    "compl_5cm": 0.08443456905625073,
+    "icp": true
+   }
+  },
+  "noise_iso400": {
+   "verdict": "broken (registration)",
+   "raw": {
+    "n": 21,
+    "med": 3.382,
+    "p90": 29.008,
+    "max": 182.732
+   },
+   "geom": {
+    "n": 16,
+    "med": 3.575,
+    "p90": 108.0455,
+    "max": 182.732
+   },
+   "datum": 0.902,
+   "kept": 21,
+   "n": 21,
+   "surface": {
+    "points": 929,
+    "acc_med_in": 0.6525519315093885,
+    "acc_p90_in": 2.5480234504531003,
+    "within_2in": 0.8514531754574811,
+    "off_surface_share": 0.011840688912809472,
+    "compl_5cm": 0.044751101235722915,
+    "icp": true
+   }
+  },
+  "noise_iso1600": {
+   "verdict": "broken (registration)",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 21,
+   "surface": null
+  },
+  "noise_iso6400": {
+   "verdict": "broken (registration)",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 21,
+   "surface": null
+  },
+  "blur_8": {
+   "verdict": "broken (registration)",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 21,
+   "surface": null
+  },
+  "blur_16": {
+   "verdict": "broken (registration)",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 21,
+   "surface": null
+  },
+  "hdr_sharp": {
+   "verdict": "edge",
+   "raw": {
+    "n": 21,
+    "med": 1.969,
+    "p90": 5.575,
+    "max": 7.925
+   },
+   "geom": {
+    "n": 16,
+    "med": 3.1654999999999998,
+    "p90": 5.945,
+    "max": 7.925
+   },
+   "datum": 1.969,
+   "kept": 21,
+   "n": 21,
+   "surface": {
+    "points": 3106,
+    "acc_med_in": 0.8121134266406304,
+    "acc_p90_in": 4.248009815639392,
+    "within_2in": 0.7743077913715389,
+    "off_surface_share": 0.013844172569220863,
+    "compl_5cm": 0.12021206096752816,
+    "icp": true
+   }
+  },
+  "combo_day": {
+   "verdict": "out",
+   "raw": {
+    "n": 21,
+    "med": 3.354,
+    "p90": 6.264,
+    "max": 10.374
+   },
+   "geom": {
+    "n": 16,
+    "med": 3.6260000000000003,
+    "p90": 6.7325,
+    "max": 10.374
+   },
+   "datum": 2.236,
+   "kept": 21,
+   "n": 21,
+   "surface": {
+    "points": 1972,
+    "acc_med_in": 1.0413961908863096,
+    "acc_p90_in": 5.564275602804673,
+    "within_2in": 0.7003042596348884,
+    "off_surface_share": 0.027890466531440162,
+    "compl_5cm": 0.06485011499629673,
+    "icp": true
+   }
+  },
+  "combo_dusk": {
+   "verdict": "broken (registration)",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 21,
+   "surface": null
+  }
+ },
+ "facade/pi3": {
+  "dslr_ref": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 1.2814999999999999,
+    "p90": 4.7225,
+    "max": 5.992
+   },
+   "geom": {
+    "n": 20,
+    "med": 0.9959999999999997,
+    "p90": 3.1347,
+    "max": 3.61
+   },
+   "datum": 2.638,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 28583,
+    "acc_med_in": 2.3291158370432457,
+    "acc_p90_in": 7.7976967969501665,
+    "within_2in": 0.38634852884581744,
+    "off_surface_share": 0.1334359584368331,
+    "compl_5cm": 0.7167760899416409,
+    "icp": true
+   }
+  },
+  "base": {
+   "verdict": "out",
+   "raw": {
+    "n": 26,
+    "med": 2.5389999999999997,
+    "p90": 8.7265,
+    "max": 11.047
+   },
+   "geom": {
+    "n": 20,
+    "med": 1.7875,
+    "p90": 5.6555000000000035,
+    "max": 9.264
+   },
+   "datum": 4.449,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 32086,
+    "acc_med_in": 2.8857908886870707,
+    "acc_p90_in": 8.428603578851611,
+    "within_2in": 0.32026428972137383,
+    "off_surface_share": 0.14292837997880695,
+    "compl_5cm": 0.6412418468932373,
+    "icp": true
+   }
+  },
+  "noise_iso400": {
+   "verdict": "surface only",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 26,
+   "surface": {
+    "points": 72658,
+    "acc_med_in": 3.122705950572616,
+    "acc_p90_in": 8.43751640170581,
+    "within_2in": 0.2971730573371136,
+    "off_surface_share": 0.1229458559277712,
+    "compl_5cm": 0.7644288534157226,
+    "icp": true
+   }
+  },
+  "noise_iso1600": {
+   "verdict": "out",
+   "raw": {
+    "n": 26,
+    "med": 2.4175,
+    "p90": 11.0135,
+    "max": 13.197
+   },
+   "geom": {
+    "n": 20,
+    "med": 1.7069999999999999,
+    "p90": 5.566400000000007,
+    "max": 11.736
+   },
+   "datum": 4.059,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 31098,
+    "acc_med_in": 2.8437994216260214,
+    "acc_p90_in": 7.955235966198867,
+    "within_2in": 0.31902373142967394,
+    "off_surface_share": 0.13965528329796129,
+    "compl_5cm": 0.6135641949879849,
+    "icp": true
+   }
+  },
+  "noise_iso6400": {
+   "verdict": "surface only",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 26,
+   "surface": {
+    "points": 66591,
+    "acc_med_in": 2.9501897864963733,
+    "acc_p90_in": 9.458042620959679,
+    "within_2in": 0.3021579492724242,
+    "off_surface_share": 0.2067096154134943,
+    "compl_5cm": 0.7064452454514246,
+    "icp": true
+   }
+  },
+  "blur_8": {
+   "verdict": "surface only",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 26,
+   "surface": {
+    "points": 71198,
+    "acc_med_in": 3.110694736508855,
+    "acc_p90_in": 8.302048439250024,
+    "within_2in": 0.2921289923874266,
+    "off_surface_share": 0.1628697435321217,
+    "compl_5cm": 0.7378132509440439,
+    "icp": true
+   }
+  },
+  "blur_16": {
+   "verdict": "out",
+   "raw": {
+    "n": 26,
+    "med": 15.049,
+    "p90": 1402.4445,
+    "max": 1725.689
+   },
+   "geom": {
+    "n": 20,
+    "med": 131.327,
+    "p90": 1480.9553000000003,
+    "max": 1725.689
+   },
+   "datum": 6.181,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 31901,
+    "acc_med_in": 3.6113251503241286,
+    "acc_p90_in": 8.615690514621342,
+    "within_2in": 0.2509325726466255,
+    "off_surface_share": 0.1598382495846525,
+    "compl_5cm": 0.5210693443185719,
+    "icp": true
+   }
+  },
+  "hdr_sharp": {
+   "verdict": "surface only",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 26,
+   "surface": {
+    "points": 71721,
+    "acc_med_in": 2.7549426456560697,
+    "acc_p90_in": 8.484764655433818,
+    "within_2in": 0.3533135343902065,
+    "off_surface_share": 0.10126741121847158,
+    "compl_5cm": 0.7693850841057329,
+    "icp": true
+   }
+  },
+  "combo_day": {
+   "verdict": "surface only",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 26,
+   "surface": {
+    "points": 74602,
+    "acc_med_in": 3.5938263478369215,
+    "acc_p90_in": 9.686652137809672,
+    "within_2in": 0.26034154580306157,
+    "off_surface_share": 0.2021929706978365,
+    "compl_5cm": 0.8285272914521112,
+    "icp": true
+   }
+  },
+  "combo_dusk": {
+   "verdict": "out",
+   "raw": {
+    "n": 26,
+    "med": 1.488,
+    "p90": 6.153499999999999,
+    "max": 9.496
+   },
+   "geom": {
+    "n": 20,
+    "med": 1.061,
+    "p90": 2.576000000000001,
+    "max": 4.272
+   },
+   "datum": 2.795,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 30613,
+    "acc_med_in": 2.2610155121734588,
+    "acc_p90_in": 7.174190294685838,
+    "within_2in": 0.4124718256949662,
+    "off_surface_share": 0.09600496521085813,
+    "compl_5cm": 0.7529930484037075,
+    "icp": true
+   }
+  }
+ },
+ "electro/pi3": {
+  "dslr_ref": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 2.693,
+    "p90": 4.736000000000001,
+    "max": 5.74
+   },
+   "geom": {
+    "n": 20,
+    "med": 3.4195,
+    "p90": 5.74,
+    "max": 5.909
+   },
+   "datum": 1.083,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 99012,
+    "acc_med_in": 2.4365721878118247,
+    "acc_p90_in": 6.819154203273116,
+    "within_2in": 0.3456247727548176,
+    "off_surface_share": 0.1982486971276209,
+    "compl_5cm": 0.4433633493158695,
+    "icp": true
+   }
+  },
+  "base": {
+   "verdict": "out",
+   "raw": {
+    "n": 26,
+    "med": 3.1180000000000003,
+    "p90": 6.2379999999999995,
+    "max": 7.618
+   },
+   "geom": {
+    "n": 20,
+    "med": 4.4745,
+    "p90": 6.7457,
+    "max": 7.618
+   },
+   "datum": 0.098,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 134495,
+    "acc_med_in": 1.0477470091667156,
+    "acc_p90_in": 5.028649815068538,
+    "within_2in": 0.7666456002081862,
+    "off_surface_share": 0.012587828543812038,
+    "compl_5cm": 0.8656843254200288,
+    "icp": true
+   }
+  },
+  "noise_iso400": {
+   "verdict": "surface only",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 26,
+   "surface": {
+    "points": 219684,
+    "acc_med_in": 1.0769804570743504,
+    "acc_p90_in": 3.0031452400647285,
+    "within_2in": 0.7753955681797491,
+    "off_surface_share": 0.011894357349647675,
+    "compl_5cm": 0.9535960706350135,
+    "icp": true
+   }
+  },
+  "noise_iso1600": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 2.73,
+    "p90": 4.941,
+    "max": 6.091
+   },
+   "geom": {
+    "n": 20,
+    "med": 4.0945,
+    "p90": 5.690300000000001,
+    "max": 6.091
+   },
+   "datum": -0.343,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 137466,
+    "acc_med_in": 1.1506212088317673,
+    "acc_p90_in": 3.255719973635965,
+    "within_2in": 0.7524987997031993,
+    "off_surface_share": 0.011239142769848545,
+    "compl_5cm": 0.9231668810665419,
+    "icp": true
+   }
+  },
+  "noise_iso6400": {
+   "verdict": "surface only",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 26,
+   "surface": {
+    "points": 224676,
+    "acc_med_in": 1.5480429200573151,
+    "acc_p90_in": 4.331456068041133,
+    "within_2in": 0.5998816072922787,
+    "off_surface_share": 0.011460948209866652,
+    "compl_5cm": 0.8842552527969438,
+    "icp": true
+   }
+  },
+  "blur_8": {
+   "verdict": "surface only",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 26,
+   "surface": {
+    "points": 213428,
+    "acc_med_in": 1.238442190989645,
+    "acc_p90_in": 4.6271205348673865,
+    "within_2in": 0.7118606743257679,
+    "off_surface_share": 0.012631894596772683,
+    "compl_5cm": 0.8509492067204616,
+    "icp": true
+   }
+  },
+  "blur_16": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 2.3760000000000003,
+    "p90": 4.763999999999999,
+    "max": 6.472
+   },
+   "geom": {
+    "n": 20,
+    "med": 3.569,
+    "p90": 5.3244,
+    "max": 6.472
+   },
+   "datum": 0.409,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 134128,
+    "acc_med_in": 1.3622700894221926,
+    "acc_p90_in": 4.592835751217738,
+    "within_2in": 0.6669822855779554,
+    "off_surface_share": 0.012458248836931887,
+    "compl_5cm": 0.8393872061747164,
+    "icp": true
+   }
+  },
+  "hdr_sharp": {
+   "verdict": "surface only",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 26,
+   "surface": {
+    "points": 212640,
+    "acc_med_in": 1.0713092918248137,
+    "acc_p90_in": 5.306863403883311,
+    "within_2in": 0.7700526711813394,
+    "off_surface_share": 0.013939051918735892,
+    "compl_5cm": 0.8805909640198027,
+    "icp": true
+   }
+  },
+  "combo_day": {
+   "verdict": "surface only",
+   "raw": null,
+   "geom": null,
+   "datum": null,
+   "kept": 0,
+   "n": 26,
+   "surface": {
+    "points": 220646,
+    "acc_med_in": 1.0752605632936825,
+    "acc_p90_in": 3.0735022148272813,
+    "within_2in": 0.7831594499786989,
+    "off_surface_share": 0.008937392928038577,
+    "compl_5cm": 0.9509764939773125,
+    "icp": true
+   }
+  },
+  "combo_dusk": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 6,
+    "med": 3.9195,
+    "p90": 15.8385,
+    "max": 17.787
+   },
+   "geom": {
+    "n": 4,
+    "med": 8.9155,
+    "p90": 16.6179,
+    "max": 17.787
+   },
+   "datum": 0.0,
+   "kept": 6,
+   "n": 26,
+   "surface": {
+    "points": 135651,
+    "acc_med_in": 1.2159224918345006,
+    "acc_p90_in": 3.3785707139131085,
+    "within_2in": 0.7216902197551068,
+    "off_surface_share": 0.012487928581433237,
+    "compl_5cm": 0.9035200561337855,
+    "icp": true
+   }
+  }
+ },
+ "facade/pi3gt": {
+  "dslr_ref": {
+   "verdict": "edge",
+   "raw": {
+    "n": 16,
+    "med": 1.7045000000000001,
+    "p90": 5.153499999999999,
+    "max": 5.48
+   },
+   "geom": {
+    "n": 12,
+    "med": 1.7045000000000001,
+    "p90": 5.1459,
+    "max": 5.902
+   },
+   "datum": 3.185,
+   "kept": 16,
+   "n": 16,
+   "surface": {
+    "points": 28400,
+    "acc_med_in": 2.7384298261285354,
+    "acc_p90_in": 7.9131458704915865,
+    "within_2in": 0.3414084507042254,
+    "off_surface_share": 0.13109154929577466,
+    "compl_5cm": 0.6815246309646412,
+    "icp": true
+   }
+  },
+  "base": {
+   "verdict": "edge",
+   "raw": {
+    "n": 16,
+    "med": 1.766,
+    "p90": 4.7695,
+    "max": 6.319
+   },
+   "geom": {
+    "n": 12,
+    "med": 1.508,
+    "p90": 4.4083000000000006,
+    "max": 6.319
+   },
+   "datum": 2.055,
+   "kept": 16,
+   "n": 16,
+   "surface": {
+    "points": 32058,
+    "acc_med_in": 3.5591308033487827,
+    "acc_p90_in": 8.898543746871905,
+    "within_2in": 0.26183791877222534,
+    "off_surface_share": 0.14311560296961756,
+    "compl_5cm": 0.5940825609337452,
+    "icp": true
+   }
+  },
+  "noise_iso400": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 6,
+    "med": 3.5155000000000003,
+    "p90": 5.976,
+    "max": 7.031
+   },
+   "geom": {
+    "n": 4,
+    "med": 5.3755,
+    "p90": 7.5133,
+    "max": 7.720000000000001
+   },
+   "datum": 1.512,
+   "kept": 6,
+   "n": 16,
+   "surface": {
+    "points": 32227,
+    "acc_med_in": 3.5165263905332695,
+    "acc_p90_in": 8.975541024697185,
+    "within_2in": 0.2668569832748937,
+    "off_surface_share": 0.1324045055388339,
+    "compl_5cm": 0.5827754891864058,
+    "icp": true
+   }
+  },
+  "noise_iso1600": {
+   "verdict": "out",
+   "raw": {
+    "n": 16,
+    "med": 6.4135,
+    "p90": 1016.2245,
+    "max": 1213.551
+   },
+   "geom": {
+    "n": 12,
+    "med": 69.484,
+    "p90": 1065.6921,
+    "max": 1213.551
+   },
+   "datum": 3.154,
+   "kept": 16,
+   "n": 16,
+   "surface": {
+    "points": 31025,
+    "acc_med_in": 3.2320724102563028,
+    "acc_p90_in": 8.643967439525904,
+    "within_2in": 0.28170829975825945,
+    "off_surface_share": 0.12312651087832394,
+    "compl_5cm": 0.5399502231376587,
+    "icp": true
+   }
+  },
+  "noise_iso6400": {
+   "verdict": "out",
+   "raw": {
+    "n": 11,
+    "med": 1.768,
+    "p90": 3.445,
+    "max": 3.531
+   },
+   "geom": {
+    "n": 8,
+    "med": 1.817,
+    "p90": 3.5865,
+    "max": 3.716
+   },
+   "datum": 1.579,
+   "kept": 11,
+   "n": 16,
+   "surface": {
+    "points": 29607,
+    "acc_med_in": 3.4238090621633694,
+    "acc_p90_in": 9.449459663018839,
+    "within_2in": 0.2839193433985206,
+    "off_surface_share": 0.2422062350119904,
+    "compl_5cm": 0.5938358221764504,
+    "icp": true
+   }
+  },
+  "blur_8": {
+   "verdict": "out",
+   "raw": {
+    "n": 16,
+    "med": 3.5235,
+    "p90": 8.5475,
+    "max": 11.941
+   },
+   "geom": {
+    "n": 12,
+    "med": 3.612,
+    "p90": 7.991800000000002,
+    "max": 11.941
+   },
+   "datum": 4.528,
+   "kept": 16,
+   "n": 16,
+   "surface": {
+    "points": 31727,
+    "acc_med_in": 3.6868978492685187,
+    "acc_p90_in": 9.222014691611212,
+    "within_2in": 0.2375894348662023,
+    "off_surface_share": 0.16717622214517602,
+    "compl_5cm": 0.5238478372811535,
+    "icp": true
+   }
+  },
+  "blur_16": {
+   "verdict": "out",
+   "raw": {
+    "n": 16,
+    "med": 2.9725,
+    "p90": 7.5195,
+    "max": 10.634
+   },
+   "geom": {
+    "n": 12,
+    "med": 3.3405,
+    "p90": 7.412700000000001,
+    "max": 10.634
+   },
+   "datum": 3.602,
+   "kept": 16,
+   "n": 16,
+   "surface": {
+    "points": 32127,
+    "acc_med_in": 3.9468624701239685,
+    "acc_p90_in": 9.53484150920701,
+    "within_2in": 0.22448407881221402,
+    "off_surface_share": 0.17026177358608025,
+    "compl_5cm": 0.4982513731548232,
+    "icp": true
+   }
+  },
+  "hdr_sharp": {
+   "verdict": "out",
+   "raw": {
+    "n": 16,
+    "med": 2.5515,
+    "p90": 6.7125,
+    "max": 8.933
+   },
+   "geom": {
+    "n": 12,
+    "med": 2.4705,
+    "p90": 6.045300000000001,
+    "max": 8.933
+   },
+   "datum": 2.98,
+   "kept": 16,
+   "n": 16,
+   "surface": {
+    "points": 31707,
+    "acc_med_in": 3.19369808454434,
+    "acc_p90_in": 9.210711559031882,
+    "within_2in": 0.3216324470937017,
+    "off_surface_share": 0.10395180874885672,
+    "compl_5cm": 0.6320052351527635,
+    "icp": true
+   }
+  },
+  "combo_day": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 6,
+    "med": 3.2285,
+    "p90": 7.791499999999999,
+    "max": 9.126
+   },
+   "geom": {
+    "n": 4,
+    "med": 4.858499999999999,
+    "p90": 9.513200000000001,
+    "max": 10.823
+   },
+   "datum": 0.063,
+   "kept": 6,
+   "n": 16,
+   "surface": {
+    "points": 33198,
+    "acc_med_in": 3.17771573377548,
+    "acc_p90_in": 9.534239451189089,
+    "within_2in": 0.2769443942406169,
+    "off_surface_share": 0.20356647990842822,
+    "compl_5cm": 0.648686920700309,
+    "icp": true
+   }
+  },
+  "combo_dusk": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 6,
+    "med": 2.8405,
+    "p90": 6.3345,
+    "max": 6.988
+   },
+   "geom": {
+    "n": 4,
+    "med": 5.045,
+    "p90": 7.108300000000001,
+    "max": 7.720000000000001
+   },
+   "datum": -0.283,
+   "kept": 6,
+   "n": 16,
+   "surface": {
+    "points": 30578,
+    "acc_med_in": 2.656540429035048,
+    "acc_p90_in": 7.4392503424727865,
+    "within_2in": 0.37062594021845774,
+    "off_surface_share": 0.09680162208123487,
+    "compl_5cm": 0.7148987298317885,
+    "icp": true
+   }
+  }
+ },
+ "electro/pi3gt": {
+  "dslr_ref": {
+   "verdict": "in",
+   "raw": {
+    "n": 26,
+    "med": 1.8895,
+    "p90": 3.6675,
+    "max": 4.008
+   },
+   "geom": {
+    "n": 20,
+    "med": 2.0415,
+    "p90": 4.0269,
+    "max": 4.252
+   },
+   "datum": 1.209,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 98901,
+    "acc_med_in": 2.454919153945156,
+    "acc_p90_in": 6.783326553492187,
+    "within_2in": 0.3366598922154478,
+    "off_surface_share": 0.19721741943964166,
+    "compl_5cm": 0.47110279499473745,
+    "icp": true
+   }
+  },
+  "base": {
+   "verdict": "in",
+   "raw": {
+    "n": 26,
+    "med": 1.573,
+    "p90": 2.9095,
+    "max": 3.984
+   },
+   "geom": {
+    "n": 20,
+    "med": 2.2714999999999996,
+    "p90": 3.6171,
+    "max": 3.984
+   },
+   "datum": 0.61,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 139115,
+    "acc_med_in": 1.160681664234395,
+    "acc_p90_in": 4.4032992595520515,
+    "within_2in": 0.6958703231139705,
+    "off_surface_share": 0.01794199043956439,
+    "compl_5cm": 0.8600943359451136,
+    "icp": true
+   }
+  },
+  "noise_iso400": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 6,
+    "med": 3.642,
+    "p90": 15.929,
+    "max": 18.559
+   },
+   "geom": {
+    "n": 4,
+    "med": 9.279499999999999,
+    "p90": 16.981,
+    "max": 18.559
+   },
+   "datum": 0.161,
+   "kept": 6,
+   "n": 26,
+   "surface": {
+    "points": 137588,
+    "acc_med_in": 1.3018312358107382,
+    "acc_p90_in": 4.143500515530432,
+    "within_2in": 0.6754295432741227,
+    "off_surface_share": 0.01128732156874146,
+    "compl_5cm": 0.932881144505516,
+    "icp": true
+   }
+  },
+  "noise_iso1600": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 2.5315,
+    "p90": 5.0,
+    "max": 5.992
+   },
+   "geom": {
+    "n": 20,
+    "med": 3.398,
+    "p90": 5.375000000000001,
+    "max": 5.992
+   },
+   "datum": -0.13,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 139040,
+    "acc_med_in": 1.232128821030727,
+    "acc_p90_in": 3.6686495113109805,
+    "within_2in": 0.7050560989643269,
+    "off_surface_share": 0.011514672036823936,
+    "compl_5cm": 0.9058745565820762,
+    "icp": true
+   }
+  },
+  "noise_iso6400": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 6,
+    "med": 4.9505,
+    "p90": 14.3425,
+    "max": 17.488
+   },
+   "geom": {
+    "n": 4,
+    "med": 8.744,
+    "p90": 15.6007,
+    "max": 17.488
+   },
+   "datum": 0.0,
+   "kept": 6,
+   "n": 26,
+   "surface": {
+    "points": 136707,
+    "acc_med_in": 1.3484219220929103,
+    "acc_p90_in": 4.771601242965272,
+    "within_2in": 0.6525342520865793,
+    "off_surface_share": 0.013283884512131786,
+    "compl_5cm": 0.8529762600865396,
+    "icp": true
+   }
+  },
+  "blur_8": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 2.1595,
+    "p90": 4.281499999999999,
+    "max": 5.929
+   },
+   "geom": {
+    "n": 20,
+    "med": 3.3875,
+    "p90": 4.8985,
+    "max": 5.929
+   },
+   "datum": 0.453,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 134973,
+    "acc_med_in": 1.296701610853658,
+    "acc_p90_in": 5.156251325937916,
+    "within_2in": 0.6571240173960718,
+    "off_surface_share": 0.018559267409037364,
+    "compl_5cm": 0.8520406969945036,
+    "icp": true
+   }
+  },
+  "blur_16": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 6,
+    "med": 1.4315,
+    "p90": 4.7125,
+    "max": 5.476
+   },
+   "geom": {
+    "n": 4,
+    "med": 2.7975,
+    "p90": 5.0179,
+    "max": 5.476
+   },
+   "datum": 0.252,
+   "kept": 6,
+   "n": 26,
+   "surface": {
+    "points": 137202,
+    "acc_med_in": 1.5320709514670072,
+    "acc_p90_in": 4.811851048797538,
+    "within_2in": 0.6044372531012667,
+    "off_surface_share": 0.015130974767131674,
+    "compl_5cm": 0.8432775893657661,
+    "icp": true
+   }
+  },
+  "hdr_sharp": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 2.3365,
+    "p90": 4.2675,
+    "max": 5.142
+   },
+   "geom": {
+    "n": 20,
+    "med": 2.815,
+    "p90": 4.722799999999999,
+    "max": 5.142
+   },
+   "datum": 0.752,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 139269,
+    "acc_med_in": 1.1172990920058061,
+    "acc_p90_in": 3.7670874397875096,
+    "within_2in": 0.7139995260969778,
+    "off_surface_share": 0.03547092317744796,
+    "compl_5cm": 0.8818305851167505,
+    "icp": true
+   }
+  },
+  "combo_day": {
+   "verdict": "in",
+   "raw": {
+    "n": 26,
+    "med": 1.9135,
+    "p90": 3.746,
+    "max": 4.535
+   },
+   "geom": {
+    "n": 20,
+    "med": 2.4665,
+    "p90": 4.1646,
+    "max": 4.535
+   },
+   "datum": 1.366,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 136285,
+    "acc_med_in": 1.1799394571581057,
+    "acc_p90_in": 4.040464480362106,
+    "within_2in": 0.6904941849800051,
+    "off_surface_share": 0.012994827016913086,
+    "compl_5cm": 0.9155810236619498,
+    "icp": true
+   }
+  },
+  "combo_dusk": {
+   "verdict": "out",
+   "raw": {
+    "n": 21,
+    "med": 2.921,
+    "p90": 5.917,
+    "max": 6.543
+   },
+   "geom": {
+    "n": 16,
+    "med": 4.2855,
+    "p90": 6.0275,
+    "max": 6.543
+   },
+   "datum": 0.154,
+   "kept": 21,
+   "n": 26,
+   "surface": {
+    "points": 135290,
+    "acc_med_in": 1.317343941385983,
+    "acc_p90_in": 3.680010429620848,
+    "within_2in": 0.6980929854386873,
+    "off_surface_share": 0.014162170153004658,
+    "compl_5cm": 0.90701282501072,
+    "icp": true
+   }
+  }
+ },
+ "facade/da3": {
+  "dslr_ref": {
+   "verdict": "out",
+   "raw": {
+    "n": 26,
+    "med": 2.4175,
+    "p90": 6.51,
+    "max": 8.492
+   },
+   "geom": {
+    "n": 20,
+    "med": 3.606,
+    "p90": 7.188000000000001,
+    "max": 8.492
+   },
+   "datum": 0.673,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 26562,
+    "acc_med_in": 3.1317026501524126,
+    "acc_p90_in": 9.56745098393869,
+    "within_2in": 0.2807017543859649,
+    "off_surface_share": 0.30095625329417963,
+    "compl_5cm": 0.5012444215585308,
+    "icp": true
+   }
+  },
+  "base": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 11,
+    "med": 1.157,
+    "p90": 2.764,
+    "max": 3.016
+   },
+   "geom": {
+    "n": 8,
+    "med": 1.5075,
+    "p90": 3.226,
+    "max": 3.7159999999999997
+   },
+   "datum": 0.831,
+   "kept": 11,
+   "n": 26,
+   "surface": {
+    "points": 29612,
+    "acc_med_in": 3.552180487095584,
+    "acc_p90_in": 9.659370337690541,
+    "within_2in": 0.2520262055923274,
+    "off_surface_share": 0.31686478454680533,
+    "compl_5cm": 0.45298017507724,
+    "icp": true
+   }
+  },
+  "noise_iso400": {
+   "verdict": "out",
+   "raw": {
+    "n": 26,
+    "med": 4.9350000000000005,
+    "p90": 11.126,
+    "max": 20.689
+   },
+   "geom": {
+    "n": 20,
+    "med": 4.6754999999999995,
+    "p90": 12.163200000000007,
+    "max": 20.689
+   },
+   "datum": -6.047,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 30170,
+    "acc_med_in": 3.1519399247853546,
+    "acc_p90_in": 8.082514217580803,
+    "within_2in": 0.2823997348359297,
+    "off_surface_share": 0.1596619158104077,
+    "compl_5cm": 0.5142142979745966,
+    "icp": true
+   }
+  },
+  "noise_iso1600": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 11,
+    "med": 5.114,
+    "p90": 13.075,
+    "max": 13.921
+   },
+   "geom": {
+    "n": 8,
+    "med": 7.218500000000001,
+    "p90": 15.022599999999999,
+    "max": 19.035
+   },
+   "datum": 1.949,
+   "kept": 11,
+   "n": 26,
+   "surface": {
+    "points": 28970,
+    "acc_med_in": 3.9670258923335044,
+    "acc_p90_in": 8.624895845191828,
+    "within_2in": 0.23037625129444253,
+    "off_surface_share": 0.15522954780807732,
+    "compl_5cm": 0.3819301407483694,
+    "icp": true
+   }
+  },
+  "noise_iso6400": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 11,
+    "med": 7.051,
+    "p90": 19.248,
+    "max": 21.976
+   },
+   "geom": {
+    "n": 8,
+    "med": 6.0595,
+    "p90": 8.3244,
+    "max": 8.896999999999998
+   },
+   "datum": -14.24,
+   "kept": 11,
+   "n": 26,
+   "surface": {
+    "points": 29786,
+    "acc_med_in": 2.9087817085290317,
+    "acc_p90_in": 8.099081629402322,
+    "within_2in": 0.29362787886926744,
+    "off_surface_share": 0.17159068018532198,
+    "compl_5cm": 0.52336508753862,
+    "icp": true
+   }
+  },
+  "blur_8": {
+   "verdict": "out",
+   "raw": {
+    "n": 21,
+    "med": 5.957,
+    "p90": 16.409,
+    "max": 25.366
+   },
+   "geom": {
+    "n": 16,
+    "med": 8.767499999999998,
+    "p90": 18.6495,
+    "max": 25.366
+   },
+   "datum": 1.496,
+   "kept": 21,
+   "n": 26,
+   "surface": {
+    "points": 28961,
+    "acc_med_in": 4.37349311258289,
+    "acc_p90_in": 9.220902799476937,
+    "within_2in": 0.1949518317737647,
+    "off_surface_share": 0.17896481475087186,
+    "compl_5cm": 0.32463311019567453,
+    "icp": true
+   }
+  },
+  "blur_16": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 11,
+    "med": 8.783,
+    "p90": 13.378,
+    "max": 16.89
+   },
+   "geom": {
+    "n": 8,
+    "med": 12.0215,
+    "p90": 17.5113,
+    "max": 18.961
+   },
+   "datum": 0.504,
+   "kept": 11,
+   "n": 26,
+   "surface": {
+    "points": 29960,
+    "acc_med_in": 2.810630093055636,
+    "acc_p90_in": 9.674402285718594,
+    "within_2in": 0.30527369826435247,
+    "off_surface_share": 0.22600133511348464,
+    "compl_5cm": 0.5473094747682801,
+    "icp": true
+   }
+  },
+  "hdr_sharp": {
+   "verdict": "out",
+   "raw": {
+    "n": 16,
+    "med": 1.0884999999999998,
+    "p90": 3.045,
+    "max": 4.315
+   },
+   "geom": {
+    "n": 12,
+    "med": 1.0175,
+    "p90": 1.8914,
+    "max": 1.988
+   },
+   "datum": 1.295,
+   "kept": 16,
+   "n": 26,
+   "surface": {
+    "points": 30755,
+    "acc_med_in": 3.578729460700187,
+    "acc_p90_in": 8.63120694244532,
+    "within_2in": 0.2459112339456999,
+    "off_surface_share": 0.17720695821817592,
+    "compl_5cm": 0.4454063680054926,
+    "icp": true
+   }
+  },
+  "combo_day": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 11,
+    "med": 1.323,
+    "p90": 2.697,
+    "max": 3.118
+   },
+   "geom": {
+    "n": 8,
+    "med": 1.3479999999999999,
+    "p90": 2.736,
+    "max": 2.827
+   },
+   "datum": 1.661,
+   "kept": 11,
+   "n": 26,
+   "surface": {
+    "points": 31431,
+    "acc_med_in": 4.14958287998346,
+    "acc_p90_in": 8.824985590232998,
+    "within_2in": 0.20823390919792562,
+    "off_surface_share": 0.16512360408513888,
+    "compl_5cm": 0.370269052523172,
+    "icp": true
+   }
+  },
+  "combo_dusk": {
+   "verdict": "out",
+   "raw": {
+    "n": 21,
+    "med": 10.406,
+    "p90": 31.453,
+    "max": 70.177
+   },
+   "geom": {
+    "n": 16,
+    "med": 12.317,
+    "p90": 44.9885,
+    "max": 70.177
+   },
+   "datum": -10.287,
+   "kept": 21,
+   "n": 26,
+   "surface": {
+    "points": 29797,
+    "acc_med_in": 3.2598532133327356,
+    "acc_p90_in": 9.778480878572713,
+    "within_2in": 0.2429439205289123,
+    "off_surface_share": 0.3114743094942444,
+    "compl_5cm": 0.44984766563680056,
+    "icp": true
+   }
+  }
+ },
+ "electro/da3": {
+  "dslr_ref": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 2.2460000000000004,
+    "p90": 4.002,
+    "max": 7.791
+   },
+   "geom": {
+    "n": 20,
+    "med": 2.4725,
+    "p90": 5.243300000000001,
+    "max": 7.791
+   },
+   "datum": 0.74,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 115156,
+    "acc_med_in": 0.9388521645135794,
+    "acc_p90_in": 4.333410840145626,
+    "within_2in": 0.7577894334641704,
+    "off_surface_share": 0.019130570704088367,
+    "compl_5cm": 0.9355007211632168,
+    "icp": true
+   }
+  },
+  "base": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 2.3545,
+    "p90": 5.4350000000000005,
+    "max": 10.87
+   },
+   "geom": {
+    "n": 20,
+    "med": 3.319,
+    "p90": 5.837900000000004,
+    "max": 10.87
+   },
+   "datum": 0.547,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 134080,
+    "acc_med_in": 1.1312850025912264,
+    "acc_p90_in": 4.428890938185792,
+    "within_2in": 0.6991423031026253,
+    "off_surface_share": 0.02759546539379475,
+    "compl_5cm": 0.8883327486064008,
+    "icp": true
+   }
+  },
+  "noise_iso400": {
+   "verdict": "out",
+   "raw": {
+    "n": 26,
+    "med": 2.4845,
+    "p90": 7.561,
+    "max": 15.122
+   },
+   "geom": {
+    "n": 20,
+    "med": 4.008,
+    "p90": 8.049200000000003,
+    "max": 15.122
+   },
+   "datum": 0.165,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 135858,
+    "acc_med_in": 1.0806734014484476,
+    "acc_p90_in": 4.54579610185066,
+    "within_2in": 0.6791061255134037,
+    "off_surface_share": 0.0874957676397415,
+    "compl_5cm": 0.8722956379370834,
+    "icp": true
+   }
+  },
+  "noise_iso1600": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 6,
+    "med": 1.2365,
+    "p90": 2.2279999999999998,
+    "max": 2.472
+   },
+   "geom": {
+    "n": 4,
+    "med": 1.827,
+    "p90": 2.4285,
+    "max": 2.472
+   },
+   "datum": 0.386,
+   "kept": 6,
+   "n": 26,
+   "surface": {
+    "points": 136112,
+    "acc_med_in": 1.076969261258635,
+    "acc_p90_in": 4.4493048533225,
+    "within_2in": 0.6455786411190784,
+    "off_surface_share": 0.10099036087927589,
+    "compl_5cm": 0.8501617744513312,
+    "icp": true
+   }
+  },
+  "noise_iso6400": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 2.079,
+    "p90": 5.1045,
+    "max": 10.933
+   },
+   "geom": {
+    "n": 20,
+    "med": 2.9705000000000004,
+    "p90": 6.758400000000002,
+    "max": 10.933
+   },
+   "datum": 0.331,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 134486,
+    "acc_med_in": 1.1893796540010613,
+    "acc_p90_in": 4.515685552789999,
+    "within_2in": 0.6217970643784483,
+    "off_surface_share": 0.107141263774668,
+    "compl_5cm": 0.8074221338634857,
+    "icp": true
+   }
+  },
+  "blur_8": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 6,
+    "med": 3.5055,
+    "p90": 38.622,
+    "max": 39.142
+   },
+   "geom": {
+    "n": 4,
+    "med": 22.037,
+    "p90": 38.83,
+    "max": 39.142
+   },
+   "datum": 0.0,
+   "kept": 6,
+   "n": 26,
+   "surface": {
+    "points": 134092,
+    "acc_med_in": 0.9601824954612248,
+    "acc_p90_in": 4.842707568075046,
+    "within_2in": 0.7219744652924858,
+    "off_surface_share": 0.02267100199862781,
+    "compl_5cm": 0.9086890422172845,
+    "icp": true
+   }
+  },
+  "blur_16": {
+   "verdict": "out",
+   "raw": {
+    "n": 26,
+    "med": 2.045,
+    "p90": 6.2895,
+    "max": 12.579
+   },
+   "geom": {
+    "n": 20,
+    "med": 3.1319999999999997,
+    "p90": 6.600500000000002,
+    "max": 12.579
+   },
+   "datum": 0.252,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 134161,
+    "acc_med_in": 0.9850832654357148,
+    "acc_p90_in": 4.190930944805352,
+    "within_2in": 0.7081864327188975,
+    "off_surface_share": 0.057170116501814985,
+    "compl_5cm": 0.8933068257123923,
+    "icp": true
+   }
+  },
+  "hdr_sharp": {
+   "verdict": "broken (KDs lost)",
+   "raw": {
+    "n": 6,
+    "med": 1.5550000000000002,
+    "p90": 2.665,
+    "max": 3.11
+   },
+   "geom": {
+    "n": 4,
+    "med": 1.7730000000000001,
+    "p90": 2.7437,
+    "max": 3.11
+   },
+   "datum": 0.791,
+   "kept": 6,
+   "n": 26,
+   "surface": {
+    "points": 132845,
+    "acc_med_in": 1.3041164352981856,
+    "acc_p90_in": 5.429000010328103,
+    "within_2in": 0.6382475817682262,
+    "off_surface_share": 0.026158304791298128,
+    "compl_5cm": 0.8108915136631193,
+    "icp": true
+   }
+  },
+  "combo_day": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 2.3955,
+    "p90": 4.484,
+    "max": 9.476
+   },
+   "geom": {
+    "n": 20,
+    "med": 2.683,
+    "p90": 5.264500000000003,
+    "max": 9.476
+   },
+   "datum": 1.024,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 137334,
+    "acc_med_in": 1.6700410163137025,
+    "acc_p90_in": 5.303827387817911,
+    "within_2in": 0.5326867345304149,
+    "off_surface_share": 0.06183465128810054,
+    "compl_5cm": 0.8393482243792149,
+    "icp": true
+   }
+  },
+  "combo_dusk": {
+   "verdict": "edge",
+   "raw": {
+    "n": 26,
+    "med": 2.372,
+    "p90": 5.756,
+    "max": 11.685
+   },
+   "geom": {
+    "n": 20,
+    "med": 2.9825,
+    "p90": 6.782300000000003,
+    "max": 11.685
+   },
+   "datum": 1.311,
+   "kept": 26,
+   "n": 26,
+   "surface": {
+    "points": 137346,
+    "acc_med_in": 1.7257184611258756,
+    "acc_p90_in": 4.762672829740364,
+    "within_2in": 0.5132512049859479,
+    "off_surface_share": 0.10156830195273252,
+    "compl_5cm": 0.7698826647955405,
+    "icp": true
+   }
+  }
+ }
+}

@@ -1,0 +1,7 @@
+{
+  "run": "gt",
+  "res_level": 1,
+  "interface_s": 0.5147643089294434,
+  "densify_s": 1359.566106557846,
+  "ply": "/home/ubuntu/a1/work/facade/mvs/gt_r1/scene_dense.ply"
+}

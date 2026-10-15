@@ -1,0 +1,31 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"pass\", \"disconnect_location\": \"Gray panel mounted directly beside/above the meter on the rear brick wall, matching the 2-2.5 ft usable width rule\", \"battery_location\": \"Two battery units on concrete pads to the left of the meter/disconnect stack, adjacent to the AC condenser, same wall\", \"route\": \"Rigid conduit exits below/beside the meter up into the gray disconnect panel, continues into the white BASE-branded inverter box, then drops down and runs low along the brick wall to the battery pads; no doors or garage crossed, only passes over low condensate/AC lines\", \"distance_ft\": 10, \"nearest_opening_ft\": 8, \"reference_object\": \"Battery cabinet used as ~2 ft wide x 3 ft tall reference matching photo 14 measurements\", \"needs_more_photos\": false, \"missing_views\": [], \"justification\": \"Final photos (9-14) show a completed, code-consistent install: meter, disconnect, and BASE inverter stacked with short rigid conduit runs, two battery units set on pads well clear of the window, on dirt/grass with no gas, pool, or driveway nearby, and full overhead clearance under the eave.\"}",
+ "json": {
+  "decision": "pass",
+  "disconnect_location": "Gray panel mounted directly beside/above the meter on the rear brick wall, matching the 2-2.5 ft usable width rule",
+  "battery_location": "Two battery units on concrete pads to the left of the meter/disconnect stack, adjacent to the AC condenser, same wall",
+  "route": "Rigid conduit exits below/beside the meter up into the gray disconnect panel, continues into the white BASE-branded inverter box, then drops down and runs low along the brick wall to the battery pads; no doors or garage crossed, only passes over low condensate/AC lines",
+  "distance_ft": 10,
+  "nearest_opening_ft": 8,
+  "reference_object": "Battery cabinet used as ~2 ft wide x 3 ft tall reference matching photo 14 measurements",
+  "needs_more_photos": false,
+  "missing_views": [],
+  "justification": "Final photos (9-14) show a completed, code-consistent install: meter, disconnect, and BASE inverter stacked with short rigid conduit runs, two battery units set on pads well clear of the window, on dirt/grass with no gas, pool, or driveway nearby, and full overhead clearance under the eave."
+ },
+ "usage": {
+  "input_tokens": 1093,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 25329,
+  "output_tokens": 976
+ },
+ "cost_usd": 0.0170118,
+ "latency_s": 14.22,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p07": "pass"
+ }
+}

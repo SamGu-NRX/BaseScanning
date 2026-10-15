@@ -1,0 +1,928 @@
+{
+ "format": "base-scene/v0",
+ "scene_id": "eth3d-facade/A5-scan-1.35",
+ "provenance": {
+  "data": "real",
+  "site": "eth3d-facade",
+  "producer": {
+   "path": "A5-scan-1.35",
+   "params": {
+    "alignment": {
+     "metric_declared": false,
+     "method": "given transform"
+    },
+    "extract": {
+     "join_m": 1.5,
+     "min_corner_deg": 30.0,
+     "wall_band_m": [
+      0.1,
+      2.5
+     ],
+     "line_thr_m": 0.08,
+     "min_wall_pts": 60,
+     "max_lines": 30,
+     "gap_m": 3.0,
+     "fit_radius_m": 14.0,
+     "fit_voxel_m": 0.05,
+     "merge_angle_deg": 5.0,
+     "merge_offset_m": 0.15,
+     "merge_gap_m": 4.0,
+     "wall_min_high_share": 0.15,
+     "wall_high_m": 1.5,
+     "scale_rel_pm": 0.0,
+     "voxel_m": 0.1,
+     "profile_min_count": 3,
+     "seed": 7
+    },
+    "cloud": "/home/ubuntu/work/a5/eth3d-facade/points_metric.ply"
+   }
+  },
+  "inputs": {
+   "images_used": 7
+  },
+  "scale_source": "ground_truth",
+  "gravity_source": "ground_truth",
+  "notes": [
+   "Scene built by evalharness.geomscore.score_cloud (reference extractor, perfect GT taps and clicks)."
+  ],
+  "runtime_s": 18.4
+ },
+ "frame": {
+  "units": "m",
+  "convention": "meter_anchored/v0",
+  "anchor": {
+   "element_id": "meter",
+   "plus_minus_m": 0.123
+  },
+  "source_frame": "producer_cloud",
+  "from_source": [
+   0.944496058,
+   0.023014646,
+   -0.964311943,
+   0.0,
+   0.030823569,
+   -1.349646555,
+   -0.002021025,
+   0.0,
+   -0.96409393,
+   -0.020603471,
+   -0.944774255,
+   0.0,
+   -2.991980452,
+   1.536695378,
+   9.113815227,
+   1.0
+  ]
+ },
+ "walls": [
+  {
+   "id": "w1",
+   "role": "house",
+   "baseline_m": [
+    [
+     0.0883,
+     0.0
+    ],
+    [
+     13.6435,
+     0.0
+    ]
+   ],
+   "height_m": 2.5,
+   "s_range_m": [
+    0.0883,
+    13.6435
+   ],
+   "plus_minus_m": 0.123,
+   "evidence": "observed",
+   "support": {
+    "points": 94,
+    "fit_rms_m": 0.041
+   },
+   "observed_fraction": 0.773
+  }
+ ],
+ "chain": {
+  "wall_ids": [
+   "w1"
+  ],
+  "corners": [],
+  "ends": {
+   "left": {
+    "kind": "unexplored",
+    "point_m": [
+     0.0883,
+     0.0
+    ],
+    "s_m": 0.0883
+   },
+   "right": {
+    "kind": "unexplored",
+    "point_m": [
+     13.6435,
+     0.0
+    ],
+    "s_m": 13.6435
+   }
+  }
+ },
+ "ground": {
+  "surface": {
+   "kind": "plane",
+   "normal": [
+    -0.019722,
+    0.999803,
+    -0.002059
+   ],
+   "offset_m": -0.0
+  },
+  "plus_minus_m": 0.079,
+  "regions": []
+ },
+ "objects": [
+  {
+   "id": "meter",
+   "class": "meter",
+   "geometry": {
+    "kind": "point",
+    "pos_m": [
+     0.0,
+     1.5189,
+     0.0
+    ]
+   },
+   "wall_id": "w1",
+   "confidence": 1.0,
+   "plus_minus_m": 0.123,
+   "source": {
+    "kind": "tap",
+    "views": [
+     {
+      "image": "DSC_0420",
+      "points_px": [
+       [
+        396.4201014544313,
+        1028.0704532649022
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0362",
+      "points_px": [
+       [
+        870.4749659853458,
+        1024.7377620087163
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0363",
+      "points_px": [
+       [
+        205.98492847931556,
+        993.3573909125143
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win5",
+   "class": "window",
+   "label": "w1 window 5",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w1",
+    "s_m": [
+     0.5576,
+     1.7226
+    ],
+    "bottom_m": 1.2043,
+    "top_m": 2.97
+   },
+   "wall_id": "w1",
+   "confidence": 1.0,
+   "plus_minus_m": 0.391,
+   "source": {
+    "kind": "annotation",
+    "model": "perfect clicks: GT opening edges projected through GT cameras",
+    "views": [
+     {
+      "image": "DSC_0420",
+      "points_px": [
+       [
+        500.8272691134959,
+        939.0797892971509
+       ],
+       [
+        675.1269597124973,
+        945.0273542097433
+       ],
+       [
+        573.8927800012552,
+        1076.294419540676
+       ],
+       [
+        605.5969844399284,
+        814.8130914830961
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0363",
+      "points_px": [
+       [
+        325.0368350506634,
+        904.1404586348914
+       ],
+       [
+        513.7476492089781,
+        914.8755352403065
+       ],
+       [
+        397.67007739109033,
+        1046.8048750941127
+       ],
+       [
+        445.37005116947944,
+        779.3766143420861
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0362",
+      "points_px": [
+       [
+        946.7171111184189,
+        947.3984327715758
+       ],
+       [
+        1095.4597185763641,
+        952.5007601341135
+       ],
+       [
+        1017.1840082062926,
+        1071.9063166420292
+       ],
+       [
+        1024.9708685226203,
+        833.4288466899803
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "door",
+   "class": "door",
+   "label": "w3 entrance door",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w1",
+    "s_m": [
+     3.2518,
+     5.8816
+    ],
+    "bottom_m": 0.085,
+    "top_m": 4.1502
+   },
+   "wall_id": "w1",
+   "confidence": 1.0,
+   "plus_minus_m": 0.306,
+   "source": {
+    "kind": "annotation",
+    "model": "perfect clicks: GT opening edges projected through GT cameras",
+    "views": [
+     {
+      "image": "DSC_0363",
+      "points_px": [
+       [
+        692.0154813743345,
+        921.7566819784407
+       ],
+       [
+        960.4139734997154,
+        937.3059666981765
+       ],
+       [
+        812.9909981550906,
+        1189.6403541703728
+       ],
+       [
+        850.0155834774164,
+        697.6430180947846
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0420",
+      "points_px": [
+       [
+        876.4466558611491,
+        947.6483845348903
+       ],
+       [
+        1129.4916253793272,
+        956.6066835373022
+       ],
+       [
+        1005.0019665266782,
+        1209.6938884488025
+       ],
+       [
+        1011.0172972836282,
+        723.0480827516328
+       ]
+      ]
+     },
+     {
+      "image": "DSC_0362",
+      "points_px": [
+       [
+        1287.2355820482428,
+        956.2377935808811
+       ],
+       [
+        1559.8093722983858,
+        965.5856270451171
+       ],
+       [
+        1442.2878961091926,
+        1223.5402343220894
+       ],
+       [
+        1407.2940951959777,
+        727.1468814102561
+       ]
+      ]
+     }
+    ]
+   },
+   "evidence": "observed"
+  }
+ ],
+ "coverage": {
+  "method": "rays from each camera to the cloud points it sees (cloud z-buffer)",
+  "grid": {
+   "asset": "coverage",
+   "voxel_m": 0.1,
+   "origin_m": [
+    -3.9117,
+    -0.5,
+    -2.0
+   ],
+   "shape": [
+    216,
+    65,
+    180
+   ],
+   "min_views": 1
+  },
+  "rule": {
+   "min_views": 2,
+   "max_incidence_deg": {
+    "wall": 75.0,
+    "ground": 80.0
+   },
+   "observed_share": 0.9
+  },
+  "bands": [
+   {
+    "wall_id": "w1",
+    "band": "wall",
+    "s_m": [
+     2.588,
+     2.838
+    ],
+    "views": 3,
+    "best_incidence_deg": 22.9
+   },
+   {
+    "wall_id": "w1",
+    "band": "wall",
+    "s_m": [
+     4.338,
+     4.588
+    ],
+    "views": 4,
+    "best_incidence_deg": 31.9
+   },
+   {
+    "wall_id": "w1",
+    "band": "wall",
+    "s_m": [
+     4.838,
+     5.338
+    ],
+    "views": 2,
+    "best_incidence_deg": 36.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "overhead",
+    "s_m": [
+     2.088,
+     2.338
+    ],
+    "out_m": 2.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     0.088,
+     0.838
+    ],
+    "out_m": 7.1
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     0.838,
+     1.838
+    ],
+    "out_m": 7.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     1.838,
+     2.088
+    ],
+    "out_m": 0.4
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     2.088,
+     2.338
+    ],
+    "out_m": 5.8
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     2.338,
+     2.838
+    ],
+    "out_m": 5.4
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     2.838,
+     3.088
+    ],
+    "out_m": 0.6
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     3.088,
+     3.338
+    ],
+    "out_m": 4.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     3.338,
+     3.588
+    ],
+    "out_m": 0.6
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     3.838,
+     4.088
+    ],
+    "out_m": 0.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     4.338,
+     4.588
+    ],
+    "out_m": 3.1
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     4.588,
+     5.088
+    ],
+    "out_m": 2.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     5.088,
+     5.338
+    ],
+    "out_m": 2.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     5.338,
+     5.588
+    ],
+    "out_m": 1.9
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     7.838,
+     8.088
+    ],
+    "out_m": 0.8
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     8.338,
+     8.588
+    ],
+    "out_m": 0.7
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     8.588,
+     9.088
+    ],
+    "out_m": 0.4
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     9.588,
+     9.838
+    ],
+    "out_m": 3.4
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     9.838,
+     10.338
+    ],
+    "out_m": 0.5
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     10.338,
+     10.588
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     11.088,
+     11.338
+    ],
+    "out_m": 0.3
+   },
+   {
+    "wall_id": "w1",
+    "band": "facing",
+    "s_m": [
+     12.338,
+     12.588
+    ],
+    "out_m": 0.4
+   }
+  ],
+  "sensitivity": [
+   {
+    "surface": "ground",
+    "rule_id": "angle75",
+    "max_incidence_deg": 75.0,
+    "bands": []
+   },
+   {
+    "surface": "ground",
+    "rule_id": "angle80",
+    "max_incidence_deg": 80.0,
+    "bands": []
+   },
+   {
+    "surface": "ground",
+    "rule_id": "footprint3in",
+    "max_incidence_deg": 88.0,
+    "max_footprint_m": 0.0762,
+    "bands": []
+   }
+  ]
+ },
+ "keyframes": [
+  {
+   "id": "DSC_0359",
+   "pose": [
+    0.71268,
+    -0.003514,
+    -0.70148,
+    0.0,
+    0.269919,
+    0.92437,
+    0.269598,
+    0.0,
+    0.64748,
+    -0.38148,
+    0.659729,
+    0.0,
+    -3.47434,
+    1.663401,
+    9.557568,
+    1.0
+   ],
+   "intrinsics": [
+    1127.7574,
+    1127.3212,
+    1028.2803,
+    681.825
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0360",
+   "pose": [
+    0.946334,
+    0.015381,
+    -0.322825,
+    0.0,
+    0.10579,
+    0.929098,
+    0.35438,
+    0.0,
+    0.305387,
+    -0.369514,
+    0.87761,
+    0.0,
+    -3.23747,
+    1.68963,
+    9.08907,
+    1.0
+   ],
+   "intrinsics": [
+    1127.1366,
+    1127.7788,
+    1028.1786,
+    682.5397
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0361",
+   "pose": [
+    0.984269,
+    0.040558,
+    0.171957,
+    0.0,
+    -0.090167,
+    0.952312,
+    0.291499,
+    0.0,
+    -0.151934,
+    -0.302419,
+    0.940988,
+    0.0,
+    -1.708985,
+    1.581012,
+    8.232793,
+    1.0
+   ],
+   "intrinsics": [
+    1127.1069,
+    1127.5092,
+    1027.9308,
+    683.6562
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0362",
+   "pose": [
+    0.968604,
+    0.042544,
+    0.24494,
+    0.0,
+    -0.113322,
+    0.952494,
+    0.282688,
+    0.0,
+    -0.221278,
+    -0.30157,
+    0.927411,
+    0.0,
+    -0.8744,
+    1.502901,
+    8.150472,
+    1.0
+   ],
+   "intrinsics": [
+    1127.1366,
+    1127.7788,
+    1028.1786,
+    682.5397
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0363",
+   "pose": [
+    0.765671,
+    0.015814,
+    0.643038,
+    0.0,
+    -0.199505,
+    0.956235,
+    0.214037,
+    0.0,
+    -0.611511,
+    -0.292172,
+    0.735316,
+    0.0,
+    -0.598588,
+    1.377564,
+    8.340628,
+    1.0
+   ],
+   "intrinsics": [
+    1127.1366,
+    1127.7788,
+    1028.1786,
+    682.5397
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0396",
+   "pose": [
+    0.638801,
+    -0.044503,
+    -0.768084,
+    0.0,
+    0.274877,
+    0.945637,
+    0.17382,
+    0.0,
+    0.718593,
+    -0.322165,
+    0.616306,
+    0.0,
+    -7.84979,
+    1.486413,
+    24.837982,
+    1.0
+   ],
+   "intrinsics": [
+    1127.5653,
+    1126.9472,
+    1028.5159,
+    680.2306
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  },
+  {
+   "id": "DSC_0420",
+   "pose": [
+    0.796172,
+    0.0013,
+    0.605069,
+    0.0,
+    -0.183216,
+    0.953569,
+    0.239034,
+    0.0,
+    -0.576664,
+    -0.301171,
+    0.759444,
+    0.0,
+    -1.429974,
+    1.456195,
+    7.885404,
+    1.0
+   ],
+   "intrinsics": [
+    1127.1366,
+    1127.7788,
+    1028.1786,
+    682.5397
+   ],
+   "w": 2048,
+   "h": 1364,
+   "pose_source": "sfm_scaled_by_arkit"
+  }
+ ],
+ "overheads": [
+  {
+   "wall_id": "w1",
+   "s_m": [
+    5.27,
+    5.575
+   ],
+   "clearance_m": 1.223,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    5.575,
+    5.88
+   ],
+   "clearance_m": 1.809,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    5.88,
+    6.184
+   ],
+   "clearance_m": 1.395,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  },
+  {
+   "wall_id": "w1",
+   "s_m": [
+    6.184,
+    6.489
+   ],
+   "clearance_m": 1.367,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  }
+ ],
+ "facing": [
+  {
+   "wall_id": "w1",
+   "s_m": [
+    5.575,
+    6.489
+   ],
+   "depth_m": 0.335,
+   "plus_minus_m": 0.05,
+   "evidence": "observed"
+  }
+ ],
+ "assets": [
+  {
+   "id": "points",
+   "kind": "point_cloud",
+   "path": "points.ply",
+   "format": "ply",
+   "in_scene_frame": true,
+   "count": 400000,
+   "sha256": "51d29b59de5b9b005c62a7a778d3af433671637a14a0e6811c1f36c6daa1e092"
+  },
+  {
+   "id": "coverage",
+   "kind": "coverage_grid",
+   "path": "coverage.npz",
+   "format": "npz"
+  }
+ ]
+}

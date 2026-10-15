@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"hasCl320Meter\": false, \"cl320Label\": \"cl320_unclear\", \"insufficientEvidence\": true, \"evidence\": \"No electric meter face or meter label is visible in any photo. The only readable text is door and room signage such as 'F 51.2 Traforaum', 'F 51.3 Traforaum' and 'Anlieferung HPP', plus warning stickers. The gray louvered transformer or kiosk enclosure shows no readable meter text.\", \"notes\": \"The photos show a transformer building and outdoor switchgear enclosures, likely medium-voltage equipment, but no meter. CL320 is not inferred from equipment size. With no readable meter text, CL320 status cannot be determined.\"}",
+ "json": {
+  "hasCl320Meter": false,
+  "cl320Label": "cl320_unclear",
+  "insufficientEvidence": true,
+  "evidence": "No electric meter face or meter label is visible in any photo. The only readable text is door and room signage such as 'F 51.2 Traforaum', 'F 51.3 Traforaum' and 'Anlieferung HPP', plus warning stickers. The gray louvered transformer or kiosk enclosure shows no readable meter text.",
+  "notes": "The photos show a transformer building and outdoor switchgear enclosures, likely medium-voltage equipment, but no meter. CL320 is not inferred from equipment size. With no readable meter text, CL320 status cannot be determined."
+ },
+ "usage": {
+  "input_tokens": 32555,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 470
+ },
+ "cost_usd": 0.13962,
+ "latency_s": 16.12,
+ "stop": "end_turn",
+ "prompt_id": "p03_cl320_meter",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

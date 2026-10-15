@@ -1,0 +1,42 @@
+{
+ "mode": "true",
+ "applied_scale_error_pct": 0.0,
+ "model_arkit_scale_error_pct": 2.479,
+ "declared_scale_rel_pm": 0.0,
+ "cameras": 41,
+ "points": 174384,
+ "injected": [
+  "gas_meter_synthetic"
+ ],
+ "kd": {
+  "n": 66,
+  "median_in": 1.3,
+  "p90_in": 4.32,
+  "max_in": 52.99,
+  "share_le_2in": 0.727,
+  "share_le_4in": 0.848,
+  "share_le_6in": 0.955,
+  "calibration": 0.939
+ },
+ "kd_status": {
+  "scored": 66,
+  "missing": 7,
+  "extent_limited": 1,
+  "phantom": 0,
+  "scale_reference": 0
+ },
+ "walls": [
+  [
+   "w1",
+   "house",
+   [
+    -13.5916,
+    12.4963
+   ],
+   0.928
+  ]
+ ],
+ "chain": [
+  "w1"
+ ]
+}

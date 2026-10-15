@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"decision\":\"manual_review\",\"explanation\":\"Photos show several closed electrical/transformer-room doors and exterior utility equipment, but no open main panel interiors or clearly visible independent main breakers/disconnects. The relationship between the visible equipment cannot be determined from the photos.\"}",
+ "json": {
+  "decision": "manual_review",
+  "explanation": "Photos show several closed electrical/transformer-room doors and exterior utility equipment, but no open main panel interiors or clearly visible independent main breakers/disconnects. The relationship between the visible equipment cannot be determined from the photos."
+ },
+ "usage": {
+  "input_tokens": 29450,
+  "cached_tokens": 26496,
+  "output_tokens": 151,
+  "reasoning_tokens": 91
+ },
+ "cost_usd": 0.032548,
+ "latency_s": 4.42,
+ "stop": "completed",
+ "prompt_id": "p09_main_panel_type",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

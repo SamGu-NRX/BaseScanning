@@ -1,0 +1,52 @@
+{
+ "runId": "run_example_manual_review",
+ "status": "manual_review",
+ "viewsNeeded": [],
+ "memberActions": [
+  "retake_meter_closeups"
+ ],
+ "outcome": {
+  "kind": "manual_review",
+  "profile": "C",
+  "message": "We have what we need. Our team will follow up.",
+  "viewsNeeded": [],
+  "reasons": [],
+  "arkitEpoch": "e1",
+  "frameToArkit": [
+   1.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   1.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   1.0,
+   0.0,
+   0.9831,
+   -1.4,
+   -3.25,
+   1.0
+  ]
+ },
+ "site": {
+  "decision": "manual_review",
+  "reasons": [],
+  "profile": "C"
+ },
+ "scale": {
+  "source": "none",
+  "status": "unverified",
+  "relBound95": 1.0
+ },
+ "meter": {
+  "status": "not_captured",
+  "candidates": [],
+  "barcodeConfirmed": false,
+  "readersAgree": false,
+  "clean": false,
+  "value": null
+ }
+}

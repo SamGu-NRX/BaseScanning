@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasLargeOrOversizedMeterCan\":false,\"meterCanLabel\":\"meter_can_unclear\",\"insufficientEvidence\":true,\"evidence\":\"No round electric meter or meter-holding socket/can is visible in the provided images; visible equipment appears to be transformer/service rooms, utility doors, conduits, and large electrical cabinets.\",\"notes\":\"Cannot judge meter can size because the actual meter can/socket is not shown. Adjacent service equipment and large cabinets are ignored.\"}",
+ "json": {
+  "hasLargeOrOversizedMeterCan": false,
+  "meterCanLabel": "meter_can_unclear",
+  "insufficientEvidence": true,
+  "evidence": "No round electric meter or meter-holding socket/can is visible in the provided images; visible equipment appears to be transformer/service rooms, utility doors, conduits, and large electrical cabinets.",
+  "notes": "Cannot judge meter can size because the actual meter can/socket is not shown. Adjacent service equipment and large cabinets are ignored."
+ },
+ "usage": {
+  "input_tokens": 29774,
+  "cached_tokens": 0,
+  "output_tokens": 191,
+  "reasoning_tokens": 90
+ },
+ "cost_usd": 0.1546,
+ "latency_s": 11.69,
+ "stop": "completed",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p02": "meter_can_unclear"
+ }
+}

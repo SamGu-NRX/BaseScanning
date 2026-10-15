@@ -1,0 +1,13 @@
+{
+  "runId": "run_abc",
+  "status": "complete",
+  "viewsNeeded": [],
+  "memberActions": [],
+  "outcome": {
+    "kind": "eligible",
+    "profile": "C",
+    "message": "ok",
+    "viewsNeeded": [],
+    "reasons": []
+  }
+}

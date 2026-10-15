@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasTrueMultipleMainPanels\":false,\"multipleMainPanelLabel\":\"unclear_or_insufficient_evidence\",\"insufficientEvidence\":true,\"evidence\":\"Photos show an exterior meter/main-style enclosure and a closed interior garage load center, but neither is open and no independent main breakers or service disconnects are clearly visible for multiple panels.\",\"notes\":\"Multiple true main panels cannot be confirmed from closed/distant enclosures; panel relationship is not determinable.\"}",
+ "json": {
+  "hasTrueMultipleMainPanels": false,
+  "multipleMainPanelLabel": "unclear_or_insufficient_evidence",
+  "insufficientEvidence": true,
+  "evidence": "Photos show an exterior meter/main-style enclosure and a closed interior garage load center, but neither is open and no independent main breakers or service disconnects are clearly visible for multiple panels.",
+  "notes": "Multiple true main panels cannot be confirmed from closed/distant enclosures; panel relationship is not determinable."
+ },
+ "usage": {
+  "input_tokens": 7907,
+  "cached_tokens": 0,
+  "output_tokens": 298,
+  "reasoning_tokens": 201
+ },
+ "cost_usd": 0.048475,
+ "latency_s": 6.42,
+ "stop": "completed",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-Qm4b1cw8pV4",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p01": "unclear_or_insufficient_evidence"
+ }
+}

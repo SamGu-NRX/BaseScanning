@@ -1,0 +1,28 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"mainPanelLocation\":\"exterior_service_equipment\",\"meterGaragePosition\":\"not_garage_wall\",\"meterPanelRelationship\":\"co_located_exterior\",\"relationshipSubtype\":\"exterior_service_equipment\",\"evidenceSufficiency\":\"sufficient\",\"confidence\":0.92,\"rationale\":\"Exterior electric meter and main breaker/service panel are mounted side-by-side on the same exterior brick wall; nearby windows/patio door are visible and no garage opening is shown.\"}",
+ "json": {
+  "mainPanelLocation": "exterior_service_equipment",
+  "meterGaragePosition": "not_garage_wall",
+  "meterPanelRelationship": "co_located_exterior",
+  "relationshipSubtype": "exterior_service_equipment",
+  "evidenceSufficiency": "sufficient",
+  "confidence": 0.92,
+  "rationale": "Exterior electric meter and main breaker/service panel are mounted side-by-side on the same exterior brick wall; nearby windows/patio door are visible and no garage opening is shown."
+ },
+ "usage": {
+  "input_tokens": 23618,
+  "cached_tokens": 0,
+  "output_tokens": 376,
+  "reasoning_tokens": 277
+ },
+ "cost_usd": 0.12937,
+ "latency_s": 7.89,
+ "stop": "completed",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p05": "co_located_exterior"
+ }
+}

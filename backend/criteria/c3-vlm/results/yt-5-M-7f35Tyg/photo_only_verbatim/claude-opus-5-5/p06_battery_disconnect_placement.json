@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"justification\": \"The gas meter and regulator sit on the same wall right next to the electric meter, so any install spot must stay 5 ft away from them. Farther along that wall, the AC condenser and its electrical disconnect crowd the run. Around the corner, the wall has windows and gravel/mulch ground, so a compliant install spot with a clear wiring run cannot be confidently confirmed.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "The gas meter and regulator sit on the same wall right next to the electric meter, so any install spot must stay 5 ft away from them. Farther along that wall, the AC condenser and its electrical disconnect crowd the run. Around the corner, the wall has windows and gravel/mulch ground, so a compliant install spot with a clear wiring run cannot be confidently confirmed.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 5028,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 462
+ },
+ "cost_usd": 0.029352,
+ "latency_s": 7.67,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

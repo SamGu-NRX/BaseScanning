@@ -1,0 +1,44 @@
+{
+  "harness_sha": "42daee3137379bbffff2d8c257ecad1000e6199d",
+  "remeasured": true,
+  "method": "server.eval.geomscore.score_scene(gt, recon, visibility=False)",
+  "gt": "store internal/eval-harness/results/eth3d-electro/gt-laser/scene.json",
+  "note": "Rescored with score_scene(visibility=False) because the laser PLY is not on this machine. Tap and extractor fixes do not change an already-extracted scene.json. colmap-oracle and colmap-nonlidar overall inches match the published table; by_wall is new. A1 incremental_sparse overall p90 changed (24.87 in on 36 KDs to 6.32 in on 35) under the current scorer. Geometry bars in gates.yaml were confirmed (w1 p90 1.94 and 5.09) and not amended.",
+  "a7_reported_not_rerun": null,
+  "rows": [
+    {
+      "site": "eth3d-electro",
+      "recon": "gt-laser",
+      "scored_status": {
+        "scored": 72,
+        "missing": 0,
+        "extent_limited": 2,
+        "phantom": 0,
+        "scale_reference": 0
+      },
+      "overall": {
+        "n": 72,
+        "median_in": 0.0,
+        "p90_in": 0.0,
+        "max_in": 0.0
+      },
+      "scale_error_pct": 0.0,
+      "false_observed_claims": null,
+      "by_wall": {
+        "w1": {
+          "n": 11,
+          "median_in": 0.0,
+          "p90_in": 0.0,
+          "max_in": 0.0
+        },
+        "w2": {
+          "n": 61,
+          "median_in": 0.0,
+          "p90_in": 0.0,
+          "max_in": 0.0
+        }
+      },
+      "prior": null
+    }
+  ]
+}

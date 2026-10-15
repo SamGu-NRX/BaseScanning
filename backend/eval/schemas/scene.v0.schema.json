@@ -1,0 +1,442 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "base-hackathon/scene.v0.schema.json",
+  "title": "Scene v0: what a reconstruction path knows about one house exterior",
+  "description": "The one output every reconstruction path writes and every criteria path reads. Contract: docs/scene-and-verdict-format.md. Lengths in meters (suffix _m). Frame: origin on the ground directly below the electric meter, +y up (against gravity), +z out of the meter's wall (horizontal), +x = y cross z, which is along the meter wall to the right as seen by someone outside facing it. Plan points are [x, z]. s is distance along the wall chain from the meter, positive to the right as seen from outside (so s = x on the meter wall). Unknown fields are rejected.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "scene_id", "provenance", "frame", "walls", "chain", "ground", "objects", "coverage"],
+  "properties": {
+    "format": {"const": "base-scene/v0"},
+    "scene_id": {"type": "string", "minLength": 1},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data", "site", "producer", "scale_source", "gravity_source"],
+      "properties": {
+        "data": {"enum": ["real", "synthetic", "hybrid"], "description": "real: real images and real metadata. hybrid: real images with simulated metadata (for example simulated ARKit poses). synthetic: generated images or scenes."},
+        "site": {"type": "string", "description": "House or dataset scene id, shared by every scene of the same site so scorers can pair them."},
+        "producer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path"],
+          "properties": {
+            "path": {"type": "string", "description": "Track path id, e.g. A1-colmap, A2-mapanything, A5-worldlabs, gt-laser."},
+            "version": {"type": "string"},
+            "code_ref": {"type": "string"},
+            "params": {"type": "object"}
+          }
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "packet_id": {"type": "string"},
+            "packet_sha256": {"type": "string"},
+            "images_given": {"type": "integer", "minimum": 0},
+            "images_used": {"type": "integer", "minimum": 0, "description": "Images that actually contributed geometry (e.g. registered by SfM)."},
+            "sensors_used": {"type": "array", "items": {"enum": ["images", "intrinsics", "arkit_poses", "gravity", "lidar_depth", "arkit_mesh", "arkit_planes", "taps", "gps", "compass", "annotations", "laser_scan"]}}
+          }
+        },
+        "scale_source": {"enum": ["ground_truth", "arkit_poses", "lidar", "tap_distance", "scale_reference", "native_metric", "none"], "description": "Where metric scale came from. A scale_reference distance is excluded from key-distance scoring (it matches by construction)."},
+        "scale_reference_ids": {"type": "array", "items": {"type": "string"}, "description": "Key-distance ids used to set scale; the scorer skips them."},
+        "gravity_source": {"enum": ["ground_truth", "arkit", "imu", "ground_plane_fit", "none"]},
+        "runtime_s": {"type": "number", "minimum": 0},
+        "hardware": {"type": "string"},
+        "cost_usd": {"type": "number", "minimum": 0},
+        "license": {"type": "string", "description": "Licence of the model or service that produced the scene (commercial use matters)."},
+        "notes": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["units", "convention", "anchor"],
+      "properties": {
+        "units": {"const": "m"},
+        "convention": {"const": "meter_anchored/v0"},
+        "anchor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["element_id"],
+          "properties": {
+            "element_id": {"type": "string", "description": "The meter object whose ground foot is the origin and whose wall sets +z."},
+            "plus_minus_m": {"type": "number", "minimum": 0, "description": "Position bound of the origin itself."},
+            "heading_plus_minus_deg": {"type": "number", "minimum": 0, "description": "Bound on the meter wall's direction, which sets the x and z axes."}
+          }
+        },
+        "source_frame": {"type": "string", "description": "The producer's own world frame, e.g. arkit_world, colmap_model, eth3d_world."},
+        "from_source": {"$ref": "#/$defs/mat4", "description": "Similarity transform taking source-frame points into this scene frame (scale included). Column-major, like the packet's mat4."}
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "path"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "kind": {"enum": ["point_cloud", "mesh", "gaussians", "depth_maps", "coverage_grid", "images", "other"]},
+          "path": {"type": "string", "description": "Relative to the scene JSON file."},
+          "format": {"type": "string", "description": "ply, glb, obj, npz, splat, ..."},
+          "sha256": {"type": "string"},
+          "in_scene_frame": {"type": "boolean", "description": "True when coordinates are already in this scene frame; otherwise apply frame.from_source."},
+          "count": {"type": "integer", "minimum": 0},
+          "fields": {"type": "array", "items": {"type": "string"}, "description": "Per-element fields present, e.g. x, y, z, red, green, blue, n_views, conf, generated."},
+          "generated_field": {"type": "string", "description": "Name of the per-element 0/1 field marking generated (hallucinated) geometry. Absent means the producer asserts none is generated."},
+          "note": {"type": "string"}
+        }
+      }
+    },
+    "walls": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "role", "baseline_m", "height_m", "plus_minus_m", "evidence"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "role": {"enum": ["house", "garage", "shed", "fence", "hedge", "retaining", "other"], "description": "house, garage and shed walls can back a battery (Profile C: a shed wall counts); fence and hedge are facing obstacles."},
+          "baseline_m": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/point2"}, "description": "Ground line [x, z], left end first as seen from outside. Outward normal = direction turned 90 degrees clockwise seen from above."},
+          "base_y_m": {"type": "number", "description": "Ground height at the baseline. Default 0."},
+          "height_m": {"type": "number", "exclusiveMinimum": 0},
+          "polygon_m": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/point3"}, "description": "Outline of the wall face in 3D (gables, steps). Default: the baseline swept from base_y_m up height_m."},
+          "s_range_m": {"$ref": "#/$defs/span", "description": "Chain walls only: s at the left and right baseline ends."},
+          "plus_minus_m": {"type": "number", "minimum": 0, "description": "Position bound of the wall plane and baseline."},
+          "evidence": {"$ref": "#/$defs/evidence"},
+          "observed_fraction": {"type": "number", "minimum": 0, "maximum": 1, "description": "Share of the face from the ground to 2.13 m (7 ft) that coverage marks observed."},
+          "support": {"$ref": "#/$defs/support"}
+        }
+      }
+    },
+    "chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wall_ids", "ends"],
+      "description": "The walls a battery could back onto, in order from the left end to the right end as seen from outside, starting from the meter's wall. Consecutive walls meet at a corner; a gap between them is a stretch with no wall.",
+      "properties": {
+        "wall_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "corners": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "left_wall", "right_wall", "point_m"],
+            "properties": {
+              "id": {"type": "string"},
+              "left_wall": {"type": "string"},
+              "right_wall": {"type": "string"},
+              "point_m": {"$ref": "#/$defs/point2"},
+              "s_m": {"type": "number"},
+              "turn_deg": {"type": "number", "description": "Signed turn from the left wall's direction to the right wall's, seen from above; positive = outside corner (wall turns away from the viewer)."},
+              "plus_minus_m": {"type": "number", "minimum": 0},
+              "evidence": {"$ref": "#/$defs/evidence"}
+            }
+          }
+        },
+        "ends": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["left", "right"],
+          "properties": {
+            "left": {"$ref": "#/$defs/end"},
+            "right": {"$ref": "#/$defs/end"}
+          }
+        }
+      }
+    },
+    "ground": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface", "plus_minus_m"],
+      "properties": {
+        "surface": {
+          "oneOf": [
+            {
+              "type": "object", "additionalProperties": false, "required": ["kind", "normal", "offset_m"],
+              "properties": {"kind": {"const": "plane"}, "normal": {"$ref": "#/$defs/point3"}, "offset_m": {"type": "number", "description": "Plane: normal . p = offset_m."}}
+            },
+            {
+              "type": "object", "additionalProperties": false, "required": ["kind", "asset"],
+              "properties": {"kind": {"const": "heightfield"}, "asset": {"type": "string"}, "cell_m": {"type": "number", "exclusiveMinimum": 0}}
+            }
+          ]
+        },
+        "plus_minus_m": {"type": "number", "minimum": 0},
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "material", "polygon_m", "evidence"],
+            "properties": {
+              "id": {"type": "string"},
+              "material": {"enum": ["concrete", "gravel", "lawn", "dirt", "mulch", "pavers", "deck", "drive", "walkway", "pool", "water", "unknown"]},
+              "polygon_m": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/point2"}},
+              "slope_deg": {"type": "number", "minimum": 0},
+              "confidence": {"$ref": "#/$defs/confidence"},
+              "plus_minus_m": {"type": "number", "minimum": 0},
+              "evidence": {"$ref": "#/$defs/evidence"},
+              "source": {"$ref": "#/$defs/source"}
+            }
+          }
+        }
+      }
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "class", "geometry", "confidence", "plus_minus_m", "source", "evidence"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "class": {"$ref": "#/$defs/object_class"},
+          "label": {"type": "string", "description": "Free-text / open-vocabulary label as the detector said it."},
+          "geometry": {
+            "oneOf": [
+              {
+                "type": "object", "additionalProperties": false, "required": ["kind", "center_m", "size_m"],
+                "properties": {
+                  "kind": {"const": "box"},
+                  "center_m": {"$ref": "#/$defs/point3"},
+                  "size_m": {"$ref": "#/$defs/point3", "description": "[width along the box's local x, height, depth along local z]."},
+                  "yaw_deg": {"type": "number", "description": "Rotation about +y from scene axes to the box's local axes. Default 0."}
+                }
+              },
+              {
+                "type": "object", "additionalProperties": false, "required": ["kind", "pos_m"],
+                "properties": {"kind": {"const": "point"}, "pos_m": {"$ref": "#/$defs/point3"}}
+              },
+              {
+                "type": "object", "additionalProperties": false, "required": ["kind", "wall_id", "s_m", "bottom_m", "top_m"],
+                "description": "A rectangle on a wall face: openings, wall-mounted equipment.",
+                "properties": {
+                  "kind": {"const": "wall_rect"},
+                  "wall_id": {"type": "string"},
+                  "s_m": {"$ref": "#/$defs/span"},
+                  "bottom_m": {"type": "number", "description": "Height above ground of the lowest edge."},
+                  "top_m": {"type": "number"},
+                  "standoff_m": {"type": "number", "minimum": 0, "description": "How far it stands out of the wall face."}
+                }
+              },
+              {
+                "type": "object", "additionalProperties": false, "required": ["kind", "polygon_m", "bottom_m", "top_m"],
+                "properties": {
+                  "kind": {"const": "footprint"},
+                  "polygon_m": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/point2"}},
+                  "bottom_m": {"type": "number"},
+                  "top_m": {"type": "number"}
+                }
+              }
+            ]
+          },
+          "wall_id": {"type": "string", "description": "Wall the object is attached to or stands against, if any."},
+          "confidence": {"$ref": "#/$defs/confidence"},
+          "plus_minus_m": {"type": "number", "minimum": 0, "description": "Position bound. Never derived from recognition confidence."},
+          "source": {"$ref": "#/$defs/source"},
+          "attrs": {
+            "type": "object",
+            "description": "Recognised attributes. A missing attribute is unknown, never false.",
+            "additionalProperties": false,
+            "properties": {
+              "operable": {"type": "boolean"},
+              "ground_level": {"type": "boolean"},
+              "well": {"type": "boolean"},
+              "movable": {"type": "boolean", "description": "Plants, bins, a short fence section: sets requires_member_action instead of failing."},
+              "text": {"type": "string", "description": "OCR text read from the object (meter number, label)."}
+            }
+          },
+          "evidence": {"$ref": "#/$defs/evidence"}
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method"],
+      "description": "What the capture actually saw. Anything outside observed voxels / bands is unknown, and a check that depends on unknown space is UNSURE, never PASS.",
+      "properties": {
+        "method": {"type": "string", "description": "How it was computed, e.g. rays_to_triangulated_points, depth_maps, lidar_depth, laser_visibility."},
+        "grid": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["asset", "voxel_m", "origin_m", "shape"],
+          "properties": {
+            "asset": {"type": "string", "description": "Asset id of an npz with uint8 arrays `state` (0 unknown, 1 observed free, 2 observed occupied) and optional `views` (distinct views that saw the voxel, capped at 255), both shaped [nx, ny, nz]."},
+            "voxel_m": {"type": "number", "exclusiveMinimum": 0},
+            "origin_m": {"$ref": "#/$defs/point3", "description": "Scene coordinates of the grid's minimum corner."},
+            "shape": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "integer", "minimum": 1}},
+            "min_views": {"type": "integer", "minimum": 1, "description": "Views needed before a voxel counts as observed. Default 1."}
+          }
+        },
+        "bands": {
+          "type": "array",
+          "description": "Derived per-wall summary, compatible with PR #11 coverage.observed (in meters). wall: face from ground to 2.13 m; ground: strip out to out_m; overhead: space 0-0.91 m out from the wall, observed up to out_m high; facing: straight out to out_m (or to whatever faces the wall when absent).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["band", "s_m"],
+            "properties": {
+              "wall_id": {"type": "string"},
+              "band": {"enum": ["wall", "ground", "overhead", "facing"]},
+              "s_m": {"$ref": "#/$defs/span"},
+              "out_m": {"type": "number", "minimum": 0}
+            }
+          }
+        }
+      }
+    },
+    "overheads": {
+      "type": "array",
+      "description": "Clear height under anything overhead along a chain wall (eaves, porch roofs, stairs, decks), measured within 0.91 m (3 ft) of the wall.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["wall_id", "s_m", "clearance_m", "plus_minus_m", "evidence"],
+        "properties": {
+          "wall_id": {"type": "string"},
+          "s_m": {"$ref": "#/$defs/span"},
+          "clearance_m": {"type": "number", "minimum": 0},
+          "object_id": {"type": "string"},
+          "plus_minus_m": {"type": "number", "minimum": 0},
+          "evidence": {"$ref": "#/$defs/evidence"}
+        }
+      }
+    },
+    "facing": {
+      "type": "array",
+      "description": "Gap from a chain wall straight out to the nearest fence, hedge, wall or fixed obstacle, 0.3-1.83 m (1-6 ft) high.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["wall_id", "s_m", "depth_m", "plus_minus_m", "evidence"],
+        "properties": {
+          "wall_id": {"type": "string"},
+          "s_m": {"$ref": "#/$defs/span"},
+          "depth_m": {"type": "number", "minimum": 0},
+          "lower_bound": {"type": "boolean", "description": "True when nothing was found out to depth_m (the view reached that far): the real gap is at least this."},
+          "object_id": {"type": "string"},
+          "plus_minus_m": {"type": "number", "minimum": 0},
+          "evidence": {"$ref": "#/$defs/evidence"}
+        }
+      }
+    },
+    "generated_regions": {
+      "type": "array",
+      "description": "Space where the producer generated or completed geometry instead of observing it (world models, inpainting, hole filling, symmetry completion). Never evidence: a criteria path treats anything inside as unknown.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "geometry", "method"],
+        "properties": {
+          "id": {"type": "string"},
+          "geometry": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind"],
+            "properties": {
+              "kind": {"enum": ["box", "footprint", "asset_mask"]},
+              "center_m": {"$ref": "#/$defs/point3"},
+              "size_m": {"$ref": "#/$defs/point3"},
+              "yaw_deg": {"type": "number"},
+              "polygon_m": {"type": "array", "items": {"$ref": "#/$defs/point2"}},
+              "bottom_m": {"type": "number"},
+              "top_m": {"type": "number"},
+              "asset": {"type": "string", "description": "For asset_mask: the asset whose generated_field marks the elements."}
+            }
+          },
+          "method": {"type": "string"},
+          "note": {"type": "string"}
+        }
+      }
+    },
+    "keyframes": {
+      "type": "array",
+      "description": "Cameras in the scene frame (as the producer estimated them).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "pose", "intrinsics", "w", "h"],
+        "properties": {
+          "id": {"type": "string", "description": "Packet keyframe id or image name."},
+          "image": {"type": "string"},
+          "pose": {"$ref": "#/$defs/mat4", "description": "Camera-to-scene, ARKit camera axes (+x right, +y up, looks along -z), column-major."},
+          "intrinsics": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}, "description": "[fx, fy, cx, cy], continuous pixels, (0,0) = top-left corner."},
+          "w": {"type": "integer", "minimum": 1},
+          "h": {"type": "integer", "minimum": 1},
+          "pose_source": {"enum": ["ground_truth", "arkit", "sfm", "model", "sfm_scaled_by_arkit"]}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "point2": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
+    "point3": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
+    "span": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}, "description": "[start, end], start <= end."},
+    "mat4": {"type": "array", "minItems": 16, "maxItems": 16, "items": {"type": "number"}},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1, "description": "Recognition confidence. Never a distance error."},
+    "evidence": {
+      "enum": ["observed", "inferred", "generated"],
+      "description": "observed: seen in at least one real input image and supported by measured geometry. inferred: extrapolated from observations (a plane extended across an occluder, a corner closed by intersecting two walls, a wall run past the last seen point); a criteria path may use it to fail or to go unsure, never to pass. generated: produced by a generative model or hole filling; never evidence."
+    },
+    "support": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "points": {"type": "integer", "minimum": 0},
+        "views": {"type": "array", "items": {"type": "string"}},
+        "fit_rms_m": {"type": "number", "minimum": 0}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"enum": ["detector", "vlm", "tap", "annotation", "tape", "laser_scan", "lidar", "reconstruction", "generated"]},
+        "model": {"type": "string"},
+        "views": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["image"],
+            "properties": {
+              "image": {"type": "string"},
+              "box_px": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}, "description": "[u0, v0, u1, v1]"},
+              "points_px": {"type": "array", "items": {"$ref": "#/$defs/point2"}},
+              "score": {"type": "number"}
+            }
+          }
+        }
+      }
+    },
+    "end": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"enum": ["limit", "unexplored"], "description": "limit: the wall really ends here for battery purposes (fence, property line, obstruction). unexplored: the wall continues but was not captured."},
+        "point_m": {"$ref": "#/$defs/point2"},
+        "s_m": {"type": "number"},
+        "note": {"type": "string"}
+      }
+    },
+    "object_class": {
+      "enum": [
+        "meter", "meter_can", "disconnect", "panel", "wall_box", "vent",
+        "gas_meter", "gas_regulator", "gas_pipe",
+        "ac_unit", "generator", "battery",
+        "window", "door", "garage_door", "basement_well",
+        "downspout", "hose_bib",
+        "eave", "porch_roof", "stairs", "deck", "overhang",
+        "pool", "hot_tub",
+        "gate", "bin", "plant", "shrub", "tree",
+        "other"
+      ]
+    }
+  }
+}

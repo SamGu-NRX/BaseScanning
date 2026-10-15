@@ -1,0 +1,24 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"reasoning\":\"A single electric meter is visible mounted directly on the building's exterior wall, with conduit/panel below it. It is not on a standalone pole and there is no row of multiple meters indicating a meter bank.\",\"type\":\"standardMeter\",\"clean-decision\":true}",
+ "json": {
+  "reasoning": "A single electric meter is visible mounted directly on the building's exterior wall, with conduit/panel below it. It is not on a standalone pole and there is no row of multiple meters indicating a meter bank.",
+  "type": "standardMeter",
+  "clean-decision": true
+ },
+ "usage": {
+  "input_tokens": 27408,
+  "cached_tokens": 0,
+  "output_tokens": 178,
+  "reasoning_tokens": 115
+ },
+ "cost_usd": 0.14238,
+ "latency_s": 4.65,
+ "stop": "completed",
+ "prompt_id": "p10_meter_mount",
+ "house": "tt-barn",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p10": "standardMeter"
+ }
+}

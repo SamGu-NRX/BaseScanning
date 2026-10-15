@@ -1,0 +1,30 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meter_type\":\"standard\",\"clean_decision\":true,\"photo\":1,\"can_top\":225,\"can_bottom\":342,\"head_top\":244,\"head_bottom\":305,\"ratio\":1.92,\"reasoning\":\"The round meter is in a separate gray meter can, not combined with the breaker panel. The can is roughly about two meter-head heights tall, which fits standard.\"}",
+ "json": {
+  "meter_type": "standard",
+  "clean_decision": true,
+  "photo": 1,
+  "can_top": 225,
+  "can_bottom": 342,
+  "head_top": 244,
+  "head_bottom": 305,
+  "ratio": 1.92,
+  "reasoning": "The round meter is in a separate gray meter can, not combined with the breaker panel. The can is roughly about two meter-head heights tall, which fits standard."
+ },
+ "usage": {
+  "input_tokens": 23577,
+  "cached_tokens": 22784,
+  "output_tokens": 601,
+  "reasoning_tokens": 516
+ },
+ "cost_usd": 0.033387,
+ "latency_s": 10.88,
+ "stop": "completed",
+ "prompt_id": "p11_meter_type",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p11": "standard"
+ }
+}

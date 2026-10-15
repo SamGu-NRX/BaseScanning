@@ -1,0 +1,35 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"decision\": \"manual_review\",\n \"disconnect_location\": null,\n \"battery_location\": null,\n \"distance_ft\": null,\n \"reference_object\": \"Entrance stair treads (~7 in rise each) and standard door height (~7 ft), used only for general scale; no meter is visible to reference\",\n \"needs_more_photos\": true,\n \"missing_views\": [\n  \"A straight-on photo of the electric meter and the wall around it, showing at least 3 ft on each side and the ground below\",\n  \"A wider photo of the full wall containing the meter, showing windows, doors and any other equipment within 15 ft\",\n  \"A photo showing where the gas meter/regulator is relative to the electric meter, if there is one\",\n  \"A photo showing any driveway, parking area or pool near the meter wall\",\n  \"Confirmation that this is the actual installation property. The photos show a large multi-story institutional building, not a single-family home\"\n ],\n \"justification\": \"None of the 15 photos shows an electric meter, service equipment or a gas meter. They show the brick facades, courtyard and main entrance stairs of a large multi-story institutional building, which does not appear to be a residential home. Without a visible meter, disconnect space, battery placement, clearances and routing cannot be assessed. Ground-floor walls are also heavily broken up by windows and columns. Manual review and new, targeted photos are required.\"}",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "distance_ft": null,
+  "reference_object": "Entrance stair treads (~7 in rise each) and standard door height (~7 ft), used only for general scale; no meter is visible to reference",
+  "needs_more_photos": true,
+  "missing_views": [
+   "A straight-on photo of the electric meter and the wall around it, showing at least 3 ft on each side and the ground below",
+   "A wider photo of the full wall containing the meter, showing windows, doors and any other equipment within 15 ft",
+   "A photo showing where the gas meter/regulator is relative to the electric meter, if there is one",
+   "A photo showing any driveway, parking area or pool near the meter wall",
+   "Confirmation that this is the actual installation property. The photos show a large multi-story institutional building, not a single-family home"
+  ],
+  "justification": "None of the 15 photos shows an electric meter, service equipment or a gas meter. They show the brick facades, courtyard and main entrance stairs of a large multi-story institutional building, which does not appear to be a residential home. Without a visible meter, disconnect space, battery placement, clearances and routing cannot be assessed. Ground-floor walls are also heavily broken up by windows and columns. Manual review and new, targeted photos are required."
+ },
+ "usage": {
+  "input_tokens": 551,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 511
+ },
+ "cost_usd": 0.018858200000000002,
+ "latency_s": 12.39,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

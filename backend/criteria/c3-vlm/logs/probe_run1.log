@@ -1,0 +1,33 @@
+meter cross drawn in photos [8]
+Traceback (most recent call last):
+  File "/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal/breadth/c3-vlm/probe.py", line 101, in <module>
+    main()
+  File "/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal/breadth/c3-vlm/probe.py", line 90, in main
+    summary = {"truth": TRUTH, "photo_only": {f"{m}#{i}": f.result()["errors"] for (m, i), f in pf.items()},
+                                                          ^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal/breadth/c3-vlm/probe.py", line 72, in photo_job
+    r = vlm.call_photo_prompt(model, "", photos, MH.NOTE + PROBE, prompt_first=True)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal/breadth/c3-vlm/vlm.py", line 220, in call_photo_prompt
+    msg = anthropic_client().messages.create(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.12/site-packages/anthropic/_utils/_utils.py", line 294, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.12/site-packages/anthropic/resources/messages/messages.py", line 997, in create
+    return self._post(
+           ^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.12/site-packages/anthropic/_base_client.py", line 1543, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.12/site-packages/anthropic/_base_client.py", line 1208, in request
+    raise self._make_status_error_from_response(response) from None
+anthropic.BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CfSMutTNZJuGQdfb4szzt'}

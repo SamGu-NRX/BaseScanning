@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasLargeOrOversizedMeterCan\":true,\"meterCanLabel\":\"large_or_oversized_meter_can\",\"insufficientEvidence\":false,\"evidence\":\"The round meter is mounted in a tall gray rectangular enclosure that extends substantially below the meter, much larger than a compact residential meter socket.\",\"notes\":\"Classification is based only on the same physical enclosure holding the meter; nearby conduit and other equipment are ignored.\"}",
+ "json": {
+  "hasLargeOrOversizedMeterCan": true,
+  "meterCanLabel": "large_or_oversized_meter_can",
+  "insufficientEvidence": false,
+  "evidence": "The round meter is mounted in a tall gray rectangular enclosure that extends substantially below the meter, much larger than a compact residential meter socket.",
+  "notes": "Classification is based only on the same physical enclosure holding the meter; nearby conduit and other equipment are ignored."
+ },
+ "usage": {
+  "input_tokens": 7964,
+  "cached_tokens": 0,
+  "output_tokens": 542,
+  "reasoning_tokens": 453
+ },
+ "cost_usd": 0.05608,
+ "latency_s": 7.32,
+ "stop": "completed",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-Qm4b1cw8pV4",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p02": "large_or_oversized_meter_can"
+ }
+}

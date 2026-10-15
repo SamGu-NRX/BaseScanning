@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"justification\": \"The provided photos show only the exterior of the house, gas meter, AC units, electric meter, and small disconnect-like boxes, but no actual open view of any breaker panel's interior or main breaker. There is insufficient information to confirm the number of independent service mains, so this requires manual review.\"}",
+ "json": {
+  "decision": "manual_review",
+  "justification": "The provided photos show only the exterior of the house, gas meter, AC units, electric meter, and small disconnect-like boxes, but no actual open view of any breaker panel's interior or main breaker. There is insufficient information to confirm the number of independent service mains, so this requires manual review."
+ },
+ "usage": {
+  "input_tokens": 5477,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 110
+ },
+ "cost_usd": 0.012054,
+ "latency_s": 2.32,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

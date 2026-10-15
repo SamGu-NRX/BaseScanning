@@ -1,0 +1,636 @@
+{
+ "registered": 41,
+ "infer_s": 115.9,
+ "da3_pose_shift_median_m": 1.304989624801952e-07,
+ "scene": "electro",
+ "quality": "dslr_ref",
+ "set": "all45_guided",
+ "method": "cda3",
+ "n": 45,
+ "score": {
+  "kd": {
+   "n": 16,
+   "median_in": 2.52,
+   "p90_in": 19.43,
+   "max_in": 41.61,
+   "share_le_2in": 0.25,
+   "share_le_4in": 0.875,
+   "share_le_6in": 0.875,
+   "calibration": 0.375
+  },
+  "kd_observed": {
+   "n": 6,
+   "median_in": 1.48,
+   "p90_in": 2.91,
+   "max_in": 3.71,
+   "share_le_2in": 0.667,
+   "share_le_4in": 1.0,
+   "share_le_6in": 1.0,
+   "calibration": 1.0
+  },
+  "status": {
+   "scored": 16,
+   "missing": 57,
+   "extent_limited": 1,
+   "phantom": 0,
+   "scale_reference": 0
+  },
+  "false_observed_claims": 0,
+  "scale_error_pct": null,
+  "cloud_scale_error_pct": 0.0,
+  "anchor_m": 0.2242,
+  "completeness_10cm_icp": {
+   "meter_wall": 0.821,
+   "wall_face": 0.833,
+   "ground_strip": 0.9997,
+   "overhead": 0.9749
+  },
+  "coverage_by_rule": {
+   "meter_wall": {
+    "truly_observed_by_rule": 0.9963,
+    "claimed_by_rule": 0.7774,
+    "false_observed_by_rule": 0.0032,
+    "claimed_observed": 0.5503,
+    "truly_seen": 1.0,
+    "sensitivity": null
+   },
+   "wall_face": {
+    "truly_observed_by_rule": 0.9962,
+    "claimed_by_rule": 0.7131,
+    "false_observed_by_rule": 0.0026,
+    "claimed_observed": 0.4472,
+    "truly_seen": 1.0,
+    "sensitivity": null
+   },
+   "ground_strip": {
+    "truly_observed_by_rule": 0.9948,
+    "claimed_by_rule": 0.0117,
+    "false_observed_by_rule": 0.0,
+    "claimed_observed": 0.2808,
+    "truly_seen": 0.9966,
+    "sensitivity": [
+     {
+      "max_incidence_deg": 75.0,
+      "truth_by_rule": "grazing",
+      "truly_observed_by_rule": 0.8764,
+      "truly_grazing_only": 0.1234,
+      "rule_id": "angle75",
+      "claimed_by_rule": 0.0117,
+      "false_observed_by_rule": 0.0
+     },
+     {
+      "max_incidence_deg": 80.0,
+      "truth_by_rule": "observed",
+      "truly_observed_by_rule": 0.9948,
+      "truly_grazing_only": 0.005,
+      "rule_id": "angle80",
+      "claimed_by_rule": 0.0117,
+      "false_observed_by_rule": 0.0
+     },
+     {
+      "max_incidence_deg": 88.0,
+      "truth_by_rule": "observed",
+      "truly_observed_by_rule": 0.9948,
+      "truly_grazing_only": 0.005,
+      "rule_id": "footprint3in",
+      "max_footprint_m": 0.0762,
+      "claimed_by_rule": 0.0117,
+      "false_observed_by_rule": 0.0
+     }
+    ]
+   },
+   "overhead": {
+    "truly_observed_by_rule": 0.9989,
+    "claimed_by_rule": 0.9923,
+    "false_observed_by_rule": 0.0,
+    "claimed_observed": 0.7083,
+    "truly_seen": 1.0,
+    "sensitivity": null
+   }
+  },
+  "rows": {
+   "meter.height": {
+    "err_in": 2.106,
+    "gt": 1.4241,
+    "status": "scored"
+   },
+   "wall.length[w1]": {
+    "err_in": null,
+    "gt": 3.109,
+    "status": "missing"
+   },
+   "wall.length[w2]": {
+    "err_in": 180.795,
+    "gt": 9.3536,
+    "status": "extent_limited"
+   },
+   "opening.edge_s[glass_facade:left]": {
+    "err_in": null,
+    "gt": -10.8834,
+    "status": "missing"
+   },
+   "opening.edge_s[glass_facade:right]": {
+    "err_in": null,
+    "gt": -7.7744,
+    "status": "missing"
+   },
+   "opening.bottom[glass_facade]": {
+    "err_in": null,
+    "gt": 0.0,
+    "status": "missing"
+   },
+   "opening.top[glass_facade]": {
+    "err_in": null,
+    "gt": 5.6421,
+    "status": "missing"
+   },
+   "opening.width[glass_facade]": {
+    "err_in": null,
+    "gt": 3.109,
+    "status": "missing"
+   },
+   "opening.edge_s[door_1:left]": {
+    "err_in": null,
+    "gt": -6.3778,
+    "status": "missing"
+   },
+   "opening.edge_s[door_1:right]": {
+    "err_in": null,
+    "gt": -5.6274,
+    "status": "missing"
+   },
+   "opening.bottom[door_1]": {
+    "err_in": null,
+    "gt": 0.0,
+    "status": "missing"
+   },
+   "opening.top[door_1]": {
+    "err_in": null,
+    "gt": 2.9737,
+    "status": "missing"
+   },
+   "opening.width[door_1]": {
+    "err_in": null,
+    "gt": 0.7504,
+    "status": "missing"
+   },
+   "opening.edge_s[door_2:left]": {
+    "err_in": null,
+    "gt": -5.0283,
+    "status": "missing"
+   },
+   "opening.edge_s[door_2:right]": {
+    "err_in": null,
+    "gt": -2.9775,
+    "status": "missing"
+   },
+   "opening.bottom[door_2]": {
+    "err_in": null,
+    "gt": 0.0,
+    "status": "missing"
+   },
+   "opening.top[door_2]": {
+    "err_in": null,
+    "gt": 2.9694,
+    "status": "missing"
+   },
+   "opening.width[door_2]": {
+    "err_in": null,
+    "gt": 2.0508,
+    "status": "missing"
+   },
+   "opening.edge_s[door_3:left]": {
+    "err_in": null,
+    "gt": -2.3784,
+    "status": "missing"
+   },
+   "opening.edge_s[door_3:right]": {
+    "err_in": null,
+    "gt": -0.3273,
+    "status": "missing"
+   },
+   "opening.bottom[door_3]": {
+    "err_in": null,
+    "gt": 0.0,
+    "status": "missing"
+   },
+   "opening.top[door_3]": {
+    "err_in": null,
+    "gt": 2.964,
+    "status": "missing"
+   },
+   "opening.width[door_3]": {
+    "err_in": null,
+    "gt": 2.0511,
+    "status": "missing"
+   },
+   "opening.edge_s[door_4:left]": {
+    "err_in": -1.039,
+    "gt": 0.4216,
+    "status": "scored"
+   },
+   "opening.edge_s[door_4:right]": {
+    "err_in": -0.449,
+    "gt": 2.3221,
+    "status": "scored"
+   },
+   "opening.bottom[door_4]": {
+    "err_in": 3.713,
+    "gt": 0.0,
+    "status": "scored"
+   },
+   "opening.top[door_4]": {
+    "err_in": 1.929,
+    "gt": 2.9585,
+    "status": "scored"
+   },
+   "opening.width[door_4]": {
+    "err_in": 0.591,
+    "gt": 1.9005,
+    "status": "scored"
+   },
+   "opening.gap[glass_facade~door_1]": {
+    "err_in": null,
+    "gt": 1.3966,
+    "status": "missing"
+   },
+   "opening.gap[door_1~door_2]": {
+    "err_in": null,
+    "gt": 0.5991,
+    "status": "missing"
+   },
+   "opening.gap[door_2~door_3]": {
+    "err_in": null,
+    "gt": 0.5991,
+    "status": "missing"
+   },
+   "opening.gap[door_3~door_4]": {
+    "err_in": null,
+    "gt": 0.7489,
+    "status": "missing"
+   },
+   "equipment.meter_dist[gas_meter_synthetic]": {
+    "err_in": null,
+    "gt": 2.7796,
+    "status": "missing"
+   },
+   "equipment.s[gas_meter_synthetic]": {
+    "err_in": null,
+    "gt": -2.6779,
+    "status": "missing"
+   },
+   "facing.depth[w1@-8.51]": {
+    "err_in": null,
+    "gt": 0.367,
+    "status": "missing"
+   },
+   "facing.depth[w1@-8.01]": {
+    "err_in": null,
+    "gt": 0.34,
+    "status": "missing"
+   },
+   "overhead.clearance[w1@-8.51]": {
+    "err_in": null,
+    "gt": 1.995,
+    "status": "missing"
+   },
+   "overhead.clearance[w1@-8.26]": {
+    "err_in": null,
+    "gt": 1.995,
+    "status": "missing"
+   },
+   "overhead.clearance[w1@-8.01]": {
+    "err_in": null,
+    "gt": 1.349,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-6.25]": {
+    "err_in": null,
+    "gt": 2.988,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-6.00]": {
+    "err_in": null,
+    "gt": 2.988,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-5.75]": {
+    "err_in": null,
+    "gt": 2.988,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-5.50]": {
+    "err_in": null,
+    "gt": 2.988,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-5.00]": {
+    "err_in": null,
+    "gt": 2.948,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-4.75]": {
+    "err_in": null,
+    "gt": 2.948,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-4.50]": {
+    "err_in": null,
+    "gt": 2.948,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-4.25]": {
+    "err_in": null,
+    "gt": 2.948,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-4.00]": {
+    "err_in": null,
+    "gt": 2.948,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-3.75]": {
+    "err_in": null,
+    "gt": 2.948,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-3.50]": {
+    "err_in": null,
+    "gt": 2.948,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-3.25]": {
+    "err_in": null,
+    "gt": 2.948,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-3.00]": {
+    "err_in": null,
+    "gt": 2.948,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-2.75]": {
+    "err_in": null,
+    "gt": 2.948,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-2.50]": {
+    "err_in": null,
+    "gt": 2.894,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-2.25]": {
+    "err_in": null,
+    "gt": 2.968,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-2.00]": {
+    "err_in": null,
+    "gt": 2.968,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-1.75]": {
+    "err_in": null,
+    "gt": 2.968,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-1.50]": {
+    "err_in": null,
+    "gt": 2.968,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-1.25]": {
+    "err_in": null,
+    "gt": 2.968,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-1.00]": {
+    "err_in": null,
+    "gt": 2.968,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-0.75]": {
+    "err_in": null,
+    "gt": 2.968,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-0.50]": {
+    "err_in": null,
+    "gt": 2.968,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-0.25]": {
+    "err_in": null,
+    "gt": 2.129,
+    "status": "missing"
+   },
+   "overhead.clearance[w2@-0.00]": {
+    "err_in": 35.157,
+    "gt": 2.129,
+    "status": "scored"
+   },
+   "overhead.clearance[w2@0.25]": {
+    "err_in": 41.614,
+    "gt": 1.965,
+    "status": "scored"
+   },
+   "overhead.clearance[w2@0.50]": {
+    "err_in": 2.52,
+    "gt": 2.958,
+    "status": "scored"
+   },
+   "overhead.clearance[w2@0.75]": {
+    "err_in": 2.52,
+    "gt": 2.958,
+    "status": "scored"
+   },
+   "overhead.clearance[w2@1.00]": {
+    "err_in": 2.52,
+    "gt": 2.958,
+    "status": "scored"
+   },
+   "overhead.clearance[w2@1.25]": {
+    "err_in": 2.52,
+    "gt": 2.958,
+    "status": "scored"
+   },
+   "overhead.clearance[w2@1.50]": {
+    "err_in": 2.52,
+    "gt": 2.958,
+    "status": "scored"
+   },
+   "overhead.clearance[w2@1.75]": {
+    "err_in": 2.52,
+    "gt": 2.958,
+    "status": "scored"
+   },
+   "overhead.clearance[w2@2.00]": {
+    "err_in": 2.52,
+    "gt": 2.958,
+    "status": "scored"
+   },
+   "overhead.clearance[w2@2.25]": {
+    "err_in": 2.52,
+    "gt": 2.958,
+    "status": "scored"
+   },
+   "ground.region_dist[concrete]": {
+    "err_in": null,
+    "gt": 0.5745,
+    "status": "missing"
+   }
+  },
+  "score_s": 36.6
+ },
+ "c1": {
+  "g80": {
+   "decision": "manual_review",
+   "reasons": [
+    "all_spots_fail",
+    "unexplored_end"
+   ],
+   "n_criteria": 13,
+   "outcomes": {
+    "unsure": 9,
+    "fail": 1,
+    "pass": 3
+   },
+   "decidable_share": 0.3076923076923077,
+   "unsure_causes": {
+    "unobserved": 8,
+    "margin": 1
+   },
+   "by_criterion": {
+    "wall_backing": {
+     "unsure": 1
+    },
+    "ground_surface": {
+     "unsure": 1
+    },
+    "meter_working_space": {
+     "unsure": 1
+    },
+    "gas_clearance": {
+     "unsure": 1
+    },
+    "ac_clearance": {
+     "unsure": 1
+    },
+    "drive_clearance": {
+     "unsure": 1
+    },
+    "pool_clearance": {
+     "unsure": 1
+    },
+    "opening_clearance": {
+     "fail": 1
+    },
+    "wall_equipment_above": {
+     "unsure": 1
+    },
+    "facing_gap": {
+     "pass": 1
+    },
+    "headroom": {
+     "unsure": 1
+    },
+    "route_path": {
+     "pass": 1
+    },
+    "route_length": {
+     "pass": 1
+    }
+   },
+   "views_needed": [
+    {
+     "kind": "past_end",
+     "wall_id": "w1",
+     "s_m": [
+      -0.203,
+      -0.203
+     ],
+     "criteria": [],
+     "why": "Keep walking past the left end of the scan (0 ft 8 in left of the meter): a spot within reach may be there.",
+     "side": "left",
+     "id": "vn1"
+    }
+   ],
+   "candidates": 10
+  },
+  "g75": {
+   "decision": "manual_review",
+   "reasons": [
+    "all_spots_fail",
+    "unexplored_end"
+   ],
+   "n_criteria": 13,
+   "outcomes": {
+    "unsure": 9,
+    "fail": 1,
+    "pass": 3
+   },
+   "decidable_share": 0.3076923076923077,
+   "unsure_causes": {
+    "unobserved": 8,
+    "margin": 1
+   },
+   "by_criterion": {
+    "wall_backing": {
+     "unsure": 1
+    },
+    "ground_surface": {
+     "unsure": 1
+    },
+    "meter_working_space": {
+     "unsure": 1
+    },
+    "gas_clearance": {
+     "unsure": 1
+    },
+    "ac_clearance": {
+     "unsure": 1
+    },
+    "drive_clearance": {
+     "unsure": 1
+    },
+    "pool_clearance": {
+     "unsure": 1
+    },
+    "opening_clearance": {
+     "fail": 1
+    },
+    "wall_equipment_above": {
+     "unsure": 1
+    },
+    "facing_gap": {
+     "pass": 1
+    },
+    "headroom": {
+     "unsure": 1
+    },
+    "route_path": {
+     "pass": 1
+    },
+    "route_length": {
+     "pass": 1
+    }
+   },
+   "views_needed": [
+    {
+     "kind": "past_end",
+     "wall_id": "w1",
+     "s_m": [
+      -0.203,
+      -0.203
+     ],
+     "criteria": [],
+     "why": "Keep walking past the left end of the scan (0 ft 8 in left of the meter): a spot within reach may be there.",
+     "side": "left",
+     "id": "vn1"
+    }
+   ],
+   "candidates": 10
+  }
+ },
+ "total_s": 174.9
+}

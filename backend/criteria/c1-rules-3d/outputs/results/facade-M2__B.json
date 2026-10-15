@@ -1,0 +1,3088 @@
+{
+ "scene": "facade-M2",
+ "profile": "B",
+ "decision": "manual_review",
+ "open_ends_in_reach": [
+  "w3.b"
+ ],
+ "best": {
+  "wall": "w2",
+  "u": [
+   7.5,
+   9.5
+  ],
+  "outcome": "fail",
+  "route_ft": 4.626,
+  "route_corners": [
+   "w2.b-w3.a:outside"
+  ],
+  "checks": [
+   {
+    "id": "wall_backing",
+    "outcome": "unsure",
+    "measured": 2.1253,
+    "pm": 0.11,
+    "threshold": 0.0,
+    "cause": "unobserved"
+   },
+   {
+    "id": "ground_surface",
+    "outcome": "pass",
+    "measured": 0.0321
+   },
+   {
+    "id": "meter_working_space",
+    "outcome": "pass",
+    "measured": 2.5344,
+    "pm": 0.41,
+    "threshold": 0.0,
+    "subject": "meter"
+   },
+   {
+    "id": "gas_clearance",
+    "outcome": "unsure",
+    "measured": 5.3001,
+    "pm": 0.41,
+    "threshold": 5.0,
+    "subject": "gas_w2",
+    "cause": "margin"
+   },
+   {
+    "id": "ac_clearance",
+    "outcome": "pass",
+    "threshold": 3.0
+   },
+   {
+    "id": "drive_clearance",
+    "outcome": "pass",
+    "threshold": 5.0
+   },
+   {
+    "id": "pool_clearance",
+    "outcome": "pass",
+    "threshold": 5.0
+   },
+   {
+    "id": "opening_clearance",
+    "outcome": "fail",
+    "measured": 1.0,
+    "pm": 0.41,
+    "threshold": 3.0,
+    "subject": "w2_arched_window"
+   },
+   {
+    "id": "wall_equipment_above",
+    "outcome": "unsure",
+    "threshold": 0.0,
+    "cause": "unobserved"
+   },
+   {
+    "id": "facing_gap",
+    "outcome": "pass",
+    "threshold": 5.65
+   },
+   {
+    "id": "headroom",
+    "outcome": "pass",
+    "measured": 14.41,
+    "pm": 0.1,
+    "threshold": 6.5,
+    "subject": "ovh34"
+   },
+   {
+    "id": "footprint_clear",
+    "outcome": "unsure",
+    "measured": 0.0611,
+    "pm": 0.21,
+    "threshold": 0.0,
+    "subject": "obs6"
+   },
+   {
+    "id": "route_path",
+    "outcome": "unsure",
+    "measured": 1.0,
+    "cause": "unobserved"
+   },
+   {
+    "id": "route_length",
+    "outcome": "pass",
+    "measured": 4.6255,
+    "pm": 0.41,
+    "threshold": 25.0
+   }
+  ]
+ },
+ "stats": {
+  "candidates": 427,
+  "pass": 0,
+  "unsure": 0,
+  "fail": 427
+ },
+ "runs": [
+  {
+   "wall": "w1",
+   "u": [
+    0.0,
+    0.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance",
+    "wall_backing"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    0.167,
+    0.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    0.5,
+    0.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    0.667,
+    0.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    1.0,
+    1.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    1.5,
+    1.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "gas_clearance",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    1.667,
+    1.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    2.0,
+    2.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    2.5,
+    2.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    3.0,
+    3.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    3.5,
+    3.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "drive_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    4.0,
+    4.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "pool_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    4.333,
+    4.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    4.5,
+    4.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    5.0,
+    5.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    5.5,
+    5.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    5.667,
+    5.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    6.0,
+    6.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    6.5,
+    6.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    7.0,
+    7.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    7.167,
+    7.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    7.5,
+    7.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    8.0,
+    8.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    8.5,
+    8.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    9.0,
+    9.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    9.5,
+    9.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    10.0,
+    10.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    10.5,
+    10.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    11.0,
+    11.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    11.5,
+    11.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    12.0,
+    12.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    12.5,
+    12.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "facing_gap",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    13.0,
+    13.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    13.5,
+    13.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    14.0,
+    14.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    14.5,
+    14.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "ac_clearance",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    14.667,
+    14.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    15.0,
+    15.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    15.5,
+    15.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    16.0,
+    16.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    16.5,
+    16.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    17.0,
+    17.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    17.5,
+    17.667
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    17.833,
+    17.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    18.0,
+    18.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    18.5,
+    18.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    19.0,
+    19.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    19.5,
+    19.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    20.0,
+    20.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    20.5,
+    20.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    21.0,
+    21.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    21.5,
+    21.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    22.0,
+    22.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    22.5,
+    22.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    23.0,
+    23.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    23.5,
+    23.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    24.0,
+    24.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    24.5,
+    24.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    25.0,
+    25.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    25.333,
+    25.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    25.5,
+    25.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    26.0,
+    26.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    26.5,
+    26.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    27.0,
+    27.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    27.5,
+    27.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    28.0,
+    28.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    28.5,
+    28.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    29.0,
+    29.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    29.5,
+    29.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    30.0,
+    30.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    30.5,
+    30.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    31.0,
+    31.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    31.5,
+    31.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    32.0,
+    32.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    32.5,
+    32.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    33.0,
+    33.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    33.5,
+    33.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    34.0,
+    34.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    34.5,
+    34.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    35.0,
+    35.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    35.5,
+    35.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    36.0,
+    36.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    36.5,
+    36.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    37.0,
+    37.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    37.5,
+    37.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    38.0,
+    38.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    38.5,
+    38.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    39.0,
+    39.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_length",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    39.333,
+    39.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    39.5,
+    39.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    40.0,
+    40.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "route_length"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    40.167,
+    40.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    40.5,
+    40.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    41.0,
+    41.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    41.5,
+    41.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    42.0,
+    42.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    42.5,
+    42.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    43.0,
+    43.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    43.5,
+    43.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    43.667,
+    43.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    44.0,
+    44.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    44.5,
+    44.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    45.0,
+    45.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    45.5,
+    45.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    46.0,
+    46.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    46.5,
+    46.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    47.0,
+    47.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    47.5,
+    47.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    48.0,
+    48.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    48.333,
+    48.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    48.5,
+    48.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    48.667,
+    48.667
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    48.833,
+    48.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    49.0,
+    49.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    49.167,
+    49.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": []
+  },
+  {
+   "wall": "w1",
+   "u": [
+    49.5,
+    49.667
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    49.833,
+    49.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "ground_surface",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w1",
+   "u": [
+    50.0,
+    50.003
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    0.0,
+    0.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    0.5,
+    0.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    1.0,
+    1.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    1.5,
+    1.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    1.667,
+    1.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    2.0,
+    2.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    2.167,
+    2.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    2.333,
+    2.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    2.5,
+    2.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    2.667,
+    2.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    3.0,
+    3.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    3.5,
+    3.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    4.0,
+    4.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    4.5,
+    4.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    5.0,
+    5.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    5.5,
+    5.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    6.0,
+    6.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    6.5,
+    6.667
+   ],
+   "outcome": "fail",
+   "failing": [
+    "gas_clearance",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    6.833,
+    6.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    7.0,
+    7.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    7.5,
+    7.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    7.667,
+    7.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    8.0,
+    8.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    8.167,
+    8.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    8.333,
+    8.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "ground_surface",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    8.5,
+    8.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "ground_surface",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    9.0,
+    9.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "ground_surface",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    9.167,
+    9.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "ground_surface"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    9.5,
+    9.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "opening_clearance",
+    "route_path",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w2",
+   "u": [
+    9.625,
+    9.625
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "ground_surface"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "opening_clearance",
+    "wall_backing",
+    "wall_equipment_above"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    0.0,
+    0.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "ground_surface",
+    "wall_backing"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    0.167,
+    0.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    0.5,
+    0.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    1.0,
+    1.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    1.5,
+    1.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    2.0,
+    2.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "ground_surface",
+    "meter_working_space",
+    "opening_clearance"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    2.333,
+    2.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "meter_working_space",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    2.5,
+    2.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    2.667,
+    2.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    3.0,
+    3.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "meter_working_space",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    3.333,
+    3.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "meter_working_space"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    3.5,
+    3.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "meter_working_space"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    3.667,
+    3.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    4.0,
+    4.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    4.5,
+    4.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    5.0,
+    5.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    5.5,
+    5.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    6.0,
+    6.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    6.5,
+    6.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    7.0,
+    7.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    7.5,
+    7.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    8.0,
+    8.0
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    8.167,
+    8.167
+   ],
+   "outcome": "fail",
+   "failing": [
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    8.333,
+    8.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    8.5,
+    8.667
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "footprint_clear",
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    8.833,
+    8.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    9.0,
+    9.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    9.5,
+    9.833
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    10.0,
+    10.333
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    10.5,
+    10.5
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "ground_surface"
+   ]
+  },
+  {
+   "wall": "w3",
+   "u": [
+    10.667,
+    10.711
+   ],
+   "outcome": "fail",
+   "failing": [
+    "facing_gap",
+    "footprint_clear",
+    "opening_clearance",
+    "route_path"
+   ],
+   "unsure": [
+    "gas_clearance",
+    "ground_surface",
+    "wall_backing"
+   ]
+  }
+ ],
+ "runtime_s": 2.87
+}
