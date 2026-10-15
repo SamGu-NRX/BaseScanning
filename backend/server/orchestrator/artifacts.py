@@ -180,6 +180,41 @@ def packet_cache_dir(capture_id: str, packet_sha256: str = "") -> Path | None:
     return Path("/vol/packet-cache") / slot
 
 
+def purge_packet_cache(capture_id: str) -> tuple[int, list[str]]:
+    """Remove every cached packet copy for a capture from the shared volume.
+
+    DELETE calls this because object-storage prefixes do not cover the packet
+    cache workers publish under /vol/packet-cache. Returns the number of files
+    removed and the paths that survived, so the caller can report a partial
+    purge instead of claiming a clean deletion.
+    """
+
+    base = packet_cache_dir(capture_id)
+    if base is None or not base.is_dir():
+        return 0, []
+    files = [path for path in base.rglob("*") if path.is_file() and not path.is_symlink()]
+    try:
+        shutil.rmtree(base)
+        return len(files), []
+    except OSError:
+        survivors = sorted(base.rglob("*"))
+        kept = sum(1 for path in survivors if path.is_file() and not path.is_symlink())
+        return len(files) - kept, [str(path) for path in survivors]
+
+
+def _capture_tombstoned(state: object, capture_id: str) -> bool:
+    """True once DELETE has removed the capture. States without kv storage never
+    tombstone, and a failing lookup must not block a live capture's stage."""
+
+    get_kv = getattr(state, "get_kv", None)
+    if not callable(get_kv):
+        return False
+    try:
+        return bool(get_kv(f"tomb:{capture_id}"))
+    except Exception:
+        return False
+
+
 def hydrate_packet(
     storage: object,
     state: object,
@@ -192,9 +227,13 @@ def hydrate_packet(
     """Copy the packet into ``packet_dir``.
 
     ``include_files`` is false for stages that only read ``packet.json``. A warm
-    volume cache skips GCS for the frames a later stage does need.
+    volume cache skips GCS for the frames a later stage does need. A capture the
+    API has deleted must not hydrate at all: restoring it would re-publish the
+    packet cache DELETE just purged.
     """
 
+    if _capture_tombstoned(state, capture_id):
+        return
     packet_dir.mkdir(parents=True, exist_ok=True)
     if _copy_packet_cache(cache_dir, packet_dir, include_files=include_files):
         return

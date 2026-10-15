@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     XAI_API_KEY: str | None = Field(default=None, repr=False)
     CAPTURE_API_TOKENS: str | None = Field(default=None, repr=False)
     UPLOAD_URL_HMAC_SECRET: str | None = Field(default=None, repr=False)
+    # Explicit local-test opt-in. Serves the upload token routes without a secret
+    # (tokens then verify against an empty key). Never enable in a deployment.
+    UPLOAD_TOKENS_ALLOW_MISSING_SECRET: bool = False
     WEBHOOK_HMAC_SECRET: str | None = Field(default=None, repr=False)
     BASE_WEBHOOK_URL: str | None = None
     DATABASE_URL: str | None = Field(default=None, repr=False)
@@ -121,7 +124,12 @@ def resolve_storage(settings: Settings) -> Storage:
         return LocalFsStorage(root)
     if settings.STORAGE_BACKEND == "volume":
         if not settings.VOLUME_ROOT or not settings.CAPTURE_API_PUBLIC_URL or not settings.UPLOAD_URL_HMAC_SECRET:
-            raise RuntimeError("volume storage needs VOLUME_ROOT, CAPTURE_API_PUBLIC_URL, and UPLOAD_URL_HMAC_SECRET")
+            raise RuntimeError(
+                "volume storage needs VOLUME_ROOT, CAPTURE_API_PUBLIC_URL, and UPLOAD_URL_HMAC_SECRET; "
+                "UPLOAD_URL_HMAC_SECRET signs the upload tokens, and a missing key lets anyone who "
+                "knows a storage key forge one. Local tests may set UPLOAD_TOKENS_ALLOW_MISSING_SECRET=1 "
+                "to serve token routes without a secret on non-volume backends."
+            )
         from server.common.backends.storage_volume import VolumeStorage
 
         return VolumeStorage(

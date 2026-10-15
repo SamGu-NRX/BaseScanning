@@ -19,6 +19,7 @@ from server.common.fixture_meter import FixtureMeterError, checked_fixture
 from server.common.logging import log_event
 from server.contracts.api import CreateCaptureRequest, CreateCaptureResponse, UploadLimits
 from server.contracts.jobs import CaptureRecord
+from server.orchestrator.artifacts import purge_packet_cache
 
 
 def _body_bytes(payload: dict) -> bytes:
@@ -214,6 +215,21 @@ def register(app: FastAPI) -> None:
             except Exception as exc:
                 log_event("storage.error", op="delete_prefix", capture_id=capture_id, level="error")
                 raise fail(503, "storage_unavailable", "/", "storage delete failed", **{"Retry-After": "5"}) from exc
+            # Object storage is clean, but workers publish packet copies to the
+            # shared volume too. Purge them; report what could not be removed
+            # instead of claiming a clean deletion.
+            cache_removed, cache_failed = purge_packet_cache(capture_id)
+            if cache_failed:
+                log_event(
+                    "storage.warning",
+                    op="purge_packet_cache",
+                    capture_id=capture_id,
+                    level="warning",
+                    msg=(
+                        f"packet cache: {len(cache_failed)} path(s) could not be removed: "
+                        + ", ".join(cache_failed[:20])
+                    ),
+                )
             packet_id = record.packet_id
             deps.state.delete_capture(capture_id)
             deps.state.put_kv(f"tomb:{capture_id}", {"deleted_at": isoformat(deps.now()), "packet_id": packet_id})
@@ -222,5 +238,11 @@ def register(app: FastAPI) -> None:
                 idem["tomb"] = True
                 idem["ref"] = f"tomb:{capture_id}"
                 deps.state.put_kv(f"idem:create:{packet_id}", idem)
-            log_event("capture.deleted", objects_deleted=deleted, capture_id=capture_id, principal=principal.label)
+            log_event(
+                "capture.deleted",
+                objects_deleted=deleted,
+                capture_id=capture_id,
+                principal=principal.label,
+                msg=f"packet cache: removed {cache_removed} file(s)",
+            )
             return Response(status_code=204)

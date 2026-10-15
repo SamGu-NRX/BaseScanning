@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import shutil
 import threading
 import time
 from pathlib import Path
 
 from server.contracts.jobs import FileRecord, RunRecord, StageRecord
-from server.orchestrator.artifacts import hydrate_artifacts, hydrate_packet, packet_cache_dir
+from server.orchestrator.artifacts import (
+    hydrate_artifacts,
+    hydrate_packet,
+    packet_cache_dir,
+    purge_packet_cache,
+)
 from server.orchestrator.graph import STAGE_NAMES, select_stage_artifacts, stage_needs_packet_files
 from server.orchestrator.services import bind
 from server.orchestrator.tests.conftest import build_services
@@ -159,6 +165,65 @@ def test_packet_cache_is_keyed_by_capture_and_sha(tmp_path: Path, monkeypatch) -
     (base / ".complete").write_text("ok")
     amended.mkdir(parents=True)
     assert not (amended / "packet.json").exists()
+
+
+def test_purge_packet_cache_removes_the_whole_capture_slot(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HSS_PACKET_CACHE", str(tmp_path / "cache"))
+    base = packet_cache_dir("cap_test", "a" * 64)
+    assert base is not None
+    (base / "photos").mkdir(parents=True)
+    (base / "packet.json").write_bytes(b"{}")
+    (base / ".complete").write_bytes(b"ok")
+    (base / "photos" / "k0.jpg").write_bytes(b"jpeg")
+    other = packet_cache_dir("cap_other")
+    assert other is not None
+    other.mkdir(parents=True)
+    (other / "keep.txt").write_bytes(b"keep")
+
+    removed, failed = purge_packet_cache("cap_test")
+
+    assert (removed, failed) == (3, [])
+    assert not (tmp_path / "cache" / "cap_test").exists()
+    assert (other / "keep.txt").is_file()
+
+
+def test_purge_packet_cache_reports_paths_it_could_not_remove(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HSS_PACKET_CACHE", str(tmp_path / "cache"))
+    base = packet_cache_dir("cap_test")
+    assert base is not None
+    base.mkdir(parents=True)
+    (base / "packet.json").write_bytes(b"{}")
+
+    def broken_rmtree(path, *args, **kwargs):
+        raise OSError("volume busy")
+
+    monkeypatch.setattr(shutil, "rmtree", broken_rmtree)
+    removed, failed = purge_packet_cache("cap_test")
+    assert removed == 0
+    assert failed == [str(base / "packet.json")]
+
+
+def test_hydrate_skips_a_tombstoned_capture(tmp_path: Path) -> None:
+    """A worker mid-run must not restore the cache DELETE just purged."""
+
+    cache = tmp_path / "cache" / "cap_test"
+    cache.mkdir(parents=True)
+    (cache / "packet.json").write_bytes(b"{}")
+    (cache / ".complete").write_bytes(b"ok")
+
+    class _TombstonedState:
+        def __init__(self) -> None:
+            self.asked: list[str] = []
+
+        def get_kv(self, key: str):
+            self.asked.append(key)
+            return {"deleted_at": "2026-10-15T00:00:00Z"}
+
+    state = _TombstonedState()
+    dest = tmp_path / "packet"
+    hydrate_packet(object(), state, "cap_test", dest, include_files=True, cache_dir=cache)
+    assert not dest.exists()
+    assert state.asked == ["tomb:cap_test"]
 
 
 def test_artifact_downloads_overlap(tmp_path: Path) -> None:
