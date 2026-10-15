@@ -52,6 +52,8 @@ import SwiftUI
 /// - `-uiDemoAimCardTitles`: an isolated folded aim card, cycling ring, arrow and covered
 ///   titles for the same target. Exercises a nonempty reserve alongside a folded title.
 ///   `-uiDemoAimSecondPositionToggle` also lets the test toggle second-position advice.
+/// - `-uiDemoAimHysteresis`: button-driven target and step changes in the real aim overlay.
+/// - `-uiDemoSpotHysteresis`: button-driven tracking loss and recovery in the real result screen.
 /// - `-uiDemoSpotOffScreen`: with `-uiDemoPhase resultAR`, place the camera 10 m left so the
 ///   proposed spot needs an off-screen direction, including at accessibility text sizes.
 /// - `-uiDemoSpotLow`: with `-uiDemoPhase resultAR`, tilt the camera up so the proposed spot sits
@@ -77,6 +79,10 @@ enum UIDemo {
     static func makeRoot() -> some View {
         if ProcessInfo.processInfo.arguments.contains("-uiDemoAimCardTitles") {
             FoldedAimCardDemo()
+        } else if ProcessInfo.processInfo.arguments.contains("-uiDemoAimHysteresis") {
+            AimHysteresisDemo()
+        } else if ProcessInfo.processInfo.arguments.contains("-uiDemoSpotHysteresis") {
+            SpotHysteresisDemo()
         } else {
             DemoHost()
         }

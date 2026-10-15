@@ -71,8 +71,11 @@ struct ResultARScreen: View {
                 .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { screen = $0 }
                 .ignoresSafeArea()
         }
-        .onChange(of: cameraWindow.detailsShown ? spotPrevious : spotLayout?.layout.direction) { _, direction in
-            spotPrevious = direction
+        .onChange(of: cameraWindow.detailsShown ? nil : spotLayout?.layout) { _, layout in
+            // Missing tracking or projection says nothing about visibility. Observe the layout,
+            // not its optional direction, so recovery to a valid `.none` still clears memory.
+            guard let layout else { return }
+            if spotPrevious != layout.direction { spotPrevious = layout.direction }
         }
         .onAppear {
             withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.7, bounce: 0.15)) { appeared = true }

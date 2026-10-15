@@ -86,6 +86,7 @@ struct CameraOverlays: View {
                         wall: wall,
                         path: state.path,
                         target: state.target,
+                        step: state.guidance,
                         progress: state.aimProgress,
                         completed: heldTarget,
                         onFillingRingShown: { shown in fillingRingShown = shown },

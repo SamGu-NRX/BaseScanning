@@ -15,6 +15,7 @@ struct WayfindingOverlay: View {
     var wall: WallGeometry?
     var path: [SIMD3<Float>]
     var target: SIMD3<Float>?
+    var step: GuidanceStep
     /// How far the aim task is toward done, 0...1 (`ScanViewState.aimProgress`): the ring fills
     /// with it. Nil when the target only marks a place.
     var progress: Double? = nil
@@ -36,11 +37,21 @@ struct WayfindingOverlay: View {
     /// screen disagree near the card and the screen's edges (review of #120).
     var onAimMarker: ((AimMarker?) -> Void)? = nil
 
-    /// The marker last reported (`onAimMarker`). A ring stays a ring up to the edge of where it
-    /// can be drawn, but an arrow becomes a ring only `ringEntryMargin` inside it, so a hand-held
-    /// phone with the target near that edge doesn't swap the two, or the card's title, several
-    /// times a second.
-    @State private var reported: AimMarker? = nil
+    /// Remember the marker with the exact aim that produced it. The planner can change targets
+    /// without replacing this view, so another aim must not inherit its axis or entry margin.
+    private struct Report: Equatable {
+        var step: GuidanceStep
+        var target: SIMD3<Float>?
+        var marker: AimMarker?
+    }
+
+    @State private var reported: Report?
+
+    /// Check identity before drawing, not in a later reset callback that leaves one stale frame.
+    private var previousMarker: AimMarker? {
+        guard let reported, reported.step == step, reported.target == target else { return nil }
+        return reported.marker
+    }
 
     var body: some View {
         // Read here, in this view's body, so a change redraws this overlay alone.
@@ -66,9 +77,9 @@ struct WayfindingOverlay: View {
                 }
                 Color.clear
                     .frame(width: 0, height: 0)
-                    .onChange(of: aimMarker(in: size, band: band), initial: true) { _, marker in
-                        reported = marker
-                        onAimMarker?(marker)
+                    .onChange(of: Report(step: step, target: target, marker: aimMarker(in: size, band: band)), initial: true) { _, report in
+                        reported = report
+                        onAimMarker?(report.marker)
                     }
                     .onDisappear { onAimMarker?(nil) }
             }
@@ -160,10 +171,10 @@ struct WayfindingOverlay: View {
         return (placement: placement(for: target, in: size, band: band, entryMargin: targetEntryMargin), progress: progress)
     }
 
-    /// No margin while the target's ring is up, so it keeps its place to the edge, and none off
-    /// an aim step, whose marker the card doesn't follow.
+    /// A new aim starts without a margin. Once its arrow shows, it must come farther inside
+    /// before becoming a ring; a ring keeps its place to the edge without flickering there.
     private var targetEntryMargin: CGFloat {
-        progress == nil || reported == .ring ? 0 : Self.ringEntryMargin
+        progress == nil || previousMarker == nil || previousMarker == .ring ? 0 : Self.ringEntryMargin
     }
 
     /// What the card can name for an aim target (`onAimMarker`). `.covered` means the chrome
@@ -176,7 +187,7 @@ struct WayfindingOverlay: View {
         case .onScreen:
             return .ring
         case .offScreen(_, let angle):
-            let previous: AimDirection? = if case .arrow(let direction)? = reported { direction } else { nil }
+            let previous: AimDirection? = if case .arrow(let direction)? = previousMarker { direction } else { nil }
             return .arrow(Self.direction(of: angle, previous: previous))
         case .hidden:
             return .covered

@@ -795,6 +795,50 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertTrue(coveredCard.waitForNonExistence(timeout: 5), "closing Details must remove its camera obstruction advice")
     }
 
+    /// Marker memory belongs to the exact target and step, not the lifetime of the overlay.
+    @MainActor
+    func testAimHysteresisBelongsToTheExactTargetAndStep() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoAimHysteresis"]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(element(app, "demo.nextPose").waitForExistence(timeout: 15))
+        let expected = ["left", "left", "above", "ring", "left", "left", "ring", "left", "left", "above"]
+        for (stage, name) in expected.enumerated() {
+            let marker = app.staticTexts.matching(NSPredicate(format: "identifier == 'demo.marker' AND label == %@", name)).firstMatch
+            XCTAssertTrue(marker.waitForExistence(timeout: 5),
+                          "pose \(stage): expected \(name), got \(element(app, "demo.marker").label)")
+            if name == "ring" {
+                XCTAssertTrue(element(app, "aim.ring").exists, "pose \(stage): the reported ring must be drawn")
+            } else {
+                XCTAssertTrue(element(app, "aim.arrow").exists, "pose \(stage): the reported arrow must be drawn")
+            }
+            if stage < expected.count - 1 { tap(app, "demo.nextPose") }
+        }
+    }
+
+    /// Losing a pose must not count as seeing the spot. A real in-view pose must clear memory,
+    /// including when it is the first valid pose after tracking recovers.
+    @MainActor
+    func testSpotHysteresisSurvivesUnavailableTrackingButClearsInView() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoSpotHysteresis"]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(element(app, "demo.nextPose").waitForExistence(timeout: 15))
+        let direction = element(app, "ar.spotDirection")
+        let expected = [true, false, true, false, true, false, false, true, false, false, false]
+        for (stage, offScreen) in expected.enumerated() {
+            if offScreen {
+                XCTAssertTrue(direction.waitForExistence(timeout: 5), "pose \(stage): off-screen memory was lost")
+                if direction.exists { XCTAssertTrue(direction.label.contains("Turn the phone left"), direction.label) }
+            } else {
+                XCTAssertTrue(direction.waitForNonExistence(timeout: 5), "pose \(stage): unavailable or visible spot must not draw a direction")
+            }
+            if stage < expected.count - 1 { tap(app, "demo.nextPose") }
+        }
+    }
+
     /// With Details closed and no room in the open camera for the chevron and its words, the way
     /// to turn is on the card, never folded under Details. At AX5 the sample's three-line title
     /// leaves too little camera for the chevron's words; at AX3 the chevron fits, and since the
