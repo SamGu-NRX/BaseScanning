@@ -19,7 +19,9 @@ public enum OpenCameraWithoutNote {
     ///   - window: The open camera as laid out with the note, in global coordinates.
     ///   - content: The whole column as laid out with the note, in global coordinates. Its top
     ///     moves up as the column scrolls.
-    ///   - viewport: The part of the screen the column scrolls in, in global coordinates.
+    ///   - viewport: The safe area the column fills and scrolls in, in global coordinates: at
+    ///     rest the column's top is the viewport's top. Not a scroll view's frame that runs under
+    ///     the status bar and the home indicator.
     ///   - noteRoom: How much taller the note makes the card. Zero returns `window`.
     ///   - minimumHeight: The least open camera the column keeps without the note.
     public static func frame(window: CGRect, content: CGRect, viewport: CGRect, noteRoom: CGFloat, minimumHeight: CGFloat) -> CGRect {

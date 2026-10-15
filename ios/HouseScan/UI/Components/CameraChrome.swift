@@ -68,9 +68,12 @@ struct CameraChrome<Bottom: View>: View {
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
-            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { viewport in
-                cameraWindow?.layout.viewport = viewport
-            }
+        }
+        // The safe area the column fills, not the scroll view's frame: that runs under the status
+        // bar and the home indicator (0 to 874 pt on an iPhone 17 against the column's 62 to
+        // 840), which put the camera without the note 62 pt too high (CI run of #241 at 602bd92).
+        .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { viewport in
+            cameraWindow?.layout.viewport = viewport
         }
     }
 

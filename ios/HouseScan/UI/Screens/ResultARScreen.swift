@@ -14,9 +14,9 @@ struct ResultARScreen: View {
     @State private var appeared = false
     /// The open camera between the card and Done, for the chevron (`CameraChrome`).
     @State private var cameraWindow = CameraWindow()
-    /// What the card says about the spot when the camera can't show it or its chevron
-    /// (`SpotDirection.Note`); nil otherwise.
-    @State private var spotNote: SpotDirection.Note? = nil
+    /// What the chevron can do in the open camera without the card's note
+    /// (`SpotDirection.Outcome`); the card's line follows from it and from Details.
+    @State private var spotOutcome: SpotDirection.Outcome? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -40,8 +40,12 @@ struct ResultARScreen: View {
                         .accessibilityIdentifier("ar.overlay")
                 }
                 if let spot = result.spotCenter(on: wall) {
-                    SpotDirection(projection: projection, spot: spot, cameraWindow: cameraWindow) { note in
-                        if spotNote != note { spotNote = note }
+                    // Read in this body, as the walk reads its window, so a scroll or a closed
+                    // Details always reaches the chevron and the card. Read inside the chevron's
+                    // own geometry closure, a Details closed at AX5 left the card saying the
+                    // camera was below for good (screenStates run 38687149601 at 602bd92).
+                    SpotDirection(projection: projection, spot: spot, window: cameraWindow.noteFreeFrame) { outcome in
+                        if spotOutcome != outcome { spotOutcome = outcome }
                     }
                 }
             }
@@ -82,7 +86,8 @@ struct ResultARScreen: View {
 
     private var visibleInstruction: Instruction {
         var copy = instruction
-        switch showsSpot ? spotNote : nil {
+        let note = SpotDirection.note(spotOutcome, detailsShown: cameraWindow.detailsShown)
+        switch showsSpot ? note : nil {
         case .turn(let direction)?: copy.note = ScanCopy.proposedSpotOffScreen(turn: direction)
         case .cameraBelow?: copy.note = ScanCopy.cameraBelowDetails
         case nil: break
@@ -140,20 +145,31 @@ private struct SpotDirection: View {
         case cameraBelow
     }
 
+    /// What the chevron can do in the open camera without the card's note.
+    struct Outcome: Equatable {
+        /// The way to turn when the spot is off screen and the chevron can't be drawn.
+        var unshown: AimDirection?
+        /// Less of that camera on screen than the chevron's disc.
+        var cameraCovered: Bool
+    }
+
     var projection: CameraProjection
     var spot: SIMD3<Float>
-    /// The open camera between the card and Done (`CameraChrome`). The spot counts as in view
-    /// only there, and the chevron keeps to it. Fixed bands stand in until the chrome reports it.
-    var cameraWindow: CameraWindow
-    /// Called with the card's line about the spot (`Note`), nil when the chevron or the spot
-    /// itself shows.
-    var onNote: (Note?) -> Void
+    /// The open camera between the card and Done as it would be without the card's note
+    /// (`CameraWindow.noteFreeFrame`), in global coordinates; nil until the chrome measures it.
+    /// The spot counts as in view only there, and the chevron keeps to it. Fixed bands stand in
+    /// until then. Equal to the measured camera while the card has no note.
+    var window: CGRect?
+    /// Called with what the chevron can do (`Outcome`), nil once this view is gone.
+    var onOutcome: (Outcome?) -> Void
 
     /// The chevron's words as laid out at the current text size. Measured from an unseen copy
     /// that is always laid out, so the chevron can be placed before it first shows; the guess
     /// stands in for the first layout pass only.
     @State private var labelHeight: CGFloat = 36
     @State private var previousDirection: AimDirection?
+    /// This view's frame, the whole screen, in global coordinates.
+    @State private var screenFrame: CGRect = .zero
 
     enum Layout: Equatable {
         case none
@@ -173,47 +189,45 @@ private struct SpotDirection: View {
     }
 
     var body: some View {
-        // Read here, so a scroll of the chrome redraws this view alone. The camera as it would be
-        // without the card's note, equal to the measured one while the card has none.
-        let clearArea = cameraWindow.noteFreeFrame
-        let detailsShown = cameraWindow.detailsShown
-        GeometryReader { proxy in
-            let size = proxy.size
-            let band = WayfindingOverlay.verticalBand(clearArea, origin: proxy.frame(in: .global).origin, height: size.height)
-            let layout = Self.layout(projection: projection, spot: spot, in: size, band: band, labelHeight: labelHeight, previous: previousDirection)
-            // Invariant: the note follows from the spot, Details and the camera without the note
-            // only, so showing it changes nothing it was decided from and its own height can't
-            // keep it up. Judged against the camera it shrinks, a five-line note at AX5 covered
-            // the spot, stayed, and pushed Done off screen (CI run of #241 at d5d137ed).
-            let note = Self.note(layout: layout, band: band, detailsShown: detailsShown)
-            ZStack {
-                label
-                    .hidden()
-                    .accessibilityHidden(true)
-                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
-                        if abs(height - labelHeight) > 0.5 { labelHeight = height }
-                    }
-                if case let .chevron(point, angle, label, direction) = layout {
-                    ZStack {
-                        TargetMarker(placement: .offScreen(point, angle: angle))
-                        self.label
-                            .position(label)
-                    }
-                    .frame(width: size.width, height: size.height)
-                    .accessibilityElement(children: .ignore)
-                    // The way to turn in words: below AX5 the card no longer says it beside a drawn
-                    // chevron, so this is all VoiceOver has.
-                    .accessibilityLabel(ScanCopy.proposedSpotOffScreen(turn: direction))
-                    .accessibilityIdentifier("ar.spotDirection")
+        // Worked out in this body from its inputs, not in a geometry closure, so every change of
+        // the window reaches the outcome.
+        let band = WayfindingOverlay.verticalBand(window, origin: screenFrame.origin, height: screenFrame.height)
+        let layout = screenFrame.isEmpty ? Layout.none
+            : Self.layout(projection: projection, spot: spot, in: screenFrame.size, band: band, labelHeight: labelHeight, previous: previousDirection)
+        // Invariant: the card's line follows from this outcome and Details only, and the
+        // outcome from the spot and the camera without the note, so showing the line changes
+        // nothing it was decided from and its own height can't keep it up. Judged against the
+        // camera it shrinks, a five-line note at AX5 covered the spot, stayed, and pushed Done
+        // off screen (CI run of #241 at d5d137ed).
+        let outcome = Outcome(unshown: layout.unshownDirection,
+                              cameraCovered: !screenFrame.isEmpty && band.map { $0.bottom - $0.top < WayfindingOverlay.arrowDiameter } == true)
+        ZStack {
+            label
+                .hidden()
+                .accessibilityHidden(true)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
+                    if abs(height - labelHeight) > 0.5 { labelHeight = height }
                 }
-                Color.clear
-                    .frame(width: 0, height: 0)
-                    .onChange(of: layout.direction, initial: true) { _, direction in previousDirection = direction }
-                    .onChange(of: note, initial: true) { _, note in onNote(note) }
-                    .onDisappear { onNote(nil) }
+            if case let .chevron(point, angle, label, direction) = layout {
+                ZStack {
+                    TargetMarker(placement: .offScreen(point, angle: angle))
+                    self.label
+                        .position(label)
+                }
+                .frame(width: screenFrame.width, height: screenFrame.height)
+                .accessibilityElement(children: .ignore)
+                // The way to turn in words: below AX5 the card no longer says it beside a drawn
+                // chevron, so this is all VoiceOver has.
+                .accessibilityLabel(ScanCopy.proposedSpotOffScreen(turn: direction))
+                .accessibilityIdentifier("ar.spotDirection")
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
+        .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { screenFrame = $0 }
+        .onChange(of: layout.direction, initial: true) { _, direction in previousDirection = direction }
+        .onChange(of: outcome, initial: true) { _, outcome in onOutcome(outcome) }
+        .onDisappear { onOutcome(nil) }
         .allowsHitTesting(false)
     }
 
@@ -234,16 +248,15 @@ private struct SpotDirection: View {
     /// The gap between the chevron's disc and its words.
     static let labelGap: CGFloat = 6
 
-    /// The card's line for `layout` in the open camera `band`. With Details closed, the way to
-    /// turn whenever the chevron can't be drawn, never folded away. With Details open, only
-    /// `Note.cameraBelow`: turning can't bring back a camera that Details covers. It shows
-    /// whenever the chevron can't be drawn as well, or an off-screen spot with Details open
-    /// and a camera between 52 pt and the chevron's height had neither (review of #241).
-    static func note(layout: Layout, band: WayfindingOverlay.Band?, detailsShown: Bool) -> Note? {
-        guard detailsShown else { return layout.unshownDirection.map(Note.turn) }
-        if layout.unshownDirection != nil { return .cameraBelow }
-        guard let band, band.bottom - band.top < WayfindingOverlay.arrowDiameter else { return nil }
-        return .cameraBelow
+    /// The card's line for `outcome`. With Details closed, the way to turn whenever the chevron
+    /// can't be drawn, never folded away. With Details open, only `Note.cameraBelow`: turning
+    /// can't bring back a camera that Details covers. It shows whenever the chevron can't be
+    /// drawn as well, or an off-screen spot with Details open and a camera between 52 pt and
+    /// the chevron's height had neither (review of #241).
+    static func note(_ outcome: Outcome?, detailsShown: Bool) -> Note? {
+        guard let outcome else { return nil }
+        guard detailsShown else { return outcome.unshown.map(Note.turn) }
+        return outcome.unshown != nil || outcome.cameraCovered ? .cameraBelow : nil
     }
 
     /// Where the chevron goes, which way it points and where its words sit; `.none` while the
