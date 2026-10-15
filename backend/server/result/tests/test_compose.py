@@ -302,7 +302,7 @@ def test_review_page_lists_profiles_criteria_and_offline_notice(tmp_path):
         assert name in html
     assert "three.js" in html
     assert "offline" in html
-    assert 'action="/captures/cap_test/confirmations"' in html
+    assert 'action="/v1/captures/cap_test/confirmations"' in html
     assert "TODO queue" in html
     assert ("SS" + "R") not in html
 
