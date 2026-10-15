@@ -811,7 +811,10 @@ final class ScreenStatesUITests: XCTestCase {
             if name == "ring" {
                 XCTAssertTrue(element(app, "aim.ring").exists, "pose \(stage): the reported ring must be drawn")
             } else {
-                XCTAssertTrue(element(app, "aim.arrow").exists, "pose \(stage): the reported arrow must be drawn")
+                let arrow = element(app, "aim.arrow")
+                XCTAssertTrue(arrow.exists, "pose \(stage): the reported arrow must be drawn")
+                XCTAssertTrue(arrow.label.contains(name),
+                              "pose \(stage): VoiceOver direction disagreed with the card: \(arrow.label)")
             }
             if stage < expected.count - 1 { tap(app, "demo.nextPose") }
         }

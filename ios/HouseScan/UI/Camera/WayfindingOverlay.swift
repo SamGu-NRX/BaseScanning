@@ -66,8 +66,10 @@ struct WayfindingOverlay: View {
                 .accessibilityHidden(true)
                 // One marker either way, so a ring that completes keeps its identity and animates
                 // from its last fill to green.
+                let semanticMarker = aimMarker(in: size, band: band)
                 if let shown = marker(in: size, band: band) {
-                    TargetMarker(placement: shown.placement, progress: shown.progress)
+                    let direction: AimDirection? = if case .arrow(let direction)? = semanticMarker { direction } else { nil }
+                    TargetMarker(placement: shown.placement, progress: shown.progress, aimDirection: direction)
                 }
                 if fillingTargetOnScreen(in: size) {
                     Color.clear
@@ -329,6 +331,8 @@ struct TargetMarker: View {
     /// at 1, like the meter photo's ring; nil draws the plain pulsing ring. A ring that never
     /// changed while it was held on target gave no sign of what it wanted (#81).
     var progress: Double? = nil
+    /// The hysteresis-adjusted direction used by the aim card, when this arrow stands for an aim.
+    var aimDirection: AimDirection? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -354,7 +358,7 @@ struct TargetMarker: View {
                 .background(Palette.signal, in: .circle)
                 .overlay(Circle().strokeBorder(.white.opacity(0.85), lineWidth: 2))
                 .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
-                .modifier(ArrowAccessibility(progress: progress, angle: angle))
+                .modifier(ArrowAccessibility(progress: progress, angle: angle, direction: aimDirection))
                 .position(point)
                 .transition(.opacity)
         case .hidden:
@@ -423,6 +427,7 @@ struct TargetMarker: View {
 private struct ArrowAccessibility: ViewModifier {
     var progress: Double?
     var angle: Angle
+    var direction: AimDirection?
 
     func body(content: Content) -> some View {
         if let progress {
@@ -437,8 +442,18 @@ private struct ArrowAccessibility: ViewModifier {
         }
     }
 
-    /// The arrow's direction in words, by its larger component. Screen y grows downward.
+    /// The arrow's direction in words. Aim arrows use the same hysteresis-adjusted direction as
+    /// the card; other arrows keep their geometric direction and remain hidden without progress.
     private var way: String {
+        if let direction {
+            switch direction {
+            case .above: return "above"
+            case .below: return "below"
+            case .left: return "to the left"
+            case .right: return "to the right"
+            case .onScreen, .behind: break
+            }
+        }
         let dx = cos(angle.radians), dy = sin(angle.radians)
         if abs(dx) >= abs(dy) { return dx > 0 ? "to the right" : "to the left" }
         return dy > 0 ? "below" : "above"
