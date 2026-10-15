@@ -240,7 +240,9 @@ def test_capture_front_door_reaches_the_placement_stage(frontdoor) -> None:
         assert record.status == "done" and record.error_code is None
         assert record.metrics["elapsed_ms"] > 0
 
-        marks = [(event["data"].get("stage"), event["data"].get("status")) for event in events if event["type"] == "stage"]
+        marks = [
+            (event["data"].get("stage"), event["data"].get("status")) for event in events if event["type"] == "stage"
+        ]
         assert ("placement", "done") in marks
         assert marks.index(("scene", "done")) < marks.index(("placement", "done")) < marks.index(("criteria", "done"))
 
