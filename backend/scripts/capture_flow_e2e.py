@@ -191,6 +191,10 @@ def run_capture_flow(
 
         # Register, PUT to signed URLs, commit.
         files = _sealed_files(fixture_root, packet)
+        # The replay anchor: a saved receipt carries the exact bodies the device
+        # sent, so a later replay can prove the same hashes still commit.
+        receipt["idempotencyKeys"] = {"create": packet["packetId"], "finalize": packet["packetId"]}
+        receipt["files"] = [dict(item) for item in files]
         receipt["fileCounts"]["expected"] = len(files)
         registered = journey.client.post(f"/v1/captures/{capture_id}/files", json={"files": files})
         record("register", httpStatus=registered.status_code, files=len(files))
@@ -243,6 +247,7 @@ def run_capture_flow(
 
         # Finalize packet.json.
         raw = (fixture_root / "packet.json").read_bytes()
+        receipt["packetSha256"] = hashlib.sha256(raw).hexdigest()
         accepted = journey.client.post(
             f"/v1/captures/{capture_id}/finalize",
             content=raw,
