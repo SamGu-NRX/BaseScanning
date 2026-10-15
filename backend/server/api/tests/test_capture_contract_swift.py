@@ -6,6 +6,10 @@ Swift client decodes: the `CreateResponse`, `RegisterResponse`, `CommitResponse`
 `FinalizeResponse`, `EventsResponse` and result-polling keys, the
 `{"errors": [{code, pointer, message}]}` error body `CaptureAPI.errorCodes`
 reads, the bearer requirement, create idempotency, and the terminal statuses.
+One documented exception: the create response's `eventsUrl` is not in the
+production `CreateResponse` struct — the uploader builds the events URL from the
+capture id — so it is pinned here as server behavior, decoded in Swift only by
+the Tests-target loopback double (`LoopbackCaptureAPI.swift`).
 Memory state and local volume storage only.
 """
 
@@ -29,9 +33,7 @@ def _anon(client) -> TestClient:
 
 
 def _create(client, packet_id: str = "packet-0001") -> dict:
-    response = client.post(
-        "/v1/captures", json=create_body(packet_id), headers={"Idempotency-Key": packet_id}
-    )
+    response = client.post("/v1/captures", json=create_body(packet_id), headers={"Idempotency-Key": packet_id})
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -97,7 +99,9 @@ def _set_status(client, capture_id: str, status: str) -> None:
 
 def test_create_response_keys_match_swift_create_response(client):
     body = _create(client)
-    # CreateResponse decodes captureId, status, upload, finalizeBy; eventsUrl feeds the poller.
+    # CreateResponse decodes captureId, status, upload, finalizeBy. eventsUrl is NOT in the
+    # struct: the uploader builds the events URL itself (CaptureUploader.pollEvents) and only
+    # the Tests-target loopback double decodes it. Pinned here because the server does return it.
     assert set(body) >= {"captureId", "status", "upload", "eventsUrl", "finalizeBy"}
     assert body["captureId"].startswith("cap_")
     assert body["status"] == "uploading"  # not in CaptureAPI.terminalStatuses
@@ -129,9 +133,7 @@ def test_create_requires_idempotency_key(client):
 
 
 def test_create_idempotency_key_must_equal_packet_id(client):
-    response = client.post(
-        "/v1/captures", json=create_body("packet-0001"), headers={"Idempotency-Key": "packet-other"}
-    )
+    response = client.post("/v1/captures", json=create_body("packet-0001"), headers={"Idempotency-Key": "packet-other"})
     assert response.status_code == 409
     item = response.json()["errors"][0]
     assert item["code"] == "idempotency_conflict"
@@ -140,9 +142,7 @@ def test_create_idempotency_key_must_equal_packet_id(client):
 
 def test_create_replay_with_same_body_returns_same_capture(client):
     first = _create(client, "packet-0001")
-    replay = client.post(
-        "/v1/captures", json=create_body("packet-0001"), headers={"Idempotency-Key": "packet-0001"}
-    )
+    replay = client.post("/v1/captures", json=create_body("packet-0001"), headers={"Idempotency-Key": "packet-0001"})
     assert replay.status_code == 200, replay.text
     assert replay.json()["captureId"] == first["captureId"]
     assert replay.json()["status"] == "uploading"
@@ -217,9 +217,30 @@ def test_register_error_codes_the_uploader_reads(client):
         f"/v1/captures/{capture_id}/files",
         json={
             "files": [
-                {"path": "packet.json", "bytes": 4, "sha256": sha256_hex(BLOB), "md5": md5_b64(BLOB), "role": "still", "contentType": "image/jpeg"},
-                {"path": "ok.jpg", "bytes": 4, "sha256": sha256_hex(BLOB), "md5": "not-base64", "role": "still", "contentType": "image/jpeg"},
-                {"path": "type.jpg", "bytes": 4, "sha256": sha256_hex(BLOB), "md5": md5_b64(BLOB), "role": "still", "contentType": "video/quicktime"},
+                {
+                    "path": "packet.json",
+                    "bytes": 4,
+                    "sha256": sha256_hex(BLOB),
+                    "md5": md5_b64(BLOB),
+                    "role": "still",
+                    "contentType": "image/jpeg",
+                },
+                {
+                    "path": "ok.jpg",
+                    "bytes": 4,
+                    "sha256": sha256_hex(BLOB),
+                    "md5": "not-base64",
+                    "role": "still",
+                    "contentType": "image/jpeg",
+                },
+                {
+                    "path": "type.jpg",
+                    "bytes": 4,
+                    "sha256": sha256_hex(BLOB),
+                    "md5": md5_b64(BLOB),
+                    "role": "still",
+                    "contentType": "video/quicktime",
+                },
             ]
         },
     )
@@ -239,7 +260,14 @@ def test_register_path_outside_the_relpath_shape_is_a_schema_error(client):
         f"/v1/captures/{capture_id}/files",
         json={
             "files": [
-                {"path": "../escape.jpg", "bytes": 4, "sha256": sha256_hex(BLOB), "md5": md5_b64(BLOB), "role": "still", "contentType": "image/jpeg"}
+                {
+                    "path": "../escape.jpg",
+                    "bytes": 4,
+                    "sha256": sha256_hex(BLOB),
+                    "md5": md5_b64(BLOB),
+                    "role": "still",
+                    "contentType": "image/jpeg",
+                }
             ]
         },
     )
@@ -472,9 +500,7 @@ def test_result_requires_bearer_token(client):
 def test_full_lifecycle_wire_shapes(client):
     """Create, register, PUT, commit, finalize, poll — the uploader's whole walk."""
     anon = _anon(client)
-    created = client.post(
-        "/v1/captures", json=create_body("packet-0001"), headers={"Idempotency-Key": "packet-0001"}
-    )
+    created = client.post("/v1/captures", json=create_body("packet-0001"), headers={"Idempotency-Key": "packet-0001"})
     assert created.status_code == 201
     capture_id = created.json()["captureId"]
 
