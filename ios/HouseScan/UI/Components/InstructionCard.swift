@@ -43,6 +43,10 @@ struct InstructionCard: View {
     /// The aim ring's legend, inside the folded details (`foldsDetail`). Otherwise the legend
     /// is the chrome's own line under the card (`CameraChrome.legend`).
     var legend: String? = nil
+    var onDetailsShown: ((Bool) -> Void)? = nil
+    /// Reports both message heights with the chrome's other measurements, so it can judge
+    /// the open camera without the note (`CameraWindow.noteFreeFrame`).
+    var measuresNoteRoom = false
 
     /// How long a new card's reply ignores taps, so a tap meant for the card that just left
     /// can't answer the next one: in the 4.1 field test, quick taps on "Can't get there" each
@@ -54,8 +58,8 @@ struct InstructionCard: View {
     /// The task whose reply has been on screen for `replyLock`. Compared with the current task
     /// in the same update that changes it, so a new reply is locked from its first frame.
     @State private var unlockedTask: Instruction?
-    /// Whether the folded details are open. Closed again for each new step (a new title), so the
-    /// camera opens up again; the distance to go and coaching change within a step and keep it.
+    /// Whether the folded details are open. Each new aim target closes them; marker titles
+    /// within that target and ride-along coaching keep them.
     @State private var detailsShown = false
 
     private var replyTask: Instruction { reply?.task ?? instruction }
@@ -63,7 +67,9 @@ struct InstructionCard: View {
     private var hasDetails: Bool { foldsDetail && (foldedDetail != nil || legend != nil) }
 
     /// The words the card shows: folded, a step that leads with its action does (`Instruction.folded`).
-    private var title: String { foldsDetail ? (instruction.folded?.title ?? instruction.title) : instruction.title }
+    private func title(of instruction: Instruction) -> String {
+        foldsDetail ? (instruction.folded?.title ?? instruction.title) : instruction.title
+    }
     private var foldedDetail: String? { instruction.folded?.detail ?? instruction.detail }
 
     var body: some View {
@@ -71,6 +77,25 @@ struct InstructionCard: View {
             message
                 .id(instruction)
                 .transition(.identity)
+                .background {
+                    if measuresNoteRoom {
+                        GeometryReader { geometry in
+                            Color.clear.preference(key: CameraChromeMeasurements.self,
+                                                   value: .init(messageHeight: geometry.size.height))
+                        }
+                    }
+                }
+                .background(alignment: .top) {
+                    if measuresNoteRoom {
+                        noteFreeMessage
+                            .background {
+                                GeometryReader { geometry in
+                                    Color.clear.preference(key: CameraChromeMeasurements.self,
+                                                           value: .init(noteFreeHeight: geometry.size.height))
+                                }
+                            }
+                    }
+                }
             if hasDetails {
                 details
             }
@@ -113,7 +138,13 @@ struct InstructionCard: View {
         // Only the scrim's height eases. Reduce Motion asks for no size changes, so it snaps.
         .animation(reduceMotion ? nil : Motion.text, value: instruction)
         .animation(reduceMotion ? nil : Motion.text, value: reply == nil)
-        .onChange(of: instruction.title) { detailsShown = false }
+        .onChange(of: detailsShown && hasDetails, initial: true) { _, shown in onDetailsShown?(shown) }
+        // Every aim uses the same reserved titles, so those words alone cannot identify a task.
+        .onChange(of: instruction.aimTarget) { _, _ in detailsShown = false }
+        .onChange(of: instruction.title) { old, new in
+            let reserved = instruction.titleReserve
+            if !(reserved.contains(old) && reserved.contains(new)) { detailsShown = false }
+        }
         .task(id: replyTask) {
             // Cleared first, so a task that comes back within the lock (A, B, A) is locked again.
             let shown = replyTask
@@ -125,6 +156,23 @@ struct InstructionCard: View {
     }
 
     private var message: some View {
+        messageContent(instruction)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.updatesFrequently)
+            .accessibilityIdentifier("instruction")
+    }
+
+    /// The message without `Instruction.note`, laid out unseen behind the card for `measuresNoteRoom`.
+    private var noteFreeMessage: some View {
+        var noteFree = instruction
+        noteFree.note = nil
+        return messageContent(noteFree)
+            .fixedSize(horizontal: false, vertical: true)
+            .hidden()
+            .accessibilityHidden(true)
+    }
+
+    private func messageContent(_ instruction: Instruction) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             if let symbol = iconName {
                 Image(systemName: symbol)
@@ -141,10 +189,20 @@ struct InstructionCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 2)
                 }
-                Text(title)
-                    .font(Typeface.instruction)
-                    .foregroundStyle(Palette.chalk)
-                    .fixedSize(horizontal: false, vertical: true)
+                ZStack(alignment: .topLeading) {
+                    // As tall as the tallest title this card may swap to (`Instruction.titleReserve`).
+                    ForEach(instruction.titleReserve, id: \.self) { reserved in
+                        Text(reserved)
+                            .font(Typeface.instruction)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .hidden()
+                            .accessibilityHidden(true)
+                    }
+                    Text(title(of: instruction))
+                        .font(Typeface.instruction)
+                        .foregroundStyle(Palette.chalk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 // Folded, only the coaching stays under the title; the detail is in `details`.
                 if let line = foldsDetail ? instruction.note : instruction.detailAndNote {
                     Text(line)
@@ -157,9 +215,6 @@ struct InstructionCard: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.updatesFrequently)
-        .accessibilityIdentifier("instruction")
     }
 
     /// The detail and the legend under "Details", the word and control the result screen

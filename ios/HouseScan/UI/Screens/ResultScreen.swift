@@ -180,6 +180,9 @@ struct ResultScreen: View {
                 if !result.missing.isEmpty {
                     MissingList(missing: result.missing, checks: result.checks, sourceAvailable: state.spatialResultAvailable, actions: actions)
                 }
+                if !result.marksNotUsed.isEmpty {
+                    MarksNotUsedList(messages: result.marksNotUsed)
+                }
                 VStack(spacing: 16) {
                     if let scan = state.shareableScan {
                         ShareScanButton(url: scan)
@@ -224,6 +227,34 @@ private struct Notice: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.caution.opacity(0.18), in: .rect(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Marks the server set aside past an unexplored end (review of #53, #42): the review listed
+/// them, so the result says they weren't counted rather than leaving the homeowner to think
+/// they were measured. The server's sentence says which and why.
+private struct MarksNotUsedList: View {
+    var messages: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(ScanCopy.marksNotUsedTitle)
+                .font(Typeface.sectionTitle)
+                .accessibilityAddTraits(.isHeader)
+            ForEach(Array(messages.enumerated()), id: \.offset) { _, message in
+                Text(message)
+                    .font(Typeface.hint)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Palette.surface, in: .rect(cornerRadius: 18, style: .continuous))
+                    .accessibilityIdentifier("result.markNotUsed")
+            }
+            Text(ScanCopy.marksNotUsedHint)
+                .font(.subheadline)
+                .foregroundStyle(Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
