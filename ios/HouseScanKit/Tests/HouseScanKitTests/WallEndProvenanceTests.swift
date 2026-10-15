@@ -183,20 +183,18 @@ private extension PacketMark {
         #expect((map.wallSeenSpans().map(\.span.lowerBound).min() ?? 0) < -2)
     }
 
-    /// A nearer end keeps the walk's minimum (`WallFrame.minWallLength`), measured from the other
-    /// end, or from the meter while that side has none, and never moves the other end.
-    @Test func aNearerEndKeepsTheMinimumWallLength() {
+    /// Narrow positive returns keep their marked ends; only coincident or reversed ends fail.
+    @Test func aNearerEndKeepsAnyPositiveWallLength() {
         var map = CoverageMap(wall: standardWall())
-        map.setEnd(.left, at: -1)
-        let least = WallFrame.minWallLength
-        #expect(map.endWouldLeaveTooLittle(.right, at: -1 + least - 0.01))
-        #expect(!map.endWouldLeaveTooLittle(.right, at: -1 + least + 0.01))
-        // No right end: measured from the meter.
-        #expect(map.endWouldLeaveTooLittle(.left, at: -(least - 0.01)))
-        #expect(!map.endWouldLeaveTooLittle(.left, at: -(least + 0.01)))
-        map.setEnd(.right, at: 0.2)
-        #expect(map.endWouldLeaveTooLittle(.left, at: -0.1), "a 0.3 m wall")
-        #expect(!map.endWouldLeaveTooLittle(.left, at: 0.2 - least - 0.01))
-        #expect(map.leftEnd == -1 && map.rightEnd == 0.2, "asking moved an end")
+        map.setEnd(.left, at: -0.25)
+        #expect(!map.endWouldLeaveTooLittle(.right, at: 0.25))
+        #expect(map.endWouldLeaveTooLittle(.right, at: -0.25))
+        #expect(map.endWouldLeaveTooLittle(.right, at: -0.3))
+        #expect(!map.endWouldLeaveTooLittle(.left, at: -0.1), "measured from meter without right end")
+        #expect(map.endWouldLeaveTooLittle(.left, at: 0))
+        map.setEnd(.right, at: 0.25)
+        #expect(!map.endWouldLeaveTooLittle(.left, at: -0.25))
+        #expect(map.endWouldLeaveTooLittle(.left, at: 0.25))
+        #expect(map.leftEnd == -0.25 && map.rightEnd == 0.25, "asking moved an end")
     }
 }

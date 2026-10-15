@@ -15,10 +15,10 @@ public struct WalkRefusals: Equatable, Sendable {
     /// ended a side asks "End the scan here?" instead of ending another.
     public static let repeatWindow: TimeInterval = 5
 
-    /// A side counts as refused when "Can't get there" ended it with less than this walked there
-    /// (`WalkedEnd.farthest`) and the end itself less than this from the meter, meters: a
-    /// battery's width (`WallFrame.minWallLength`), the least wall the walk can finish with.
-    public static let walkedMinimum: Float = WallFrame.minWallLength
+    /// A side counts as refused when "Can't get there" ended it with less than 0.79 m walked
+    /// (`WalkedEnd.farthest`) and the end less than 0.79 m from the meter. D7 changes valid wall
+    /// lengths, not this existing threshold for whether a side was walked before refusal.
+    public static let walkedMinimum: Float = 0.79
 
     /// When "Can't get there" last ended a side, seconds on the caller's clock.
     private var lastEnded: TimeInterval?
@@ -57,12 +57,11 @@ public struct WalkRefusals: Equatable, Sendable {
         return refused == end
     }
 
-    /// True when ends at `left` and `right` would be closer than `WallFrame.minWallLength`, so
-    /// finishing the walk with them is refused (`CoverageMap.endsTooClose`). A missing end counts
-    /// as too close: there is nothing to finish with.
+    /// True when the ends are coincident or reversed. A missing end also leaves no wall to
+    /// finish with; a narrow positive wall is valid and placement is left to the server.
     public static func endsTooClose(left: Float?, right: Float?) -> Bool {
         guard let left, let right else { return true }
-        return right - left < WallFrame.minWallLength
+        return !WallFrame.hasPositiveLength(left: left, right: right)
     }
 
     /// True when both ends of the wall are ones a refusal set: neither side of the meter was

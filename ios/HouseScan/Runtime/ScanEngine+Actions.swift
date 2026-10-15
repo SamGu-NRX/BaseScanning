@@ -483,11 +483,9 @@ extension ScanEngine: ScanActions {
     func finishWalk() {
         guard state.phase == .wallWalk, bothEndsMarked else { return }
         if let map = coverage, map.endsTooClose, let left = map.leftEnd, let right = map.rightEnd {
-            // Ends closer than a battery is wide (`WallFrame.minWallLength`): both sides ended
-            // without walking, as "Wall ends here" or "Can't get there" at the meter does.
-            // Nothing between them to scan, and an end can't be moved, so both go and the walk
-            // goes on; the card says why.
-            RuntimeLog.engine.info("finish refused: ends at s=\(left) and s=\(right) are closer than \(WallFrame.minWallLength) m")
+            // D7 option A permits real narrow walls. Only coincident or reversed ends are
+            // cleared, since they leave no wall to send to the server.
+            RuntimeLog.engine.info("finish refused: non-positive wall length between s=\(left) and s=\(right)")
             clearEnd(.left)
             clearEnd(.right)
             state.wallTooShort = true
@@ -618,8 +616,7 @@ extension ScanEngine: ScanActions {
             endWalkCannotGoOn(side)
         }
         walkRefusals.keepWalking()
-        // Ends closer than a battery is wide are refused here as after "Done with this wall",
-        // and the walk goes on with the card saying so.
+        // Coincident or reversed ends are refused here as after "Done with this wall".
         finishWalk()
     }
 

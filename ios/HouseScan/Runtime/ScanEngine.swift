@@ -2705,6 +2705,22 @@ extension ScanEngine {
         guard engine.planner.current == .aimAtGround(s: 0) else { return "fixture did not select meter aim" }
         now = 5
         switch scenario {
+        case "narrowWallUpload", "degenerateWallRefused":
+            let rightEnd: Float = scenario == "narrowWallUpload" ? 0.25 : -0.25
+            engine.coverage?.setEnd(.left, at: -0.25)
+            engine.coverage?.setEnd(.right, at: rightEnd)
+            engine.finishWalk()
+            if scenario == "degenerateWallRefused" {
+                return engine.state.phase == .wallWalk && engine.state.wallTooShort && !engine.bothEndsMarked
+                    ? "passed" : "zero-length wall was allowed to finish"
+            }
+            guard engine.state.phase == .markFeatures, engine.coverage?.leftEnd == -0.25,
+                  engine.coverage?.rightEnd == 0.25 else { return "narrow wall lost its ends or could not finish" }
+            guard let data = try? engine.sceneJSON(), !data.isEmpty else { return "narrow wall could not be packaged" }
+            // Enter the real upload path, then cancel before its Task can send anything.
+            engine.startUpload()
+            engine.uploadTask?.cancel()
+            return engine.state.phase == .uploading ? "passed" : "narrow wall could not upload"
         case "staleBeforeEnd":
             engine.handle(.interrupted)
             now = 30

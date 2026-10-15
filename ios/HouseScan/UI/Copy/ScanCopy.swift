@@ -409,10 +409,9 @@ enum ScanCopy {
         case .tooLittleWall:
             // Says what the app can't do, not where to aim: the homeowner must not be nudged to
             // mark an end farther than the wall really goes. "I can't get there" stays the way on.
-            // The app's own minimum (`WallFrame.minWallLength`), not a measured installation rule:
-            // no reason is given for it, and rule distances belong to the server. Folded, the lead
-            // says only that; aiming elsewhere is right only if the circle was off the real end,
-            // so it doesn't lead.
+            // Only a degenerate wall reaches this refusal; placement distances belong to the
+            // server. Folded, the lead says only that; aiming elsewhere is right only if the
+            // circle was off the real end, so it doesn't lead.
             Instruction(
                 title: "House Scan can't use a wall that short", detail: "If this is where the wall ends, tap I can't get there to continue.",
                 folded: endAimFold("Too short to use", "House Scan can't use a wall that short. If this is where the wall ends, tap I can't get there to continue."))
