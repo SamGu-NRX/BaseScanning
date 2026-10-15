@@ -2297,6 +2297,9 @@ final class ScanEngine {
     private func automaticGapQueue(_ result: PlacementResult, asking: GapPlan? = nil) -> [(item: PlacementMissingEvidence, plan: GapPlan)] {
         // A request raised while the phone has lost its place could only time out: show the result.
         guard !automaticGapsStopped, !state.tracking.hasLostItsPlace, let map = coverage else { return [] }
+        // D6 option A: a refused, unmeasured wall goes straight to its result. More views
+        // cannot repair the walk the homeowner already declined.
+        guard !presentation(of: result, isSample: resultClient.isSample).wallNotMeasured else { return [] }
         let asked = automaticGaps + (asking.map { [$0] } ?? [])
         // A new view cannot settle an area the homeowner has already said is obstructed, or
         // couldn't check. Filter before the request limit so those areas do not consume the
@@ -2705,6 +2708,23 @@ extension ScanEngine {
         guard engine.planner.current == .aimAtGround(s: 0) else { return "fixture did not select meter aim" }
         now = 5
         switch scenario {
+        case "unmeasuredFollowUps":
+            guard let url = Bundle.main.url(forResource: "SampleResult", withExtension: "json"),
+                  let data = try? Data(contentsOf: url),
+                  var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return "missing result fixture" }
+            json["missing_evidence"] = [["kind": "band", "band": "ground", "span_ft": [-0.5, 0.5], "message": "Show the ground"]]
+            guard let answer = try? JSONSerialization.data(withJSONObject: json),
+                  let result = try? PlacementResult.decode(answer) else { return "invalid result fixture" }
+            engine.coverage?.setEnd(.left, at: -0.3)
+            engine.coverage?.setEnd(.right, at: 0.3)
+            engine.state.tracking = .normal
+            guard !engine.automaticGapQueue(result).isEmpty else { return "fixture has no automatic view" }
+            engine.walkRefusals.ended(.left, at: -0.3, walked: 0, time: 0)
+            engine.walkRefusals.ended(.right, at: 0.3, walked: 0, time: 6)
+            guard engine.presentation(of: result, isSample: true).wallNotMeasured else { return "fixture wall is measured" }
+            guard engine.automaticGapQueue(result).isEmpty else { return "unmeasured wall asked for more views" }
+            engine.walkRefusals = WalkRefusals()
+            return engine.automaticGapQueue(result).isEmpty ? "measured wall lost its follow-up" : "passed"
         case "staleBeforeEnd":
             engine.handle(.interrupted)
             now = 30
