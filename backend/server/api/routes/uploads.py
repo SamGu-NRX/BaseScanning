@@ -24,17 +24,16 @@ def routes_enabled(settings) -> bool:
 
     Volume deployments reject a missing secret at startup (`resolve_storage`).
     Outside volume storage the routes are disabled outright: tokens are never
-    minted there and an empty-key verifier would accept forgeries. A local test
-    that wants the routes without a secret opts in explicitly with
-    UPLOAD_TOKENS_ALLOW_MISSING_SECRET (tokens then verify against an empty key).
+    minted there and an empty-key verifier would accept forgeries. A test that
+    wants the routes sets UPLOAD_URL_HMAC_SECRET to a throwaway value.
     """
 
-    return bool(settings.UPLOAD_URL_HMAC_SECRET) or settings.UPLOAD_TOKENS_ALLOW_MISSING_SECRET
+    return bool(settings.UPLOAD_URL_HMAC_SECRET)
 
 
 def _secret(deps) -> bytes:
     raw = deps.settings.UPLOAD_URL_HMAC_SECRET or ""
-    if not raw and not deps.settings.UPLOAD_TOKENS_ALLOW_MISSING_SECRET:
+    if not raw:
         # Fail closed even if the routes were registered another way: an empty
         # HMAC key would let anyone who knows a storage key forge a token.
         raise fail(
@@ -71,10 +70,7 @@ def register(app: FastAPI, settings) -> None:
     if not routes_enabled(settings):
         log_event(
             "api.startup",
-            msg=(
-                "upload token routes disabled: UPLOAD_URL_HMAC_SECRET is not configured "
-                "and UPLOAD_TOKENS_ALLOW_MISSING_SECRET is not set"
-            ),
+            msg=("upload token routes disabled: UPLOAD_URL_HMAC_SECRET is not configured"),
         )
         return
 

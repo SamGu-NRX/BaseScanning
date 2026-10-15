@@ -59,13 +59,23 @@ def test_forged_empty_key_token_cannot_read_files(tmp_path) -> None:
     assert b"private-bytes" not in response.content
 
 
-def test_local_test_mode_keeps_token_routes_without_a_secret(tmp_path) -> None:
-    """The explicit opt-in: an empty key verifies, and only local tests set it."""
+def test_local_test_secret_serves_token_routes(tmp_path) -> None:
+    """A configured secret (the way every test opts in, per conftest.py) serves
+    the routes; a token minted with that same key verifies. There is no
+    empty-key path left in the code."""
 
-    settings = _local_settings(tmp_path, UPLOAD_TOKENS_ALLOW_MISSING_SECRET=True)
+    test_secret = "h" * 32
+    settings = _local_settings(tmp_path, UPLOAD_URL_HMAC_SECRET=test_secret)
     app = create_app(settings=settings)
     app.state.deps.storage.put_bytes("captures/cap_x/packet.json", b"shared-bytes", "application/json")
-    response = TestClient(app).get(f"/v1/uploads/{_forged_get_token('captures/cap_x/packet.json')}")
+
+    def mint(key: str) -> str:
+        return mint_token(
+            {"op": "get", "key": key, "md5": "", "ct": "", "exp": int(time.time()) + 600},
+            test_secret.encode(),
+        )
+
+    response = TestClient(app).get(f"/v1/uploads/{mint('captures/cap_x/packet.json')}")
     assert response.status_code == 200
     assert response.content == b"shared-bytes"
 
