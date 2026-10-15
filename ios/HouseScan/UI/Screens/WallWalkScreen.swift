@@ -121,7 +121,7 @@ struct WallWalkScreen: View {
         }
         var copy = ScanCopy.withCoaching(ScanCopy.guidance(state.guidance, hint: shownHint), coaching)
         if aimMarker == .covered, detailsCoverCamera {
-            copy.note = [copy.note, "The camera view is below. Close Details or scroll."].compactMap { $0 }.joined(separator: " ")
+            copy.note = [copy.note, ScanCopy.cameraBelowDetails].compactMap { $0 }.joined(separator: " ")
         }
         return copy
     }

@@ -823,7 +823,8 @@ enum ScanCopy {
     static let proposedSpotThisWay = "The proposed spot is this way"
     static let proposedSpotOffScreen = "The proposed spot is off screen. Turn the phone toward the arrow."
     /// The note shown outside Details when the open camera cannot hold the chevron, so there
-    /// is no arrow to turn toward (review of #241).
+    /// is no arrow to turn toward (review of #241). Not while open Details covers the camera:
+    /// `cameraBelowDetails` says how to get it back instead.
     static func proposedSpotOffScreen(turn direction: AimDirection) -> String {
         let turn = switch direction {
         case .above: "Tilt the phone up"
@@ -834,6 +835,10 @@ enum ScanCopy {
         }
         return "The proposed spot is off screen. \(turn) to find it."
     }
+
+    /// When open Details at the largest text sizes leaves almost none of the camera on screen,
+    /// on the walk and in "See it on your wall".
+    static let cameraBelowDetails = "The camera view is below. Close Details or scroll."
 
     static let seeOnWall = "See this spot on your wall"
     /// For a spot an installer still has to confirm against the meter's working space.

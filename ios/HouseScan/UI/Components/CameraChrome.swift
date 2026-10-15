@@ -1,3 +1,4 @@
+import HouseScanKit
 import SwiftUI
 
 /// The frame shared by every camera screen: status row and one instruction at the top, the
@@ -26,12 +27,22 @@ struct CameraChrome<Bottom: View>: View {
     /// the card folds its detail and the legend under "Details" (`InstructionCard.foldsDetail`)
     /// and leaves the camera open. Questions and refusals keep every word in view.
     var aims = false
+    /// Whether the card's note takes its room out of the least open camera instead of pushing
+    /// the actions down. For a screen whose note shows only when the camera has nothing to draw
+    /// ("See it on your wall"): at AX5 its off-screen note is about 290 pt, and pushed below it
+    /// Done left the screen (CI run of #241 at d5d137ed).
+    var noteTakesCameraRoom = false
     @ViewBuilder var bottom: Bottom
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// The card's note's height, kept only for `noteTakesCameraRoom`.
+    @State private var noteRoom: CGFloat = 0
 
     private var folds: Bool { aims && typeSize.isAccessibilitySize }
+
+    /// The least open camera without a note (`CameraChromeLayout.minCameraWindow` when folded).
+    private var leastCameraWindow: CGFloat { folds ? CameraChromeLayout.minCameraWindow : 0 }
 
     var body: some View {
         // One layout at every text size: the chrome fills the screen and, only when the largest
@@ -51,9 +62,15 @@ struct CameraChrome<Bottom: View>: View {
                                 .accessibilityHidden(true)
                         }
                     }
+                    .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { content in
+                        cameraWindow?.layout.content = content
+                    }
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { viewport in
+                cameraWindow?.layout.viewport = viewport
+            }
         }
     }
 
@@ -70,7 +87,11 @@ struct CameraChrome<Bottom: View>: View {
             InstructionCard(
                 instruction: instruction, tone: tone, reply: reply, eyebrow: eyebrow,
                 foldsDetail: folds, legend: folds ? legend : nil,
-                onDetailsShown: { shown in cameraWindow?.detailsShown = shown }
+                onDetailsShown: { shown in cameraWindow?.detailsShown = shown },
+                onNoteRoom: cameraWindow == nil ? nil : { room in
+                    cameraWindow?.layout.noteRoom = room
+                    if noteTakesCameraRoom, noteRoom != room { noteRoom = room }
+                }
             )
             if let legend, !folds {
                 legendLine(legend)
@@ -78,9 +99,12 @@ struct CameraChrome<Bottom: View>: View {
             // The open camera between the card and the actions; the aim ring shows only inside
             // it (B-36). On an aiming step at the accessibility sizes it keeps at least
             // `minCameraWindow`, and the actions below scroll into reach.
-            Spacer(minLength: folds ? CameraChromeLayout.minCameraWindow : 0)
+            Spacer(minLength: max(leastCameraWindow - (noteTakesCameraRoom ? noteRoom : 0), 0))
                 .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { window in
-                    if let cameraWindow, cameraWindow.frame != window { cameraWindow.frame = window }
+                    guard var layout = cameraWindow?.layout else { return }
+                    layout.window = window
+                    layout.minimumHeight = leastCameraWindow
+                    cameraWindow?.layout = layout
                 }
             bottom
         }
@@ -110,13 +134,42 @@ struct CameraChrome<Bottom: View>: View {
 }
 
 /// The open camera between the instruction card and the actions, in global coordinates.
-/// `CameraChrome` writes its frame and disclosure state. The overlay uses the frame; the walk
-/// uses both to explain when open Details has pushed the camera below the screen.
+/// `CameraChrome` measures it and writes its disclosure state. The overlay uses the frame; the
+/// walk uses both to explain when open Details has pushed the camera below the screen.
 @MainActor
 @Observable
 final class CameraWindow {
-    var frame: CGRect?
+    private(set) var frame: CGRect?
+    /// `frame` as it would be if the card had no note (`OpenCameraWithoutNote`). A note shown
+    /// because of what the camera holds is judged against this, so its own height can't keep it
+    /// up. Equal to `frame` while the card has no note.
+    private(set) var noteFreeFrame: CGRect?
     var detailsShown = false
+
+    /// What `CameraChrome` measures. Not observed itself: it changes on every scroll, and
+    /// readers follow `frame` and `noteFreeFrame`.
+    struct Layout: Equatable {
+        var window: CGRect?
+        var content: CGRect?
+        var viewport: CGRect?
+        /// How much taller the card's note makes the card (`InstructionCard.onNoteRoom`).
+        var noteRoom: CGFloat = 0
+        /// The least open camera the chrome keeps without a note.
+        var minimumHeight: CGFloat = 0
+    }
+
+    @ObservationIgnored var layout = Layout() {
+        didSet {
+            guard layout != oldValue else { return }
+            if frame != layout.window { frame = layout.window }
+            let noteFree = layout.window.map { window in
+                guard let content = layout.content, let viewport = layout.viewport else { return window }
+                return OpenCameraWithoutNote.frame(window: window, content: content, viewport: viewport,
+                                                   noteRoom: layout.noteRoom, minimumHeight: layout.minimumHeight)
+            }
+            if noteFreeFrame != noteFree { noteFreeFrame = noteFree }
+        }
+    }
 }
 
 /// `CameraChrome`'s layout constants, outside it because a generic type can't hold stored

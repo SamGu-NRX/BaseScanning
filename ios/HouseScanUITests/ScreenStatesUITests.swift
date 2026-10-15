@@ -795,21 +795,77 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertTrue(coveredCard.waitForNonExistence(timeout: 5), "closing Details must remove its camera obstruction advice")
     }
 
+    /// With Details closed and no room in the open camera for the chevron and its words, the way
+    /// to turn is on the card, never folded under Details. At AX5 the sample's three-line title
+    /// leaves too little camera for the chevron's words; at AX3 the chevron fits, and since the
+    /// card no longer repeats a drawn chevron, AX3 can't show this state (review of #241).
     @MainActor
-    func testTheOffScreenSpotInstructionStaysVisibleWithDetailsClosedAtAX3() throws {
+    func testTheOffScreenSpotInstructionStaysVisibleWithDetailsClosedAtAX5() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "resultAR",
-                               "-uiDemoSpotOffScreen", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"]
+                               "-uiDemoSpotOffScreen"] + Self.largestText
         app.launch()
+        defer { app.terminate() }
         XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
         let note = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "The proposed spot is off screen")).firstMatch
         XCTAssertTrue(note.waitForExistence(timeout: 5), "the off-screen direction must not be folded into Details")
         XCTAssertTrue(note.label.contains("Turn the phone right"), note.label)
         XCTAssertFalse(element(app, "instruction.detail").exists, "Details must remain closed")
+        XCTAssertFalse(element(app, "ar.spotDirection").exists, "fixture must leave no room for a chevron and label")
         XCTAssertTrue(app.frame.contains(note.frame), "the full instruction must be on the visible screen: \(note.frame)")
-        attach(app, name: "resultAR-offScreen-note-AX3")
+        XCTAssertTrue(app.buttons["action.closeAR"].isHittable, "the note takes its room from the camera, not from Done")
+        attach(app, name: "resultAR-offScreen-note-AX5")
+    }
+
+    /// At AX5 the folded card leaves the spot in the open camera, and opening Details covers it.
+    /// At d5d137ed the card then said "Tilt the phone up" and kept saying it after Details
+    /// closed: the five-line note made the card cover the spot itself, and Done went below the
+    /// screen (CI run of #241, ProvisionalPlacementUITests). Closed again, the card must be as it
+    /// was, and open Details gives no direction to turn.
+    @MainActor
+    func testTheOffScreenNoteDoesNotKeepItselfUpAfterDetailsCloseAtAX5() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "resultAR"] + Self.largestText
+        app.launch()
+        defer { app.terminate() }
+        let card = element(app, "instruction")
+        let details = element(app, "instruction.details")
+        let done = app.buttons["action.closeAR"]
+        func cardSaying(_ words: String) -> XCUIElement {
+            app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", words)).firstMatch
+        }
+        XCTAssertTrue(details.waitForExistence(timeout: 15))
+        XCTAssertFalse(cardSaying("off screen").waitForExistence(timeout: 2), "fixture: the folded card must leave the spot in view")
+        XCTAssertFalse(element(app, "ar.spotDirection").exists, "fixture: the spot must be in the open camera")
+        let folded = card.label
+        XCTAssertTrue(done.isHittable)
+
+        tap(app, "instruction.details")
+        XCTAssertTrue(element(app, "instruction.detail").waitForExistence(timeout: 5))
+        // Read once the card has had time to react to the covered camera; checked at the end, so
+        // the run before the fix fails on the note that stays.
+        _ = cardSaying("The camera view is below").waitForExistence(timeout: 3)
+        let opened = card.label
+        attach(app, name: "resultAR-detailsOpen-AX5")
+        for _ in 0..<4 where !done.isHittable { app.swipeUp(velocity: .slow) }
+        XCTAssertTrue(done.isHittable, "with Details open, Done must be in reach after scrolling")
+        for _ in 0..<4 where !details.isHittable { app.swipeDown(velocity: .slow) }
+
+        tap(app, "instruction.details")
+        XCTAssertTrue(element(app, "instruction.detail").waitForNonExistence(timeout: 5), "Details didn't close")
+        XCTAssertTrue(cardSaying("off screen").waitForNonExistence(timeout: 5),
+                      "the off-screen note outlasted open Details: \(card.label)")
+        let refolded = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'instruction' AND label == %@", folded)).firstMatch
+        XCTAssertTrue(refolded.waitForExistence(timeout: 5), "closed again, the card must read as before: \(card.label)")
+        XCTAssertFalse(cardSaying("off screen").waitForExistence(timeout: 2), "the off-screen note came back on its own")
+        XCTAssertTrue(done.isHittable, "closing Details must leave Done in reach")
+        attach(app, name: "resultAR-detailsClosedAgain-AX5")
+
+        XCTAssertTrue(opened.contains("The camera view is below. Close Details or scroll."), "open Details covered the camera: \(opened)")
+        XCTAssertFalse(opened.contains("off screen"), "open Details must not give a direction to turn: \(opened)")
     }
 
     /// Review of #241: an aim card's title follows the marker the overlay draws, and the overlay

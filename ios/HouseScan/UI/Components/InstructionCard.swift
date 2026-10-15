@@ -44,6 +44,10 @@ struct InstructionCard: View {
     /// is the chrome's own line under the card (`CameraChrome.legend`).
     var legend: String? = nil
     var onDetailsShown: ((Bool) -> Void)? = nil
+    /// Called with how much taller `Instruction.note` makes the card, 0 without a note. The
+    /// chrome uses it to judge the open camera as it would be without the note
+    /// (`CameraWindow.noteFreeFrame`). Nil skips the measuring.
+    var onNoteRoom: ((CGFloat) -> Void)? = nil
 
     /// How long a new card's reply ignores taps, so a tap meant for the card that just left
     /// can't answer the next one: in the 4.1 field test, quick taps on "Can't get there" each
@@ -58,13 +62,18 @@ struct InstructionCard: View {
     /// Whether the folded details are open. Each new aim target closes them; marker titles
     /// within that target and ride-along coaching keep them.
     @State private var detailsShown = false
+    /// The message's height, and its height laid out unseen without the note (`onNoteRoom`).
+    @State private var messageHeight: CGFloat = 0
+    @State private var noteFreeHeight: CGFloat = 0
 
     private var replyTask: Instruction { reply?.task ?? instruction }
 
     private var hasDetails: Bool { foldsDetail && (foldedDetail != nil || legend != nil) }
 
     /// The words the card shows: folded, a step that leads with its action does (`Instruction.folded`).
-    private var title: String { foldsDetail ? (instruction.folded?.title ?? instruction.title) : instruction.title }
+    private func title(of instruction: Instruction) -> String {
+        foldsDetail ? (instruction.folded?.title ?? instruction.title) : instruction.title
+    }
     private var foldedDetail: String? { instruction.folded?.detail ?? instruction.detail }
 
     var body: some View {
@@ -72,6 +81,22 @@ struct InstructionCard: View {
             message
                 .id(instruction)
                 .transition(.identity)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
+                    messageHeight = height
+                    onNoteRoom?(max(height - noteFreeHeight, 0))
+                }
+                // Always laid out, so both heights come from the same layout pass as the open
+                // camera's: a note's room reported apart from that pass, against a camera
+                // measured with or without it, could put back a note just taken down.
+                .background(alignment: .top) {
+                    if onNoteRoom != nil {
+                        noteFreeMessage
+                            .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
+                                noteFreeHeight = height
+                                onNoteRoom?(max(messageHeight - height, 0))
+                            }
+                    }
+                }
             if hasDetails {
                 details
             }
@@ -132,6 +157,23 @@ struct InstructionCard: View {
     }
 
     private var message: some View {
+        messageContent(instruction)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.updatesFrequently)
+            .accessibilityIdentifier("instruction")
+    }
+
+    /// The message without `Instruction.note`, laid out unseen behind the card for `onNoteRoom`.
+    private var noteFreeMessage: some View {
+        var noteFree = instruction
+        noteFree.note = nil
+        return messageContent(noteFree)
+            .fixedSize(horizontal: false, vertical: true)
+            .hidden()
+            .accessibilityHidden(true)
+    }
+
+    private func messageContent(_ instruction: Instruction) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             if let symbol = iconName {
                 Image(systemName: symbol)
@@ -157,7 +199,7 @@ struct InstructionCard: View {
                             .hidden()
                             .accessibilityHidden(true)
                     }
-                    Text(title)
+                    Text(title(of: instruction))
                         .font(Typeface.instruction)
                         .foregroundStyle(Palette.chalk)
                         .fixedSize(horizontal: false, vertical: true)
@@ -174,9 +216,6 @@ struct InstructionCard: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.updatesFrequently)
-        .accessibilityIdentifier("instruction")
     }
 
     /// The detail and the legend under "Details", the word and control the result screen
