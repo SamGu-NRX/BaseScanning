@@ -1,0 +1,188 @@
+{
+  "schema_version": "placement-case-manifest/v0",
+  "description": [
+    "Placement-boundary case suite. Each positive case pairs a schema-valid synthetic base-scene/v0 source with an independently authored root-wire scene; both describe the same wall, a nearby gas hazard, a stretch of ground nobody observed, and an unexplored end. The pair is authored by hand on both sides (the same geometry in meters and in feet), never produced by running the converter, which does not exist yet.",
+    "Positive cases run the unchanged top-level solver through POST /v1/placements on the wire scene and compare the whole response, except stats.elapsed_ms, between two direct executions, against these expectations. Negative cases are source-only: the W7 bridge that would convert sources must refuse them with the declared error code and pointer, so they stay labelled awaiting conversion until that bridge consumes them.",
+    "Every fixture path is relative to this manifest's directory and pinned by sha256; a missing or drifted file fails the suite with its path."
+  ],
+  "cases": [
+    {
+      "id": "hazard-right-ground-gap",
+      "kind": "positive",
+      "source": {
+        "path": "hazard-right-ground-gap.source.json",
+        "sha256": "670624f98e6366c15d8d0154e9d5f98338cbe65a3d31f204475619fe22c9f714"
+      },
+      "wire": {
+        "path": "hazard-right-ground-gap.wire.json",
+        "sha256": "7658044cc2d6bf30b1b6f39542adc0ad5f26228a58bca8562757779be407d7f5"
+      },
+      "expectations": {
+        "decision": "manual_review",
+        "spot": {
+          "wall_id": "side",
+          "segment": 0,
+          "span_ft": [
+            7.5,
+            10.083333
+          ],
+          "outcome": "unsure"
+        },
+        "checks": {
+          "gas_clearance": {
+            "outcome": "unsure",
+            "unsure_cause": "margin"
+          },
+          "ground_surface": {
+            "outcome": "unsure",
+            "unsure_cause": "unobserved"
+          },
+          "route_length": {
+            "outcome": "pass"
+          },
+          "facing_gap": {
+            "outcome": "pass"
+          }
+        },
+        "missing_evidence": [
+          {
+            "kind": "band",
+            "band": "ground",
+            "span_ft": [
+              -4.427701,
+              20.0
+            ],
+            "out_ft": 13.761035
+          },
+          {
+            "kind": "past_end",
+            "side": "right",
+            "span_ft": [
+              20.0,
+              20.0
+            ]
+          }
+        ],
+        "sweep_failing_runs": [
+          {
+            "start_ft": [
+              2.708333,
+              5.541667
+            ],
+            "failing": [
+              "gas_clearance"
+            ]
+          }
+        ],
+        "ends": {
+          "left": "limit",
+          "right": "unexplored"
+        }
+      },
+      "note": "Geometry facts, not policy: the gas meter at s [3.5, 4.5] ft leaves the nearest non-failing spot just past it (measured 3.0 ft +- 2.21, unsure by margin, not by observation); the ground band is observed only at [-2, 2] and [9, 11] ft, so the chosen spot's ground is unsure-unobserved and the response must request the ground band; the right end is unexplored within reach, so the response must ask for a walk past it; the left end is a real limit."
+    },
+    {
+      "id": "hazard-left-ground-gap",
+      "kind": "positive",
+      "source": {
+        "path": "hazard-left-ground-gap.source.json",
+        "sha256": "fb299f305040d1f1651127a63c5f050c5f8c76be3204831e113d66db79fec32b"
+      },
+      "wire": {
+        "path": "hazard-left-ground-gap.wire.json",
+        "sha256": "8b9b9b7383eba0315fd2591dd962390bc5e0dca12c3bf3b48e65020f6a90a760"
+      },
+      "expectations": {
+        "decision": "manual_review",
+        "spot": {
+          "wall_id": "side",
+          "segment": 0,
+          "span_ft": [
+            2.708333,
+            5.291667
+          ],
+          "outcome": "unsure"
+        },
+        "checks": {
+          "gas_clearance": {
+            "outcome": "unsure",
+            "unsure_cause": "unobserved"
+          },
+          "ground_surface": {
+            "outcome": "unsure",
+            "unsure_cause": "unobserved"
+          },
+          "opening_clearance": {
+            "outcome": "pass"
+          },
+          "route_length": {
+            "outcome": "pass"
+          }
+        },
+        "missing_evidence": [
+          {
+            "kind": "band",
+            "band": "ground",
+            "span_ft": [
+              2.004999,
+              16.451777
+            ],
+            "out_ft": 12.993443
+          },
+          {
+            "kind": "past_end",
+            "side": "left",
+            "span_ft": [
+              -20.0,
+              -20.0
+            ]
+          }
+        ],
+        "sweep_failing_runs": [
+          {
+            "start_ft": [
+              -6.958333,
+              -5.291667
+            ],
+            "failing": [
+              "gas_clearance"
+            ]
+          }
+        ],
+        "ends": {
+          "left": "unexplored",
+          "right": "limit"
+        }
+      },
+      "note": "Geometry facts, not policy: two gas meters block the observed left stretch (their failing sweep runs are pinned), the ground is observed only to s 2 ft so the nearest non-failing spot sits right of the meter with unsure-unobserved ground and an unobserved-caused gas request, and the left end is unexplored within reach, so the response must ask for a walk past it; the right end is a real limit."
+    },
+    {
+      "id": "multiwall-source-unsupported",
+      "kind": "negative_source",
+      "source": {
+        "path": "multiwall-source-unsupported.source.json",
+        "sha256": "c1b3d9dd4b0c7e6926b3f25ce728a6c0e26f969c6f73494eff5202c983736eea"
+      },
+      "wire": null,
+      "expected_error": {
+        "code": "placement_scene_unsupported",
+        "pointer": "/walls"
+      },
+      "note": "Awaiting conversion: the source is schema-valid, so this is a content refusal, not a parse failure. The W7 bridge must decline a two-wall chain with code placement_scene_unsupported at pointer /walls. This suite never runs the missing bridge, and this case is never reported as a successful conversion."
+    },
+    {
+      "id": "generated-hazard-unsupported",
+      "kind": "negative_source",
+      "source": {
+        "path": "generated-hazard-unsupported.source.json",
+        "sha256": "a9b9a35f49f8811e7dd1fbccb9b1eead6de0418494192fa49ee51c5fe603ce34"
+      },
+      "wire": null,
+      "expected_error": {
+        "code": "placement_scene_unsupported",
+        "pointer": "/objects/1/evidence"
+      },
+      "note": "Awaiting conversion: the second object's hazard is generated, never evidence, so the W7 bridge must decline it with code placement_scene_unsupported at pointer /objects/1/evidence. This suite never runs the missing bridge, and this case is never reported as a successful conversion."
+    }
+  ]
+}

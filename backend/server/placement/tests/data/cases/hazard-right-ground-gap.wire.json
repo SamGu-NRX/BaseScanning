@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "meter": {"pos": [0.0, 0.5, 0.0], "wall_id": "side", "plus_minus_ft": 0.3},
+  "walls": [
+    {"id": "side", "baseline": [[-2.0, 0.0], [20.0, 0.0]], "height_ft": 9.0, "source": "tap"}
+  ],
+  "objects": [
+    {"type": "gas_meter", "wall_id": "side", "span_ft": [3.5, 4.5], "bottom_ft": 0.5, "top_ft": 2.5,
+     "source": "tap", "plus_minus_ft": 0.3,
+     "footprint": [[3.5, 0.0], [4.5, 0.0], [4.5, 1.0], [3.5, 1.0]]}
+  ],
+  "ground": [
+    {"type": "mulch", "polygon": [[-2.0, 0.0], [20.0, 0.0], [20.0, 4.0], [-2.0, 4.0]]},
+    {"type": "lawn", "polygon": [[-2.0, 4.0], [20.0, 4.0], [20.0, 14.0], [-2.0, 14.0]]}
+  ],
+  "overheads": [],
+  "facing": [{"wall_id": "side", "span_ft": [-2.0, 20.0], "depth_ft": 14.0, "plus_minus_ft": 0.5}],
+  "coverage": {
+    "ends": {"left": {"kind": "limit", "note": "fence at the left property line"},
+             "right": {"kind": "unexplored", "note": "wall continues right, not walked"}},
+    "observed": [
+      {"band": "wall", "span_ft": [-2.0, 20.0]},
+      {"band": "ground", "span_ft": [-2.0, 2.0], "out_ft": 14.0},
+      {"band": "ground", "span_ft": [9.0, 11.0], "out_ft": 14.0},
+      {"band": "overhead", "span_ft": [-2.0, 20.0]},
+      {"band": "facing", "span_ft": [-2.0, 20.0]}
+    ]
+  }
+}
