@@ -20,16 +20,17 @@ The test asserts the stage is in the run evidence (its artifacts in the run's
 artifact map, its stage record done with positive solver time, its event between
 ``scene`` and ``criteria``), so the journey fails if the capture path stops
 invoking it. It asserts the decision is deterministic and visible in the run and
-result evidence: the artifact validates against the top-level result schema, the
+result evidence: the artifact validates against the top-level result schema and
+solves exactly this journey's merged scene, converted by the scene bridge; the
 served outcome's kind and the capture's terminal status equal the solver's
-``decision`` on every journey, and two journeys plus one direct
-``POST /v1/placements`` call produce identical decision bytes — everything but
-the solver's own ``stats.elapsed_ms``.
+``decision`` on every journey; and two journeys plus one direct
+``POST /v1/placements`` call on the same converted bytes produce identical
+decision bytes — everything but the solver's own ``stats.elapsed_ms``.
 
 The direct check also stays here as its own test, unchanged from the contract the
 placement-stage PR pinned: the front-door journeys prove the stage is wired into
 the capture path, the direct check proves Hunter's public contract survives. Both
-run on the same committed scene bytes, which is what makes the two comparable.
+compare on the same converted scene bytes, which is what makes them comparable.
 """
 
 from __future__ import annotations
@@ -50,6 +51,7 @@ from server.common.config import Settings
 from server.contracts.jobs import run_id_for_capture
 from server.orchestrator.stateio import get_json
 from server.placement import adapter
+from server.placement.scene_bridge import convert_scene
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TOP_SERVER = REPO_ROOT / "server"
@@ -216,7 +218,6 @@ def _decision_bytes(payload: dict) -> bytes:
 def test_capture_front_door_reaches_the_placement_stage(frontdoor) -> None:
     root, packet, client, app = frontdoor
     deps = app.state.deps
-    fixture_bytes = SCENE_FIXTURE.read_bytes()
 
     projections = []
     for tag in ("a", "b"):
@@ -233,8 +234,13 @@ def test_capture_front_door_reaches_the_placement_stage(frontdoor) -> None:
         # path stopped invoking the stage.
         placement = json.loads(deps.storage.get_bytes(artifacts["placement/placement.json"]))
         Draft202012Validator(RESULT_SCHEMA).validate(placement)
-        # The stage solved exactly the committed scene bytes.
-        assert deps.storage.get_bytes(artifacts["placement/scene.json"]) == fixture_bytes
+        # The stage solved exactly this journey's merged scene, converted — the
+        # capture's own metres document, never a fixture.
+        source = json.loads(deps.storage.get_bytes(artifacts["scene/scene.json"]))
+        scene_bytes = json.dumps(convert_scene(source), sort_keys=True, allow_nan=False).encode()
+        assert deps.storage.get_bytes(artifacts["placement/scene.json"]) == scene_bytes
+        assert placement["stats"]["input_sha256"] == hashlib.sha256(scene_bytes).hexdigest()
+        assert placement["decision"] == EXPECTED_DECISION
 
         record = deps.state.get_stage(run_id, "placement")
         assert record.status == "done" and record.error_code is None
@@ -244,14 +250,16 @@ def test_capture_front_door_reaches_the_placement_stage(frontdoor) -> None:
             (event["data"].get("stage"), event["data"].get("status")) for event in events if event["type"] == "stage"
         ]
         assert ("placement", "done") in marks
-        assert marks.index(("scene", "done")) < marks.index(("placement", "done")) < marks.index(("criteria", "done"))
+        # Criteria and placement both follow the merge and run in parallel; the result
+        # stage is the one that must wait for a terminal placement.
+        assert marks.index(("scene", "done")) < marks.index(("placement", "done"))
+        assert marks.index(("placement", "done")) < marks.index(("result", "running"))
 
         terminals = [event for event in events if event["type"] in TERMINAL_EVENTS]
         assert [event["type"] for event in terminals] == ["verdict_ready"]
         assert terminals[0]["data"]["kind"] == EXPECTED_DECISION
 
         # --- the decision is visible in the run and result evidence -------------
-        assert placement["decision"] == EXPECTED_DECISION
         status = client.get(f"/v1/captures/{capture_id}").json()
         served = client.get(f"/v1/captures/{capture_id}/result")
         assert served.status_code == 200, served.text
@@ -261,12 +269,12 @@ def test_capture_front_door_reaches_the_placement_stage(frontdoor) -> None:
         assert result["status"] == status["status"] == "manual_review"
         projections.append(_decision_bytes(placement))
 
-    # Deterministic: two journeys over the same committed scene bytes, one decision.
+    # Deterministic: two journeys over the same packet, one decision.
     assert projections[0] == projections[1]
 
-    # The direct endpoint and the capture front door agree on the same scene bytes.
+    # The direct endpoint and the capture front door agree on the same converted bytes.
     with TestClient(adapter.load_api()["api"].app) as direct:
-        response = direct.post("/v1/placements", content=fixture_bytes, headers={"Content-Type": "application/json"})
+        response = direct.post("/v1/placements", content=scene_bytes, headers={"Content-Type": "application/json"})
     assert response.status_code == 200, response.text
     assert _decision_bytes(response.json()) == projections[0]
 

@@ -154,13 +154,17 @@ STAGES: dict[StageName, StageSpec] = {
             entry="run_3d",
         ),
         # The real placement stage (server/placement/): the repo's unchanged top-level
-        # solver behind `POST /v1/placements`, run on a wire-format scene. Optional: it
-        # adds a decision to the run and degrades (`degraded:placement`, capture
-        # `manual_review`) instead of sinking it. It is exempt from stage stubs — the
-        # only real stage on the dev path — because it is deterministic CPU work.
+        # solver behind `POST /v1/placements`, run on the wire-format scene the bridge
+        # converts from the run's merged scene. Placement waits for `objects_3d` to be
+        # terminal (not just `scene` done) so it only ever solves the scene the
+        # coordinator has already merged — a missing or failed objects_3d stage refuses
+        # placement instead of implying no hazards. Optional: it adds a decision to the
+        # run and degrades (`degraded:placement`, capture `manual_review`) instead of
+        # sinking it. It is exempt from stage stubs — the only real stage on the dev
+        # path — because it is deterministic CPU work.
         StageSpec(
             name="placement",
-            deps=(("scene", _D),),
+            deps=(("scene", _D), ("objects_3d", _T)),
             where="cpu",
             timeout_s=120,
             max_attempts=2,
@@ -185,7 +189,7 @@ STAGES: dict[StageName, StageSpec] = {
         ),
         _cpu(
             "result",
-            (("criteria", _D),),
+            (("criteria", _D), ("placement", _T)),
             60,
             ("result/result.json", "result/result.internal.json", "result/review.html", "result/preview.ply"),
         ),
@@ -238,10 +242,13 @@ STAGE_INPUTS: dict[StageName, tuple[str, ...]] = {
         "poses/registration_report.json",
     ),
     "placement": (
-        # A wire-format scene, the same bytes POST /v1/placements accepts. Nothing
-        # publishes this key yet (the bridge from Hunter's scene.json is future
-        # work), so the stage falls back to its committed reference fixture.
-        "placement/scene.json",
+        # The run's merged source scene (metres) and the objects_3d artifact. The
+        # coordinator's `_merge_if_ready` merges detected objects into scene/scene.json
+        # before `_spawn_ready` can start placement, and placement's deps require
+        # objects_3d terminal, so hydration always carries the merged bytes here. The
+        # objects_3d artifact is readiness evidence only — placement never merges it.
+        "scene/scene.json",
+        "objects/objects_3d.json",
     ),
     "criteria": (
         "scene/",

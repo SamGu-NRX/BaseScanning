@@ -12,21 +12,36 @@ package itself is never touched, so nothing in this process can shadow it, and a
 import cannot silently succeed — every path is pinned under the repository root.
 
 Stage contract (`run`):
-- Input: `placement/scene.json` in the run artifacts — a wire-format scene, the same
-  bytes `POST /v1/placements` accepts. Nothing publishes that key yet (the bridge from
-  Hunter's scene output is future work), so the stage falls back to the committed
-  reference fixture `reference_scene.json`, a byte-identical copy of the top-level
-  server's `tests/fixtures/example-scene.json`; the fallback is recorded as a stage
-  warning.
+- Inputs (from the run's artifacts, hydrated under the work directory): the merged
+  source scene `scene/scene.json` (backend `base-scene/v0` metres — the coordinator's
+  `_merge_if_ready` merges the detected objects into it before placement can start)
+  and `objects/objects_3d.json` as readiness evidence only. There is no reference
+  fallback: a run without these bytes refuses placement rather than solving a scene
+  that is not this capture's.
+- Readiness gate: the `objects_3d` stage record must be `done` and its artifact must
+  carry `format = hss-objects-3d/v0`. A missing, failed or skipped `objects_3d` stage
+  refuses placement (`placement_objects_3d_unavailable`, not retryable) — a run whose
+  hazard pass did not finish must degrade to manual review, never imply no hazards.
+  A successful explicit empty object list is valid.
+- Conversion: `placement.scene_bridge.convert_scene` validates the merged `Scene`
+  (duplicate ids, unsupported or generated evidence, self-contradictory geometry) and
+  converts it to the wire scene exactly once — the adapter never merges objects into
+  the scene again. The converted document is serialized deterministically (sorted
+  keys, non-finite values forbidden) and those exact bytes are what the unchanged
+  solver parses, what `stats.input_sha256` binds to, and what `placement/scene.json`
+  publishes. The source scene artifact is never written back.
 - Output: `placement/placement.json` — the solver's result verbatim (sorted keys), valid
   against the top-level `schemas/result.schema.json`; `placement/scene.json` — the
-  exact input bytes. Only `stats.elapsed_ms` varies between runs: the decision is
-  deterministic for fixed scene bytes and rules.
-- Failure: a malformed or unplaceable scene raises `PlacementSceneError` (code
-  `placement_scene_invalid`, not retryable — the bytes do not heal on a retry). A
-  missing solver tree raises `PlacementBoundaryError` (code `placement_boundary_missing`).
-  Both are recorded stage data; the optional stage degrades the run instead of failing
-  it.
+  exact converted input bytes. Only `stats.elapsed_ms` varies between runs: the decision
+  is deterministic for fixed scene bytes and rules.
+- Failure: a missing input artifact raises `PlacementInputError` (code
+  `placement_scene_input_missing`); a malformed or unplaceable scene raises
+  `PlacementSceneError` (code `placement_scene_invalid`); a scene the bridge cannot
+  support raises `SceneBridgeError` carrying `placement_scene_unsupported` or
+  `placement_scene_invalid`; a missing solver tree raises `PlacementBoundaryError`
+  (code `placement_boundary_missing`). All are not retryable (the bytes do not heal on
+  a retry) and are recorded stage data; the optional stage degrades the run instead of
+  failing it.
 """
 
 from __future__ import annotations
@@ -41,6 +56,7 @@ from types import ModuleType
 from typing import Any
 
 from server.contracts.jobs import StageContext, StageResult
+from server.placement.scene_bridge import convert_scene
 
 # backend/server/placement/adapter.py -> backend/server/placement -> backend/server
 # -> backend -> repository root. The top-level placement server lives beside backend/.
@@ -75,6 +91,24 @@ class PlacementSceneError(ValueError):
     def __init__(self, message: str) -> None:
         super().__init__(message)
         self.code = "placement_scene_invalid"
+
+
+class PlacementInputError(Exception):
+    """A required source artifact is absent from the run. Not retryable: the stage
+    refuses rather than solving a scene that is not this capture's."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.code = "placement_scene_input_missing"
+
+
+class PlacementObjectsError(Exception):
+    """The run's objects_3d pass did not finish, so the scene's hazards are not known
+    to be complete. Not retryable: placement refuses instead of implying no hazards."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.code = "placement_objects_3d_unavailable"
 
 
 def _top_level_server_dir() -> Path:
@@ -164,51 +198,92 @@ def _loaded_rules(modules: dict[str, ModuleType]) -> Any:
     return _RULES
 
 
-def _scene_input(ctx: StageContext) -> tuple[bytes, bool]:
-    """The scene bytes and whether they came from the run artifact (as opposed to the
-    committed reference fixture)."""
+_SOURCE_SCENE = "scene/scene.json"
+_OBJECTS_3D = "objects/objects_3d.json"
 
-    # stage_context hydrates the stage's selected run artifacts as files under the
-    # work directory (STAGE_INPUTS["placement"] admits "placement/scene.json");
-    # ctx.inputs itself only carries packet_dir and run_control.
-    artifact = Path(ctx.work_dir) / "placement" / "scene.json"
-    if artifact.is_file():
-        return artifact.read_bytes(), True
-    fixture = Path(__file__).resolve().parent / "reference_scene.json"
-    return fixture.read_bytes(), False
+
+def _read_input(ctx: StageContext, key: str) -> bytes:
+    """The hydrated run artifact's bytes. Missing means refusal, never a fallback."""
+
+    path = Path(ctx.work_dir) / key
+    if not path.is_file():
+        raise PlacementInputError(
+            f"{key} is missing from this run's artifacts: placement only solves the "
+            "scene this capture produced (STAGE_INPUTS['placement'] hydrates it)"
+        )
+    return path.read_bytes()
+
+
+def _objects_3d_evidence(ctx: StageContext) -> None:
+    """The objects_3d readiness gate: stage done, artifact the declared format.
+
+    Readiness evidence only — the coordinator's `_merge_if_ready` has already merged
+    the detected objects into the source scene, and this stage never merges them again.
+    """
+
+    record = ctx.state.get_stage(ctx.run_id, "objects_3d")
+    status = getattr(record, "status", None)
+    if status != "done":
+        raise PlacementObjectsError(
+            f"objects_3d stage status is {status or 'missing'!r}, not done: the scene's "
+            "hazards may be incomplete, so placement refuses rather than implying no hazards"
+        )
+    raw = _read_input(ctx, _OBJECTS_3D)
+    try:
+        document = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise PlacementObjectsError(f"{_OBJECTS_3D} is not readable JSON: {exc}") from exc
+    fmt = document.get("format") if isinstance(document, dict) else None
+    if fmt != "hss-objects-3d/v0":
+        raise PlacementObjectsError(f'{_OBJECTS_3D} must carry format "hss-objects-3d/v0", got {fmt!r}')
+
+
+def _source_scene_bytes(ctx: StageContext) -> bytes:
+    """The merged source scene's bytes, JSON-parsed and re-serialized deterministically
+    after conversion — those converted bytes are the solver's whole world."""
+
+    raw = _read_input(ctx, _SOURCE_SCENE)
+    try:
+        document = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise PlacementSceneError(f"source scene {_SOURCE_SCENE} is not readable JSON: {exc}") from exc
+    # Validates the merged Scene (duplicate ids, generated or unsupported evidence,
+    # self-contradictory geometry) and converts to the wire scene. SceneBridgeError
+    # carries its own typed code and JSON pointer; it is a ValueError, so it must not
+    # be caught by the solver's ValueError handler below.
+    converted = convert_scene(document)
+    # Sorted keys, no NaN/Inf: deterministic bytes, and a non-finite value fails here
+    # instead of reaching the solver.
+    return json.dumps(converted, sort_keys=True, allow_nan=False).encode("utf-8")
 
 
 def run(ctx: StageContext) -> StageResult:
-    """Orchestrator stage entry: solve the scene, publish the artifact bytes verbatim."""
+    """Orchestrator stage entry: convert this capture's merged scene, solve it,
+    publish the artifact bytes verbatim."""
 
     modules = load_solver()
     scene_mod, solver_mod = modules["scene"], modules["solver"]
-    raw, from_artifact = _scene_input(ctx)
+    _objects_3d_evidence(ctx)
+    scene_bytes = _source_scene_bytes(ctx)
     try:
-        document = json.loads(raw.decode("utf-8"))
         rules = _loaded_rules(modules)
-        parsed = scene_mod.parse_scene(document, rules.rules, raw)
+        parsed = scene_mod.parse_scene(json.loads(scene_bytes.decode("utf-8")), rules.rules, scene_bytes)
         result = solver_mod.solve(parsed, rules)
         text = json.dumps(result, sort_keys=True, allow_nan=False)
     except scene_mod.SceneError as exc:  # schema and geometry refusals from the parser
         raise PlacementSceneError(str(exc)) from exc
-    except ValueError as exc:  # malformed JSON, SceneTooComplex, non-finite lengths
+    except ValueError as exc:  # SceneTooComplex, non-finite lengths
         raise PlacementSceneError(str(exc)) from exc
 
     out_dir = Path(ctx.work_dir) / "placement"
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "placement.json").write_bytes(text.encode("utf-8"))
-    (out_dir / "scene.json").write_bytes(raw)
+    (out_dir / "scene.json").write_bytes(scene_bytes)
     return StageResult(
         artifacts={
             "placement/placement.json": "placement/placement.json",
             "placement/scene.json": "placement/scene.json",
         },
         metrics={"elapsed_ms": float(result["stats"]["elapsed_ms"])},
-        warnings=[]
-        if from_artifact
-        else [
-            "scene_input: committed reference fixture (no placement/scene.json run "
-            "artifact published yet; the bridge from Hunter's scene output is future work)"
-        ],
+        warnings=[],
     )

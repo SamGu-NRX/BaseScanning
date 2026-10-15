@@ -244,9 +244,12 @@ def test_staged_placement_result_is_schema_valid_and_pinned_to_the_fixture() -> 
     assert PLACEMENT["stats"]["elapsed_ms"] > 0
 
 
-def test_a_fresh_front_door_journey_matches_the_staged_receipt(monkeypatch, tmp_path) -> None:
-    """One fresh journey (the same helpers PR #269's tests run) must reproduce
-    the staged decision bytes — everything but the solver's wall-clock timing."""
+def test_a_fresh_front_door_journey_solves_its_own_converted_scene(monkeypatch, tmp_path) -> None:
+    """One fresh journey (the same helpers PR #269's tests run) solves this capture's
+    merged scene, converted by the scene bridge: the solved bytes, the echoed input
+    hash and the direct endpoint's decision all bind to those converted bytes, and
+    the terminal manual_review journey is preserved. The staged receipt stays a
+    historical record of the reference-fixture stage and pins nothing here."""
 
     spec = importlib.util.spec_from_file_location(
         "w6_frontdoor_reference", BACKEND / "tests" / "test_capture_placement_frontdoor.py"
@@ -284,15 +287,35 @@ def test_a_fresh_front_door_journey_matches_the_staged_receipt(monkeypatch, tmp_
     client = TestClient(app)
     client.headers["Authorization"] = f"Bearer {'d' * 40}"
 
-    _, run_id, _ = fd._walk_front_door(root, packet, client, app, packet["packetId"])
-    artifacts = fd._run_artifacts(app.state.deps, run_id)
-    fresh = json.loads(app.state.deps.storage.get_bytes(artifacts["placement/placement.json"]))
+    _, run_id, events = fd._walk_front_door(root, packet, client, app, packet["packetId"])
+    deps = app.state.deps
+    artifacts = fd._run_artifacts(deps, run_id)
+    fresh = json.loads(deps.storage.get_bytes(artifacts["placement/placement.json"]))
+
+    # The solved bytes are this journey's merged scene, converted by the bridge —
+    # not a fixture.
+    source = json.loads(deps.storage.get_bytes(artifacts["scene/scene.json"]))
+    scene_bytes = json.dumps(fd.convert_scene(source), sort_keys=True, allow_nan=False).encode()
+    assert deps.storage.get_bytes(artifacts["placement/scene.json"]) == scene_bytes
+    assert fresh["stats"]["input_sha256"] == hashlib.sha256(scene_bytes).hexdigest()
+
+    # The terminal manual_review journey is preserved.
+    run = deps.state.get_run(run_id)
+    assert run is not None and run.status == "done" and run.outcome_kind == fresh["decision"]
+    assert "placement" not in run.degraded
+    terminals = [event for event in events if event["type"] in fd.TERMINAL_EVENTS]
+    assert [event["type"] for event in terminals] == ["verdict_ready"]
+    assert terminals[0]["data"]["kind"] == fresh["decision"]
 
     def projection(payload: dict) -> bytes:
         decision = json.loads(json.dumps(payload))
         decision["stats"].pop("elapsed_ms")
         return json.dumps(decision, sort_keys=True).encode()
 
-    assert projection(fresh) == projection(PLACEMENT), (
-        "a fresh journey's decision differs from the staged placement result"
+    # The direct endpoint and the capture front door agree on the same converted bytes.
+    with TestClient(fd.adapter.load_api()["api"].app) as direct:
+        response = direct.post("/v1/placements", content=scene_bytes, headers={"Content-Type": "application/json"})
+    assert response.status_code == 200, response.text
+    assert projection(response.json()) == projection(fresh), (
+        "the direct endpoint's decision differs from the fresh journey's placement decision"
     )
