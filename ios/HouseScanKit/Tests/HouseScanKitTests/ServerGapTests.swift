@@ -237,6 +237,33 @@ import Testing
         #expect(planner.plan(for: toEnd, leftEnd: -1, rightEnd: 1) != nil)
     }
 
+    @Test(arguments: [WalkSide.left, .right])
+    func markedEndsUseTheServersToleranceArithmetic(side: WalkSide) throws {
+        let planner = GapPlanner()
+        for magnitude: Float in [0, 1] {
+            let end = side == .left ? -magnitude : magnitude
+            let edge = SceneExport.feetInward(end, rounding: side == .left ? .up : .down)
+            for excess in [0.0099, 0.01, 0.0101] {
+                let span = side == .left ? [edge - excess, 1] : [-1, edge + excess]
+                let request = try item("{\"kind\":\"band\",\"band\":\"wall\",\"span_ft\":\(span),\"message\":\"m\"}")
+                let left: Float? = side == .left ? end : nil
+                let right: Float? = side == .right ? end : nil
+                // At zero, 0.01 is missing. At the written +/-3.2808 ft end, subtracting
+                // the decimal endpoints gives less than 0.01, as on the server.
+                let missing = excess > 0.01 || (magnitude == 0 && excess == 0.01)
+                #expect((planner.plan(for: request, leftEnd: left, rightEnd: right) == nil) == missing)
+            }
+        }
+    }
+
+    @Test func decimalToleranceGapsSettleExactlyAsOnTheServer() {
+        #expect(!GapPlanner.countsAsMissing(from: 4.99, to: 5.00))
+        #expect(!GapPlanner.countsAsMissing(from: -5.00, to: -4.99))
+        #expect(GapPlanner.countsAsMissing(from: 0, to: 0.01))
+        #expect(GapPlanner.fraction(of: 0...5, coveredBy: [0...Float(4.99 * 0.3048)]) == 1)
+        #expect(GapPlanner.fraction(of: -5...0, coveredBy: [Float(-4.99 * 0.3048)...0]) == 1)
+    }
+
     @Test func pastEndAsksForTheGroundBeyondThatEnd() throws {
         // Left end at s = -3 m: ask for -5...-3. Right end at 4 m: ask for 4...6.
         let left = try #require(GapPlanner().plan(for: item(#"{"kind":"past_end","side":"left","message":"m"}"#), leftEnd: -3, rightEnd: 4))

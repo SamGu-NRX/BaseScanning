@@ -1,6 +1,16 @@
 import HouseScanKit
 
 extension ScanViewState {
+    func recordAimSpan(for step: GuidanceStep, range: ClosedRange<Float>) {
+        if aimSpan?.step != step { previousAimSpan = aimSpan }
+        aimSpan = AimSpan(step: step, range: range)
+    }
+
+    func resetAimSpans() {
+        aimSpan = nil
+        previousAimSpan = nil
+    }
+
     /// How far the walk's aim task is toward done, 0...1, for the ring that fills (#81). Nil for
     /// every step but an aim task.
     var aimProgress: Double? {
@@ -8,7 +18,7 @@ extension ScanViewState {
     }
 
     /// How far `step` is toward done, 0...1: the covered share of its band over the stretch the
-    /// planner checks, `aimHalfWidth` either side of its s, over the share that completes it
+    /// planner checks, trimmed beside deferred stretches, over the share that completes it
     /// (`aimSatisfied`). The planner's numbers are read here, on the engine's side of the
     /// contract, so the screens don't import them.
     ///
@@ -35,8 +45,12 @@ extension ScanViewState {
         default:
             return nil
         }
-        let half = GuidancePlanner.aimHalfWidth - coverage.cellWidth * 1e-3
-        let covered = coverage.coveredFraction(band, in: (s - half)...(s + half))
+        let recorded = [aimSpan, previousAimSpan].compactMap { $0 }.first { $0.step == step }?.range
+        // Demo states have no planner; their aims use the usual window.
+        let range = recorded ?? ((s - GuidancePlanner.aimHalfWidth)...(s + GuidancePlanner.aimHalfWidth))
+        // Cap the edge inset so a short trimmed window cannot invert its bounds.
+        let tolerance = min(coverage.cellWidth * 1e-3, (range.upperBound - range.lowerBound) / 4)
+        let covered = coverage.coveredFraction(band, in: (range.lowerBound + tolerance)...(range.upperBound - tolerance))
         return min(1, covered / GuidancePlanner.aimSatisfied)
     }
 }

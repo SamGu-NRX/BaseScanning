@@ -387,7 +387,9 @@ final class PhotoProcessingUITests: XCTestCase {
             let target = app.descendants(matching: .any)[identifier].firstMatch
             XCTAssertTrue(target.waitForExistence(timeout: 10), "missing \(identifier)")
             for _ in 0..<6 where !target.isHittable { app.swipeUp() }
-            target.tap()
+            // CI recorded 50 ms taps with no press feedback in the processing scroll view.
+            // Use one deliberate native-element press, without changing the target or retrying.
+            target.press(forDuration: 0.2)
         }
 
         @MainActor

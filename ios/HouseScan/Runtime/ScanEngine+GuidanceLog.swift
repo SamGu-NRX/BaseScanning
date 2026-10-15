@@ -9,8 +9,8 @@ import HouseScanKit
 /// | hold on the meter (close-up) | closeup | |
 /// | walk to a side; walk round a corner and mark the next wall | walk | |
 /// | mark the end on a side | mark_end | |
-/// | tilt down to the ground at s | tilt_to_ground | ground, s ± 0.3 m |
-/// | tilt up to show more wall at s | gap_band | wall, s ± 0.3 m |
+/// | tilt down to the ground at s | tilt_to_ground | ground, aim window |
+/// | tilt up to show more wall at s | gap_band | wall, aim window |
 /// | step back | step_back | |
 /// | tilt up above the meter's stretch | gap_band | overhead, its stretch |
 /// | something in front of the wall at s (LiDAR) | gap_band | its hidden band, s ± 1 m |
@@ -64,9 +64,9 @@ extension ScanEngine {
             return request(.markEnd(side), .markEnd, copy)
         case .aimAtGround(let s):
             // The planner's own window for an aim task (`GuidancePlanner.isSatisfied`).
-            return request(.aimAtGround(cell: cell(s)), .tiltToGround, copy, band: .ground, span: (s - 0.3)...(s + 0.3))
+            return request(.aimAtGround(cell: cell(s)), .tiltToGround, copy, band: .ground, span: aimWindow(for: .aimAtGround(s: s)))
         case .aimAtWall(let s):
-            return request(.aimAtWall(cell: cell(s)), .gapBand, copy, band: .wall, span: (s - 0.3)...(s + 0.3))
+            return request(.aimAtWall(cell: cell(s)), .gapBand, copy, band: .wall, span: aimWindow(for: .aimAtWall(s: s)))
         case .stepBack:
             return request(.stepBack, .stepBack, copy)
         case .tiltUp(let span):

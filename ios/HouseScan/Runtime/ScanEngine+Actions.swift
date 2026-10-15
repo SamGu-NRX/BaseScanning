@@ -361,6 +361,7 @@ extension ScanEngine: ScanActions {
         guard state.phase != .markFeatures || !state.tracking.hasLostItsPlace else { return }
         state.marking = MarkingState(kind: kind, step: 0, refusal: nil)
         pendingTaps = []
+        recordCurrentAimActionability()
     }
 
     func markFeaturePoint(at point: CGPoint?, viewSize: CGSize) {
@@ -430,6 +431,7 @@ extension ScanEngine: ScanActions {
         publishFeaturesPastEnds()
         state.marking = nil
         pendingTaps = []
+        recordCurrentAimActionability()
     }
 
     private func feature(_ kind: FeatureKind, taps: [WallPoint], wall: WallFrame) -> MarkedFeature {
@@ -465,6 +467,7 @@ extension ScanEngine: ScanActions {
     func cancelMarking() {
         state.marking = nil
         pendingTaps = []
+        recordCurrentAimActionability()
     }
 
     func deleteFeature(_ id: UUID) {
@@ -555,9 +558,15 @@ extension ScanEngine: ScanActions {
             }
             switch state.guidance {
             case .aimAtGround(let s):
-                updateCoverage { $0.markSkipped(.ground, (s - 0.5)...(s + 0.5)) }
+                // Keep the original 1 m refusal span as well as the requested window. A narrow
+                // aim-only skip can leave adjacent three-cell runs and immediately ask again.
+                let requested = aimWindow(for: .aimAtGround(s: s))
+                let span = min(s - 0.5, requested?.lowerBound ?? s)...max(s + 0.5, requested?.upperBound ?? s)
+                updateCoverage { $0.markSkipped(.ground, span) }
             case .aimAtWall(let s):
-                updateCoverage { $0.markSkipped(.wall, (s - 0.5)...(s + 0.5)) }
+                let requested = aimWindow(for: .aimAtWall(s: s))
+                let span = min(s - 0.5, requested?.lowerBound ?? s)...max(s + 0.5, requested?.upperBound ?? s)
+                updateCoverage { $0.markSkipped(.wall, span) }
             case .seeBehind(let s):
                 // Whatever is in the way can't be seen past: its hidden cells go to review. Only
                 // those: open cells beside them can still be seen and stay asked for.

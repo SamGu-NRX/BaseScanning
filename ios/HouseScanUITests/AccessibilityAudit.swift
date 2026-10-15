@@ -22,6 +22,16 @@ enum AuditIssueKey {
         return "\(auditType)|no element"
     }
 
+    /// Every key read in any pass, for report-only audits of moving screens.
+    static func observed<Value>(in passes: [[String: Value]]) -> [String] {
+        Set(passes.flatMap { $0.keys }).sorted()
+    }
+
+    static func transient<Value>(in passes: [[String: Value]]) -> [String] {
+        let persistent = Set(repeated(in: passes))
+        return observed(in: passes).filter { !persistent.contains($0) }
+    }
+
     /// The keys found in at least two of the passes, sorted.
     static func repeated<Value>(in passes: [[String: Value]]) -> [String] {
         var counts: [String: Int] = [:]
@@ -75,6 +85,8 @@ enum AccessibilityAudit {
     struct Outcome {
         /// Found and read in at least two passes: these fail the test.
         var persistent: [(key: String, finding: Finding)]
+        /// Read in one pass only. Moving-screen reports retain these transition findings.
+        var transient: [(key: String, finding: Finding)] = []
         /// Issues whose element had gone before it could be read, from every pass: attached to
         /// the result, never failed on, since nothing says which element they were.
         var unread: [String]
@@ -124,11 +136,21 @@ enum AccessibilityAudit {
             Thread.sleep(forTimeInterval: 1)
             passes.append(try pass(app))
         }
-        let latest = passes.reversed()
-        let persistent = AuditIssueKey.repeated(in: passes.map(\.findings)).compactMap { key in
-            latest.lazy.compactMap { $0.findings[key] }.first.map { (key: key, finding: $0) }
+        return outcome(from: passes)
+    }
+
+    static func outcome(from passes: [Pass]) -> Outcome {
+        let newestFirst = passes.reversed()
+        func findings(for keys: [String]) -> [(key: String, finding: Finding)] {
+            keys.compactMap { key in
+                newestFirst.lazy.compactMap { $0.findings[key] }.first.map { (key: key, finding: $0) }
+            }
         }
-        return Outcome(persistent: persistent, unread: passes.flatMap(\.unread))
+        let keyedPasses = passes.map(\.findings)
+        return Outcome(
+            persistent: findings(for: AuditIssueKey.repeated(in: keyedPasses)),
+            transient: findings(for: AuditIssueKey.transient(in: keyedPasses)),
+            unread: passes.flatMap(\.unread))
     }
 }
 
@@ -161,6 +183,39 @@ final class AuditIssueKeyTests: XCTestCase {
             AuditIssueKey.key(auditType: contrast, identifier: "Done", label: nil),
             AuditIssueKey.key(auditType: contrast, identifier: nil, label: "Done"))
         XCTAssertEqual(AuditIssueKey.key(auditType: contrast, identifier: nil, label: nil), "\(contrast)|no element")
+    }
+
+    func testMovingReportsRetainAnIssueThatDisappearsAfterTheFirstPass() {
+        let passes = [["contrast|id:instruction": 1], [:], ["contrast|id:photoCount": 1]]
+        XCTAssertEqual(AuditIssueKey.observed(in: passes), ["contrast|id:instruction", "contrast|id:photoCount"])
+        XCTAssertTrue(AuditIssueKey.repeated(in: passes).isEmpty)
+        XCTAssertEqual(AuditIssueKey.transient(in: passes), ["contrast|id:instruction", "contrast|id:photoCount"])
+        let repeated = passes + [["contrast|id:instruction": 1]]
+        XCTAssertEqual(AuditIssueKey.transient(in: repeated), ["contrast|id:photoCount"])
+    }
+
+    @MainActor
+    func testFirstPassOnlyFindingRetainsItsMessage() {
+        let key = AuditIssueKey.key(auditType: contrast, identifier: "instruction", label: "Slow down")
+        let outcome = AccessibilityAudit.outcome(from: [
+            .init(findings: [key: .init(message: "pass 1")]),
+            .init()
+        ])
+        XCTAssertTrue(outcome.persistent.isEmpty)
+        XCTAssertEqual(outcome.transient.map(\.key), [key])
+        XCTAssertEqual(outcome.transient.first?.finding.message, "pass 1")
+    }
+
+    @MainActor
+    func testRepeatedFindingKeepsOnlyTheNewestMessage() {
+        let key = AuditIssueKey.key(auditType: contrast, identifier: "instruction", label: "Slow down")
+        let outcome = AccessibilityAudit.outcome(from: [
+            .init(findings: [key: .init(message: "pass 1")]),
+            .init(findings: [key: .init(message: "pass 2")])
+        ])
+        XCTAssertEqual(outcome.persistent.map(\.key), [key])
+        XCTAssertEqual(outcome.persistent.first?.finding.message, "pass 2")
+        XCTAssertTrue(outcome.transient.isEmpty)
     }
 
     func testAnIssueFoundOnlyOnceIsNotRepeated() {

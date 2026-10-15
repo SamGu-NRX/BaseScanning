@@ -158,6 +158,27 @@ import simd
         expectClose(footprint[0], [(1 + 0.8 * 2.5428) / 0.3048, (-2 - 0.6 * 2.5428) / 0.3048])
     }
 
+    @Test(arguments: [ScenePointObjectKind.ac, .gasMeter])
+    func assumedFootprintStaysInTheTappedSegmentAtAnInwardCorner(kind: ScenePointObjectKind) throws {
+        let wall = SceneWall(meter: SIMD3(0, 1.5, 0), outward: SIMD3(0, 0, 1), groundY: 0,
+                             rightCorners: [WallCorner(s: 2, outward: SIMD3(-1, 0, 0))])
+        let s: Float = kind == .ac ? 1.7 : 1.95
+        let half: Float = kind == .ac ? SceneExport.acAssumedSide / 2 : 0.15
+        let depth = half * 2
+        var input = Self.input()
+        input.wall = wall
+        input.baselineS = -3...5
+        input.features = [.pointObject(kind: kind, tap: wall.world(s: s, height: 0, out: 0), bottom: nil, top: nil)]
+        let value = try Value.parse(SceneExport.jsonData(input))
+        let polygon = try #require(value["objects"]?[0]?["footprint"]?.array).compactMap(\.numbers)
+        try #require(polygon.count == 4)
+        let scale = SceneUnits.feetPerMeter
+        let expected = [SIMD2(s - half, 0), SIMD2(s + half, 0), SIMD2(s + half, depth), SIMD2(s - half, depth)]
+        for (actual, point) in zip(polygon, expected) {
+            expectClose(actual, [Double(point.x) * scale, Double(point.y) * scale])
+        }
+    }
+
     @Test func facingGroundCoverageKeyframes() throws {
         let (_, v) = try Self.exported()
         let facing = try #require(v["facing"]?[0])
