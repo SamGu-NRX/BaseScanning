@@ -137,6 +137,7 @@ def render(door: str) -> str:
         if major:
             d.text((2, y - 11), f"{g:.1f}", fill=(255, 255, 0))
     out = DATA / "preview" / f"elev_{door}.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
     im.save(out)
     return str(out)
 

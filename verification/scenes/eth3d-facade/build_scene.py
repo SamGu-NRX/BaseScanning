@@ -20,6 +20,7 @@ import json
 import math
 import re
 import shutil
+import subprocess
 import sys
 import zipfile
 from dataclasses import dataclass
@@ -27,6 +28,7 @@ from pathlib import Path
 
 import jsonschema
 import numpy as np
+import yaml
 from PIL import Image, ImageDraw
 
 HERE = Path(__file__).resolve().parent
@@ -45,8 +47,9 @@ MAX_VIEW_ANGLE_DEG = 75.0
 COVERAGE_STEP_FT = 0.25
 # Base Core height, docs/04 (What Base does today); the wall band's top probe
 BATTERY_HEIGHT_FT = 39.5 / 12
-# NEC 110.26 headroom, docs/04 (Public rule values); the overhead band's top probe
-HEADROOM_FT = 6.5
+# The overhead band's top probe is the rules' headroom.min_ft, read from server/rules.yaml at
+# --rules-ref: a rule change then moves the probe instead of leaving it at an old height.
+DEFAULT_RULES_REF = "origin/t3/server"  # the e2e harness's default server ref
 GROUND_OUT_FT = 6.0  # how far out the ground band claims to have been seen
 OVERHEAD_OUT_FT = 3.0  # overhead search depth in front of the wall
 OVERHEAD_MAX_FT = 12.0  # anything higher than this is not reported as an overhead
@@ -445,7 +448,40 @@ def visible(kf: Keyframe, wall: Wall, X, walls) -> bool:
 FACING_PROBE_MAX_FT = 20.0  # the facing probe looks no further out than this
 
 
-def band_reach(band: str, facing_depth: float | None) -> float | None:
+def rules_headroom_ft(text: str, where: str) -> float:
+    """headroom.min_ft from the text of a rules.yaml."""
+    node = yaml.safe_load(text)
+    for key in ("headroom", "min_ft", "value"):
+        if not isinstance(node, dict) or key not in node:
+            raise SystemExit(f"{where} has no headroom.min_ft.value")
+        node = node[key]
+    return float(node)
+
+
+def read_rules_headroom(ref: str) -> tuple[str, float]:
+    """The commit `ref` names and the headroom.min_ft of its server/rules.yaml."""
+
+    def git(*args: str) -> str:
+        done = subprocess.run(["git", *args], cwd=HERE, capture_output=True, text=True)
+        if done.returncode != 0:
+            raise SystemExit(f"git {' '.join(args)}: {done.stderr.strip()}")
+        return done.stdout
+
+    sha = git("rev-parse", "--verify", f"{ref}^{{commit}}").strip()
+    headroom_ft = rules_headroom_ft(git("show", f"{sha}:server/rules.yaml"), f"rules.yaml at {ref}")
+    # scan_profiles drops returns at or above OVERHEAD_MAX_FT, so an overhead probe that high
+    # would read an obstruction above that height as clear space.
+    if headroom_ft >= OVERHEAD_MAX_FT:
+        raise SystemExit(
+            f"rules.yaml at {ref} sets headroom.min_ft to {headroom_ft:g} ft, but the scene only "
+            f"reports overheads below OVERHEAD_MAX_FT = {OVERHEAD_MAX_FT:g} ft"
+        )
+    return sha, headroom_ft
+
+
+def band_reach(
+    band: str, facing_depth: float | None, headroom_ft: float | None = None
+) -> float | None:
     """How far a band's probes reach, and so the most a view that sees them all demonstrates:
     up the wall and up above the ground (wall, overhead), out from the wall (ground, facing).
     It becomes the entry's `out_ft`: without one, the server reads a wall view as reaching
@@ -455,16 +491,20 @@ def band_reach(band: str, facing_depth: float | None) -> float | None:
     if band == "ground":
         return GROUND_OUT_FT
     if band == "overhead":
-        return HEADROOM_FT
+        if headroom_ft is None:
+            raise ValueError("the overhead band is probed at the rules' headroom.min_ft")
+        return headroom_ft
     if band == "facing":
         return None if facing_depth is None else min(facing_depth, FACING_PROBE_MAX_FT)
     raise ValueError(band)
 
 
-def band_probes(band: str, wall: Wall, s: float, facing_depth: float | None):
+def band_probes(
+    band: str, wall: Wall, s: float, facing_depth: float | None, headroom_ft: float | None = None
+):
     q = wall.plan_at(s)
     o = wall.outward
-    reach = band_reach(band, facing_depth)
+    reach = band_reach(band, facing_depth, headroom_ft)
 
     def at(out, y):
         p = q + out * o
@@ -481,18 +521,20 @@ def band_probes(band: str, wall: Wall, s: float, facing_depth: float | None):
     return [at(0.0, 3.0), at(reach, 3.0)]
 
 
-def band_coverage(band, walls, facing, kfs, seen=visible):
+def band_coverage(band, walls, facing, kfs, seen=visible, headroom_ft=None):
     """Observed entries for one band: stretches where some keyframe sees every probe, merged
     across corners, each with the smallest reach demonstrated inside it as `out_ft`, rounded
-    down so it never claims more. `seen(kf, wall, X, walls)` is `visible`; tests replace it."""
+    down so it never claims more. `seen(kf, wall, X, walls)` is `visible`; tests replace it.
+    The overhead band needs `headroom_ft`, the rules' headroom.min_ft."""
     samples = []  # (s0, s1, reach) per sample seen
     for w in walls:
-        for s in np.arange(w.s0 + COVERAGE_STEP_FT / 2, w.s0 + w.length, COVERAGE_STEP_FT):
+        for a in np.arange(w.s0, w.s0 + w.length, COVERAGE_STEP_FT):
+            b = min(a + COVERAGE_STEP_FT, w.s0 + w.length)
+            s = (a + b) / 2
             fd = next((v for (wid, a, b, v) in facing if wid == w.id and a <= s < b), None)
-            probes = band_probes(band, w, s, fd)
+            probes = band_probes(band, w, s, fd, headroom_ft)
             if probes is not None and any(all(seen(k, w, X, walls) for X in probes) for k in kfs):
-                half = COVERAGE_STEP_FT / 2
-                samples.append([s - half, s + half, band_reach(band, fd)])
+                samples.append([a, b, band_reach(band, fd, headroom_ft)])
     merged = []  # consecutive samples, also across a corner, keep the smaller reach
     for a, b, reach in samples:
         if merged and abs(merged[-1][1] - a) < 1e-6:
@@ -673,6 +715,11 @@ def main():
     ap.add_argument("--annotations", type=Path, default=HERE / "annotations.json")
     ap.add_argument("--schema", type=Path, help="validate scene.json against this JSON Schema")
     ap.add_argument(
+        "--rules-ref",
+        default=DEFAULT_RULES_REF,
+        help="git ref whose server/rules.yaml sets the overhead probe height (headroom.min_ft)",
+    )
+    ap.add_argument(
         "--overlays",
         action="store_true",
         help="also write keyframes with the annotations and the wall chain drawn on",
@@ -681,7 +728,8 @@ def main():
 
     ann = json.loads(args.annotations.read_text())
     rng = np.random.default_rng(RNG_SEED)
-    report = {}
+    rules_sha, headroom_ft = read_rules_headroom(args.rules_ref)
+    report = {"rules": {"ref": args.rules_ref, "sha": rules_sha, "headroom_min_ft": headroom_ft}}
 
     # 1. Laser scan, ground plane, scene frame ---------------------------------------------
     P = load_scan_crop(args.data / "dslr_scan_eval", ann["roi_scan_xy_m"])
@@ -803,7 +851,7 @@ def main():
     observed = []
     per_band = {}
     for band in ("wall", "ground", "overhead", "facing"):
-        entries, per_band[band] = band_coverage(band, walls, facing, kfs)
+        entries, per_band[band] = band_coverage(band, walls, facing, kfs, headroom_ft=headroom_ft)
         observed += entries
 
     # 7. Assemble ----------------------------------------------------------------------------
@@ -914,7 +962,10 @@ def main():
 
     print(
         json.dumps(
-            {k: report[k] for k in ("ground", "walls", "arkit_projection_check", "reprojection")},
+            {
+                k: report[k]
+                for k in ("rules", "ground", "walls", "arkit_projection_check", "reprojection")
+            },
             indent=1,
             default=float,
         )

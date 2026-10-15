@@ -1,11 +1,14 @@
+import contextlib
 import hashlib
 import io
 import json
 import re
+import struct
 import threading
 import time
 import zipfile
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from dataclasses import replace
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from typing import ClassVar
 
 import pytest
@@ -296,7 +299,8 @@ def test_server_breaking_coverage_rule_fails(fake_url):
     assert record["status"] == "fail"
     joined = "\n".join(record["problems"])
     assert "ruled out for this case" in joined
-    assert "no coverage: decision pass for a scene with no coverage at all" in joined
+    assert "decision pass without a passing spot" in joined
+    assert "no coverage:" not in joined  # Initial invariant failure stops transformed requests.
     assert re.search(r"needs ground \[.*\] observed, none seen", joined)
 
 
@@ -358,6 +362,113 @@ def test_a_slow_refusal_or_a_hang_fails(refusing_url, monkeypatch):
     assert record["status"] == "fail" and record["problems"][0].startswith("no answer within")
 
 
+class UnendingServer(BaseHTTPRequestHandler):
+    """Answers `status` with a body that never ends: written as fast as the client takes it
+    (`flood`), one byte at a time (`trickle`), or never reached because the headers come one
+    byte at a time (`slow headers`). Each answer stops on its own after 5 s."""
+
+    status = 200
+    mode = "flood"
+
+    def do_POST(self):
+        self.rfile.read(int(self.headers["Content-Length"]))
+        head = f"HTTP/1.0 {self.status} X\r\nContent-Type: application/json\r\n".encode()
+        until = time.monotonic() + 5
+        with contextlib.suppress(OSError):
+            if self.mode == "slow headers":
+                self.wfile.write(head)
+                while time.monotonic() < until:
+                    for byte in b"X-Pad: a\r\n":
+                        self.wfile.write(bytes([byte]))
+                        self.wfile.flush()
+                        time.sleep(0.02)
+                return
+            self.wfile.write(head + b"\r\n")
+            while time.monotonic() < until:
+                self.wfile.write(b" " * 4096 if self.mode == "flood" else b" ")
+                self.wfile.flush()
+                if self.mode == "trickle":
+                    time.sleep(0.02)
+
+    def log_message(self, *args):
+        pass
+
+
+@pytest.fixture
+def unending_url():
+    class Server(ThreadingHTTPServer):
+        block_on_close = False  # an answer still running must not hold up the next test
+
+    server = Server(("127.0.0.1", 0), UnendingServer)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_port}"
+    server.shutdown()
+    server.server_close()
+
+
+@pytest.mark.parametrize("status", [200, 500])
+def test_an_endless_body_is_cut_at_the_byte_cap(unending_url, monkeypatch, status):
+    monkeypatch.setattr(e2e, "MAX_RESPONSE_BYTES", 2**14)
+    monkeypatch.setattr(UnendingServer, "status", status)
+    got, payload, ms = e2e.post(unending_url, Endpoint("/p", "application/json"), item(), 5)
+    assert got is None and payload == f"HTTP {status} body over 16384 bytes".encode()
+    assert ms < 4000
+
+
+@pytest.mark.parametrize("status", [200, 500])
+@pytest.mark.parametrize("mode", ["trickle", "slow headers"])
+def test_a_trickled_answer_stops_at_the_overall_deadline(unending_url, monkeypatch, status, mode):
+    """Every byte arrives well inside the 0.5 s socket timeout; only the deadline ends it."""
+    monkeypatch.setattr(UnendingServer, "status", status)
+    monkeypatch.setattr(UnendingServer, "mode", mode)
+    got, payload, ms = e2e.post(unending_url, Endpoint("/p", "application/json"), item(), 0.5)
+    assert (got, payload) == (None, b"no answer within 0.5 s")
+    assert 500 <= ms < 2500
+
+
+class ShortServer(BaseHTTPRequestHandler):
+    """Answers `status`, then closes before the body is done: 10 of a promised 100 bytes
+    (`length`), or partway through a chunked body (`chunked`)."""
+
+    status = 200
+    mode = "length"
+
+    def do_POST(self):
+        self.rfile.read(int(self.headers["Content-Length"]))
+        self.protocol_version = "HTTP/1.1"
+        self.send_response(self.status)
+        self.send_header("Content-Type", "application/json")
+        if self.mode == "length":
+            self.send_header("Content-Length", "100")
+            self.end_headers()
+            self.wfile.write(b'{"outcome"')
+        else:
+            self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+            self.wfile.write(b'a\r\n{"outcome"\r\n14\r\n: "pa')
+        self.wfile.flush()
+        self.close_connection = True
+
+    def log_message(self, *args):
+        pass
+
+
+@pytest.mark.parametrize("status", [200, 500])
+@pytest.mark.parametrize("mode", ["length", "chunked"])
+def test_an_answer_cut_short_is_no_answer(monkeypatch, status, mode):
+    monkeypatch.setattr(ShortServer, "status", status)
+    monkeypatch.setattr(ShortServer, "mode", mode)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), ShortServer)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        url = f"http://127.0.0.1:{server.server_port}"
+        got, payload, _ = e2e.post(url, Endpoint("/p", "application/json"), item(), 5)
+    finally:
+        server.shutdown()
+        server.server_close()
+    assert got is None and payload.startswith(b"IncompleteRead")
+
+
 def test_hostile_inputs_are_small_to_send():
     items = hostile_inputs()
     assert all(i.hostile for i in items)
@@ -384,7 +495,7 @@ def test_a_prebuilt_zip_goes_as_application_zip_when_the_endpoint_takes_it(refus
     RefusingServer.content_types.clear()
     bomb = hostile_inputs()[4]
     json_only = Endpoint("/p", "application/json")
-    assert judge_hostile(refusing_url, json_only, bomb, SCHEMAS)["status"] == "skipped"
+    assert judge_hostile(refusing_url, json_only, bomb, SCHEMAS)["status"] == "fail"
     zip_too = Endpoint("/p", "application/json", accepts_zip=True)
     assert judge_hostile(refusing_url, zip_too, bomb, SCHEMAS)["status"] == "pass"
     assert RefusingServer.content_types == ["application/zip"]
@@ -475,6 +586,123 @@ def test_a_bundle_with_too_many_entries_is_refused(tmp_path, monkeypatch):
         load_input(archive)
 
 
+@pytest.mark.parametrize("false_footer_count", [False, True])
+def test_bundle_counts_directories_before_zipfile_allocation(
+    tmp_path, monkeypatch, false_footer_count
+):
+    monkeypatch.setattr(e2e, "MAX_BUNDLE_ENTRIES", 3)
+    archive = tmp_path / "directories.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("scene.json", b"{}")
+        for i in range(3):
+            z.writestr(f"directory{i}/", b"")
+    if false_footer_count:
+        data = bytearray(archive.read_bytes())
+        struct.pack_into("<HH", data, len(data) - 22 + 8, 1, 1)
+        archive.write_bytes(data)
+
+    def metadata_allocation_forbidden(*args, **kwargs):
+        pytest.fail("ZipFile allocated metadata before archive admission")
+
+    monkeypatch.setattr(e2e.zipfile, "ZipFile", metadata_allocation_forbidden)
+    with pytest.raises(SystemExit, match="4 entries, limit 3"):
+        e2e.read_bundle(archive)
+
+
+@pytest.fixture
+def fake_transport(monkeypatch):
+    import socket
+
+    class FakeSocket:
+        def settimeout(self, timeout):
+            pass
+
+        def connect(self, address):
+            pass
+
+        def close(self):
+            pass
+
+    class Connection:
+        host = "localhost"
+        port = 80
+        sock = None
+        closed = False
+
+        def request(self, *args, **kwargs):
+            pass
+
+        def getresponse(self):
+            return self.response
+
+        def close(self):
+            self.closed = True
+
+    connection = Connection()
+    monkeypatch.setattr(e2e.http.client, "HTTPConnection", lambda *args, **kwargs: connection)
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *args, **kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80))],
+    )
+    monkeypatch.setattr(socket, "socket", lambda *args: FakeSocket())
+    return connection
+
+
+@pytest.mark.parametrize("status", [200, 500])
+def test_response_reads_only_remaining_byte_budget(monkeypatch, fake_transport, status):
+    monkeypatch.setattr(e2e, "MAX_RESPONSE_BYTES", 6)
+    monkeypatch.setattr(e2e, "READ_CHUNK_BYTES", 4)
+    reads = []
+
+    class Response(io.BytesIO):
+        length = None
+
+        def read(self, size=-1):
+            reads.append(size)
+            return super().read(size)
+
+    response = Response(b"oversized")
+    response.status = status
+    fake_transport.response = response
+    code, body, _ = e2e.post("http://localhost", Endpoint("/place", "application/json"), item())
+    assert code is None and body == f"HTTP {status} body over 6 bytes".encode()
+    assert reads == [4, 3]  # At most the six admitted bytes and one sentinel byte.
+    assert fake_transport.closed
+
+
+@pytest.mark.parametrize("status", [200, 500])
+def test_incomplete_response_is_a_clean_transport_failure(fake_transport, status):
+    from http.client import IncompleteRead
+
+    class Response:
+        def read(self, size):
+            raise IncompleteRead(b"partial", 50)
+
+    response = Response()
+    response.status = status
+    fake_transport.response = response
+    code, body, _ = e2e.post("http://localhost", Endpoint("/place", "application/json"), item())
+    assert code is None and body.startswith(b"IncompleteRead")
+    assert fake_transport.closed
+
+
+@pytest.mark.parametrize("status", [200, 500])
+def test_response_at_byte_cap_remains_a_complete_answer(monkeypatch, fake_transport, status):
+    monkeypatch.setattr(e2e, "MAX_RESPONSE_BYTES", 6)
+    monkeypatch.setattr(e2e, "READ_CHUNK_BYTES", 4)
+
+    class Response(io.BytesIO):
+        length = None
+
+    response = Response(b"123456")
+    response.status = status
+    fake_transport.response = response
+    code, body, _ = e2e.post("http://localhost", Endpoint("/place", "application/json"), item())
+    assert (code, body) == (status, b"123456")
+    assert fake_transport.closed
+
+
 def test_a_200_that_is_not_a_json_object_is_a_failure_not_a_crash(monkeypatch):
     for body in (b"<html>oops</html>", b"[1, 2]"):
         monkeypatch.setattr(e2e, "post", lambda *args, body=body, **kwargs: (200, body, 5.0))
@@ -484,3 +712,530 @@ def test_a_200_that_is_not_a_json_object_is_a_failure_not_a_crash(monkeypatch):
         assert "not a JSON object" in record["contract_problems"][0]
         hostile = judge_hostile("http://unused", endpoint, hostile_inputs()[3], SCHEMAS)
         assert hostile["status"] == "fail" and "not a JSON object" in hostile["problems"][0]
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"status": "skipped", "skip_reason": "missing scene"},
+        {"status": "fail", "expectation_problems": ["wrong decision"], "contract_problems": []},
+    ],
+)
+def test_run_acceptance_is_separate_from_contract_invariants(tmp_path, extra):
+    report = e2e.write_report(tmp_path, META, [CHECKED, {"name": "other", **extra}])
+    assert not report["all_passed"]
+    assert report["contract_ok"]
+
+
+def test_unexercised_large_input_probe_fails_contract():
+    item = hostile_inputs()[-1]
+    item.bundle = b"archive"
+    record = judge_hostile("unused", Endpoint("/place", "application/json"), item, {})
+    assert record["status"] == "fail" and record["contract_problems"]
+
+
+def test_bundle_uses_exact_canonical_scene(tmp_path):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("old-scene.json", b"old")
+        z.writestr("scene.json", b"canonical")
+    assert e2e.read_bundle(archive)[0] == b"canonical"
+
+
+def test_bundle_reads_one_wrapped_capture_and_ignores_macos_metadata(tmp_path):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("capture/", b"")
+        z.writestr("capture/scene.json", b"canonical")
+        z.writestr("capture/frame.jpg", b"photo")
+        z.writestr("__MACOSX/capture/._scene.json", b"metadata")
+        z.writestr("__MACOSX/capture/frame.jpg", b"metadata")
+    assert e2e.read_bundle(archive) == (b"canonical", {"frame.jpg": b"photo"})
+
+
+def test_bundle_accepts_public_api_finder_fixture_shape(tmp_path):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("capture-2026-09-26/scene.json", b"canonical")
+        z.writestr("__MACOSX/capture-2026-09-26/._scene.json", b"resource fork")
+    assert e2e.read_bundle(archive) == (b"canonical", {})
+
+
+@pytest.mark.parametrize("wrapped_scene", ["capture/scene.json", "a/b/scene.json"])
+def test_bundle_rejects_root_and_wrapped_scene_together(tmp_path, wrapped_scene):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("scene.json", b"canonical")
+        z.writestr(wrapped_scene, b"other")
+    with pytest.raises(SystemExit, match=r"ambiguous scene\.json"):
+        e2e.read_bundle(archive)
+
+
+@pytest.mark.parametrize(
+    "names",
+    [
+        ["old-scene.json"],
+        ["not-scene.json"],
+        ["scene.json", "scene.json"],
+        ["capture/scene.json", "capture/scene.json"],
+        ["first/scene.json", "second/scene.json"],
+        ["capture/scene.json", "other/frame.jpg"],
+        ["capture/nested/scene.json"],
+        ["capture/scene.json", "other/"],
+        ["capture/scene.json", "capture"],
+    ],
+)
+def test_bundle_rejects_missing_or_duplicate_canonical_scene(tmp_path, names):
+    archive = tmp_path / "scene.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        for name in names:
+            z.writestr(name, b"{}")
+    with pytest.raises(
+        SystemExit, match=r"exactly one canonical scene\.json|ambiguous scene\.json"
+    ):
+        e2e.read_bundle(archive)
+
+
+def test_transformed_answer_checks_its_own_hash(monkeypatch):
+    calls = []
+    original = {"decision": "pass", "stats": {}, "sweep": []}
+    monkeypatch.setattr(
+        e2e, "post", lambda *args, **kwargs: (200, json.dumps(original).encode(), 1)
+    )
+    monkeypatch.setattr(e2e, "answer", lambda *args: (original, None))
+    monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
+
+    def check_hash(scene, result, sent=None, rules=None, *, meter=None):
+        calls.append((scene, sent))
+        return ["stale input hash"] if sent is not None else []
+
+    monkeypatch.setattr(e2e, "invariant_problems", check_hash)
+    monkeypatch.setattr(e2e, "with_ground_short_of", lambda *args: None)
+    monkeypatch.setattr(e2e, "with_more_error", lambda *args: None)
+    monkeypatch.setattr(e2e, "tape_to_tap", lambda *args: None)
+    monkeypatch.setattr(e2e, "with_less_coverage", lambda *args: None)
+    scene = {
+        "walls": [{"id": "w1", "baseline": [[-1, 0], [1, 0]]}],
+        "meter": {"pos": [0, 1, 0], "wall_id": "w1"},
+    }
+    probe = SceneInput(name="test", scene=scene, raw=json.dumps(scene).encode(), source="test")
+    failures = e2e.property_problems(
+        "unused", Endpoint("/p", "application/json"), probe, original, {"result": {}}, RULES
+    )
+    assert calls and all(raw == json.dumps(scene, indent=1).encode() for scene, raw in calls)
+    assert any("stale input hash" in p for p in failures)
+
+
+def test_connection_and_handshake_share_one_remaining_budget(monkeypatch):
+    import socket
+    import ssl
+
+    clock = [0.0]
+    phases = []
+
+    class FakeSocket:
+        def settimeout(self, timeout):
+            phases.append(timeout)
+
+        def connect(self, address):
+            clock[0] += 0.6
+
+        def do_handshake(self):
+            assert phases[-1] == pytest.approx(0.4)
+            clock[0] += 0.5
+            raise TimeoutError
+
+        def close(self):
+            pass
+
+        def shutdown(self, how):
+            pass
+
+    sock = FakeSocket()
+
+    class Context:
+        def wrap_socket(self, raw, *, server_hostname, do_handshake_on_connect):
+            assert raw is sock and not do_handshake_on_connect
+            return sock
+
+    monkeypatch.setattr(e2e.time, "perf_counter", lambda: clock[0])
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *args, **kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 443))],
+    )
+    monkeypatch.setattr(socket, "socket", lambda *args: sock)
+    monkeypatch.setattr(ssl, "create_default_context", Context)
+    status, payload, ms = e2e.post(
+        "https://localhost", Endpoint("/p", "application/json"), item(), 1
+    )
+    assert status is None and payload == b"no answer within 1 s"
+    assert phases[:2] == pytest.approx([1.0, 0.4])
+    assert ms == pytest.approx(1100)
+
+
+@pytest.mark.parametrize("phase", ["dns", "tcp", "tls"])
+def test_deadline_bounds_blocked_connection_phase_and_cleans_worker(monkeypatch, phase):
+    import socket
+    import ssl
+
+    entered, release, exited, closed = (threading.Event() for _ in range(4))
+
+    def block():
+        entered.set()
+        assert release.wait(2)
+        raise TimeoutError
+
+    class FakeSocket:
+        def settimeout(self, timeout):
+            assert 0 < timeout <= 0.1
+
+        def connect(self, address):
+            if phase == "tcp":
+                block()
+
+        def do_handshake(self):
+            block()
+
+        def shutdown(self, how):
+            release.set()
+
+        def close(self):
+            closed.set()
+
+    sock = FakeSocket()
+
+    def lookup(*args, **kwargs):
+        if phase == "dns":
+            entered.set()
+            assert release.wait(2)
+        return [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 443))]
+
+    class Context:
+        def wrap_socket(self, raw, **kwargs):
+            assert not kwargs["do_handshake_on_connect"]
+            return raw
+
+    original_thread = threading.Thread
+    workers = []
+
+    def thread(*args, target, **kwargs):
+        def run():
+            try:
+                target()
+            finally:
+                exited.set()
+
+        worker = original_thread(*args, target=run, **kwargs)
+        workers.append(worker)
+        return worker
+
+    monkeypatch.setattr(e2e.threading, "Thread", thread)
+    monkeypatch.setattr(socket, "getaddrinfo", lookup)
+    monkeypatch.setattr(socket, "socket", lambda *args: sock)
+    monkeypatch.setattr(ssl, "create_default_context", Context)
+    try:
+        status, payload, ms = e2e.post(
+            "https://localhost", Endpoint("/p", "application/json"), item(), 0.1
+        )
+        assert entered.is_set()
+        assert status is None and payload == b"no answer within 0.1 s"
+        assert 90 <= ms < 500
+        if phase != "dns":
+            assert closed.is_set()
+    finally:
+        release.set()
+        for worker in workers:
+            worker.join(2)
+        assert exited.is_set() and all(not w.is_alive() for w in workers)
+    if phase == "dns":
+        assert not closed.is_set()  # no socket can be allocated after late DNS completes
+
+
+def test_stalled_local_tls_handshake_ends_with_overall_deadline():
+    import socket
+
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    listener.settimeout(2)
+    stopped, accepted, disconnected = (threading.Event() for _ in range(3))
+
+    def peer():
+        with listener:
+            conn, _ = listener.accept()
+            with conn:
+                conn.settimeout(2)
+                accepted.set()
+                while conn.recv(4096):
+                    pass  # read ClientHello but never answer with ServerHello
+                disconnected.set()
+        stopped.set()
+
+    server = threading.Thread(target=peer)
+    server.start()
+    try:
+        status, payload, ms = e2e.post(
+            f"https://127.0.0.1:{listener.getsockname()[1]}",
+            Endpoint("/p", "application/json"),
+            item(),
+            0.2,
+        )
+        assert accepted.is_set()
+        assert status is None and payload == b"no answer within 0.2 s"
+        assert 150 <= ms < 1000
+        assert disconnected.wait(2)
+    finally:
+        server.join(3)
+        assert not server.is_alive() and stopped.is_set()
+
+
+def hostile_records():
+    return [
+        {
+            "name": name,
+            "hostile": True,
+            "hostile_probe_executed": True,
+            "http_status": 422,
+            "latency_ms": 1.0,
+            "status": "pass",
+            "contract_problems": [],
+        }
+        for name in e2e.HOSTILE_PROBE_NAMES
+    ]
+
+
+@pytest.mark.parametrize("missing", range(5))
+def test_every_required_hostile_probe_must_be_exercised(tmp_path, missing):
+    probes = hostile_records()
+    omitted = probes.pop(missing)
+    probes.append(probes[0].copy())  # duplicate evidence cannot replace the missing probe
+    report = e2e.write_report(tmp_path, META, [CHECKED, *probes])
+    assert report["all_passed"] and report["contract_ok"]
+    assert not report["hostile_probes_complete"] and not report["full_contract_ok"]
+    assert omitted["name"] not in report["hostile_probes_executed"]
+
+
+def test_probe_name_without_execution_is_not_full_evidence(tmp_path):
+    probes = hostile_records()
+    del probes[0]["hostile_probe_executed"]
+    assert not e2e.write_report(tmp_path, META, [CHECKED, *probes])["full_contract_ok"]
+    assert e2e.write_report(tmp_path, META, [CHECKED, *hostile_records()])["full_contract_ok"]
+
+
+def test_hostile_execution_is_recorded_only_after_sending(monkeypatch):
+    monkeypatch.setattr(e2e, "post", lambda *args, **kwargs: (422, b"{}", 1.0))
+    probe = SceneInput(e2e.HOSTILE_PROBE_NAMES[0], {}, b"{}", hostile=True)
+    record = judge("unused", Endpoint("/place", "application/json"), probe, SCHEMAS, RULES)
+    assert record["hostile_probe_executed"] is True
+    probe.bundle = b"archive"
+    record = judge("unused", Endpoint("/place", "application/json"), probe, SCHEMAS, RULES)
+    assert not record.get("hostile_probe_executed", False)
+
+
+@pytest.mark.parametrize("no_hostile", [False, True])
+@pytest.mark.parametrize("unverified", [False, True])
+def test_cli_shortened_run_cannot_claim_full_contract(
+    tmp_path, monkeypatch, no_hostile, unverified
+):
+    from pathlib import Path
+
+    # Only public rules are read. All HTTP, git and hostile payload generation are mocked.
+    public_rules = (Path(__file__).resolve().parents[2] / "server" / "rules.yaml").read_text()
+    cases = tmp_path / "cases"
+    cases.mkdir()
+    (cases / "scene.json").write_text(json.dumps(SCENE))
+    monkeypatch.setattr(e2e.gitref, "fetch", lambda: None)
+    monkeypatch.setattr(e2e.gitref, "resolve", lambda _: "a" * 40)
+    monkeypatch.setattr(
+        e2e.gitref, "show", lambda sha, path: public_rules if path.endswith("rules.yaml") else "{}"
+    )
+    monkeypatch.setattr(
+        e2e.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: io.BytesIO(json.dumps(openapi({"/place": json_op()})).encode()),
+    )
+    monkeypatch.setattr(
+        e2e,
+        "hostile_inputs",
+        lambda: [SceneInput(name, {}, b"{}", hostile=True) for name in e2e.HOSTILE_PROBE_NAMES],
+    )
+
+    def fake_judge(url, endpoint, probe, *args):
+        if probe.hostile:
+            return next(r for r in hostile_records() if r["name"] == probe.name)
+        return (
+            CHECKED
+            | {"name": probe.name}
+            | (
+                {
+                    "status": "assumptions unverified",
+                    "rule_checks_unverified": True,
+                    "assumption_warnings": ["assumed public rules; server may override"],
+                }
+                if unverified
+                else {}
+            )
+        )
+
+    monkeypatch.setattr(e2e, "judge", fake_judge)
+    monkeypatch.setattr(e2e, "peak_rss_mb", lambda: {})
+    out = tmp_path / "out"
+    args = ["--server-url", "http://unused", "--cases", str(cases), "--out", str(out)]
+    if no_hostile:
+        args.append("--no-hostile")
+    assert e2e.main(args) == (2 if unverified else 0)
+    data = json.loads((out / "report.json").read_text())
+    assert data["all_passed"] is (not unverified)
+    assert data["contract_ok"] is (not unverified)
+    assert data["full_contract_ok"] is (not no_hostile and not unverified)
+    assert data["hostile_probes_executed"] == (
+        [] if no_hostile else sorted(e2e.HOSTILE_PROBE_NAMES)
+    )
+    from hsverify import scoreboard
+
+    metric = next(m for m in scoreboard.load_metrics()[1] if m.id == "S2-8")
+    metric.probe["glob"] = str(out / "report.json")
+    status = scoreboard.probe_report(metric.probe, data["sha"]).status
+    assert status == ("gap" if no_hostile or unverified else "met")
+
+
+@pytest.mark.parametrize("reported_width", [None, 31 / 12, 4])
+@pytest.mark.parametrize("contract_failure", [False, True])
+def test_judge_distinguishes_reported_override_mismatch_and_unverified_defaults(
+    tmp_path, monkeypatch, reported_width, contract_failure
+):
+    answer = {
+        "decision": "manual_review",
+        "spot": None,
+        "checks": [],
+        "sweep": [],
+        "policy": {"sources": ["private"], "rules_sha256": "f" * 64},
+    }
+    if reported_width is not None:
+        answer["checks"] = [
+            {
+                "id": "wall_backing",
+                "threshold_ft": reported_width,
+                "rule": {"key": "battery.width_ft"},
+            }
+        ]
+    monkeypatch.setattr(e2e, "post", lambda *args: (200, json.dumps(answer).encode(), 1))
+    monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
+    seen = []
+
+    def invariants(scene, result, sent=None, rules=None, *, meter=None):
+        seen.append(None if rules is None else rules.width_ft)
+        return (
+            ["stats.input_sha256 does not match the scene bytes sent"] if contract_failure else []
+        )
+
+    monkeypatch.setattr(e2e, "invariant_problems", invariants)
+    properties = []
+    monkeypatch.setattr(
+        e2e,
+        "property_problems",
+        lambda *args, **kwargs: properties.append((args[-1].width_ft, kwargs["rule_checks"])) or [],
+    )
+    expectations = []
+    monkeypatch.setattr(
+        e2e, "expectation_problems", lambda *args, **kwargs: expectations.append(True) or []
+    )
+    item = SceneInput(
+        "override",
+        SCENE,
+        b"{}",
+        expect={"decision_in": ["manual_review"]},
+        rules_assumed={"battery_width": 31 / 12},
+    )
+    record = judge(
+        "unused", Endpoint("/place", "application/json"), item, SCHEMAS, replace(RULES, width_ft=4)
+    )
+    assert seen == [reported_width]
+    if contract_failure:
+        assert record["status"] == "fail" and record["contract_problems"]
+        assert record["problems"] == ["stats.input_sha256 does not match the scene bytes sent"]
+    else:
+        assert record["problems"] == []
+    if reported_width is None:
+        assert record["status"] == ("fail" if contract_failure else "assumptions unverified")
+        assert "assumed public rules; server may override" in record["assumption_warnings"][0]
+        assert properties == ([] if contract_failure else [(4, False)])
+        assert not expectations
+    elif reported_width == 31 / 12:
+        assert record["status"] == ("fail" if contract_failure else "pass")
+        assert properties == ([] if contract_failure else [(31 / 12, True)])
+        assert expectations == [True]
+    else:
+        assert record["status"] == ("fail" if contract_failure else "assumption mismatch")
+        assert record["assumption_mismatches"] and not expectations
+    report = e2e.write_report(tmp_path, META, [record, *hostile_records()])
+    assert report["all_passed"] is (reported_width == 31 / 12 and not contract_failure)
+    assert report["full_contract_ok"] is (reported_width == 31 / 12 and not contract_failure)
+    if reported_width is None:
+        assert not report["contract_ok"]
+        assert "assumed public rules; server may override" in (tmp_path / "report.md").read_text()
+
+
+@pytest.mark.parametrize("width", [-1, 0, float("nan"), float("inf")])
+def test_vet_judge_rejects_invalid_width_before_rule_consumers(monkeypatch, width):
+    answer = {
+        "decision": "reject",
+        "spot": None,
+        "sweep": [],
+        "checks": [{"id": "width", "threshold_ft": width, "rule": {"key": "battery.width_ft"}}],
+    }
+    monkeypatch.setattr(e2e, "post", lambda *args: (200, json.dumps(answer).encode(), 1))
+    monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
+    consumers = []
+
+    def no_adoption(*args):
+        pytest.fail("invalid dimensions reached rule adoption")
+
+    monkeypatch.setattr(e2e, "reported_rules", no_adoption)
+    monkeypatch.setattr(
+        e2e, "invariant_problems", lambda *args, **kwargs: consumers.append("invariants") or []
+    )
+    monkeypatch.setattr(
+        e2e, "property_problems", lambda *args: consumers.append("properties") or []
+    )
+    item = SceneInput("invalid-width", SCENE, b"{}")
+    record = judge("unused", Endpoint("/place", "application/json"), item, SCHEMAS, RULES)
+    assert record["status"] == "fail"
+    assert "width must be finite and positive" in record["contract_problems"]
+    assert consumers == []
+
+
+@pytest.mark.parametrize("allowance", [-1, float("nan"), float("inf")])
+def test_breadth_invalid_corner_allowance_stops_before_rule_adoption(monkeypatch, allowance):
+    answer = {
+        "decision": "reject",
+        "spot": None,
+        "sweep": [],
+        "checks": [
+            {
+                "id": "route_corner",
+                "threshold_ft": allowance,
+                "rule": {"key": "route.corner_allowance_ft"},
+            }
+        ],
+    }
+    monkeypatch.setattr(e2e, "post", lambda *args: (200, json.dumps(answer).encode(), 1))
+    monkeypatch.setattr(e2e, "schema_errors", lambda *args: [])
+
+    def no_adoption(*args):
+        pytest.fail("invalid corner allowance reached rule adoption")
+
+    monkeypatch.setattr(e2e, "reported_rules", no_adoption)
+    record = judge(
+        "unused",
+        Endpoint("/place", "application/json"),
+        SceneInput("corner", SCENE, b"{}"),
+        SCHEMAS,
+        RULES,
+    )
+    assert record["status"] == "fail"
+    assert (
+        "route_corner corner allowance must be finite and nonnegative"
+        in record["contract_problems"]
+    )

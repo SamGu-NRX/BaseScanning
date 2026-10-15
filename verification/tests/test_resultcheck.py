@@ -6,9 +6,12 @@ from dataclasses import replace
 import pytest
 
 from hsverify.resultcheck import (
+    MAX_SWEEP_SAMPLES,
     GroundPlan,
     Need,
     RuleSet,
+    WorkLimitExceeded,
+    WorkMeter,
     assumption_mismatches,
     battery_error,
     chain_ends_s,
@@ -28,7 +31,9 @@ from hsverify.resultcheck import (
     observed,
     outcome_at,
     outcome_lengths,
+    public_assumption_warnings,
     reach_gaps,
+    reported_rules,
     run_starts,
     straight_pieces,
     tape_to_tap,
@@ -412,7 +417,7 @@ clearances: {gas_ft: {value: 3}, ac_ft: {value: 3}, battery_ft: {value: 3}, driv
 openings: {exempt_bottom_above_ft: null}
 facing: {min_ft: {value: 3}}
 headroom: {min_ft: {value: 6.5}}
-route: {height_ft: {value: 1}}
+route: {height_ft: {value: 1}, corner_allowance_ft: {value: 0.5}}
 sweep: {step_ft: {value: 0.166666666667}, wall_join_ft: {value: 0.6}}
 """
     rules = RuleSet.from_yaml(text)
@@ -505,7 +510,8 @@ def test_outcome_not_rules_out_one_outcome_and_tolerates_no_runs():
         ]
     }
     assert expectation_problems(bad, r) == [
-        "sweep w1 starts [2.1, 3.0] is pass, which this case rules out (window)"
+        "sweep expectation w1 starts (0.5, 2.5) failed for 1 runs; "
+        "expected {'outcome_not': 'pass'}; examples: w1 starts [2.1, 3.0] is pass; reason: window"
     ]
 
 
@@ -618,6 +624,64 @@ def test_less_coverage_never_creates_a_pass():
     assert less_coverage_problems(swept(run(0, 4, "pass")), swept(run(0, 4, "unsure")), "x") == []
     msgs = less_coverage_problems(swept(run(0, 4, "unsure")), swept(run(0, 4, "pass")), "x")
     assert msgs and all("went from unsure to pass" in m for m in msgs)
+
+
+def split():
+    """An original sweep: fail up to 2.0, then pass from 2.1, nothing evaluated between."""
+    return swept(run(0.0, 2.0, "fail"), run(2.1, 5.0, "pass"))
+
+
+def test_less_coverage_may_move_a_boundary_into_an_unswept_gap():
+    """A coverage edge that moved adds evaluated starts; one inside the original's gap between
+    a fail run and a pass run may pass, because the original allows either outcome there."""
+    after = swept(run(0.0, 2.04, "fail"), run(2.05, 5.0, "pass"))
+    assert less_coverage_problems(split(), after, "x") == []
+
+
+def test_less_coverage_cannot_pass_a_gap_between_runs_that_did_not():
+    before = swept(run(0.0, 2.0, "fail"), run(2.1, 5.0, "unsure"))
+    after = swept(run(0.0, 2.0, "fail"), run(2.05, 2.05, "pass"), run(2.1, 5.0, "unsure"))
+    assert less_coverage_problems(before, after, "x") == [
+        "x: start w1 2.050 went from unswept beside fail and unsure to pass"
+    ]
+
+
+def test_less_coverage_cannot_pass_where_the_original_swept_nothing():
+    """The decision guard does not catch this when the original already passed elsewhere."""
+    before = swept(run(0.0, 4.0, "pass"), decision="pass")
+    after = swept(run(0.0, 4.0, "pass"), run(10.0, 12.0, "pass", wall="w2"), decision="pass")
+    assert less_coverage_problems(before, after, "x") == [
+        f"x: start w2 {s:.3f} went from no run on its wall to pass" for s in (10.0, 11.0, 12.0)
+    ]
+    past_end = swept(run(0.0, 4.0, "pass"), run(4.1, 6.0, "fail"), decision="pass")
+    longer = swept(run(0.0, 4.0, "pass"), run(4.1, 6.0, "fail"), run(6.1, 6.1, "pass"))
+    assert less_coverage_problems(past_end, longer, "x") == [
+        "x: start w1 6.100 went from past the original sweep to pass"
+    ]
+
+
+def test_a_new_pass_past_the_original_sweep_is_not_read_from_its_last_run():
+    """The original ends on a pass run; nothing it evaluated brackets 4.1 to 6.0."""
+    before = swept(run(0.0, 4.0, "pass"), decision="pass")
+    after = swept(run(0.0, 4.0, "pass"), run(4.1, 6.0, "pass"), decision="pass")
+    expected = [
+        f"x: start w1 {s:.3f} went from past the original sweep to pass" for s in (4.1, 5.05, 6.0)
+    ]
+    assert less_coverage_problems(before, after, "x") == expected
+    assert more_error_problems(before, after, "x") == expected
+    # More error widens the reach limit, so a longer sweep may fail or turn unsure out there.
+    wider = swept(run(0.0, 4.0, "unsure"), run(4.1, 5.0, "fail"), run(5.1, 6.0, "unsure"))
+    assert more_error_problems(before, wider, "x") == []
+
+
+def test_more_error_reads_an_unswept_start_from_its_neighbours():
+    moved = swept(run(0.0, 2.04, "fail"), run(2.05, 5.0, "pass"))
+    assert more_error_problems(split(), moved, "x") == []
+    flipped = swept(run(0.0, 2.0, "fail"), run(2.05, 2.05, "pass"), run(2.1, 5.0, "fail"))
+    before = swept(run(0.0, 2.0, "fail"), run(2.1, 5.0, "fail"))
+    assert more_error_problems(before, flipped, "x") == [
+        "x: start w1 2.050 went from unswept beside fail and fail to pass"
+    ]
 
 
 def test_transforms():
@@ -752,9 +816,9 @@ def test_an_overhead_seen_clear_all_the_way_up_settles_headroom():
 
 
 def test_battery_clearance_is_needed_when_its_rule_reaches_past_gas_or_a_battery_is_marked():
-    # BAND_RULES set battery_clearance's radius (100) above gas's (1): the server evaluates it,
+    # BAND_RULES set battery_clearance's radius (2) above gas's (1): the server evaluates it,
     # so a result that leaves it out is flagged and its coverage is needed anyway.
-    wide = replace(RULES, needs=RULES.needs | {"battery_clearance": (Need("ground", 100.0),)})
+    wide = replace(RULES, needs=RULES.needs | {"battery_clearance": (Need("ground", 2.0),)})
     r = result(checks=[check()], sweep=[PASS_RUN])
     msgs = invariant_problems(SCENE, r, rules=wide)
     assert "the result leaves out check battery_clearance, which the rules define" in msgs
@@ -875,8 +939,8 @@ def test_each_start_in_a_sweep_run_needs_only_its_own_reach():
 
 
 def test_sweep_run_starts_are_sampled_at_the_rules_step_plus_the_ends():
-    assert run_starts([1.0, 1.5], 1 / 6) == pytest.approx([1.0, 7 / 6, 8 / 6, 1.5])
-    assert run_starts([2.0, 2.0], 1 / 6) == [2.0]
+    assert list(run_starts([1.0, 1.5], 1 / 6)) == pytest.approx([1.0, 7 / 6, 8 / 6, 1.5])
+    assert list(run_starts([2.0, 2.0], 1 / 6)) == [2.0]
     with pytest.raises(ValueError, match=r"sweep\.step_ft"):
         run_starts([1.0, 2.0], None)
 
@@ -1083,7 +1147,7 @@ def test_a_captured_request_claims_only_the_reach_it_asked_for():
 
 def test_a_sweep_run_shorter_than_a_step_keeps_its_first_start():
     # Review 4114352251: run_starts([0, 0.4], 1) returned only 0.4.
-    assert run_starts([0.0, 0.4], 1.0) == [0.0, 0.4]
+    assert list(run_starts([0.0, 0.4], 1.0)) == [0.0, 0.4]
 
 
 def test_a_passing_spot_must_pass_in_the_sweep_too():
@@ -1222,9 +1286,9 @@ def test_a_passing_spot_must_stand_on_the_scanned_wall():
         ],
     )
     r["spot"]["span_ft"] = [11.0, 11.0 + 31 / 12]
+    r["spot"]["footprint"] = [[11, 0], [11 + 31 / 12, 0], [11 + 31 / 12, 22 / 12], [11, 22 / 12]]
     msgs = invariant_problems(broadly_seen(), r, rules=RULES)
-    assert any("spot [11.00, 13.58] runs past its straight wall [-12.00, 12.00]" in m for m in msgs)
-    assert any("sweep pass start 11.00 runs past its straight wall" in m for m in msgs)
+    assert msgs == ["spot: span_ft exceeds scanned range [-12.0, 12.0]"]
 
 
 def test_walls_meeting_in_a_straight_line_are_one_stretch_and_a_corner_is_not():
@@ -1335,7 +1399,7 @@ def test_a_passing_footprint_keeps_the_wall_error_clear_of_its_stretch_end():
     ]
     r = result(spot=False, sweep=[pass_run(6.846, 10.0 - 31 / 12)])
     assert footprint_problems(scene, r, RULES) == [
-        "sweep pass start 7.42 ends within its error (0.60 ft) of its straight wall's end at 10.00"
+        "sweep pass start 7.01 ends within its error (0.60 ft) of its straight wall's end at 10.00"
     ]
     r["sweep"][0]["outcome"] = "unsure"  # unsure may stand that close
     assert footprint_problems(scene, r, RULES) == []
@@ -1479,3 +1543,377 @@ def test_a_band_gap_under_the_coverage_tolerance_is_rounding():
     assert gaps_over([(-6.5, 18.0)], 9.94, 18.011) == [(18.0, 18.011)]
     assert gaps_over([(0.0, 1.0), (1.009, 3.0)], 0.5, 2.0) == []
     assert gaps_over([(0.0, 1.0), (1.011, 3.0)], 0.5, 2.0) == [(1.0, 1.011)]
+
+
+@pytest.mark.parametrize("outcome", ["pass", "unsure"])
+def test_interior_sweep_start_cannot_cross_a_corner(outcome):
+    scene = copy.deepcopy(SCENE)
+    scene["walls"][0]["baseline"] = [[-12.0, 0.0], [5.0, 0.0], [5.0, 7.0]]
+    result = {"sweep": [{"wall_id": "w1", "start_ft": [1.0, 8.0], "outcome": outcome}]}
+    assert footprint_problems(scene, result, RULES)
+
+
+def test_ground_trimming_keeps_omitted_reach_at_zero():
+    scene = copy.deepcopy(SCENE)
+    scene["coverage"]["observed"] = [
+        {"band": "ground", "span_ft": [-12, 0]},
+        {"band": "ground", "span_ft": [0, 12], "out_ft": 100},
+    ]
+    trimmed = with_ground_short_of(scene, RULES)
+    assert trimmed["coverage"]["observed"][0]["out_ft"] == 0
+
+
+def test_geometric_assumptions_use_reported_override_instead_of_public_defaults():
+    public = replace(RULES, width_ft=4, corner_allowance_ft=10)
+    answer = result()
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
+    answer["checks"].append(
+        {
+            "id": "corner_allowance",
+            "threshold_ft": 0.5,
+            "rule": {"key": "route.corner_allowance_ft"},
+        }
+    )
+    assumed = {"battery_width": RULES.width_ft, "corner_allowance": 0.5}
+    assert assumption_mismatches(assumed, answer) == []
+    assert public_assumption_warnings(assumed, answer, public) == []
+    active = reported_rules(answer, public)
+    assert (active.width_ft, active.corner_allowance_ft) == (RULES.width_ft, 0.5)
+    assert (public.width_ft, public.corner_allowance_ft) == (4, 10)
+
+
+def test_geometric_assumptions_detect_a_real_reported_mismatch():
+    answer = {
+        "spot": {"width_ft": 4},
+        "checks": [
+            {
+                "id": "route_corner",
+                "threshold_ft": 10,
+                "rule": {"key": "route.corner_allowance_ft"},
+            }
+        ],
+    }
+    assert (
+        len(
+            assumption_mismatches(
+                {"battery_width": RULES.width_ft, "corner_allowance": 0.5}, answer
+            )
+        )
+        == 2
+    )
+
+
+def test_unreported_geometric_override_is_a_warning_not_a_mismatch():
+    public = replace(RULES, width_ft=4, corner_allowance_ft=10)
+    assumed = {"battery_width": RULES.width_ft, "corner_allowance": 0.5}
+    assert assumption_mismatches(assumed, {}) == []
+    warnings = public_assumption_warnings(assumed, {}, public)
+    assert len(warnings) == 2
+    assert all("assumed public rules; server may override" in text for text in warnings)
+    assert (
+        public_assumption_warnings({"battery_width": 4, "corner_allowance": 10}, {}, public) == []
+    )
+
+
+@pytest.mark.parametrize("source", ["spot", "nearest_considered", "check"])
+def test_reported_width_sources_override_public_width(source):
+    answer = (
+        {
+            "checks": [
+                {
+                    "id": "wall_backing",
+                    "threshold_ft": RULES.width_ft,
+                    "rule": {"key": "battery.width_ft"},
+                }
+            ]
+        }
+        if source == "check"
+        else {source: {"width_ft": RULES.width_ft}}
+    )
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
+    assert reported_rules(answer, replace(RULES, width_ft=4)).width_ft == RULES.width_ft
+    assert assumption_mismatches({"battery_width": RULES.width_ft}, answer) == []
+
+
+def test_other_width_thresholds_do_not_report_battery_width():
+    answer = {
+        "checks": [
+            {
+                "id": "meter_working_space",
+                "threshold_ft": 4,
+                "rule": {"key": "meter_working_space.width_ft"},
+            }
+        ]
+    }
+    assert reported_rules(answer, RULES).width_ft == RULES.width_ft
+
+
+@pytest.mark.parametrize("outcome", ["pass", "unsure"])
+@pytest.mark.parametrize("span", [[0, 1e9], [-1e9, 0], [1e9, 1e9]])
+def test_out_of_scan_sweep_fails_before_sampling(monkeypatch, outcome, span):
+    def no_sampling(*args):
+        pytest.fail("out-of-scan sweep reached sampling")
+
+    monkeypatch.setattr("hsverify.resultcheck.run_starts", no_sampling)
+    r = result(spot=False, sweep=[pass_run(*span) | {"outcome": outcome}])
+    message = f"sweep {outcome} starts {span}: start_ft span exceeds scanned range [-12.0, 12.0]"
+    for judge in (
+        invariant_problems,
+        footprint_problems,
+        coverage_problems,
+        declared_height_problems,
+    ):
+        assert judge(SCENE, r, rules=RULES) == [message]
+
+
+def test_sweep_sampling_is_lazy_and_keeps_the_limit_endpoint():
+    samples = run_starts([0, MAX_SWEEP_SAMPLES - 1], 1)
+    assert iter(samples) is samples
+    assert next(samples) == 0
+    remaining = list(samples)
+    assert len(remaining) == MAX_SWEEP_SAMPLES - 1
+    assert remaining[-1] == MAX_SWEEP_SAMPLES - 1
+    assert list(run_starts([0, 1e-9], 1)) == [0, 1e-9]
+
+
+@pytest.mark.parametrize(
+    "span,step",
+    [([0, 1e9], 1 / 6), ([0, MAX_SWEEP_SAMPLES], 1), ([0, 1], 1e-300), ([-1e308, 1e308], 1)],
+)
+def test_sweep_sample_limit_is_checked_before_iteration(span, step):
+    with pytest.raises(ValueError, match="10000 sample limit"):
+        run_starts(span, step)
+
+
+@pytest.mark.parametrize("span", [[2, 1], [0, float("inf")], [float("nan"), 1]])
+def test_sweep_sampler_refuses_invalid_spans(span):
+    with pytest.raises(ValueError, match="finite and ordered"):
+        run_starts(span, 1)
+
+
+@pytest.mark.parametrize("step", [None, 0, -1, float("inf"), float("nan")])
+def test_sweep_sampler_refuses_invalid_steps(step):
+    with pytest.raises(ValueError, match="finite positive"):
+        run_starts([0, 1], step)
+
+
+def test_in_scan_sweep_with_tiny_rule_step_fails_loudly():
+    r = result(spot=False, sweep=[pass_run(0, 1) | {"outcome": "unsure"}])
+    assert invariant_problems(SCENE, r, rules=replace(RULES, step_ft=1e-300)) == [
+        "sweep unsure starts [0, 1]: sweep sampling exceeds the 10000 sample limit"
+    ]
+
+
+def test_reported_override_prevents_a_false_footprint_failure():
+    public = replace(RULES, width_ft=4)
+    answer = result(spot=False, sweep=[pass_run(9, 9) | {"outcome": "unsure"}])
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
+    backing = next(c for c in answer["checks"] if c["id"] == "wall_backing")
+    backing["threshold_ft"] = RULES.width_ft
+    backing["rule"]["key"] = "battery.width_ft"
+    assert footprint_problems(SCENE, answer, public)
+    assert footprint_problems(SCENE, answer, reported_rules(answer, public)) == []
+
+
+@pytest.mark.parametrize("field", ["width_ft", "depth_ft", "height_ft"])
+@pytest.mark.parametrize("value", [-1, 0, float("nan"), float("inf")])
+def test_vet_reported_dimensions_refuse_invalid_numbers(field, value):
+    answer = result()
+    answer["spot"][field] = value
+    with pytest.raises(ValueError, match=f"spot.{field} must be finite and positive"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("source", ["spot", "nearest_considered", "check"])
+def test_vet_reported_width_sources_must_agree(source):
+    answer = result()
+    answer["nearest_considered"] = copy.deepcopy(answer["spot"])
+    answer["checks"].append(
+        {"id": "width", "threshold_ft": RULES.width_ft, "rule": {"key": "battery.width_ft"}}
+    )
+    if source == "check":
+        answer["checks"][-1]["threshold_ft"] = 4
+    else:
+        answer[source]["width_ft"] = 4
+    with pytest.raises(ValueError, match="reported battery widths disagree"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("source", ["spot", "nearest_considered"])
+@pytest.mark.parametrize("value", [4, 1e9])
+def test_vet_reported_width_must_match_span_and_footprint(source, value):
+    answer = result()
+    answer[source] = copy.deepcopy(answer["spot"])
+    answer[source]["width_ft"] = value
+    if source == "nearest_considered":
+        answer["spot"] = None
+    with pytest.raises(ValueError, match="does not match"):
+        reported_rules(answer, RULES)
+
+
+def test_vet_reported_depth_must_match_footprint():
+    answer = result()
+    answer["spot"]["depth_ft"] = 4
+    with pytest.raises(ValueError, match="depth_ft does not match footprint"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("value", [-1, 0, float("nan"), float("inf")])
+def test_vet_reported_width_threshold_must_be_finite_positive(value):
+    answer = {
+        "checks": [{"id": "width", "threshold_ft": value, "rule": {"key": "battery.width_ft"}}]
+    }
+    with pytest.raises(ValueError, match="width must be finite and positive"):
+        reported_rules(answer, RULES)
+
+
+@pytest.mark.parametrize("outcome", ["fail", "unsure"])
+@pytest.mark.parametrize("old_wall_has_run", [False, True])
+def test_vet_more_error_may_add_nonpassing_run_on_previously_unswept_wall(
+    outcome, old_wall_has_run
+):
+    before = swept(run(0, 4, "fail")) if old_wall_has_run else swept()
+    after = swept(*before["sweep"], run(10, 12, outcome, wall="w2"))
+    assert more_error_problems(before, after, "more error") == []
+
+
+def test_vet_more_error_cannot_add_pass_on_previously_unswept_wall():
+    before = swept(run(0, 4, "pass"), decision="pass")
+    after = swept(*before["sweep"], run(10, 12, "pass", wall="w2"), decision="pass")
+    assert more_error_problems(before, after, "more error") == [
+        f"more error: start w2 {s:.3f} went from no run on its wall to pass" for s in (10, 11, 12)
+    ]
+
+
+@pytest.mark.parametrize("outcome", ["pass", "unsure", "fail"])
+@pytest.mark.parametrize("span", [[float("nan"), 1], [0, float("inf")], [2, 1]])
+def test_vet_all_sweep_spans_are_validated_before_downstream(monkeypatch, outcome, span):
+    def no_downstream(*args):
+        pytest.fail("invalid geometry reached downstream sampling")
+
+    monkeypatch.setattr("hsverify.resultcheck.run_starts", no_downstream)
+    answer = result(spot=False, sweep=[pass_run(*span) | {"outcome": outcome}])
+    assert any("finite and ordered" in p for p in invariant_problems(SCENE, answer, rules=RULES))
+
+
+def test_vet_identical_unsure_runs_are_sampled_only_once(monkeypatch):
+    calls = []
+
+    def starts(*args):
+        calls.append(True)
+        return iter([1.0])
+
+    monkeypatch.setattr("hsverify.resultcheck.run_starts", starts)
+    run = pass_run(1, 9) | {"outcome": "unsure"}
+    answer = result(spot=False, sweep=[copy.deepcopy(run) for _ in range(10_000)])
+    assert footprint_problems(SCENE, answer, RULES) == []
+    assert len(calls) == 1
+
+
+def test_vet_many_distinct_admissible_runs_exceed_one_response_budget():
+    scene = copy.deepcopy(SCENE)
+    scene["walls"][0]["baseline"] = [[-2000, 0], [2000, 0]]
+    runs = [pass_run(i / 1000, 1000 + i / 1000) | {"outcome": "unsure"} for i in range(5000)]
+    answer = result(spot=False, sweep=runs)
+    meter = WorkMeter(1000)
+    with pytest.raises(WorkLimitExceeded):
+        invariant_problems(scene, answer, rules=RULES, meter=meter)
+    assert meter.samples == 1001
+
+
+def test_vet_huge_spot_with_empty_sweep_stops_before_geometry(monkeypatch):
+    def no_geometry(*args):
+        pytest.fail("invalid spot reached the ground grid")
+
+    monkeypatch.setattr(GroundPlan, "_samples", no_geometry)
+    answer = result(sweep=[])
+    answer["spot"]["span_ft"] = [1, 1e9]
+    problems = invariant_problems(SCENE, answer, rules=RULES)
+    assert problems and any("span_ft" in p for p in problems)
+
+
+def test_vet_unused_spot_grid_does_not_consume_predicted_work():
+    answer = result(sweep=[])
+    huge_reach = replace(RULES, needs={"gas_clearance": (Need("ground", 1e9),)})
+    meter = WorkMeter(1000)
+    problems = invariant_problems(SCENE, answer, rules=huge_reach, meter=meter)
+    assert any("check gas_clearance passes" in p for p in problems)
+    assert meter.samples < 1000
+
+
+def test_vet_check_only_width_does_not_predict_unused_geometry():
+    answer = result(spot=False, sweep=[])
+    answer["checks"].append(
+        {"id": "width", "outcome": "pass", "threshold_ft": 1e9, "rule": {"key": "battery.width_ft"}}
+    )
+    meter = WorkMeter(1000)
+    assert invariant_problems(SCENE, answer, rules=RULES, meter=meter) == []
+    assert meter.samples < 1000
+
+
+def test_vet_ground_samples_are_lazy_and_preserve_grid_edges_and_centres():
+    points = GroundPlan._samples(0, 0.1)
+    assert iter(points) is points
+    assert list(points) == pytest.approx([0, 0.025, 0.05, 0.075, 0.1])
+
+
+def test_vet_repeated_spot_checks_reuse_geometry():
+    one = result(sweep=[], checks=[passing("ground_surface")])
+    many = result(sweep=[], checks=[passing("ground_surface") for _ in range(1000)])
+    broad = replace(RULES, needs={"ground_surface": (Need("ground", 10),)})
+    one_meter, many_meter = WorkMeter(100_000), WorkMeter(100_000)
+    assert coverage_problems(SCENE, many, broad, meter=many_meter) == coverage_problems(
+        SCENE, one, broad, meter=one_meter
+    )
+    assert many_meter.samples == one_meter.samples
+
+
+def test_vet_runtime_samples_include_midpoint_direction_switches():
+    scene = copy.deepcopy(SCENE)
+    scene["meter"]["plus_minus_ft"] = 8.8
+    scene["walls"] = [
+        {"id": "w1", "baseline": [[0, 0], [10, 0]], "plus_minus_ft": 0},
+        {"id": "w2", "baseline": [[10, 0], [9, 0]], "plus_minus_ft": 0},
+        {"id": "w3", "baseline": [[9, 0], [109, 0]], "plus_minus_ft": 0},
+    ]
+    broad = replace(
+        RULES, width_ft=10, depth_ft=2, step_ft=0.1, needs={"ground_surface": (Need("ground", 0),)}
+    )
+    answer = result(spot=False, sweep=[pass_run(0, 10)])
+    meter = WorkMeter(1000)
+    with pytest.raises(WorkLimitExceeded):
+        invariant_problems(scene, answer, rules=broad, meter=meter)
+    assert meter.samples == 1001
+
+
+@pytest.mark.parametrize("allowance", [-1, float("nan"), float("inf"), -float("inf")])
+def test_breadth_corner_allowance_must_be_finite_nonnegative(allowance):
+    answer = {
+        "checks": [
+            {
+                "id": "route_corner",
+                "threshold_ft": allowance,
+                "rule": {"key": "route.corner_allowance_ft"},
+            }
+        ]
+    }
+    with pytest.raises(ValueError, match="corner allowance must be finite and nonnegative"):
+        reported_rules(answer, RULES)
+    assert "route_corner corner allowance must be finite and nonnegative" in invariant_problems(
+        SCENE, answer, rules=RULES
+    )
+
+
+@pytest.mark.parametrize("allowance", [0, 0.5])
+def test_breadth_zero_or_positive_corner_allowance_is_valid(allowance):
+    answer = {
+        "checks": [
+            {
+                "id": "route_corner",
+                "threshold_ft": allowance,
+                "rule": {"key": "route.corner_allowance_ft"},
+            }
+        ]
+    }
+    answer["policy"] = {"sources": ["private"], "rules_sha256": "f" * 64}
+    assert reported_rules(answer, RULES).corner_allowance_ft == allowance

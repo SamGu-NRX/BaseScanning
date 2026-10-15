@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import argparse
-from hashlib import sha256
 import json
+import os
+import stat
+import tempfile
+from hashlib import sha256
 from math import hypot, isfinite
 from pathlib import Path
 
@@ -81,7 +84,8 @@ def validate_frame(frame):
     pose = camera_pose(frame.get("pose"), label + ".pose")
     vector([frame.get("timestamp")], 1, label + ".timestamp")
     if not isinstance(frame.get("tracking"), str):
-        raise ValueError(f"{label}: tracking must be explicit")
+        # Keep ValueError consistent with the public manifest-validation contract.
+        raise ValueError(f"{label}: tracking must be explicit")  # noqa: TRY004
     if not isinstance(frame.get("img"), str) or not frame["img"]:
         raise ValueError(f"{label}: image reference must be explicit")
     return width, height, intrinsics, pose
@@ -90,7 +94,7 @@ def validate_frame(frame):
 def ray_for_pixel(frame, pixel):
     width, height, (fx, fy, cx, cy), pose = validate_frame(frame)
     u, v = vector(pixel, 2, "pixel")
-    if not (0 <= u <= width and 0 <= v <= height):
+    if not (0 <= u < width and 0 <= v < height):
         raise ValueError("tap pixel lies outside its saved image")
     local = ((u-cx)/fx, -(v-cy)/fy, -1)
     # ARKit camera axes are columns; camera looks along -Z.
@@ -114,7 +118,8 @@ def crop_resize_intrinsics(intrinsics, crop_origin, scale):
     sx, sy = vector(scale, 2, "scale")
     if fx <= 0 or fy <= 0 or sx <= 0 or sy <= 0:
         raise ValueError("focal lengths and image scale must be positive")
-    return [fx*sx, fy*sy, (cx-x0)*sx, (cy-y0)*sy]
+    return list(vector([fx*sx, fy*sy, (cx-x0)*sx, (cy-y0)*sy],
+                       4, "resized intrinsics"))
 
 
 def validate_session(session):
@@ -134,7 +139,14 @@ def validate_session(session):
     if not frames:
         raise ValueError("no listed keyframes")
     tap_checks = []
+    tap_ids = set()
     for tap in session.get("taps", []):
+        tap_id = tap.get("id")
+        if not isinstance(tap_id, str) or not tap_id:
+            raise ValueError("tap: missing id")
+        if tap_id in tap_ids:
+            raise ValueError(f"duplicate tap id: {tap_id}")
+        tap_ids.add(tap_id)
         frame = frames.get(tap.get("keyframe"))
         if frame is None:
             raise ValueError(f"tap {tap.get('id')}: unknown keyframe")
@@ -190,6 +202,24 @@ def reject_constant(value):
     raise ValueError(f"invalid JSON numeric constant: {value}")
 
 
+def write_result(path, result):
+    try:
+        mode = stat.S_IMODE(path.stat().st_mode)
+    except FileNotFoundError:
+        mode = None
+    # Ordinary creation inside a private directory applies umask for a new result.
+    # Existing results retain their mode when the completed inode replaces them.
+    with tempfile.TemporaryDirectory(dir=path.parent) as stage:
+        temporary = Path(stage) / "result.json"
+        with temporary.open("w") as output:
+            output.write(json.dumps(result, indent=2, allow_nan=False) + "\n")
+            output.flush()
+            if mode is not None:
+                os.fchmod(output.fileno(), mode)
+            os.fsync(output.fileno())
+        temporary.replace(path)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("session", type=Path)
@@ -205,7 +235,7 @@ def main():
         result["source_manifest_sha256"] = sha256(raw).hexdigest()
         result["image_reference_base"] = str(args.session.resolve().parent)
         args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
+        write_result(args.out, result)
     except (ValueError, TypeError, KeyError, AttributeError, OSError) as error:
         parser.exit(2, f"capture contract: {error}\n")
     print(f"Checked {len(result['keyframes'])} frame(s), {len(result['tap_checks'])} tap(s). "

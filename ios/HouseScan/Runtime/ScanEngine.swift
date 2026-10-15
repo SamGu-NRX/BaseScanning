@@ -31,6 +31,9 @@ final class ScanEngine {
     private var autoCapture = AutoCapture()
     private var closeUpGate = CloseUpGate()
     private var planner = GuidancePlanner()
+    private var cameraInterrupted = false
+    private var latestEndedInterruptionGeneration: UInt64 = 0
+    private let aimClock: () -> Double
     let gapPlanner = GapPlanner()
 
     // Stored evidence
@@ -189,7 +192,6 @@ final class ScanEngine {
     /// Watches whether the AR scene draws the result (`watchResultInCamera`) while "See it on
     /// your wall" is up on the live camera.
     private var resultWatch: Task<Void, Never>?
-    /// The wall the model in the AR scene was built from; nil when none is in it.
     /// The wall the AR result's model was built from, in the frame of the meter's anchor at the
     /// time (`ScanEngine.inAnchorFrame`).
     private var resultBuiltFor: WallGeometry?
@@ -274,8 +276,9 @@ final class ScanEngine {
         case unexplored
     }
 
-    init(options: LaunchOptions) {
+    init(options: LaunchOptions, aimClock: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }) {
         self.options = options
+        self.aimClock = aimClock
         store = KeyframeStore()
         recorder = Self.makeRecorder(store)
         if let url = options.serverURL, !options.sampleResult {
@@ -373,6 +376,7 @@ final class ScanEngine {
         case .wallWalk:
             live?.setMode(.walk)
             planner.reset()
+            state.resetAimSpans()
             if let replay, let map = coverage {
                 // The recording's closing tilt-up frames wait for the tilt-up step.
                 let walkEnd = Self.tiltUpFrames(in: replay, map: map).lowerBound
@@ -531,16 +535,33 @@ final class ScanEngine {
         guard replay == nil, options.replayFolder == nil, live == nil, sourceState.mayStartSource else { return }
         sourceState.sourceStarted()
         state.spatialResultAvailable = true
-        let capture = LiveCapture(
-            onFrame: { [weak self] frame in self?.ingest(frame) },
-            onEvent: { [weak self] event in self?.handle(event) }
+        let captureID = UUID()
+        let capture = LiveCapture(id: captureID,
+            onFrame: { [weak self] frame in self?.receive(frame, from: captureID) },
+            onEvent: { [weak self] event in self?.receive(event, from: captureID) }
         )
-        live = capture
+        replaceLiveCapture(with: capture)
         state.feed = .live
         state.depthAvailable = LiveCapture.supportsDepth
         capture.setRecorder(recorder)
         capture.start()
         updateRecording()
+    }
+
+    private func replaceLiveCapture(with capture: LiveCapture?) {
+        live = capture
+        cameraInterrupted = false
+        latestEndedInterruptionGeneration = 0
+    }
+
+    private func receive(_ frame: SourceFrame, from captureID: UUID) {
+        guard live?.id == captureID else { return }
+        ingest(frame)
+    }
+
+    private func receive(_ event: LiveEvent, from captureID: UUID) {
+        guard live?.id == captureID else { return }
+        handle(event)
     }
 
     private static func makeRecorder(_ store: KeyframeStore) -> CaptureRecorder {
@@ -579,6 +600,9 @@ final class ScanEngine {
     // MARK: Frames
 
     func ingest(_ frame: SourceFrame) {
+        // Encoding can deliver an old normal frame after an interruption event. It must not
+        // change tracking, coaching, coverage or cues, even after the session has resumed.
+        guard !cameraInterrupted, frame.interruptionGeneration >= latestEndedInterruptionGeneration else { return }
         captureClock = max(captureClock ?? frame.timestamp, frame.timestamp)
         if !frame.isPoseOnly { lastFrame = frame }
         if let still = frame.still { state.feed = .still(still) }
@@ -1104,8 +1128,11 @@ final class ScanEngine {
     /// every second or so, which the verify lane's wall-clock check (I6) and the accessibility
     /// audit both caught.
     private func updateGuidance(camera: CameraFrame, time _: Double) {
-        // A question is on screen: the next step waits for its answer.
-        guard let map = coverage, state.endQuestion == nil, !state.overheadQuestion else { return }
+        let screenTime = aimClock()
+        let screen = aimScreen(camera: camera)
+        defer { recordAimActionability(screen: screen, time: screenTime) }
+        guard let map = coverage, state.endQuestion == nil, !state.overheadQuestion,
+              !state.endScanQuestion else { return }
         if let side = nextWallSide {
             state.guidance = .markNextWall(side: side, refusal: nextWallRefusal)
             state.guidanceHint = nil
@@ -1124,9 +1151,15 @@ final class ScanEngine {
             logGuidance()
             return
         }
-        let screenTime = Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000
-        let output = planner.update(coverage: map, camera: camera, time: screenTime)
+        let aimActionable = AimActionability.canAct(on: planner.current, coverage: map, screen: screen,
+                                                     coaching: state.coaching, interrupted: cameraInterrupted,
+                                                     aimWindow: planner.current.flatMap { planner.aimWindow(for: $0, coverage: map) })
+        let output = planner.update(coverage: map, camera: camera, time: screenTime,
+                                    aimActionable: aimActionable)
         logPlannerSwitch(output)
+        if let span = planner.aimWindow(for: output.task, coverage: map) {
+            state.recordAimSpan(for: Self.step(output.task), range: span)
+        }
         if let hidden = hiddenBlock(output.task, map, camera: camera) {
             seeBehindBands = hidden.bands
             state.guidance = .seeBehind(s: hidden.s)
@@ -1149,6 +1182,28 @@ final class ScanEngine {
             state.path = output.path
         }
         logGuidance()
+    }
+
+    private func aimScreen(camera: CameraFrame? = nil) -> AimActionability.Screen {
+        if state.endQuestion != nil || state.overheadQuestion || state.endScanQuestion { return .question }
+        if nextWallSide != nil || state.nextWallConfirm != nil { return .nextWall }
+        if let map = coverage, let camera, tiltUpSpanIfDue(map, camera: camera) != nil { return .tiltUp }
+        if state.marking != nil { return .marking }
+        return .guidance
+    }
+
+    func aimWindow(for task: GuidanceTask) -> ClosedRange<Float>? {
+        coverage.flatMap { planner.aimWindow(for: task, coverage: $0) }
+    }
+
+    func recordCurrentAimActionability() {
+        recordAimActionability(screen: aimScreen(camera: currentFrame?.camera), time: aimClock())
+    }
+
+    private func recordAimActionability(screen: AimActionability.Screen, time: Double) {
+        planner.recordAimActionability(AimActionability.canAct(on: planner.current, coverage: coverage,
+            screen: screen, coaching: state.coaching, interrupted: cameraInterrupted,
+            aimWindow: planner.current.flatMap { aimWindow(for: $0) }), time: time)
     }
 
     /// What the card of an aim step says beside the step (`GuidanceHint`); nil for other steps.
@@ -1220,19 +1275,14 @@ final class ScanEngine {
             let level = map.level(band, index)
             return level != .covered && level != .skipped
         }
-        func mostlyHidden(_ band: SurfaceBand, around s: Float) -> Bool {
-            let cells = map.indices(overlapping: (s - 0.3)...(s + 0.3)).filter { map.isWithinEnds($0) && open(band, $0) }
-            let hidden = cells.filter { map.level(band, $0) == .hidden }.count
-            return hidden > 0 && hidden * 2 >= cells.count
-        }
         switch task {
         case .seeBehind(let s):
             let bands = SurfaceBand.allCases.filter { !Self.hiddenCells(map, band: $0, around: s).isEmpty }
             return bands.isEmpty ? nil : (s, bands)
         case .aimAtGround(let s):
-            return mostlyHidden(.ground, around: s) ? (s, [.ground]) : nil
+            return AimActionability.mostlyHidden(.ground, around: s, coverage: map, aimWindow: planner.aimWindow(for: task, coverage: map)) ? (s, [.ground]) : nil
         case .aimAtWall(let s):
-            return mostlyHidden(.wall, around: s) ? (s, [.wall]) : nil
+            return AimActionability.mostlyHidden(.wall, around: s, coverage: map, aimWindow: planner.aimWindow(for: task, coverage: map)) ? (s, [.wall]) : nil
         case .walk(let side):
             let reach = planner.reach(side, coverage: map)
             let index = map.cellIndex(forS: side.sign * (reach + map.config.cellWidth / 2))
@@ -1260,7 +1310,7 @@ final class ScanEngine {
     /// A frame shown for review (not captured) keeps the current task but re-aims its target and
     /// path from the camera now on screen; otherwise the arrow points from where the walk last was.
     private func refreshCues(camera: CameraFrame) {
-        guard state.phase == .wallWalk, state.endQuestion == nil, !state.overheadQuestion, nextWallSide == nil,
+        guard state.phase == .wallWalk, state.endQuestion == nil, !state.overheadQuestion, !state.endScanQuestion, nextWallSide == nil,
               let map = coverage, let task = planner.current else { return }
         if case .tiltUp = state.guidance { return }
         if case .seeBehind = state.guidance { return }
@@ -1611,8 +1661,12 @@ final class ScanEngine {
             RuntimeLog.capture.info("session interrupted")
             breakWalkedPath(because: "session interrupted")
             state.coaching = .relocalizing
-        case .interruptionEnded:
+            cameraInterrupted = true
+            recordAimActionability(screen: aimScreen(), time: aimClock())
+        case .interruptionEnded(let generation):
             RuntimeLog.capture.info("session interruption ended")
+            cameraInterrupted = false
+            latestEndedInterruptionGeneration = max(latestEndedInterruptionGeneration, generation)
             state.coaching = .relocalizing
         case .cameraDenied:
             // As for a failed session: once the scan is sent, the answer stays on screen.
@@ -1715,6 +1769,7 @@ final class ScanEngine {
         gateCoaching = CoachingDebouncer()
         autoCapture.reset()
         planner.reset()
+        state.resetAimSpans()
         go(.findMeter)
     }
 
@@ -2436,6 +2491,7 @@ final class ScanEngine {
         autoCapture.reset()
         gateCoaching = CoachingDebouncer()
         planner.reset()
+        state.resetAimSpans()
         closeUpGate = CloseUpGate()
         gapPlan = nil
         skippedGaps = []
@@ -2526,8 +2582,9 @@ final class ScanEngine {
         let discard = sourceState.startOver()
         if sourceState.failure == nil { state.failure = nil }
         guard discard else { return }
-        live?.pause()
-        live = nil
+        let failedCapture = live
+        replaceLiveCapture(with: nil)
+        failedCapture?.pause()
         state.feed = .none
         if replay == nil, let folder = options.replayFolder { Task { await loadReplay(folder) } }
     }
@@ -2711,6 +2768,235 @@ extension ScanEngine {
             guard !request.isSatisfied else { return "old sightings bypassed the fresh-photo requirement" }
         }
         return "passed"
+    }
+
+    /// Deterministic integration checks launched by EngineGuidanceTests in the existing journey
+    /// target. Live sessions are never run; no replay, network, or elapsed-time waits participate.
+    static func checkGuidanceEngine(_ scenario: String) -> String {
+        var now: Double = 0
+        let engine = ScanEngine(options: LaunchOptions(arguments: ["-sampleResult"], defaultServerURL: nil), aimClock: { now })
+        guard let wall = WallFrame(meter: SIMD3(0, 1.5, 0), outward: SIMD3(0, 0, 1), groundY: 0) else { return "invalid wall" }
+        engine.coverage = CoverageMap(wall: wall)
+        engine.state.phase = .wallWalk
+        let angle: Float = 20 * .pi / 180
+        let forward = SIMD3<Float>(0, -sin(angle), -cos(angle))
+        let right = SIMD3<Float>(1, 0, 0)
+        let camera = CameraFrame(cameraToWorld: simd_float4x4(
+            SIMD4(-simd_cross(right, forward), 0), SIMD4(right, 0), SIMD4(-forward, 0), SIMD4(0, 1.4, 2.6, 1)),
+            intrinsics: SIMD4(500, 500, 320, 240), imageSize: SIMD2(640, 480))
+        func update() { engine.updateGuidance(camera: camera, time: now) }
+        func frame(_ timestamp: Double, generation: UInt64 = 0) -> SourceFrame {
+            SourceFrame(id: "test-\(timestamp)", timestamp: timestamp, interruptionGeneration: generation, camera: camera, tracking: .normal,
+                quality: nil, jpeg: .none, still: nil, meterAnchor: nil, meterAnchorID: nil,
+                planes: nil, depth: nil, sensorDepth: nil, exposure: nil)
+        }
+        func aimHeld() -> String { engine.planner.current == .aimAtGround(s: 0) ? "passed" : "aim was deferred: \(String(describing: engine.planner.current))" }
+        update()
+        guard engine.planner.current == .aimAtGround(s: 0) else { return "fixture did not select meter aim" }
+        now = 5
+        switch scenario {
+        case "staleBeforeEnd":
+            engine.handle(.interrupted)
+            now = 30
+            engine.ingest(frame(4))
+            guard engine.state.coaching == .relocalizing else { return "old frame cleared recovery coaching" }
+            update()
+            return aimHeld()
+        case "staleAfterEnd":
+            engine.handle(.interrupted)
+            now = 30
+            engine.handle(.interruptionEnded(generation: 1))
+            engine.ingest(frame(1_000_000_000, generation: 0))
+            guard engine.state.coaching == .relocalizing else { return "pre-resume frame cleared recovery coaching" }
+            update()
+            return aimHeld()
+        case "interruptionRecord":
+            engine.handle(.interrupted)
+            now = 35
+            engine.handle(.interruptionEnded(generation: 1))
+            now = 36
+            engine.ingest(frame(36, generation: 1))
+            guard engine.currentFrame?.id == "test-36.0", engine.state.coaching != .relocalizing else {
+                return "fresh normal frame did not resume the engine"
+            }
+            guard aimHeld() == "passed" else { return aimHeld() }
+            now = 51
+            update()
+            return engine.planner.current != .aimAtGround(s: 0) ? "passed" : "recovery never resumed the stall clock"
+        case "generationIgnoresTimestamp":
+            engine.handle(.interrupted)
+            now = 35
+            engine.handle(.interruptionEnded(generation: 1))
+            now = 36
+            // Zero is below any running host's uptime. Only the generation admits the frame.
+            engine.ingest(frame(0, generation: 1))
+            guard engine.currentFrame?.id == "test-0.0", engine.state.coaching != .relocalizing else {
+                return "current-generation frame was rejected for its timestamp"
+            }
+            return aimHeld()
+        case "captureRecreatedAfterEnd", "captureRecreatedWhileInterrupted", "releasedCaptureCallbacks":
+            // Construct captures without running their AR sessions. The scenario drives the
+            // same release and callback entry points as camera-access recovery.
+            let oldCapture = LiveCapture(onFrame: { _ in }, onEvent: { _ in })
+            engine.replaceLiveCapture(with: oldCapture)
+            engine.sourceState.sourceStarted()
+            if scenario != "releasedCaptureCallbacks" {
+                engine.receive(.interrupted, from: oldCapture.id)
+                if scenario == "captureRecreatedAfterEnd" {
+                    engine.receive(.interruptionEnded(generation: 1), from: oldCapture.id)
+                }
+            }
+            engine.receive(.cameraDenied, from: oldCapture.id)
+            guard engine.state.failure == .cameraDenied else { return "fixture did not fail the old capture" }
+            engine.releaseFailedSource()
+            guard engine.live == nil, engine.sourceState.mayStartSource else { return "failed capture was not released" }
+            let newCapture = LiveCapture(onFrame: { _ in }, onEvent: { _ in })
+            engine.replaceLiveCapture(with: newCapture)
+            engine.sourceState.sourceStarted()
+            // Do not call go here: starting a real AR session is outside this check.
+            engine.state.phase = .wallWalk
+            now = scenario == "releasedCaptureCallbacks" ? 6 : 36
+            engine.receive(frame(0), from: newCapture.id)
+            guard engine.currentFrame?.id == "test-0.0", engine.state.coaching != .relocalizing else {
+                return "replacement capture rejected its generation-zero frame"
+            }
+            if scenario == "releasedCaptureCallbacks" {
+                engine.receive(.interrupted, from: oldCapture.id)
+                engine.receive(.interruptionEnded(generation: 99), from: oldCapture.id)
+                engine.receive(.cameraDenied, from: oldCapture.id)
+                engine.receive(frame(1_000_000_000, generation: 99), from: oldCapture.id)
+                guard !engine.cameraInterrupted, engine.latestEndedInterruptionGeneration == 0,
+                      engine.currentFrame?.id == "test-0.0", engine.state.failure == nil,
+                      engine.state.coaching != .relocalizing else { return "released capture changed the new capture's state" }
+                engine.receive(.interrupted, from: oldCapture.id)
+                engine.receive(frame(1), from: newCapture.id)
+                guard engine.currentFrame?.id == "test-1.0" else { return "released capture paused the new capture" }
+            }
+            return aimHeld()
+        case "marking":
+            engine.beginMarking(.window)
+            now = 35
+            engine.cancelMarking()
+            update()
+            return aimHeld()
+        case "markingResume", "markingFinish":
+            engine.lastFrame = frame(4)
+            engine.beginMarking(.gasMeter)
+            now = 35
+            if scenario == "markingResume" { engine.cancelMarking() }
+            else {
+                engine.markFeaturePoint(at: nil, viewSize: CGSize(width: 390, height: 844))
+                guard engine.state.marking == nil, engine.state.features.count == 1 else { return "fixture did not complete a mark" }
+            }
+            now = 50
+            update()
+            return engine.planner.current != .aimAtGround(s: 0) ? "passed" : "marking exit did not resume the stall clock"
+        case "tiltUp":
+            engine.coverage?.setEnd(.left, at: -2)
+            engine.coverage?.setEnd(.right, at: 2)
+            update()
+            guard case .tiltUp = engine.state.guidance else { return "fixture did not show tilt-up" }
+            now = 35
+            engine.tiltUpSettled = true
+            var probe = engine.planner
+            guard let map = engine.coverage else { return "fixture lost coverage" }
+            guard probe.update(coverage: map, camera: camera, time: now).stalled == nil else {
+                return "tilt-up time consumed the aim budget"
+            }
+            update()
+            return aimHeld()
+        case "question", "nextWall":
+            if scenario == "question" { engine.state.endQuestion = .left }
+            else { engine.nextWallSide = .right }
+            update()
+            now = 35
+            engine.state.endQuestion = nil
+            engine.nextWallSide = nil
+            update()
+            return aimHeld()
+        case "hidden":
+            let hidden: [CoverageMap.Sighting] = engine.coverage?.visibleCells(from: camera).filter { $0.band == .ground && [-1, 0].contains($0.index) }.map { sighting in
+                var sighting = sighting
+                sighting.rows = []
+                sighting.hiddenRows = [1]
+                return sighting
+            } ?? []
+            guard hidden.count == 2 else { return "fixture did not see two ground cells" }
+            engine.coverage?.record(hidden, from: .zero)
+            update()
+            guard case .seeBehind = engine.state.guidance else { return "fixture did not show see-behind" }
+            now = 35
+            engine.coverage = CoverageMap(wall: wall)
+            update()
+            return aimHeld()
+        case "skipLaggingStretch":
+            var map = CoverageMap(wall: wall)
+            let width = map.config.cellWidth
+            let target = 15.5 * width
+            for band in SurfaceBand.allCases { map.markSkipped(band, -0.3...0.3) }
+            map.markSkipped(.wall, (10.5 * width)...(20.5 * width))
+            engine.coverage = map
+            engine.planner.reset()
+            engine.state.guidance = .aimAtGround(s: target)
+            engine.cannotAccessArea()
+            guard let skipped = engine.coverage else { return "skip lost coverage" }
+            // Eleven lagging cells surround the refused aim. Refusing only its 0.6 m window
+            // leaves three-cell runs on either side, which immediately ask for another aim.
+            for position: Float in [2, 3] {
+                var transform = camera.cameraToWorld
+                transform.columns.3.x = position
+                let besideSkip = CameraFrame(cameraToWorld: transform, intrinsics: camera.intrinsics, imageSize: camera.imageSize)
+                var probe = GuidancePlanner()
+                let task = probe.update(coverage: skipped, camera: besideSkip, time: 0).task
+                guard task == .walk(.left) else { return "refused stretch immediately requested \(task) at \(position)" }
+            }
+            return "passed"
+        case "trimmedProgress":
+            var map = CoverageMap(wall: wall)
+            for band in SurfaceBand.allCases { map.markSkipped(band, -0.3...0.3) }
+            map.setEnd(.left, at: -0.5)
+            map.markSkipped(.wall, 1...4)
+            engine.coverage = map
+            engine.planner.reset()
+            engine.state.resetAimSpans()
+            var transform = camera.cameraToWorld
+            transform.columns.3.x = 2
+            let alongWall = CameraFrame(cameraToWorld: transform, intrinsics: camera.intrinsics, imageSize: camera.imageSize)
+            now = 0
+            engine.updateGuidance(camera: alongWall, time: now)
+            now = 20
+            engine.updateGuidance(camera: alongWall, time: now)
+            let left = engine.state.guidance
+            guard case .aimAtGround = left, let span = engine.state.aimSpan?.range,
+                  span.upperBound < 2.1 else { return "trimmed span was not published" }
+            engine.state.coverage = CoverageStrip(cellWidth: map.config.cellWidth, firstCellS: map.cellRange(10).lowerBound,
+                wall: Array(repeating: .covered, count: 11), ground: (10...20).map { $0 == 11 ? .covered : .unseen },
+                wallBandHeight: map.config.wallWalkHeight, groundBandDepth: map.config.groundBandDepth,
+                visibleRange: 1.5...3.2, revision: 1)
+            guard engine.state.aimProgress == 0.3125 else { return "ring used the full window instead of four requested cells" }
+            now = 40
+            engine.updateGuidance(camera: alongWall, time: now)
+            guard engine.state.guidance != left else { return "fixture did not request the other run" }
+            return engine.state.aimProgress(for: left) == 0.3125 ? "passed" : "previous aim lost its requested span"
+        case "endScanFreeze", "endScanReviewFreeze":
+            let guidance = engine.state.guidance
+            let target = engine.state.target
+            let path = engine.state.path
+            engine.state.endScanQuestion = true
+            var transform = camera.cameraToWorld
+            transform.columns.3.x += 0.5
+            let movedCamera = CameraFrame(cameraToWorld: transform, intrinsics: camera.intrinsics, imageSize: camera.imageSize)
+            now = 30
+            if scenario == "endScanFreeze" { engine.updateGuidance(camera: movedCamera, time: now) }
+            else {
+                var review = frame(now)
+                review.camera = movedCamera
+                review.isReview = true
+                engine.ingest(review)
+            }
+            return engine.state.guidance == guidance && engine.state.target == target && engine.state.path == path ? "passed" : "question changed guidance, target, or path"
+        default: return "unknown engine scenario: \(scenario)"
+        }
     }
 }
 #endif

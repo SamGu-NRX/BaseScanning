@@ -651,3 +651,259 @@ def test_stamp_refuses_a_survey_already_bound_to_another_capture(case):
     survey["captures"] = [capture]  # its own capture, stamped before: accepted again
     paths["truth"].write_text(json.dumps(survey))
     field.stamp(archive, paths["truth"], paths["map"], out)
+
+
+def test_cached_extraction_skips_zip_decompression(tmp_path, monkeypatch):
+    monkeypatch.setattr(field, "FIELD_DIR", tmp_path / "cache")
+    archive = tmp_path / "session.zip"
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        z.writestr("s/session.json", SESSION_JSON)
+        z.writestr("s/keyframe.jpg", b"photo")
+    folder, digest = field.unpack(archive)
+
+    def no_decompression(*args, **kwargs):
+        pytest.fail("cached field stages must not open ZIP members")
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", no_decompression)
+    for _ in range(3):
+        assert field.unpack(archive) == (folder, digest)
+
+    manifest = json.loads((field.FIELD_DIR / f"{digest[:16]}.members.json").read_text())
+    assert manifest == {
+        "archive_sha256": digest,
+        "files": {
+            "s/session.json": hashlib.sha256(SESSION_JSON.encode()).hexdigest(),
+            "s/keyframe.jpg": hashlib.sha256(b"photo").hexdigest(),
+        },
+    }
+
+
+@pytest.mark.parametrize("invalid", [None, "{", "[]", "wrong-archive", "missing-member"])
+def test_cached_extraction_rebuilds_without_valid_manifest(tmp_path, monkeypatch, invalid):
+    monkeypatch.setattr(field, "FIELD_DIR", tmp_path / "cache")
+    archive = tmp_path / "session.zip"
+    _zip(archive, [("session.json", SESSION_JSON), ("keyframe.jpg", b"photo")])
+    folder, digest = field.unpack(archive)
+    reference = field.FIELD_DIR / f"{digest[:16]}.members.json"
+    expected = json.loads(reference.read_text())
+    if invalid is None:
+        reference.unlink()
+    elif invalid in ("{", "[]"):
+        reference.write_text(invalid)
+    else:
+        broken = json.loads(reference.read_text())
+        if invalid == "wrong-archive":
+            broken["archive_sha256"] = "0" * 64
+        else:
+            del broken["files"]["keyframe.jpg"]
+        reference.write_text(json.dumps(broken))
+    opened = []
+    original_open = zipfile.ZipFile.open
+
+    def record_open(self, member, *args, **kwargs):
+        opened.append(member.filename)
+        return original_open(self, member, *args, **kwargs)
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", record_open)
+    assert field.unpack(archive) == (folder, digest)
+    assert opened == ["session.json", "keyframe.jpg"]
+    assert json.loads(reference.read_text()) == expected
+
+
+def test_cached_extraction_recreates_modified_files(tmp_path, monkeypatch):
+    monkeypatch.setattr(field, "FIELD_DIR", tmp_path / "cache")
+    archive = tmp_path / "session.zip"
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("session.json", "original")
+        z.writestr("keyframe.jpg", b"photo")
+    folder, _ = field.unpack(archive)
+    (folder / "session.json").write_text("modified")
+    (folder / "keyframe.jpg").write_bytes(b"other")
+    again, _ = field.unpack(archive)
+    assert (again / "session.json").read_text() == "original"
+    assert (again / "keyframe.jpg").read_bytes() == b"photo"
+
+
+def test_score_refuses_a_survey_with_another_capture(case):
+    archive, paths, _capture, out = case
+    truth = json.loads(paths["truth"].read_text())
+    truth["captures"].append("another capture")
+    paths["truth"].write_text(json.dumps(truth))
+    with pytest.raises(ValueError, match="survey captures must contain only"):
+        field.score(archive, paths["truth"], paths["map"], paths["rules"], out)
+
+
+def test_image_decoder_keeps_sensor_orientation(tmp_path):
+    import struct
+
+    path = tmp_path / "oriented.jpg"
+    assert cv2.imwrite(str(path), np.zeros((8, 12, 3), dtype=np.uint8))
+    # A little-endian TIFF directory with one SHORT orientation tag, rotate 90 degrees.
+    exif = b"Exif\0\0" + struct.pack("<2sHIH", b"II", 42, 8, 1)
+    exif += struct.pack("<HHIHHI", 274, 3, 1, 6, 0, 0)
+    jpeg = path.read_bytes()
+    path.write_bytes(jpeg[:2] + b"\xff\xe1" + struct.pack(">H", len(exif) + 2) + exif + jpeg[2:])
+    assert cv2.imread(str(path)).shape[:2] == (12, 8)
+    assert field.read_session_image(path).shape[:2] == (8, 12)
+
+
+def test_jpeg_header_rejects_a_frame_beyond_the_scan_budget(tmp_path):
+    path = tmp_path / "invalid.jpg"
+    # Valid APP segments lead to a valid frame beyond the budget; an unbounded scan accepts it.
+    segment = b"\xff\xe0\xff\xff" + b"a" * 65533
+    path.write_bytes(b"\xff\xd8" + segment * 17 + b"\xff\xc0\x00\x07\x08\x00\x08\x00\x0c")
+    with pytest.raises(ValueError, match="frame header"):
+        field.image_size(path)
+
+
+def test_jpeg_frame_header_cannot_cross_scan_budget(tmp_path, monkeypatch):
+    monkeypatch.setattr(field, "MAX_JPEG_HEADER_BYTES", 32)
+    path = tmp_path / "crosses-budget.jpg"
+    path.write_bytes(
+        b"\xff\xd8\xff\xe0\x00\x1a" + b"a" * 24 + b"\xff\xc0\x00\x07\x08\x00\x08\x00\x0c"
+    )
+    with pytest.raises(ValueError, match="frame header"):
+        field.image_size(path)
+
+
+@pytest.mark.parametrize("input_name", ["session", "truth", "map", "rules"])
+@pytest.mark.parametrize("symlink", [False, True])
+def test_score_preserves_inputs_inside_cleanup_directory(case, input_name, symlink):
+    archive, paths, _capture, out = case
+    scored = out / "scored"
+    scored.mkdir(parents=True)
+    inputs = {"session": archive, **paths}
+    original = inputs[input_name].read_bytes()
+    inside = scored / inputs[input_name].name
+    inside.write_bytes(original)
+    if symlink:
+        alias = out.parent / f"{input_name}-alias"
+        alias.symlink_to(inside)
+        inputs[input_name] = alias
+    else:
+        inputs[input_name] = inside
+    report = out / "field_report.md"
+    report.write_text("previous report")
+    with pytest.raises(ValueError, match="overlaps scoring output cleanup"):
+        field.score(inputs["session"], inputs["truth"], inputs["map"], inputs["rules"], out)
+    assert inside.read_bytes() == original
+    assert report.read_text() == "previous report"
+
+
+def test_score_clears_old_reports_before_a_failure(case):
+    archive, paths, _capture, out = case
+    out.mkdir()
+    (out / "field_report.md").write_text("stale report")
+    (out / "scored").mkdir()
+    (out / "scored" / "scores.json").write_text("stale scores")
+    truth = json.loads(paths["truth"].read_text())
+    truth["captures"] = ["wrong capture"]
+    paths["truth"].write_text(json.dumps(truth))
+    with pytest.raises(ValueError):
+        field.score(archive, paths["truth"], paths["map"], paths["rules"], out)
+    assert not (out / "field_report.md").exists()
+    assert (out / "scored").is_dir()
+    assert not list((out / "scored").iterdir())
+
+
+@pytest.mark.parametrize("layout", ["inside", "equal", "ancestor", "alias", "cleanup-alias"])
+def test_score_preserves_directory_sessions_overlapping_outputs(case, layout):
+    archive, paths, _capture, _out = case
+    folder, _ = field.unpack(archive)
+    out = folder / "results"
+    if layout == "equal":
+        out = folder
+    elif layout == "ancestor":
+        out = folder.parent
+    elif layout in ("alias", "cleanup-alias"):
+        out = folder.parent / "output-alias"
+        if layout == "alias":
+            (folder / "results").mkdir()
+            out.symlink_to(folder / "results", target_is_directory=True)
+    out.mkdir(exist_ok=True)
+    scored = out / "scored"
+    if layout == "cleanup-alias":
+        scored.symlink_to(folder, target_is_directory=True)
+    else:
+        scored.mkdir()
+        doc = json.loads((folder / "session.json").read_text())
+        (scored / "session-input.jpg").write_bytes(
+            field.session_file(folder, doc["keyframes"][0]["img"]).read_bytes()
+        )
+        if scored.resolve().is_relative_to(folder):
+            doc["keyframes"][0]["img"] = str(
+                (scored / "session-input.jpg").resolve().relative_to(folder)
+            )
+            (folder / "session.json").write_text(json.dumps(doc))
+    report = out / "field_report.md"
+    report.write_text("previous report")
+    before = {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()}
+    with pytest.raises(ValueError, match=r"directory input .* overlaps scoring output cleanup"):
+        field.score(folder, paths["truth"], paths["map"], paths["rules"], out)
+    assert {
+        str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()
+    } == before
+    assert report.read_text() == "previous report"
+
+
+def test_prepare_without_output_directory_skips_result_lookup(tmp_path, monkeypatch, capsys):
+    import sys
+
+    archive = tmp_path / "session.zip"
+    folder, prepared = tmp_path / "unpacked", tmp_path / "prepared"
+    calls = []
+
+    def unpack(session):
+        assert session == archive
+        calls.append("unpack")
+        return folder, "capture-hash"
+
+    def prepare(session_folder, digest):
+        assert (session_folder, digest) == (folder, "capture-hash")
+        calls.append("prepare")
+        return prepared
+
+    def unused_lookup(*args):
+        pytest.fail("prepare must not look up a results directory")
+
+    monkeypatch.setattr(sys, "argv", ["field", "prepare", str(archive)])
+    monkeypatch.setattr(field, "unpack", unpack)
+    monkeypatch.setattr(field, "prepare", prepare)
+    monkeypatch.setattr(field, "result_dir", unused_lookup)
+    field.main()
+    assert calls == ["unpack", "prepare"]
+    assert capsys.readouterr().out == f"{prepared}\n"
+
+
+def test_equal_archive_basenames_get_distinct_result_directories(tmp_path, monkeypatch):
+    monkeypatch.setattr(field, "FIELD_DIR", tmp_path / "cache")
+    archives = []
+    for name in ("a", "b"):
+        folder = tmp_path / name
+        folder.mkdir()
+        archive = folder / "session.zip"
+        with zipfile.ZipFile(archive, "w") as z:
+            z.writestr("session.json", name)
+        archives.append(archive)
+    assert field.result_dir(archives[0]) != field.result_dir(archives[1])
+
+
+@pytest.mark.parametrize("dangling", [False, True])
+def test_score_replaces_scored_symlink_without_touching_its_target(case, dangling):
+    archive, paths, _capture, out = case
+    unrelated = out.parent / "unrelated-scores"
+    if not dangling:
+        unrelated.mkdir()
+        (unrelated / "keep.json").write_bytes(b"caller-owned scores")
+    out.mkdir()
+    scored = out / "scored"
+    scored.symlink_to(unrelated, target_is_directory=True)
+    field.score(archive, paths["truth"], paths["map"], paths["rules"], out)
+    assert scored.is_dir()
+    assert not scored.is_symlink()
+    (scored / "new.json").write_bytes(b"new scores")
+    if dangling:
+        assert not unrelated.exists()
+    else:
+        assert (unrelated / "keep.json").read_bytes() == b"caller-owned scores"
+        assert {path.name for path in unrelated.iterdir()} == {"keep.json"}

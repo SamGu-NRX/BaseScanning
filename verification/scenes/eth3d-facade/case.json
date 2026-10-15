@@ -4,7 +4,7 @@
   "scene_path": "~/house-scanning-data/verify/scenes/eth3d-facade/scene.zip",
   "source": "ETH3D 'facade' (dslr_undistorted + dslr_scan_eval, research-only license), south courtyard wing; built by verification/scenes/eth3d-facade/build_scene.py from annotations.json. Walls, windows and door are real; the electric meter is invented.",
   "description": "Three-wall chain: w1 (52.0 ft, five ground-floor windows), w2 (11.6 ft tower side, never observed), w3 (16.2 ft tower front with the entrance door). Meter invented on w1 between windows 4 and 5. No start position can pass: every w1 window gap (5.11-5.71 ft) is at least 2.87 ft short of the 8.58 ft a battery plus two 3 ft clearances needs, w2 is unobserved, and all of w3 is past the 20 ft route. Reject is also wrong because w2 is within reach and unseen. See README.md for the arithmetic.",
-  "rules_assumed": {"opening": 3.0, "route_length": 20.0, "corner_allowance": 0.5, "battery_width": 2.583333333333},
+  "rules_assumed": {"opening": 3.0, "route_length": 20.0, "corner_allowance": 0.5, "battery_width": 2.583333333333, "headroom": 6.5},
   "expect": {
     "decision_in": ["manual_review"],
     "sweep_runs": [

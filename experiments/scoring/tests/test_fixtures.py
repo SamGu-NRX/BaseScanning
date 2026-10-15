@@ -103,7 +103,7 @@ EXPECTED_RUNS = {
         "over_cautious": "2",  # c1 facing_gap fail, c1 route unsure
         "false_rejections": "1",  # c1 facing_gap
         "decided_without_measurement": "0",  # its unsupported distances got unsure
-        "abstentions_justified": "1",
+        "abstentions_justified": "2",
         "abstentions_avoidable": "1",
         "could_flip": "2",
         "capture_s": "420.0",
@@ -254,14 +254,15 @@ def test_markdown_summary(scored):
     assert blind.strip().splitlines() == [
         "- `ar-taps` reported pass for `facing_gap` at `c2` with measurement `c2-facing` missing "
         "(failed); the survey is fail at 2.500 ± 0.020 ft against `facing_gap_ft` at_least "
-        "3.000 ft.",
+        "3.000 ft. Capture `synthetic-01-walk-1`.",
         "- `ar-taps` reported fail for `pool` at `c2` with measurement `c2-pool` missing "
         "(failed); the survey is unknown (not measured) against `pool_clearance_ft` at_least "
-        "5.000 ft.",
+        "5.000 ft. Capture `synthetic-01-walk-1`.",
     ]
     assert unsafe.strip() == (
         "- `ar-taps` passed `facing_gap` at `c2`; the survey is fail at 2.500 ± 0.020 ft "
-        "against `facing_gap_ft` at_least 3.000 ft (run measured no value)."
+        "against `facing_gap_ft` at_least 3.000 ft (run measured no value). "
+        "Capture `synthetic-01-walk-1`."
     )
     assert (
         "- `ar-taps` passed `gas` at `c2`; the survey is borderline at 3.020 ± 0.030 ft against "

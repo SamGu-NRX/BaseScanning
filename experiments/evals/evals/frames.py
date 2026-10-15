@@ -52,7 +52,8 @@ def normals_from_depth(depth: np.ndarray, K: np.ndarray) -> np.ndarray:
 def view_geometry(scene: Scene, name: str) -> tuple[float, float]:
     """Median distance (m) to the view's scored points and median incidence angle (degrees)."""
     v = scene.views[name]
-    index, uv, _ = scene.visible(name)
+    index, uv, edge = scene.visible(name)
+    index, uv = index[~edge], uv[~edge]
     Xc = scene.cands[index] @ v.R_wc.T + v.t_wc
     dist = np.linalg.norm(Xc, axis=1)
     depth, K = scene.oracle_depth(name)

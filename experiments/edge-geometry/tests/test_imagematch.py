@@ -87,3 +87,19 @@ def test_epipolar_search_fails_cleanly_when_the_template_leaves_the_image():
     uv2, score = epipolar_match(img, img, np.array([3.0, 3.0]), K, T, K, T)
     assert np.isnan(uv2).all()
     assert score == -1.0
+
+
+def test_epipolar_search_longer_than_one_remap_still_matches():
+    # A 0.05 px step makes the segment's patches overflow cv2.remap's SHRT_MAX rows, as a wide
+    # photo pair's long segment does at the normal step.
+    rng = np.random.default_rng(3)
+    texture = cv2.GaussianBlur(rng.random((3000, 3000)).astype(np.float32), (0, 0), 3)
+    T1 = look_at(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 3.0]))
+    T2 = look_at(np.array([0.4, 0.05, 0.1]), np.array([0.1, 0.0, 3.0]))
+    img1, img2 = render_plane(T1, texture, 0.002, 3.0), render_plane(T2, texture, 0.002, 3.0)
+    uv1 = np.array([300.3, 250.6])
+    o1, d1 = pixel_ray(K, T1, uv1)
+    truth = project(K, T2, (o1 + (3.0 - o1[2]) / d1[2] * d1)[None])[0][0]
+    uv2, score = epipolar_match(img1, img2, uv1, K, T1, K, T2, step_px=0.05)
+    assert score > 0.95
+    assert np.linalg.norm(uv2 - truth) < 0.3

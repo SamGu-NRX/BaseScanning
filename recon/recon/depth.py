@@ -16,11 +16,14 @@ walls reached 6.3 in even with exact poses.
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
 import subprocess
 import sys
+import zipfile
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -83,20 +86,22 @@ def rotated_intrinsics(k: np.ndarray, w: float, h: float, turns: int) -> np.ndar
 
 def lidar(frame: Frame) -> Depth:
     d = frame.lidar
+    if d.confidence is None:
+        raise ValueError(f"{d.file}: LiDAR depth requires its confidence map")
     depth = np.fromfile(d.file, dtype="<f4")
     if depth.size != d.width * d.height:
         raise ValueError(f"{d.file}: {depth.size} values, expected {d.width} x {d.height}")
     depth = depth.reshape(d.height, d.width).copy()
-    if d.confidence is not None:
-        conf = np.fromfile(d.confidence, dtype=np.uint8).reshape(d.height, d.width)
-        depth[conf < MIN_CONFIDENCE] = np.nan
+    conf = np.fromfile(d.confidence, dtype=np.uint8).reshape(d.height, d.width)
+    depth[conf < MIN_CONFIDENCE] = np.nan
     depth[~(depth > 0)] = np.nan
     color = cv2.resize(_image(frame), (d.width, d.height), interpolation=cv2.INTER_AREA)
     return Depth(depth, scaled(frame.intrinsics, d.width / frame.width), color, "lidar")
 
 
 def _image(frame: Frame) -> np.ndarray:
-    img = cv2.imread(str(frame.image), cv2.IMREAD_COLOR)
+    # Poses, intrinsics and LiDAR describe sensor pixels, regardless of JPEG EXIF orientation.
+    img = cv2.imread(str(frame.image), cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
     if img is None:
         raise FileNotFoundError(frame.image)
     if img.shape[:2] != (frame.height, frame.width):
@@ -169,6 +174,23 @@ def cache_file(work: Path, fid: str, suffix: str) -> Path:
 def moge(capture: Capture, work: Path) -> dict[str, Depth]:
     """MoGe-2 depth per frame at up to MAX_SIDE px, in the frame's own (unrotated) orientation,
     cached under `work` by the capture's content (`moge_cache`)."""
+    work.mkdir(parents=True, exist_ok=True)
+    # The lock covers key repair, inputs, inference and reads, so concurrent runs cannot read a
+    # partially written archive or launch duplicate inference for the same cache root.
+    with (work / ".moge.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        return _moge_locked(capture, work)
+
+
+def _cached_depth(path: Path, shape: tuple[int, int]) -> np.ndarray:
+    with np.load(path, allow_pickle=False) as archive:
+        d = archive["depth"]
+        if d.shape != shape or d.dtype.kind != "f":
+            raise ValueError(f"{path}: expected floating depth with shape {shape}, got {d.shape}")
+        return d.astype(np.float32)
+
+
+def _moge_locked(capture: Capture, work: Path) -> dict[str, Depth]:
     work = moge_cache(capture, work)
     manifest, meta = [], {}
     for f in capture.frames:
@@ -184,7 +206,26 @@ def moge(capture: Capture, work: Path) -> dict[str, Depth]:
         k_up = rotated_intrinsics(k_small, small.shape[1], small.shape[0], turns)
         out = cache_file(work, f.id, ".moge2.npz")
         meta[f.id] = (out, turns, k_small, small)
-        if not out.exists():
+        valid = False
+        if out.exists():
+            try:
+                _cached_depth(out, np.rot90(small, turns).shape[:2])
+                valid = True
+            except (
+                ValueError,
+                OSError,
+                KeyError,
+                EOFError,
+                TypeError,
+                # A damaged ZIP encryption flag makes NumPy request a password.
+                RuntimeError,
+                # ZIP corruption can name an unsupported compression method.
+                NotImplementedError,
+                zipfile.BadZipFile,
+                zlib.error,
+            ):
+                out.unlink()
+        if not valid:
             manifest.append({"image": str(up_path), "fx": float(k_up[0]), "out": str(out)})
     if manifest:
         (work / "moge2.json").write_text(json.dumps(manifest, indent=1))
@@ -203,7 +244,7 @@ def moge(capture: Capture, work: Path) -> dict[str, Depth]:
         )
     depths = {}
     for fid, (out, turns, k_small, small) in meta.items():
-        d = np.rot90(np.load(out)["depth"], -turns).astype(np.float32)
+        d = np.rot90(_cached_depth(out, np.rot90(small, turns).shape[:2]), -turns)
         if d.shape != small.shape[:2]:
             raise ValueError(f"{out}: depth {d.shape} does not match the image {small.shape[:2]}")
         depths[fid] = Depth(np.ascontiguousarray(d), k_small, small, "moge2")

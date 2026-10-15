@@ -60,9 +60,10 @@ GET /relay/<source>/captures/<id>
 GET /relay/<source>/captures/<id>/events?after=<n>&wait=<0-25>
 GET /relay/<source>/captures/<id>/result
 GET /relay/<source>/captures/<id>/preview?run=<run id>
+GET /relay/<source>/captures/<id>/preview?run=<run id>&artifact=<previewArtifactId>
 ```
 
-Sources are fixed at startup. The relay refuses other methods and paths, and any other query. It also refuses encoded or dot segments and any Host header that is not loopback, which stops DNS rebinding. Signed URLs in the result are replaced before the page sees them. For `/preview`, the relay reads the result itself and fetches the signed URL only if it points at the source's own host or at `storage.googleapis.com`. It answers 409 if the latest result belongs to a different run than the page asked about. It follows no redirects, reads at most 64 MiB of preview and 8 MiB of JSON, and passes the API's `Retry-After` through. The log records each route and status, never a URL or query.
+Sources are fixed at startup. The relay refuses other methods and paths, and any other query. It also refuses encoded or dot segments and any Host header that is not loopback, which stops DNS rebinding. Signed URLs in the result are replaced before the page sees them. For `/preview`, the relay reads the result itself and fetches the signed URL only if it points at the source's own host or at `storage.googleapis.com`. It answers 409 if the latest result belongs to a different run than the page asked about. The page also sends the result's opaque `previewArtifactId` as `artifact`; a different file in the same run returns 409 before storage is fetched. This keeps a storage `Retry-After` attached to the file it came from. Run-only requests remain supported. It follows no redirects, reads at most 64 MiB of preview and 8 MiB of JSON, and passes the API's `Retry-After` through. The log records each route and status, never a URL or query.
 
 ## Files
 
@@ -75,7 +76,7 @@ Sources are fixed at startup. The relay refuses other methods and paths, and any
 | `public/live.js` | Long-poll loop: catch-up reads until history is drained, then long polls that end by the next 5 s status refresh, with a 1 s floor, backoff up to 5 s that honors `Retry-After`, result and preview reads when events call for them |
 | `public/replay.js`, `public/scenario.js` | Illustrative replay and the synthetic scenarios both sources share |
 | `public/ply.js`, `public/cloud.js` | PLY reader (ascii and binary) and the canvas renderer |
-| `public/conduit.js`, `public/app.js` | The file line and the page wiring. Counts update on timers, never on an animation finishing, and a probe turns motion and transitions off when the browser's animation clock is stopped. |
+| `public/conduit.js`, `public/count-timers.js`, `public/app.js` | The file line, the timers that update the counts, and the page wiring. Counts update on timers, never on an animation finishing, and a probe turns motion and transitions off when the browser's animation clock is stopped. |
 
 ## Tests
 
@@ -84,7 +85,7 @@ cd tools/integration-viewer
 node --test "test/*.test.js"
 ```
 
-The tests cover the reducer (duplicates, ordering, cursor, stale sessions, unknown events, offline, no claimed result), the PLY reader, the relay through real HTTP requests (allowlist, traversal, Host check, signed-URL handling), and the live loop against the relay and a sped-up synthetic API, including a dropped connection. CI does not run them yet, because no workflow covers `tools/`.
+The tests cover the reducer (duplicates, ordering, cursor, stale sessions, unknown events, offline, no claimed result), the PLY reader, the relay through real HTTP requests (allowlist, traversal, Host check, signed-URL handling), and the live loop against the relay and a sped-up synthetic API, including a dropped connection. `make integration-viewer` runs this suite, and `make check` includes it. CI does not run it yet, because no workflow covers `tools/`.
 
 `test/browser.test.js` runs the page in headless Chrome with the animation clock stopped and frames drawn only on request, which is how an embedded preview panel behaved. It checks that the file counts match the events drawn in the same frame and that finished stages show their marker. It skips when no Chrome is found; set `CHROME_PATH` to point at one.
 

@@ -24,7 +24,7 @@ def git(*args: str, cwd: Path = REPO) -> str:
 
 
 def fetch() -> None:
-    git("fetch", "--quiet", "origin")
+    git("fetch", "--quiet", "--prune", "origin")
 
 
 def resolve(ref: str) -> str:

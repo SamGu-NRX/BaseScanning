@@ -17,7 +17,11 @@ Needs about 300 MB in `~/house-scanning-data/autodetect/`, plus one model's weig
 ```sh
 uv sync && uv run pytest
 uv run python -m autodetect.openimages select && uv run python -m autodetect.openimages download
+curl --fail --location https://cmp.felk.cvut.cz/~tylecr1/facade/CMP_facade_DB_base.zip -o /tmp/CMP_facade_DB_base.zip
+mkdir -p ~/house-scanning-data/autodetect/cmp
+unzip /tmp/CMP_facade_DB_base.zip -d ~/house-scanning-data/autodetect/cmp
 uv run python -m autodetect.cmp
+uv run python -m autodetect.sets                              # downscale the installed electro packet photos
 swift build -c release --package-path vision   # copy rects, coremldet, trainod to ~/house-scanning-data/autodetect/bin
 uv run python -m autodetect.run_vision oi_tune oi_eval cmp electro
 uv run python -m autodetect.owl oi_tune oi_eval cmp electro      # needs weights/owlv2/model_fp16.onnx, then delete it

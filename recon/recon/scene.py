@@ -4,8 +4,8 @@ t3/server). Feet, in the scene frame: the world with the ground at the wall at y
 
 A scan bundle's scene is updated: the meter's wall takes the fitted line (over the union of its
 fitted extent and the phone's baseline), `coverage.observed` is replaced by the occlusion-aware
-coverage, and the measured facing gaps and overhead clearances are added to whatever the phone
-marked. A Measure Lab session gets a new scene with the same parts.
+coverage, and the target wall's measured facing gaps and overhead clearances are replaced.
+A Measure Lab session gets a new scene with the same parts.
 
 The fitted wall takes the source of the depth that built it (`pipeline.WALL_SOURCE`: "mesh" from
 LiDAR, "plane" from photos alone) and no `plus_minus_ft`; a bundle's tapped bound is removed. The
@@ -83,10 +83,17 @@ def build(
     target["baseline"] = [_plan_ft(wall.world(s, 0.0)) for s in (lo, hi)]
     target["source"] = wall_source
     target.pop("plus_minus_ft", None)
-    doc.setdefault("coverage", {})["observed"] = observed(cov)[:500]
+    entries = observed(cov)
+    # scene.schema.json caps observed entries at 500; a partial export hides valid observations.
+    if len(entries) > 500:
+        raise ValueError(
+            f"coverage.observed has {len(entries)} entries; scene contract limit is 500"
+        )
+    doc.setdefault("coverage", {})["observed"] = entries
     facing, overheads = measurements(cov, wid, plus_minus_ft)
-    doc["facing"] = [*doc.get("facing", []), *facing]
-    doc["overheads"] = [*doc.get("overheads", []), *overheads]
+    # Replacing the wall invalidates its old spans even when the meter stays in place.
+    doc["facing"] = [*[m for m in doc.get("facing", []) if m["wall_id"] != wid], *facing]
+    doc["overheads"] = [*[m for m in doc.get("overheads", []) if m["wall_id"] != wid], *overheads]
     return doc
 
 

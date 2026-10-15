@@ -80,7 +80,8 @@ Test the capture logic, then run the whole flow in the Simulator on the syntheti
 ```sh
 swift test --package-path ios/HouseScanKit
 xcodebuild -project ios/HouseScan.xcodeproj -scheme HouseScan \
-  -destination "platform=iOS Simulator,name=iPhone 17" -only-testing:HouseScanUITests test
+  -destination "platform=iOS Simulator,name=iPhone 17" \
+  -only-testing:HouseScanUITests test
 ```
 
 To run the flow on a local recording, set `TEST_RUNNER_HOUSESCAN_REPLAY=<session folder>` for that `xcodebuild` command. Keep such recordings and their screenshots out of git.

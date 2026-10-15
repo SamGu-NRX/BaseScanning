@@ -32,6 +32,7 @@ import json
 import re
 import shutil
 import sys
+import tempfile
 import time
 import zipfile
 from dataclasses import dataclass
@@ -111,6 +112,13 @@ def file_sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def write_cache_manifest(path: Path, manifest: dict) -> None:
+    with tempfile.TemporaryDirectory(dir=path.parent) as directory:
+        temporary = Path(directory) / "manifest.json"
+        temporary.write_text(json.dumps(manifest), encoding="utf-8")
+        temporary.replace(path)
+
+
 def check_zip_directory(session: Path) -> None:
     """Refuse a zip whose central directory is too large or lists too many entries, reading only
     its end record. `zipfile.ZipFile` reads the whole directory and builds every entry while it is
@@ -149,6 +157,7 @@ def unpack(session: Path) -> tuple[Path, str | None]:
     check_zip_directory(session)
     digest = file_sha256(session)
     out = FIELD_DIR / digest[:16]
+    manifest_path = out.with_suffix(".members.json")
     with zipfile.ZipFile(session) as z:
         infos = z.infolist()
         if len(infos) > MAX_ZIP_ENTRIES:
@@ -171,7 +180,25 @@ def unpack(session: Path) -> tuple[Path, str | None]:
         if len(roots) != 1:
             raise ValueError(f"{session}: expected one session.json, found {roots}")
         root = out / roots[0]
-        if not root.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            manifest = None
+        # Hashes recorded while extracting avoid decompressing the ZIP in every field stage.
+        # Bind them to the full archive digest and still hash cached files to detect local edits.
+        hashes = manifest.get("files") if isinstance(manifest, dict) else None
+        intact = (
+            isinstance(hashes, dict)
+            and manifest.get("archive_sha256") == digest
+            and set(hashes) == {str(rel) for _, rel in members}
+            and root.exists()
+            and all(
+                (out.joinpath(*rel.parts)).is_file()
+                and file_sha256(out.joinpath(*rel.parts)) == hashes[str(rel)]
+                for _, rel in members
+            )
+        )
+        if not intact:
             FIELD_DIR.mkdir(parents=True, exist_ok=True)
             free = shutil.disk_usage(FIELD_DIR).free
             if free - declared < MIN_FREE_AFTER_UNPACK:
@@ -183,17 +210,22 @@ def unpack(session: Path) -> tuple[Path, str | None]:
             shutil.rmtree(tmp, ignore_errors=True)
             try:
                 written = 0
+                hashes = {}
                 for info, rel in members:
                     dest = tmp.joinpath(*rel.parts)
                     dest.parent.mkdir(parents=True, exist_ok=True)
+                    member_hash = hashlib.sha256()
                     with z.open(info) as src, dest.open("wb") as dst:
                         while block := src.read(1 << 20):
                             written += len(block)
                             if written > MAX_ZIP_BYTES:
                                 raise ValueError(f"{session}: expands past {MAX_ZIP_BYTES} bytes")
                             dst.write(block)
+                            member_hash.update(block)
+                    hashes[str(rel)] = member_hash.hexdigest()
                 shutil.rmtree(out, ignore_errors=True)
                 tmp.rename(out)
+                write_cache_manifest(manifest_path, {"archive_sha256": digest, "files": hashes})
             except BaseException:
                 shutil.rmtree(tmp, ignore_errors=True)
                 raise
@@ -261,6 +293,9 @@ def safe_id(value: str, what: str) -> str:
     return value
 
 
+# A 1 MiB header budget bounds malformed JPEG work. No dataset calibration supports this limit.
+MAX_JPEG_HEADER_BYTES = 1024 * 1024
+
 # JPEG start-of-frame markers carry the image size; C4 (DHT), C8 (JPG) and CC (DAC) share the range
 # but are not frames.
 _JPEG_SOF = set(range(0xC0, 0xD0)) - {0xC4, 0xC8, 0xCC}
@@ -276,14 +311,14 @@ def image_size(path: Path) -> tuple[int, int]:
         if head[:2] != b"\xff\xd8":
             raise ValueError(f"{path}: not a JPEG or PNG image")
         f.seek(2)
-        while True:
+        while f.tell() < MAX_JPEG_HEADER_BYTES:
             byte = f.read(1)
             if not byte:
                 break
             if byte != b"\xff":
-                continue
+                break
             marker = f.read(1)
-            while marker == b"\xff":  # fill bytes before a marker
+            while marker == b"\xff" and f.tell() < MAX_JPEG_HEADER_BYTES:  # bounded fill bytes
                 marker = f.read(1)
             if not marker:
                 break
@@ -292,8 +327,12 @@ def image_size(path: Path) -> tuple[int, int]:
                 continue
             if m in (0xD9, 0xDA):  # end of image, or start of scan before any frame header
                 break
+            if f.tell() + 2 > MAX_JPEG_HEADER_BYTES:
+                break
             length = int.from_bytes(f.read(2), "big")
             if m in _JPEG_SOF:
+                if f.tell() + 5 > MAX_JPEG_HEADER_BYTES:
+                    break
                 frame = f.read(5)
                 if len(frame) == 5:
                     return int.from_bytes(frame[3:5], "big"), int.from_bytes(frame[1:3], "big")
@@ -309,9 +348,11 @@ def read_session_image(path: Path, flags: int = cv2.IMREAD_COLOR) -> np.ndarray:
     w, h = image_size(path)
     if w <= 0 or h <= 0 or w * h > MAX_IMAGE_PIXELS:
         raise ValueError(f"{path}: {w} x {h} pixels, more than {MAX_IMAGE_PIXELS} or empty")
-    img = cv2.imread(str(path), flags)
+    img = cv2.imread(str(path), flags | cv2.IMREAD_IGNORE_ORIENTATION)
     if img is None:
         raise ValueError(f"{path}: OpenCV could not decode it")
+    if img.shape[:2] != (h, w):
+        raise ValueError(f"{path}: decoded size differs from header {w} x {h}")
     return img
 
 
@@ -759,11 +800,43 @@ def score(
     out_dir: Path,
     tap_error_in: float = TAP_ERROR_IN,
 ) -> str:
+    session_path = Path(session_path).resolve()
+    truth_path, map_path, rules_path = (
+        Path(path).resolve() if path is not None else None
+        for path in (truth_path, map_path, rules_path)
+    )
+    out_dir = out_dir.resolve()
+    scored = (out_dir / "scored").resolve()
+    generated = {(out_dir / name).resolve() for name in (*ROW_FILES, "field_report.md")}
+    # Check before any cleanup: callers can keep an archive or survey under the output root.
+    for path in (session_path, truth_path, map_path, rules_path):
+        if (
+            path is not None
+            and path.is_dir()
+            and any(
+                path.is_relative_to(target) or target.is_relative_to(path)
+                for target in (out_dir, scored, *generated)
+            )
+        ):
+            raise ValueError(
+                f"directory input {path} overlaps scoring output cleanup; choose another out-dir"
+            )
+        if path is not None and (path.is_relative_to(scored) or path in generated):
+            raise ValueError(
+                f"input {path} overlaps scoring output cleanup; choose another out-dir"
+            )
     # First: a re-run, even one that stops early below, must not leave an earlier run's rows
     # for `score` to pick up.
     out_dir.mkdir(parents=True, exist_ok=True)
     for name in ROW_FILES:
         (out_dir / name).unlink(missing_ok=True)
+    (out_dir / "field_report.md").unlink(missing_ok=True)
+    scored_path = out_dir / "scored"
+    if scored_path.is_symlink():
+        scored_path.unlink()
+    else:
+        shutil.rmtree(scored_path, ignore_errors=True)
+    scored_path.mkdir(parents=True, exist_ok=True)
     folder, capture = unpack(session_path)
     session = load_session(folder)
     out = work_dir(folder)
@@ -829,8 +902,10 @@ def score(
             f"{map_path}: map is for session {mapping.get('session')!r}, the capture is "
             f"{session['session']['id']!r}; run `stamp` first"
         )
-    if capture not in truth.get("captures", []):
-        raise ValueError(f"{truth_path}: survey does not list capture {capture}; run `stamp` first")
+    if set(truth.get("captures", [])) != {capture}:
+        raise ValueError(
+            f"{truth_path}: survey captures must contain only {capture}; run `stamp` first"
+        )
     rules_sha = hashlib.sha256(Path(rules_path).read_bytes()).hexdigest()
     ref = mapping["measurements"].get(truth["scale_reference"])
     tape = {m["id"]: m for m in truth["measurements"]}.get(truth["scale_reference"])
@@ -880,11 +955,16 @@ def score(
     return "\n".join(lines) + "\n"
 
 
+def result_dir(session: Path) -> Path:
+    folder, digest = unpack(session)
+    return FIELD_DIR / "results" / capture_id(folder, digest)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument("step", choices=["stamp", "prepare", "score"])
+    ap.add_argument("step", choices=["stamp", "prepare", "score", "result-dir"])
     ap.add_argument("session", type=Path, help="session zip shared from Measure Lab, or its folder")
     ap.add_argument("--truth", type=Path)
     ap.add_argument("--map", type=Path)
@@ -892,12 +972,15 @@ def main() -> None:
     ap.add_argument("--out-dir", type=Path, help="default: a folder per session under the data dir")
     ap.add_argument("--tap-error-in", type=float, default=TAP_ERROR_IN)
     args = ap.parse_args()
-    out_dir = args.out_dir or FIELD_DIR / "results" / args.session.stem
-    if args.step == "stamp":
-        print(stamp(args.session, args.truth, args.map, out_dir))
+    if args.step == "result-dir":
+        print(result_dir(args.session))
         return
     if args.step == "prepare":
         print(prepare(*unpack(args.session)))
+        return
+    out_dir = args.out_dir or result_dir(args.session)
+    if args.step == "stamp":
+        print(stamp(args.session, args.truth, args.map, out_dir))
         return
     report = score(args.session, args.truth, args.map, args.rules, out_dir, args.tap_error_in)
     out_dir.mkdir(parents=True, exist_ok=True)

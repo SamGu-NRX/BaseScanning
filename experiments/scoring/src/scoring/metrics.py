@@ -255,10 +255,13 @@ def score_check(
         missed = reported == "pass" and truth in ("borderline", "review")
         over_caution = reported in ("unsure", "fail") and truth == "pass"
         rejection = reported == "fail" and truth == "pass"
-        if reported == "unsure":
-            evidence_missing = measurement.status in ("missing_unsupported", "missing_failed")
-            justified = truth in ("borderline", "review") or evidence_missing
-            abstention = "justified" if justified else "avoidable"
+    if reported == "unsure":
+        missing = measurement.reported.missing if measurement.reported else None
+        evidence_missing = missing in ("unsupported", "failed")
+        if evidence_missing or truth in ("borderline", "review"):
+            abstention = "justified"
+        elif truth != "unknown":
+            abstention = "avoidable"
 
     return CheckScore(
         check=check,

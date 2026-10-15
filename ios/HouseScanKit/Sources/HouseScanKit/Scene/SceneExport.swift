@@ -447,13 +447,19 @@ public enum SceneExport {
                     throw SceneExportError.topBelowBottom(field: name, bottom: bottom, top: top)
                 }
                 let s = wall.wallCoordinates(of: tap).s
+                // A footprint crossing a corner must keep one frame; switching segments at
+                // each vertex can fold the square into a bow-tie (review of #131).
+                let segment = chain.segments[WallSegment.index(in: chain.segments, atS: s)]
+                let footprintPoint = { (at: Float, out: Float) in
+                    planFeet(wall.meter + segment.anchor + segment.along * (at - segment.anchorS) + segment.outward * out)
+                }
                 let (halfWidth, depth) = pointObjectSize(kind)
                 let left = s - halfWidth
                 let right = s + halfWidth
                 objects.append(.init(
                     type: kind.rawValue, wall_id: wallIDAt(s), span_ft: spanFeet(left...right),
                     bottom_ft: bottom.map(feet), top_ft: top.map(feet), attrs: nil, source: "tap",
-                    footprint: [plan(left, 0), plan(right, 0), plan(right, depth), plan(left, depth)],
+                    footprint: [footprintPoint(left, 0), footprintPoint(right, 0), footprintPoint(right, depth), footprintPoint(left, depth)],
                     plus_minus_ft: objectError))
             case let .fence(foot):
                 guard foot.count == 2 else {
@@ -741,11 +747,16 @@ public enum SceneExport {
     /// `seen_to` reads as unseen. It also means any end can be written up to 1e-5 ft (3
     /// micrometres) outside the Float it came from. Nil when nothing is left.
     static func spanInward(_ span: ClosedRange<Float>) -> [Double]? {
-        let noise = 1e-5
-        let low = ((Double(span.lowerBound) * SceneUnits.feetPerMeter - noise) * 10_000).rounded(.up) / 10_000
-        let high = ((Double(span.upperBound) * SceneUnits.feetPerMeter + noise) * 10_000).rounded(.down) / 10_000
+        let low = feetInward(span.lowerBound, rounding: .up)
+        let high = feetInward(span.upperBound, rounding: .down)
         guard low < high else { return nil }
         return [low == 0 ? 0 : low, high == 0 ? 0 : high]
+    }
+
+    /// The same inward rounding for a coverage span and for a marked-end capture limit.
+    static func feetInward(_ meters: Float, rounding: FloatingPointRoundingRule) -> Double {
+        let noise = rounding == .up ? -1e-5 : 1e-5
+        return ((Double(meters) * SceneUnits.feetPerMeter + noise) * 10_000).rounded(rounding) / 10_000
     }
 
     private static func planFeet(_ p: SIMD3<Float>) -> [Double] { [feet(p.x), feet(p.z)] }

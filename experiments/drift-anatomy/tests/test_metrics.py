@@ -6,6 +6,7 @@ import pytest
 from metrics import (
     along_across,
     at,
+    chord_deviation,
     find_loops,
     local_scale,
     loop_errors,
@@ -187,6 +188,21 @@ def test_along_across_is_pythagorean_and_turn_invariant():
     a2, c2 = along_across(turn(err, 0.4), turn(travel, 0.4))
     np.testing.assert_allclose(a2, along, atol=1e-12)
     np.testing.assert_allclose(c2, across, atol=1e-12)
+
+
+def test_chord_deviation_is_zero_on_a_straight_walk_and_the_corner_offset_on_a_turn():
+    lap = square_lap(side_m=15.0)  # 1 m samples: corners at 15, 30, 45
+    i, j = np.array([0, 10]), np.array([12.5, 20.0])
+    dev = chord_deviation(lap, i, j)
+    assert dev[0] == pytest.approx(0.0, abs=1e-12)  # 12.5 m along the first side
+    # From (10, 0) round the corner to (15, 5): the corner is 5 / sqrt(2) off the chord.
+    assert dev[1] == pytest.approx(5 / np.sqrt(2), abs=1e-12)
+
+
+def test_chord_deviation_refuses_a_window_with_no_travel():
+    p = np.c_[np.zeros(5), np.ones(5), np.zeros(5)]
+    with pytest.raises(ValueError, match="no travel line"):
+        chord_deviation(p, np.array([0]), np.array([3.0]))
 
 
 # Range to the meter

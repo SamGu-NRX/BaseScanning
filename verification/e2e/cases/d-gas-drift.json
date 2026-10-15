@@ -119,6 +119,7 @@
     }
   },
   "rules_assumed": {
+    "battery_width": 2.5833333333333335,
     "gas": 3.0,
     "route_length": 20.0
   },

@@ -2,6 +2,22 @@ from meter_eval.locate import candidates, near_barcode, ranked, rules, tokens
 from meter_eval.match import core
 
 
+def test_serial_letters_distinguish_the_ranked_candidate():
+    from meter_eval.fieldtest import reads_number
+
+    result = {
+        "lines": [
+            {"text": "1234567", "box": [0.1, 0.1, 0.6, 0.1]},
+            {"text": "ABC1234567", "box": [0.1, 0.3, 0.6, 0.2]},
+        ],
+        "barcodes": [],
+    }
+    order = ranked(candidates(result))
+    assert order == ["ABC1234567", "1234567"]
+    assert reads_number(order[0], "ABC1234567")
+    assert not reads_number(order[1], "ABC1234567")
+
+
 def line(text, box=(0.4, 0.5, 0.2, 0.03)):
     return {"text": text, "box": list(box), "confidence": 1.0}
 
@@ -35,14 +51,14 @@ def test_barcode_equal_to_a_text_token_confirms_it():
     assert only["barcode_confirmed"] and only["core"] == "123ABC456789"
 
 
-def test_partial_text_read_takes_the_barcodes_full_string():
+def test_partial_text_read_is_not_promoted_to_an_unread_barcode():
     # Vision dropped the leading 1; the QR payload has the whole number.
     result = {
         "lines": [line("2345678")],
         "barcodes": [{"payload": "X0YZ01234567;12345678", "box": [0.8, 0.3, 0.1, 0.05]}],
     }
     [only] = candidates(result)
-    assert only["core"] == "12345678" and only["barcode_confirmed"]
+    assert only["core"] == "2345678" and not only["barcode_confirmed"]
 
 
 def test_short_token_inside_a_payload_is_not_confirmed():
@@ -116,7 +132,7 @@ def test_a_tie_between_two_payloads_is_not_promoted():
     assert only["core"] == "2345678" and not only["barcode_confirmed"]
 
 
-def test_a_single_closest_payload_is_still_promoted():
+def test_a_single_closest_payload_does_not_override_the_ocr_contract():
     result = {
         "lines": [line("2345678")],
         "barcodes": [
@@ -125,4 +141,26 @@ def test_a_single_closest_payload_is_still_promoted():
         ],
     }
     [only] = candidates(result)
-    assert only["core"] == "12345678" and only["barcode_confirmed"]
+    assert only["core"] == "2345678" and not only["barcode_confirmed"]
+
+
+def test_scan_creates_its_output_directory(tmp_path, monkeypatch):
+    import json
+
+    from meter_eval import locate
+
+    class Reader:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            pass
+
+        def read(self, path, barcodes):
+            return {"lines": [], "barcodes": []}
+
+    monkeypatch.setattr(locate, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(locate, "Reader", Reader)
+    result = locate.scan([{"id": "m01"}])
+    assert result == {"m01": {"lines": [], "barcodes": []}}
+    assert json.loads((tmp_path / "ocr" / "scan.jsonl").read_text()) == result["m01"]

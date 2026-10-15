@@ -2,6 +2,7 @@
 // sped up. This is the same code path a page uses, minus the DOM.
 
 import assert from "node:assert/strict";
+import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -202,4 +203,419 @@ test("health and a failed preview are read again after a transient failure", asy
   }
   assert.ok(healthCalls >= 2);
   assert.equal(previewCalls, 2);
+});
+
+function stubFollower(fetchReply) {
+  let clock = 0;
+  let state = reduce(initialState(), { type: "select", mode: "live", source: { key: "s", kind: "synthetic" }, captureId: "cap_STUB_3" });
+  const follower = followCapture({
+    sourceKey: "s", captureId: "cap_STUB_3", session: state.session,
+    dispatch: (a) => { state = reduce(state, a); }, getState: () => state,
+    fetchImpl: (path) => fetchReply(path, clock), now: () => clock,
+    sleep: (ms) => new Promise((resolve) => { clock += ms; setTimeout(resolve, 1); }),
+    online: () => true,
+  });
+  return { follower, get state() { return state; } };
+}
+
+const stubJson = (body, status = 200, headers = {}) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
+const stubStatus = () => stubJson({ runId: "run_s", status: "complete" });
+const stubEvents = () => stubJson({ events: [], next: 0, status: "complete" });
+const stubResult = (previewUrl = "") => stubJson({ runId: "run_s", status: "complete", outcome: { kind: "eligible" }, previewUrl });
+
+test("terminal results are read even while every events request fails", async () => {
+  let resultReads = 0;
+  const h = stubFollower((path) => {
+    if (path.includes("/events")) return stubJson({ errors: [{ code: "busy" }] }, 503);
+    if (path.endsWith("/result")) { resultReads += 1; return stubResult(); }
+    return stubStatus();
+  });
+  try {
+    await until(() => h.state.result.phase === "ready");
+    assert.equal(resultReads, 1);
+    assert.equal(h.state.connection.phase, "reconnecting");
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+for (const firstResult of ["pending", "throttled"]) test(`events Retry-After leaves ${firstResult} result and preview retries on their own schedules`, async () => {
+  const eventsAt = [];
+  const resultAt = [];
+  const previewAt = [];
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) {
+      eventsAt.push(clock);
+      return eventsAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "120" }) : stubEvents();
+    }
+    if (path.endsWith("/result")) {
+      resultAt.push(clock);
+      if (resultAt.length > 1) return stubResult("withheld");
+      return firstResult === "pending" ? stubJson({ runId: "run_s", status: "complete", outcome: null })
+        : stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "11" });
+    }
+    if (path.includes("/preview")) {
+      previewAt.push(clock);
+      return previewAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "19" }) : new Response(ply);
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => eventsAt.length >= 2 && h.state.preview.phase === "ready");
+    assert.equal(resultAt[1] - resultAt[0], firstResult === "pending" ? 4_000 : 11_000, `result reads at ${resultAt}`);
+    assert.equal(previewAt[1] - previewAt[0], 19_000, `preview reads at ${previewAt}`);
+    assert.ok(previewAt[1] < eventsAt[0] + 120_000, "the preview settles while events are still delayed");
+    assert.ok(eventsAt[1] - eventsAt[0] >= 120_000, `event reads at ${eventsAt}`);
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+for (const form of ["seconds", "date"]) test(`preview retries wait for ${form}-form Retry-After`, async () => {
+  const previewAt = [];
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) return stubEvents();
+    if (path.endsWith("/result")) return stubResult("withheld");
+    if (path.includes("/preview")) {
+      previewAt.push(clock);
+      return previewAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": form === "date" ? new Date(clock + 19_000).toUTCString() : "19" }) : new Response(ply);
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => h.state.preview.phase === "ready");
+    assert.equal(previewAt.length, 2);
+    assert.ok(previewAt[1] - previewAt[0] >= 19_000);
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+test("a preview removed by a result revision triggers a fresh result read", async () => {
+  let resultReads = 0;
+  let previewReads = 0;
+  const h = stubFollower((path) => {
+    if (path.includes("/events")) return stubEvents();
+    if (path.endsWith("/result")) { resultReads += 1; return stubResult(resultReads === 1 ? "withheld" : ""); }
+    if (path.includes("/preview")) {
+      previewReads += 1;
+      return stubJson({ errors: [{ code: "preview_not_available" }] }, 404);
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => resultReads >= 2 && h.state.result.body.previewUrl === "");
+    assert.equal(resultReads, 2);
+    assert.equal(previewReads, 1);
+    assert.equal(h.state.preview.phase, "none");
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+for (const response of [
+  { status: 409, code: "preview_run_changed" },
+  { status: 404, code: "preview_not_available" },
+]) test(`events backoff survives preview ${response.code}`, async () => {
+  const eventsAt = [];
+  let resultReads = 0;
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) {
+      eventsAt.push(clock);
+      return eventsAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "15" }) : stubEvents();
+    }
+    if (path.endsWith("/result")) { resultReads += 1; return stubResult(resultReads === 1 ? "withheld" : ""); }
+    if (path.includes("/preview")) return stubJson({ errors: [{ code: response.code }] }, response.status);
+    return stubStatus();
+  });
+  try {
+    await until(() => eventsAt.length >= 2);
+    assert.ok(eventsAt[1] - eventsAt[0] >= 15_000, `event reads at ${eventsAt}`);
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+for (const response of [
+  { status: 409, code: "preview_run_changed" },
+  { status: 404, code: "preview_not_available" },
+]) test(`preview ${response.code} restarts result polling after slow reads`, async () => {
+  const resultAt = [];
+  let previewReads = 0;
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) return stubEvents();
+    if (path.endsWith("/result")) {
+      resultAt.push(clock);
+      if (resultAt.length <= 8) return stubJson({ runId: "run_s", status: "complete", outcome: null });
+      return stubResult(resultAt.length === 9 ? "withheld" : "");
+    }
+    if (path.includes("/preview")) {
+      previewReads += 1;
+      return stubJson({ errors: [{ code: response.code }] }, response.status);
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => resultAt.length >= 10 && h.state.result.body.previewUrl === "");
+    assert.ok(resultAt[8] - resultAt[7] >= 30_000, "the result reached the slow polling interval");
+    assert.ok(resultAt[9] - resultAt[8] <= 4_000, `result reads at ${resultAt}`);
+    assert.equal(previewReads, 1);
+    assert.equal(h.state.preview.phase, "none");
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+for (const change of ["run", "revision"]) test(`preview backoff does not delay a new ${change}`, async () => {
+  const previewAt = [];
+  let resultReads = 0;
+  let revisedAt = null;
+  const runAt = (clock) => change === "run" && clock >= 6_000 ? "run_b" : "run_s";
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) {
+      const after = new URL(path, "http://x").searchParams.get("after");
+      const changed = clock >= 6_000;
+      return stubJson({ status: "complete", next: changed ? 1 : 0, events: changed && after === "0"
+        ? [{ seq: 1, type: "verdict_ready", data: { runId: runAt(clock), kind: "eligible" } }] : [] });
+    }
+    if (path.endsWith("/result")) {
+      resultReads += 1;
+      if (resultReads === 2) revisedAt = clock;
+      return stubJson({ runId: runAt(clock), status: "complete", outcome: { kind: "eligible" }, previewUrl: "withheld-by-viewer-relay", previewArtifactId: resultReads === 1 ? "artifact_a" : "artifact_b" });
+    }
+    if (path.includes("/preview")) {
+      previewAt.push({ clock, run: new URL(path, "http://x").searchParams.get("run") });
+      return previewAt.length === 1 ? stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "120" }) : new Response(ply);
+    }
+    return stubJson({ runId: runAt(clock), status: "complete" });
+  });
+  try {
+    await until(() => h.state.preview.phase === "ready");
+    assert.equal(resultReads, 2);
+    assert.equal(previewAt.length, 2, "the failed revision was not retried during its backoff");
+    assert.equal(previewAt[1].clock, revisedAt, "the new revision's preview was read as soon as its result was accepted");
+    assert.ok(previewAt[1].clock < previewAt[0].clock + 120_000);
+    assert.equal(previewAt[1].run, change === "run" ? "run_b" : "run_s");
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+for (const response of [
+  { status: 409, code: "preview_run_changed" },
+  { status: 404, code: "preview_not_available" },
+]) test(`result and preview delays survive refreshes and ${response.code}`, async () => {
+  const resultAt = [];
+  const previewAt = [];
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) {
+      const after = Number(new URL(path, "http://x").searchParams.get("after"));
+      const seq = clock >= 10_000 ? 2 : clock >= 6_000 ? 1 : 0;
+      return stubJson({ status: "complete", next: seq, events: seq > after
+        ? [{ seq, type: "verdict_ready", data: { runId: "run_s", kind: "eligible" } }] : [] });
+    }
+    if (path.endsWith("/result")) {
+      resultAt.push(clock);
+      if (resultAt.length === 3) return stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": "40" });
+      return stubResult(resultAt.length < 5 ? "withheld-by-viewer-relay" : "");
+    }
+    if (path.includes("/preview")) {
+      previewAt.push(clock);
+      if (clock < 21_000) return stubJson({ errors: [{ code: "busy" }] }, 503, { "retry-after": String((21_000 - clock) / 1000) });
+      return stubJson({ errors: [{ code: response.code }] }, response.status);
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => resultAt.length >= 5 && h.state.preview.phase === "none");
+    assert.equal(resultAt[1], 6_000, "a refreshed result is read while the preview is delayed");
+    assert.equal(resultAt[2], 10_000);
+    assert.deepEqual({
+      resultRetriedEarly: resultAt[3] < resultAt[2] + 40_000,
+      previewRetriedEarly: previewAt.slice(1).some((at) => at < 21_000),
+    }, { resultRetriedEarly: false, previewRetriedEarly: false });
+    assert.equal(previewAt[1], resultAt[3], "preview waits for the later deadline because its relay rereads the result");
+    assert.ok(resultAt[4] - resultAt[3] <= 4_000, "invalidation resets cadence without erasing server delays");
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+test("a delayed prerequisite result read also delays direct result refreshes", async () => {
+  const resultAt = [];
+  const previewAt = [];
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) {
+      const after = new URL(path, "http://x").searchParams.get("after");
+      return stubJson({ status: "complete", next: clock >= 6_000 ? 1 : 0, events: clock >= 6_000 && after === "0"
+        ? [{ seq: 1, type: "verdict_ready", data: { runId: "run_s", kind: "eligible" } }] : [] });
+    }
+    if (path.endsWith("/result")) {
+      resultAt.push(clock);
+      return stubResult(resultAt.length === 1 ? "withheld" : "");
+    }
+    if (path.includes("/preview")) {
+      previewAt.push(clock);
+      return stubJson({ errors: [{ code: "result_unavailable" }] }, 503, { "retry-after": "19" });
+    }
+    return stubStatus();
+  });
+  try {
+    await until(() => resultAt.length === 2 && h.state.preview.phase === "none");
+    assert.ok(resultAt[1] >= previewAt[0] + 19_000, `result reads at ${resultAt}`);
+    assert.equal(previewAt.length, 1);
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+for (const response of [
+  { status: 409, code: "preview_run_changed" },
+  { status: 404, code: "preview_not_available" },
+]) for (const change of ["artifact", "run"]) test(`unchanged ${response.code} stays suppressed until the ${change} changes`, async () => {
+  const resultAt = [];
+  const previewAt = [];
+  const runAt = (clock) => change === "run" && clock >= 60_000 ? "run_b" : "run_s";
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const h = stubFollower((path, clock) => {
+    if (path.includes("/events")) return stubEvents();
+    if (path.endsWith("/result")) {
+      resultAt.push(clock);
+      return stubJson({ runId: runAt(clock), status: "complete", outcome: { kind: "eligible" }, previewUrl: "withheld-by-viewer-relay",
+        previewArtifactId: change === "artifact" && clock >= 60_000 ? "artifact_b" : "artifact_a" });
+    }
+    if (path.includes("/preview")) {
+      previewAt.push(clock);
+      return clock < 60_000 ? stubJson({ errors: [{ code: response.code }] }, response.status) : new Response(ply);
+    }
+    return stubJson({ runId: runAt(clock), status: "complete" });
+  });
+  try {
+    await until(() => h.state.preview.phase === "ready");
+    assert.equal(previewAt.length, 2, "an identical refreshed result cannot retry the invalidated artifact");
+    const beforeChange = resultAt.filter((at) => at < 60_000);
+    assert.ok(beforeChange.length >= 8, "results keep refreshing while the preview is suppressed");
+    assert.ok(beforeChange.length <= 10, `result refreshes remain bounded: ${beforeChange}`);
+    assert.ok(beforeChange.slice(2).every((at, i) => at - beforeChange[i + 1] >= 4_000));
+    assert.ok(previewAt[1] >= 60_000, "a changed identity allows the preview to load");
+    assert.equal(h.state.preview.runId, change === "run" ? "run_b" : "run_s");
+  } finally { h.follower.stop(); await h.follower.done; }
+});
+
+test("a same-run file switch cannot misattribute the next file's preview delay", async () => {
+  let clock = 0;
+  let resultReads = 0;
+  const storageReads = [];
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const upstream = createServer((req, res) => {
+    res.setHeader("content-type", "application/json");
+    if (req.url.endsWith("/result")) {
+      resultReads += 1;
+      // The page receives A, but the relay's prerequisite result read already names B.
+      return res.end(JSON.stringify({ runId: "run_s", status: "complete", outcome: { kind: "eligible" }, previewUrl: resultReads === 1 ? "/file-a.ply" : "/file-b.ply" }));
+    }
+    if (req.url.endsWith(".ply")) {
+      storageReads.push({ path: req.url, at: clock });
+      if (storageReads.length === 1) {
+        res.writeHead(503, { "retry-after": "120" });
+        return res.end("busy");
+      }
+      return res.end(ply);
+    }
+    if (req.url.includes("/events")) {
+      const after = new URL(req.url, "http://x").searchParams.get("after");
+      const changed = clock >= 6_000;
+      return res.end(JSON.stringify({ status: "complete", next: changed ? 1 : 0, events: changed && after === "0"
+        ? [{ seq: 1, type: "verdict_ready", data: { runId: "run_s", kind: "eligible" } }] : [] }));
+    }
+    res.end(JSON.stringify({ runId: "run_s", status: "complete" }));
+  });
+  await new Promise((resolve) => upstream.listen(0, "127.0.0.1", resolve));
+  const relay = createViewerServer({ upstreams: { s: { base: `http://127.0.0.1:${upstream.address().port}/v1`, label: "Two files", kind: "synthetic" } },
+    publicDir: join(dirname(fileURLToPath(import.meta.url)), "..", "public") });
+  let follower;
+  try {
+    const relayOrigin = `http://127.0.0.1:${await relay.listen(0)}`;
+    let state = reduce(initialState(), { type: "select", mode: "live", source: { key: "s", kind: "synthetic" }, captureId: "cap_TWO_FILES" });
+    follower = followCapture({ sourceKey: "s", captureId: "cap_TWO_FILES", session: state.session,
+      dispatch: (a) => { state = reduce(state, a); }, getState: () => state,
+      fetchImpl: (path, init) => fetch(relayOrigin + path, init), now: () => clock,
+      sleep: async (ms) => { clock += ms; }, online: () => true });
+    await until(() => state.preview.phase === "ready");
+    assert.equal(storageReads.length, 2);
+    assert.ok(storageReads.every((read) => read.path === "/file-b.ply"));
+    assert.ok(storageReads[1].at - storageReads[0].at >= 120_000, `B was fetched at ${storageReads.map((read) => read.at)}`);
+    assert.equal(state.result.body.runId, "run_s");
+  } finally {
+    follower?.stop();
+    await follower?.done;
+    await relay.close();
+    upstream.closeAllConnections();
+    await new Promise((resolve) => upstream.close(resolve));
+  }
+});
+
+test("a forced refresh answered by a retired-run replica returns to normal polling", async () => {
+  const statusAt = [];
+  let clock = 0;
+  let state = reduce(initialState(), { type: "select", mode: "live", source: { key: "s", kind: "synthetic" }, captureId: "cap_STALE_REPLICA" });
+  state = reduce(state, { type: "status", session: state.session, body: { runId: "run_retired", status: "processing" } });
+  state = reduce(state, { type: "status", session: state.session, body: { runId: "run_s", status: "processing" } });
+  const fetchImpl = (path) => {
+    if (path.endsWith("/healthz")) return stubJson({ status: "ok" });
+    if (path.includes("/events")) {
+      const after = Number(new URL(path, "http://x").searchParams.get("after"));
+      return stubJson({ status: "processing", next: 1, events: after === 0
+        ? [{ seq: 1, type: "stage", data: { runId: "run_unknown", stage: "reconstruct", status: "running" } }] : [] });
+    }
+    if (path.endsWith("/result")) return stubResult();
+    statusAt.push(clock);
+    return stubJson({ runId: "run_retired", status: "failed", filesRegistered: 999 });
+  };
+  const follower = followCapture({
+    sourceKey: "s", captureId: "cap_STALE_REPLICA", session: state.session,
+    dispatch: (a) => { state = reduce(state, a); }, getState: () => state, fetchImpl, now: () => clock,
+    sleep: (ms) => new Promise((resolve) => { clock += ms; setTimeout(resolve, 1); }), online: () => true,
+  });
+  try {
+    await until(() => statusAt.length >= 5);
+    assert.equal(state.statusRefreshWanted, false);
+    assert.equal(state.currentRunId, "run_s");
+    assert.equal(state.counts.registered, null);
+    assert.deepEqual(statusAt.slice(0, 5), [0, 0, 5_000, 10_000, 15_000]);
+  } finally { follower.stop(); await follower.done; }
+});
+
+for (const bodyKind of ["non-JSON", "truncated"]) for (const failureRoute of ["result", "preview prerequisite"])
+test(`${bodyKind} ${failureRoute} errors retain the result Retry-After`, async () => {
+  let clock = 0;
+  const resultAt = [];
+  const failureIndex = failureRoute === "result" ? 0 : 1;
+  const ply = "ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n1 2 3\n";
+  const upstream = createServer((req, res) => {
+    if (req.url.endsWith("/result")) {
+      resultAt.push(clock);
+      if (resultAt.length === failureIndex + 1) {
+        res.writeHead(503, { "retry-after": "120", "content-type": "text/html", ...(bodyKind === "truncated" ? { "content-length": "1000" } : {}) });
+        if (bodyKind === "non-JSON") return res.end("<html>busy</html>");
+        return res.write("<html>", () => res.destroy());
+      }
+      return res.end(JSON.stringify({ runId: "run_s", status: "complete", outcome: { kind: "eligible" }, previewUrl: failureRoute === "result" ? "" : "/model.ply" }));
+    }
+    if (req.url === "/model.ply") return res.end(ply);
+    if (req.url.includes("/events")) {
+      const after = new URL(req.url, "http://x").searchParams.get("after");
+      const changed = clock >= 6_000;
+      return res.end(JSON.stringify({ status: "complete", next: changed ? 1 : 0, events: changed && after === "0"
+        ? [{ seq: 1, type: "verdict_ready", data: { runId: "run_s", kind: "eligible" } }] : [] }));
+    }
+    res.end(JSON.stringify({ runId: "run_s", status: "complete" }));
+  });
+  await new Promise((resolve) => upstream.listen(0, "127.0.0.1", resolve));
+  const relay = createViewerServer({ upstreams: { s: { base: `http://127.0.0.1:${upstream.address().port}/v1`, label: "Malformed errors", kind: "synthetic" } },
+    publicDir: join(dirname(fileURLToPath(import.meta.url)), "..", "public") });
+  let follower;
+  try {
+    const origin = `http://127.0.0.1:${await relay.listen(0)}`;
+    let state = reduce(initialState(), { type: "select", mode: "live", source: { key: "s", kind: "synthetic" }, captureId: "cap_BAD_ERROR" });
+    follower = followCapture({ sourceKey: "s", captureId: "cap_BAD_ERROR", session: state.session,
+      dispatch: (a) => { state = reduce(state, a); }, getState: () => state,
+      fetchImpl: (path, init) => fetch(origin + path, init), now: () => clock,
+      sleep: async (ms) => { clock += ms; }, online: () => true });
+    await until(() => failureRoute === "result" ? state.result.phase === "ready" : state.preview.phase === "ready");
+    assert.ok(resultAt.length > failureIndex + 1);
+    const deadline = resultAt[failureIndex] + 120_000;
+    assert.ok(resultAt.slice(failureIndex + 1).every((at) => at >= deadline), `result reads at ${resultAt}, deadline ${deadline}`);
+    assert.equal(state.result.body.outcome.kind, "eligible");
+  } finally {
+    follower?.stop(); await follower?.done;
+    await relay.close();
+    upstream.closeAllConnections();
+    await new Promise((resolve) => upstream.close(resolve));
+  }
 });

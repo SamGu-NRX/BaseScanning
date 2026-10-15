@@ -52,7 +52,8 @@ case.
 `geometry/mesh.ply` is a binary little-endian PLY. 0.4 does not fix its index and count types, so
 this check proposes one layout as well:
 - `float x, y, z` per vertex, and per face a `uchar` count followed by that many `int` indices,
-  then an optional `uchar classification`;
+  then `uchar classification` when `mesh.classified` is true. The property may be absent only
+  when the flag is false, so a mesh cannot claim face classes without carrying them;
 - the body length equals exactly what the vertex and face counts imply;
 - vertex and face counts are non-negative, and every vertex coordinate is finite;
 - every face is a triangle, and every index satisfies `0 <= index < vertex_count`;

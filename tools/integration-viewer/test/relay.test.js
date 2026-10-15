@@ -105,6 +105,34 @@ describe("allowed reads", () => {
     const cloud = parsePly(preview.body.buffer.slice(preview.body.byteOffset, preview.body.byteOffset + preview.body.byteLength));
     assert.ok(cloud.count > 1000);
   });
+
+  test("preview identity survives renewed credentials but changes for another file", async () => {
+    const read = async (previewUrl) => {
+      hostileBody = { runId: "run_s", previewUrl, verdictUrl: "https://storage.example/verdict?secret=verdict" };
+      const reply = await raw("/relay/hostile/captures/cap_ARTIFACT/result");
+      assert.equal(reply.status, 200);
+      assert.equal(reply.json.previewUrl, "withheld-by-viewer-relay");
+      assert.equal(reply.json.verdictUrl, "withheld-by-viewer-relay");
+      assert.match(reply.json.previewArtifactId, /^[a-f0-9]{64}$/);
+      assert.ok(!reply.body.toString().includes("secret="));
+      return reply.json.previewArtifactId;
+    };
+    const first = await read("https://storage.example/model-a.ply?secret=first");
+    assert.equal(await read("https://storage.example/model-a.ply?secret=renewed"), first);
+    assert.notEqual(await read("https://storage.example/model-b.ply?secret=renewed"), first);
+    const credentialNames = ["signature", "sig", "token", "access_token", "expires", "expiry", "expiration", "GoogleAccessId",
+      "X-Goog-Algorithm", "X-Goog-Credential", "X-Goog-Date", "X-Goog-Expires", "X-Goog-SignedHeaders", "X-Goog-Signature", "X-Goog-Security-Token",
+      "X-Amz-Algorithm", "X-Amz-Credential", "X-Amz-Date", "X-Amz-Expires", "X-Amz-SignedHeaders", "X-Amz-Signature", "X-Amz-Security-Token"];
+    const signed = (value) => new URLSearchParams(credentialNames.map((name) => [name, value])).toString();
+    const version1 = await read(`https://storage.example/model-a.ply?generation=1&${signed("first")}`);
+    assert.equal(await read(`https://storage.example/model-a.ply?${signed("renewed")}&generation=1#new-fragment`), version1);
+    assert.notEqual(await read(`https://storage.example/model-a.ply?generation=2&${signed("renewed")}`), version1);
+    assert.notEqual(await read("https://storage.example/model-a.ply?generation=1&versionId=2"), version1);
+    assert.notEqual(await read("https://storage.example/model-a.ply?generation=1&custom=2"), version1, "unknown parameters remain part of resource identity");
+    assert.notEqual(await read("https://storage.example/model-a.ply?custom=one?two"), await read("https://storage.example/model-a.ply?custom=one"));
+    hostileBody = { runId: "run_s", previewUrl: "" };
+    assert.equal((await raw("/relay/hostile/captures/cap_ARTIFACT/result")).json.previewArtifactId, null);
+  });
 });
 
 describe("refusals", () => {
@@ -185,6 +213,39 @@ describe("refusals", () => {
     assert.equal((await raw("/relay/hostile/captures/cap_HOSTILE_1/preview")).json.errors[0].code, "query_invalid");
   });
 
+  test("a same-run preview file change is refused before storage is fetched", async () => {
+    let storageReads = 0;
+    let previewUrl = "/v1/file-a.ply";
+    hostileHandler = (req, res) => {
+      if (req.url.endsWith("/result")) {
+        res.writeHead(200, { "content-type": "application/json" });
+        return res.end(JSON.stringify({ runId: "r", previewUrl }));
+      }
+      storageReads += 1;
+      res.writeHead(503, { "retry-after": "120" });
+      res.end("busy");
+    };
+    try {
+      const path = "/relay/hostile/captures/cap_HOSTILE_1";
+      const first = await raw(`${path}/result`);
+      previewUrl = "/v1/file-b.ply";
+      const stale = await raw(`${path}/preview?run=r&artifact=${first.json.previewArtifactId}`);
+      assert.equal(stale.status, 409);
+      assert.equal(stale.json.errors[0].code, "preview_artifact_changed");
+      assert.equal(storageReads, 0);
+      assert.equal(stale.headers["retry-after"], undefined);
+      const current = await raw(`${path}/result`);
+      const failed = await raw(`${path}/preview?run=r&artifact=${current.json.previewArtifactId}`);
+      assert.equal(failed.status, 502);
+      assert.equal(failed.headers["retry-after"], "120");
+      assert.equal(storageReads, 1);
+      for (const query of ["run=r&artifact=not-a-digest", `run=r&artifact=${current.json.previewArtifactId}&artifact=${current.json.previewArtifactId}`, "run=r&run=r"]) {
+        assert.equal((await raw(`${path}/preview?${query}`)).status, 400);
+      }
+      assert.equal(storageReads, 1);
+    } finally { hostileHandler = null; }
+  });
+
   test("a preview URL that redirects is not followed", async () => {
     hostileHandler = (req, res) => {
       if (req.url.endsWith("/result")) {
@@ -215,6 +276,60 @@ describe("refusals", () => {
     } finally {
       hostileHandler = null;
     }
+  });
+
+  test("preview result and storage failures preserve Retry-After", async () => {
+    for (const failingPath of ["/result", "/v1/throttled.ply"]) {
+      hostileHandler = (req, res) => {
+        if (req.url.endsWith(failingPath)) {
+          res.writeHead(503, { "content-type": "application/json", "retry-after": "19" });
+          return res.end(JSON.stringify({ errors: [{ code: "busy" }] }));
+        }
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ runId: "r", previewUrl: "/v1/throttled.ply" }));
+      };
+      try {
+        const reply = await raw("/relay/hostile/captures/cap_HOSTILE_1/preview?run=r");
+        assert.equal(reply.status, failingPath === "/result" ? 503 : 502);
+        assert.equal(reply.headers["retry-after"], "19");
+      } finally {
+        hostileHandler = null;
+      }
+    }
+  });
+
+  for (const bodyKind of ["non-JSON", "truncated"]) test(`${bodyKind} result errors preserve deadlines on direct and preview routes`, async () => {
+    hostileHandler = (_req, res) => {
+      res.writeHead(503, { "content-type": "text/html", "retry-after": "120", ...(bodyKind === "truncated" ? { "content-length": "1000" } : {}) });
+      if (bodyKind === "non-JSON") return res.end("<html>busy</html>");
+      res.write("<html>", () => res.destroy());
+    };
+    try {
+      for (const leaf of ["result", "preview?run=r"]) {
+        const reply = await raw(`/relay/hostile/captures/cap_HOSTILE_1/${leaf}`);
+        assert.equal(reply.status, 502);
+        assert.equal(reply.headers["retry-after"], "120");
+        assert.equal(reply.json.errors[0].code, leaf === "result" ? (bodyKind === "non-JSON" ? "upstream_not_json" : "upstream_unreachable") : "result_unavailable");
+      }
+    } finally { hostileHandler = null; }
+  });
+
+  test("an errored storage body cannot replace the preview 502 or Retry-After", async (t) => {
+    const storageUrl = `http://127.0.0.1:${hostile.address().port}/v1/errored.ply`;
+    hostileBody = { runId: "r", previewUrl: storageUrl };
+    const fetchImpl = globalThis.fetch;
+    let storageReads = 0;
+    t.mock.method(globalThis, "fetch", async (url, init) => {
+      if (String(url) !== storageUrl) return fetchImpl(url, init);
+      storageReads += 1;
+      const body = new ReadableStream({ start(controller) { controller.error(new Error("storage stream failed")); } });
+      return new Response(body, { status: 503, headers: { "retry-after": "19" } });
+    });
+    const reply = await raw("/relay/hostile/captures/cap_HOSTILE_1/preview?run=r");
+    assert.equal(storageReads, 1);
+    assert.equal(reply.status, 502);
+    assert.equal(reply.json.errors[0].code, "preview_fetch_failed");
+    assert.equal(reply.headers["retry-after"], "19");
   });
 
   test("an oversized API reply is refused, not buffered", async () => {

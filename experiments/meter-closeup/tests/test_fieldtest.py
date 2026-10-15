@@ -1,6 +1,7 @@
 import io
 
 import numpy as np
+import pytest
 from PIL import Image
 
 from meter_eval import retake
@@ -53,3 +54,122 @@ def test_the_orientation_tag_is_applied(tmp_path):
     exif[0x0112] = 6  # rotate 90 degrees clockwise to display
     Image.new("RGB", (300, 100), "white").save(tmp_path / "turned.jpg", exif=exif.tobytes())
     assert upright_pixels(tmp_path / "turned.jpg", tmp_path).size == (100, 300)
+
+
+@pytest.mark.parametrize(
+    "number, text, expected, expected_rank",
+    [
+        ("12-34567", "No. 1234567", "yes", 1),
+        ("No. 1234567", "No. 1234567", "yes", 1),
+        ("No. 1234567", "1234567", "yes", 1),
+        ("No. 1234567", "1234568", "no", None),
+        ("1234567", "12345678", "no", None),
+        ("1234567", "91234567", "no", None),
+        ("1234567", "No. 123 4567", "yes", 1),
+        ("1234567", "1234567 240 V", "yes", 1),
+        ("1234567", "123 4567 240 V", "yes", 1),
+        ("1234567", "1234567 8", "no", None),
+        ("1234567", "123 4567", "yes", 1),
+        ("1234567", "1234567", "yes", 1),
+        ("123ABC456789", "123ABC456789", "yes", 1),
+        ("123ABC456789", "123abc456789", "yes", 1),
+        ("123ABC456789", "123ABC 456789", "yes", 1),
+        ("ABC1234567", "ABC1234567", "yes", 1),
+        ("ABC1234567", "1234567", "no", None),
+        ("S/N: AB-12345", "AB12345", "yes", 1),
+        ("S/N: AB-12345", "ab 12345", "yes", 1),
+        ("S/N: AB-12345", "AB12346", "no", None),
+        ("Nr. 1234567", "1234567", "yes", 1),
+        ("N° 1234567", "1234567", "yes", 1),
+    ],
+)
+def test_fieldtest_scores_reads_and_ranks_without_a_dataset_key(
+    tmp_path, monkeypatch, capsys, number, text, expected, expected_rank
+):
+    import sys
+
+    from meter_eval import fieldtest, match
+
+    class Reader:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            pass
+
+        def read(self, path, barcodes):
+            return {"lines": [{"text": text, "box": BOX}], "barcodes": []}
+
+    def no_key():
+        raise AssertionError("field test must not load the dataset key")
+
+    Image.new("RGB", (256, 256), "white").save(tmp_path / "photo.jpg")
+    monkeypatch.setattr(fieldtest, "Reader", Reader)
+    monkeypatch.setattr(sys, "argv", ["fieldtest", str(tmp_path), "--number", number])
+    with monkeypatch.context() as without_key:
+        without_key.setattr(match, "key", no_key)
+        fieldtest.main()
+    output = capsys.readouterr().out
+    assert f"| photo.jpg | {expected} | {expected_rank or '–'} |" in output
+    assert f"1 photos; {int(expected == 'yes')} retakes asked for photos that read" in output
+
+
+@pytest.mark.parametrize("text", ["123 V 4567", "12345678"])
+def test_read_number_does_not_remove_letters_or_match_partial_groups(text):
+    from meter_eval.fieldtest import reads_number
+
+    assert not reads_number(text, "1234567")
+
+
+@pytest.mark.parametrize(
+    "text,target,expected",
+    [
+        ("123-4567", "1234567", True),
+        ("123ABC 456789", "123abc-456789", True),
+        ("ABC1234567", "ABC1234567", True),
+        ("1234567", "ABC1234567", False),
+        ("X123ABC456789", "123ABC456789", False),
+    ],
+)
+def test_read_number_matches_joined_target_groups(text, target, expected):
+    from meter_eval.fieldtest import reads_number
+
+    assert reads_number(text, target) is expected
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "No",
+        "No.",
+        "#",
+        "S/N",
+        "SN",
+        "Serial",
+        "Serial No",
+        "Meter",
+        "Meter No",
+        "Meter #",
+        "Nr.",
+        "N°",
+        "№",
+        "N0",
+    ],
+)
+@pytest.mark.parametrize("suffix", ["", ".", ":", "#"])
+def test_read_target_strips_only_recognised_label_words(label, suffix):
+    from meter_eval.fieldtest import reads_number
+    from meter_eval.match import read_target
+
+    target = f" ({label.swapcase()}{suffix}) AB-12345 "
+    assert read_target(target) == "ab12345"
+    assert reads_number("AB12345", target)
+    assert reads_number("ab 12345", target)
+    assert not reads_number("AB12346", target)
+
+
+@pytest.mark.parametrize("serial", ["ABC1234567", "ABSN12345", "XNO1234567", "XMETER1234567"])
+def test_read_target_preserves_letters_outside_a_recognised_label_prefix(serial):
+    from meter_eval.match import read_target
+
+    assert read_target(serial) == serial.casefold()

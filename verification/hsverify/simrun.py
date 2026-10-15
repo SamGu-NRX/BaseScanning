@@ -8,7 +8,10 @@ The app is launched with the contract C4 arguments (`-replay <path>`, `-autopilo
 a screenshot once it has been on screen for `--settle` seconds; a state replaced sooner is
 captured immediately and flagged `transient`, because its image may already show the next
 state. The run ends at `--until`, after `--idle` seconds without a new state, or at
-`--timeout`. A state named with `--require` that never appeared makes the run fail. If the app
+`--timeout`. States named with `--require` must appear in the order given, as do
+states missing from a `--require-order` sequence or out of its order, and a FIRST state of a
+`--require-then FIRST:THEN` pair that no THEN state answered before the next FIRST or the
+last state of a `--require-order` sequence. If the app
 logged a scan bundle, it is copied into the report as scan.zip (required with `--require-export`)
 and named in report.json's
 `app_export`, so the report folder can be replayed as an app export. Reports go outside git
@@ -30,6 +33,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from collections.abc import Iterable
@@ -52,6 +56,7 @@ DEVICE_TYPE = "com.apple.CoreSimulator.SimDeviceType.iPhone-17"
 DEFAULT_REPORTS = Path.home() / "house-scanning-data" / "reports" / "sim"
 DERIVED_DATA = Path("/tmp/hs-verify-derived-data")
 BUILD_LOCK = Path("/tmp/hs-verify-xcodebuild.lock")
+DEVICE_LOCK = Path("/tmp/hs-verify-simulator.lock")
 BUILT_APP_DIR = "built-app"  # in the report folder, until the Simulator has installed it
 
 
@@ -219,11 +224,14 @@ def build_app(
         built = DERIVED_DATA / "Build" / "Products" / "Debug-iphonesimulator" / f"{scheme}.app"
         app = None
         if code == 0 and built.exists():
-            app = out / BUILT_APP_DIR / built.name
-            shutil.rmtree(app.parent, ignore_errors=True)
-            shutil.copytree(built, app, symlinks=True)
+            app = Path(tempfile.mkdtemp(prefix=f"{BUILT_APP_DIR}-", dir=out)) / built.name
+            try:
+                shutil.copytree(built, app, symlinks=True)
+            except BaseException:
+                discard_app(app)
+                raise
     text = log_path.read_text(errors="replace")
-    warnings = sorted(set(re.findall(r"^.*: warning: .*$", text, re.M)))
+    warnings = sorted(set(re.findall(r"^(?:.*: )?warning: .*$", text, re.M)))
     errors = sorted(set(re.findall(r"^.*: error: .*$", text, re.M)))
     result = {
         "ok": code == 0,
@@ -239,7 +247,7 @@ def build_app(
 
 def discard_app(app: Path) -> None:
     """Remove this run's copy of the app once the Simulator has installed its own."""
-    if app.parent.name == BUILT_APP_DIR:
+    if app.parent.name.startswith(f"{BUILT_APP_DIR}-"):
         shutil.rmtree(app.parent, ignore_errors=True)
 
 
@@ -326,7 +334,68 @@ def wait_for_log_stream(events: queue.Queue, timeout_s: float) -> str | None:
 
 def missing_required(required: list[str], states: list[ShotRecord]) -> list[str]:
     seen = {s.state for s in states}
-    return [f"required state {name} never appeared" for name in required if name not in seen]
+    missing = [f"required state {name} never appeared" for name in required if name not in seen]
+    if missing:
+        return missing
+    remaining = iter(required)
+    next_required = next(remaining, None)
+    for state in states:
+        if state.state == next_required:
+            next_required = next(remaining, None)
+    if next_required is not None:
+        return [f"required states did not appear in order: {' -> '.join(required)}"]
+    return []
+
+
+def out_of_order(order: list[str], states: list[ShotRecord]) -> list[str]:
+    """`order` must appear among the run's states in that order; other states may come between.
+    Reaching the last one is not enough: a run that skips the steps before it did not walk them."""
+    next_required = 0
+    closing = order[-1] if order else None
+    for record in states:
+        if next_required == len(order):
+            return []
+        if record.state == order[next_required]:
+            next_required += 1
+        elif record.state == closing:
+            return [f"required order {' > '.join(order)}: {closing} before {order[next_required]}"]
+    if next_required < len(order):
+        want = order[next_required]
+        after = f"after {order[next_required - 1]}" if next_required else "at all"
+        return [f"required order {' > '.join(order)}: no {want} {after}"]
+    return []
+
+
+def unanswered(
+    pairs: list[tuple[str, str]], states: list[ShotRecord], closing: frozenset[str] = frozenset()
+) -> list[str]:
+    """For each (first, then): every `first` state must be followed by a `then` state within its
+    own round, which ends at the next `first` or at a `closing` state. A later upload therefore
+    cannot answer a request after the app showed a result, nor answer two requests at once."""
+    names = [s.state for s in states]
+    problems = []
+    for first, then in pairs:
+        for i, name in enumerate(names):
+            if name != first:
+                continue
+            for later in names[i + 1 :]:
+                if later == then:
+                    break
+                if later == first or later in closing:
+                    problems.append(
+                        f"state {i + 1} {first} was not followed by {then} before {later}"
+                    )
+                    break
+            else:
+                problems.append(f"state {i + 1} {first} was never followed by {then}")
+    return problems
+
+
+def state_pair(text: str) -> tuple[str, str]:
+    first, sep, then = text.partition(":")
+    if not (sep and first and then):
+        raise argparse.ArgumentTypeError(f"expected FIRST:THEN, got {text!r}")
+    return first, then
 
 
 def logged_message(line: str) -> str:
@@ -529,6 +598,16 @@ def collect_crashes(since: float, out: Path) -> list[str]:
     return found
 
 
+@contextlib.contextmanager
+def device_lock():
+    """Hold the shared Simulator until install, capture and shutdown have finished."""
+    DEVICE_LOCK.touch()
+    with DEVICE_LOCK.open() as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+@device_lock()
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--ref", default="origin/main", help="git ref to build")
@@ -548,7 +627,24 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         default=[],
         metavar="STATE",
-        help="a state the run must reach; one that never appears is a problem (exit 1)",
+        help="a state the run must reach; repeat in the required journey order (exit 1 on failure)",
+    )
+    parser.add_argument(
+        "--require-order",
+        action="append",
+        default=[],
+        type=lambda text: text.split(","),
+        metavar="STATE,STATE,...",
+        help="states the run must pass through in this order (others may come between)",
+    )
+    parser.add_argument(
+        "--require-then",
+        action="append",
+        default=[],
+        type=state_pair,
+        metavar="FIRST:THEN",
+        help="every FIRST state must be followed by a THEN state before the next FIRST or the last "
+        "state of a --require-order sequence",
     )
     parser.add_argument(
         "--require-export",
@@ -608,7 +704,12 @@ def main(argv: list[str] | None = None) -> int:
         flush=True,
     )
 
-    device = ensure_device(args.udid)
+    try:
+        device = ensure_device(args.udid)
+    except BaseException:
+        if app is not None:
+            discard_app(app)
+        raise
     rep = RunReport(
         ref=args.ref,
         sha=sha,
@@ -648,12 +749,19 @@ def main(argv: list[str] | None = None) -> int:
             print("Running...", flush=True)
             follow(args, udid, bundle_id, out, rep)
             rep.problems += missing_required(args.require, rep.states)
+            for order in args.require_order:
+                rep.problems += out_of_order(order, rep.states)
+            # Each --require-order sequence ends at the state that closes a round (the result).
+            closing = frozenset(order[-1] for order in args.require_order)
+            rep.problems += unanswered(args.require_then, rep.states, closing)
             rep.app_export, export_problems = app_export(out, args.require_export)
             rep.problems += export_problems
         rep.crash_reports = collect_crashes(started, out)
         if rep.crash_reports:
             rep.problems.append(f"Crash reports: {', '.join(rep.crash_reports)}")
     finally:
+        if app is not None:
+            discard_app(app)
         services.close()
         rep.peak_memory = peak_rss_mb()
         if not args.keep_booted:

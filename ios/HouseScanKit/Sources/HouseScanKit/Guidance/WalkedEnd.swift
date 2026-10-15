@@ -18,7 +18,8 @@ import simd
 /// kept that cap everywhere, and on run 2 the homeowner stood at the end post a few feet left of
 /// the meter with no photo kept on the left, so the end went to the meter and the strip dropped
 /// the cells it had shown there. The cap (`farthest`) now applies only where the phone's place
-/// says nothing about the side: across the meter, or with tracking limited or lost.
+/// says nothing about the side: across the meter, with tracking limited or lost, or too far
+/// from the wall. A normal-tracking end can also stop at the evidence bound (`pastEvidence`).
 public enum WalkedEnd {
     /// Where an end goes and why, for the log line (`choose`).
     public struct Choice: Equatable, Sendable {
@@ -29,7 +30,7 @@ public enum WalkedEnd {
         /// s of the farthest kept view on that side (`farthest`, signed), the cap.
         public var cap: Float
         /// True when the cap decided the end: the phone across the meter, its place lost, or
-        /// tracking limited.
+        /// tracking limited, too far from the wall, or the evidence bound (`pastEvidence`).
         public var capped: Bool
         /// True when the end stopped `maxPastEvidence` past the farthest kept view or seen cell,
         /// short of the phone, rather than at the kept-photo cap.

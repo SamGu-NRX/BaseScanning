@@ -52,7 +52,7 @@ The categories do not cover every wrong answer on purpose. A fail where the surv
 
 A pass or fail is **decided without its measurement** when its deciding value is missing as `failed` or `unsupported`. A claimed absence counts the same way when it supports any decision on an `at_most` limit, or a fail on an `at_least` check. The scorer counts the decision as usual and also flags and lists it.
 
-An unsure is justified when the survey is borderline or review, or the run's measurement is missing as `failed` or `unsupported`. Any other unsure is avoidable, including one on a measurement the run marked `absent`.
+An unsure is justified when the survey is borderline or review, or the run's measurement is missing as `failed` or `unsupported`, even when the survey truth is unknown. With a known survey outcome, any other unsure is avoidable, including one on a measurement the run marked `absent`. When the survey truth is unknown and the run has numeric or claimed-absence evidence, the abstention stays unclassified.
 
 Timing is copied from the results files. Rows that share a recording share its capture time.
 

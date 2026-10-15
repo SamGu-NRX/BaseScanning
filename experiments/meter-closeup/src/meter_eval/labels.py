@@ -27,7 +27,7 @@ import csv
 import re
 import secrets
 
-from meter_eval.match import core, digest, lenient_digest, normalize, normalize_class
+from meter_eval.match import core, digest, lenient_digest, normalize, normalize_class, number_core
 from meter_eval.paths import DATA_DIR, EXPERIMENT_DIR, KEY_PATH, MANIFEST
 
 READER1 = DATA_DIR / "labels_reader1.csv"
@@ -134,7 +134,19 @@ def build() -> list[dict]:
             "usable": usable,
             "notes": scrub(r1["notes"]),
         }
-        verdict = human.get(image_id, {}).get("verdict", "")
+        answer = human.get(image_id, {})
+        verdict = answer.get("verdict", "")
+        # A bare Keep confirms only the label shown at review, not a later reader update.
+        shown = "" if number == "NONE" else number
+        shown_known = answer.get("shown_known") == "yes" or (
+            "shown_known" not in answer and bool(answer.get("shown"))
+        )
+        if (
+            verdict == "keep"
+            and not answer.get("number")
+            and (not shown_known or answer.get("shown") != shown)
+        ):
+            verdict = ""
         # A person's number replaces the readers': typed with "fix", or confirmed with "keep"
         # after a fix. A "keep" with no number confirms the readers' own number.
         if verdict in ("fix", "keep") and human[image_id].get("number"):
@@ -152,12 +164,13 @@ def build() -> list[dict]:
                 and r2["number_sure"] == "sure"
             )
             kept = verdict == "keep"
+            serial = number_core(number)
             row |= {
                 "number_hmac": digest(normalize(number)),
                 "number_hmac_lenient": lenient_digest(number),
                 "number_len": len(normalize(number)),
-                "number_core_hmac": digest(core(number)),
-                "number_core_len": len(core(number)),
+                "number_core_hmac": digest(serial) if serial else "",
+                "number_core_len": len(serial) if serial else 0,
                 "number_agreed": "yes" if (agreed and verdict != "fix") or kept else "no",
                 "number_agreed_strict": "yes" if (strict and verdict != "fix") or kept else "no",
                 "human_check": verdict,

@@ -4,13 +4,13 @@ The thresholds in [PORTING.md](PORTING.md) come from processed Commons JPEGs, no
 
 1. Take the photos below with the app's capture path, or the iPhone camera if the app is not ready.
 2. Copy them into one folder. JPEG and HEIC both work. The command measures each photo's own pixels and never re-encodes them, because a JPEG round trip can lift sharpness across the threshold.
-3. From this folder, run:
+3. From `experiments/meter-closeup` in the repository, run with the absolute path to the photo folder:
 
 	```sh
 	uv run python -m meter_eval.fieldtest PHOTO_DIR --number "<number as printed>"
 	```
 
-The command prints each photo's read result, the candidate's rank and the check values. It then counts retakes asked for photos that read, and photos accepted that did not. Like the app, its checks use the ranking's top candidate; `--number` only scores the outcome and is never written to disk.
+The command prints each photo's read result, the candidate's rank and the check values. It then counts retakes asked for photos that read, and photos accepted that did not. Ranking and the top candidate used for retake checks depend only on blind heuristic features. The supplied number scores the read and its position in that order; it never changes the selected candidate. The number is never written to disk.
 
 | Threshold | Photos to take | The threshold holds if |
 |---|---|---|

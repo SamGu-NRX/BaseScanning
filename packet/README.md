@@ -38,9 +38,14 @@ performance.
    adding once a device study measures it.
 2. **The ground's height at the meter.** 0.4 notes that world y = 0 is the phone's height at
    session start, not the ground. The app measures the ground where it can: the horizontal plane
-   below the meter. Proposal: `meterAnchor.groundY` (world meters) with `groundSource`
+   below the meter. Proposal: `meterAnchor.groundOffset`, the ground's height in the meter
+   anchor's frame (meters along its +y, negative below the meter), with `groundSource`
    (`plane`, `mesh`, `assumed`), so headroom and "ground under the battery" start from a
-   measurement when there is one.
+   measurement when there is one. A raw world `groundY` would stay put when ARKit corrects the
+   anchor (proposal 10), and the server would derive a wrong meter-to-ground offset; held in
+   the anchor's frame, the ground moves with the meter. The app's local packet 1.1 already
+   writes it this way: `meter_anchor.ground_y_m` is the ground's world y minus the anchor's, and
+   with `.gravity` alignment the anchor's +y is world up.
 3. **What a marked end or feature is.** 0.4's tap labels name the point, not the answers the
    homeowner gave about it:
    - whether a wall end is a real end (something blocks it) or unexplored (it turns a corner,
@@ -85,18 +90,20 @@ performance.
 6. **Estimated depth with its uncertainty** (S6). A phone without LiDAR can infer metric depth
    from the image, but used without its uncertainty it creates surfaces that are not there.
    Proposal: a depth `source` of `estimated`, which requires a `sigma` file (float32 meters, one
-   standard deviation per depth pixel, the depth's layout).
+   standard deviation per depth pixel, the depth's layout). To keep malformed uncertainty from
+   reaching geometry calculations, the proposed validator must require exactly `w * h` samples
+   (`4 * w * h` bytes), all finite and non-negative. A missing, truncated or unreadable map is a
+   validation problem, not an exception.
 7. **The frame of a plane's boundary.** 0.4 lists `planes[].boundary` without saying its frame.
    ARKit's `boundaryVertices` are relative to the anchor transform, not to `planeExtent`'s centre
    and `rotationOnYAxis`, and packet 1.1 found that mixing the two is an easy mistake. Proposal:
    carry the anchor-frame boundary in a new field whose frame is stated, rather than giving the
    existing `boundary` a meaning an existing reader might not share, and have the validator check
    it lies within `planeExtent` once the centre and rotation are applied.
-8. **Photos that frame one span.** With learned depth on ETH3D photos, an along-wall edge came to
-   0.9 in p90 when seen within 15° of face-on and 24 in beyond 45° (#59,
-   `experiments/edge-geometry`), so a distance measured inside one face-on photo is likely far
-   better than one chained across the walk. Proposal: a still or
-   keyframe purpose `span` that names the marks the photo frames.
+8. **Photos that frame one span.** With learned depth on ETH3D electro photos scaled using the
+   laser reference, in-plane edges had along-wall error of 0.9 in p90 within 15° of face-on and
+   24 in beyond 45° (#59, `experiments/edge-geometry`). Proposal: a still or keyframe purpose
+   `span` that names the marks the photo frames.
 9. **Scale references in view.** One reference near the meter may not be enough: on MARViN's
    walks ARKit's scale varied 1.8% (robust SD) within a walk (#59, `experiments/drift-anatomy`),
    so a reference helps where it appears. Proposal: `references[]` with `kind` (door, brick course, and hand-held ones such

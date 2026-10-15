@@ -1,14 +1,22 @@
 """Known-answer controls. These verify adapters, not device measurement accuracy."""
-from copy import deepcopy
 import json
-from pathlib import Path
-import tempfile
+import os
 import subprocess
 import sys
+import tempfile
 import unittest
+from copy import deepcopy
+from pathlib import Path
+from unittest.mock import patch
 
-from capture_contract import (camera_pose, crop_resize_intrinsics,
-                              no_duplicates, ray_for_pixel, validate_session)
+from capture_contract import (
+    camera_pose,
+    crop_resize_intrinsics,
+    no_duplicates,
+    ray_for_pixel,
+    validate_session,
+    write_result,
+)
 
 ROOT = Path(__file__).parent
 
@@ -103,7 +111,7 @@ class CameraContractTests(unittest.TestCase):
             json.loads('{"format": 1, "format": 2}',object_pairs_hook=no_duplicates)
 
     def test_taps_outside_saved_image_are_rejected(self):
-        for pixel in [[-100,10000],[-1,400],[500,801]]:
+        for pixel in [[-100,10000],[-1,400],[500,801],[1000,400],[500,800]]:
             session=deepcopy(self.session)
             session["taps"][0]["pixel"]=pixel
             with self.assertRaisesRegex(ValueError,"outside its saved image"):
@@ -123,24 +131,73 @@ class CameraContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"floating-point range"):
             validate_session(self.session)
 
+    def test_missing_and_duplicate_tap_ids_are_rejected(self):
+        for invalid in [None, "", 1]:
+            session = deepcopy(self.session)
+            session["taps"][0]["id"] = invalid
+            with self.assertRaisesRegex(ValueError, "missing id"):
+                validate_session(session)
+        self.session["taps"].append(deepcopy(self.session["taps"][0]))
+        with self.assertRaisesRegex(ValueError, "duplicate tap id"):
+            validate_session(self.session)
+
+    def test_resizing_overflow_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "resized intrinsics.*finite"):
+            crop_resize_intrinsics([1e200, 1, 0, 0], [0, 0], [1e200, 1])
+
+    def test_failed_output_write_preserves_previous_result(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp) / "converted.json"
+            out.write_text("previous result")
+            with (patch("capture_contract.os.fsync", side_effect=OSError("disk full")),
+                  self.assertRaisesRegex(OSError, "disk full")):
+                write_result(out, {"new": "result"})
+            self.assertEqual(out.read_text(), "previous result")
+            self.assertEqual(list(Path(temp).iterdir()), [out])
+            write_result(out, {"new": "result"})
+            self.assertEqual(json.loads(out.read_text()), {"new": "result"})
+
+    def test_atomic_replacement_preserves_existing_permissions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp) / "converted.json"
+            for mode in (0o644, 0o640, 0o600):
+                with self.subTest(mode=mode):
+                    out.write_text("previous result")
+                    out.chmod(mode)
+                    write_result(out, {"new": "result"})
+                    self.assertEqual(out.stat().st_mode & 0o777, mode)
+                    self.assertEqual(json.loads(out.read_text()), {"new": "result"})
+
+    def test_new_result_permissions_follow_umask(self):
+        with tempfile.TemporaryDirectory() as temp:
+            for mask in (0o022, 0o027):
+                with self.subTest(mask=mask):
+                    out = Path(temp) / f"converted-{mask}.json"
+                    previous = os.umask(mask)
+                    try:
+                        write_result(out, {"new": "result"})
+                    finally:
+                        os.umask(previous)
+                    self.assertEqual(out.stat().st_mode & 0o777, 0o666 & ~mask)
+
     def test_cli_writes_only_after_validation(self):
         with tempfile.TemporaryDirectory() as temp:
             out=Path(temp)/"converted.json"
             cmd=[sys.executable,str(ROOT/"capture_contract.py"),
                  str(ROOT/"fixtures/synthetic-session.json"),"--out",str(out)]
-            result=subprocess.run(cmd,capture_output=True,text=True)
+            result=subprocess.run(cmd,capture_output=True,text=True,check=False)
             self.assertEqual(result.returncode,0,result.stderr)
             converted=json.loads(out.read_text())
             self.assertEqual(len(converted["source_manifest_sha256"]),64)
             invalid=Path(temp)/"bad.json";invalid.write_text('{"format": 5}')
             badout=Path(temp)/"not-created.json"
             result=subprocess.run([sys.executable,str(ROOT/"capture_contract.py"),
-                                   str(invalid),"--out",str(badout)],capture_output=True,text=True)
+                                   str(invalid),"--out",str(badout)],capture_output=True,text=True,check=False)
             self.assertEqual(result.returncode,2)
             self.assertFalse(badout.exists())
             original=invalid.read_bytes()
             result=subprocess.run([sys.executable,str(ROOT/"capture_contract.py"),
-                                   str(invalid),"--out",str(invalid)],capture_output=True,text=True)
+                                   str(invalid),"--out",str(invalid)],capture_output=True,text=True,check=False)
             self.assertEqual(result.returncode,2)
             self.assertEqual(invalid.read_bytes(),original)
 

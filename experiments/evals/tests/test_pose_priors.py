@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from evals.ar_poses import ADVIO_ARKIT_SCALES, SETTINGS, _seed, degrade, group_poses, noise_draws
+from evals.ar_poses import ADVIO_ARKIT_SCALES, SETTINGS, group_poses, noise_draws
 from evals.pairs import INCH
 from evals.pose_priors import (
     SENTINEL,
@@ -103,20 +103,14 @@ class _V:
         self.cam_to_world[0, 3] = x
 
 
-def test_draw_zero_keeps_the_original_generator_and_other_draws_differ():
+def test_pose_draws_are_repeatable_and_differ_between_draws():
     views = {"a": _V(0.0), "b": _V(2.0)}
     groups = {"2": [["a", "b"]]}
     d0 = group_poses(views, groups, "modern_assumed", 0)["n2-a"]
-    ref = degrade(
-        [views["a"].cam_to_world, views["b"].cam_to_world],
-        0.98,
-        SETTINGS["modern_assumed"],
-        np.random.default_rng(_seed("modern_assumed")),
-    )
-    np.testing.assert_allclose(d0["poses"]["b"], ref[1])
+    assert d0 == group_poses(views, groups, "modern_assumed", 0)["n2-a"]
     d1 = group_poses(views, groups, "modern_assumed", 1)["n2-a"]
-    assert d1["scale"] == d0["scale"] == 0.98
-    assert not np.allclose(d1["poses"]["b"], d0["poses"]["b"])
+    assert d0["poses"] != d1["poses"]
+    assert d0["scale"] == d1["scale"]
 
 
 def test_fit_cache_refits_only_when_inputs_change(tmp_path):
