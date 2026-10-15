@@ -128,8 +128,10 @@ def _expectations_problem(expectations: Any) -> str | None:
         return "must be an object of pinned expectations"
     for key in EXPECTATION_KEYS:
         if key in expectations and not isinstance(expectations[key], EXPECTATION_SHAPES[key]):
-            shape = "a string" if EXPECTATION_SHAPES[key] is str else (
-                "an object" if EXPECTATION_SHAPES[key] is dict else "an array"
+            shape = (
+                "a string"
+                if EXPECTATION_SHAPES[key] is str
+                else ("an object" if EXPECTATION_SHAPES[key] is dict else "an array")
             )
             return f".{key} must be {shape} (got {type(expectations[key]).__name__})"
     if not isinstance(expectations.get("decision"), str) or not expectations.get("decision"):
@@ -525,7 +527,6 @@ def main(argv: list[str] | None = None) -> int:
             for error in case["errors"]:
                 print(f"  error: {error}", file=sys.stderr)
     return 0 if report["ok"] else 1
-
 
 
 if __name__ == "__main__":
