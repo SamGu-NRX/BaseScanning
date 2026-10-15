@@ -133,12 +133,18 @@ struct WallWalkScreen: View {
     }
 
     /// The card follows every marker the overlay draws. For a target behind the camera the
-    /// overlay reports the horizontal turn direction, which the card follows too.
+    /// overlay reports the horizontal turn direction, which the card follows too. Without a
+    /// marker for the current aim, keep the step's title and other advice: an engine hint of
+    /// above otherwise leaves "Tilt up a little" even when Details hides the arrow (#241).
     private var shownHint: GuidanceHint? {
-        guard var hint = state.guidanceHint, let aimMarker else { return state.guidanceHint }
+        guard var hint = state.guidanceHint else { return nil }
+        guard let aimMarker else {
+            hint.aim = nil
+            return hint
+        }
         switch aimMarker {
         case .covered:
-            if hint.aim == .onScreen { hint.aim = nil }
+            hint.aim = nil
         case .ring:
             hint.aim = .onScreen
         case .arrow(let direction):

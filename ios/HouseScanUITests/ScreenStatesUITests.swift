@@ -795,6 +795,59 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertTrue(coveredCard.waitForNonExistence(timeout: 5), "closing Details must remove its camera obstruction advice")
     }
 
+    /// At AX5, opening Details hides the arrow. An engine hint of above must not keep the
+    /// marker-specific title up after the overlay reports covered.
+    @MainActor
+    func testAimCardDropsDirectionWhenDetailsCoversMarker() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk",
+                               "-uiDemoAim", "-uiDemoAimHint", "above", "-uiDemoAimHintLater", "above"] + Self.largestText
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("dev.housescanning.uiDemo.aimHintLater" as CFString),
+            nil, nil, true)
+        let arrow = element(app, "aim.arrow")
+        XCTAssertTrue(arrow.waitForExistence(timeout: 5))
+        XCTAssertTrue(arrow.label.contains("above"), arrow.label)
+        let aboveCard = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "Tilt up a little")).firstMatch
+        XCTAssertTrue(aboveCard.waitForExistence(timeout: 5))
+
+        tap(app, "instruction.details")
+        let coveredCard = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "The camera view is below")).firstMatch
+        XCTAssertTrue(coveredCard.waitForExistence(timeout: 5))
+        XCTAssertTrue(arrow.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(element(app, "aim.ring").exists)
+        XCTAssertTrue(coveredCard.label.contains("Tilt down to show the ground"), coveredCard.label)
+        XCTAssertFalse(coveredCard.label.contains("Tilt up a little"), coveredCard.label)
+        attach(app, name: "wallWalk-aimHint-covered-direction-AX5")
+
+        tap(app, "instruction.details")
+        XCTAssertTrue(coveredCard.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(arrow.waitForExistence(timeout: 5))
+        XCTAssertTrue(aboveCard.waitForExistence(timeout: 5), "closing Details must restore the drawn arrow's direction")
+    }
+
+    /// A missing marker carries no actionable direction. The engine hint is deliberately planted
+    /// so this catches the card retaining a direction after the overlay reports no marker.
+    @MainActor
+    func testAimCardDropsDirectionWhenMarkerIsMissing() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk",
+                               "-uiDemoAimOffScreen", "-uiDemoAimHint", "above", "-uiDemoAimNoMarker"]
+        app.launch()
+        defer { app.terminate() }
+        let card = element(app, "instruction")
+        XCTAssertTrue(card.waitForExistence(timeout: 15))
+        XCTAssertFalse(element(app, "aim.ring").exists, "a missing target must not draw a ring")
+        XCTAssertFalse(element(app, "aim.arrow").exists, "a missing target must not draw an arrow")
+        XCTAssertTrue(card.label.contains("Tilt down to show the ground"), card.label)
+        XCTAssertFalse(card.label.contains("Tilt up a little"), card.label)
+    }
+
     /// Marker memory belongs to the exact target and step, not the lifetime of the overlay.
     @MainActor
     func testAimHysteresisBelongsToTheExactTargetAndStep() throws {

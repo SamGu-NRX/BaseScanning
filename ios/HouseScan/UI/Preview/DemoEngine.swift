@@ -202,6 +202,9 @@ final class DemoEngine: ScanActions {
             // The engine's direction to the target, which can disagree with what the overlay
             // draws near the card or an edge (review of #120): the card must follow the drawing.
             if let hint = value("-uiDemoAimHint").flatMap(Self.aimDirection) { state.guidanceHint = GuidanceHint(aim: hint) }
+            // Leave the aim step and its engine hint in place while removing the target, so UI
+            // tests can verify that a missing marker does not leave a stale direction on the card.
+            if arguments.contains("-uiDemoAimNoMarker") { state.target = nil }
             // A UI test changes the camera direction or advances the target after reading the
             // card. A timer from launch raced that baseline on a slow simulator (#241).
             if let later = value("-uiDemoAimHintLater").flatMap(Self.aimDirection) {

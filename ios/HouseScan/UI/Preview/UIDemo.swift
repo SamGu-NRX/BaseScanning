@@ -46,6 +46,7 @@ import SwiftUI
 ///   the meter, and the ring is half full with its legend beside it. Unfrozen, it fills, the walk
 ///   goes on in the same update as on a phone, and the ring holds green with a tick for a moment.
 /// - `-uiDemoAimOffScreen`: as `-uiDemoAim`, for ground left of the view: the edge arrow shows.
+/// - `-uiDemoAimNoMarker`: keep the aim step's hint but remove its target, so no marker is drawn.
 /// - `-uiDemoCorner`: the wall turns an outside corner 1.8 m right of the meter and the walk
 ///   followed it, so the window and part of its clearance zone are round the corner. For the
 ///   result model: `-uiDemoPhase result -uiDemoCorner`.
