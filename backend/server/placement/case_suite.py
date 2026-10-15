@@ -65,6 +65,19 @@ DEFAULT_MANIFEST = Path(__file__).parent / "tests" / "data" / "cases" / "manifes
 _REPO_ROOT = Path(__file__).parents[3]
 RESULT_SCHEMA = _REPO_ROOT / "server" / "schemas" / "result.schema.json"
 SOURCE_SCHEMA = _REPO_ROOT / "backend" / "server" / "contracts" / "schemas" / "scene.v0.schema.json"
+# Recognized expectation keys and the container shape each must have.
+EXPECTATION_KEYS = ("decision", "spot", "checks", "missing_evidence", "sweep_failing_runs", "ends")
+EXPECTATION_SHAPES = {
+    "decision": str,
+    "spot": dict,
+    "checks": dict,
+    "missing_evidence": list,
+    "sweep_failing_runs": list,
+    "ends": dict,
+}
+# A positive case's expectations are meaningful only when they pin the decision
+# and at least one geometric expectation that can actually mismatch.
+GEOMETRIC_EXPECTATION_KEYS = ("spot", "checks", "missing_evidence", "sweep_failing_runs", "ends")
 
 
 class CaseSuiteError(RuntimeError):
@@ -108,6 +121,32 @@ def _check_fixture(name: str, fixture: dict[str, Any], base: Path, problems: lis
     return path
 
 
+def _expectations_problem(expectations: Any) -> str | None:
+    """Return a named problem when a positive case's expectations could not
+    fail a solver regression, or ``None`` when they can."""
+    if not isinstance(expectations, dict):
+        return "must be an object of pinned expectations"
+    for key in EXPECTATION_KEYS:
+        if key in expectations and not isinstance(expectations[key], EXPECTATION_SHAPES[key]):
+            shape = "a string" if EXPECTATION_SHAPES[key] is str else (
+                "an object" if EXPECTATION_SHAPES[key] is dict else "an array"
+            )
+            return f".{key} must be {shape} (got {type(expectations[key]).__name__})"
+    if not isinstance(expectations.get("decision"), str) or not expectations.get("decision"):
+        return "must pin a nonempty 'decision' string"
+    geometric = [
+        key
+        for key in GEOMETRIC_EXPECTATION_KEYS
+        if isinstance(expectations.get(key), EXPECTATION_SHAPES[key]) and expectations[key]
+    ]
+    if not geometric:
+        return (
+            "must pin at least one geometric expectation with content "
+            f"(one of {', '.join(GEOMETRIC_EXPECTATION_KEYS)}), so a solver change can fail the case"
+        )
+    return None
+
+
 def _problems_message(problems: list[str]) -> str:
     return "case suite fixtures failed to load:\n" + "\n".join(f"- {p}" for p in problems)
 
@@ -115,30 +154,97 @@ def _problems_message(problems: list[str]) -> str:
 def load_cases(path: Path) -> list[CaseRecord]:
     """Load the manifest at ``path`` and verify its fixtures.
 
-    Raises :class:`CaseSuiteError` naming every missing or drifted fixture path.
+    The loader is the gate against a silently weakened manifest: it requires a
+    nonempty ``cases`` list of unique nonempty ids with a recognized ``kind``
+    (``positive`` or ``negative_source``), the fixture records each kind needs
+    (positive: ``source`` plus ``wire``; negative: ``source``), meaningful
+    positive expectations (a pinned ``decision`` plus at least one geometric
+    expectation of the right shape) and a negative ``expected_error`` with
+    nonempty ``code`` and ``pointer`` strings. Fixture existence and pinned
+    sha256s are checked before any record is returned. Every rejection names
+    the manifest path and the offending field (``cases[N].field``) instead of
+    guessing a default.
+
+    Raises :class:`CaseSuiteError` with the manifest path and field on any
+    malformed entry, and naming every missing or drifted fixture path.
     """
     problems: list[str] = []
     if not path.is_file():
         raise CaseSuiteError(_problems_message([f"missing case manifest: {path}"]))
     manifest = json.loads(path.read_text())
+    if not isinstance(manifest, dict):
+        raise CaseSuiteError(f"case manifest {path}: top level must be a JSON object")
     if manifest.get("schema_version") != MANIFEST_SCHEMA_VERSION:
         problems.append(f"{path}: schema_version {manifest.get('schema_version')!r} != {MANIFEST_SCHEMA_VERSION!r}")
         raise CaseSuiteError(_problems_message(problems))
+    raw_cases = manifest.get("cases")
+    if not isinstance(raw_cases, list) or not raw_cases:
+        raise CaseSuiteError(
+            f"case manifest {path}: field 'cases' must be a nonempty list of case objects "
+            f"(got {'nothing' if raw_cases is None else type(raw_cases).__name__})"
+        )
     base = path.parent
     records: list[CaseRecord] = []
-    for raw in manifest.get("cases", []):
-        name = raw.get("id", "<unnamed case>")
-        source = _check_fixture(name, raw.get("source") or {}, base, problems)
-        wire = raw.get("wire")
-        wire_path = _check_fixture(name, wire, base, problems) if wire else None
+    seen_ids: set[str] = set()
+    for index, raw in enumerate(raw_cases):
+        field = f"cases[{index}]"
+        if not isinstance(raw, dict):
+            raise CaseSuiteError(f"case manifest {path}: field {field} must be an object (got {type(raw).__name__})")
+        name = raw.get("id")
+        if not isinstance(name, str) or not name:
+            raise CaseSuiteError(f"case manifest {path}: field {field}.id must be a nonempty string (got {name!r})")
+        if name in seen_ids:
+            raise CaseSuiteError(f"case manifest {path}: field {field}.id duplicates id {name!r} from an earlier case")
+        seen_ids.add(name)
+        kind = raw.get("kind")
+        if kind not in (KIND_POSITIVE, KIND_NEGATIVE):
+            raise CaseSuiteError(
+                f"case manifest {path}: field {field}.kind {kind!r} is not a recognized case kind "
+                f"(expected {KIND_POSITIVE!r} or {KIND_NEGATIVE!r})"
+            )
+        source = raw.get("source")
+        if not isinstance(source, dict):
+            raise CaseSuiteError(
+                f"case manifest {path}: field {field}.source must be an object with a path and a pinned sha256"
+            )
+        source_path = _check_fixture(name, source, base, problems)
+        expectations: dict[str, Any] = {}
+        expected_error: dict[str, str] | None = None
+        if kind == KIND_POSITIVE:
+            wire = raw.get("wire")
+            if not isinstance(wire, dict):
+                raise CaseSuiteError(
+                    f"case manifest {path}: field {field}.wire must be an object with a path and a pinned "
+                    "sha256 (a positive case is executed, so its wire fixture is mandatory)"
+                )
+            wire_path = _check_fixture(name, wire, base, problems)
+            expectations = raw.get("expectations")
+            problem = _expectations_problem(expectations)
+            if problem is not None:
+                raise CaseSuiteError(f"case manifest {path}: field {field}.expectations {problem}")
+            expectations = dict(expectations)
+        else:
+            wire_path = None
+            expected_error = raw.get("expected_error")
+            if (
+                not isinstance(expected_error, dict)
+                or not isinstance(expected_error.get("code"), str)
+                or not expected_error.get("code")
+                or not isinstance(expected_error.get("pointer"), str)
+                or not expected_error.get("pointer")
+            ):
+                raise CaseSuiteError(
+                    f"case manifest {path}: field {field}.expected_error must be an object with a nonempty "
+                    "'code' and 'pointer' string (the error the future converter must produce)"
+                )
         records.append(
             CaseRecord(
                 id=name,
-                kind=raw.get("kind", ""),
-                source_path=source,
+                kind=kind,
+                source_path=source_path,
                 wire_path=wire_path,
-                expected_error=raw.get("expected_error"),
-                expectations=raw.get("expectations") or {},
+                expected_error=expected_error,
+                expectations=expectations,
                 note=raw.get("note"),
             )
         )
@@ -266,7 +372,15 @@ def _positive_case(
     case["executions_agree"] = _agree_without_elapsed(first, second)
     stats = first.get("stats", {})
     case["input_sha256"] = stats.get("input_sha256")
-    case["input_sha_matches_file"] = case["input_sha256"] == _file_sha256(record.wire_path)
+    posted_sha = _file_sha256(record.wire_path)
+    case["input_sha_matches_file"] = case["input_sha256"] == posted_sha
+    if not case["input_sha_matches_file"]:
+        # A response tied to different bytes must not pass, no matter how well
+        # its placement fields happen to satisfy the expectations.
+        case["mismatches"].append(
+            f"stats.input_sha256 {case['input_sha256']!r} does not match the sha256 of the "
+            f"posted wire bytes ({posted_sha})"
+        )
     case["policy"] = first.get("policy")
     case["decision"] = first.get("decision")
     case["spot"] = first.get("spot")
@@ -411,6 +525,7 @@ def main(argv: list[str] | None = None) -> int:
             for error in case["errors"]:
                 print(f"  error: {error}", file=sys.stderr)
     return 0 if report["ok"] else 1
+
 
 
 if __name__ == "__main__":
