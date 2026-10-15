@@ -194,6 +194,14 @@ struct WallGeometry: Equatable, Sendable {
         cornerSegments.first { $0.span.contains(s) }?.along ?? along
     }
 
+    /// The same tap-centered square that scene.json sends to the clearance checks.
+    func acGeometry(tap: SIMD3<Float>, atS s: Float) -> ACUnitGeometry {
+        // SceneWall assigns a corner's exact s to the piece on its left.
+        let piece = cornerSegments.first { $0.span.lowerBound < s && s <= $0.span.upperBound }
+        return ACUnitGeometry(tap: tap, along: piece?.along ?? along,
+                              outward: piece?.outward ?? outward, groundY: groundY)
+    }
+
     /// The s of the wall point nearest a world point in plan.
     func s(nearest world: SIMD3<Float>) -> Float {
         let d = world - SIMD3(meter.x, groundY, meter.z)

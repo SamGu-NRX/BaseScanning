@@ -327,13 +327,14 @@ enum ScanCopy {
     /// of `SceneExport.acAssumedSide` (#72), and the homeowner is told the size is assumed.
     static let acAssumedSize: String = {
         let side = Distance.feetAndInches(SceneExport.acAssumedSide)
-        return "Assumed about \(side) \u{00D7} \(side)"
+        return "Assumed footprint: about \(side) \u{00D7} \(side), not measured. Centered on your tap."
     }()
     /// `acAssumedSize` for VoiceOver, which reads "ft" as letters.
     static let acAssumedSizeSpoken: String = {
         let side = Distance.spoken(SceneExport.acAssumedSide)
-        return "Assumed about \(side) by \(side)"
+        return "Assumed footprint: about \(side) by \(side), not measured. Centered on your tap."
     }()
+    static let acAssumedCaption = "AC unit · assumed size"
 
     /// The window question's way out: sent as unknown, like no answer.
     static let windowNotSure = "Not sure"
@@ -359,7 +360,9 @@ enum ScanCopy {
             return Instruction(title: "Tap the bottom of the fence at one end", detail: "Where it meets the ground.")
         case (.fence, _):
             return Instruction(title: "Now tap the bottom at the other end", detail: nil)
-        case (.gasMeter, _), (.acUnit, _):
+        case (.acUnit, _):
+            return Instruction(title: "Mark the AC unit's center at ground level", detail: "Your tap marks the middle of its footprint. We assume its size; we don't measure it.")
+        case (.gasMeter, _):
             return Instruction(title: "Tap the \(item)", detail: "Put the circle on it and tap Mark, or tap it on screen.")
         }
     }
