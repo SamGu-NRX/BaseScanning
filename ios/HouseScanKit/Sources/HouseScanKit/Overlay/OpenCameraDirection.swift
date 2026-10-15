@@ -21,12 +21,20 @@ public enum OpenCameraDirection {
         return direction.dx < 0 ? .left : .right
     }
 
+    /// How far inside the window a spot that was off screen must come before it counts as in
+    /// view again. At AX5 the card's off-screen note is about 290 pt, so a hand-held spot on the
+    /// window's edge toggled it on and off. 12 pt is the walk's ring entry margin
+    /// (`WayfindingOverlay.ringEntryMargin`), about a fingertip; not measured on a phone.
+    public static let entryMargin: CGFloat = 12
+
     /// Projected spots use the visible window's center, since the full camera's center can be
     /// covered by the card. A spot behind the camera has no projection and uses `fallback`.
-    /// Returns nil when the projected spot is already visible.
-    public static func toward(_ projected: CGPoint?, in window: CGRect, fallback: CGVector?) -> CGVector? {
+    /// Returns nil when the projected spot is already visible: anywhere in `window`, or, for a
+    /// spot that was off screen (`wasOffScreen`), `entryMargin` inside it.
+    public static func toward(_ projected: CGPoint?, in window: CGRect, fallback: CGVector?, wasOffScreen: Bool = false) -> CGVector? {
         guard let projected else { return fallback }
-        guard !window.contains(projected) else { return nil }
+        let visible = wasOffScreen ? window.insetBy(dx: entryMargin, dy: entryMargin) : window
+        guard !visible.contains(projected) else { return nil }
         let dx = projected.x - window.midX, dy = projected.y - window.midY
         let length = (dx * dx + dy * dy).squareRoot()
         guard length > 0 else { return nil }

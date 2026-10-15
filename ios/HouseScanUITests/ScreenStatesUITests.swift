@@ -819,6 +819,36 @@ final class ScreenStatesUITests: XCTestCase {
         attach(app, name: "resultAR-offScreen-note-AX5")
     }
 
+    /// At AX3 with Details closed, an off-screen spot always has its direction: the chevron, or
+    /// the card's line when the chevron doesn't fit. Records which one, since the card no longer
+    /// repeats a drawn chevron below AX5.
+    @MainActor
+    func testTheOffScreenSpotAlwaysHasADirectionAtAX3() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "resultAR",
+                               "-uiDemoSpotOffScreen", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
+        let chevron = element(app, "ar.spotDirection")
+        let note = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "The proposed spot is off screen")).firstMatch
+        let either = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in chevron.exists || note.exists }, object: nil)
+        XCTAssertEqual(XCTWaiter().wait(for: [either], timeout: 5), .completed, "an off-screen spot had neither a chevron nor a line")
+        XCTAssertFalse(element(app, "instruction.detail").exists, "Details must remain closed")
+        if chevron.exists {
+            XCTAssertTrue(chevron.label.contains("Turn the phone right"), "VoiceOver must hear the way to turn: \(chevron.label)")
+        } else {
+            XCTAssertTrue(note.label.contains("Turn the phone right"), note.label)
+        }
+        let shown = XCTAttachment(string: chevron.exists ? "chevron: \(chevron.label)" : "note: \(note.label)")
+        shown.name = "resultAR-offScreen-direction-AX3"
+        shown.lifetime = .keepAlways
+        add(shown)
+        attach(app, name: "resultAR-offScreen-direction-AX3")
+    }
+
     /// At AX5 the folded card leaves the spot in the open camera, and opening Details covers it.
     /// At d5d137ed the card then said "Tilt the phone up" and kept saying it after Details
     /// closed: the five-line note made the card cover the spot itself, and Done went below the
@@ -846,7 +876,10 @@ final class ScreenStatesUITests: XCTestCase {
         tap(app, "instruction.details")
         XCTAssertTrue(element(app, "instruction.detail").waitForExistence(timeout: 5))
         // Read once the card has had time to react to the covered camera; checked at the end, so
-        // the run before the fix fails on the note that stays.
+        // the run before the fix fails on the note that stays. Open Details says the camera is
+        // below whenever the spot's chevron can't be drawn, not only when under 52 pt of camera
+        // is left: so the line doesn't depend on where the open card ends above the home
+        // indicator.
         _ = cardSaying("The camera view is below").waitForExistence(timeout: 3)
         let opened = card.label
         attach(app, name: "resultAR-detailsOpen-AX5")

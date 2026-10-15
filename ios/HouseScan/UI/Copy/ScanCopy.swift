@@ -821,10 +821,10 @@ enum ScanCopy {
     /// The AR title over a possible spot, and the words for what the AR view draws there.
     static let proposedSpotOverlay = "A proposed battery spot, drawn on your wall"
     static let proposedSpotThisWay = "The proposed spot is this way"
-    static let proposedSpotOffScreen = "The proposed spot is off screen. Turn the phone toward the arrow."
     /// The note shown outside Details when the open camera cannot hold the chevron, so there
-    /// is no arrow to turn toward (review of #241). Not while open Details covers the camera:
-    /// `cameraBelowDetails` says how to get it back instead.
+    /// is no arrow to turn toward (review of #241), and the chevron's VoiceOver label when it is
+    /// drawn. Not while open Details covers the camera: `cameraBelowDetails` says how to get it
+    /// back instead.
     static func proposedSpotOffScreen(turn direction: AimDirection) -> String {
         let turn = switch direction {
         case .above: "Tilt the phone up"

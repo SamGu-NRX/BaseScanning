@@ -62,6 +62,22 @@ import Testing
         #expect(OpenCameraDirection.toward(CGPoint(x: 201, y: 600), in: Self.window, fallback: CGVector(dx: 1, dy: 0)) == nil)
     }
 
+    /// A spot just inside the window's edge: in view if it was, still off screen if it wasn't,
+    /// so a hand-held phone doesn't flip the card's note on every frame.
+    @Test(arguments: [CGPoint(x: 201, y: 556), CGPoint(x: 201, y: 774), CGPoint(x: 30, y: 665), CGPoint(x: 372, y: 665)])
+    func aSpotOnTheWindowsEdgeKeepsItsLastState(spot: CGPoint) throws {
+        #expect(Self.window.contains(spot))
+        #expect(OpenCameraDirection.toward(spot, in: Self.window, fallback: nil) == nil)
+        let direction = try #require(OpenCameraDirection.toward(spot, in: Self.window, fallback: nil, wasOffScreen: true))
+        let outward = CGVector(dx: spot.x - Self.window.midX, dy: spot.y - Self.window.midY)
+        #expect(direction.dx * outward.dx + direction.dy * outward.dy > 0)
+    }
+
+    @Test func aSpotWellInsideCountsAsInViewAgain() {
+        let spot = CGPoint(x: 201, y: Self.window.minY + OpenCameraDirection.entryMargin + 1)
+        #expect(OpenCameraDirection.toward(spot, in: Self.window, fallback: nil, wasOffScreen: true) == nil)
+    }
+
     @Test func aSpotBehindTheCameraKeepsTheCameraDirection() {
         let direction = CGVector(dx: -1, dy: 0)
         #expect(OpenCameraDirection.toward(nil, in: Self.window, fallback: direction) == direction)

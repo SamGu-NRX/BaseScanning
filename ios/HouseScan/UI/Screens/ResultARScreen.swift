@@ -133,9 +133,10 @@ private struct SpotDirection: View {
         /// Details is closed and the open camera is too short for the chevron and its words:
         /// the way to turn, which the card shows outside Details at every text size.
         case turn(AimDirection)
-        /// Open Details leaves less camera on screen than the chevron's disc, as on the walk
-        /// (`WallWalkScreen.detailsCoverCamera`). Turning wouldn't bring the spot into view;
-        /// closing Details would, so the card says that and gives no direction.
+        /// Details is open and the camera it leaves can't show the spot or the chevron: less
+        /// camera on screen than the chevron's disc, as on the walk
+        /// (`WallWalkScreen.detailsCoverCamera`), or too little for the chevron's words.
+        /// Closing Details brings the camera back, so the card says that and gives no direction.
         case cameraBelow
     }
 
@@ -192,7 +193,7 @@ private struct SpotDirection: View {
                     .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
                         if abs(height - labelHeight) > 0.5 { labelHeight = height }
                     }
-                if case let .chevron(point, angle, label, _) = layout {
+                if case let .chevron(point, angle, label, direction) = layout {
                     ZStack {
                         TargetMarker(placement: .offScreen(point, angle: angle))
                         self.label
@@ -200,7 +201,9 @@ private struct SpotDirection: View {
                     }
                     .frame(width: size.width, height: size.height)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(ScanCopy.proposedSpotOffScreen)
+                    // The way to turn in words: below AX5 the card no longer says it beside a drawn
+                    // chevron, so this is all VoiceOver has.
+                    .accessibilityLabel(ScanCopy.proposedSpotOffScreen(turn: direction))
                     .accessibilityIdentifier("ar.spotDirection")
                 }
                 Color.clear
@@ -233,9 +236,12 @@ private struct SpotDirection: View {
 
     /// The card's line for `layout` in the open camera `band`. With Details closed, the way to
     /// turn whenever the chevron can't be drawn, never folded away. With Details open, only
-    /// `Note.cameraBelow`: turning can't bring back a camera that Details covers.
+    /// `Note.cameraBelow`: turning can't bring back a camera that Details covers. It shows
+    /// whenever the chevron can't be drawn as well, or an off-screen spot with Details open
+    /// and a camera between 52 pt and the chevron's height had neither (review of #241).
     static func note(layout: Layout, band: WayfindingOverlay.Band?, detailsShown: Bool) -> Note? {
         guard detailsShown else { return layout.unshownDirection.map(Note.turn) }
+        if layout.unshownDirection != nil { return .cameraBelow }
         guard let band, band.bottom - band.top < WayfindingOverlay.arrowDiameter else { return nil }
         return .cameraBelow
     }
@@ -258,8 +264,11 @@ private struct SpotDirection: View {
         let labelRoom = labelGap + labelHeight
         let clear = band.map { CGRect(x: 24, y: $0.top, width: size.width - 48, height: $0.bottom - $0.top) }
             ?? CGRect(x: 24, y: 260, width: size.width - 48, height: max(size.height - 260 - 160, 80))
+        // A spot that was off screen (`previous`) comes back into view only a margin inside the
+        // window, so at its edge the card's note doesn't come and go every frame.
         guard let direction = OpenCameraDirection.toward(
-            projection.viewPoint(for: spot, in: size), in: clear, fallback: projection.screenDirection(toward: spot)) else { return .none }
+            projection.viewPoint(for: spot, in: size), in: clear, fallback: projection.screenDirection(toward: spot),
+            wasOffScreen: previous != nil) else { return .none }
         let namedDirection = WayfindingOverlay.direction(of: .radians(atan2(direction.dy, direction.dx)), previous: previous)
         let lane: CGRect
         if let band {
