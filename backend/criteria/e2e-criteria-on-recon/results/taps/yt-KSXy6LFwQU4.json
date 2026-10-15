@@ -1,7 +1,0 @@
-{"site": "yt-KSXy6LFwQU4", "tap_offset": [8, 4.5],
- "meter": {"t0720.00": [1300, 788], "t0722.00": [612, 400], "t0723.20": [832, 172], "t0726.00": [932, 664], "t0730.00": [1340, 540]},
- "fixtures": [{"id": "ac", "class": "ac_unit", "label": "AC condenser, fan centre tapped", "size_m": 0.8, "pm_m": 0.2,
-   "taps": {"t0709.20": [816, 456], "t0754.80": [1328, 220], "t0702.67": [1340, 348]}}],
- "openings": [{"id": "win1", "class": "window", "label": "ground-floor window near the AC (hand clicks)",
-   "views": {"t0702.67": {"left": [856, 228], "right": [1160, 228], "bottom": [1008, 380], "top": [1008, 76]}}}],
- "ground_material": "gravel", "camera_height_m": 1.5}

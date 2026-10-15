@@ -1,2 +1,0 @@
-SOURCE: huntertcarver/Software-Manufacturing-Plant@38b696f shared-assets/delivery/terraform-governance-pack/modules/github_actions_workload_identity
-LOCAL CHANGES: `repository_id` and `repository_owner_id` (default null) are ANDed into `attribute_condition`. Attribute mapping is unchanged. The root stack does not set `additional_attribute_conditions`, so the live condition is repository, repository id, owner id, and `refs/heads/main` only. There is no `environment:dev` subject.

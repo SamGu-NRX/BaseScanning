@@ -1,8 +1,0 @@
-{
- "segment": "2022-02-10_14.47.24_s1",
- "set": "N40_guided",
- "method": "cda3",
- "n": 40,
- "error": "GeometryException('Degenerate covariance rank, Umeyama alignment is not possible')",
- "total_s": 18.0
-}

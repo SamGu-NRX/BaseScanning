@@ -1,8 +1,0 @@
-{"id": "commons/c047", "keep": [], "add": [["pool", 0.25, 0.54, 0.90, 0.76]], "present": {"fence": true, "driveway": false}, "ignore": ["door", "window"], "ground": "concrete_or_paving"}
-{"id": "commons/c050", "keep": [6], "add": [], "present": {"window": true, "fence": true, "driveway": false}, "ignore": ["downspout"], "ground": "other", "note": "snow-covered pool"}
-{"id": "commons/c054", "keep": [0, 6], "add": [], "present": {"window": false, "fence": true, "driveway": false}, "ignore": [], "ground": "grass", "note": "door = shed door; hose reel cart is not a hose bib"}
-{"id": "commons/c055", "keep": [4], "add": [], "present": {"fence": true, "driveway": false}, "ignore": ["door", "window"], "ground": "grass"}
-{"id": "commons/c058", "keep": [], "add": [], "present": {"window": true, "fence": true, "driveway": true}, "ignore": ["door", "electric_meter", "meter_can"], "ground": "concrete_or_paving", "note": "garage doors present but front entry occluded; door class ignored"}
-{"id": "commons/c064", "keep": [], "add": [], "present": {"window": true, "fence": true, "driveway": false}, "ignore": ["door", "ac_condenser"], "ground": "grass"}
-{"id": "commons/c070", "keep": [], "add": [], "present": {"window": true, "fence": true}, "ignore": ["electric_meter", "meter_can", "ac_condenser", "downspout", "driveway"], "ground": "grass"}
-{"id": "commons/c072", "keep": [], "add": [], "present": {"window": false, "fence": true, "driveway": false}, "ignore": [], "ground": "mulch_or_soil", "note": "louvered shutters hung on fence are hard negatives for AC and door"}

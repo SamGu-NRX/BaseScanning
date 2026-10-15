@@ -1,8 +1,0 @@
-{"id": "yt-4h8kyjnPo9s/t0026.29", "keep": [], "add": [], "present": {"window": true, "fence": true}, "ignore": ["electric_meter", "meter_can", "ac_condenser", "downspout", "driveway"], "ground": "grass", "note": "small grey wall box near the fence is unreadable at this resolution"}
-{"id": "yt-4h8kyjnPo9s/t0029.24", "keep": [6], "add": [], "present": {"window": true, "fence": true, "driveway": true}, "ignore": [], "ground": "grass"}
-{"id": "yt-4h8kyjnPo9s/t0032.18", "keep": [], "add": [], "present": {"window": false, "fence": true, "driveway": true}, "ignore": ["downspout"], "ground": "grass"}
-{"id": "yt-4h8kyjnPo9s/t0035.12", "keep": [], "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": ["ac_condenser", "meter_can"], "ground": "other", "note": "window-mounted AC unit (not a condenser); grey box at right unidentifiable"}
-{"id": "yt-4h8kyjnPo9s/t0049.82", "keep": [], "add": [], "present": {"window": false, "fence": false}, "ignore": ["driveway"], "ground": "grass"}
-{"id": "yt-4h8kyjnPo9s/t0058.65", "keep": [], "add": [], "present": {"fence": false}, "ignore": ["window", "door", "driveway", "downspout"], "ground": "grass", "note": "street view, distant houses"}
-{"id": "yt-4h8kyjnPo9s/t0061.59", "keep": [], "add": [], "present": {"window": true, "fence": false, "driveway": true}, "ignore": ["door", "electric_meter", "meter_can", "hose_bib", "downspout"], "ground": "grass"}
-{"id": "yt-4h8kyjnPo9s/t0064.53", "keep": [], "add": [], "present": {"window": true, "fence": false, "driveway": true}, "ignore": ["door"], "ground": "grass"}

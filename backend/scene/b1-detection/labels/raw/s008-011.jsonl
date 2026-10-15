@@ -1,8 +1,0 @@
-{"id": "yt-0gotY_syWWU/t0014.00", "keep": [], "relabel": {"15": "door"}, "add": [], "present": {"window": true, "fence": false, "driveway": true}, "ignore": ["door", "ac_condenser"], "ground": "gravel", "note": "distant house; garage door is candidate 15 but door class ignored because the porch door is unclear"}
-{"id": "yt-0gotY_syWWU/t0022.33", "keep": [8, 13], "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": ["hose_bib"], "ground": "grass"}
-{"id": "yt-0gotY_syWWU/t0034.83", "keep": [2, 10], "relabel": {"10": "electric_meter"}, "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": ["meter_can"], "ground": "mulch_or_soil"}
-{"id": "yt-0gotY_syWWU/t0039.00", "keep": [], "add": [], "present": {"window": false, "fence": true, "driveway": false}, "ignore": [], "ground": "grass"}
-{"id": "yt-0gotY_syWWU/t0047.33", "keep": [7], "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": ["electric_meter"], "ground": "grass"}
-{"id": "yt-0gotY_syWWU/t0051.50", "keep": [], "add": [["downspout", 0.95, 0.0, 0.98, 0.97]], "present": {"fence": false, "driveway": false}, "ignore": ["electric_meter", "meter_can", "ac_condenser", "hose_bib", "window"], "ground": "mulch_or_soil"}
-{"id": "yt-0gotY_syWWU/t0055.67", "keep": [], "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": ["hose_bib"], "ground": "grass"}
-{"id": "yt-0gotY_syWWU/t0067.33", "keep": [], "add": [], "present": {"window": false, "fence": false, "driveway": false}, "ignore": [], "ground": "mulch_or_soil"}

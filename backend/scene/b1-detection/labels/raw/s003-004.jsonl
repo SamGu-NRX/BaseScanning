@@ -1,3 +1,0 @@
-{"id": "eth3d-facade/DSC_0391", "keep": [43], "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": ["door"], "ground": "gravel", "note": "far wing ground-floor openings unclear door vs window; a second possible downspout at left edge not labelled"}
-{"id": "eth3d-facade/DSC_0401", "keep": [69], "add": [], "present": {"window": true, "driveway": false}, "ignore": ["fence"], "ground": "concrete_or_paving"}
-{"id": "eth3d-facade/DSC_0419", "keep": [22, 29], "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": [], "ground": "gravel"}

@@ -1,2 +1,0 @@
-jsonschema==4.26.0
-numpy==2.5.3

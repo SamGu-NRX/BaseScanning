@@ -1,7 +1,0 @@
-{
-  "run": "arkit_lidar_modern_s0_fixed",
-  "res_level": 1,
-  "interface_s": 0.4677698612213135,
-  "densify_s": 1179.4571120738983,
-  "ply": "/home/ubuntu/a1/work/facade/mvs/arkit_lidar_modern_s0_fixed_r1/scene_dense.ply"
-}

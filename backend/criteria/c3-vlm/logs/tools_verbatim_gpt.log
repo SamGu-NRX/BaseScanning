@@ -1,4 +1,0 @@
-meter cross drawn in photos [8]
-eth3d-facade gpt-5.5 p12_meter_panel_location {'p12.meterNotAccessible': 'no', 'p12.panelNotAccessible': 'manual_review', 'p12.panelInHouse': 'manual_review', 'p12.notSameWall': 'manual_review'} $0.265 5 calls
-eth3d-facade gpt-5.5 p08_battery_space {'p08': 'pass'} $0.480 14 calls
-eth3d-facade gpt-5.5 p06_battery_disconnect_placement {'p06': 'manual_review'} $0.481 20 calls

@@ -1,7 +1,0 @@
-{
-  "run": "arkit_nonlidar_modern_s0_fixed",
-  "triangulate_s": 1.0368225574493408,
-  "registered": 44,
-  "points3D": 9709,
-  "mean_reproj_px": 1.555734079015791
-}

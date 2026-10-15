@@ -1,8 +1,0 @@
-{"id": "yt-4h8kyjnPo9s/t0070.41", "keep": [], "add": [], "present": {"window": false, "fence": true, "driveway": false}, "ignore": [], "ground": "grass", "note": "car door is a hard negative for door"}
-{"id": "yt-4h8kyjnPo9s/t0075.71", "keep": [], "add": [], "present": {"window": false, "fence": false, "driveway": false}, "ignore": ["downspout"], "ground": "other"}
-{"id": "yt-4h8kyjnPo9s/t0081.59", "keep": [], "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": [], "ground": "other"}
-{"id": "yt-5-M-7f35Tyg/t0022.00", "keep": [], "add": [], "present": {"window": true, "fence": false}, "ignore": ["door", "driveway"], "ground": "grass"}
-{"id": "yt-5-M-7f35Tyg/t0032.00", "keep": [14], "add": [], "present": {"window": true, "fence": true, "driveway": false}, "ignore": ["ac_condenser", "electric_meter", "meter_can", "hose_bib"], "ground": "mulch_or_soil"}
-{"id": "yt-5-M-7f35Tyg/t0035.33", "keep": [], "add": [["gas_meter", 0.57, 0.46, 0.86, 0.80]], "present": {"window": false, "fence": false, "driveway": false}, "ignore": [], "ground": "mulch_or_soil"}
-{"id": "yt-5-M-7f35Tyg/t0038.67", "keep": [3], "add": [], "present": {"window": false, "fence": false, "driveway": false}, "ignore": [], "ground": "mulch_or_soil", "note": "gas meter body only; the regulator at left is not boxed"}
-{"id": "yt-5-M-7f35Tyg/t0042.00", "keep": [], "add": [["gas_meter", 0.16, 0.22, 0.53, 0.75]], "present": {"window": false, "fence": false, "driveway": false}, "ignore": [], "ground": "mulch_or_soil"}

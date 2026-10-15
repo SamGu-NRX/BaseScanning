@@ -1,4 +1,0 @@
-houses: ['eth3d-electro', 'yt-0gotY_syWWU', 'yt-4h8kyjnPo9s'] models: ['claude-sonnet-5', 'gpt-5.5', 'claude-opus-5-5'] prompts: 13
-eth3d-electro claude-sonnet-5: 13 prompts, $0.217
-eth3d-electro gpt-5.5: 13 prompts, $0.657
-yt-0gotY_syWWU claude-sonnet-5: 13 prompts, $0.085

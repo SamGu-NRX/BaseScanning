@@ -1,7 +1,0 @@
-electro: 45 views, 1500000 evaluation points, tolerance 0.04
-prepare electro 149 s
-delivery_area: 44 views, 1500000 evaluation points, tolerance 0.04
-prepare delivery_area 100 s
-facade: 76 views, 1500000 evaluation points, tolerance 0.04
-prepare facade 305 s
-PREPARE_DONE

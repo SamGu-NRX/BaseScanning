@@ -1,6 +1,0 @@
-486c486,488
-<     gt_cams = [Camera(n, mat4_from_list(gkf[n]["pose"]), np.array(gkf[n]["intrinsics"]), gkf[n]["w"], gkf[n]["h"]) for n in names]
----
->     # Perfect clicks are GT points projected through the GT pose into the image the recon actually used
->     # (its own intrinsics and size): a width-ratio rescale of GT pixels is only valid for an unchanged field of view.
->     gt_cams = [Camera(n, mat4_from_list(gkf[n]["pose"]), np.asarray(cams_src[n]["K"], float), cams_src[n]["w"], cams_src[n]["h"]) for n in names]

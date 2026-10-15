@@ -1,7 +1,0 @@
-{
-  "run": "incremental",
-  "res_level": 1,
-  "interface_s": 0.6608405113220215,
-  "densify_s": 1606.0775558948517,
-  "ply": "/home/ubuntu/a1/work/facade/mvs/incremental_r1/scene_dense.ply"
-}

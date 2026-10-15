@@ -1,8 +1,0 @@
-{
-  "run": "incremental",
-  "mapper_s": 6.712504625320435,
-  "models": 1,
-  "registered": 41,
-  "points3D": 13443,
-  "mean_reproj_px": 0.3385297711015712
-}

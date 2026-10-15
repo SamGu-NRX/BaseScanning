@@ -1,8 +1,0 @@
-{"id": "commons/c004", "keep": [], "add": [["ac_condenser", 0.42, 0.19, 0.965, 0.92], ["ac_condenser", 0.09, 0.05, 0.27, 0.29]], "present": {"window": false, "driveway": false}, "ignore": ["fence", "hose_bib"], "ground": "mulch_or_soil"}
-{"id": "commons/c005", "keep": [2], "add": [["ac_condenser", 0.09, 0.22, 0.61, 0.96]], "present": {"window": false, "driveway": false}, "ignore": ["fence"], "ground": "mulch_or_soil"}
-{"id": "commons/c022", "keep": [], "add": [], "present": {"window": false, "fence": false, "driveway": false}, "ignore": [], "ground": "grass", "note": "water meter: hard negative for gas/electric meter"}
-{"id": "commons/c025", "keep": [], "add": [["electric_meter", 0.553, 0.712, 0.608, 0.766], ["meter_can", 0.553, 0.680, 0.630, 0.780]], "present": {"window": true, "fence": false, "driveway": false}, "ignore": ["door"], "ground": "other", "note": "overhead service mast is not a downspout"}
-{"id": "commons/c033", "keep": [3, 37, 11, 6, 9, 10, 15], "relabel": {"37": "electric_meter", "6": "meter_can", "9": "meter_can", "10": "meter_can"}, "add": [], "present": {"window": false, "fence": false, "driveway": false}, "ignore": [], "ground": "other", "note": "three European meter enclosures counted as meter_can, meter faces as electric_meter"}
-{"id": "commons/c038", "keep": [4], "add": [], "present": {"fence": false, "driveway": false}, "ignore": ["door", "window"], "ground": "concrete_or_paving"}
-{"id": "commons/c040", "keep": [9], "add": [], "present": {"window": true, "fence": true, "driveway": false}, "ignore": [], "ground": "concrete_or_paving"}
-{"id": "commons/c044", "keep": [2], "add": [], "present": {"window": true, "fence": false, "driveway": false}, "ignore": [], "ground": "other"}
