@@ -149,8 +149,8 @@ def register(app: FastAPI, settings) -> None:
         except ClientDisconnect:
             # The phone dropped the connection mid-body — it does this when a
             # retried PUT opens while the old attempt still drains. Nothing is
-            # committed and the temp file goes away, so the retry starts clean
-            # instead of leaving `{key}.uploading` litter in the volume.
+            # committed and only this attempt's temp file goes away, so the
+            # retry starts clean on its own per-attempt temp.
             if tmp is not None:
                 deps.storage.discard_tmp(tmp)
             return Response(content=b"BadDigest", status_code=400, media_type="text/plain")

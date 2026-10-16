@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import threading
+import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -84,9 +85,25 @@ class LocalFsStorage:
         return len(keys)
 
     def prepare_tmp(self, key: str) -> Path:
-        tmp = self._path(f"{key}.uploading")
-        tmp.parent.mkdir(parents=True, exist_ok=True)
-        return tmp
+        """One temp file per PUT attempt, not one per key.
+
+        The per-key `{key}.uploading` name collides exactly when the phone
+        retries a dropped PUT on the same signed URL while the first attempt's
+        handler can still be draining its body: the retry's open truncated the
+        file under the first attempt's handle, and the dropped attempt's
+        cleanup unlinked the retry's temp, so the retry's commit_tmp failed
+        with a 500 on valid bytes. A unique name under `.uploads/` — a prefix
+        `list_prefix` already excludes — gives every attempt its own complete
+        bytes; the last commit wins, which is the replay rule. Parking them in
+        `.uploads/singles` also puts them where the sweeper ages stranded
+        files out. VolumeStorage PUTs go through the same handler and inherit
+        this naming, so the sweep covers both backends.
+        """
+
+        self._uploads.mkdir(parents=True, exist_ok=True)
+        singles = self._uploads / "singles"
+        singles.mkdir(parents=True, exist_ok=True)
+        return singles / f"{uuid.uuid4().hex}.uploading"
 
     def discard_tmp(self, tmp: Path) -> None:
         if tmp.is_file():

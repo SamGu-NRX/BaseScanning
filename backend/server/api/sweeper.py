@@ -61,10 +61,10 @@ def _sweep_volume(root: Path) -> int:
             if path.is_file() and path.stat().st_mtime < now - 7 * 86400:
                 path.unlink()
                 deleted += 1
-    # VolumeStorage.prepare_tmp parks one temporary per PUT attempt under
-    # .uploads/singles, outside the uploads walk above. Sweep them on the same
-    # age rule, so a process killed between prepare_tmp and commit_tmp strands
-    # nothing in the volume.
+    # Both storage backends park one temporary per PUT attempt under
+    # .uploads/singles — LocalFsStorage owns the naming, VolumeStorage inherits
+    # it — outside the uploads walk above. Sweep them on the same age rule, so
+    # a process killed between prepare_tmp and commit_tmp strands nothing.
     singles = root / ".uploads" / "singles"
     if singles.exists():
         for path in singles.glob("*.uploading"):

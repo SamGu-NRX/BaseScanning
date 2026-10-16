@@ -7,7 +7,6 @@ import hashlib
 import hmac
 import json
 import time
-import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -72,24 +71,6 @@ class VolumeStorage(LocalFsStorage):
             if "generation mismatch" not in str(exc):
                 raise
             raise PreconditionFailed(src) from exc
-
-    def prepare_tmp(self, key: str) -> Path:
-        """One temp file per PUT attempt, not one per key.
-
-        The inherited `{key}.uploading` name collides exactly when the phone
-        retries a dropped PUT on the same signed URL while the first attempt's
-        handler can still be draining its body: the retry's open truncated the
-        file under the first attempt's handle, and whichever attempt committed
-        second either moved the other's bytes or crashed on a vanished temp
-        path (a 500 on valid bytes). A unique name under `.uploads/` — a prefix
-        `list_prefix` already excludes — makes every attempt commit its own
-        complete bytes; the last commit wins, which is the replay rule.
-        """
-
-        self._uploads.mkdir(parents=True, exist_ok=True)
-        singles = self._uploads / "singles"
-        singles.mkdir(parents=True, exist_ok=True)
-        return singles / f"{uuid.uuid4().hex}.uploading"
 
     def signed_put_url(self, key: str, content_type: str, md5_b64: str, ttl_s: int) -> SignedUrl:
         exp, stamp = self._expires(ttl_s)
