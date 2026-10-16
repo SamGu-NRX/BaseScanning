@@ -106,8 +106,18 @@ failures, re-verified at `5e51801a` on untouched alpha state:
   of `tests/test_capture_cold_restart.py`), 487.78s.
 
 Regressions: `backend/tests/test_ci_proposal_portability.py` pins both PR
-#288 fixes. All four tests fail on the unfixed tree (hygiene step inside the
-required job; `%N` in the script; no `now_ms`) and pass after.
+#288 fixes and the Greptile P2 test gap. Four exit-semantics tests run the
+real `ci_local.sh` end to end with stubbed `uv` and `make` first on PATH —
+each stub exits with a code read from an env var keyed by its arguments and
+logs every call — and pin: an all-green run executes every step in the
+workflow's order; a failed gating step stops the default run and skips the
+later steps; `--keep-going` runs the later steps and still exits nonzero; a
+hygiene-only failure exits zero and says so. Those four fail against a
+deliberately broken copy of the script that swallows every failure and always
+exits 0 — it still printed `all steps green` after a required check failed —
+and pass on the real script (shown on PR #288). The first four tests
+(hygiene job shape; `%N` in the script; no `now_ms`) fail on the unfixed
+tree and pass after.
 
 ## Cache
 
