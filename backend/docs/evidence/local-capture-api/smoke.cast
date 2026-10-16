@@ -1,0 +1,11 @@
+{"version": 2, "width": 80, "height": 24, "timestamp": 1792136781, "env": {"SHELL": "/bin/bash", "TERM": "tmux-256color"}}
+[0.005238, "o", "uv run --frozen --extra api pytest tests/test_local_capture_api.py -q\r\n"]
+[6.779782, "o", "\u001b[32m.\u001b[0m"]
+[6.802891, "o", "\u001b[32m.\u001b[0m"]
+[6.818502, "o", "\u001b[32m.\u001b[0m"]
+[6.827253, "o", "\u001b[32m.\u001b[0m"]
+[6.828111, "o", "\u001b[32m.\u001b[0m"]
+[6.893632, "o", "\u001b[32m.\u001b[0m"]
+[7.058185, "o", "\u001b[32m                                                                   [100%]\u001b[0m"]
+[7.061215, "o", "\r\n"]
+[7.061486, "o", "\u001b[32m\u001b[32m\u001b[1m6 passed\u001b[0m\u001b[32m in 6.49s\u001b[0m\u001b[0m\r\n"]

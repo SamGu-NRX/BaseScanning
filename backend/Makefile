@@ -1,5 +1,5 @@
 # `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
-.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci gates-offline gates-update e2e e2e-local lamar criteria-golden evals e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra weights
+.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci gates-offline gates-update e2e e2e-local lamar criteria-golden evals e2e-dev orchestrator-e2e local-api local-api-smoke ios-kit result-golden reads-gate reads-extra weights
 
 ONLY ?= small
 
@@ -85,6 +85,26 @@ evals:
 e2e-dev:
 	PYTHONPATH=. uv run --frozen python scripts/e2e_dev.py --self-check
 	PYTHONPATH=. uv run --frozen python scripts/e2e_dev.py $(if $(PACKET),--packet $(PACKET),)
+
+# Burst11: the one-command local capture API. Serves loopback only (127.0.0.1);
+# the iOS simulator shares the Mac's loopback, a physical phone does not.
+# Writes backend/runs/local-api/session.json (mode 0600, gitignored) with the
+# base URL, app and reviewer tokens, pid and git sha. Stop with Ctrl-C.
+# The documented default (docs/local-capture-api.md) is port 8000; override
+# with PORT=8123 make local-api. The empty-value guard catches an exported
+# PORT= so the launcher never sees a bare --port.
+PORT ?= 8000
+ifeq ($(PORT),)
+override PORT := 8000
+endif
+local-api:
+	uv run --frozen --extra api python scripts/local_capture_api.py --host 127.0.0.1 --port $(PORT)
+
+# Burst11: drives the committed mini-arkit packet against the local capture API
+# over a real TCP socket — the launcher script starts as a subprocess on an
+# ephemeral port, no TestClient.
+local-api-smoke:
+	uv run --frozen --extra api pytest tests/test_local_capture_api.py -q
 
 orchestrator-e2e:
 	STATE_BACKEND=memory STORAGE_BACKEND=local HSS_ORCH_STAGE_STUBS=1 VISION_EXTERNAL_CALLS=off SMP_ENVIRONMENT=dev \
