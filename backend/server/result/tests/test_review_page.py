@@ -6,7 +6,11 @@ the real /v1 route, and the point-cloud preview must load and draw preview.ply.
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 from server.result.review.render import render_review
 
@@ -83,3 +87,65 @@ def test_preview_loads_and_draws_preview_ply(tmp_path: Path) -> None:
     # failure path surfaces a message instead of leaving a blank canvas.
     assert "note.hidden = true" in html
     assert "Point cloud preview unavailable" in html
+
+
+_NODE_PARSER_CHECK = r"""
+const fs = require("fs");
+const html = fs.readFileSync(process.argv[1], "utf8");
+const start = html.indexOf("function parseBinaryPly(buffer) {");
+if (start < 0) { console.error("parseBinaryPly not found in the rendered page"); process.exit(2); }
+let depth = 0, end = -1;
+for (let i = html.indexOf("{", start); i < html.length; i++) {
+  if (html[i] === "{") depth++;
+  else if (html[i] === "}") { depth--; if (depth === 0) { end = i + 1; break; } }
+}
+const parseBinaryPly = eval("(" + html.slice(start, end) + ")");
+// The standard PLY header the scene pipeline writes: xyz floats plus a uchar
+// generated flag. A parser that reads the property NAME as its TYPE (an
+// off-by-one destructure found while dogfooding PR #284) throws
+// "unsupported property type x" on this exact input.
+const header =
+  "ply\nformat binary_little_endian 1.0\nelement vertex 4\n" +
+  "property float x\nproperty float y\nproperty float z\nproperty uchar generated\nend_header\n";
+const stride = 13; // 3 float32 + 1 uint8
+const body = Buffer.alloc(stride * 4);
+[[0, 0, 0, 1], [1, 0, 0, 1], [0, 1, 0, 0], [1, 1, 0.5, 0]].forEach((p, v) => {
+  body.writeFloatLE(p[0], v * stride);
+  body.writeFloatLE(p[1], v * stride + 4);
+  body.writeFloatLE(p[2], v * stride + 8);
+  body.writeUInt8(p[3], v * stride + 12);
+});
+const bytes = Buffer.concat([Buffer.from(header, "ascii"), body]);
+// parseBinaryPly scans from byte 0 of the ArrayBuffer, exactly what a browser
+// fetch() hands it; a pooled node Buffer's .buffer may start at an offset, so
+// copy into a fresh, aligned ArrayBuffer.
+const ab = new ArrayBuffer(bytes.length);
+new Uint8Array(ab).set(bytes);
+const cloud = parseBinaryPly(ab); // the page passes res.arrayBuffer(), also an ArrayBuffer
+const want = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0.5]);
+for (let i = 0; i < want.length; i++) {
+  if (cloud.positions[i] !== want[i]) { console.error("positions[" + i + "]=" + cloud.positions[i] + " want " + want[i]); process.exit(1); }
+}
+if (!cloud.hasGenerated || cloud.generated[0] !== 1 || cloud.generated[3] !== 0) { console.error("generated flags parsed wrong"); process.exit(1); }
+console.log("ok");
+"""
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+def test_parse_binary_ply_reads_standard_xyz_properties(tmp_path: Path) -> None:
+    """The rendered page's PLY parser reads the standard xyz header.
+
+    Extracts parseBinaryPly from the rendered template and runs it in node
+    against the binary PLY shape the scene pipeline writes (float xyz + uchar
+    generated), so a header-parsing regression fails here instead of in the
+    browser as "Point cloud preview unavailable".
+    """
+    html_path = tmp_path / "review.html"
+    html_path.write_text(_render(tmp_path))
+    made = subprocess.run(
+        ["node", "-e", _NODE_PARSER_CHECK, str(html_path)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert made.returncode == 0, f"node parser check failed: {made.stderr or made.stdout}"
