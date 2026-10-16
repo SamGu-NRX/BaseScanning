@@ -368,6 +368,8 @@ def test_a_dropped_attempt_on_local_storage_leaves_the_retry_clean(local_server:
     time.sleep(0.5)
     first.abort()
 
+    # The retry finishes its body after the first attempt is gone.
+    second.send_bytes(data)
     status, body = second.response()
     assert status == 200, f"the retry must commit cleanly after the first attempt drops, got {status}: {body[:200]!r}"
 
