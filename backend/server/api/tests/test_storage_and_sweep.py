@@ -244,6 +244,9 @@ def test_local_sweeper_ages_stale_single_attempt_temps(tmp_path):
     key = "uploads/cap/local.jpg"
     first = storage.prepare_tmp(key)
     second = storage.prepare_tmp(key)
+    # prepare_tmp mints the path; an in-flight attempt's file exists under it.
+    first.write_bytes(b"first attempt in flight")
+    second.write_bytes(b"second attempt in flight")
     assert first.parent == root / ".uploads" / "singles", "a local temp must land where the sweeper sweeps"
     assert first.name.endswith(".uploading") and second.name.endswith(".uploading")
     assert first != second, "two attempts for one key must not share a temp file"
