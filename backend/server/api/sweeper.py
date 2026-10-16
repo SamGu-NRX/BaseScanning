@@ -61,6 +61,16 @@ def _sweep_volume(root: Path) -> int:
             if path.is_file() and path.stat().st_mtime < now - 7 * 86400:
                 path.unlink()
                 deleted += 1
+    # VolumeStorage.prepare_tmp parks one temporary per PUT attempt under
+    # .uploads/singles, outside the uploads walk above. Sweep them on the same
+    # age rule, so a process killed between prepare_tmp and commit_tmp strands
+    # nothing in the volume.
+    singles = root / ".uploads" / "singles"
+    if singles.exists():
+        for path in singles.glob("*.uploading"):
+            if path.is_file() and path.stat().st_mtime < now - 7 * 86400:
+                path.unlink()
+                deleted += 1
     for path in root.rglob("*"):
         if path.is_dir() and path.name.endswith(".parts") and path.stat().st_mtime < now - 86400:
             shutil.rmtree(path, ignore_errors=True)
