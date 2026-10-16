@@ -340,9 +340,10 @@ class ModalDictState(MemoryState):
         self._kv[tomb] = {"capture_id": capture_id}
 
     def upsert_file(self, rec: FileRecord) -> None:
-        self._kv[f"file:{rec.capture_id}:{rec.path}"] = rec.model_dump(mode="json")
-
         def merge() -> None:
+            # The record is written inside the lease too: a busy lease then saves
+            # nothing, so the caller's retry still sees the file in its old state.
+            self._kv[f"file:{rec.capture_id}:{rec.path}"] = rec.model_dump(mode="json")
             paths = set(self._kv.get(f"files:{rec.capture_id}") or [])
             paths.add(rec.path)
             self._kv[f"files:{rec.capture_id}"] = sorted(paths)
