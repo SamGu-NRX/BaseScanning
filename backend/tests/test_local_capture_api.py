@@ -23,6 +23,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
 import socket
 import stat
 import subprocess
@@ -372,4 +373,53 @@ def test_refuses_non_loopback_host(tmp_path: Path) -> None:
         )
     assert proc.returncode != 0
     assert "loopback" in log_path.read_text()
+    assert not (tmp_path / "session.json").exists()
+
+
+def _make_n_local_api(env: dict[str, str] | None = None) -> str:
+    """Print the `make -n local-api` recipe from backend/ without executing it."""
+    proc = subprocess.run(
+        ["make", "-n", "local-api"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env={**os.environ, **(env or {})},
+    )
+    assert proc.returncode == 0, proc.stderr
+    return proc.stdout
+
+
+def test_make_local_api_without_port_passes_the_documented_default() -> None:
+    # The documented flow (docs/local-capture-api.md) is bare `make local-api`
+    # on port 8000; the recipe must not hand the launcher a bare --port.
+    assert "--port 8000" in _make_n_local_api()
+
+
+def test_make_local_api_honors_an_explicit_port_override() -> None:
+    stdout = _make_n_local_api({"PORT": "8123"})
+    assert "--port 8123" in stdout
+    assert "--port 8000" not in stdout
+
+
+def test_make_local_api_with_empty_port_env_still_gets_the_default() -> None:
+    # An exported-but-empty PORT would otherwise expand to a bare `--port`.
+    assert "--port 8000" in _make_n_local_api({"PORT": ""})
+
+
+def test_launcher_refuses_an_empty_port_loudly(tmp_path: Path) -> None:
+    log_path = tmp_path / "empty-port.log"
+    with log_path.open("w") as log:
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPT), "--host", "127.0.0.1", "--port="],
+            cwd=ROOT,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=30,
+        )
+    assert proc.returncode != 0
+    log_text = log_path.read_text()
+    assert "refusing an empty --port" in log_text
+    assert "8000" in log_text  # the refusal names the documented default
     assert not (tmp_path / "session.json").exists()
