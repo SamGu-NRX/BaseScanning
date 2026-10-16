@@ -95,6 +95,21 @@ def _public_url(host: str, port: int) -> str:
     return f"http://{host_part}:{port}"
 
 
+def _port(value: str) -> int:
+    """Parse --port; refuse an empty value loudly instead of argparse's bare
+    "invalid int value" (a rule that expands an unset or empty $(PORT) here)."""
+    text = value.strip()
+    if not text:
+        raise argparse.ArgumentTypeError(
+            "refusing an empty --port: pass a port number (0 picks a free one); "
+            "make local-api supplies the documented default (8000)"
+        )
+    try:
+        return int(text)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid port {value!r}: pass a number (0 picks a free one)") from exc
+
+
 def _write_session(path: Path, session: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
@@ -138,7 +153,7 @@ def _announce(base: str, session_path: Path, timeout_s: float) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--host", default="127.0.0.1", help="bind address; loopback only (127.0.0.1 or ::1)")
-    parser.add_argument("--port", type=int, default=8000, help="port (0 picks a free one)")
+    parser.add_argument("--port", type=_port, default=8000, help="port (0 picks a free one)")
     parser.add_argument(
         "--session-dir",
         type=Path,

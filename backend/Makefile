@@ -90,6 +90,13 @@ e2e-dev:
 # the iOS simulator shares the Mac's loopback, a physical phone does not.
 # Writes backend/runs/local-api/session.json (mode 0600, gitignored) with the
 # base URL, app and reviewer tokens, pid and git sha. Stop with Ctrl-C.
+# The documented default (docs/local-capture-api.md) is port 8000; override
+# with PORT=8123 make local-api. The empty-value guard catches an exported
+# PORT= so the launcher never sees a bare --port.
+PORT ?= 8000
+ifeq ($(PORT),)
+override PORT := 8000
+endif
 local-api:
 	uv run --frozen --extra api python scripts/local_capture_api.py --host 127.0.0.1 --port $(PORT)
 
