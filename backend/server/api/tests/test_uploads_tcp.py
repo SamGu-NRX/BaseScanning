@@ -31,6 +31,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
 import socket
 import struct
 import subprocess
@@ -44,6 +45,7 @@ import httpx
 import pytest
 
 from server.api.keys import upload_key
+from server.api.sweeper import _sweep_volume
 from server.common.backends.storage_volume import mint_token
 
 TOKEN = "d" * 40
@@ -65,7 +67,7 @@ uvicorn.run(app, host="127.0.0.1", port=int(sys.argv[2]), log_level="warning", a
 class Server:
     """One create_app under uvicorn on 127.0.0.1, plus its volume root."""
 
-    def __init__(self, tmp_path: Path) -> None:
+    def __init__(self, tmp_path: Path, storage_backend: str = "volume") -> None:
         self.root = tmp_path / "vol"
         port_socket = socket.socket()
         port_socket.bind(("127.0.0.1", 0))
@@ -76,7 +78,7 @@ class Server:
             "HSS_AUTH_MODE": "static",
             "CAPTURE_API_TOKENS": f"device:{TOKEN}",
             "UPLOAD_URL_HMAC_SECRET": SECRET,
-            "STORAGE_BACKEND": "volume",
+            "STORAGE_BACKEND": storage_backend,
             "STATE_BACKEND": "memory",
             "VOLUME_ROOT": str(self.root),
             "CAPTURE_API_PUBLIC_URL": f"http://127.0.0.1:{self.port}",
@@ -121,6 +123,14 @@ class Server:
 @pytest.fixture
 def server(tmp_path):
     live = Server(tmp_path)
+    yield live
+    live.close()
+
+
+@pytest.fixture
+def local_server(tmp_path):
+    """The same one-app-under-uvicorn harness, on STORAGE_BACKEND=local."""
+    live = Server(tmp_path, storage_backend="local")
     yield live
     live.close()
 
@@ -312,6 +322,72 @@ def test_a_put_while_an_earlier_attempt_is_still_writing_never_corrupts_the_obje
     assert answer["committed"] == ["photos/b.jpg"], answer
     assert _stored(server, capture_id, "photos/b.jpg") == data, "the committed object is not the sealed bytes"
     assert _leftover_tmp(server) == []
+
+
+def test_a_dropped_attempt_on_local_storage_leaves_the_retry_clean(local_server: Server) -> None:
+    """The same overlap the volume suite pins, on the local backend.
+
+    `LocalFsStorage.prepare_tmp` used to hand every attempt for a key the same
+    `{key}.uploading` path: the retry's open truncated the file under the
+    still-draining first attempt's handle, the dropped attempt's cleanup
+    unlinked the retry's temp, and the retry's commit_tmp failed with a 500 on
+    valid bytes. Both backends now mint one temp per attempt under
+    `.uploads/singles`, so a dropped attempt discards only its own file and
+    the sweeper's `*.uploading` pattern covers the location for both.
+    """
+    capture_id = _create_capture(local_server, "tcp-local-abort-1")
+    data = _pattern(256 * 1024, seed=13)
+    path = "photos/h.jpg"
+    _register(local_server, capture_id, path, data)
+    # Local storage signs PUTs as file:// URIs, so the test mints the token URL
+    # the route serves directly — which is also exactly the app's retry rule:
+    # both attempts reuse the one signed URL.
+    token = mint_token(
+        {
+            "op": "put",
+            "key": upload_key(capture_id, path),
+            "md5": _md5_b64(data),
+            "ct": "image/jpeg",
+            "exp": int(time.time()) + 600,
+        },
+        SECRET.encode(),
+    )
+    url = f"/v1/uploads/{token}"
+
+    first = RawPut(local_server.port, url, "image/jpeg", _md5_b64(data), len(data))
+    first.send_head()
+    first.send_bytes(data[: len(data) // 2])
+    # Let the first attempt's handler create its temp file and settle into its
+    # write loop, so the retry below opens while it is still writing.
+    time.sleep(0.5)
+
+    second = RawPut(local_server.port, url, "image/jpeg", _md5_b64(data), len(data))
+    second.send_head()
+    # Let the retry's handler create ITS temp file too, then drop the first
+    # attempt mid-body, exactly as a phone does when it gives up on a stall.
+    time.sleep(0.5)
+    first.abort()
+
+    status, body = second.response()
+    assert status == 200, f"the retry must commit cleanly after the first attempt drops, got {status}: {body[:200]!r}"
+
+    answer = _commit(local_server, capture_id, path, data)
+    assert answer["committed"] == [path], answer
+    stored = _stored(local_server, capture_id, path)
+    assert stored == data, "the committed object is not the retry's bytes"
+    stored_md5 = base64.b64encode(hashlib.md5(stored).digest()).decode()
+    assert stored_md5 == _md5_b64(data), "the object's md5 does not match the retry's bytes"
+
+    # The sweeper must cover where the local backend parks per-attempt temps:
+    # a process killed between prepare_tmp and commit_tmp strands a file there.
+    stranded = local_server.root / ".uploads" / "singles" / "killed-process.uploading"
+    stranded.parent.mkdir(parents=True, exist_ok=True)
+    stranded.write_bytes(b"a process died between prepare_tmp and commit_tmp")
+    stale = time.time() - 8 * 86400
+    os.utime(stranded, (stale, stale))
+    _sweep_volume(local_server.root)
+    assert not stranded.exists(), "the sweeper must age out stranded local per-attempt temps"
+    assert _leftover_tmp(local_server) == [], "no temp file may remain after the sweeper runs"
 
 
 def test_replaying_a_completed_put_succeeds(server: Server) -> None:

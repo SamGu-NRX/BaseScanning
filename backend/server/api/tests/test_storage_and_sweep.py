@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 from server.api.keys import final_key, upload_key
-from server.api.sweeper import ingest_sweep
+from server.api.sweeper import _sweep_volume, ingest_sweep
 from server.api.tests.conftest import create_body, photo_packet, sha256_hex
 from server.common.backends.storage_gcs import GcsStorage
 from server.common.backends.storage_local import LocalFsStorage
@@ -231,6 +231,32 @@ class _HoldFirstCommitter:
 
         storage.commit_tmp = commit_tmp
         storage._lock = _GatedLock(storage._lock, self)
+
+
+def test_local_sweeper_ages_stale_single_attempt_temps(tmp_path):
+    """LocalFsStorage mints the same per-attempt temporaries as VolumeStorage —
+    one file under .uploads/singles per PUT attempt, outside the uploads walk —
+    so the sweeper's `*.uploading` pattern covers both backends. The old
+    per-key `{key}.uploading` name sat beside the object under root and gave
+    two overlapping attempts a single shared file."""
+    root = tmp_path / "local"
+    storage = LocalFsStorage(root)
+    key = "uploads/cap/local.jpg"
+    first = storage.prepare_tmp(key)
+    second = storage.prepare_tmp(key)
+    assert first.parent == root / ".uploads" / "singles", "a local temp must land where the sweeper sweeps"
+    assert first.name.endswith(".uploading") and second.name.endswith(".uploading")
+    assert first != second, "two attempts for one key must not share a temp file"
+    assert storage.list_prefix("uploads/") == [], "a temp file must not list as an object"
+
+    stale = root / ".uploads" / "singles" / "killed-attempt.uploading"
+    stale.write_bytes(b"process died between prepare_tmp and commit_tmp")
+    stale_time = time.time() - 8 * 86400
+    os.utime(stale, (stale_time, stale_time))
+    deleted = _sweep_volume(root)
+    assert deleted >= 1, "the sweep must count the stale local temporary"
+    assert not stale.exists(), "a stale local per-attempt temporary must be swept"
+    assert first.exists() and second.exists(), "a fresh per-attempt temporary must survive"
 
 
 def test_volume_commit_tmp_leaves_bytes_and_metadata_agreeing_under_two_writers(tmp_path):
