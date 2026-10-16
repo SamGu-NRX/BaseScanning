@@ -1,0 +1,153 @@
+{
+  "schema_version": "1.0",
+  "meter": {
+    "pos": [
+      0.0,
+      2.375,
+      0.0
+    ],
+    "wall_id": "side",
+    "plus_minus_ft": 0.295276
+  },
+  "walls": [
+    {
+      "id": "side",
+      "baseline": [
+        [
+          -10.0,
+          0.0
+        ],
+        [
+          3.5,
+          0.0
+        ]
+      ],
+      "height_ft": 9.0,
+      "plus_minus_ft": 0.295276
+    }
+  ],
+  "objects": [
+    {
+      "type": "gas_meter",
+      "wall_id": "side",
+      "span_ft": [
+        -4.0,
+        -3.0
+      ],
+      "bottom_ft": 1.0,
+      "top_ft": 3.0,
+      "source": "tap",
+      "conf": 0.9,
+      "plus_minus_ft": 0.295276
+    }
+  ],
+  "ground": [
+    {
+      "type": "mulch",
+      "polygon": [
+        [
+          -10.0,
+          0.0
+        ],
+        [
+          3.5,
+          0.0
+        ],
+        [
+          3.5,
+          2.5
+        ],
+        [
+          -10.0,
+          2.5
+        ]
+      ]
+    },
+    {
+      "type": "lawn",
+      "polygon": [
+        [
+          -10.0,
+          2.5
+        ],
+        [
+          3.5,
+          2.5
+        ],
+        [
+          3.5,
+          12.0
+        ],
+        [
+          -10.0,
+          12.0
+        ]
+      ]
+    }
+  ],
+  "facing": [
+    {
+      "wall_id": "side",
+      "span_ft": [
+        -10.0,
+        3.5
+      ],
+      "depth_ft": 12.0,
+      "plus_minus_ft": 0.295276
+    }
+  ],
+  "coverage": {
+    "ends": {
+      "left": {
+        "kind": "unexplored",
+        "note": "wall continues left, not walked"
+      },
+      "right": {
+        "kind": "limit",
+        "note": "gate at the right property line"
+      }
+    },
+    "observed": [
+      {
+        "band": "wall",
+        "span_ft": [
+          -10.0,
+          3.5
+        ],
+        "out_ft": 7.0
+      },
+      {
+        "band": "ground",
+        "span_ft": [
+          -1.0,
+          3.5
+        ],
+        "out_ft": 12.0
+      },
+      {
+        "band": "ground",
+        "span_ft": [
+          -10.0,
+          -9.5
+        ],
+        "out_ft": 12.0
+      },
+      {
+        "band": "overhead",
+        "span_ft": [
+          -10.0,
+          3.5
+        ],
+        "out_ft": 8.0
+      },
+      {
+        "band": "facing",
+        "span_ft": [
+          -10.0,
+          3.5
+        ],
+        "out_ft": 12.0
+      }
+    ]
+  }
+}
