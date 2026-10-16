@@ -52,8 +52,8 @@ boundaries. No TestClient, no `drain_finalize`: the orchestrator is driven inlin
 | `BASE_WEBHOOK_URL` / `WEBHOOK_HMAC_SECRET` | unset | webhooks off |
 
 Pass through without interpretation: `HSS_LOCAL_OUTCOME` and `HSS_LOCAL_STAGE_DELAY_S`. The stage
-stubs honor them when the burst11-bs-local-outcome-states packet lands; this launcher never reads
-or changes them, so `HSS_LOCAL_OUTCOME=pass make local-api` just works.
+stubs honor them to produce every state the app renders — `docs/local-app-states.md` names each
+state, its command and what gets served; this launcher never reads or changes the variables.
 
 ## The session file
 
