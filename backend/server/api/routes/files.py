@@ -289,58 +289,48 @@ def register(app: FastAPI) -> None:
             newly: list[FileRecord] = []
             extra = extras(deps, capture_id)
             size_only = set(extra.get("size_only_paths") or [])
-            for item in body.files:
-                rec = deps.state.get_file(capture_id, item.path)
-                if rec is None:
-                    not_found.append(item.path)
-                    continue
-                if rec.state == "committed":
-                    committed.append(item.path)
-                    continue
-                spec = (extra.get("digests") or {}).get(item.path)
-                if spec and (rec.sha256 != spec["sha256"] or rec.bytes != spec["bytes"]):
-                    mismatch.append(item.path)
-                    continue
-                try:
-                    meta = deps.storage.head(upload_key(capture_id, item.path))
-                except FileNotFoundError:
-                    not_found.append(item.path)
-                    continue
-                except Exception as exc:
-                    log_event("storage.error", op="head", capture_id=capture_id, level="error")
-                    raise fail(503, "storage_unavailable", "/", "storage head failed", **{"Retry-After": "5"}) from exc
-                md5_bad = item.path not in size_only and meta.md5_b64 not in (None, rec.md5)
-                if meta.bytes != rec.bytes or md5_bad:
-                    rec.state = "mismatch"
+            # A failure partway through the batch (a busy index lease, a storage
+            # head error) must still announce the files already committed: the
+            # retry reads them as committed and would never announce them.
+            try:
+                for item in body.files:
+                    rec = deps.state.get_file(capture_id, item.path)
+                    if rec is None:
+                        not_found.append(item.path)
+                        continue
+                    if rec.state == "committed":
+                        committed.append(item.path)
+                        continue
+                    spec = (extra.get("digests") or {}).get(item.path)
+                    if spec and (rec.sha256 != spec["sha256"] or rec.bytes != spec["bytes"]):
+                        mismatch.append(item.path)
+                        continue
+                    try:
+                        meta = deps.storage.head(upload_key(capture_id, item.path))
+                    except FileNotFoundError:
+                        not_found.append(item.path)
+                        continue
+                    except Exception as exc:
+                        log_event("storage.error", op="head", capture_id=capture_id, level="error")
+                        raise fail(
+                            503, "storage_unavailable", "/", "storage head failed", **{"Retry-After": "5"}
+                        ) from exc
+                    md5_bad = item.path not in size_only and meta.md5_b64 not in (None, rec.md5)
+                    if meta.bytes != rec.bytes or md5_bad:
+                        rec.state = "mismatch"
+                        deps.state.upsert_file(rec)
+                        mismatch.append(item.path)
+                        continue
+                    rec.state = "committed"
+                    rec.generation = meta.generation
+                    rec.key = upload_key(capture_id, item.path)
+                    rec.committed_at = isoformat(deps.now())
                     deps.state.upsert_file(rec)
-                    mismatch.append(item.path)
-                    continue
-                rec.state = "committed"
-                rec.generation = meta.generation
-                rec.key = upload_key(capture_id, item.path)
-                rec.committed_at = isoformat(deps.now())
-                deps.state.upsert_file(rec)
-                committed.append(item.path)
-                newly.append(rec)
-            if newly:
-                listed = (extras(deps, capture_id).get("accepted") or {}).get("listed")
-                payload = FilesCommittedData(
-                    paths=[rec.path for rec in newly], committed=len(newly), listed=listed
-                ).model_dump(mode="json")
-                emit(deps, capture_id, "files_committed", payload)
-                hooked = [
-                    CommittedFile(
-                        path=rec.path,
-                        role=rec.role,
-                        sha256=rec.sha256,
-                        bytes=rec.bytes,
-                        generation=rec.generation or "",
-                        key=rec.key or upload_key(capture_id, rec.path),
-                        meta=rec.meta,
-                    )
-                    for rec in newly
-                ]
-                safe_hook("on_files_committed", deps.hooks.on_files_committed, capture_id, hooked)
+                    committed.append(item.path)
+                    newly.append(rec)
+            finally:
+                if newly:
+                    _announce_committed(deps, capture_id, newly)
             maybe_finish_after_commit(deps, deps.state.get_capture(capture_id) or record)
             log_event(
                 "files.committed", n=len(newly), mismatch=len(mismatch), not_found=len(not_found), capture_id=capture_id
@@ -356,3 +346,24 @@ def register(app: FastAPI) -> None:
         async with deps.locks.acquire(capture_id):
             load_owned(deps, capture_id, principal, write=True)
             raise fail(501, "multipart_not_implemented", "/", "multipart upload is not implemented in this PR")
+
+
+def _announce_committed(deps, capture_id: str, newly: list[FileRecord]) -> None:
+    listed = (extras(deps, capture_id).get("accepted") or {}).get("listed")
+    payload = FilesCommittedData(paths=[rec.path for rec in newly], committed=len(newly), listed=listed).model_dump(
+        mode="json"
+    )
+    emit(deps, capture_id, "files_committed", payload)
+    hooked = [
+        CommittedFile(
+            path=rec.path,
+            role=rec.role,
+            sha256=rec.sha256,
+            bytes=rec.bytes,
+            generation=rec.generation or "",
+            key=rec.key or upload_key(capture_id, rec.path),
+            meta=rec.meta,
+        )
+        for rec in newly
+    ]
+    safe_hook("on_files_committed", deps.hooks.on_files_committed, capture_id, hooked)

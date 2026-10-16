@@ -68,6 +68,10 @@ class StateStore(Protocol):
 
     def upsert_stage(self, rec: StageRecord) -> None: ...
 
+    def create_stage_if_absent(self, rec: StageRecord) -> StageRecord:
+        """Atomic insert-if-absent: recovery must never reset a record another
+        coordinator materialized and started first. Returns the record now stored."""
+
     def get_stage(self, run_id: str, stage: StageName) -> StageRecord | None: ...
 
     def stages(self, run_id: str) -> list[StageRecord]: ...

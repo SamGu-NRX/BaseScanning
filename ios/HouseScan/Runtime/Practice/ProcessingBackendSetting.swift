@@ -13,9 +13,9 @@ final class ProcessingBackendSetting {
     static let shared = ProcessingBackendSetting(options: LaunchOptions())
 
     private(set) var selection: ProcessingBackend
-    /// Who answers a photo-processing scan in this build, for the setting's description. The
-    /// engine sets it from its own setup when it starts.
-    var photoProcessingAnswers: ProcessingProfile.Answers = .notSetUp("not known yet")
+    /// Who answers a photo-processing scan in this build, and where it sends, for the setting's
+    /// description. The engine sets it from its own setup when it starts.
+    var photoProcessingProfile = ProcessingProfile(backend: .photoProcessing, answers: .notSetUp("not known yet"), origin: nil)
     private let defaults: UserDefaults?
 
     init(options: LaunchOptions) {
