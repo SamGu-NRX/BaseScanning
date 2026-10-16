@@ -703,7 +703,18 @@ def test_cli_runs_from_a_temporary_directory_and_exits_nonzero_while_blocked(tmp
     """The one-command entry point: receipt on disk, nonzero exit while the
     committed fixtures stay bridge-incompatible, no secrets in the file."""
     output = tmp_path / "receipt.json"
-    exit_code = runner.main(["--output", str(output), "--workdir", str(tmp_path / "run")])
+    # The committed legacy manifest, passed explicitly since the CLI's default
+    # moved to the supported packet (its refusal state stays pinned here).
+    exit_code = runner.main(
+        [
+            "--manifest",
+            str(runner.case_suite.DEFAULT_MANIFEST),
+            "--output",
+            str(output),
+            "--workdir",
+            str(tmp_path / "run"),
+        ]
+    )
     assert exit_code == 1
     receipt = json.loads(output.read_text())
     assert receipt["schemaVersion"] == runner.RECEIPT_SCHEMA_VERSION
@@ -793,6 +804,8 @@ def test_cli_on_the_committed_manifest_exits_nonzero_in_a_subprocess(tmp_path):
         [
             sys.executable,
             str(BACKEND / "scripts" / "capture_placement_cases.py"),
+            "--manifest",
+            str(runner.case_suite.DEFAULT_MANIFEST),
             "--output",
             str(output),
             "--workdir",

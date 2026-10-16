@@ -189,7 +189,6 @@ def test_manifest_copy_is_untouched_by_mutations() -> None:
     assert json.loads(MANIFEST.read_text()) == original
 
 
-
 def test_missing_cases_key_fails_with_manifest_path(tmp_path: Path) -> None:
     """A manifest without a cases key cannot silently disable the gate."""
     payload = _absolutized_payload()
@@ -248,9 +247,7 @@ def test_malformed_case_kinds_fail_with_field(tmp_path: Path, kind: object) -> N
     ],
     ids=["absent", "empty", "decision-only", "spot-wrong-type", "checks-wrong-type"],
 )
-def test_unusable_positive_expectations_fail_with_field(
-    tmp_path: Path, mangle, why: str
-) -> None:
+def test_unusable_positive_expectations_fail_with_field(tmp_path: Path, mangle, why: str) -> None:
     payload = _absolutized_payload()
     mangle(payload["cases"][0])
     drift = tmp_path / "manifest.json"

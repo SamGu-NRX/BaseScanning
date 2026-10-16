@@ -143,10 +143,7 @@ _WIRE_DERIVED_TOLERANCE_FT = 1e-4
 # The supported case packet is the default replay target; the legacy W7 cases
 # manifest stays available explicitly via --manifest and keeps its own pinned
 # refusal state, reported as blockers rather than mistaken for acceptance.
-DEFAULT_MANIFEST = (
-    Path(__file__).resolve().parent.parent
-    / "server/placement/tests/data/capture_cases_v1/manifest.json"
-)
+DEFAULT_MANIFEST = Path(__file__).resolve().parent.parent / "server/placement/tests/data/capture_cases_v1/manifest.json"
 
 # An observed tap hazard, hand-authored for this runner: a wall_rect vent on the
 # case's wall, away from the case's pinned decision geometry. It exists to prove
@@ -373,9 +370,7 @@ def _walk_front_door(
     # duplicates the id and the merged scene is refused as inconsistent. A
     # source-carried hazard still reaches the one-time tap checks through the real
     # merge and real conversion below.
-    source_object_ids = {
-        obj.get("id") for obj in json.loads(record.source_path.read_text()).get("objects") or []
-    }
+    source_object_ids = {obj.get("id") for obj in json.loads(record.source_path.read_text()).get("objects") or []}
     inject_tap = record.id == TAP_CASE_ID and TAP_HAZARD["id"] not in source_object_ids
     _REGISTRY[capture_id] = {
         "record": record,
