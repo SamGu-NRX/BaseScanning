@@ -9,6 +9,7 @@ real template rendered into volume storage — and read the exact HTML back.
 
 from __future__ import annotations
 
+import base64
 import json
 import re
 import time
@@ -83,6 +84,7 @@ def _seed(
     still: bytes | None = None,
     preview: bytes | None = None,
     run_id: str = RUN_ID,
+    created_at: str = "2026-09-26T00:00:00.000Z",
 ) -> None:
     deps = client.app_state
     artifacts = {}
@@ -110,7 +112,7 @@ def _seed(
             flow="photo",
             tier="photo_only",
             profile_default="C",
-            created_at="2026-09-26T00:00:00.000Z",
+            created_at=created_at,
             deadline_at="2026-09-26T01:00:00.000Z",
             artifacts=artifacts,
             degraded=["dense"],
@@ -557,3 +559,219 @@ def test_documented_review_paths_resolve(client: TestClient):
             continue
         payload = served.json()  # every non-200 must be an app error, not a router miss
         assert payload.get("detail") != "Not Found", (path, served.status_code, served.text)
+
+
+def _page_subresources(body: str, capture_id: str) -> list[str]:
+    """Every same-origin URL the served page asks a browser to fetch.
+
+    The review page is loaded once with the reviewer's bearer, but its
+    subresources load from plain browser requests: <img>/<a> tags, the ES-module
+    import and the viewer's fetch("preview.ply"). Those URLs are what the
+    no-bearer sweep below walks.
+    """
+
+    urls = re.findall(r'(?:src|href)="(/v1/[^"]+)"', body)
+    module = re.search(r'import \* as THREE from "(/v1/[^"]+)"', body)
+    if module:
+        urls.append(module.group(1))
+    for tail in re.findall(r'fetch\("(preview\.ply[^"]*)"\)', body):
+        urls.append(f"/v1/captures/{capture_id}/{tail}")
+    return urls
+
+
+def _token_payload(link: str) -> dict:
+    """The claims inside a page link's rtok, for asserting what was minted."""
+
+    body = link.split("rtok=")[1].split(".")[0]
+    return json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+
+
+def test_every_subresource_the_page_references_loads_without_a_bearer(client: TestClient):
+    """The packet-level sweep for the secret-configured mode.
+
+    Fetch the page with the reviewer's bearer, then every subresource URL it
+    references — photo, downloads, the vendored module, the preview — with no
+    Authorization header at all. A browser can send none, so none may refuse.
+    """
+
+    capture_id = _create(client, "packet-review-0015")
+    verdict_bytes = (RESULT_DATA / "synthetic" / "verdicts" / "verdict.C.json").read_bytes()
+    _seed(
+        client,
+        capture_id,
+        _render_review_html(capture_id, signed_photo=None, signed_link=None),
+        scene={"keyframes": [{"id": "kf_1", "image": "stills/kf_01.jpg"}]},
+        still=b"\xff\xd8fakejpeg",
+        preview=b"idar-stub-preview",
+    )
+    verdict_key = f"captures/{capture_id}/runs/{RUN_ID}/verdicts/verdict.C.json"
+    client.app_state.storage.put_bytes(verdict_key, verdict_bytes, "application/json")
+    served = client.get(f"/v1/captures/{capture_id}/review", headers=REVIEWER_HEADERS)
+    assert served.status_code == 200
+    urls = _page_subresources(served.text, capture_id)
+    kinds = " ".join(urls)
+    assert "/review/files/stills/kf_01.jpg?rtok=" in kinds
+    assert "/review/files/verdicts/verdict.C.json?rtok=" in kinds
+    assert "/review-static/three.module.js?rtok=" in kinds
+    assert "/preview.ply?rtok=" in kinds
+    bare = TestClient(client.app)
+    for url in urls:
+        response = bare.get(url)
+        assert response.status_code == 200, (url, response.status_code, response.text[:200])
+
+
+def test_no_link_secret_keeps_the_stored_urls_and_says_so(tmp_path):
+    """Without UPLOAD_URL_HMAC_SECRET no review token can be minted.
+
+    The #284 finding: mint(None) returned an empty suffix, but the page still
+    rewrote the module import and the preview fetch onto bearer-gated routes a
+    browser cannot authenticate — the 3D preview died silently. The served page
+    now keeps the stored page's original URLs and shows an explicit note.
+    """
+
+    settings = Settings(
+        SMP_ENVIRONMENT="dev",
+        STORAGE_BACKEND="local",
+        STATE_BACKEND="memory",
+        VOLUME_ROOT=str(tmp_path / "store"),
+        CAPTURE_API_PUBLIC_URL="http://testserver",
+        CAPTURE_API_TOKENS=f"device:{TOKEN},reviewer:{REVIEWER}",
+        HSS_INGEST_HOOKS="null",
+        HSS_AUTH_MODE="static",
+        GIT_SHA="0123456789abcdef",
+        VISION_EXTERNAL_CALLS="on",
+        SMP_SERVICE_NAME="capture-api",
+    )
+    app = create_app(settings=settings)
+    test = TestClient(app)
+    test.app_state = app.state.deps
+    made = test.post("/v1/captures", json=create_body("packet-review-0016"), headers={"Idempotency-Key": "packet-review-0016", "Authorization": f"Bearer {REVIEWER}"})
+    assert made.status_code == 201, made.text
+    capture_id = made.json()["captureId"]
+    _seed(
+        test,
+        capture_id,
+        _render_review_html(capture_id, signed_photo=None, signed_link=None),
+        scene={"keyframes": [{"id": "kf_1", "image": "stills/kf_01.jpg"}]},
+        still=b"\xff\xd8fakejpeg",
+        preview=b"idar-stub-preview",
+    )
+    served = test.get(f"/v1/captures/{capture_id}/review", headers=REVIEWER_HEADERS)
+    assert served.status_code == 200
+    body = served.text
+    # no token could be minted, so nothing on the page is token-signed
+    assert "?rtok=" not in body
+    # the stored page's original CDN import survives for the browser to load
+    assert 'import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js"' in body
+    assert "/v1/review-static" not in body
+    # the preview fetch is not rewritten onto the gated preview route either
+    assert 'fetch("preview.ply")' in body
+    assert "preview.ply?rtok" not in body
+    # and the page says why the 3D preview will not load here
+    assert "preview unavailable: no link secret configured" in body
+    assert 'id="review-no-secret"' in body
+    # the no-bearer sweep: nothing same-origin and gated is left to fetch
+    assert _page_subresources(body, capture_id) == []
+    # the run-status section still explains the bearer-gated links
+    assert "UPLOAD_URL_HMAC_SECRET is not configured" in body
+
+
+def _amendment(
+    client: TestClient,
+    capture_id: str,
+    *,
+    first_id: str,
+    second_id: str,
+    first_still: bytes,
+    second_still: bytes,
+    first_ply: bytes,
+    second_ply: bytes,
+) -> None:
+    """Run 1's artifacts, then an amendment that publishes run 2 under the capture.
+
+    Stills and previews live under each run's own prefix, the way the result
+    stage publishes them, so both runs hold a file under the same name.
+    """
+
+    _seed(
+        client,
+        capture_id,
+        _render_review_html(capture_id, signed_photo=None, signed_link=None),
+        scene={"keyframes": [{"id": "kf_1", "image": "stills/kf_01.jpg"}]},
+        preview=first_ply,
+        run_id=first_id,
+        created_at="2026-09-26T00:00:00.000Z",
+    )
+    client.app_state.storage.put_bytes(f"captures/{capture_id}/runs/{first_id}/stills/kf_01.jpg", first_still, "image/jpeg")
+    _seed(
+        client,
+        capture_id,
+        _render_review_html(capture_id, signed_photo=None, signed_link=None),
+        scene={"keyframes": [{"id": "kf_1", "image": "stills/kf_01.jpg"}]},
+        preview=second_ply,
+        run_id=second_id,
+        created_at="2026-09-26T01:00:00.000Z",
+    )
+    client.app_state.storage.put_bytes(f"captures/{capture_id}/runs/{second_id}/stills/kf_01.jpg", second_still, "image/jpeg")
+    # a verdict only the amendment produced, under the same name run 1 would use
+    client.app_state.storage.put_bytes(
+        f"captures/{capture_id}/runs/{second_id}/verdicts/verdict.C.json", b'{"run": "two"}', "application/json"
+    )
+
+
+def test_amended_run_links_serve_their_own_run(client: TestClient):
+    """A link minted for run 1 keeps serving run 1's bytes after an amendment.
+
+    The Greptile security finding: get_review_file and get_preview picked the
+    capture's latest run instead of the run named in the signed token, so after
+    an amendment started a second run, an earlier link read the later run's
+    files. The token's run is now honored, and a file the token's run lacks is
+    refused rather than served from another run.
+    """
+
+    capture_id = _create(client, "packet-review-0017")
+    first_id, second_id = f"{RUN_ID}_amend1", f"{RUN_ID}_amend2"
+    first_still, second_still = b"\xff\xd8run-one-jpeg", b"\xff\xd8run-two-jpeg"
+    _amendment(
+        client,
+        capture_id,
+        first_id=first_id,
+        second_id=second_id,
+        first_still=first_still,
+        second_still=second_still,
+        first_ply=b"ply-one",
+        second_ply=b"ply-two",
+    )
+    served = client.get(f"/v1/captures/{capture_id}/review", headers=REVIEWER_HEADERS)
+    assert served.status_code == 200
+    photo_link = _photo_link(served.text)
+    preview_fetch = re.search(r'fetch\("preview\.ply\?rtok=([^"]+)"\)', served.text)
+    assert preview_fetch, "the page's viewer fetch carries no signed review token"
+    # the page was served while run 1 was the latest, so its tokens name run 1
+    assert _token_payload(photo_link)["run"] == first_id
+    bare = TestClient(client.app)
+    photo = bare.get(photo_link)
+    assert photo.status_code == 200
+    assert photo.content == first_still, "an earlier link read the amendment's bytes"
+    preview = bare.get(f"/v1/captures/{capture_id}/preview.ply?rtok={preview_fetch.group(1)}")
+    assert preview.status_code == 200
+    assert preview.content == b"ply-one", "an earlier preview link read the amendment's bytes"
+    # a file the token's run lacks is refused, never served from the later run
+    absent = mint_token(
+        {
+            "op": "review-file",
+            "cap": capture_id,
+            "run": first_id,
+            "name": "verdicts/verdict.C.json",
+            "for": "reviewer",
+            "exp": int(time.time()) + 900,
+        },
+        b"h" * 32,
+    )
+    refused = bare.get(f"/v1/captures/{capture_id}/review/files/verdicts/verdict.C.json?rtok={absent}")
+    assert refused.status_code == 404
+    assert refused.json()["errors"][0]["code"] == "result_not_ready"
+    # the bearer path is unchanged: a reviewer's own fetch follows the latest run
+    latest = client.get(f"/v1/captures/{capture_id}/review/files/stills/kf_01.jpg", headers=REVIEWER_HEADERS)
+    assert latest.status_code == 200
+    assert latest.content == second_still
