@@ -34,15 +34,34 @@ Where the case enters the pipeline is the point:
 Checks per case (any mismatch fails the suite with a nonzero exit):
 
 - The merged scene in the run's artifacts equals the independently computed
-  stamp + merge of that case's source — a substituted reference scene, another
+  stamp + merge of that case's source — the merge contract is re-derived here
+  (same-id precedence asserted explicitly, never delegated to the production
+  ``merge_object_lists`` helper) — so a substituted reference scene, another
   case's source, or a second merge is caught here.
 - The placement stage's typed refusal (code, pointer) for source cases the
-  bridge refuses; no placement artifact on refusal; the served device result
-  stays conservative (``manual_review``) with exactly one terminal event.
-- When a case converts: the stage response equals a direct ``POST /v1/placements``
-  on exactly the captured converted bytes, and the decision semantics match the
-  independently authored wire case's expectations (input hashes differ by
-  identity stamp, so hashes are never compared across the pair).
+  bridge refuses; no placement artifact on refusal; a positive record must
+  solve (``status == done`` plus a real placement artifact — a declared refusal
+  is still a blocker); a negative case that somehow solves is a blocker, never
+  a success; the served device result stays conservative (``manual_review``,
+  HTTP 200, the journey's own run id) with exactly one terminal event.
+- When a case converts: the captured converted bytes are compared field by
+  field against the independently authored wire scene (identity stripped,
+  floats canonicalized) — covering the tap hazard, units, evidence-derived
+  coverage and chain ends — and the decision semantics match the wire case's
+  expectations. Both solver responses' ``stats.input_sha256`` must match their
+  own exact request bytes (the stage's against the captured converted bytes,
+  the direct response's against the bytes posted), so forging the same wrong
+  hash in both replies is caught even though they then agree with each other.
+
+Aggregate checks: ``crossCapture`` compares the run's two positive cases and
+requires distinct capture ids with distinct *normalized* geometry — identity
+fields stripped and the rest canonicalized, so different identity stamps or
+stamped scene hashes alone never pass. ``finalizeReplay`` must be an idempotent
+success on the same run id. A full run (no ``--cases`` selection) requires both
+positive cases present and solved; a subset diagnostic run marks the aggregate
+checks it cannot make ``not_applicable``; an empty or unknown selection cannot
+pass. Every failed check contributes a blocker, and the receipt is ``ok`` only
+when there are none.
 
 Findings this run pins (the reason the suite exits 1 on the committed fixtures):
 
@@ -66,6 +85,7 @@ import base64
 import copy
 import hashlib
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -88,7 +108,6 @@ from server.orchestrator.graph import STAGES  # noqa: E402
 from server.orchestrator.stateio import get_json  # noqa: E402
 from server.orchestrator.stubs._common import json_bytes, write_files  # noqa: E402
 from server.placement import adapter, case_suite  # noqa: E402
-from server.scene.merge import merge_object_lists  # noqa: E402
 
 RECEIPT_SCHEMA_VERSION = "hss-capture-placement-receipt/v0"
 TERMINAL_EVENTS = {"verdict_ready", "retake_request", "failed"}
@@ -433,9 +452,137 @@ def _run_artifacts(harness: _Harness, run_id: str) -> dict[str, str]:
     return artifacts
 
 
+# The merge contract, re-derived here without the production
+# ``server.scene.merge.merge_object_lists`` helper: incoming objects append, and a
+# detector or VLM scene object leaves only when an incoming object takes its id or
+# its place (same class, wall_rect on the same wall, or the same centre within the
+# merge tolerance). Re-deriving keeps the oracle independent: a coordinator bug and
+# an oracle bug can no longer be the same bug.
+_MERGE_SAME_PLACE_TOL_M = 0.3
+
+
+def _object_center_m(obj: dict[str, Any]) -> tuple[float, float, float] | None:
+    geometry = obj.get("geometry") or {}
+    if geometry.get("kind") == "point":
+        x, y, z = (float(v) for v in geometry["pos_m"])
+        return x, y, z
+    if geometry.get("kind") == "wall_rect":
+        span = geometry.get("s_m") or [0.0, 0.0]
+        return (
+            (float(span[0]) + float(span[1])) / 2,
+            (float(geometry.get("bottom_m", 0.0)) + float(geometry.get("top_m", 0.0))) / 2,
+            0.0,
+        )
+    return None
+
+
+def _same_place(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    if a.get("class") != b.get("class"):
+        return False
+    center_a, center_b = _object_center_m(a), _object_center_m(b)
+    if center_a is None or center_b is None:
+        return False
+    geometry_a, geometry_b = a.get("geometry") or {}, b.get("geometry") or {}
+    if geometry_a.get("kind") == "wall_rect" and geometry_b.get("kind") == "wall_rect":
+        if geometry_a.get("wall_id") != geometry_b.get("wall_id"):
+            return False
+        return abs(center_a[0] - center_b[0]) <= _MERGE_SAME_PLACE_TOL_M and abs(center_a[1] - center_b[1]) <= (
+            _MERGE_SAME_PLACE_TOL_M
+        )
+    return math.dist(center_a, center_b) <= _MERGE_SAME_PLACE_TOL_M
+
+
+def _replaced_independently(prev: dict[str, Any], incoming: list[dict[str, Any]]) -> bool:
+    kind = (prev.get("source") or {}).get("kind")
+    if kind not in {"detector", "vlm"}:
+        return False
+    for obj in incoming:
+        if prev.get("id") and prev.get("id") == obj.get("id"):
+            return True
+        if _same_place(prev, obj):
+            return True
+    return False
+
+
+def _assert_merge_precedence(merged: dict[str, Any], journey: dict[str, Any], mismatches: list[str]) -> None:
+    """Same-id precedence, asserted explicitly: every injected object appears in the
+    merged scene exactly once and the merged copy *is* the injected object."""
+    entry = _REGISTRY[journey["captureId"]]
+    merged_objects = merged.get("objects") or []
+    for incoming in entry["objects_3d"]:
+        object_id = incoming.get("id")
+        matches = [obj for obj in merged_objects if obj.get("id") == object_id]
+        if len(matches) != 1:
+            mismatches.append(
+                f"injected object {object_id!r} appears {len(matches)} times after the merge, not exactly once"
+            )
+        elif matches[0] != incoming:
+            mismatches.append(
+                f"injected object {object_id!r} lost same-id precedence: the merged copy is not the injected object"
+            )
+
+
+def _canonical(value: Any) -> Any:
+    if value is None or isinstance(value, (bool, str)):
+        return value
+    if isinstance(value, (int, float)):
+        return round(float(value), 6)
+    if isinstance(value, list):
+        return [_canonical(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _canonical(item) for key, item in sorted(value.items())}
+    return value
+
+
+def _normalized_geometry(document: dict[str, Any]) -> dict[str, Any]:
+    """Identity-stripped, canonicalized geometry. Hashes of normalized geometry are
+    equal only when the geometry itself is equal: different identity stamps or
+    different stamped scene hashes prove nothing here."""
+    stripped = {
+        key: value for key, value in document.items() if key not in {"scene_id", "provenance", "schema_version"}
+    }
+    return _canonical(stripped)
+
+
+def _geometry_diffs(converted: Any, expected: Any, path: str = "", limit: int = 5) -> list[str]:
+    """The first structural differences between the converted scene and the
+    independently authored wire scene, as readable paths."""
+    if isinstance(converted, dict) and isinstance(expected, dict):
+        diffs: list[str] = []
+        for key in sorted(set(converted) | set(expected)):
+            if len(diffs) >= limit:
+                return diffs
+            if key not in converted:
+                diffs.append(f"{path}/{key}: missing from the converted scene")
+            elif key not in expected:
+                diffs.append(f"{path}/{key}: not in the wire scene")
+            else:
+                diffs.extend(_geometry_diffs(converted[key], expected[key], f"{path}/{key}", limit - len(diffs)))
+        return diffs
+    if isinstance(converted, list) and isinstance(expected, list):
+        diffs = []
+        if len(converted) != len(expected):
+            diffs.append(f"{path}: {len(converted)} entries, wire scene has {len(expected)}")
+        else:
+            for index, (a, b) in enumerate(zip(converted, expected, strict=True)):
+                if len(diffs) >= limit:
+                    return diffs
+                diffs.extend(_geometry_diffs(a, b, f"{path}/{index}", limit - len(diffs)))
+        return diffs
+    if _canonical(converted) != _canonical(expected):
+        return [f"{path}: {converted!r} != wire {expected!r}"]
+    return []
+
+
+# One metre in feet, by definition: every converted length is the source metres
+# divided by exactly 0.3048. The unit sentinel re-derives one length end to end.
+M_PER_FT = 0.3048
+
+
 def _expected_merged_scene(journey: dict[str, Any]) -> dict[str, Any]:
     """The merged scene this case must produce, computed independently of the
-    pipeline: the stamped source plus the injected objects, merged once."""
+    pipeline: the stamped source plus the injected objects, merged once under the
+    contract re-derived above."""
     entry = _REGISTRY[journey["captureId"]]
     stamped = _stamped_scene(
         entry["record"],
@@ -444,7 +591,77 @@ def _expected_merged_scene(journey: dict[str, Any]) -> dict[str, Any]:
         capture_id=journey["captureId"],
         run_id=journey["runId"],
     )
-    return merge_object_lists(stamped, copy.deepcopy(entry["objects_3d"]))
+    incoming = copy.deepcopy(entry["objects_3d"])
+    kept = [obj for obj in stamped.get("objects") or [] if not _replaced_independently(obj, incoming)]
+    expected = dict(stamped)
+    expected["objects"] = kept + incoming
+    return expected
+
+
+def _check_converted_geometry(
+    case: dict[str, Any],
+    record: case_suite.CaseRecord,
+    *,
+    converted_bytes: bytes,
+    merged_bytes: bytes | None,
+    mismatches: list[str],
+) -> None:
+    """The captured converted scene against independently derived facts: the unit
+    sentinel, the preserved chain ends, the tap hazard's once-only conversion, and
+    a field-by-field comparison with the authored wire scene."""
+    converted = json.loads(converted_bytes)
+    merged = json.loads(merged_bytes) if merged_bytes else {}
+
+    source_height_m = (merged.get("walls") or [{}])[0].get("height_m")
+    converted_height_ft = (converted.get("walls") or [{}])[0].get("height_ft")
+    units_ok = (
+        source_height_m is not None
+        and converted_height_ft is not None
+        and abs(float(converted_height_ft) - float(source_height_m) / M_PER_FT) <= 1e-6
+    )
+    case["unitsSentinel"] = "matched" if units_ok else "mismatched"
+    if not units_ok:
+        mismatches.append("converted wall height is not the merged source height divided by 0.3048 (units sentinel)")
+
+    chain_ends = (merged.get("chain") or {}).get("ends") or {}
+    converted_ends = (converted.get("coverage") or {}).get("ends") or {}
+    for side, end in sorted(chain_ends.items()):
+        converted_kind = (converted_ends.get(side) or {}).get("kind")
+        if converted_kind != end.get("kind"):
+            mismatches.append(
+                f"converted coverage end {side!r} is {converted_kind!r}, not the source chain's {end.get('kind')!r}"
+            )
+
+    if record.id == TAP_CASE_ID:
+        expected_span_ft = [value / M_PER_FT for value in TAP_HAZARD["geometry"]["s_m"]]
+        taps = [
+            obj
+            for obj in converted.get("objects") or []
+            if obj.get("type") == TAP_HAZARD["class"]
+            and obj.get("source") == TAP_HAZARD["source"]["kind"]
+            and len(obj.get("span_ft") or []) == 2
+            and all(abs(a - b) <= 1e-6 for a, b in zip(obj["span_ft"], expected_span_ft, strict=True))
+        ]
+        case["tapHazardConvertedCount"] = len(taps)
+        if len(taps) != 1:
+            mismatches.append(
+                f"the observed tap hazard appears {len(taps)} times in the converted scene at its expected feet "
+                "span, not exactly once"
+            )
+
+    if record.wire_path is None:
+        case["geometryComparison"] = "not_applicable"
+        return
+    wire = json.loads(record.wire_path.read_bytes())
+    normalized = _normalized_geometry(converted)
+    diffs = _geometry_diffs(normalized, _normalized_geometry(wire))
+    case["geometryComparison"] = "matched" if not diffs else "mismatched"
+    case["geometryDiffs"] = diffs
+    # Canonical normalized-geometry hash, identity stamps stripped: the
+    # cross-capture comparison fails same-geometry-different-identity runs.
+    case["mergedGeometrySha256"] = _sha256(json.dumps(normalized, sort_keys=True).encode())
+    if diffs:
+        mismatches.append("converted scene differs from the independently authored wire scene: " + "; ".join(diffs[:3]))
 
 
 def _decision_bytes(payload: dict[str, Any]) -> str:
@@ -513,27 +730,63 @@ def _collect_case(harness: _Harness, record: case_suite.CaseRecord, journey: dic
     case["hasPlacementArtifact"] = bool(placement_artifact_key) and deps.storage.exists(placement_artifact_key)
 
     if stage_status == "done" and case["hasPlacementArtifact"]:
+        if record.kind != case_suite.KIND_POSITIVE:
+            case["mismatches"].append(
+                f"{record.kind!r} case produced a successful placement; only a positive case may solve"
+            )
         case["status"] = "solved"
+        converted_bytes = deps.storage.get_bytes(converted_key) if converted_key else None
         placement = json.loads(deps.storage.get_bytes(placement_artifact_key))
-        case["convertedSha256"] = _sha256(deps.storage.get_bytes(converted_key))
+        case["convertedSha256"] = _sha256(converted_bytes) if converted_bytes else None
         case["resultSha256"] = _sha256(deps.storage.get_bytes(placement_artifact_key))
         case["solverPolicy"] = placement.get("policy")
-        direct = TestClient(adapter.load_api()["api"].app).post(
-            "/v1/placements",
-            content=deps.storage.get_bytes(converted_key),
-            headers={"Content-Type": "application/json"},
+
+        # Both solver responses must bind their own input hash to their own exact
+        # request bytes. Forging the same wrong hash in both replies leaves them in
+        # agreement with each other and still fails here.
+        stage_input_sha = (placement.get("stats") or {}).get("input_sha256")
+        case["stageInputShaMatchesCapturedBytes"] = stage_input_sha == case["convertedSha256"]
+        if not case["stageInputShaMatchesCapturedBytes"]:
+            case["mismatches"].append(
+                "the stage response's stats.input_sha256 does not match the sha256 of the captured converted bytes it solved"
+            )
+
+        _check_converted_geometry(
+            case,
+            record,
+            converted_bytes=converted_bytes or b"{}",
+            merged_bytes=merged_bytes,
+            mismatches=case["mismatches"],
         )
-        if direct.status_code != 200:
-            case["errors"].append(f"direct_placements_http_{direct.status_code}")
+
+        if converted_bytes is None:
+            case["errors"].append("the placement stage solved without publishing placement/scene.json")
             case["directComparison"] = "error"
         else:
-            case["directComparison"] = (
-                "matched" if _decision_bytes(direct.json()) == _decision_bytes(placement) else "mismatched"
+            direct = TestClient(adapter.load_api()["api"].app).post(
+                "/v1/placements",
+                content=converted_bytes,
+                headers={"Content-Type": "application/json"},
             )
-            if case["directComparison"] == "mismatched":
-                case["mismatches"].append(
-                    "direct POST /v1/placements on the captured bytes disagrees with the stage response"
+            if direct.status_code != 200:
+                case["errors"].append(f"direct_placements_http_{direct.status_code}")
+                case["directComparison"] = "error"
+            else:
+                direct_body = direct.json()
+                direct_sha = (direct_body.get("stats") or {}).get("input_sha256")
+                case["directInputShaMatchesPostedBytes"] = direct_sha == case["convertedSha256"]
+                if not case["directInputShaMatchesPostedBytes"]:
+                    case["mismatches"].append(
+                        "the direct solver response's stats.input_sha256 does not match the sha256 of the exact "
+                        "request bytes"
+                    )
+                case["directComparison"] = (
+                    "matched" if _decision_bytes(direct_body) == _decision_bytes(placement) else "mismatched"
                 )
+                if case["directComparison"] == "mismatched":
+                    case["mismatches"].append(
+                        "direct POST /v1/placements on the captured bytes disagrees with the stage response"
+                    )
         if record.wire_path is not None:
             wire_mismatches = case_suite._evaluate_expectations(record.expectations, placement)
             case["wireSemanticComparison"] = "matched" if not wire_mismatches else "mismatched"
@@ -562,10 +815,16 @@ def _collect_case(harness: _Harness, record: case_suite.CaseRecord, journey: dic
                     f"refusal pointer {declared.get('pointer')!r} not found in the refusal message"
                 )
         elif record.kind == case_suite.KIND_POSITIVE:
-            case["mismatches"].append(
-                "positive case refused conversion, but the manifest declares no expected error for it "
-                "(the source does not pass the scene bridge as authored)"
-            )
+            if declared:
+                case["mismatches"].append(
+                    "positive case refused conversion; even with a declared error a positive record must solve "
+                    "and publish a placement artifact"
+                )
+            else:
+                case["mismatches"].append(
+                    "positive case refused conversion, but the manifest declares no expected error for it "
+                    "(the source does not pass the scene bridge as authored)"
+                )
         case["convertedSha256"] = None
         case["resultSha256"] = None
         case["solverPolicy"] = None
@@ -577,14 +836,18 @@ def _collect_case(harness: _Harness, record: case_suite.CaseRecord, journey: dic
             f"placement stage {stage_status!r} with error {stage_error!r}: neither solved nor refused"
         )
 
-    # The device boundary: conservative outcome, one terminal event.
+    # The device boundary: conservative outcome, the journey's own identity, one
+    # terminal event. Criteria and the result stay separately stubbed, so this pins
+    # the served boundary, never a claim that the decision caused the device state.
     client = harness.client
     capture = client.get(f"/v1/captures/{journey['captureId']}").json()
     served = client.get(f"/v1/captures/{journey['captureId']}/result")
+    served_body = served.json() if served.status_code == 200 else {}
     case["deviceOutcome"] = {
         "captureStatus": capture.get("status"),
         "servedResultHttpStatus": served.status_code,
-        "servedResultKind": served.json().get("outcome", {}).get("kind") if served.status_code == 200 else None,
+        "servedResultKind": (served_body.get("outcome") or {}).get("kind"),
+        "servedResultRunId": served_body.get("runId"),
     }
     terminals = [event for event in journey["events"] if event["type"] in TERMINAL_EVENTS]
     case["terminalEventCount"] = len(terminals)
@@ -593,6 +856,17 @@ def _collect_case(harness: _Harness, record: case_suite.CaseRecord, journey: dic
     if case["deviceOutcome"]["captureStatus"] != "manual_review":
         case["mismatches"].append(
             f"capture status {case['deviceOutcome']['captureStatus']!r} is not the conservative manual_review"
+        )
+    if served.status_code != 200:
+        case["mismatches"].append(f"GET /result returned HTTP {served.status_code}, not 200")
+    elif case["deviceOutcome"]["servedResultKind"] != "manual_review":
+        case["mismatches"].append(
+            f"served result outcome {case['deviceOutcome']['servedResultKind']!r} is not the conservative manual_review"
+        )
+    if case["deviceOutcome"]["servedResultRunId"] != journey.get("runId"):
+        case["mismatches"].append(
+            f"served result run id {case['deviceOutcome']['servedResultRunId']!r} does not match this journey's "
+            f"run id {journey.get('runId')!r}"
         )
     return case
 
@@ -606,7 +880,10 @@ def run_cases(
     """Run the manifest's cases through the front door and return the receipt."""
     _apply_dev_env(workdir / "vol")
     workdir.mkdir(parents=True, exist_ok=True)
+    if case_ids is not None and not case_ids:
+        raise SystemExit("empty case selection: name at least one case id, or run every case")
     records = case_suite.load_cases(manifest_path)
+    full_run = case_ids is None
     if case_ids:
         wanted = set(case_ids)
         records = [record for record in records if record.id in wanted]
@@ -631,15 +908,40 @@ def run_cases(
             journeys.append(_walk_front_door(harness, record, packet_id=f"placement-case-{index + 1:02d}"))
         harness.drain()
         cases = [_collect_case(harness, record, journey) for record, journey in zip(records, journeys, strict=True)]
-        replay = _replay_finalize(harness, journeys[0]) if journeys else None
+        if journeys and journeys[0].get("captureId") is not None:
+            replay = _replay_finalize(harness, journeys[0])
+            replay["applicable"] = True
+        elif journeys:
+            replay = {
+                "applicable": False,
+                "status": "not_applicable",
+                "reason": "the first journey never created a capture",
+                "ok": None,
+            }
+        else:
+            replay = {"applicable": False, "status": "not_applicable", "reason": "no case ran", "ok": None}
     finally:
         _remove_boundaries()
 
-    # Cross-capture: distinct captures in one app must carry distinct scenes.
-    merged = [case.get("mergedSceneSha256") for case in cases[:2]]
+    # Cross-capture: distinct captures in one app must carry distinct scenes — and
+    # distinct *normalized* geometry, not merely distinct identity stamps or
+    # stamped scene hashes. Only the two positive cases are compared.
+    positive_cases = [case for case in cases if case["kind"] == case_suite.KIND_POSITIVE]
+    pair = positive_cases[:2]
+    raw_hashes = [case.get("mergedSceneSha256") for case in pair]
+    geometry_hashes = [case.get("mergedGeometrySha256") for case in pair]
+    capture_ids = [case.get("captureId") for case in pair]
+    applicable = len(pair) == 2 and all(raw_hashes) and all(geometry_hashes) and all(capture_ids)
     cross_capture = {
-        "captureIds": [case.get("captureId") for case in cases[:2]],
-        "distinctScenes": len(merged) == 2 and merged[0] != merged[1],
+        "applicable": applicable,
+        "status": "evaluated" if applicable else "not_applicable",
+        "reason": None
+        if applicable
+        else "not_applicable: this run does not include two positive cases that each carried a merged scene",
+        "captureIds": capture_ids,
+        "distinctScenes": (raw_hashes[0] != raw_hashes[1]) if applicable else None,
+        "distinctNormalizedGeometry": (geometry_hashes[0] != geometry_hashes[1]) if applicable else None,
+        "mergedGeometrySha256": dict(zip([case["id"] for case in pair], geometry_hashes, strict=False)) if pair else {},
     }
 
     blockers = []
@@ -658,6 +960,31 @@ def run_cases(
             blockers.append(f"{case['id']}: " + "; ".join(case["mismatches"]))
         if case["errors"]:
             blockers.append(f"{case['id']}: " + "; ".join(case["errors"]))
+    if cross_capture["applicable"]:
+        if not (
+            cross_capture["distinctScenes"]
+            and cross_capture["distinctNormalizedGeometry"]
+            and len(set(cross_capture["captureIds"])) == 2
+        ):
+            blockers.append(
+                "crossCapture: the two positive cases do not carry distinct capture ids with distinct normalized "
+                f"geometry (distinctScenes={cross_capture['distinctScenes']}, "
+                f"distinctNormalizedGeometry={cross_capture['distinctNormalizedGeometry']})"
+            )
+    if replay is not None and replay.get("applicable", True) and replay.get("ok") is not True:
+        blockers.append(
+            "finalizeReplay: the finalize replay is not an idempotent success (HTTP 202, same run id, one terminal "
+            f"event); got {json.dumps(replay)}"
+        )
+    if full_run:
+        if len(positive_cases) < 2:
+            blockers.append(f"full run requires both positive cases; this manifest ran {len(positive_cases)}")
+        unsolved = [case["id"] for case in positive_cases if case["status"] != "solved"]
+        if unsolved:
+            blockers.append(
+                "full run requires both positive cases to solve and publish placement artifacts; not solved: "
+                + ", ".join(unsolved)
+            )
 
     statuses = [case["status"] for case in cases]
     receipt: dict[str, Any] = {
