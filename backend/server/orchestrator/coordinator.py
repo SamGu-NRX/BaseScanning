@@ -229,6 +229,7 @@ class RunCoordinator:
 
     def _spawn_ready(self, run: RunRecord, control: RunControl) -> list[str]:
         spawned: list[str] = []
+        self._materialize_missing_records(run)
         status = self._status_map(run.run_id)
         names = ready_stages(status)
         if "criteria" in names and not control.merge_done:
@@ -740,6 +741,22 @@ class RunCoordinator:
     def _status_map(self, run_id: str) -> dict[StageName, StageStatus]:
         found = {rec.stage: rec.status for rec in self._rows(run_id)}
         return {name: found.get(name, "pending") for name in STAGE_NAMES}
+
+    def _materialize_missing_records(self, run: RunRecord) -> None:
+        """Recovery for runs written by older builds: a run can lack stage records
+        entirely (records materialize as the API schedules stages). The status map
+        treats a missing record as pending, but _spawn_one refuses to start a stage
+        with no record — so such a run hangs forever between ticks. Idempotently
+        create only the missing pending records: existing records keep their
+        attempts, failures and artifacts, and terminal runs never reach here
+        because tick returns before spawning.
+        """
+        now = self.s.clock.iso()
+        for name in STAGE_NAMES:
+            if self.s.state.get_stage(run.run_id, name) is None:
+                self.s.state.upsert_stage(
+                    StageRecord(run_id=run.run_id, stage=name, status="pending", attempt=1, heartbeat=now)
+                )
 
     def _snapshot(self, run_id: str) -> str:
         parts = [f"{rec.stage}:{rec.status}:{rec.attempt}:{rec.failures}:{rec.respawns}" for rec in self._rows(run_id)]

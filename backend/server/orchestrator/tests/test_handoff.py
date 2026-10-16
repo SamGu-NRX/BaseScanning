@@ -346,3 +346,32 @@ def test_sweeper_respawns_the_remote_coordinator(tmp_path, monkeypatch) -> None:
     control = get_json(services.state, f"run_control:{run.run_id}")
     assert control["coordinator_respawns"] == 1
     assert services.state.stages(run.run_id) == []
+
+def test_a_run_without_stage_records_still_progresses(tmp_path) -> None:
+    """An older unfinished run can lack stage records entirely: the status map
+    treats a missing record as pending, but spawning refused to start a stage
+    with no record, so the run hung forever between ticks. Recovery must
+    materialize the missing pending records idempotently — existing records
+    keep their attempt and status — and the run must reach a terminal state."""
+    services, _uri, digest = build_services(tmp_path, "memory")
+    deadline = (services.clock.now() + timedelta(hours=1)).isoformat()
+    run = _run(services, digest, deadline=deadline)
+    # The run exists but no stage record was ever written for it.
+    assert services.state.stages(run.run_id) == []
+    validate = StageRecord(
+        run_id=run.run_id, stage="validate", status="done", attempt=2, heartbeat=services.clock.iso()
+    )
+    services.state.upsert_stage(validate)
+
+    RunCoordinator(services).tick(run.run_id)
+
+    rows = {rec.stage: rec for rec in services.state.stages(run.run_id)}
+    assert {rec.stage for rec in rows.values()} == set(STAGE_NAMES)
+    assert rows["validate"].status == "done" and rows["validate"].attempt == 2, "existing record preserved"
+    status = "running"
+    for _ in range(40):
+        status = RunCoordinator(services).tick(run.run_id)
+        if status not in {"pending", "running"}:
+            break
+    assert status in {"done", "failed"}, f"run must terminate, not hang: {status}"
+
