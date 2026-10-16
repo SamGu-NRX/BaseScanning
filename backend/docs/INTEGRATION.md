@@ -217,7 +217,7 @@ Event `type` is one of: `files_committed`, `hint`, `capture_check`, `stage`, `ve
 
 `GET /v1/captures/{id}/result` → `200` `ResultResponse` (next section), or a minimal body while the run has not written one. `404` / `410` match status. Signed `verdictUrl` and `previewUrl` last 15 minutes.
 
-`GET /v1/captures/{id}/review` → `200 text/html` when a review page exists, else `404 result_not_ready`.
+`GET /v1/captures/{id}/review` → `200 text/html` when a review page exists, else `404 result_not_ready`. The stored page is what compose published; the API rewrites it at serve time so it stays judgeable after the baked signed URLs expire: photo and raw-file links become reviewer-gated `GET /v1/captures/{id}/review/files?rel=<artifact>` URLs, the three.js import becomes the same-origin vendored module at `GET /v1/captures/{id}/review-static/three.module.js`, and a run-status section is injected from live state (per-stage status, error codes, degraded stage names, run ID and git SHA). Reviewers get the rewritten page; device principals are refused.
 
 ### 8. Amendments
 
