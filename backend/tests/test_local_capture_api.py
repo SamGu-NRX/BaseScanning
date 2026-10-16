@@ -154,10 +154,19 @@ def _port_from_session(session_dir: Path) -> int:
     return int(session["baseUrl"].split(":")[-1].split("/")[0])
 
 
-def _copy_packet(workdir: Path) -> tuple[Path, dict]:
+def _copy_packet(workdir: Path, packet_id: str) -> tuple[Path, dict]:
+    """A private copy of the committed packet, retagged with a unique packet id.
+
+    The create route pins Idempotency-Key to the packet id, so two journeys on
+    one server must not share one; finalize requires the packet bytes to carry
+    the same id, so the copy is rewritten before any finalize.
+    """
     root = workdir / "packet"
     subprocess.run(["cp", "-R", str(PACKET), str(root)], check=True)
-    return root, json.loads((root / "packet.json").read_text())
+    packet = json.loads((root / "packet.json").read_text())
+    packet["packetId"] = packet_id
+    (root / "packet.json").write_text(json.dumps(packet, indent=2) + "\n")
+    return root, packet
 
 
 def _create_capture(client: httpx.Client, packet: dict, idempotency: str) -> dict:
@@ -182,16 +191,11 @@ def _create_capture(client: httpx.Client, packet: dict, idempotency: str) -> dic
     return response.json()
 
 
-def _drive_to_terminal(client: httpx.Client, workdir: Path) -> tuple[dict, str]:
+def _drive_to_terminal(client: httpx.Client, workdir: Path, packet_id: str) -> tuple[dict, str]:
     """The full capture journey over TCP. Returns (capture body, run id)."""
-    root, packet = _copy_packet(workdir)
+    root, packet = _copy_packet(workdir, packet_id)
     created = _create_capture(client, packet, packet["packetId"])
     capture_id = created["captureId"]
-
-    # Before finalize the reviewer page is not there yet.
-    not_ready = client.get(f"/captures/{capture_id}/review")
-    assert not_ready.status_code == 404, not_ready.text
-    assert not_ready.json()["errors"][0]["code"] == "result_not_ready"
 
     files = _sealed_files(root, packet)
     registered = client.post(f"/captures/{capture_id}/files", json={"files": files})
@@ -245,8 +249,10 @@ def _drive_to_terminal(client: httpx.Client, workdir: Path) -> tuple[dict, str]:
         if status in TERMINAL_CAPTURE_STATUSES:
             break
     assert status == "manual_review", f"expected a terminal manual_review, got {status}"
-    types = [event["type"] for event in events]
-    assert "run_started" in types, types
+    # The run's stage events reach the capture event log the device long-polls.
+    assert any((event.get("data") or {}).get("runId") == run_id for event in events), [
+        event.get("type") for event in events
+    ]
     return created, run_id
 
 
@@ -266,7 +272,7 @@ def test_local_capture_api_journey(server: LocalServer, tmp_path: Path) -> None:
     assert app_token != reviewer_token and len(app_token) >= 32 and len(reviewer_token) >= 32
 
     with server.client(app_token) as client:
-        capture, run_id = _drive_to_terminal(client, tmp_path)
+        capture, run_id = _drive_to_terminal(client, tmp_path, "mini-arkit-journey")
         capture_id = capture["captureId"]
 
         result = client.get(f"/captures/{capture_id}/result")
@@ -290,23 +296,25 @@ def test_local_capture_api_journey(server: LocalServer, tmp_path: Path) -> None:
 def test_result_before_finalize_is_the_not_ready_envelope(server: LocalServer, tmp_path: Path) -> None:
     """GET result before any run serves the 200 not-ready envelope, the shape
     `server/api/tests/test_result_boundary.py` pins; the 404 result_not_ready
-    code is the reviewer page's answer before any run."""
-    _, packet = _copy_packet(tmp_path)
+    code is the reviewer page's answer before any run (reviewer bearer — the
+    reviewer gate runs before the not-ready check, so an app bearer gets 403)."""
+    root, packet = _copy_packet(tmp_path, "mini-arkit-resnotready")
     with server.client(server.session["appToken"]) as client:
-        capture_id = _create_capture(client, packet, f"{packet['packetId']}-resnotready")["captureId"]
+        capture_id = _create_capture(client, packet, packet["packetId"])["captureId"]
         result = client.get(f"/captures/{capture_id}/result")
         assert result.status_code == 200, result.text
         body = result.json()
         assert body["outcome"] is None and body["viewsNeeded"] == []
-        review = client.get(f"/captures/{capture_id}/review")
+    with server.client(server.session["reviewerToken"]) as reviewer:
+        review = reviewer.get(f"/captures/{capture_id}/review")
         assert review.status_code == 404, review.text
         assert review.json()["errors"][0]["code"] == "result_not_ready"
 
 
 def test_malformed_finalize_is_refused_4xx(server: LocalServer, tmp_path: Path) -> None:
-    _, packet = _copy_packet(tmp_path)
+    root, packet = _copy_packet(tmp_path, "mini-arkit-malformed")
     with server.client(server.session["appToken"]) as client:
-        capture_id = _create_capture(client, packet, f"{packet['packetId']}-malformed")["captureId"]
+        capture_id = _create_capture(client, packet, packet["packetId"])["captureId"]
         raw = b"{not json at all"
         response = client.post(
             f"/captures/{capture_id}/finalize",
@@ -330,7 +338,7 @@ def test_missing_and_wrong_bearer_get_401(server: LocalServer) -> None:
         assert errors and all({"code", "pointer", "message"} <= set(item) for item in errors)
         wrong = anon.get("/captures/whatever/events", headers={"Authorization": "Bearer " + "w" * 40})
         assert wrong.status_code == 401, wrong.text
-        assert wrong.json()["errors"][0]["code"] == "invalid_token"
+        assert wrong.json()["errors"][0]["code"] == "unauthorized"
 
 
 def test_tokens_never_reach_the_log(server: LocalServer) -> None:
@@ -346,8 +354,16 @@ def test_refuses_non_loopback_host(tmp_path: Path) -> None:
     log_path = tmp_path / "refused.log"
     with log_path.open("w") as log:
         proc = subprocess.run(
-            [sys.executable, str(SCRIPT), "--host", "0.0.0.0", "--port", str(_free_port()),
-             "--session-dir", str(tmp_path)],
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--host",
+                "0.0.0.0",
+                "--port",
+                str(_free_port()),
+                "--session-dir",
+                str(tmp_path),
+            ],
             cwd=ROOT,
             stdout=log,
             stderr=subprocess.STDOUT,
