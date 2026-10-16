@@ -68,9 +68,9 @@ STAGE_DEPS: dict[str, tuple[str, ...]] = {
     "coverage": ("dense",),
     "scene": ("coverage", "objects"),
     "objects_3d": ("scene", "objects"),
-    "placement": ("scene",),
+    "placement": ("scene", "objects_3d"),
     "criteria": ("scene", "reads", "objects_3d"),
-    "result": ("criteria",),
+    "result": ("criteria", "placement"),
 }
 OPTIONAL_STAGES: frozenset[str] = frozenset({"objects", "reads", "objects_3d"})
 
