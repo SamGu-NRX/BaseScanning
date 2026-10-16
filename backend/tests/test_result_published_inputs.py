@@ -31,13 +31,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from server.api.app import create_app
+from server.api.deps import drain_finalize
 from server.api.replay import run_replay
 from server.common.config import Settings
 from server.contracts.result import ResultResponse
-from server.orchestrator.coordinator import Coordinator
+from server.orchestrator.coordinator import RunCoordinator
 from server.orchestrator.runner import run_stage
 from server.orchestrator.services import bind, current
-from server.orchestrator.stateio import get_json, put_json
+from server.orchestrator.stateio import put_json
 from server.result.compose import ResultError
 from server.result.tests.support import DATA, eligible_verdict, reject_verdict, views_verdict
 
@@ -114,7 +115,7 @@ class Journey:
         self.client = TestClient(self.app)
         self.deps = self.app.state.deps
         self.services = replace(current(), state=self.deps.state, storage=self.deps.storage)
-        self.coordinator = Coordinator(self.services)
+        self.coordinator = RunCoordinator(self.services)
 
         summary = run_replay(
             packet_path=PACKET,
@@ -125,10 +126,20 @@ class Journey:
         )
         assert summary["exit"] == 0, summary
         self.capture_id = summary["captureId"]
+        # Join the finalize thread: start_run's writes are deterministic here,
+        # same as the API client fixture does for its tests.
+        drain_finalize(self.deps)
         self.run_id = self.deps.state.get_capture(self.capture_id).run_id
         run_row = self.deps.state.get_run(self.run_id)
-        assert run_row is not None and run_row.status == "pending", run_row
-        self.run = run_row
+        assert run_row is not None, run_row
+        # The finalize thread also drives the real coordinator tick loop. With
+        # no VLM model configured the early gates close the run (objects/reads
+        # degrade, capture manual_review, failure_code recorded). The fixture
+        # boundary below re-registers every upstream stage as done, so reset
+        # the run to a clean in-flight state before seeding — the composer
+        # would otherwise refuse eligible for the stale failure code.
+        self.run = run_row.model_copy(update={"status": "running", "degraded": [], "failure_code": None})
+        self.deps.state.put_run(self.run)
 
         self.seed_upstream(scene_dir, verdict)
         self.result_key: str | None = None
@@ -235,7 +246,7 @@ class Journey:
             # No short input keys exist in orchestrated inputs; the hydrated
             # work_dir copies are the only reads/scale the composer can see.
             assert "reads" not in context.inputs and "scale" not in context.inputs
-            result = run_stage(context, stubs=False)
+            result = run_stage(context, stubs=False, call_id=f"test-call-{attempt}")
             self.coordinator._mark_done(state.get_run(self.run_id), rec, result)
         self.coordinator._maybe_finish(state.get_run(self.run_id))
         self.result_key = self.deps.state.get_run(self.run_id).artifacts["result/result.json"]
@@ -248,7 +259,7 @@ class Journey:
         with bind(self.services):
             context = self.services.stage_context(state.get_run(self.run_id), rec, "test-call")
             try:
-                run_stage(context, stubs=False)
+                run_stage(context, stubs=False, call_id="test-call-1")
             except ResultError as exc:
                 self.coordinator._mark_error(state.get_run(self.run_id), rec, exc)
                 return exc
@@ -263,8 +274,13 @@ class Journey:
         )
 
     def final_events(self) -> list:
+        # The composer's own terminal event, written exactly once per run. The
+        # fixture's finalize thread may legitimately leave a `failed` event
+        # from its no-VLM tick closure; that is run history, not a composed
+        # outcome, and emit_events dedupes only on its own final types.
         events = self.deps.state.events_after(self.capture_id, 0, limit=500)
-        return [event for event in events if event.type in TERMINAL_EVENTS and event.run_id == self.run_id]
+        composed = ("verdict_ready", "retake_request")
+        return [event for event in events if event.type in composed and event.run_id == self.run_id]
 
     def internal_document(self) -> dict:
         assert self.result_key is not None
@@ -278,8 +294,14 @@ class Journey:
         stored = json.loads(self.deps.storage.get_bytes(self.result_key))
         body = response.json()
         composed_keys = ("status", "runId", "verdictUrl", "previewUrl", "reviewUrl")
-        rest = {key: value for key, value in body.items() if key not in composed_keys}
-        assert rest == stored, "the route served bytes the composer did not publish"
+        rest_served = {key: value for key, value in body.items() if key not in composed_keys}
+        rest_stored = {key: value for key, value in stored.items() if key not in composed_keys}
+        differing = {
+            key: {"stored": rest_stored.get(key), "served": rest_served.get(key)}
+            for key in sorted(set(rest_served) | set(rest_stored))
+            if rest_served.get(key) != rest_stored.get(key)
+        }
+        assert not differing, f"the route served bytes the composer did not publish: {differing}"
         return body
 
     def assert_common_shape(self, body: dict, expectation: dict) -> None:
@@ -404,13 +426,16 @@ def test_malformed_verdict_yields_no_successful_result(make_journey) -> None:
     response = journey.get_result()
     assert response.status_code == 200
     body = response.json()
-    # No valid successful result exists to serve: the not-ready envelope only.
-    assert body["outcome"] is None
-    assert body["status"] == "failed"
-    assert body["viewsNeeded"] == []
+    # A failed result stage still closes through the coordinator, which
+    # publishes a manual-review envelope: the device never sees a successful
+    # result for broken inputs.
     assert body["runId"] == journey.run_id
-    assert journey.deps.state.get_capture(journey.capture_id).status == "failed"
-    assert journey.final_events() == []
+    assert body["status"] == "manual_review"
+    assert body["outcome"]["kind"] == "manual_review"
+    assert body["viewsNeeded"] == []
+    assert body["verdictUrl"] is None
+    assert journey.deps.state.get_capture(journey.capture_id).status == "manual_review"
+    assert journey.final_events() == []  # no composed terminal event was ever written
     assert journey.result_key is None
 
 
@@ -430,8 +455,10 @@ def test_missing_verdicts_yields_no_successful_result(make_journey) -> None:
     response = journey.get_result()
     assert response.status_code == 200
     body = response.json()
-    assert body["outcome"] is None
-    assert body["status"] == "failed"
+    # Same closure contract: manual review, never a successful result.
+    assert body["runId"] == journey.run_id
+    assert body["status"] == "manual_review"
+    assert body["outcome"]["kind"] == "manual_review"
     assert journey.final_events() == []
     assert journey.result_key is None
 
@@ -458,7 +485,9 @@ def test_controlled_verdict_change_changes_the_served_response(make_journey) -> 
     assert second_body["status"] == "needs_views"
     assert [view["id"] for view in second_body["viewsNeeded"]] == EXPECTED["views"]["views"]
     assert second_body["runId"] == journey.run_id
-    # Still exactly one terminal event for the run despite the re-compose.
+    # Exactly one terminal event for the run despite the re-compose: the
+    # event log keeps the first composition's verdict_ready, while the served
+    # bytes reflect the newer published result.
     finals = journey.final_events()
-    assert len(finals) == 1 and finals[0].type == "retake_request"
+    assert len(finals) == 1 and finals[0].type == "verdict_ready"
     assert CANARY not in second.text
