@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import importlib.util
 import json
 import os
 import socket
@@ -97,7 +98,12 @@ class LocalServer:
         return self.log_path.read_text()
 
 
-def _start_server(session_dir: Path, log_path: Path, extra_args: list[str] | None = None) -> subprocess.Popen:
+def _start_server(
+    session_dir: Path,
+    log_path: Path,
+    extra_args: list[str] | None = None,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.Popen:
     port = _free_port()
     log = log_path.open("w")
     proc = subprocess.Popen(
@@ -115,6 +121,7 @@ def _start_server(session_dir: Path, log_path: Path, extra_args: list[str] | Non
             *(extra_args or []),
         ],
         cwd=ROOT,
+        env={**os.environ, **(extra_env or {})},
         stdout=log,
         stderr=subprocess.STDOUT,
         text=True,
@@ -423,3 +430,132 @@ def test_launcher_refuses_an_empty_port_loudly(tmp_path: Path) -> None:
     assert "refusing an empty --port" in log_text
     assert "8000" in log_text  # the refusal names the documented default
     assert not (tmp_path / "session.json").exists()
+
+
+def test_make_local_api_targets_survive_a_stray_file(tmp_path: Path) -> None:
+    # The Codex P2 on this PR: local-api / local-api-smoke must be .PHONY, or a
+    # stray file (or directory) of the same name makes `make local-api` report
+    # "up to date" and never start the server.
+    strays = [ROOT / "local-api", ROOT / "local-api-smoke"]
+    try:
+        for stray in strays:
+            stray.write_text("")
+        recipe = _make_n_local_api()
+        assert "up to date" not in recipe, recipe
+        assert "local_capture_api.py" in recipe, recipe
+        smoke = subprocess.run(
+            ["make", "-n", "local-api-smoke"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert smoke.returncode == 0, smoke.stderr
+        assert "up to date" not in smoke.stdout, smoke.stdout
+        assert "test_local_capture_api.py" in smoke.stdout, smoke.stdout
+    finally:
+        for stray in strays:
+            stray.unlink(missing_ok=True)
+
+
+def _launcher_module():
+    """The launcher imported as a module: uvicorn stays inside main(), so this
+    is import-free of the server stack."""
+    spec = importlib.util.spec_from_file_location("local_capture_api", SCRIPT)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_child_env_forces_local_dispatch_against_a_poisoned_shell() -> None:
+    # The Greptile P1 raised on #293: an inherited HSS_ORCH_MODAL_REMOTE=1 sent
+    # a 'local' run to deployed Modal functions that cannot see this process's
+    # memory state or volume. The launcher must force it to 0 wherever the
+    # shell disagrees, and refuse the keys that would move work or bytes off
+    # this machine.
+    launcher = _launcher_module()
+    parent = {
+        "HSS_ORCH_MODAL_REMOTE": "1",
+        "STATE_BACKEND": "modal_dict",
+        "STORAGE_BACKEND": "gcs",
+        "VOLUME_ROOT": "/vol/somewhere-else",
+        "STATE_DICT_NAME": "hss-prod-state",
+        "HSS_PACKET_CACHE": "/somewhere/else",
+        "MODAL_TOKEN_ID": "mk-not-real",
+        "MODAL_TOKEN_SECRET": "ms-not-real",
+        "MODAL_IDENTITY_TOKEN": "mi-not-real",
+        "MODAL_APP_NAME": "some-other-app",
+        "MODAL_ENVIRONMENT": "prod",
+        "MODAL_TASK_ID": "ta-not-real",
+        "HSS_ORCH_TEST_FAIL_STAGE": "scale",
+        "HSS_ORCH_TEST_HANG_STAGE": "dense",
+        "HSS_ORCH_TEST_KILL_COORDINATOR_AFTER": "poses",
+        "HSS_LOCAL_OUTCOME": "pass",
+        "HSS_LOCAL_STAGE_DELAY_S": "0.01",
+    }
+    overrides = launcher._local_env_overrides(
+        app_token="a" * 40,
+        reviewer_token="r" * 40,
+        hmac_secret="h" * 64,
+        git_sha="deadbee",
+        base="http://127.0.0.1:8000",
+        volume_root=Path("/tmp/local-api-volume"),
+        parent=parent,
+    )
+    assert overrides["HSS_ORCH_MODAL_REMOTE"] == "0"
+    assert overrides["STATE_BACKEND"] == "memory"
+    assert overrides["STORAGE_BACKEND"] == "volume"
+    assert overrides["VOLUME_ROOT"] == "/tmp/local-api-volume"
+    assert overrides["HSS_ORCH_STAGE_STUBS"] == "1"
+    assert overrides["VISION_EXTERNAL_CALLS"] == "off"
+    # The deliberate pass-throughs survive untouched.
+    assert launcher._refused_parent_keys(parent) == [
+        "MODAL_TOKEN_ID",
+        "MODAL_TOKEN_SECRET",
+        "MODAL_IDENTITY_TOKEN",
+        "MODAL_APP_NAME",
+        "MODAL_ENVIRONMENT",
+        "MODAL_TASK_ID",
+        "STATE_DICT_NAME",
+        "HSS_PACKET_CACHE",
+        "HSS_ORCH_TEST_FAIL_STAGE",
+        "HSS_ORCH_TEST_HANG_STAGE",
+        "HSS_ORCH_TEST_KILL_COORDINATOR_AFTER",
+    ]
+
+
+def test_launcher_overrides_a_poisoned_shell_and_stays_healthy(tmp_path: Path) -> None:
+    # The launcher run as a subprocess with the developer's shell poisoned the
+    # way the P1 describes: it must still come up local, on memory state and
+    # volume storage, and name the refused keys on its log.
+    session_dir = tmp_path / "session"
+    log_path = tmp_path / "poisoned.log"
+    proc = _start_server(
+        session_dir,
+        log_path,
+        extra_env={
+            "HSS_ORCH_MODAL_REMOTE": "1",
+            "STATE_BACKEND": "modal_dict",
+            "STORAGE_BACKEND": "gcs",
+            "MODAL_TOKEN_ID": "mk-not-real",
+            "HSS_ORCH_TEST_FAIL_STAGE": "scale",
+        },
+    )
+    try:
+        with httpx.Client(timeout=10) as probe:
+            body = probe.get(f"http://127.0.0.1:{_port_from_session(session_dir)}/v1/healthz").json()
+        assert body["status"] == "ok", body
+        assert body["state"] == "memory", body
+        assert body["storage"] == "volume", body
+        log = log_path.read_text()
+        assert "refusing inherited shell env" in log, log
+        assert "HSS_ORCH_MODAL_REMOTE" not in log.split("refusing inherited shell env")[1].splitlines()[0]
+        assert "MODAL_TOKEN_ID" in log.split("refusing inherited shell env")[1].splitlines()[0], log
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
