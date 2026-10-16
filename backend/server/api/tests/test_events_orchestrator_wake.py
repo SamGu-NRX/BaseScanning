@@ -60,9 +60,9 @@ def server(tmp_path):
     thread.join(timeout=10)
 
 
-def _create_capture(base_url: str) -> str:
+def _create_capture(base_url: str, packet_id: str = "packet-orch-wake-0001") -> str:
     body = {
-        "packetId": "packet-orch-wake-0001",
+        "packetId": packet_id,
         "formatVersion": "0.4",
         "tier": "photo_only",
         "device": {"model": "iPhone", "systemVersion": "18", "appVersion": "1"},
@@ -71,7 +71,7 @@ def _create_capture(base_url: str) -> str:
     response = httpx.post(
         f"{base_url}/v1/captures",
         json=body,
-        headers={"Authorization": f"Bearer {TOKEN}", "Idempotency-Key": "packet-orch-wake-0001"},
+        headers={"Authorization": f"Bearer {TOKEN}", "Idempotency-Key": packet_id},
         timeout=10,
     )
     assert response.status_code == 201, response.text
@@ -97,10 +97,26 @@ def test_long_poll_returns_within_one_poll_interval_of_an_orchestrator_event(ser
         result["elapsed"] = time.perf_counter() - started
         result["response"] = response
 
+    # The orchestrator may only emit once the server has read an empty feed,
+    # so the event cannot land before the poll parks: an emit that arrives
+    # earlier is picked up by the first store read of any implementation, and
+    # the test would pass without exercising the wait at all. Wrap the state's
+    # events_after to signal when a read has come back empty.
+    empty_feed = threading.Event()
+    original_events_after = deps.state.events_after
+
+    def spy_events_after(capture_id: str, seq: int, limit: int = 100):
+        rows = original_events_after(capture_id, seq, limit=limit)
+        if not rows:
+            empty_feed.set()
+        return rows
+
+    deps.state.events_after = spy_events_after
+
     client = threading.Thread(target=poll)
     client.start()
     try:
-        time.sleep(0.3)  # the poll is parked in poll_events before the event lands
+        assert empty_feed.wait(timeout=10), "the poll never reached the empty-feed wait"
         record = orchestrator_events.emit(
             deps.state,
             capture_id,
@@ -119,6 +135,63 @@ def test_long_poll_returns_within_one_poll_interval_of_an_orchestrator_event(ser
     assert body["next"] == record.seq
     assert result["elapsed"] < 2.0, (
         f"the poll held for {result['elapsed']:.3f} s although the orchestrator event landed within one poll interval"
+    )
+
+
+def test_a_slow_state_read_does_not_stall_other_requests_on_the_same_app(server):
+    """poll_events reads the store off the event loop, so one slow read cannot park the app.
+
+    With ModalDictState every events_after is a synchronous remote read. Reading
+    it on the event loop blocks every other request for the length of the read,
+    roughly 40 times per quiet 20 s poll (Greptile P2, PR #290). The parked
+    poll's first read gates on a threading.Event here; a wait=0 request for a
+    second capture must return while that gate is still shut.
+    """
+
+    base_url, deps = server
+    parked_capture = _create_capture(base_url, "packet-orch-wake-0002")
+    probe_capture = _create_capture(base_url, "packet-orch-wake-0003")
+
+    entered = threading.Event()
+    release = threading.Event()
+    original_events_after = deps.state.events_after
+
+    def gated_events_after(capture_id: str, seq: int, limit: int = 100):
+        if capture_id == parked_capture:
+            entered.set()
+            release.wait(timeout=4.0)
+        return original_events_after(capture_id, seq, limit=limit)
+
+    deps.state.events_after = gated_events_after
+
+    def poll():
+        httpx.get(
+            f"{base_url}/v1/captures/{parked_capture}/events",
+            params={"after": 0, "wait": 3},
+            headers={"Authorization": f"Bearer {TOKEN}"},
+            timeout=30,
+        )
+
+    poller = threading.Thread(target=poll)
+    poller.start()
+    try:
+        assert entered.wait(timeout=10), "the long-poll never reached its first store read"
+        started = time.perf_counter()
+        response = httpx.get(
+            f"{base_url}/v1/captures/{probe_capture}/events",
+            params={"after": 0, "wait": 0},
+            headers={"Authorization": f"Bearer {TOKEN}"},
+            timeout=30,
+        )
+        probe_elapsed = time.perf_counter() - started
+    finally:
+        release.set()
+        poller.join(timeout=30)
+
+    assert response.status_code == 200, response.text
+    assert probe_elapsed < 1.5, (
+        f"a wait=0 request took {probe_elapsed:.3f} s while another poll's store read was in flight: "
+        "poll_events is reading the state store on the event loop"
     )
 
 
