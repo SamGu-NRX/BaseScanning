@@ -59,10 +59,17 @@ import OSLog
 ///   with this answer (`FixtureCaptureHTTP.Answer`). Nothing leaves the phone. Without it, photo
 ///   processing isn't set up in any build. A replay's own packet always fails the phone's checks,
 ///   since a replay has no motion.
-/// - `-photoProcessingSyntheticCapture` (debug builds only, with `-photoProcessingFixture`): the
-///   capture sent is HouseScanKit's `SyntheticCapture`, labelled synthetic in its packet, in place
-///   of the replay's photos, so the fixture's answer comes back through the real upload. It is a
-///   test of the app's path against the fixture, never a result about the wall on screen.
+/// - `-photoProcessingSyntheticCapture` (debug builds only, with `-photoProcessingFixture` or
+///   `-photoProcessingAPI`): the capture sent is HouseScanKit's `SyntheticCapture`, labelled
+///   synthetic in its packet, in place of the replay's photos, so an answer comes back through the
+///   real upload. It is a test of the app's path, never a result about the wall on screen.
+/// - `-photoProcessingAPI <url>` with `-photoProcessingAPIToken <token>` (debug builds only, with
+///   `-replay`): photo processing sends to a capture API a developer runs on this machine, such as
+///   backend/ on `http://127.0.0.1:8000/v1`, over the app's real transport with this static test
+///   credential (`LocalCaptureAPI`). Only loopback addresses; any other address, or a missing
+///   token, leaves photo processing not set up. A failed connection shows the screen's own failure
+///   states: there is no fallback to the fixture or to Legacy. It can't be combined with
+///   `-photoProcessingFixture`.
 /// - `-photoProcessingFixtureReadOnlyCapture` (debug builds only): just before "Stop sending
 ///   photos" takes effect, the capture's folder is made read-only, so the phone can't save the
 ///   withdrawal and says so (`PhotoProcessingEnd.withdrawn(recorded: false)`).
@@ -87,6 +94,8 @@ struct LaunchOptions: Equatable {
     var photoProcessingFixture: FixtureCaptureHTTP.Answer?
     var photoProcessingSyntheticCapture = false
     var photoProcessingFixtureReadOnlyCapture = false
+    var photoProcessingAPI: String?
+    var photoProcessingAPIToken: String?
 
     init(
         arguments: [String] = ProcessInfo.processInfo.arguments,
@@ -122,6 +131,9 @@ struct LaunchOptions: Equatable {
             photoProcessingFixture = answer
         }
         photoProcessingSyntheticCapture = arguments.contains("-photoProcessingSyntheticCapture")
+        photoProcessingAPI = value(after: "-photoProcessingAPI")
+        photoProcessingAPIToken = value(after: "-photoProcessingAPIToken")
+        precondition(photoProcessingAPI == nil || photoProcessingFixture == nil, "-photoProcessingAPI and -photoProcessingFixture each choose who answers photo processing; pass one")
         photoProcessingFixtureReadOnlyCapture = arguments.contains("-photoProcessingFixtureReadOnlyCapture")
         #endif
         simulateAppStore = arguments.contains("-simulateAppStore")
