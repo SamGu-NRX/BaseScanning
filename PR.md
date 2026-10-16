@@ -42,7 +42,7 @@ N/A — orchestration backend only; no client-visible surface changes.
 - `pytest backend/tests/test_capture_real_downstream.py` — 12 passed (the #292 capture-real-downstream journey, which overrides `stage_callable` per run, is unchanged and its override is what the marker's callable field is designed to record honestly).
 - `pytest backend/tests/test_runtime_join_journey.py` — 6 passed.
 - `ruff check .` — clean; the new test file is `ruff format`-clean.
-- Full `make test` — recorded in a comment below (baseline on `alpha` carries pre-existing SSR-hygiene and eval-gates failures).
+- Full `make test` — 4 failed, 1520 passed, 19 skipped, 14 errors in 10:43: the failure set is the branch base's documented baseline exactly — 4 `server/eval/tests/test_gates.py` (SD-96 gates) failures plus 14 collection errors in `tests/test_capture_cold_restart.py`, every name in files this branch does not touch; zero failures attributable to this change.
 - Coverage limit: the `objects` real path with local weights is refused-by-default and not exercised end-to-end here (no weights on the dev box); the refusal itself is tested.
 
 ## Risk
