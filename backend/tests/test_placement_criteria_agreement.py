@@ -30,7 +30,6 @@ sys.path.insert(0, str(BACKEND / "scripts"))
 
 import placement_criteria_agreement as agreement  # noqa: E402
 
-
 TWO_CASES = (
     ("capture_cases_v1", "hazard-right-ground-gap"),
     ("capture_cases_v1", "multiwall-source-unsupported"),

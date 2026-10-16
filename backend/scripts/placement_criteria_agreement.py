@@ -46,8 +46,9 @@ import subprocess
 import sys
 import tempfile
 import traceback
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 BACKEND = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -82,9 +83,7 @@ def _sha256(data: bytes) -> str:
 
 def _git_head(repo_root: Path) -> str:
     try:
-        out = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=repo_root, capture_output=True, text=True, check=True
-        )
+        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_root, capture_output=True, text=True, check=True)
     except (OSError, subprocess.CalledProcessError):
         return "unknown"
     return out.stdout.strip()
@@ -347,9 +346,7 @@ def _confusion(table: list[dict[str, Any]]) -> dict[str, Any]:
     and is counted separately instead of being mistaken for one.
     """
 
-    matrix = {
-        p: {c: 0 for c in DECISIONS} for p in DECISIONS
-    }
+    matrix = {p: {c: 0 for c in DECISIONS} for p in DECISIONS}
     for record in table:
         for pair in record["agreement"]["pairs"]:
             if pair["placement"] in matrix and pair["criteria"] in matrix[pair["placement"]]:
@@ -358,12 +355,8 @@ def _confusion(table: list[dict[str, Any]]) -> dict[str, Any]:
         "placement_refused_criteria_evaluated": sum(
             1 for r in table if r["agreement"]["verdict"] == "placement_refused"
         ),
-        "criteria_refused_placement_solved": sum(
-            1 for r in table if r["agreement"]["verdict"] == "criteria_refused"
-        ),
-        "neither_engine_evaluated": sum(
-            1 for r in table if r["agreement"]["verdict"] == "neither_engine_evaluated"
-        ),
+        "criteria_refused_placement_solved": sum(1 for r in table if r["agreement"]["verdict"] == "criteria_refused"),
+        "neither_engine_evaluated": sum(1 for r in table if r["agreement"]["verdict"] == "neither_engine_evaluated"),
     }
     agree = sum(1 for r in table if r["agreement"]["verdict"] == "agree")
     disagree = sum(1 for r in table if r["agreement"]["verdict"] == "disagree")
@@ -452,7 +445,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     if has_errors(table):
         for error in output["summary"]["errors"]:
-            print(f"ENGINE ERROR {error['id']} ({error['manifest']}): {error['engine']}: {error['message']}", file=sys.stderr)
+            print(
+                f"ENGINE ERROR {error['id']} ({error['manifest']}): {error['engine']}: {error['message']}",
+                file=sys.stderr,
+            )
         return 1
     return 0
 
