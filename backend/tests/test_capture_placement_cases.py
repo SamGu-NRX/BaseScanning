@@ -973,7 +973,10 @@ def test_run_cases_restores_the_process_environment(tmp_path):
     runner.run_cases(MANIFEST, tmp_path / "run", case_ids=["multiwall-source-unsupported"])
     assert dict(os.environ) == before
 
-@pytest.mark.parametrize("objects_value", [pytest.param(None, id="null-objects"), pytest.param("omit", id="missing-objects")])
+
+@pytest.mark.parametrize(
+    "objects_value", [pytest.param(None, id="null-objects"), pytest.param("omit", id="missing-objects")]
+)
 def test_a_format_correct_objects_3d_without_an_objects_list_refuses(tmp_path, monkeypatch, objects_value):
     """Through the actual capture stage: a format-correct objects_3d artifact whose
     objects list is missing or null is a malformed manifest and must refuse
@@ -997,4 +1000,3 @@ def test_a_format_correct_objects_3d_without_an_objects_list_refuses(tmp_path, m
     assert case["solverDecision"] is None
     assert receipt["summary"]["solved"] == 0
     assert receipt["ok"] is False, "an undeclared positive-case refusal is a blocker"
-

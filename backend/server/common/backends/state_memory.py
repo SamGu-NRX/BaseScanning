@@ -49,6 +49,9 @@ class MemoryState:
         self._spend: dict[str, float] = {}
         self._open_by_owner: dict[str, list[str]] = {}
         self._claim_lock = threading.Lock()
+        # Dedicated lock for stage-record creation (the append_event lesson: never
+        # share one lock across unrelated write paths — lock-ordering deadlock).
+        self._stage_lock = threading.Lock()
 
     def get_capture(self, capture_id: str) -> CaptureRecord | None:
         rec = self._captures.get(capture_id)
@@ -178,6 +181,19 @@ class MemoryState:
 
     def upsert_stage(self, rec: StageRecord) -> None:
         self._stages[(rec.run_id, rec.stage)] = rec.model_copy(deep=True)
+
+    def create_stage_if_absent(self, rec: StageRecord) -> StageRecord:
+        """Atomic insert-if-absent: the deciding read and the insert share one lock,
+        so a record another coordinator created and started inside the race window
+        is returned untouched instead of being reset to pending. Returns the record
+        now stored."""
+        key = (rec.run_id, rec.stage)
+        with self._stage_lock:
+            existing = self._stages.get(key)
+            if existing is not None:
+                return existing.model_copy(deep=True)
+            self._stages[key] = rec.model_copy(deep=True)
+            return rec.model_copy(deep=True)
 
     def get_stage(self, run_id: str, stage: StageName) -> StageRecord | None:
         rec = self._stages.get((run_id, stage))

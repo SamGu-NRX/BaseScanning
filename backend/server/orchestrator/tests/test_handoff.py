@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from server.common.backends.state_memory import MemoryState
 from server.contracts.jobs import RunRecord, StageRecord, StageResult
 from server.orchestrator.coordinator import RunControl, RunCoordinator
 from server.orchestrator.graph import STAGE_NAMES
@@ -347,6 +348,7 @@ def test_sweeper_respawns_the_remote_coordinator(tmp_path, monkeypatch) -> None:
     assert control["coordinator_respawns"] == 1
     assert services.state.stages(run.run_id) == []
 
+
 def test_a_run_without_stage_records_still_progresses(tmp_path) -> None:
     """An older unfinished run can lack stage records entirely: the status map
     treats a missing record as pending, but spawning refused to start a stage
@@ -375,3 +377,41 @@ def test_a_run_without_stage_records_still_progresses(tmp_path) -> None:
             break
     assert status in {"done", "failed"}, f"run must terminate, not hang: {status}"
 
+
+def test_materialize_yields_to_a_record_that_raced_in(tmp_path, monkeypatch) -> None:
+    """Two coordinators can resume the same old run without an exclusive claim
+    (the sweeper, _resume_if_stale, and the worker tick all recover). If another
+    coordinator creates a record and a worker starts it inside the recovery race
+    window, the atomic claim must return that record untouched — never reset a
+    running stage to pending, attempt 1, no worker."""
+    services, _uri, digest = build_services(tmp_path, "memory")
+    deadline = (services.clock.now() + timedelta(hours=1)).isoformat()
+    run = _run(services, digest, deadline=deadline)
+    assert services.state.stages(run.run_id) == []
+
+    real_create = MemoryState.create_stage_if_absent
+
+    def racing_create(self, rec):
+        if rec.stage == "poses" and self.get_stage(rec.run_id, rec.stage) is None:
+            # The other coordinator wins the race: it creates the record and a
+            # worker starts it before our claim lands.
+            self.upsert_stage(
+                StageRecord(
+                    run_id=rec.run_id,
+                    stage="poses",
+                    status="running",
+                    attempt=2,
+                    heartbeat=rec.heartbeat,
+                    worker_call_id="other-coord",
+                )
+            )
+        return real_create(self, rec)
+
+    monkeypatch.setattr(MemoryState, "create_stage_if_absent", racing_create)
+
+    RunCoordinator(services).tick(run.run_id)
+
+    poses = services.state.get_stage(run.run_id, "poses")
+    assert poses is not None
+    assert poses.status == "running", poses
+    assert poses.attempt == 2 and poses.worker_call_id == "other-coord", poses

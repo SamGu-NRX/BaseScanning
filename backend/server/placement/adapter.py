@@ -254,7 +254,7 @@ def _objects_3d_evidence(ctx: StageContext) -> None:
     if not isinstance(objects, list):
         raise PlacementObjectsFormatError(
             f'{_OBJECTS_3D} must carry an explicit "objects" list (an empty list is valid), got '
-            f'{"null" if objects is None else type(objects).__name__!r}'
+            f"{'null' if objects is None else type(objects).__name__!r}"
         )
 
 

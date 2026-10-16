@@ -753,10 +753,13 @@ class RunCoordinator:
         """
         now = self.s.clock.iso()
         for name in STAGE_NAMES:
-            if self.s.state.get_stage(run.run_id, name) is None:
-                self.s.state.upsert_stage(
-                    StageRecord(run_id=run.run_id, stage=name, status="pending", attempt=1, heartbeat=now)
-                )
+            # Atomic insert-if-absent: two coordinators can resume the same old run
+            # (sweeper, _resume_if_stale, worker tick) without an exclusive claim. A
+            # plain check-then-upsert would reset a record the other coordinator
+            # created and a worker started inside the race window.
+            self.s.state.create_stage_if_absent(  # type: ignore[attr-defined]
+                StageRecord(run_id=run.run_id, stage=name, status="pending", attempt=1, heartbeat=now)
+            )
 
     def _snapshot(self, run_id: str) -> str:
         parts = [f"{rec.stage}:{rec.status}:{rec.attempt}:{rec.failures}:{rec.respawns}" for rec in self._rows(run_id)]
