@@ -49,6 +49,7 @@ class Services:
         packet_dir = work / "packet"
         packet_dir.mkdir(exist_ok=True)
         reads = self.reads_for(run.capture_id)
+        packet_uri = getattr(run, "packet_uri", None) or f"captures/{run.capture_id}/packet.json"
         hydrate_packet(
             reads,
             self.state,
@@ -56,6 +57,7 @@ class Services:
             packet_dir,
             include_files=stage_needs_packet_files(rec.stage),
             cache_dir=packet_cache_dir(run.capture_id, run.packet_sha256),
+            packet_key=packet_uri,
         )
         # Artifacts stay on raw storage. Scene merge replaces scene.json in place
         # after objects_3d has already read it, and a cache would keep the pre-merge bytes.

@@ -42,6 +42,16 @@ from server.orchestrator.spend import attempt_usd, gpu_spawn_blocked, vlm_budget
 from server.orchestrator.stateio import get_json, put_json
 
 _FINAL = {"verdict_ready", "retake_request", "failed"}
+_PROFILES = {"A", "B", "C", "S"}
+
+
+def _run_profile(run: RunRecord) -> str:
+    """The run's selected rules profile, or the C default when unset."""
+
+    profile = getattr(run, "profile_default", None)
+    return profile if profile in _PROFILES else "C"
+
+
 # Capture status that matches a composed outcome. Views needed is needs_views.
 _KIND_STATUS = {
     "eligible": "complete",
@@ -261,6 +271,9 @@ class RunCoordinator:
         rec.worker_call_id = call_id
         rec.started_at = self.s.clock.iso()
         rec.heartbeat = self.s.clock.iso()
+        # entered_at belongs to the attempt that set it. A replacement worker
+        # must not inherit the previous attempt's elapsed budget.
+        rec.entered_at = None
         rec.error = None
         rec.error_code = None
         self.s.state.upsert_stage(rec)
@@ -557,7 +570,9 @@ class RunCoordinator:
             self._finish_with_result(run, decision, composed)
             self._verify_final_event(run)
             return
-        verdict = _read_json(self.s, self._overlay_artifacts(run), "verdicts/verdict.C.json")
+        verdict = _read_json(self.s, self._overlay_artifacts(run), f"verdicts/verdict.{_run_profile(run)}.json")
+        if verdict is None and _run_profile(run) != "C":
+            verdict = _read_json(self.s, self._overlay_artifacts(run), "verdicts/verdict.C.json")
         site = (verdict or {}).get("site") or {}
         decision_name = str(site.get("decision") or "manual_review")
         views = list((verdict or {}).get("views_needed") or [])

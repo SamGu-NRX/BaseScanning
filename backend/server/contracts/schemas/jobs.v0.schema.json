@@ -514,6 +514,18 @@
           "title": "Packet Sha256",
           "type": "string"
         },
+        "packet_uri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Packet Uri"
+        },
         "parent_run_id": {
           "anyOf": [
             {
