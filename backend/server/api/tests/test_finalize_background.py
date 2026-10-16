@@ -102,7 +102,7 @@ def test_escaped_failure_publishes_before_releasing_the_worker_slot(client, monk
     original_failure_path = finalize_module._on_background_failure
 
     def probing_failure_path(*args, **kwargs):
-        publication_slot_state.append(capture_id in finalize_module._slots)
+        publication_slot_state.append(finalize_module._slots[capture_id].inflight)
         return original_failure_path(*args, **kwargs)
 
     monkeypatch.setattr(deps.storage, "get_bytes", offline)
@@ -116,12 +116,13 @@ def test_escaped_failure_publishes_before_releasing_the_worker_slot(client, monk
     finally:
         client.hold_finalize = False
 
-    # The failure published while this worker still held the slot: a retry that
-    # starts after the slot frees sees the failure already published (or the
-    # run_started flag of a healed retry) — never both. Storage-offline failures
-    # are retryable, so the merged finalize republishes per exhausted attempt;
-    # the pinned invariant is that every publication happens under the slot.
-    assert publication_slot_state and all(publication_slot_state)
+    # One storage exception publishes one failure, while this worker still holds
+    # the slot: a retry that starts after the slot frees sees the failure already
+    # published (or the run_started flag of a healed retry), never both.
+    assert publication_slot_state == [True]
+    assert finalize_module._slots[capture_id].inflight is False
+    events = client.get(f"/v1/captures/{capture_id}/events").json()["events"]
+    assert len([e for e in events if e["type"] == "failed" and e["data"].get("code") == "finalize_failed"]) == 1
     assert deps.state.get_capture(capture_id).status == "uploading"
 
     # And the healed retry still lands one healthy run.

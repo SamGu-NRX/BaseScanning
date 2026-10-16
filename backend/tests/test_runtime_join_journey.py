@@ -289,17 +289,21 @@ def test_concurrent_event_producers_fully_visible_through_cursor_polling(journey
 
     poller_pages: list[list[dict]] = []
     poller_after: list[int] = []
-    poller_stop = threading.Event()
+    final_cursor = base_count + 60
 
     def poll() -> None:
+        # Poll until the cursor reaches the producers' last event, not until the
+        # producers stop: a poller that stops with them can exit before draining
+        # the tail, and the assertion below would blame the cursor for it.
         start.wait()
         after = 0
-        while not poller_stop.is_set():
+        give_up = time.monotonic() + 10.0
+        while after < final_cursor and time.monotonic() < give_up:
             page = client.get(f"/v1/captures/{capture_id}/events", params={"after": after}).json()
             poller_pages.append(page["events"])
             poller_after.append(after)
             if page["next"] == after:
-                poller_stop.wait(0.02)
+                time.sleep(0.02)
             else:
                 after = page["next"]
 
@@ -312,8 +316,7 @@ def test_concurrent_event_producers_fully_visible_through_cursor_polling(journey
         thread.start()
     for thread in threads[:2]:
         thread.join()
-    poller_stop.set()
-    threads[2].join(timeout=10)
+    threads[2].join(timeout=15)
     assert not threads[2].is_alive()
 
     # Each producer drew a distinct slice of the sequence — never the same seq.
@@ -323,7 +326,7 @@ def test_concurrent_event_producers_fully_visible_through_cursor_polling(journey
     seqs = [event["seq"] for page in poller_pages for event in page]
     assert seqs == sorted(seqs), "a page arrived behind the cursor"
     assert len(seqs) == len(set(seqs)), "the cursor delivered an event twice"
-    expected = list(range(1, base_count + 61))
+    expected = list(range(1, final_cursor + 1))
     assert seqs == expected, "the cursor skipped an event a producer appended"
 
     # The store itself holds the complete, contiguous sequence.
@@ -600,3 +603,31 @@ def test_correction_after_the_result_recomposes_the_served_payload(journey) -> N
     assert [e["data"]["confirmationId"] for e in events_after if e["type"] == "confirmation"] == [
         corrected.json()["confirmationId"]
     ]
+
+
+def test_a_correction_after_the_original_deadline_gets_its_own_budget(journey) -> None:
+    """The run's deadline measured its first pass. A correction accepted after that
+    deadline re-opens the run; without a fresh budget the next tick hard-stops it
+    and the capture falls to manual review with the old result still served."""
+    root, packet, client, app = journey
+    deps = app.state.deps
+    capture_id, raw = _open_front_door(root, packet, client, app, "join-confirm-expired")
+    run_id = _finalize(client, capture_id, raw, "join-confirm-expired")["runId"]
+    drain_finalize(deps)
+    run = deps.state.get_run(run_id)
+    assert run.status == "done"
+    failure_before = run.failure_code
+    # The original 20-minute deadline has passed by the time the correction lands.
+    run.deadline_at = "2000-01-01T00:00:00+00:00"
+    deps.state.put_run(run)
+    status_before = deps.state.get_capture(capture_id).status
+
+    image_id = packet["stills"][0]["id"]
+    corrected = _confirm(client, capture_id, "meter_number", "corrected", "4242", image_id, "2026-10-15T00:02:00Z")
+    assert corrected.status_code == 201, corrected.text
+
+    rerun = deps.state.get_run(run_id)
+    assert rerun.status == "done", (rerun.status, rerun.failure_code)
+    assert rerun.failure_code == failure_before
+    assert deps.state.get_capture(capture_id).status == status_before
+    assert client.get(f"/v1/captures/{capture_id}/result").json()["meter"]["value"] == "4242"
