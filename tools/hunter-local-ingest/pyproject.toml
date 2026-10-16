@@ -16,6 +16,7 @@ hunter-local-ingest = "hunter_local_ingest.runner:main"
 hunter-selfcheck = "hunter_local_ingest.selfcheck:main"
 hunter-verify-run = "hunter_local_ingest.verify:main"
 hunter-gen-plan = "hunter_local_ingest.fixturegen:main"
+hunter-gen-miniarkit = "hunter_local_ingest.gen_miniarkit:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

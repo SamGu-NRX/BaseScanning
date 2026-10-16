@@ -1,0 +1,5 @@
+realapi-miniarkit-20261016T113352Z-d433c04240ec810d	FAIL	GPU_STUB NOT_RUN:3; REAL_API FAIL:1, PASS:13	control.restart-recovery=FAIL, gpu-stub.dense=NOT_RUN, gpu-stub.objects=NOT_RUN, gpu-stub.vlm=NOT_RUN
+realapi-none-20261016T112249Z-58f45a2ef87cc5f9	PASS	FAKE_HUNTER PASS:12; GPU_STUB NOT_RUN:3; REAL_API NOT_RUN:1, PASS:13	control.restart-recovery=NOT_RUN, gpu-stub.dense=NOT_RUN, gpu-stub.objects=NOT_RUN, gpu-stub.vlm=NOT_RUN
+realapi-restart-20261016T112302Z-5e804874d9703640	FAIL	FAKE_HUNTER PASS:12; GPU_STUB NOT_RUN:3; REAL_API FAIL:1, PASS:13	control.restart-recovery=FAIL, gpu-stub.dense=NOT_RUN, gpu-stub.objects=NOT_RUN, gpu-stub.vlm=NOT_RUN
+realapi-static-20261016T112316Z-8ca841e02f7fb6f7	PASS	GPU_STUB NOT_RUN:3; REAL_API NOT_RUN:1, PASS:13	control.restart-recovery=NOT_RUN, gpu-stub.dense=NOT_RUN, gpu-stub.objects=NOT_RUN, gpu-stub.vlm=NOT_RUN
+selfcheck-20261016T111923Z-eebbb6f25a6cea14	PASS	FAKE_HUNTER PASS:26; GPU_STUB NOT_RUN:3	gpu-stub.dense=NOT_RUN, gpu-stub.objects=NOT_RUN, gpu-stub.vlm=NOT_RUN
