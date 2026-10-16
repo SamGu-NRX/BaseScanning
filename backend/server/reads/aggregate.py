@@ -302,6 +302,10 @@ def build_reads(
             path, sha = _still_bytes(still, files)
             if not path or not sha:
                 continue
+            # Packet paths are relative (`stills/s1.jpg`); promotion stored the bytes
+            # under `captures/{capture_id}/` (the server.api.keys.final_key layout),
+            # and uploads/ expires. Not imported: server.api pulls in the FastAPI app.
+            path = f"captures/{capture_id}/{path}"
             read_still(
                 StillRef(
                     capture_id=capture_id,

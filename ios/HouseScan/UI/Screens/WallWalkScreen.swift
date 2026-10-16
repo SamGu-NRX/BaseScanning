@@ -18,13 +18,15 @@ struct WallWalkScreen: View {
     @State private var taps: [TapRipple.Ripple] = []
     /// The aim ring's legend while it shows, drawn under the card (#81).
     @State private var cardLegend: String? = nil
+    /// What the overlay draws for the aim step's target (`WayfindingOverlay.onAimMarker`).
+    @State private var aimMarker: AimMarker? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         ZStack {
             CameraSizeReader(size: $cameraSize)
-            CameraOverlays(state: state, highlight: nil, cardLegend: $cardLegend, cameraWindow: cameraWindow)
+            CameraOverlays(state: state, highlight: nil, cardLegend: $cardLegend, cameraWindow: cameraWindow, aimMarker: $aimMarker)
             if showsMeterPhoto, let meterPhoto {
                 // "Point at the meter like this.": the saved close-up shows what to aim at.
                 SavedMeterPhoto(image: meterPhoto)
@@ -117,7 +119,38 @@ struct WallWalkScreen: View {
             let folded = Instruction.Folded(title: ScanCopy.wallTooShortLead, detail: "\(ScanCopy.wallTooShort) \(step)")
             return ScanCopy.withCoaching(Instruction(title: ScanCopy.wallTooShort, detail: step, folded: folded), coaching)
         }
-        return ScanCopy.withCoaching(ScanCopy.guidance(state.guidance, hint: state.guidanceHint), coaching)
+        var copy = ScanCopy.withCoaching(ScanCopy.guidance(state.guidance, hint: shownHint), coaching)
+        if aimMarker == .covered, detailsCoverCamera {
+            copy.note = [copy.note, ScanCopy.cameraBelowDetails].compactMap { $0 }.joined(separator: " ")
+        }
+        return copy
+    }
+
+    private var detailsCoverCamera: Bool {
+        guard cameraWindow.detailsShown, cameraSize.height > 0,
+              let band = WayfindingOverlay.verticalBand(cameraWindow.frame, origin: .zero, height: cameraSize.height) else { return false }
+        return band.bottom - band.top < WayfindingOverlay.arrowDiameter
+    }
+
+    /// The card follows every marker the overlay draws. For a target behind the camera the
+    /// overlay reports the horizontal turn direction, which the card follows too. Without a
+    /// marker for the current aim, keep the step's title and other advice: an engine hint of
+    /// above otherwise leaves "Tilt up a little" even when Details hides the arrow (#241).
+    private var shownHint: GuidanceHint? {
+        guard var hint = state.guidanceHint else { return nil }
+        guard let aimMarker else {
+            hint.aim = nil
+            return hint
+        }
+        switch aimMarker {
+        case .covered:
+            hint.aim = nil
+        case .ring:
+            hint.aim = .onScreen
+        case .arrow(let direction):
+            hint.aim = direction
+        }
+        return hint
     }
 
     /// "Slow down", "Turn more slowly" and "Hold steady" are for walking and aiming. With the tray

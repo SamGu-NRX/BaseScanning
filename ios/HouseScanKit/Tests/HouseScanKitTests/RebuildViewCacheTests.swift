@@ -246,9 +246,9 @@ import Testing
         #expect(after.reused > before.reused)
         // An end changes the basis: every view is worked out again.
         twin.step("right end") { $0.setEnd(.right, at: 3) }
-        twin.setSurface("far wall")
         #expect(twin.cached.rebuildViewCounts.computed == after.computed + 2 * frames)
         #expect(twin.cached.rebuildViewCounts.reused == after.reused)
+        twin.setSurface("far wall")
     }
 
     /// Seeded runs of every change the map takes, in random order.

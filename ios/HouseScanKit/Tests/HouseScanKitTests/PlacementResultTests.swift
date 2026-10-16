@@ -71,6 +71,22 @@ import simd
             try Self.sample(replacing: #""key": "sample_window_clearance_ft""#, with: #""key": "sample_window_clearance_ft", "bogus": 1"#))
     }
 
+    /// Review of #53: a mark the server set aside past an unexplored end is decoded, so the
+    /// result can say it wasn't counted. Absent, the list is empty, as in the sample.
+    @Test func decodesObjectsNotUsed() throws {
+        #expect(try PlacementResult.decode(Self.sampleData()).objectsNotUsed.isEmpty)
+        let message = "The window marked 12 ft left of the meter is past the left end of the scan, where the wall may turn, so it was not used."
+        let data = try Self.sample(
+            replacing: #""schema_version": "1.0","#,
+            with: #""schema_version": "1.0", "objects_not_used": [{"object": "objects[0] window", "side": "left", "message": "\#(message)"}],"#)
+        #expect(try SceneSchemas.result().validate(data) == [])
+        let result = try PlacementResult.decode(data)
+        #expect(result.objectsNotUsed == [PlacementObjectNotUsed(object: "objects[0] window", side: "left", message: message)])
+        let encoded = try JSONEncoder().encode(result)
+        #expect(try SceneSchemas.result().validate(encoded) == [])
+        #expect(try PlacementResult.decode(encoded) == result)
+    }
+
     /// A real answer from the hosted server (deployed from origin/t3/server at 737bf75) to the
     /// synthetic replay's scene, carrying fields newer than the first published schema.
     @Test func decodesARealServerAnswer() throws {

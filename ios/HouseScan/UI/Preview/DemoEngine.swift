@@ -1,5 +1,6 @@
 import HouseScanKit
 import SwiftUI
+import simd
 
 /// A fake engine for the UI demo: implements `ScanActions` by scripting `ScanViewState` over
 /// the made-up wall in `DemoScene`. It mimics the real engine's phases and timing closely enough
@@ -198,6 +199,25 @@ final class DemoEngine: ScanActions {
         }
         if (arguments.contains("-uiDemoAim") || arguments.contains("-uiDemoAimOffScreen")), state.phase == .wallWalk {
             enterAim(offScreen: arguments.contains("-uiDemoAimOffScreen"))
+            // The engine's direction to the target, which can disagree with what the overlay
+            // draws near the card or an edge (review of #120): the card must follow the drawing.
+            if let hint = value("-uiDemoAimHint").flatMap(Self.aimDirection) { state.guidanceHint = GuidanceHint(aim: hint) }
+            // Leave the aim step and its engine hint in place while removing the target, so UI
+            // tests can verify that a missing marker does not leave a stale direction on the card.
+            if arguments.contains("-uiDemoAimNoMarker") { state.target = nil }
+            // A UI test changes the camera direction or advances the target after reading the
+            // card. A timer from launch raced that baseline on a slow simulator (#241).
+            if let later = value("-uiDemoAimHintLater").flatMap(Self.aimDirection) {
+                laterAimHint = later
+            }
+            laterAimTarget = value("-uiDemoAimTargetLater").flatMap(Float.init)
+            if laterAimHint != nil || laterAimTarget != nil {
+                Self.listeningForAimHint = self
+                CFNotificationCenterAddObserver(
+                    CFNotificationCenterGetDarwinNotifyCenter(), nil,
+                    { _, _, _, _, _ in Task { @MainActor in DemoEngine.listeningForAimHint?.applyLaterAimHint() } },
+                    Self.aimHintNotification as CFString, nil, .deliverImmediately)
+            }
         }
         if arguments.contains("-uiDemoCorner") {
             // The walk followed an outside corner right of the meter, between the battery spot and
@@ -236,6 +256,19 @@ final class DemoEngine: ScanActions {
         if arguments.contains("-uiDemoFollowUp") {
             enterFollowUp(at: state.phase)
         }
+        // A mark past a marked end: flagged on the review, and on the result set aside by the
+        // server (`objects_not_used`), as for run 2's window (#42, review of #53).
+        if arguments.contains("-uiDemoMarkPastEnd") {
+            let span: ClosedRange<Float> = -4.1 ... -3.3
+            let window = MarkedFeature(
+                id: UUID(), kind: .window, span: span, bottom: DemoScene.windowHeights.lowerBound,
+                top: DemoScene.windowHeights.upperBound, out: nil,
+                points: [DemoScene.wall.world(s: span.lowerBound, height: DemoScene.windowHeights.lowerBound),
+                         DemoScene.wall.world(s: span.upperBound, height: DemoScene.windowHeights.upperBound)], opens: false)
+            state.features.append(window)
+            state.featuresPastEnds = [window.id]
+            state.result?.marksNotUsed = [Self.markNotUsedSample]
+        }
         if arguments.contains("-uiDemoNoFeed") {
             state.feed = .none
         }
@@ -247,6 +280,13 @@ final class DemoEngine: ScanActions {
             state.closeUp = .captured(DemoScene.meterThumbnail)
             state.meterBrand = Self.demoBrand
             state.meterNumber = .choose(Self.demoCandidates)
+        }
+        if arguments.contains("-uiDemoSpotLow"), state.phase == .resultAR {
+            state.projection = DemoScene.lowSpotProjection
+        }
+        if arguments.contains("-uiDemoSpotOffScreen"), state.phase == .resultAR, var projection = state.projection {
+            projection.cameraToWorld.columns.3.x -= 10
+            state.projection = projection
         }
         // Frozen, the upload script never runs, so show where it would end.
         if freeze, state.phase == .uploading {
@@ -338,6 +378,7 @@ final class DemoEngine: ScanActions {
         state.guidance = .holdOnMeter
         state.closeUp = .aiming(hold: 0, problem: nil)
         state.meterNumber = nil
+        state.meterBrand = nil
         run { engine in await engine.closeUpScript() }
     }
 
@@ -375,6 +416,51 @@ final class DemoEngine: ScanActions {
         state.phase = .wallWalk
         refreshGuidance()
         run { engine in await engine.walkScript() }
+    }
+
+    /// The Darwin notification a UI test posts for `-uiDemoAimHintLater`. ScreenStatesUITests
+    /// sends the same name.
+    static let aimHintNotification = "dev.housescanning.uiDemo.aimHintLater"
+    /// The demo waiting for `aimHintNotification`; the notification's C callback can't capture.
+    private static weak var listeningForAimHint: DemoEngine?
+    /// The direction `-uiDemoAimHintLater` makes the same target's drawn marker take.
+    private var laterAimHint: AimDirection?
+    private var laterAimTarget: Float?
+
+    private func applyLaterAimHint() {
+        if let s = laterAimTarget {
+            state.guidance = .aimAtGround(s: s)
+            state.target = DemoScene.wall.world(s: s, height: 0, out: state.coverage.groundBandDepth / 2)
+            state.path = DemoScene.path(toward: s)
+        }
+        if let laterAimHint, let target = state.target, var projection = state.projection {
+            // Move the camera while retaining the planner's target. The card now follows the
+            // drawn marker, so changing only the engine's hint would not exercise a title swap.
+            let local: SIMD4<Float> = switch laterAimHint {
+            case .left: SIMD4(0, -5, -3, 0)
+            case .right: SIMD4(0, 5, -3, 0)
+            // Above the tall card's open lane, but still within the full camera image.
+            case .above: SIMD4(-1, 0, -3, 0)
+            case .below: SIMD4(5, 0, -3, 0)
+            case .onScreen: SIMD4(0, 0, -3, 0)
+            case .behind: SIMD4(0, 1, 3, 0)
+            }
+            let offset = projection.cameraToWorld * local
+            projection.cameraToWorld.columns.3 = SIMD4(target, 1) - offset
+            state.projection = projection
+            // Retain the engine hint so the test can expose disagreement with the marker.
+        }
+    }
+
+    static func aimDirection(_ raw: String) -> AimDirection? {
+        switch raw {
+        case "onScreen": .onScreen
+        case "above": .above
+        case "below": .below
+        case "left": .left
+        case "right": .right
+        default: nil
+        }
     }
 
     /// `-uiDemoAim`: the ground lags the wall right of the meter, so the walk asks to tilt down
@@ -876,6 +962,7 @@ final class DemoEngine: ScanActions {
     func skipCloseUp() {
         state.closeUp = .skipped
         state.meterNumber = .skipped
+        state.meterBrand = nil
         enterWalk()
     }
 
@@ -889,6 +976,7 @@ final class DemoEngine: ScanActions {
         guard let candidate else {
             // "None of these": another photo, with the advice the reader gives for small text.
             state.meterNumber = nil
+            state.meterBrand = nil
             state.closeUpFailedAttempts += 1
             state.closeUp = .aiming(hold: 0, problem: .numberTooSmall)
             run { engine in await engine.closeUpScript() }
@@ -1195,6 +1283,7 @@ final class DemoEngine: ScanActions {
         state.lastCapture = nil
         state.closeUpFailedAttempts = 0
         state.meterNumber = nil
+        state.meterBrand = nil
         state.upload = .idle
         state.shareableScan = nil
         state.marking = nil
@@ -1299,6 +1388,9 @@ final class DemoEngine: ScanActions {
                                  points: [wall.world(s: -2.0, height: 0, out: 3.0), wall.world(s: 2.0, height: 0, out: 3.0)], opens: nil)
         }
     }
+
+    /// The server's sentence for a mark it set aside (solver.py `objects_not_used`).
+    static let markNotUsedSample = "The window marked 12 ft left of the meter is past the left end of the scan, where the wall may turn, so it was not used."
 
     /// The offline sample result. Placeholder rules, so the decision is manual review.
     static let reviewSample = ResultPresentation(

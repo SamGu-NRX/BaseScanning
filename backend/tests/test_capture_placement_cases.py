@@ -27,12 +27,19 @@ These tests pin the three claims that make the runner worth trusting:
    `/generated_regions` rather than its declared `/objects/1/evidence`. The
    suite reports these as blockers and exits nonzero: a producer-contract
    mismatch, recorded here as evidence rather than papered over.
+4. Gate completeness: the replay-idempotency and cross-capture checks reach the
+   exit code (the CLI is the only automation-facing gate on a branch with no
+   backend CI), the cross-capture distinctness check compares geometry rather
+   than identity stamps, and the dev-env flags do not leak into the process.
 """
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
+import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -202,3 +209,89 @@ def test_cli_runs_from_a_temporary_directory_and_exits_nonzero_while_blocked(tmp
     assert runner.TOKEN not in output.read_text()
     blockers = "\n".join(receipt["blockers"])
     assert "standoff_m" in blockers and "/objects/1/evidence" in blockers
+
+
+def test_a_failed_finalize_replay_fails_the_cli(tmp_path, monkeypatch):
+    """A finalize-replay regression must reach the exit code, not only the
+    receipt: with no backend CI on this branch, the CLI exit code is the only
+    automation-facing gate, and a silent pass would hide a broken replay."""
+
+    def failing_replay(harness, journey):
+        return {
+            "caseId": journey["caseId"],
+            "replayHttpStatus": 202,
+            "sameRunId": True,
+            "terminalEventCountAfter": 2,
+            "ok": False,
+        }
+
+    monkeypatch.setattr(runner, "_replay_finalize", failing_replay)
+    output = tmp_path / "receipt.json"
+    exit_code = runner.main(
+        [
+            "--output",
+            str(output),
+            "--workdir",
+            str(tmp_path / "run"),
+            "--cases",
+            "multiwall-source-unsupported",
+        ]
+    )
+    receipt = json.loads(output.read_text())
+    assert receipt["finalizeReplay"]["ok"] is False
+    assert "finalize replay" in "\n".join(receipt["blockers"])
+    assert exit_code == 1
+
+
+def test_cross_capture_distinctness_compares_geometry_not_identity(tmp_path):
+    """Two captures of identical geometry differ only in their identity stamps —
+    the scene_id embeds the case, packet, capture and run, so verbatim scene bytes
+    can never collide. Identical geometry is exactly the collision the distinctness
+    check exists to catch, so the comparison must strip the identity first."""
+    cases_dir = tmp_path / "cases"
+    cases_dir.mkdir()
+    source_name = "multiwall-source-unsupported.source.json"
+    source = MANIFEST.parent / source_name
+    shutil.copy(source, cases_dir / source_name)
+    fixture = {"path": source_name, "sha256": hashlib.sha256(source.read_bytes()).hexdigest()}
+    expected_error = {"code": "placement_scene_unsupported", "pointer": "/walls"}
+    document = {
+        "schema_version": "placement-case-manifest/v0",
+        "cases": [
+            {
+                "id": "geometry-twin-a",
+                "kind": "negative_source",
+                "source": dict(fixture),
+                "wire": None,
+                "expected_error": dict(expected_error),
+            },
+            {
+                "id": "geometry-twin-b",
+                "kind": "negative_source",
+                "source": dict(fixture),
+                "wire": None,
+                "expected_error": dict(expected_error),
+            },
+        ],
+    }
+    manifest_path = cases_dir / "manifest.json"
+    manifest_path.write_text(json.dumps(document))
+    receipt = runner.run_cases(manifest_path, tmp_path / "run")
+    twin_a, twin_b = receipt["cases"]
+    assert twin_a["mergedSceneSha256"] != twin_b["mergedSceneSha256"], (
+        "identity stamps differ across captures by construction"
+    )
+    assert twin_a["mergedGeometrySha256"] == twin_b["mergedGeometrySha256"], (
+        "same source scene and same objects_3d list: the geometry is identical"
+    )
+    assert receipt["crossCapture"]["distinctScenes"] is False
+    assert "cross-capture" in "\n".join(receipt["blockers"])
+    assert receipt["ok"] is False
+
+
+def test_run_cases_restores_the_process_environment(tmp_path):
+    """The dev flags must not leak into the rest of the pytest process: any later
+    test asserting env-derived defaults would become order-dependent."""
+    before = dict(os.environ)
+    runner.run_cases(MANIFEST, tmp_path / "run", case_ids=["multiwall-source-unsupported"])
+    assert dict(os.environ) == before

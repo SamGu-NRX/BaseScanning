@@ -16,6 +16,9 @@ struct HouseScanApp: App {
         if let index = arguments.firstIndex(of: "-engineGuidanceCheck"), index + 1 < arguments.count {
             return ScanEngine.checkGuidanceEngine(arguments[index + 1])
         }
+        if arguments.contains("-enginePastEndReplayCheck") {
+            return ScanEngine.checkPastEndReplay()
+        }
         #endif
         return nil
     }()

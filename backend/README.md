@@ -41,6 +41,15 @@ Every path gets the same inputs and the same scorer, so results are comparable. 
 
 `packet/`, `eval/`, `criteria/spec/`, `data/scripts/`, `data/manifest.json` and the files in `docs/` are snapshots of the team's working store; see `CONTRIBUTING.md` before editing them.
 
+## Offline evaluation
+
+Two commands cover the committed fixtures; both write reports under `runs/`.
+
+- `make gates-offline` — rescores the committed evidence and checks it against the bars in `server/eval/gates.yaml`. It reads committed files, so it runs anywhere; it cannot catch a change in the engine itself.
+- `make evals` — runs the real criteria engine on the three ETH3D ground-truth scenes (profiles A/B/C/S/public, `footprint3in` ground rule, C3 off — the same posture `make criteria-golden` documents), scores the verdicts it produces against the committed labels under gates.yaml's bars, geomscores the committed recon scenes against the ground truth, and compares every number to the committed reference scores. Reports: `runs/suite/latest/suite.json` and `SUMMARY.md`.
+
+`make evals` needs two kinds of gitignored assets. The ground-truth laser PLYs come from `make gt` (built into `.fixtures/gt/`); the recon `points.ply` under `data/fixtures/scenes/*/colmap-*` are Modal-pipeline outputs (`uv run modal run scripts/modal_scene.py`) — restore or produce them before the geometry rows can score. Either way, a stage that cannot run FAILS with a hint, never a silent skip. Every pass/fail bar the suite applies comes from `gates.yaml`; geometry passes by equaling the committed reference scores at their published precision, never by a new threshold.
+
 ## Setup
 
 Needs [uv](https://docs.astral.sh/uv/).

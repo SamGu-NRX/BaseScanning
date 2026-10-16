@@ -6,7 +6,9 @@ import SwiftUI
 ///
 /// "Looks complete" is a soft gate (#65): with a question still unanswered, the first tap
 /// scrolls to the first one and outlines it, and the next tap sends anyway. The ground question
-/// and every window's question count; "Not sure" is an answer to both.
+/// and every window's question count; "Not sure" is an answer to both. Once every question has
+/// an answer the gate re-arms, so a window added afterwards gets its own first-tap warning
+/// (review of #131).
 ///
 /// A panel over the dimmed camera rather than a new page: the homeowner is still standing at
 /// the wall, and the list refers to things they can see.
@@ -20,8 +22,10 @@ struct MarkFeaturesScreen: View {
     let actions: any ScanActions
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// The unanswered question the first "Looks complete" pointed to; set, the next tap sends.
-    @State private var nudged: ReviewQuestion? = nil
+    /// The first "Looks complete" found a question unanswered and pointed to it; while set, the
+    /// outline follows whichever question is now first without an answer, and the next tap
+    /// sends. Cleared once every question has an answer.
+    @State private var warned = false
 
     var body: some View {
         ZStack {
@@ -34,6 +38,11 @@ struct MarkFeaturesScreen: View {
             }
         }
         .animation(reduceMotion ? .easeOut(duration: 0.15) : Motion.screen, value: state.marking == nil)
+        // Re-arm here rather than in the review panel: the panel is swapped out while a mark
+        // from "Add something" is open, and that mark can be the window that needs the warning.
+        .onChange(of: firstUnanswered == nil) { _, allAnswered in
+            if allAnswered { warned = false }
+        }
     }
 
     private var review: some View {
@@ -59,11 +68,10 @@ struct MarkFeaturesScreen: View {
         return state.features.first(where: \.awaitsOpensAnswer).map { .window($0.id) }
     }
 
-    private func isUnanswered(_ question: ReviewQuestion) -> Bool {
-        switch question {
-        case .ground: state.groundAnswer == nil
-        case .window(let id): state.features.first { $0.id == id }?.awaitsOpensAnswer ?? false
-        }
+    /// Outlined: the question "Looks complete" is waiting on. It moves to the next one when
+    /// this one is answered, so a second unanswered window is not left for the homeowner to find.
+    private func isOutlined(_ question: ReviewQuestion) -> Bool {
+        warned && firstUnanswered == question
     }
 
     private var panel: some View {
@@ -73,7 +81,7 @@ struct MarkFeaturesScreen: View {
                     VStack(alignment: .leading, spacing: 20) {
                         // First, so it is seen before "Looks complete"; skipping it counts as not sure.
                         GroundQuestion(answer: state.groundAnswer, actions: actions,
-                                       highlighted: nudged == .ground && isUnanswered(.ground))
+                                       highlighted: isOutlined(.ground))
                             .id(ReviewQuestion.ground)
                         heading
                         featureList
@@ -83,7 +91,7 @@ struct MarkFeaturesScreen: View {
                 }
                 .scrollBounceBehavior(.basedOnSize)
 
-                if nudged != nil, firstUnanswered != nil {
+                if warned, firstUnanswered != nil {
                     Text(ScanCopy.reviewUnanswered)
                         .font(.subheadline)
                         .foregroundStyle(.primary)
@@ -106,7 +114,7 @@ struct MarkFeaturesScreen: View {
                 .padding(.top, 8)
                 .padding(.bottom, 12)
             }
-            .animation(Motion.text, value: nudged)
+            .animation(Motion.text, value: warned)
         }
         .background {
             UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous)
@@ -116,15 +124,15 @@ struct MarkFeaturesScreen: View {
         .environment(\.colorScheme, .light)
     }
 
-    /// Sends, unless a question is unanswered and none has been pointed to yet: then scrolls to
-    /// the first and outlines it, once. The phone having lost its place changes nothing here, so
-    /// the second tap still sends the scan.
+    /// Sends, unless a question is unanswered and the homeowner hasn't been warned since the last
+    /// time every question had an answer: then scrolls to the first and outlines it. The phone
+    /// having lost its place changes nothing here, so the second tap still sends the scan.
     private func confirm(_ proxy: ScrollViewProxy) {
-        guard nudged == nil, let question = firstUnanswered else {
+        guard !warned, let question = firstUnanswered else {
             actions.confirmFeatures()
             return
         }
-        nudged = question
+        warned = true
         withAnimation(reduceMotion ? nil : Motion.settle) {
             proxy.scrollTo(question, anchor: .top)
         }
@@ -156,7 +164,7 @@ struct MarkFeaturesScreen: View {
             VStack(spacing: 10) {
                 ForEach(state.features) { feature in
                     FeatureRow(feature: feature, pastEnd: state.featuresPastEnds.contains(feature.id),
-                               highlighted: nudged == .window(feature.id) && feature.awaitsOpensAnswer, actions: actions)
+                               highlighted: isOutlined(.window(feature.id)), actions: actions)
                         .id(ReviewQuestion.window(feature.id))
                         .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
                 }
@@ -167,7 +175,7 @@ struct MarkFeaturesScreen: View {
     }
 
     /// A mark is a tap into the scene, so while the phone has lost its place the chips give way
-    /// to a line that says so; "Looks complete" still sends the scan.
+    /// to a line that says so; "Looks complete" still finishes the review.
     private var addSomething: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Add something")
@@ -175,7 +183,7 @@ struct MarkFeaturesScreen: View {
                 .accessibilityAddTraits(.isHeader)
             if state.tracking.hasLostItsPlace {
                 Label {
-                    Text("Your phone lost its place. Point it back at the wall to add more, or tap Looks complete to send the scan.")
+                    Text(ScanCopy.reviewLostPlace)
                 } icon: {
                     Image(systemName: "location.slash.fill")
                         .foregroundStyle(Palette.muted)
@@ -247,6 +255,7 @@ private struct FeatureRow: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
+                .accessibilityIdentifier(pastEnd ? "review.featurePastEnd" : "review.feature")
                 Button(role: .destructive) {
                     actions.deleteFeature(feature.id)
                 } label: {

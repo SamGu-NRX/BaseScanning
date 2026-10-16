@@ -157,3 +157,82 @@ def test_cli_replays_a_saved_receipt_and_exits_zero(replay, saved_receipt, tmp_p
     stored = json.loads((tmp_path / "cli" / "replay-receipt.json").read_text())
     assert stored["ok"] is True
     assert stored["finalCaptureStatus"] in replay.TERMINAL_STATUSES
+
+
+def test_replay_rejects_a_pre_replay_receipt_missing_the_replay_block(replay, saved_receipt, tmp_path) -> None:
+    """A receipt written before the replay block exists must fail loudly.
+
+    The runner's replay block (files, idempotencyKeys, packetSha256) is what
+    makes the receipt replayable; a pre-PR receipt has none of it and must be
+    rejected with a named error, not replayed with guessed hashes — and the
+    CLI must exit non-zero instead of reporting a green run.
+    """
+    receipt = json.loads(saved_receipt.read_text())
+    for key in ("files", "idempotencyKeys", "packetSha256"):
+        receipt.pop(key, None)
+    stripped = tmp_path / "stripped" / "receipt.json"
+    stripped.parent.mkdir(parents=True)
+    stripped.write_text(json.dumps(receipt))
+
+    report = replay.run_replay(stripped, tmp_path / "replay")
+
+    assert report["ok"] is False, report
+    assert any(code.startswith("missing_replay_block") for code in report["errorCodes"]), report["errorCodes"]
+    assert report["captureId"] is None
+
+    env = {**os.environ, "PYTHONPATH": str(ROOT)}
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "replay_capture.py"),
+            "--receipt",
+            str(stripped),
+            "--workdir",
+            str(tmp_path / "cli"),
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert completed.returncode == 1, completed.stdout + completed.stderr
+    stored = json.loads((tmp_path / "cli" / "replay-receipt.json").read_text())
+    assert stored["ok"] is False
+
+
+def test_a_crash_mid_replay_reports_ok_false(replay, saved_receipt, tmp_path) -> None:
+    """No exception path may leave the report green: a crash is a failure.
+
+    The receipt's files block is malformed (an entry without path/sha256), so
+    the replay dies before the first error code would be appended. The report
+    must still come back ok=False with an exception error code — and the CLI
+    must exit 1.
+    """
+    receipt = json.loads(saved_receipt.read_text())
+    receipt["files"] = [{"path": "x.bin", "sha256": "0" * 64}, {"broken": True}]
+    broken = tmp_path / "broken" / "receipt.json"
+    broken.parent.mkdir(parents=True)
+    broken.write_text(json.dumps(receipt))
+
+    report = replay.run_replay(broken, tmp_path / "replay")
+
+    assert report["ok"] is False, report
+    assert any(code.startswith("exception:") for code in report["errorCodes"]), report["errorCodes"]
+    assert report["captureId"] is None
+
+
+def test_fixture_check_flags_receipt_files_outside_the_manifest(replay) -> None:
+    """A receipt claiming files the packet fixture never had is drift.
+
+    The old comparison only looked at paths present in both sets, so an empty
+    or disjoint receipt files list passed vacuously. Every receipt path must
+    exist in the committed manifest.
+    """
+    errors: list[str] = []
+
+    fixture = replay.check_fixture(
+        replay.DEFAULT_PACKET, {"files": [{"path": "not/in/this-packet.bin", "sha256": "0" * 64}]}, errors
+    )
+
+    assert fixture is not None and fixture["drift"], fixture
+    assert errors and errors[0].startswith("fixture_drift:"), errors
+    assert "not/in/this-packet.bin:not-in-manifest" in fixture["drift"]
