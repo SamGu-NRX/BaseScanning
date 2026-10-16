@@ -224,12 +224,30 @@ def downgrade_c1_passes_without_c2(runs: list[dict]) -> None:
         run["causes"] = causes
 
 
-def c2_sweep_document(by_profile: dict[str, dict], default_profile: str) -> dict:
-    """Top-level counts are the default profile, not whichever profile ran last."""
+def c2_default_document(by_profile: dict[str, dict], default_profile: str) -> dict:
+    """The report's whole C2 document: the default profile's comparison, nobody else's.
+
+    A default profile with no C2 entry keeps the named ``off`` status with no
+    fabricated agreement; other profiles' evidence stays in ``by_profile``.
+    """
     chosen = by_profile.get(default_profile)
-    if chosen is None and by_profile:
-        chosen = next(iter(by_profile.values()))
-    chosen = chosen or {"status": "off", "n_pass": 0, "n_spots": 0}
+    if chosen is None:
+        return {"status": "off", "agreement_with_c1": None, "positions_compared": 0, "vetoes": 0}
+    return {
+        "status": chosen["status"],
+        "agreement_with_c1": chosen["agreement_with_c1"],
+        "positions_compared": chosen["positions_compared"],
+        "vetoes": chosen["vetoes"],
+    }
+
+
+def c2_sweep_document(by_profile: dict[str, dict], default_profile: str) -> dict:
+    """Top-level counts are the default profile, not whichever profile ran last.
+
+    A default profile with no C2 entry reports the off counts; another profile's
+    numbers are never substituted (its evidence stays in ``by_profile``).
+    """
+    chosen = by_profile.get(default_profile) or {"status": "off", "n_pass": 0, "n_spots": 0}
     return {
         "status": chosen["status"],
         "n_pass": chosen["n_pass"],
@@ -317,7 +335,6 @@ def evaluate_scene(
     spend = HouseSpend(float(getattr(cfg, "c3_budget_usd", 0.60)))
     judge_by_profile: list[dict] = []
     judge_hits: list[str | None] = []
-    c2_report = {"status": "off", "agreement_with_c1": None, "positions_compared": 0, "vetoes": 0}
     c2_by_profile: dict[str, dict] = {}
     verdicts = {}
     t_all = time.time()
@@ -375,31 +392,23 @@ def evaluate_scene(
             except Exception:
                 log.exception("c2 failed")
                 c2_spots, status = [], "skipped"
+            # Comparison evidence is recorded per profile. The top-level report is
+            # selected from the default profile after the loop, never overwritten here.
+            agreement: float | None = None
+            compared = 0
+            vetoes = 0
             if status == "no_coverage_grid":
                 degraded.append("no_coverage_grid")
                 downgrade_c1_passes_without_c2(runs)
-                c2_report = {
-                    "status": "no_coverage_grid",
-                    "agreement_with_c1": None,
-                    "positions_compared": 0,
-                    "vetoes": 0,
-                }
             elif status == "no_observed_ground":
                 degraded.append("no_observed_ground")
                 for run in runs:
                     run["outcome"] = "unsure"
-                c2_report = {
-                    "status": "no_observed_ground",
-                    "agreement_with_c1": None,
-                    "positions_compared": 0,
-                    "vetoes": 0,
-                }
             elif status == "skipped":
                 for run in runs:
                     if run["outcome"] == "pass":
                         run["outcome"] = "unsure"
                         run["unsure"] = sorted(set(run["unsure"]) | {"c2_unavailable"})
-                c2_report = {"status": "skipped", "agreement_with_c1": None, "positions_compared": 0, "vetoes": 0}
             else:
                 stamped = c2_join(
                     runs,
@@ -407,23 +416,17 @@ def evaluate_scene(
                     sm,
                     width_ft=profile["battery"]["width_ft"],
                 )
-                c2_report = {
-                    "status": "ok",
-                    "agreement_with_c1": stamped["agreement_with_c1"],
-                    "positions_compared": stamped["positions_compared"],
-                    "vetoes": stamped["vetoes"],
-                }
-                c2_by_profile[name] = {
-                    "status": "ok",
-                    "n_pass": sum(1 for s in c2_spots if s.get("outcome") == "pass"),
-                    "n_spots": len(c2_spots),
-                }
-            if name not in c2_by_profile:
-                c2_by_profile[name] = {
-                    "status": c2_report["status"],
-                    "n_pass": 0,
-                    "n_spots": len(c2_spots),
-                }
+                agreement = stamped["agreement_with_c1"]
+                compared = stamped["positions_compared"]
+                vetoes = stamped["vetoes"]
+            c2_by_profile[name] = {
+                "status": status,
+                "agreement_with_c1": agreement,
+                "positions_compared": compared,
+                "vetoes": vetoes,
+                "n_pass": sum(1 for s in c2_spots if s.get("outcome") == "pass") if status == "ok" else 0,
+                "n_spots": len(c2_spots),
+            }
         _apply_scale(runs, scale, degraded)
         chosen = choose(runs)
         view_items = list((read_doc or {}).get("views_needed") or [])
@@ -525,8 +528,10 @@ def evaluate_scene(
         verdicts[name] = verdict
         timings[name] = round(time.time() - t0, 3)
     sweep = c2_sweep_document(c2_by_profile, cfg.default_profile)
-    if cfg.default_profile in c2_by_profile:
-        c2_report = {**c2_report, "status": sweep["status"]}
+    # The whole top-level document is the default profile's comparison — status,
+    # agreement, positions and vetoes together. A default profile that never ran
+    # C2 keeps the named off document; another profile's numbers are never promoted.
+    c2_report = c2_default_document(c2_by_profile, cfg.default_profile)
     fact_rows, fact_record = evaluate_facts(scene, cfg, scene_dir=scene_dir, spend=spend)
     for name, verdict in verdicts.items():
         attach_c3_facts(verdict, fact_rows)

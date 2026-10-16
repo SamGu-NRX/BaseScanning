@@ -348,6 +348,206 @@ def test_broken_declared_ply_fails_explicitly(stage_env, tmp_path, mode):
     assert services.storage.list_prefix(prefix + "/") == []
 
 
+def _run_stage_once(monkeypatch, services, scene_dir, capture_id, run_id, env, files=None):
+    """One real publication → hydration → run_stage(stubs=False) pass over committed inputs."""
+    packet = _bind_capture(services, capture_id)
+    if files is None:
+        files = _scene_files(scene_dir, capture_id, laser=(scene_dir / "laser.ply").read_bytes())
+    artifacts = _publish_inputs(services, capture_id, run_id, files)
+    ctx = _hydrated_context(services, capture_id, run_id, packet, artifacts)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    result = run_stage(ctx, stubs=False)
+    storage = services.storage
+    report = json.loads(storage.get_bytes(result.artifacts["verdicts/criteria_report.json"]))
+    sweep = json.loads(storage.get_bytes(result.artifacts["verdicts/c2.sweep.json"]))
+    return report, sweep, result
+
+
+OFF_DOCUMENT = {"status": "off", "agreement_with_c1": None, "positions_compared": 0, "vetoes": 0}
+
+
+def test_c2_report_evidence_follows_the_default_profile_not_the_iteration_order(stage_env, tmp_path, monkeypatch):
+    """Regression for the two review findings (Greptile r4290120811, Codex r4290131173).
+
+    With HSS_CRITERIA_C2_PROFILES=all the old code overwrote the top-level C2 report on
+    every profile iteration and corrected only the status afterwards, so the report's count
+    and agreement described the last profile (S) while the status described the default (C).
+    The real stage must keep every profile's comparison evidence and select the WHOLE
+    top-level document from the configured default — for C and for a non-C default,
+    independent of profile iteration order.
+    """
+    scenes = _load_helper().supported_wall_variants(tmp_path)
+    services = _services(tmp_path)
+    docs: dict[tuple[str, str], tuple[dict, dict, object]] = {}
+    with bind(services):
+        for variant, scene_dir in scenes.items():
+            for label, profiles, default in (
+                ("s_last", "A,B,C,S", "C"),  # S runs last: where the old overwrite bit
+                ("c_last", "S,B,A,C", "S"),  # reordered iteration and a non-C default
+            ):
+                docs[(variant, label)] = _run_stage_once(
+                    monkeypatch,
+                    services,
+                    scene_dir,
+                    f"cap-c2sel-{variant}-{label}",
+                    f"run-c2sel-{variant}-{label}",
+                    env={
+                        "HSS_CRITERIA_C2_PROFILES": "all",
+                        "HSS_CRITERIA_PROFILES": profiles,
+                        "RULES_PROFILE_DEFAULT": default,
+                    },
+                )
+
+    for variant in scenes:
+        for label, default in (("s_last", "C"), ("c_last", "S")):
+            report, sweep, _result = docs[(variant, label)]
+            by_profile = sweep["by_profile"]
+            assert set(by_profile) == {"A", "B", "C", "S"}, by_profile  # evidence kept, not overwritten
+            entry = by_profile[default]
+            assert report["c2"]["status"] == entry["status"] == sweep["status"]
+            assert report["c2"]["agreement_with_c1"] == entry["agreement_with_c1"]
+            assert report["c2"]["positions_compared"] == entry["positions_compared"]
+            assert report["c2"]["vetoes"] == entry["vetoes"]
+            assert sweep["n_pass"] == entry["n_pass"]
+            assert sweep["n_spots"] == entry["n_spots"]
+            for record in by_profile.values():
+                if record["status"] == "ok" and record["positions_compared"] == 0:
+                    assert record["agreement_with_c1"] is None  # #255: no comparison is not perfect agreement
+
+        # The reviewers' scenario, measured on the hazard variant: C and S sweep the same
+        # 16 positions, but S's comparison agrees 0.938 with one veto where C's agrees
+        # 1.0 with none. With profiles ordered A,B,C,S (S last) and default C, the old
+        # last-profile overwrite published S's agreement and vetoes under C's status; the
+        # report must carry the default's own comparison values.
+        s_last_report, s_last_sweep, _ = docs[("hazard", "s_last")]
+        assert s_last_sweep["by_profile"]["C"] == {
+            "status": "ok",
+            "agreement_with_c1": 1.0,
+            "positions_compared": 16,
+            "vetoes": 0,
+            "n_pass": 26,
+            "n_spots": 120,
+        }
+        assert s_last_sweep["by_profile"]["S"]["agreement_with_c1"] == 0.938
+        assert s_last_sweep["by_profile"]["S"]["vetoes"] == 1
+        assert s_last_report["c2"]["agreement_with_c1"] == 1.0
+        assert s_last_report["c2"]["vetoes"] == 0
+        # Order independence: the same scene+profile yields the same evidence in both runs.
+        kept = docs[(variant, "s_last")][1]["by_profile"]
+        assert docs[(variant, "c_last")][1]["by_profile"]["C"] == kept["C"]
+
+
+def test_c2_report_names_off_absent_default_skipped_and_no_coverage_without_fabricated_agreement(
+    stage_env, tmp_path, monkeypatch
+):
+    """Named statuses through the real stage: an off, an unavailable default, a skipped
+    sweep and a grid-less scene each keep agreement None and never borrow numbers."""
+    scenes = _load_helper().supported_wall_variants(tmp_path)
+    clean = scenes["clean"]
+    services = _services(tmp_path)
+
+    # (a) C2 disabled: no profile runs it; the report keeps the named off document.
+    report, sweep, _ = _run_stage_once(
+        monkeypatch,
+        services,
+        clean,
+        "cap-c2-off",
+        "run-c2-off",
+        env={
+            "HSS_CRITERIA_C2": "off",
+            "HSS_CRITERIA_C2_PROFILES": "all",
+            "HSS_CRITERIA_PROFILES": "A,B,C,S",
+            "RULES_PROFILE_DEFAULT": "C",
+            "HSS_CRITERIA_C2_BUDGET_S": "120",
+        },
+    )
+    assert report["c2"] == OFF_DOCUMENT
+    assert sweep["status"] == "off" and sweep["n_pass"] == 0 and sweep["n_spots"] == 0
+    assert sweep["by_profile"] == {}
+
+    # (b) Other profiles really ran C2 but the default has no entry: no substitution.
+    report, sweep, _ = _run_stage_once(
+        monkeypatch,
+        services,
+        clean,
+        "cap-c2-absent",
+        "run-c2-absent",
+        env={
+            "HSS_CRITERIA_C2": "on",
+            "HSS_CRITERIA_C2_PROFILES": "all",
+            "HSS_CRITERIA_PROFILES": "A,S",
+            "RULES_PROFILE_DEFAULT": "C",
+            "HSS_CRITERIA_C2_BUDGET_S": "120",
+        },
+    )
+    assert set(sweep["by_profile"]) == {"A", "S"}
+    assert all(record["n_spots"] > 0 for record in sweep["by_profile"].values())  # their evidence is real
+    assert report["c2"] == OFF_DOCUMENT
+    assert sweep["status"] == "off" and sweep["n_pass"] == 0 and sweep["n_spots"] == 0
+
+    # (c) A budget that cannot finish the first sweep names every profile skipped.
+    report, sweep, result = _run_stage_once(
+        monkeypatch,
+        services,
+        clean,
+        "cap-c2-budget",
+        "run-c2-budget",
+        env={
+            "HSS_CRITERIA_C2": "on",
+            "HSS_CRITERIA_C2_PROFILES": "all",
+            "HSS_CRITERIA_PROFILES": "A,B,C,S",
+            "RULES_PROFILE_DEFAULT": "C",
+            "HSS_CRITERIA_C2_BUDGET_S": "0.5",
+        },
+    )
+    assert report["c2"] == {"status": "skipped", "agreement_with_c1": None, "positions_compared": 0, "vetoes": 0}
+    assert set(sweep["by_profile"]) == {"A", "B", "C", "S"}
+    assert all(
+        record["status"] == "skipped" and record["agreement_with_c1"] is None and record["positions_compared"] == 0
+        for record in sweep["by_profile"].values()
+    )
+    verdict_c = json.loads(services.storage.get_bytes(result.artifacts["verdicts/verdict.C.json"]))
+    assert verdict_c["site"]["decision"] != "pass"  # a skipped sweep never yields a pass
+
+    # (d) A scene that declares no coverage grid names no_coverage_grid and downgrades.
+    # The standard committed file set, with only the scene's inline coverage grid removed.
+    files = _scene_files(clean, "cap-c2-nogrid", laser=(clean / "laser.ply").read_bytes())
+    scene = json.loads(files["scene/scene.json"])
+    scene["coverage"]["grid"] = None
+    files["scene/scene.json"] = json.dumps(scene).encode() + b"\n"
+    report, sweep, result = _run_stage_once(
+        monkeypatch,
+        services,
+        clean,
+        "cap-c2-nogrid",
+        "run-c2-nogrid",
+        env={
+            "HSS_CRITERIA_C2": "on",
+            "HSS_CRITERIA_C2_PROFILES": "all",
+            "HSS_CRITERIA_PROFILES": "A,B,C,S",
+            "RULES_PROFILE_DEFAULT": "C",
+            "HSS_CRITERIA_C2_BUDGET_S": "120",
+        },
+        files=files,
+    )
+    assert report["c2"] == {
+        "status": "no_coverage_grid",
+        "agreement_with_c1": None,
+        "positions_compared": 0,
+        "vetoes": 0,
+    }
+    assert set(sweep["by_profile"]) == {"A", "B", "C", "S"}
+    assert all(
+        record["status"] == "no_coverage_grid" and record["agreement_with_c1"] is None
+        for record in sweep["by_profile"].values()
+    )
+    assert "no_coverage_grid" in report["degraded"]
+    verdict_c = json.loads(services.storage.get_bytes(result.artifacts["verdicts/verdict.C.json"]))
+    assert not any(row["outcome"] == "pass" for row in verdict_c["criteria"])
+    assert verdict_c["site"]["decision"] != "pass"
+
+
 def test_bridge_boundary_diagnostic_on_unchanged_generator_geometry(tmp_path):
     from server.criteria.tests.data.synthetic_flatwall.make import scene_dict
     from server.placement.scene_bridge import UNSUPPORTED, SceneBridgeError, convert_scene
