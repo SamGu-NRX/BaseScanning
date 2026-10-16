@@ -81,7 +81,21 @@ Classification of every FAIL/BLOCKED across all runs:
 
 - `tests/contracts/` (JS-syntax contract checks) does not exist in this harness; the contract
   surface is `tests/test_contract.py`, which passes.
-- No `make local-api` target exists on alpha; the canonical server start (env file + uvicorn under
-  tmux, healthz-gated) is recorded in the run receipts' command blocks.
+- No `make local-api` target exists on alpha. The receipts record only the redacted client flags
+  (`<path>`, `<argv>`); the backend server-start command is deliberately not part of any receipt.
+  A secret-free local server start for reproducing the REAL_API runs:
+
+  ```sh
+  cd backend
+  uv sync --locked --extra api
+  # Auth-off dev server, local storage: every request is the device principal `demo`.
+  SMP_ENVIRONMENT=dev uv run uvicorn server.api.app:create_app --factory --port 8000
+  # For the static-auth runs only: HSS_AUTH_MODE=static CAPTURE_API_TOKENS='<label>:<token(>=32 chars)>'
+  # and run the harness with --api-token-env (the token is read from HUNTER_API_TOKEN).
+  ```
+
+  `SMP_ENVIRONMENT=dev` is what selects `HSS_AUTH_MODE=none`; `STORAGE_BACKEND` defaults to
+  `local`, whose in-memory state is ephemeral across restarts — which is exactly what the
+  restart-recovery run records as FAIL.
 
 🔗 [Obvious Project](https://app.obvious.ai/p/products-Uu1863v1) · 🧵 [Obvious Thread](https://app.obvious.ai/p/products-Uu1863v1?thread=th_uKOVRjtY) · 🔀 [Obvious PR Artifact](https://app.obvious.ai/link/pr-artifact/run-the-app-shaped-ingest-harness-in-realapi-mode-task:todo_2YMYcAxt)

@@ -242,7 +242,7 @@ def _manifest(args, argv: Sequence[str], loaded: LoadedPlan, run_id: str, label:
             "declared_ref": args.client_ref,
         },
         "fixture": {
-            "generator": "gen_synthetic_packet",
+            "generator": loaded.generator_name,
             "format_version": loaded.format_version,
             "seed": loaded.seed,
             "plan_file_sha256": loaded.plan_file_sha256,

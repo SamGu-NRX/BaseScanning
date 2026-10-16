@@ -92,3 +92,98 @@ def test_miniarkit_plan_loads_and_binds_digests(tmp_path: Path) -> None:
     path.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     with pytest.raises(PlanError):
         load_plan(path)
+
+
+def test_loader_records_the_generator_family(tmp_path: Path) -> None:
+    path = tmp_path / "plan.json"
+    write_plan(path, seed=1)
+    assert load_plan(path).generator_name == "gen_synthetic_packet"
+
+
+@pytest.mark.skipif(not MINIARKIT_DIR.exists(), reason="repo checkout required")
+def test_miniarkit_loader_records_the_generator_family(tmp_path: Path) -> None:
+    path = tmp_path / "miniarkit-plan.json"
+    write_miniarkit(path, MINIARKIT_DIR)
+    assert load_plan(path).generator_name == "gen_miniarkit_packet"
+
+
+def test_loader_refuses_a_non_string_generator_name(tmp_path: Path) -> None:
+    """A list where the generator name belongs raises PlanError, not TypeError."""
+    path = tmp_path / "plan.json"
+    document = write_plan(path, seed=1)
+    for bad_name in ([], {}, 5, True):
+        document["generator"]["name"] = bad_name
+        document["generator"]["sha256_of_plan"] = canonical_digest(document)
+        path.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        with pytest.raises(PlanError, match="generator.name"):
+            load_plan(path)
+
+
+def test_loader_refuses_a_non_object_session(tmp_path: Path) -> None:
+    """A string or list session raises PlanError, not AttributeError."""
+    path = tmp_path / "plan.json"
+    document = write_plan(path, seed=1)
+    packet = _packet(document)
+    for bad_session in ("x", ["arkit"], 3):
+        packet["session"] = bad_session
+        _rewrite_packet(document, packet)
+        path.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        with pytest.raises(PlanError, match="session"):
+            load_plan(path)
+
+
+def test_runner_manifest_records_the_loaded_generator(tmp_path: Path) -> None:
+    """The manifest names the generator that produced the run's fixture."""
+    import argparse
+
+    from hunter_local_ingest import runner
+
+    path = tmp_path / "miniarkit-plan.json"
+    write_miniarkit(path, MINIARKIT_DIR)
+    loaded = load_plan(path)
+    args = argparse.Namespace(
+        endpoint="http://127.0.0.1:8000/v1",
+        backend_mode="REAL_API",
+        backend_ref=None,
+        client_ref=None,
+        restart_argv_json=None,
+        restart_timeout_s=120.0,
+        result_budget_s=1500.0,
+        poll_interval_s=2.0,
+        events_wait_s=20,
+        max_retries=2,
+        retry_backoff_s=1.0,
+        with_faults=False,
+    )
+    manifest = runner._manifest(
+        args, ["--endpoint", "http://127.0.0.1:8000/v1"], loaded, "0" * 16, "run"
+    )
+    assert manifest["fixture"]["generator"] == "gen_miniarkit_packet"
+    assert manifest["fixture"]["seed"] is None
+
+
+def test_runner_manifest_records_the_synthetic_generator(tmp_path: Path) -> None:
+    import argparse
+
+    from hunter_local_ingest import runner
+
+    path = tmp_path / "plan.json"
+    write_plan(path, seed=1)
+    loaded = load_plan(path)
+    args = argparse.Namespace(
+        endpoint="http://127.0.0.1:8000/v1",
+        backend_mode="REAL_API",
+        backend_ref=None,
+        client_ref=None,
+        restart_argv_json=None,
+        restart_timeout_s=120.0,
+        result_budget_s=1500.0,
+        poll_interval_s=2.0,
+        events_wait_s=20,
+        max_retries=2,
+        retry_backoff_s=1.0,
+        with_faults=False,
+    )
+    manifest = runner._manifest(args, ["--endpoint", "127.0.0.1:8000"], loaded, "0" * 16, "run")
+    assert manifest["fixture"]["generator"] == "gen_synthetic_packet"
+    assert manifest["fixture"]["seed"] == 1

@@ -164,6 +164,7 @@ def derived_id(packet_id: str, suffix: str, nonce: str = "") -> str:
 @dataclasses.dataclass(frozen=True)
 class LoadedPlan:
     plan: CapturePlan
+    generator_name: str
     seed: int | None
     format_version: int
     plan_file_sha256: str
@@ -219,6 +220,7 @@ def load_plan(path: Path, expected_seed: int | None = None) -> LoadedPlan:
     generator_raw = document["generator"]
     _need(isinstance(generator_raw, dict), "generator", "not an object")
     family_name = generator_raw.get("name")
+    _need(isinstance(family_name, str), "generator.name", "not a string")
     _need(family_name in FAMILIES, "generator.name", "unknown generator")
     family = FAMILIES[family_name]
     generator = _dict(generator_raw, "generator", family["generator_keys"])
@@ -341,7 +343,9 @@ def load_plan(path: Path, expected_seed: int | None = None) -> LoadedPlan:
     # The published Packet04 rule the first REAL_API run taught: an arkit
     # tier carries keyframes, photo_only carries none, and every keyframe
     # image is a declared file with the keyframe role.
-    tier = (parsed.get("session") or {}).get("tier")
+    session = parsed.get("session")
+    _need(isinstance(session, dict), "packet.session", "not an object")
+    tier = session.get("tier")
     _need(
         tier in ("arkit", "arkit_lidar", "photo_only") and tier == create["tier"],
         "packet.session.tier",
@@ -374,6 +378,7 @@ def load_plan(path: Path, expected_seed: int | None = None) -> LoadedPlan:
     )
     return LoadedPlan(
         plan=plan,
+        generator_name=family_name,
         seed=seed,
         format_version=PLAN_FORMAT_VERSION,
         plan_file_sha256=hashlib.sha256(raw).hexdigest(),
