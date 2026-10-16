@@ -7,9 +7,9 @@
 # proposal.
 #
 # To apply: copy this file to .github/workflows/backend.yml. That is the only
-# change needed. backend/scripts/ci_local.sh runs the same steps in the same
-# order locally, and backend/docs/ci/README.md records the measured run this
-# proposal was proved with.
+# change needed. backend/scripts/ci_local.sh runs both jobs' steps in the
+# same order locally, and backend/docs/ci/README.md records the measured run
+# this proposal was proved with.
 #
 # Conventions mirror .github/workflows/server.yml: actions pinned by commit SHA
 # with the verified tag in a comment, ubuntu-24.04, contents:read, concurrency
@@ -105,13 +105,48 @@ jobs:
       - name: Schemas (make schemas)
         run: make schemas
 
-      - name: Repo hygiene (make hygiene)
-        # Red on alpha at 4bcbedba, pre-existing: scripts/check_repo_hygiene.py
-        # denies server/orchestrator/tests/data/packets/synthetic-meter.tar,
-        # which alpha tracks (same known failure the local proof recorded).
-        # This step goes green when alpha stops tracking that file or the
-        # deny-list changes — both outside this proposal.
-        run: make hygiene
 
       - name: Committed fixtures (make validate)
         run: make validate
+
+  # The known-red step lives in its own clearly named job so it cannot fail
+  # the required signal (Codex P1 on PR #288: do not ship a required step
+  # that always fails). make hygiene is red on alpha at 4bcbedba,
+  # pre-existing: scripts/check_repo_hygiene.py denies every tracked .tar,
+  # and alpha tracks
+  # server/orchestrator/tests/data/packets/synthetic-meter.tar. Fixing that
+  # means un-tracking the file or changing the deny-list — both outside this
+  # proposal. continue-on-error keeps the pull-request check green while the
+  # step's failure stays visible in the run graph and its annotations. The
+  # job goes solid green when alpha stops tracking that file or the
+  # deny-list changes, and the flag can then be deleted.
+  # backend/docs/ci/README.md documents this and the alternative (leaving
+  # the step out of the workflow until it can pass) with the exact diff.
+  backend-hygiene-known-red:
+    name: Repo hygiene (known red on alpha)
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      # Same pins as backend-checks; see the comment there.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          working-directory: backend
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-python: true
+          version: "0.13.1"
+
+      # No api extra needed: check_repo_hygiene.py is stdlib-only (re,
+      # subprocess, sys, pathlib), so the default locked set is enough.
+      - name: Install dependencies (locked)
+        run: uv sync --frozen
+
+      - name: Repo hygiene (make hygiene)
+        run: make hygiene
