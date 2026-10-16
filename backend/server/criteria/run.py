@@ -317,7 +317,7 @@ def evaluate_scene(
     spend = HouseSpend(float(getattr(cfg, "c3_budget_usd", 0.60)))
     judge_by_profile: list[dict] = []
     judge_hits: list[str | None] = []
-    c2_report = {"status": "off", "agreement_with_c1": None, "vetoes": 0}
+    c2_report = {"status": "off", "agreement_with_c1": None, "positions_compared": 0, "vetoes": 0}
     c2_by_profile: dict[str, dict] = {}
     verdicts = {}
     t_all = time.time()
@@ -378,18 +378,28 @@ def evaluate_scene(
             if status == "no_coverage_grid":
                 degraded.append("no_coverage_grid")
                 downgrade_c1_passes_without_c2(runs)
-                c2_report = {"status": "no_coverage_grid", "agreement_with_c1": None, "vetoes": 0}
+                c2_report = {
+                    "status": "no_coverage_grid",
+                    "agreement_with_c1": None,
+                    "positions_compared": 0,
+                    "vetoes": 0,
+                }
             elif status == "no_observed_ground":
                 degraded.append("no_observed_ground")
                 for run in runs:
                     run["outcome"] = "unsure"
-                c2_report = {"status": "no_observed_ground", "agreement_with_c1": None, "vetoes": 0}
+                c2_report = {
+                    "status": "no_observed_ground",
+                    "agreement_with_c1": None,
+                    "positions_compared": 0,
+                    "vetoes": 0,
+                }
             elif status == "skipped":
                 for run in runs:
                     if run["outcome"] == "pass":
                         run["outcome"] = "unsure"
                         run["unsure"] = sorted(set(run["unsure"]) | {"c2_unavailable"})
-                c2_report = {"status": "skipped", "agreement_with_c1": None, "vetoes": 0}
+                c2_report = {"status": "skipped", "agreement_with_c1": None, "positions_compared": 0, "vetoes": 0}
             else:
                 stamped = c2_join(
                     runs,
@@ -400,6 +410,7 @@ def evaluate_scene(
                 c2_report = {
                     "status": "ok",
                     "agreement_with_c1": stamped["agreement_with_c1"],
+                    "positions_compared": stamped["positions_compared"],
                     "vetoes": stamped["vetoes"],
                 }
                 c2_by_profile[name] = {
