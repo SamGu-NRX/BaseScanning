@@ -123,8 +123,12 @@ screen never shows to the homeowner without the flag.
 The events stream ends with a `failed` event carrying `code`, a plain
 `message` (the screen shows it verbatim) and `next: "none"`, after a `stage`
 event with `status: "failed"` naming the stage that failed. `result` answers
-`status: "failed"`. Pinned at
-`backend/tests/fixtures/app_states/failed/result.json`.
+`status: "failed"` with `outcome.kind: "manual_review"` — a failed run still
+routes the homeowner to the installer. The reviewer page answers
+404 `result_not_ready` for a failed run: the route serves the run's
+`result/review.html`, and a failed run publishes none. Pinned at
+`backend/tests/fixtures/app_states/failed/result.json`; the failed evidence
+screenshot is that 404 envelope.
 
 ### The processing service refused this scan (`refused`)
 

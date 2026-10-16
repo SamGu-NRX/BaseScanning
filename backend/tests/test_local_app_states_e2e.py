@@ -434,9 +434,7 @@ def test_failed_names_the_stage_and_the_plain_message(tmp_path_factory, tmp_path
             assert data.get("next") == "none", data
 
             stage_failures = [
-                event
-                for event in _events_of_type(body["events"], "stage")
-                if event["data"].get("status") == "failed"
+                event for event in _events_of_type(body["events"], "stage") if event["data"].get("status") == "failed"
             ]
             assert stage_failures, "the events must name the stage that failed"
             assert stage_failures[-1]["data"].get("stage"), stage_failures[-1]
