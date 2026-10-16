@@ -514,3 +514,40 @@ def test_a_storage_put_ignores_an_authorization_header(server: Server) -> None:
     assert with_garbage.status_code == 200, with_garbage.text
     assert _commit(server, capture_id, "photos/g2.jpg", data)["committed"] == ["photos/g2.jpg"]
     assert _stored(server, capture_id, path) == data
+
+
+def test_overlapping_puts_after_a_re_register_leave_bytes_and_metadata_agreeing(server: Server) -> None:
+    """A re-register mints a fresh URL for the same key while the old upload may
+    still be in flight. Both attempts get 200 and each commits its own complete
+    bytes; whichever commits last must win the bytes and the metadata together,
+    so the volume never holds one writer's bytes under another writer's
+    digest/size (that state would make files:commit mark a valid upload as a
+    mismatch). Commits run on the event-loop thread today, so this pins the
+    end-to-end invariant; the deterministic interleaving regression for the
+    storage method itself lives in test_storage_and_sweep.py."""
+    capture_id = _create_capture(server, "tcp-rereg-1")
+    old = _pattern(256 * 1024, seed=7)
+    new = _pattern(256 * 1024, seed=8)
+    old_target = _register(server, capture_id, "photos/d.jpg", old)
+    new_target = _register(server, capture_id, "photos/d.jpg", new)
+    assert old_target["url"] != new_target["url"], "a re-register must mint a fresh URL"
+
+    first = RawPut(server.port, old_target["url"], "image/jpeg", _md5_b64(old), len(old))
+    first.send_head()
+    first.send_bytes(old[: len(old) // 2])
+    # Let the first attempt's handler create its temp file and settle into its
+    # write loop, so the re-registered PUT below lands while it is still open.
+    time.sleep(0.5)
+    second = _put(server, new_target, new)
+    assert second.status_code == 200, second.text
+    first.send_bytes(old[len(old) // 2 :])
+    status, body = first.response()
+    assert status == 200, f"the still-open first attempt must commit cleanly, got {status}: {body[:200]!r}"
+
+    stored = _stored(server, capture_id, "photos/d.jpg")
+    assert stored in (old, new)
+    index = json.loads((server.root / ".hss-meta.json").read_text())
+    meta = index["objects"][upload_key(capture_id, "photos/d.jpg")]
+    assert meta["bytes"] == len(stored)
+    assert meta["md5_b64"] == _md5_b64(stored), "the metadata index disagrees with the committed bytes"
+    assert _leftover_tmp(server) == []
