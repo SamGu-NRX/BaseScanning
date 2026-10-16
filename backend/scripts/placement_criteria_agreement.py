@@ -318,9 +318,20 @@ def collect_results(
             "manifest": case["manifest"],
             "kind": case["kind"],
             "source_sha256": case["source_sha256"],
+            "manifest_expected_error": case["expected_error"],
         }
         placement_record, placement_error = _guarded(placement_fn, case["source_bytes"])
         record["placement"] = placement_record if placement_record else {"status": "error", **placement_error}
+        expected = case["expected_error"]
+        if expected is None:
+            record["placement_matches_manifest"] = None
+        else:
+            record["placement_matches_manifest"] = (
+                record["placement"].get("status") == "refused"
+                and record["placement"].get("code") == expected.get("code")
+                and record["placement"].get("pointer") == expected.get("pointer")
+            )
+
         with tempfile.TemporaryDirectory(prefix="pc-agreement-", dir=work_dir) as tmp:
             criteria_record, criteria_error = _guarded(criteria_fn, case["source_bytes"], Path(tmp))
         record["criteria"] = criteria_record if criteria_record else {"status": "error", **criteria_error}
