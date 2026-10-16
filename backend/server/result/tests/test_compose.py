@@ -616,3 +616,74 @@ def test_route_skips_the_duplicate_point_when_the_spot_starts_at_the_meter():
     assert pts is not None and len(pts) >= 2
     for index in range(len(pts) - 1):
         assert pts[index] != pts[index + 1]
+
+
+def test_a_correction_republishes_the_final_event_and_a_retry_does_not(tmp_path, monkeypatch):
+    """A late correction re-runs the result stage under the same run id. A retry of
+    the stage must not publish a second final event, but a recomposition after an
+    accepted confirmation must, or clients following the cursor never see the
+    corrected outcome."""
+    for name in ("WEBHOOK_HMAC_SECRET", "BASE_WEBHOOK_URL", "SHOW_REJECT_TO_HOMEOWNER", "HSS_RESULT_PROMPTS_PATH"):
+        monkeypatch.delenv(name, raising=False)
+    capture, run_rec, epochs = _capture_run()
+    state = MemoryState()
+    state.put_capture(capture)
+    state.put_run(run_rec)
+
+    class _Settings:
+        RULES_PROFILE_DEFAULT = "C"
+        SHOW_REJECT_TO_HOMEOWNER = False
+        HSS_RESULT_MAX_VIEWS = 6
+        HSS_RESULT_SIGNED_URL_TTL_S = 900
+        HSS_RESULT_PREVIEW_MAX_POINTS = 200_000
+        HSS_RESULT_METER_AUTOFILL = "barcode"
+        HSS_RESULT_REVIEW_THREEJS_URL = "https://unpkg.com/three@0.160.0/build/three.module.js"
+        HSS_RESULT_PROMPTS_PATH = str(DATA / "prompts.en-US.json")
+        BASE_WEBHOOK_URL = None
+
+    ctx = StageContext(
+        capture_id=capture.capture_id,
+        run_id=run_rec.run_id,
+        stage="result",
+        attempt=1,
+        branch="lidar",
+        flow="guided",
+        tier="arkit",
+        work_dir=tmp_path,
+        inputs={
+            "scene": str(DATA / "synthetic"),
+            "verdicts": str(DATA / "synthetic" / "verdicts"),
+            "reads": str(DATA / "reads.auto_fill.json"),
+            "out": str(tmp_path / "out"),
+            "epochs": ",".join(epochs),
+        },
+        deadline_at="2026-09-27T00:00:00Z",
+        heartbeat=lambda _step: None,
+        vlm_budget_usd=0,
+        storage=None,
+        state=state,
+        settings=_Settings(),
+    )
+
+    def finals() -> list[int]:
+        return [
+            ev.seq
+            for ev in state.events_after(capture.capture_id, 0)
+            if ev.type in {"verdict_ready", "retake_request"} and ev.run_id == run_rec.run_id
+        ]
+
+    run(ctx)
+    run(ctx)  # a retry of the same composition
+    first = finals()
+    assert len(first) == 1
+
+    state.append_event(
+        capture.capture_id,
+        "confirmation",
+        {"confirmationId": "cfm_1", "fieldId": "meter_number", "imageId": "s1", "kind": "corrected", "by": "device"},
+    )
+    run(ctx)  # the recomposition the correction triggers
+    run(ctx)  # and a retry of that recomposition
+    second = finals()
+    assert len(second) == 2, "the correction must publish its own final event, once"
+    assert second[0] == first[0]

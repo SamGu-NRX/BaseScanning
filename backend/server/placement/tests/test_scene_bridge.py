@@ -122,6 +122,7 @@ def base_scene() -> dict[str, Any]:
         ],
         "coverage": {
             "method": "scene-bridge-test",
+            "bands": [{"band": "wall", "s_m": [-1.0, 1.0]}],
             "sensitivity": [
                 {
                     "surface": "wall",
@@ -220,7 +221,9 @@ def test_happy_path_fields_in_independently_computed_feet() -> None:
         "right": {"kind": "limit", "note": "fence line"},
     }
     assert converted["coverage"]["observed"] == [
-        {"band": "wall", "span_ft": [-2.0 / 0.3048, 4.0 / 0.3048], "out_ft": 2.13 / 0.3048}
+        # The primary band only: the sensitivity variant below is validated but is
+        # not an observation, and must not appear in the converted coverage.
+        {"band": "wall", "span_ft": [-1.0 / 0.3048, 1.0 / 0.3048]}
     ]
 
 
@@ -334,6 +337,43 @@ def test_meter_wall_rect_geometry_places_the_meter_at_its_span_centre_mid_height
     assert converted["meter"]["pos"] == [0.0 / 0.3048, (1.4 + 1.8) / 2 / 0.3048, 0.0]
     parsed = _parse_with_root_parser(converted)
     assert parsed.point_at(0.0)[0] == pytest.approx(0.0, abs=1e-6)
+
+
+def test_sensitivity_only_coverage_converts_to_ends_only() -> None:
+    """A sensitivity band is a what-if variant, not a device observation: a scene
+    whose coverage carries only sensitivity bands must convert to ends only, with
+    no invented observed list — that is a coverage gap, not a covered wall."""
+    document = base_scene()
+    document["coverage"] = {
+        "method": "scene-bridge-test",
+        "sensitivity": [
+            {
+                "surface": "wall",
+                "max_incidence_deg": 75,
+                "bands": [{"band": "wall", "s_m": [-2.0, 4.0], "out_m": 2.13}],
+            }
+        ],
+    }
+
+    converted = convert_scene(document)
+
+    assert "observed" not in converted["coverage"]
+    assert converted["coverage"]["ends"] == {
+        "left": {"kind": "unexplored"},
+        "right": {"kind": "limit", "note": "fence line"},
+    }
+
+
+def test_a_malformed_sensitivity_band_still_refuses() -> None:
+    """Not being an observation does not mean unvalidated: a reversed sensitivity
+    span still refuses, and the pointer names the sensitivity band."""
+    document = base_scene()
+    document["coverage"]["sensitivity"][0]["bands"][0]["s_m"] = [4.0, -2.0]
+
+    with pytest.raises(SceneBridgeError) as excinfo:
+        convert_scene(document)
+
+    assert excinfo.value.pointer == "/coverage/sensitivity/0/bands/0/s_m"
 
 
 def test_absent_coverage_band_stays_unobserved_and_unexplored_ends_are_kept() -> None:

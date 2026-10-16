@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from pydantic import ValidationError
 
-from server.contracts.jobs import CaptureRecord, RunRecord, StageContext, StageResult
+from server.contracts.jobs import CaptureRecord, EventRecord, RunRecord, StageContext, StageResult
 from server.contracts.result import (
     BoxArkitWorld,
     BoxSceneM,
@@ -254,9 +254,17 @@ def compose_result(
 
 
 def emit_events(result: ComposeResult, state) -> list[int]:
-    prior = state.events_after(result.capture_id, 0)
+    """Publish the run's final event once per composition.
+
+    A retry of the result stage finds its final event and returns those seqs. A
+    late correction re-runs the stage under the same run id, and its confirmation
+    event lands after the old final: finals older than the latest confirmation
+    are stale, so the recomposed result publishes its own.
+    """
+    prior = _all_events(state, result.capture_id)
     finals = {"verdict_ready", "retake_request"}
-    already = [ev for ev in prior if ev.run_id == result.run_id and ev.type in finals]
+    corrected = max((ev.seq for ev in prior if ev.type == "confirmation"), default=0)
+    already = [ev for ev in prior if ev.run_id == result.run_id and ev.type in finals and ev.seq > corrected]
     if already:
         return [ev.seq for ev in already]
     seqs = []
@@ -264,6 +272,16 @@ def emit_events(result: ComposeResult, state) -> list[int]:
         rec = state.append_event(result.capture_id, event_type, data, run_id=result.run_id, stage="result")
         seqs.append(rec.seq)
     return seqs
+
+
+def _all_events(state, capture_id: str) -> list[EventRecord]:
+    """Every event on the capture; events_after returns one page at a time."""
+    events: list[EventRecord] = []
+    while True:
+        page = state.events_after(capture_id, events[-1].seq if events else 0)
+        if not page:
+            return events
+        events.extend(page)
 
 
 def _stage_input(ctx: StageContext, short: str, key: str) -> Path | None:
