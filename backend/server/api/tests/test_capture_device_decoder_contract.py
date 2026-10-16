@@ -9,8 +9,9 @@ fields, the terminal/outcome-less status sets, or the error shape the app's
 `CaptureAPI.errorCodes` reads.
 
 This file carries a small Python mirror of Swift Codable decoding for exactly the
-structs the app declares — required vs optional keys, `Int` that must be an integer
-literal, `Double` that must be a finite JSON number, unknown enum strings decoding
+structs the app declares — required vs optional keys, `Int` that accepts an integer
+literal or an exactly integral number such as `1.0`, `Double` that must be a finite JSON
+number, unknown enum strings decoding
 as `unknown(...)` instead of failing, unknown keys ignored — and then runs every
 body the server actually serves through it: create, register, PUT, commit,
 finalize, events (including a long-poll that times out empty), result for each
@@ -27,6 +28,7 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -40,9 +42,10 @@ PATH = "stills/one.jpg"
 
 # --- the Codable mirror ------------------------------------------------------
 #
-# Mirrors JSONDecoder's semantics, not the server's schema: `Int` accepts only an
-# integer literal (a wire `1.0` fails, exactly as Swift's Int decode fails on a
-# fractional number), `Double` accepts any finite JSON number, `Bool` is never a
+# Mirrors JSONDecoder's semantics, not the server's schema: `Int` accepts an integer
+# literal or an exactly integral number (`1.0`, `1e0` — Swift's JSONDecoder round-trips
+# these through NSNumber.intValue), while a fractional number, a bool, or a string
+# fails; `Double` accepts any finite JSON number, `Bool` is never a
 # number, unknown keys are ignored, and an enum with an `unknown(String)` case
 # decodes any string. Null passes only where the Swift property is Optional; a
 # missing key passes only where it is Optional.
@@ -424,16 +427,20 @@ def decode_error(body: Any, label: str) -> list[str]:
 # --- the mirror itself is Swift-faithful (strict, isolated) -------------------
 
 
-def test_int_rejects_float_bool_and_string_literals() -> None:
+def test_int_mirrors_swift_number_handling() -> None:
+    assert as_int(1, "$") == 1
+    assert as_int(180, "$") == 180
+    # Swift's JSONDecoder: NSNumber(value: 1).intValue == 1 round-trips for 1.0 and 1e0.
+    assert as_int(1.0, "$") == 1
+    assert as_int(1e0, "$") == 1
     with pytest.raises(DecodeFailure):
-        as_int(1.0, "$")  # the wire wrote 1.0; Swift's Int decode fails
+        as_int(1.5, "$")  # a fractional number does not round-trip through Int
     with pytest.raises(DecodeFailure):
-        as_int(1.5, "$")
-    with pytest.raises(DecodeFailure):
-        as_int(True, "$")
+        as_int(True, "$")  # Bool is never a number
     with pytest.raises(DecodeFailure):
         as_int("180", "$")
-    assert as_int(180, "$") == 180
+    with pytest.raises(DecodeFailure):
+        as_int(2.0**63, "$")  # outside Int64 the round-trip fails
 
 
 def test_double_rejects_bool_string_and_nonfinite() -> None:
@@ -872,6 +879,68 @@ def test_ready_result_decodes_for_each_reachable_terminal_status(
         assert decoded["viewsNeeded"] == decoded["outcome"]["viewsNeeded"]
 
 
+COMPOSED_FIXTURES = [
+    # (fixture dir, scene dir, reads file, the status the coordinator sets on the capture)
+    ("synthetic", "synthetic", "reads.auto_fill.json", "complete"),
+    ("photo", "photo", None, "needs_views"),
+    ("reject", "synthetic", None, "manual_review"),
+]
+
+
+@pytest.mark.parametrize(("case", "scene_dir", "reads_name", "status"), COMPOSED_FIXTURES)
+def test_real_composer_output_decodes_for_each_committed_synthetic_case(
+    client: TestClient, tmp_path: Path, case: str, scene_dir: str, reads_name: str | None, status: str
+) -> None:
+    """The real `compose_result` output — not a hand-written stand-in — decodes as the app reads it.
+
+    The result stage writes `result.json` and the coordinator uploads it as the
+    `result/result.json` artifact the route serves. These cases run the real composer
+    over the committed synthetic fixtures and serve exactly those bytes, so a producer
+    change that breaks iOS decoding fails here instead of escaping the check.
+    """
+
+    from server.contracts.jobs import CaptureRecord, RunRecord
+    from server.result.compose import compose_result
+    from server.result.config import ResultConfig
+    from server.result.copy import load_catalogue
+    from server.result.tests.support import DATA as COMPOSE_DATA
+
+    raw = json.loads((COMPOSE_DATA / "capture.sample.json").read_text())
+    epochs = list(raw.pop("epochs"))
+    capture = CaptureRecord.model_validate(raw)
+    run = RunRecord.model_validate(json.loads((COMPOSE_DATA / "run.ok.json").read_text()))
+    composed = compose_result(
+        capture,
+        run,
+        COMPOSE_DATA / scene_dir,
+        COMPOSE_DATA / case / "verdicts",
+        tmp_path,
+        reads=COMPOSE_DATA / reads_name if reads_name else None,
+        scale=None,
+        catalogue=load_catalogue(COMPOSE_DATA / "prompts.en-US.json"),
+        config=ResultConfig(catalogue_path=COMPOSE_DATA / "prompts.en-US.json"),
+        epochs=epochs,
+    )
+    assert composed.response.status == status
+    stored = json.loads((tmp_path / "result.json").read_text())
+
+    capture_id = _create(client, f"packet-composed-{case}")["captureId"]
+    _seed_ready_result(client, capture_id, f"run-composed-{case}", stored, status)
+
+    response = client.get(f"/v1/captures/{capture_id}/result")
+    assert response.status_code == 200, response.text
+    decoded = decode_served(response.json(), RESULT_RESPONSE)
+    assert decoded["status"] == status
+    assert decoded["outcome"] is not None
+    assert decoded["outcome"]["kind"] == composed.response.outcome.kind
+    assert decoded["reviewUrl"] == f"/v1/captures/{capture_id}/review"
+    # AR numbers the app checks later: the contract's Mat4 is 16 numbers.
+    placement = decoded["outcome"]["recommendedPlacement"]
+    if placement is not None and placement["boxArkitWorld"] is not None:
+        assert len(placement["boxArkitWorld"]["pose"]) == 16
+        assert len(placement["boxArkitWorld"]["size"]) == 3
+
+
 @pytest.mark.parametrize("status", sorted(STATUSES_WITHOUT_OUTCOME))
 def test_result_without_a_run_for_status_without_outcome_decodes(client: TestClient, status: str) -> None:
     """failed/expired with no outcome is the app's statusesWithoutOutcome final read."""
@@ -1031,6 +1100,8 @@ def test_method_not_allowed_uses_the_documented_api_error_shape(client: TestClie
     response = client.patch("/v1/healthz")
     assert response.status_code == 405
     decode_error(response.json(), "405")
+    # Starlette's required Allow list survives the ApiError rewrite.
+    assert "GET" in response.headers["Allow"].split(", ")
 
 
 def test_unhandled_exception_uses_the_documented_api_error_shape() -> None:
