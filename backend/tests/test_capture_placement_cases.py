@@ -26,7 +26,7 @@ sys.path.insert(0, str(BACKEND / "scripts"))
 import capture_placement_cases as runner  # noqa: E402
 
 from server.eval.sceneio import validate  # noqa: E402
-from server.orchestrator.stubs._common import write_files  # noqa: E402
+from server.orchestrator.stubs._common import json_bytes, write_files  # noqa: E402
 
 MANIFEST = BACKEND / "server" / "placement" / "tests" / "data" / "cases" / "manifest.json"
 
@@ -146,6 +146,7 @@ def _supported_source_a() -> dict:
         ],
         "coverage": {
             "method": "capture-placement-cases-test",
+            "bands": [{"band": "wall", "s_m": [-2.0, 4.0], "out_m": 2.13}],
             "sensitivity": [
                 {
                     "surface": "wall",
@@ -252,6 +253,7 @@ def _supported_source_b() -> dict:
         ],
         "coverage": {
             "method": "capture-placement-cases-test",
+            "bands": [{"band": "wall", "s_m": [-4.0, 2.0], "out_m": 2.5}],
             "sensitivity": [
                 {
                     "surface": "wall",
@@ -970,3 +972,29 @@ def test_run_cases_restores_the_process_environment(tmp_path):
     before = dict(os.environ)
     runner.run_cases(MANIFEST, tmp_path / "run", case_ids=["multiwall-source-unsupported"])
     assert dict(os.environ) == before
+
+@pytest.mark.parametrize("objects_value", [pytest.param(None, id="null-objects"), pytest.param("omit", id="missing-objects")])
+def test_a_format_correct_objects_3d_without_an_objects_list_refuses(tmp_path, monkeypatch, objects_value):
+    """Through the actual capture stage: a format-correct objects_3d artifact whose
+    objects list is missing or null is a malformed manifest and must refuse
+    placement with placement_objects_3d_invalid — never decode as an empty,
+    hazard-free scene — and no placement artifact may exist (the refusal is not a
+    fallback success)."""
+    body = {"format": "hss-objects-3d/v0"}
+    if objects_value != "omit":
+        body["objects"] = None
+
+    def malformed_objects_3d(ctx):
+        return write_files(ctx, {"objects/objects_3d.json": json_bytes(body)})
+
+    monkeypatch.setattr(runner, "_injected_objects_3d_run", malformed_objects_3d)
+    receipt = runner.run_cases(_write_supported_manifest(tmp_path), tmp_path / "run", case_ids=[runner.TAP_CASE_ID])
+    case = receipt["cases"][0]
+
+    assert case["status"] == "refused", case
+    assert case["refusal"]["code"] == "placement_objects_3d_invalid", case["refusal"]
+    assert case["hasPlacementArtifact"] is False, "a refused placement must not publish an artifact"
+    assert case["solverDecision"] is None
+    assert receipt["summary"]["solved"] == 0
+    assert receipt["ok"] is False, "an undeclared positive-case refusal is a blocker"
+
