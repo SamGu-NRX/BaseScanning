@@ -1,0 +1,40 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"meterNotAccessible\": {\"verdict\": \"manual_review\", \"reasoning\": \"No clear close-up of the electric meter exists. A meter-like device appears only at the cropped right edge of photos 2\u20133, with wooden stakes or debris near the wall below it, so the full working envelope and overhead space can't be confirmed. A gas meter is also visible in photo 14, and its distance from the electric meter can't be determined.\"}, \"panelNotAccessible\": {\"verdict\": \"manual_review\", \"reasoning\": \"None of the photos shows the main breaker box, so its working clearance, overhead space and nearby gas equipment can't be judged.\"}, \"panelInHouse\": {\"verdict\": \"manual_review\", \"reasoning\": \"The main panel does not appear in any photo, so it can't be placed in a garage, outside, or in interior living space.\"}, \"notSameWall\": {\"verdict\": \"manual_review\", \"reasoning\": \"The panel is not shown anywhere and the meter is only partly visible, so it can't be confirmed that both are on the same exterior wall.\"}}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "No clear close-up of the electric meter exists. A meter-like device appears only at the cropped right edge of photos 2\u20133, with wooden stakes or debris near the wall below it, so the full working envelope and overhead space can't be confirmed. A gas meter is also visible in photo 14, and its distance from the electric meter can't be determined."
+  },
+  "panelNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "None of the photos shows the main breaker box, so its working clearance, overhead space and nearby gas equipment can't be judged."
+  },
+  "panelInHouse": {
+   "verdict": "manual_review",
+   "reasoning": "The main panel does not appear in any photo, so it can't be placed in a garage, outside, or in interior living space."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reasoning": "The panel is not shown anywhere and the meter is only partly visible, so it can't be confirmed that both are on the same exterior wall."
+  }
+ },
+ "usage": {
+  "input_tokens": 22339,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 663
+ },
+ "cost_usd": 0.102616,
+ "latency_s": 10.82,
+ "stop": "end_turn",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "manual_review",
+  "p12.panelNotAccessible": "manual_review",
+  "p12.panelInHouse": "manual_review",
+  "p12.notSameWall": "manual_review"
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"hasLargeOrOversizedMeterCan\": false, \"meterCanLabel\": \"normal_meter_can\", \"insufficientEvidence\": false, \"evidence\": \"Across all photos, the round meter sits in a small, compact gray socket (roughly just the enclosure around the meter) mounted separately to the left of a tall gray breaker panel/load center. The meter-holding enclosure is much smaller than the adjacent panel and is not a large rectangular or 320A-style can.\", \"notes\": \"The tall adjacent breaker panel, BASE battery/transfer equipment, and disconnects are separate enclosures and were ignored. The images are distant security-camera views, but the size of the meter socket relative to the brick courses and the adjacent panel is clear enough to judge it as a standard compact residential socket.\"}",
+ "json": {
+  "hasLargeOrOversizedMeterCan": false,
+  "meterCanLabel": "normal_meter_can",
+  "insufficientEvidence": false,
+  "evidence": "Across all photos, the round meter sits in a small, compact gray socket (roughly just the enclosure around the meter) mounted separately to the left of a tall gray breaker panel/load center. The meter-holding enclosure is much smaller than the adjacent panel and is not a large rectangular or 320A-style can.",
+  "notes": "The tall adjacent breaker panel, BASE battery/transfer equipment, and disconnects are separate enclosures and were ignored. The images are distant security-camera views, but the size of the meter socket relative to the brick courses and the adjacent panel is clear enough to judge it as a standard compact residential socket."
+ },
+ "usage": {
+  "input_tokens": 26235,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 266
+ },
+ "cost_usd": 0.11026,
+ "latency_s": 7.25,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p02": "normal_meter_can"
+ }
+}

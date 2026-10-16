@@ -1,0 +1,37 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\"decision\": \"manual_review\",\n \"disconnect_location\": null,\n \"battery_location\": null,\n \"route\": \"No route can be defined because no utility meter is visible in any photo. The facades shown are almost entirely large double doors to transformer rooms (Traforaum), glass entrance doors and a delivery door (Anlieferung HPP), separated only by narrow concrete pilasters. A harness cannot cross these doors.\",\n \"distance_ft\": null,\n \"nearest_opening_ft\": null,\n \"reference_object\": \"Standard steel entry doors, assumed about 3 ft wide per leaf and about 7 ft tall. The pilasters between the transformer-room doors appear about 2\u20133 ft wide.\",\n \"needs_more_photos\": true,\n \"missing_views\": [\n  \"A clear photo of the electric meter itself, showing the meter and the wall about 3 ft to each side and below it\",\n  \"A wide photo of the whole wall the meter is on, from corner to corner, showing all doors and windows\",\n  \"Photos of the walls on either side of the meter wall\",\n  \"Confirmation that this is a residential property served by a standard residential meter, since these photos appear to show a commercial or utility substation building\",\n  \"A photo showing where vehicles can drive or park relative to the meter wall\"\n ],\n \"justification\": \"No meter is visible, so the disconnect and conduit cannot be evaluated. The site appears to be a commercial or institutional building with medium-voltage transformer rooms, not a residential home. Every visible wall section is interrupted by doors spaced much closer than the roughly 8+ ft needed for a battery with 3 ft clearance on each side. The paved area in front of the walls is asphalt with parking markings and no-parking signs, so it is car-reachable and violates the 5 ft drive clearance. Door-to-door wall runs also block any harness route. Manual review and correct site photos are required.\"}\n```",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "route": "No route can be defined because no utility meter is visible in any photo. The facades shown are almost entirely large double doors to transformer rooms (Traforaum), glass entrance doors and a delivery door (Anlieferung HPP), separated only by narrow concrete pilasters. A harness cannot cross these doors.",
+  "distance_ft": null,
+  "nearest_opening_ft": null,
+  "reference_object": "Standard steel entry doors, assumed about 3 ft wide per leaf and about 7 ft tall. The pilasters between the transformer-room doors appear about 2\u20133 ft wide.",
+  "needs_more_photos": true,
+  "missing_views": [
+   "A clear photo of the electric meter itself, showing the meter and the wall about 3 ft to each side and below it",
+   "A wide photo of the whole wall the meter is on, from corner to corner, showing all doors and windows",
+   "Photos of the walls on either side of the meter wall",
+   "Confirmation that this is a residential property served by a standard residential meter, since these photos appear to show a commercial or utility substation building",
+   "A photo showing where vehicles can drive or park relative to the meter wall"
+  ],
+  "justification": "No meter is visible, so the disconnect and conduit cannot be evaluated. The site appears to be a commercial or institutional building with medium-voltage transformer rooms, not a residential home. Every visible wall section is interrupted by doors spaced much closer than the roughly 8+ ft needed for a battery with 3 ft clearance on each side. The paved area in front of the walls is asphalt with parking markings and no-parking signs, so it is car-reachable and violates the 5 ft drive clearance. Door-to-door wall runs also block any harness route. Manual review and correct site photos are required."
+ },
+ "usage": {
+  "input_tokens": 1095,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 784
+ },
+ "cost_usd": 0.0264942,
+ "latency_s": 14.58,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

@@ -1,0 +1,24 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meter_number\":\"unreadable\",\"clean_decision\":false,\"reasoning\":\"An electric meter is visible, but it is distant/partly obstructed in the photos and the utility-facing meter number characters are not legible end to end.\"}",
+ "json": {
+  "meter_number": "unreadable",
+  "clean_decision": false,
+  "reasoning": "An electric meter is visible, but it is distant/partly obstructed in the photos and the utility-facing meter number characters are not legible end to end."
+ },
+ "usage": {
+  "input_tokens": 23375,
+  "cached_tokens": 22784,
+  "output_tokens": 573,
+  "reasoning_tokens": 516
+ },
+ "cost_usd": 0.031537,
+ "latency_s": 11.42,
+ "stop": "completed",
+ "prompt_id": "p04_meter_number",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p04": "unclean"
+ }
+}

@@ -1,0 +1,11 @@
+{
+ "model": "claude-sonnet-5",
+ "error": "BadRequestError(\"Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CfSMuw1AXNhhXsbJUTB32'}\")",
+ "json": null,
+ "cost_usd": 0.0,
+ "usage": {},
+ "prompt_id": "p08_battery_space",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {}
+}

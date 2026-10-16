@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"justification\": \"These photos show a commercial/industrial building complex with transformer rooms, doors, and a large electrical switchgear/transformer cabinet rather than a residential meter and battery install area; no actual electric meter, install spot, or clearance details relevant to the checklist can be identified.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "These photos show a commercial/industrial building complex with transformer rooms, doors, and a large electrical switchgear/transformer cabinet rather than a residential meter and battery install area; no actual electric meter, install spot, or clearance details relevant to the checklist can be identified.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 33192,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 108
+ },
+ "cost_usd": 0.067464,
+ "latency_s": 10.26,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

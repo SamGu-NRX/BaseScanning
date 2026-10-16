@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"feature\": \"cl320_unclear\", \"label\": \"\", \"evidence\": \"No meter face or label visible in any of the 16 photos\", \"notes\": \"Photos show house exterior, siding, windows, yard, and outbuilding; no electric meter is visible in any image\", \"insufficientEvidence\": true}",
+ "json": {
+  "feature": "cl320_unclear",
+  "label": "",
+  "evidence": "No meter face or label visible in any of the 16 photos",
+  "notes": "Photos show house exterior, siding, windows, yard, and outbuilding; no electric meter is visible in any image",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 309,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 6885,
+  "output_tokens": 99
+ },
+ "cost_usd": 0.002985,
+ "latency_s": 2.31,
+ "stop": "end_turn",
+ "prompt_id": "p03_cl320_meter",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

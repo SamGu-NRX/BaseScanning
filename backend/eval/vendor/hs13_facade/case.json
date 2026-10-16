@@ -1,0 +1,22 @@
+{
+  "id": "eth3d-facade",
+  "real": true,
+  "scene_path": "~/house-scanning-data/verify/scenes/eth3d-facade/scene.zip",
+  "source": "ETH3D 'facade' (dslr_undistorted + dslr_scan_eval, research-only license), south courtyard wing; built by verification/scenes/eth3d-facade/build_scene.py from annotations.json. Walls, windows and door are real; the electric meter is invented.",
+  "description": "Three-wall chain: w1 (52.0 ft, five ground-floor windows), w2 (11.6 ft tower side, never observed), w3 (16.2 ft tower front with the entrance door). Meter invented on w1 between windows 4 and 5. No start position can pass: every w1 window gap (5.11-5.71 ft) is at least 2.87 ft short of the 8.58 ft a battery plus two 3 ft clearances needs, w2 is unobserved, and all of w3 is past the 20 ft route. Reject is also wrong because w2 is within reach and unseen. See README.md for the arithmetic.",
+  "rules_assumed": {"opening": 3.0, "route_length": 20.0, "corner_allowance": 0.5, "battery_width": 2.583333333333},
+  "expect": {
+    "decision_in": ["manual_review"],
+    "sweep_runs": [
+      {"wall_id": "w1", "start_ft": [-42.1, -31.97], "outcome_not": "pass", "reason": "window 1 [-40.08, -34.97]: footprint within clearances.opening_ft (3 ft); starts (a - width - 3, b + 3)"},
+      {"wall_id": "w1", "start_ft": [-34.84, -21.04], "outcome_not": "pass", "reason": "window 2 [-29.26, -24.04] within 3 ft"},
+      {"wall_id": "w1", "start_ft": [-24.17, -10.26], "outcome_not": "pass", "reason": "window 3 [-18.59, -13.26] within 3 ft"},
+      {"wall_id": "w1", "start_ft": [-13.71, 0.43], "outcome_not": "pass", "reason": "window 4 [-8.13, -2.57] within 3 ft"},
+      {"wall_id": "w1", "start_ft": [-3.04, 9.9], "outcome_not": "pass", "reason": "window 5 [2.54, 7.92] within 3 ft (band runs to 10.92, clipped at the w1/w2 corner)"},
+      {"wall_id": "w1", "start_ft": [-42.1, -22.58], "outcome_not": "pass", "reason": "route from meter to the battery's near (right) edge = -(start + width) exceeds route.max_ft (20 ft)"},
+      {"wall_id": "w2", "start_ft": [9.9, 21.52], "outcome_not": "pass", "reason": "w2 is in no coverage.observed band (seen only beyond 75 degrees from its normal)"},
+      {"wall_id": "w3", "start_ft": [21.52, 37.76], "outcome_not": "pass", "reason": "route is at least 21.52 ft along the wall + 2 corners x route.corner_allowance_ft 0.5 = 22.52 ft, over route.max_ft 20"},
+      {"wall_id": "w3", "start_ft": [21.52, 34.01], "outcome_not": "pass", "reason": "entrance door [23.83, 31.01] within 3 ft; doors also fail as route crossings (route.crossing.door)"}
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"reasoning\": \"None of the provided photos show a clear, close view of an electric meter; the images show general exterior views of the house, yard, trees, and outbuildings without a discernible meter can or mounting detail visible.\", \"type\": \"unknown\", \"clean-decision\": false}",
+ "json": {
+  "reasoning": "None of the provided photos show a clear, close view of an electric meter; the images show general exterior views of the house, yard, trees, and outbuildings without a discernible meter can or mounting detail visible.",
+  "type": "unknown",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 8217,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 90
+ },
+ "cost_usd": 0.017334,
+ "latency_s": 2.53,
+ "stop": "end_turn",
+ "prompt_id": "p10_meter_mount",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p10": "unknown"
+ }
+}

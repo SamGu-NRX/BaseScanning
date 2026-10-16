@@ -1,0 +1,26 @@
+# Merged over PR #11's public rules.yaml (as a private override) so its solver runs with the same
+# strictest-profile thresholds as C2 (rules_strictest.yaml). Every cited value carries a source.
+policy:
+  id: c2-strictest
+  version: "2026-09-26"
+  auto_approve: true
+  allow_reject: true
+  notice: "C2 comparison: strictest of Base profiles A/B/C"
+clearances:
+  gas_ft: {value: 5.0, source: "Profiles A and B: 5 ft"}
+  drive_ft: {value: 5.0, source: "Profiles A and B: 5 ft"}
+  pool_ft: {value: 10.0, source: "Profile C: 10 ft"}
+  ac_ft: {value: 3.0, source: "Base help page: 3 ft"}
+  opening_ft: {value: 3.0, source: "Profile B and IRC R328.4: 3 ft"}
+facing:
+  min_ft: {value: 5.0, source: "Profile C: about 5 ft from the wall, battery depth included"}
+  measured_from: wall
+headroom:
+  min_ft: {value: 7.0, source: "Profile C: 6-7 ft headroom"}
+route:
+  max_ft: {value: 15.0, source: "Profile A: 15 ft, same wall"}
+  confident_reach_ft: {value: 15.0, source: "Profile A: 15 ft hard limit"}
+  crossing:
+    door: fail
+    garage_door: fail
+    window: fail

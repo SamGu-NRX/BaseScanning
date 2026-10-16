@@ -1,0 +1,42 @@
+{
+ "scene": "electro",
+ "wall_ft": 19.311015888810974,
+ "config": {
+  "cellWidth": 0.1524,
+  "wallBandHeight": 1.9812,
+  "groundBandDepth": 1.2,
+  "maxDistance": 6.0,
+  "maxAngleFromNormal": 1.1344640137963142,
+  "imageMargin": 0.03,
+  "rowsPerBand": 3,
+  "coveringBaseline": 0.25,
+  "fogAhead": 2.5
+ },
+ "rows": [
+  {
+   "option": "app today: frustum only (no occlusion)",
+   "claimed_ft": 19.29,
+   "false_observed_ft": 1.12,
+   "missed_ft": 0.0,
+   "passes": false
+  },
+  {
+   "option": "depth test, laser scan (PR #12 true depth)",
+   "claimed_ft": 14.63,
+   "false_observed_ft": 0.0,
+   "missed_ft": 3.35,
+   "passes": true,
+   "relief_m": 0.1,
+   "rel": 0.04
+  },
+  {
+   "option": "depth test, laser scan, 0.4 m relief",
+   "claimed_ft": 18.11,
+   "false_observed_ft": 0.07,
+   "missed_ft": 0.0,
+   "passes": true,
+   "relief_m": 0.4,
+   "rel": 0.04
+  }
+ ]
+}

@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SamGu-NRX/house-scanning/server/schemas/scene.schema.json",
+  "title": "House scan scene",
+  "description": "What the phone measured around the electric meter (contract C1, docs/01-feature-map.md). Every length is in feet. Plan coordinates [x, z] are the horizontal axes of one gravity-aligned scene frame (ARKit .gravity world alignment: +y up), so [x, z] ignores height. `s` is the distance along the unrolled wall chain from the meter, negative to the left as seen by someone outside facing the wall. Unknown fields are rejected so a misspelled field fails loudly instead of being ignored.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["meter", "walls"],
+  "properties": {
+    "schema_version": {
+      "description": "Contract version. Absent means \"1.0\". Minor versions only add optional fields.",
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "meter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pos", "wall_id"],
+      "properties": {
+        "pos": {"$ref": "#/$defs/point3", "description": "Meter position in the scene frame, feet. Its [x, z] is projected onto `wall_id` to set s = 0."},
+        "wall_id": {"type": "string", "minLength": 1},
+        "plus_minus_ft": {"$ref": "#/$defs/plus_minus_ft"}
+      }
+    },
+    "walls": {
+      "description": "Wall chain in order from the left end to the right end, as seen from outside. Consecutive walls that share an endpoint meet at a corner; a gap between the end of one wall and the start of the next is a stretch with no wall, which no battery can back onto and no cable can cross. The first wall starts at the chain's left end.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "baseline"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "baseline": {
+            "description": "The wall's line along the ground, [x, z] points ordered left to right as seen from outside. The outward direction of each segment is therefore its direction turned 90 degrees clockwise in the x-z plane viewed from above (+y). Each straight segment is where a battery can sit flush.",
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 500,
+            "items": {"$ref": "#/$defs/point2"}
+          },
+          "height_ft": {"type": "number", "exclusiveMinimum": 0},
+          "plus_minus_ft": {"$ref": "#/$defs/plus_minus_ft", "description": "Position error of this wall's line. Absent means the rules' wall default, growing with distance along the walls from the meter (errors.drift_per_ft)."}
+        }
+      }
+    },
+    "objects": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "wall_id", "span_ft", "source"],
+        "properties": {
+          "type": {"enum": ["window", "door", "garage_door", "ac", "gas_meter", "elec_box", "vent", "downspout", "pool"]},
+          "wall_id": {"type": "string", "minLength": 1},
+          "span_ft": {"$ref": "#/$defs/span", "description": "Stretch of the wall the object covers, in s."},
+          "bottom_ft": {"type": "number", "minimum": 0, "description": "Height of the object's lowest edge above the ground."},
+          "top_ft": {"type": "number", "minimum": 0},
+          "attrs": {
+            "type": "object",
+            "description": "Recognised attributes. A missing attribute is unknown, never false.",
+            "additionalProperties": false,
+            "properties": {
+              "operable": {"type": "boolean"},
+              "well": {"type": "boolean"}
+            }
+          },
+          "source": {"enum": ["vlm", "tap", "tape"], "description": "How the position was measured: a vision model, an AR tap, or a tape measure. Sets the default error."},
+          "conf": {"type": "number", "minimum": 0, "maximum": 1, "description": "Recognition confidence. Not a distance error and never used as one."},
+          "plus_minus_ft": {"$ref": "#/$defs/plus_minus_ft", "description": "Position error. Absent means the rules' default for `source`; for tap and vlm it grows with distance along the walls from the meter (errors.drift_per_ft)."},
+          "footprint": {
+            "description": "Optional ground outline of the object in plan, [x, z] points. Give it for anything that stands off the wall (a gas regulator, pipe run, AC unit, pool edge) so clearances are measured to every part. Without it the object is the stretch of wall line over `span_ft`.",
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 500,
+            "items": {"$ref": "#/$defs/point2"}
+          }
+        }
+      }
+    },
+    "ground": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "polygon"],
+        "properties": {
+          "type": {"enum": ["drive", "concrete", "gravel", "lawn", "mulch", "deck"]},
+          "polygon": {"type": "array", "minItems": 3, "maxItems": 500, "items": {"$ref": "#/$defs/point2"}},
+          "plus_minus_ft": {"$ref": "#/$defs/plus_minus_ft", "description": "Position error of the outline. Absent means the rules' tap default, growing with distance along the walls from the meter (errors.drift_per_ft)."}
+        }
+      }
+    },
+    "overheads": {
+      "description": "Anything overhead (porch roof, eave, stairs, landing) along the wall, with the clear height beneath it.",
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["wall_id", "span_ft", "clearance_ft"],
+        "properties": {
+          "wall_id": {"type": "string", "minLength": 1},
+          "span_ft": {"$ref": "#/$defs/span"},
+          "clearance_ft": {"type": "number", "minimum": 0, "description": "Clear height from the ground to the underside."},
+          "plus_minus_ft": {"$ref": "#/$defs/plus_minus_ft", "description": "Absent means the rules' default for mesh measurements."}
+        }
+      }
+    },
+    "facing": {
+      "description": "Gap from the wall straight out to the nearest fence, hedge or wall.",
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["wall_id", "span_ft", "depth_ft"],
+        "properties": {
+          "wall_id": {"type": "string", "minLength": 1},
+          "span_ft": {"$ref": "#/$defs/span"},
+          "depth_ft": {"type": "number", "minimum": 0},
+          "plus_minus_ft": {"$ref": "#/$defs/plus_minus_ft", "description": "Absent means the rules' default for mesh measurements."}
+        }
+      }
+    },
+    "coverage": {
+      "description": "What the capture actually saw. Anything not listed was not observed, and a check that depends on an unobserved area is UNSURE, never PASS. Absent means nothing is known to be observed.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ends": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "left": {"$ref": "#/$defs/end"},
+            "right": {"$ref": "#/$defs/end"}
+          }
+        },
+        "observed": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["band", "span_ft"],
+            "properties": {
+              "band": {
+                "enum": ["wall", "ground", "overhead", "facing"],
+                "description": "wall: the wall face from the ground up to headroom height (boxes and vents above the battery, openings), which also covers the cable route. ground: the ground in front of the wall out to `out_ft`. overhead: the space above the ground strip up to headroom height. facing: the gap straight out from the wall to whatever faces it."
+              },
+              "span_ft": {"$ref": "#/$defs/span", "description": "Observed stretch in s. May extend past the chain's ends, continuing the end segments' lines. Past an end marked limit, observed ground covers both sides of that line."},
+              "out_ft": {"type": "number", "minimum": 0, "description": "How far the view reached, as a distance it is sure of. ground (required): how far out from the wall the ground was seen. facing: how far out from the wall the space was seen clear, for example the homeowner's walked path; absent means the view reached whatever faces the wall, so anything there is in `facing`. overhead: how high above the ground the space was seen clear; absent means it was seen all the way up, so anything above is in `overheads`."}
+            },
+            "if": {"properties": {"band": {"const": "ground"}}},
+            "then": {"required": ["out_ft"]}
+          }
+        }
+      }
+    },
+    "keyframes": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "pose", "intrinsics", "w", "h", "img"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "pose": {
+            "description": "Camera-to-world transform in the scene frame, 16 numbers in column-major order, translation in feet.",
+            "type": "array", "minItems": 16, "maxItems": 16, "items": {"type": "number"}
+          },
+          "intrinsics": {
+            "description": "[fx, fy, cx, cy] in pixels of the unrotated (landscape, as the sensor reads it) image.",
+            "type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}
+          },
+          "w": {"type": "integer", "minimum": 1},
+          "h": {"type": "integer", "minimum": 1},
+          "img": {"type": "string", "minLength": 1, "description": "File name of the JPEG inside the uploaded bundle."}
+        }
+      }
+    },
+    "stills": {
+      "type": "object",
+      "description": "Close-up photo file names in the bundle, keyed by purpose (meter_close, meter_surround, panel_wall, panel_open).",
+      "additionalProperties": {"type": "string"}
+    },
+    "gps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lat", "lon"],
+      "properties": {
+        "lat": {"type": "number", "minimum": -90, "maximum": 90},
+        "lon": {"type": "number", "minimum": -180, "maximum": 180}
+      }
+    },
+    "heading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deg"],
+      "properties": {
+        "deg": {"type": "number"},
+        "accuracy_deg": {"type": "number", "minimum": 0}
+      }
+    }
+  },
+  "$defs": {
+    "point2": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
+    "point3": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
+    "span": {
+      "description": "[start, end] in s, feet from the meter, start <= end.",
+      "type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}
+    },
+    "plus_minus_ft": {"type": "number", "minimum": 0, "description": "Measurement error in feet: the true value lies within this distance of the reported one."},
+    "end": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": ["limit", "unexplored"],
+          "description": "limit: the walk reached a real end, where there is no more wall a battery could use (the wall meets a fence, a neighbour's property or an impassable obstruction). unexplored: the wall continues (often round a corner) but was not walked. Absent means unexplored."
+        },
+        "note": {"type": "string"}
+      }
+    }
+  }
+}

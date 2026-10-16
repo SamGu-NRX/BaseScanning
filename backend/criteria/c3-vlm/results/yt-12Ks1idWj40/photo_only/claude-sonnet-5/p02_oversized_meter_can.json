@@ -1,0 +1,25 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"feature\": \"standard_meter_can\", \"evidence\": \"Photos 1, 5, 9, 11, 12, 14 show the round meter mounted in a compact socket enclosure directly below/beside the larger gray disconnect and BASE inverter panel. The meter can itself appears as a small, standard round-socket housing, not a tall/wide can.\", \"notes\": \"The taller gray box next to it is a separate disconnect/breaker panel, not part of the meter can itself; the meter socket enclosure remains compact and consistent with a standard residential meter can.\", \"insufficientEvidence\": false}",
+ "json": {
+  "feature": "standard_meter_can",
+  "evidence": "Photos 1, 5, 9, 11, 12, 14 show the round meter mounted in a compact socket enclosure directly below/beside the larger gray disconnect and BASE inverter panel. The meter can itself appears as a small, standard round-socket housing, not a tall/wide can.",
+  "notes": "The taller gray box next to it is a separate disconnect/breaker panel, not part of the meter can itself; the meter socket enclosure remains compact and consistent with a standard residential meter can.",
+  "insufficientEvidence": false
+ },
+ "usage": {
+  "input_tokens": 331,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 25329,
+  "output_tokens": 196
+ },
+ "cost_usd": 0.0076878,
+ "latency_s": 5.07,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p02": "standard_meter_can"
+ }
+}

@@ -1,0 +1,30 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"requires_member_action\": false, \"justification\": \"The meter sits on a long, open brick wall at the back of the house, facing a wide lawn. Just right of the meter, past the gray panel, there is a clear stretch of flat dirt and grass about 10+ ft wide against the wall. Nothing faces it, no gas meter or driveway is visible, and the window above is raised well off the ground, so the harness can run a few feet straight along the wall to it.\", \"decision\": \"pass\", \"reference_object\": \"electric meter base (~14 in tall) and brick courses\", \"needs_more_photos\": false, \"distance_ft\": 5, \"missing_views\": [], \"front_clearance_ft\": 99, \"drive_path_ft\": null}",
+ "json": {
+  "requires_member_action": false,
+  "justification": "The meter sits on a long, open brick wall at the back of the house, facing a wide lawn. Just right of the meter, past the gray panel, there is a clear stretch of flat dirt and grass about 10+ ft wide against the wall. Nothing faces it, no gas meter or driveway is visible, and the window above is raised well off the ground, so the harness can run a few feet straight along the wall to it.",
+  "decision": "pass",
+  "reference_object": "electric meter base (~14 in tall) and brick courses",
+  "needs_more_photos": false,
+  "distance_ft": 5,
+  "missing_views": [],
+  "front_clearance_ft": 99,
+  "drive_path_ft": null
+ },
+ "usage": {
+  "input_tokens": 34551,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 548
+ },
+ "cost_usd": 0.149164,
+ "latency_s": 11.52,
+ "stop": "end_turn",
+ "prompt_id": "p08_battery_space",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p08": "pass"
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasTrueMultipleMainPanels\":false,\"multipleMainPanelLabel\":\"unclear_or_insufficient_evidence\",\"insufficientEvidence\":true,\"evidence\":\"Exterior photos show the house, a meter/closed exterior electrical boxes, but no open or close-up main electrical panels with visible independent main breakers or disconnects.\",\"notes\":\"Cannot verify multiple true main panels; panel interiors/labels/main disconnects are not shown.\"}",
+ "json": {
+  "hasTrueMultipleMainPanels": false,
+  "multipleMainPanelLabel": "unclear_or_insufficient_evidence",
+  "insufficientEvidence": true,
+  "evidence": "Exterior photos show the house, a meter/closed exterior electrical boxes, but no open or close-up main electrical panels with visible independent main breakers or disconnects.",
+  "notes": "Cannot verify multiple true main panels; panel interiors/labels/main disconnects are not shown."
+ },
+ "usage": {
+  "input_tokens": 6382,
+  "cached_tokens": 0,
+  "output_tokens": 198,
+  "reasoning_tokens": 108
+ },
+ "cost_usd": 0.03785,
+ "latency_s": 9.04,
+ "stop": "completed",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p01": "unclear_or_insufficient_evidence"
+ }
+}

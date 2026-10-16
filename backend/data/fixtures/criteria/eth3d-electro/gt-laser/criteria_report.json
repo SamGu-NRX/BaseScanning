@@ -1,0 +1,87 @@
+{
+ "profiles": [
+  "A",
+  "B",
+  "C",
+  "S",
+  "public"
+ ],
+ "degraded": [],
+ "decidability": {
+  "A": {
+   "cells_total": 405,
+   "cells_decided": 380,
+   "share": 0.9383,
+   "by_engine": {
+    "engine3d_pass": 298,
+    "engine3d_fail": 76,
+    "chain_pass": 1,
+    "chain_fail": 5
+   }
+  },
+  "B": {
+   "cells_total": 392,
+   "cells_decided": 367,
+   "share": 0.9362,
+   "by_engine": {
+    "engine3d_pass": 288,
+    "engine3d_fail": 73,
+    "chain_pass": 0,
+    "chain_fail": 6
+   }
+  },
+  "C": {
+   "cells_total": 518,
+   "cells_decided": 449,
+   "share": 0.8668,
+   "by_engine": {
+    "engine3d_pass": 371,
+    "engine3d_fail": 78,
+    "chain_pass": 0,
+    "chain_fail": 0
+   }
+  },
+  "S": {
+   "cells_total": 480,
+   "cells_decided": 439,
+   "share": 0.9146,
+   "by_engine": {
+    "engine3d_pass": 334,
+    "engine3d_fail": 100,
+    "chain_pass": 0,
+    "chain_fail": 5
+   }
+  },
+  "public": {
+   "cells_total": 448,
+   "cells_decided": 414,
+   "share": 0.9241,
+   "by_engine": {
+    "engine3d_pass": 321,
+    "engine3d_fail": 89,
+    "chain_pass": 0,
+    "chain_fail": 4
+   }
+  }
+ },
+ "c2": {
+  "status": "ok",
+  "agreement_with_c1": 1.0,
+  "vetoes": 0
+ },
+ "c3": {
+  "facts_calls": 0,
+  "judge_calls": 0,
+  "cost_usd": 0.0,
+  "status": "disabled"
+ },
+ "downgrades": {
+  "coverage": 0,
+  "c2": 0,
+  "judge": 0,
+  "attrs": 0
+ },
+ "ground_rule": "footprint3in",
+ "scale": null,
+ "provisional": false
+}

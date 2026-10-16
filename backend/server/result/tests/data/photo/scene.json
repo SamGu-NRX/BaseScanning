@@ -1,0 +1,210 @@
+{
+ "format": "base-scene/v0",
+ "scene_id": "synthetic-flatwall",
+ "provenance": {
+  "data": "synthetic",
+  "site": "synthetic-flatwall",
+  "producer": {
+   "path": "server/result/tests"
+  },
+  "scale_source": "native_metric",
+  "gravity_source": "ground_plane_fit"
+ },
+ "frame": {
+  "units": "m",
+  "convention": "meter_anchored/v0",
+  "anchor": {
+   "element_id": "meter",
+   "plus_minus_m": 0.0
+  },
+  "source_frame": "eth3d_world",
+  "from_source": [
+   1.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   1.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   1.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   1.0
+  ]
+ },
+ "walls": [
+  {
+   "id": "w1",
+   "role": "house",
+   "baseline_m": [
+    [
+     -4.0,
+     0.0
+    ],
+    [
+     4.0,
+     0.0
+    ]
+   ],
+   "height_m": 3.0,
+   "s_range_m": [
+    -4.0,
+    4.0
+   ],
+   "plus_minus_m": 0.01,
+   "evidence": "observed"
+  }
+ ],
+ "chain": {
+  "wall_ids": [
+   "w1"
+  ],
+  "ends": {
+   "left": {
+    "kind": "limit",
+    "point_m": [
+     -4.0,
+     0.0
+    ],
+    "s_m": -4.0
+   },
+   "right": {
+    "kind": "limit",
+    "point_m": [
+     4.0,
+     0.0
+    ],
+    "s_m": 4.0
+   }
+  }
+ },
+ "ground": {
+  "surface": {
+   "kind": "plane",
+   "normal": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "offset_m": 0.0
+  },
+  "plus_minus_m": 0.01
+ },
+ "objects": [
+  {
+   "id": "meter",
+   "class": "meter",
+   "geometry": {
+    "kind": "point",
+    "pos_m": [
+     0.0,
+     1.5,
+     0.0
+    ]
+   },
+   "confidence": 1.0,
+   "plus_minus_m": 0.05,
+   "source": {
+    "kind": "annotation"
+   },
+   "evidence": "observed"
+  },
+  {
+   "id": "win1",
+   "class": "window",
+   "geometry": {
+    "kind": "wall_rect",
+    "wall_id": "w1",
+    "s_m": [
+     1.0,
+     1.6
+    ],
+    "bottom_m": 0.8,
+    "top_m": 2.0
+   },
+   "confidence": 1.0,
+   "plus_minus_m": 0.05,
+   "source": {
+    "kind": "annotation"
+   },
+   "evidence": "observed"
+  }
+ ],
+ "coverage": {
+  "method": "synthetic"
+ },
+ "assets": [
+  {
+   "id": "cloud",
+   "kind": "point_cloud",
+   "path": "points.ply",
+   "format": "ply",
+   "in_scene_frame": true,
+   "count": 4,
+   "fields": [
+    "x",
+    "y",
+    "z",
+    "generated"
+   ],
+   "generated_field": "generated"
+  }
+ ],
+ "generated_regions": [
+  {
+   "id": "g1",
+   "method": "box",
+   "geometry": {
+    "kind": "box",
+    "center_m": [
+     1.0,
+     0.5,
+     0.2
+    ],
+    "size_m": [
+     0.3,
+     0.3,
+     0.3
+    ]
+   }
+  }
+ ],
+ "keyframes": [
+  {
+   "id": "k01",
+   "image": "k01.jpg",
+   "pose": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.995037,
+    -0.099504,
+    0.0,
+    0.0,
+    0.099504,
+    0.995037,
+    0.0,
+    0.0,
+    1.4,
+    4.0,
+    1.0
+   ],
+   "intrinsics": [
+    1200.0,
+    1200.0,
+    1000.0,
+    750.0
+   ],
+   "w": 2000,
+   "h": 1500,
+   "pose_source": "model"
+  }
+ ]
+}

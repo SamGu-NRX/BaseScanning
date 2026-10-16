@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"manual_review\", \"justification\": \"The photos show only exterior views of multiple closed transformer/electrical room doors and equipment enclosures with no interior breaker panel views at all, so no main breaker or disconnect is actually visible in any enclosure. Without any open panel photos to confirm a single independent main, this cannot be confidently decided and should go to manual review.\"}",
+ "json": {
+  "decision": "manual_review",
+  "justification": "The photos show only exterior views of multiple closed transformer/electrical room doors and equipment enclosures with no interior breaker panel views at all, so no main breaker or disconnect is actually visible in any enclosure. Without any open panel photos to confirm a single independent main, this cannot be confidently decided and should go to manual review."
+ },
+ "usage": {
+  "input_tokens": 33643,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 124
+ },
+ "cost_usd": 0.068526,
+ "latency_s": 7.67,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

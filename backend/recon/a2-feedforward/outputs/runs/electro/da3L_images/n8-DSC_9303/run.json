@@ -1,0 +1,58 @@
+{
+ "scene": "electro",
+ "model": "da3L",
+ "checkpoint": "depth-anything/DA3-LARGE-1.1",
+ "license": "Apache-2.0 (DA3-LARGE-1.1)",
+ "mode": "images",
+ "members": [
+  "DSC_9303",
+  "DSC_9302",
+  "DSC_9275",
+  "DSC_9271",
+  "DSC_9301",
+  "DSC_9270",
+  "DSC_9281",
+  "DSC_9287"
+ ],
+ "network_wh": [
+  504,
+  336
+ ],
+ "seconds_total": 8.4,
+ "device": "cpu (4 threads, bf16 autocast trunk)",
+ "views": {
+  "DSC_9303": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.531
+  },
+  "DSC_9302": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.539
+  },
+  "DSC_9275": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 1.912
+  },
+  "DSC_9271": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.766
+  },
+  "DSC_9301": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.526
+  },
+  "DSC_9270": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 0.862
+  },
+  "DSC_9281": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 2.149
+  },
+  "DSC_9287": {
+   "valid_fraction": 1.0,
+   "median_depth_m": 2.196
+  }
+ },
+ "frame": "model frame"
+}

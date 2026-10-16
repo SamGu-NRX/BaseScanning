@@ -1,0 +1,23 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"justification\":\"The meter area has clear wall space and the white Base disconnect/hub is mounted next to the meter with rigid conduit routing visible. A battery spot exists on ground to the left of the meter along the same wall, away from the ground-level window/door area, with overhead clearance and no driveway, gas meter, pool, door, garage, or window well blocking the wiring path.\",\"decision\":\"pass\"}",
+ "json": {
+  "justification": "The meter area has clear wall space and the white Base disconnect/hub is mounted next to the meter with rigid conduit routing visible. A battery spot exists on ground to the left of the meter along the same wall, away from the ground-level window/door area, with overhead clearance and no driveway, gas meter, pool, door, garage, or window well blocking the wiring path.",
+  "decision": "pass"
+ },
+ "usage": {
+  "input_tokens": 26286,
+  "cached_tokens": 0,
+  "output_tokens": 1326,
+  "reasoning_tokens": 1235
+ },
+ "cost_usd": 0.17121,
+ "latency_s": 18.8,
+ "stop": "completed",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p07": "pass"
+ }
+}

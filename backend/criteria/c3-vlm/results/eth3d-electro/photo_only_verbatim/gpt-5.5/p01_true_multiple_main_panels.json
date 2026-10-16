@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasTrueMultipleMainPanels\":false,\"multipleMainPanelLabel\":\"unclear_or_insufficient_evidence\",\"insufficientEvidence\":true,\"evidence\":\"Images show multiple closed transformer/electrical room doors and exterior utility enclosures, but no open load centers or clearly visible independent main breakers/disconnects for any candidate panels.\",\"notes\":\"Closed rooms/enclosures and wall-context views do not prove true multiple main electrical panels; panel interiors and service-main relationships are not visible.\"}",
+ "json": {
+  "hasTrueMultipleMainPanels": false,
+  "multipleMainPanelLabel": "unclear_or_insufficient_evidence",
+  "insufficientEvidence": true,
+  "evidence": "Images show multiple closed transformer/electrical room doors and exterior utility enclosures, but no open load centers or clearly visible independent main breakers/disconnects for any candidate panels.",
+  "notes": "Closed rooms/enclosures and wall-context views do not prove true multiple main electrical panels; panel interiors and service-main relationships are not visible."
+ },
+ "usage": {
+  "input_tokens": 29717,
+  "cached_tokens": 0,
+  "output_tokens": 252,
+  "reasoning_tokens": 150
+ },
+ "cost_usd": 0.156145,
+ "latency_s": 13.14,
+ "stop": "completed",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p01": "unclear_or_insufficient_evidence"
+ }
+}

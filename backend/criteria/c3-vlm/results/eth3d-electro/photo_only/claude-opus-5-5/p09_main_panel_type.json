@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"decision\": \"manual_review\", \"explanation\": \"The photos show a commercial or institutional site, not a home electrical panel. Visible are closed transformer-room doors labeled 'Traforaum', closed outdoor switchgear/transformer kiosks, and temporary cabling on scaffolding. No residential service panel, main breaker or open panel view appears in any photo, so a single main versus multiple mains cannot be judged.\"}",
+ "json": {
+  "decision": "manual_review",
+  "explanation": "The photos show a commercial or institutional site, not a home electrical panel. Visible are closed transformer-room doors labeled 'Traforaum', closed outdoor switchgear/transformer kiosks, and temporary cabling on scaffolding. No residential service panel, main breaker or open panel view appears in any photo, so a single main versus multiple mains cannot be judged."
+ },
+ "usage": {
+  "input_tokens": 360,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 201
+ },
+ "cost_usd": 0.0118942,
+ "latency_s": 4.22,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

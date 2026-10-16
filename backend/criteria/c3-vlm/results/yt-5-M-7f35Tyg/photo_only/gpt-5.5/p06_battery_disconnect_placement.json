@@ -1,0 +1,34 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"decision\":\"manual_review\",\"disconnect_location\":null,\"battery_location\":null,\"distance_ft\":null,\"reference_object\":\"electric meter, assumed about 12 inches wide\",\"needs_more_photos\":true,\"missing_views\":[\"Straight-on wide photo of the electric meter showing at least 3 ft to both sides and the ground directly below it.\",\"Wide photos along the same wall as the electric meter showing any possible battery locations within 15 ft of the meter.\",\"Photo or measurement showing the distance from any proposed battery spot to the gas meter/regulator/shutoff and nearby AC condenser.\",\"Photos showing whether any driveway or other car-reachable surface is within 5 ft of the proposed location.\"],\"justification\":\"Cannot confidently verify 2 ft clear disconnect space beside the meter or clear conduit exit below it. Nearby gas equipment, AC condenser, windows/corner/deck, and incomplete same-wall views make the battery location and required clearances uncertain.\"}",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": null,
+  "battery_location": null,
+  "distance_ft": null,
+  "reference_object": "electric meter, assumed about 12 inches wide",
+  "needs_more_photos": true,
+  "missing_views": [
+   "Straight-on wide photo of the electric meter showing at least 3 ft to both sides and the ground directly below it.",
+   "Wide photos along the same wall as the electric meter showing any possible battery locations within 15 ft of the meter.",
+   "Photo or measurement showing the distance from any proposed battery spot to the gas meter/regulator/shutoff and nearby AC condenser.",
+   "Photos showing whether any driveway or other car-reachable surface is within 5 ft of the proposed location."
+  ],
+  "justification": "Cannot confidently verify 2 ft clear disconnect space beside the meter or clear conduit exit below it. Nearby gas equipment, AC condenser, windows/corner/deck, and incomplete same-wall views make the battery location and required clearances uncertain."
+ },
+ "usage": {
+  "input_tokens": 3938,
+  "cached_tokens": 3328,
+  "output_tokens": 1207,
+  "reasoning_tokens": 1012
+ },
+ "cost_usd": 0.040924,
+ "latency_s": 18.97,
+ "stop": "completed",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

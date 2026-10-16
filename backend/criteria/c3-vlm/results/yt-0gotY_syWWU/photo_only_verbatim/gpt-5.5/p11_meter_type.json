@@ -1,0 +1,29 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meter_head_y_min\":646,\"meter_head_y_max\":742,\"meter_can_y_min\":630,\"meter_can_y_max\":758,\"distance_ratio\":1.33,\"reasoning\":\"The visible meter is a single round residential meter on a small gray socket/can beside the door. The can appears only slightly taller than the round meter head, with little blank metal above or below, which best matches an undersized meter can; however the view is somewhat distant/low-resolution, so this is not a fully clean decision.\",\"type\":\"undersizedMeter\",\"clean-decision\":false}",
+ "json": {
+  "meter_head_y_min": 646,
+  "meter_head_y_max": 742,
+  "meter_can_y_min": 630,
+  "meter_can_y_max": 758,
+  "distance_ratio": 1.33,
+  "reasoning": "The visible meter is a single round residential meter on a small gray socket/can beside the door. The can appears only slightly taller than the round meter head, with little blank metal above or below, which best matches an undersized meter can; however the view is somewhat distant/low-resolution, so this is not a fully clean decision.",
+  "type": "undersizedMeter",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 7620,
+  "cached_tokens": 0,
+  "output_tokens": 641,
+  "reasoning_tokens": 516
+ },
+ "cost_usd": 0.05733,
+ "latency_s": 9.5,
+ "stop": "completed",
+ "prompt_id": "p11_meter_type",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p11": "undersizedMeter(unclean)"
+ }
+}

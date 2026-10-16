@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"decision\": \"manual_review\", \"justification\": \"The photos are exterior walkaround shots of the house, yard, driveway, chimney and gas meter. No breaker panel or disconnect enclosure is shown, open or closed. A small meter base or box is visible on the wall in photos 2 and 14, but no breakers are visible, so the number of independent service mains cannot be determined.\"}",
+ "json": {
+  "decision": "manual_review",
+  "justification": "The photos are exterior walkaround shots of the house, yard, driveway, chimney and gas meter. No breaker panel or disconnect enclosure is shown, open or closed. A small meter base or box is visible on the wall in photos 2 and 14, but no breakers are visible, so the number of independent service mains cannot be determined."
+ },
+ "usage": {
+  "input_tokens": 20871,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 125
+ },
+ "cost_usd": 0.085984,
+ "latency_s": 5.57,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

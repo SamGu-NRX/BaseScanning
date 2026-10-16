@@ -1,0 +1,40 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\n  \"meterNotAccessible\": {\n    \"verdict\": \"manual_review\",\n    \"reasoning\": \"No identifiable electric meter is visible in the provided photos; the images show exterior utility-room doors, conduit/cable supports, and large equipment cabinets instead. Because the meter location and its frontage are not shown clearly, access cannot be judged.\"\n  },\n  \"panelNotAccessible\": {\n    \"verdict\": \"manual_review\",\n    \"reasoning\": \"No clear main breaker box or open breaker panel is visible. The photos mainly show exterior doors/equipment enclosures and temporary-looking cable/scaffold structures, so the panel working space cannot be confirmed.\"\n  },\n  \"panelInHouse\": {\n    \"verdict\": \"manual_review\",\n    \"reasoning\": \"The main panel itself is not identifiable, so its location cannot be confidently classified as garage/outside versus interior living space. The visible surroundings are exterior/utility-like, but they do not confirm where the actual main breaker panel is.\"\n  },\n  \"notSameWall\": {\n    \"verdict\": \"manual_review\",\n    \"reasoning\": \"Both the electric meter and main panel are not plainly visible together on the same exterior wall. Since their actual locations cannot be confirmed from these photos, this requires manual review.\"\n  }\n}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "No identifiable electric meter is visible in the provided photos; the images show exterior utility-room doors, conduit/cable supports, and large equipment cabinets instead. Because the meter location and its frontage are not shown clearly, access cannot be judged."
+  },
+  "panelNotAccessible": {
+   "verdict": "manual_review",
+   "reasoning": "No clear main breaker box or open breaker panel is visible. The photos mainly show exterior doors/equipment enclosures and temporary-looking cable/scaffold structures, so the panel working space cannot be confirmed."
+  },
+  "panelInHouse": {
+   "verdict": "manual_review",
+   "reasoning": "The main panel itself is not identifiable, so its location cannot be confidently classified as garage/outside versus interior living space. The visible surroundings are exterior/utility-like, but they do not confirm where the actual main breaker panel is."
+  },
+  "notSameWall": {
+   "verdict": "manual_review",
+   "reasoning": "Both the electric meter and main panel are not plainly visible together on the same exterior wall. Since their actual locations cannot be confirmed from these photos, this requires manual review."
+  }
+ },
+ "usage": {
+  "input_tokens": 31180,
+  "cached_tokens": 0,
+  "output_tokens": 786,
+  "reasoning_tokens": 516
+ },
+ "cost_usd": 0.17948,
+ "latency_s": 11.22,
+ "stop": "completed",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "eth3d-electro",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "manual_review",
+  "p12.panelNotAccessible": "manual_review",
+  "p12.panelInHouse": "manual_review",
+  "p12.notSameWall": "manual_review"
+ }
+}

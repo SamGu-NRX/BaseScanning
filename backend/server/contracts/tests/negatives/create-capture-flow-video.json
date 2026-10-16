@@ -1,0 +1,11 @@
+{
+  "packetId": "12345678",
+  "formatVersion": "0.4",
+  "tier": "arkit",
+  "flow": "video",
+  "device": {
+    "model": "iPhone",
+    "systemVersion": "18",
+    "appVersion": "0.4"
+  }
+}

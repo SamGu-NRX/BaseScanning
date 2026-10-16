@@ -1,0 +1,34 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\"reference_object\": \"Vinyl siding courses (about 4 in exposure each) and the residential AC condenser (about 2.5 ft wide)\",\n \"distance_ft\": 12,\n \"front_clearance_ft\": 99,\n \"drive_path_ft\": null,\n \"requires_member_action\": true,\n \"decision\": \"manual_review\",\n \"needs_more_photos\": true,\n \"missing_views\": [\"One wide photo, taken from about 15 ft back, showing the whole wall with the electric meter, gas meter and AC unit together\", \"A photo of the blank wall between the gas meter and the AC unit with a tape measure laid along the ground\", \"A wide photo of the side wall around the corner from the electric meter (the mulch bed), showing the windows and any driveway or parking area nearby\"],\n \"justification\": \"The electric meter (photo 11) sits near the house corner. It appears to share a wall with the gas meter, which is a few feet to its left: the orange cord and the conduit in photo 4 match those under the electric meter in photo 11. The meter is reachable across open mulch and ivy.\\n\\nCandidate 1: the blank ivy-covered wall between the gas meter and the AC unit (photos 1, 2, 5, 6). The ground is workable after trimming ivy. The front toward the wooded yard is wide open, and no drive path is visible. The route would be about 10\u201312 ft, wall-supported past the gas meter. However, the footprint must clear the gas meter, regulator and pipes by about 3 ft, and the AC unit and its disconnect also need clearance. The contiguous wall length available between these cannot be confirmed from the photos. The first-floor windows above this wall also need checking.\\n\\nCandidate 2: the side wall around the corner from the electric meter, a mulch and rock bed with an inside corner (photos 12\u201315). It has open frontage, but first-floor windows sit above much of it. Whether 3 ft of window-free wall exists, and where the nearest drivable surface is, cannot be judged.\\n\\nNo candidate clearly fails, but neither is clearly confirmed, so this goes to manual review. Moving rocks and trimming ivy would be required.\"}\n```",
+ "json": {
+  "reference_object": "Vinyl siding courses (about 4 in exposure each) and the residential AC condenser (about 2.5 ft wide)",
+  "distance_ft": 12,
+  "front_clearance_ft": 99,
+  "drive_path_ft": null,
+  "requires_member_action": true,
+  "decision": "manual_review",
+  "needs_more_photos": true,
+  "missing_views": [
+   "One wide photo, taken from about 15 ft back, showing the whole wall with the electric meter, gas meter and AC unit together",
+   "A photo of the blank wall between the gas meter and the AC unit with a tape measure laid along the ground",
+   "A wide photo of the side wall around the corner from the electric meter (the mulch bed), showing the windows and any driveway or parking area nearby"
+  ],
+  "justification": "The electric meter (photo 11) sits near the house corner. It appears to share a wall with the gas meter, which is a few feet to its left: the orange cord and the conduit in photo 4 match those under the electric meter in photo 11. The meter is reachable across open mulch and ivy.\n\nCandidate 1: the blank ivy-covered wall between the gas meter and the AC unit (photos 1, 2, 5, 6). The ground is workable after trimming ivy. The front toward the wooded yard is wide open, and no drive path is visible. The route would be about 10\u201312 ft, wall-supported past the gas meter. However, the footprint must clear the gas meter, regulator and pipes by about 3 ft, and the AC unit and its disconnect also need clearance. The contiguous wall length available between these cannot be confirmed from the photos. The first-floor windows above this wall also need checking.\n\nCandidate 2: the side wall around the corner from the electric meter, a mulch and rock bed with an inside corner (photos 12\u201315). It has open frontage, but first-floor windows sit above much of it. Whether 3 ft of window-free wall exists, and where the nearest drivable surface is, cannot be judged.\n\nNo candidate clearly fails, but neither is clearly confirmed, so this goes to manual review. Moving rocks and trimming ivy would be required."
+ },
+ "usage": {
+  "input_tokens": 2231,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 4005,
+  "output_tokens": 2090
+ },
+ "cost_usd": 0.051525,
+ "latency_s": 23.01,
+ "stop": "end_turn",
+ "prompt_id": "p08_battery_space",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p08": "manual_review"
+ }
+}

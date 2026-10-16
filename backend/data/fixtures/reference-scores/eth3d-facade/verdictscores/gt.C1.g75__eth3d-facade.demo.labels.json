@@ -1,0 +1,89 @@
+{
+ "format": "base-verdictscore/v0",
+ "verdict_id": "eth3d-facade/gt-laser/C1-rules-hs11/angle75",
+ "labels_site": "eth3d-facade",
+ "labels_profile": "demo",
+ "evaluator": "C1-rules-hs11",
+ "headline": {
+  "unsafe_passes": 0,
+  "unsafe_pass_positions": 0,
+  "unsafe_pass_wall_m": 0.0,
+  "unsafe_pass_wall_ft": 0.0,
+  "unsafe_site_criteria": 0,
+  "unsafe_site_decision": false,
+  "coverage_contract_unsafe_passes": 0
+ },
+ "start_range": {
+  "positions": {
+   "agree": 434,
+   "unsafe_pass": 0,
+   "missed_review": 0,
+   "over_caution": 0,
+   "false_rejection": 0,
+   "pass_on_unknown": 0,
+   "unscored": 0,
+   "not_evaluated": 0
+  },
+  "wall_m": {
+   "agree": 22.047,
+   "unsafe_pass": 0.0,
+   "missed_review": 0.0,
+   "over_caution": 0.0,
+   "false_rejection": 0.0,
+   "pass_on_unknown": 0.0,
+   "unscored": 0.0,
+   "not_evaluated": 0.0
+  },
+  "agreement": 1.0,
+  "manual_review_rate": 0.2235,
+  "rows": [
+   {
+    "label": "w1.all",
+    "scope": "start_range",
+    "wall_id": "w1",
+    "truth": "not_pass",
+    "positions": 297,
+    "agree": 297
+   },
+   {
+    "label": "w2.all",
+    "scope": "start_range",
+    "wall_id": "w2",
+    "truth": "not_pass",
+    "positions": 55,
+    "agree": 55
+   },
+   {
+    "label": "w3.all",
+    "scope": "start_range",
+    "wall_id": "w3",
+    "truth": "not_pass",
+    "positions": 82,
+    "agree": 82
+   }
+  ]
+ },
+ "site": {
+  "decision": {
+   "label": "manual_review",
+   "verdict": "manual_review",
+   "result": "agree"
+  },
+  "criteria": [
+   {
+    "label": "site.placement",
+    "criterion": "placement",
+    "truth": "not_pass",
+    "outcome": "unsure",
+    "from": "site.decision",
+    "result": "agree"
+   }
+  ],
+  "agreement": 1.0,
+  "manual_review_rate": 1.0,
+  "not_evaluated": 0
+ },
+ "coverage_contract_errors": [],
+ "c5_margin_errors": [],
+ "labels_file": "labels/eth3d-facade.demo.labels.json"
+}

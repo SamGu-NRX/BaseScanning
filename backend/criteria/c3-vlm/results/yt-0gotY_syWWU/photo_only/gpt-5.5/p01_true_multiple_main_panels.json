@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"trueMultipleMainPanels\":false,\"panelLayout\":\"unclear\",\"evidence\":\"Photos 1-16 show exterior views of the home and yard. Photo 3 and photo 6 show a visible utility meter on the front wall near the door. Photo 9 shows small exterior electrical boxes/equipment on another wall, but no open panel interiors, main breakers, or clearly labeled independent service disconnects are visible. No photos show two or more panels with independent main breakers/disconnects and evidence that each is an independent service main.\",\"notes\":\"True multiple main panels are not proven from these photos.\",\"insufficientEvidence\":true}",
+ "json": {
+  "trueMultipleMainPanels": false,
+  "panelLayout": "unclear",
+  "evidence": "Photos 1-16 show exterior views of the home and yard. Photo 3 and photo 6 show a visible utility meter on the front wall near the door. Photo 9 shows small exterior electrical boxes/equipment on another wall, but no open panel interiors, main breakers, or clearly labeled independent service disconnects are visible. No photos show two or more panels with independent main breakers/disconnects and evidence that each is an independent service main.",
+  "notes": "True multiple main panels are not proven from these photos.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 6165,
+  "cached_tokens": 0,
+  "output_tokens": 237,
+  "reasoning_tokens": 104
+ },
+ "cost_usd": 0.037935,
+ "latency_s": 4.1,
+ "stop": "completed",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only",
+ "verdicts": {
+  "p01": "unclear"
+ }
+}

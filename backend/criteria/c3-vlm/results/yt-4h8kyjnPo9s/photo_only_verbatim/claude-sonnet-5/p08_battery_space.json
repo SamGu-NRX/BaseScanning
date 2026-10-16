@@ -1,0 +1,34 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"justification\": \"The meter (photo 14) sits on a brick wall with a car parked directly against the grass right beside it, and photos 9-11 show that same grass/gravel strip continuing toward a fence with the car clearly able to drive/park on it - so that stretch fails the drivable-surface clearance. Going the other direction from the meter (past the AC-window in photo 4, and the plain brick stretches in photos 15/16) the wall looks clear, but those shots are tight close-ups of brick with no ground visible, so I can't confirm width, depth, or surface there, and I can't tell how the wall relates to the meter or the fenced corner in photo 5. Because a plausible stretch of wall on the far side of the meter is unverified rather than confirmed-bad, this isn't a sure reject.\", \"reference_object\": \"gas/electric meter equipment ~1 ft tall and window width ~3 ft used for scale\", \"distance_ft\": 10, \"front_clearance_ft\": 10, \"drive_path_ft\": null, \"requires_member_action\": false, \"decision\": \"manual_review\", \"needs_more_photos\": true, \"missing_views\": [\"A wide shot showing the ground along the wall to the left of the meter, past the AC unit, all the way to the corner\", \"A clear photo of the wall and ground to the right of the meter, past the parked car, up to the fence or gate\", \"A photo showing how the bushy corner/planter area (with the rocks) connects to the meter wall and how far it is\"]}",
+ "json": {
+  "justification": "The meter (photo 14) sits on a brick wall with a car parked directly against the grass right beside it, and photos 9-11 show that same grass/gravel strip continuing toward a fence with the car clearly able to drive/park on it - so that stretch fails the drivable-surface clearance. Going the other direction from the meter (past the AC-window in photo 4, and the plain brick stretches in photos 15/16) the wall looks clear, but those shots are tight close-ups of brick with no ground visible, so I can't confirm width, depth, or surface there, and I can't tell how the wall relates to the meter or the fenced corner in photo 5. Because a plausible stretch of wall on the far side of the meter is unverified rather than confirmed-bad, this isn't a sure reject.",
+  "reference_object": "gas/electric meter equipment ~1 ft tall and window width ~3 ft used for scale",
+  "distance_ft": 10,
+  "front_clearance_ft": 10,
+  "drive_path_ft": null,
+  "requires_member_action": false,
+  "decision": "manual_review",
+  "needs_more_photos": true,
+  "missing_views": [
+   "A wide shot showing the ground along the wall to the left of the meter, past the AC unit, all the way to the corner",
+   "A clear photo of the wall and ground to the right of the meter, past the parked car, up to the fence or gate",
+   "A photo showing how the bushy corner/planter area (with the rocks) connects to the meter wall and how far it is"
+  ]
+ },
+ "usage": {
+  "input_tokens": 28617,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 4453
+ },
+ "cost_usd": 0.101764,
+ "latency_s": 57.86,
+ "stop": "end_turn",
+ "prompt_id": "p08_battery_space",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p08": "manual_review"
+ }
+}

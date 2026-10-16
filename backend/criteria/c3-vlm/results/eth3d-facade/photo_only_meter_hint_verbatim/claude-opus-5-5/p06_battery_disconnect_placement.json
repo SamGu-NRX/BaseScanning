@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"justification\": \"In Photo 8 the marked meter spot sits on a narrow brick pier between two large ground-floor windows, so there is little open wall beside it and any install spot or wire run along the wall would be broken by windows. The ground in front is a large gravel courtyard (Photos 8-11, 15) that connects to paved paths, so the 5 ft drivable-surface clearance cannot be confirmed.\", \"decision\": \"manual_review\"}",
+ "json": {
+  "justification": "In Photo 8 the marked meter spot sits on a narrow brick pier between two large ground-floor windows, so there is little open wall beside it and any install spot or wire run along the wall would be broken by windows. The ground in front is a large gravel courtyard (Photos 8-11, 15) that connects to paved paths, so the 5 ft drivable-surface clearance cannot be confirmed.",
+  "decision": "manual_review"
+ },
+ "usage": {
+  "input_tokens": 33272,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 254
+ },
+ "cost_usd": 0.138168,
+ "latency_s": 11.39,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "eth3d-facade",
+ "variant": "photo_only_meter_hint_verbatim",
+ "verdicts": {
+  "p06": "manual_review"
+ }
+}

@@ -1,0 +1,29 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"meter_head_y_min\":607,\"meter_head_y_max\":644,\"meter_can_y_min\":575,\"meter_can_y_max\":755,\"distance_ratio\":4.86,\"reasoning\":\"In the clearest view, the round meter is mounted on a gray enclosure that appears connected to an adjacent breaker/disconnect compartment, suggesting a meter-main combo rather than a simple standalone meter can. The equipment is small and somewhat distant, so the enclosure edges and exact configuration are not clear enough for a clean automatic decision.\",\"type\":\"combinedMeter\",\"clean-decision\":false}",
+ "json": {
+  "meter_head_y_min": 607,
+  "meter_head_y_max": 644,
+  "meter_can_y_min": 575,
+  "meter_can_y_max": 755,
+  "distance_ratio": 4.86,
+  "reasoning": "In the clearest view, the round meter is mounted on a gray enclosure that appears connected to an adjacent breaker/disconnect compartment, suggesting a meter-main combo rather than a simple standalone meter can. The equipment is small and somewhat distant, so the enclosure edges and exact configuration are not clear enough for a clean automatic decision.",
+  "type": "combinedMeter",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 28196,
+  "cached_tokens": 0,
+  "output_tokens": 3205,
+  "reasoning_tokens": 3085
+ },
+ "cost_usd": 0.23713,
+ "latency_s": 37.78,
+ "stop": "completed",
+ "prompt_id": "p11_meter_type",
+ "house": "tt-barn",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p11": "combinedMeter(unclean)"
+ }
+}

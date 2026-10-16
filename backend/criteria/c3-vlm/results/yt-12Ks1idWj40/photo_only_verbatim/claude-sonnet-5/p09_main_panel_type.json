@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"pass\", \"justification\": \"There is a single main breaker panel (open in several photos showing branch breakers) next to the meter, with a 'BASE' branded equipment enclosure (the battery system's own equipment) mounted beside it rather than a second independent main service. All photos show one consistent panel/meter location on the same wall, indicating a single main service.\"}",
+ "json": {
+  "decision": "pass",
+  "justification": "There is a single main breaker panel (open in several photos showing branch breakers) next to the meter, with a 'BASE' branded equipment enclosure (the battery system's own equipment) mounted beside it rather than a second independent main service. All photos show one consistent panel/meter location on the same wall, indicating a single main service."
+ },
+ "usage": {
+  "input_tokens": 26801,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 119
+ },
+ "cost_usd": 0.054792,
+ "latency_s": 4.76,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "pass"
+ }
+}

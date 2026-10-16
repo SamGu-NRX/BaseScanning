@@ -1,0 +1,24 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"reasoning\":\"The photos show building exterior/courtyard views, but no utility electric meter face, label, barcode, or serial-number area is visible. Since no electric meter number is photographed, there is no best-effort meter number to report and the read is not clean.\",\"meter_number\":\"\",\"clean-decision\":false}",
+ "json": {
+  "reasoning": "The photos show building exterior/courtyard views, but no utility electric meter face, label, barcode, or serial-number area is visible. Since no electric meter number is photographed, there is no best-effort meter number to report and the read is not clean.",
+  "meter_number": "",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 30002,
+  "cached_tokens": 0,
+  "output_tokens": 108,
+  "reasoning_tokens": 36
+ },
+ "cost_usd": 0.15325,
+ "latency_s": 5.72,
+ "stop": "completed",
+ "prompt_id": "p04_meter_number",
+ "house": "eth3d-facade",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p04": "none"
+ }
+}

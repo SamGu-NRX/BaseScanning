@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"trueMultipleMainPanels\":false,\"panelLayout\":\"unclear\",\"evidence\":\"Photos 1, 4, 5, 6, 14, and 15 show several adjacent exterior gray doors with electrical hazard signage and labels that appear to indicate transformer/electrical rooms, but the doors are closed and no service panels, main breakers, or disconnects are visible. Photos 3 and 8 show an outdoor louvered electrical/utility enclosure, also closed, with no visible internal breakers or service-main configuration. Photos 2, 9, 10, 12, and 13 show building exterior areas, scaffolding, and cable/conduit routing, but no open electrical panels or identifiable independent service mains.\",\"notes\":\"Multiple electrical-room doors/enclosures are visible, but true multiple main panels cannot be established from closed exterior equipment alone.\",\"insufficientEvidence\":true}",
+ "json": {
+  "trueMultipleMainPanels": false,
+  "panelLayout": "unclear",
+  "evidence": "Photos 1, 4, 5, 6, 14, and 15 show several adjacent exterior gray doors with electrical hazard signage and labels that appear to indicate transformer/electrical rooms, but the doors are closed and no service panels, main breakers, or disconnects are visible. Photos 3 and 8 show an outdoor louvered electrical/utility enclosure, also closed, with no visible internal breakers or service-main configuration. Photos 2, 9, 10, 12, and 13 show building exterior areas, scaffolding, and cable/conduit routing, but no open electrical panels or identifiable independent service mains.",
+  "notes": "Multiple electrical-room doors/enclosures are visible, but true multiple main panels cannot be established from closed exterior equipment alone.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 29500,
+  "cached_tokens": 0,
+  "output_tokens": 283,
+  "reasoning_tokens": 98
+ },
+ "cost_usd": 0.15599,
+ "latency_s": 7.15,
+ "stop": "completed",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p01": "unclear"
+ }
+}

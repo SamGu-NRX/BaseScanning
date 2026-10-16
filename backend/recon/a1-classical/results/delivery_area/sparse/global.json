@@ -1,0 +1,8 @@
+{
+  "run": "global",
+  "mapper_s": 12.17762541770935,
+  "models": 1,
+  "registered": 44,
+  "points3D": 19649,
+  "mean_reproj_px": 0.31105685680444045
+}

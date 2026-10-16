@@ -1,0 +1,29 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"decision\": \"pass\", \"disconnect_location\": \"Gray breaker/disconnect panel mounted on the brick wall directly beside the utility meter, with the BASE-branded disconnect box mounted just to its right on the same wall run\", \"battery_location\": \"White battery cabinet (approx. 2ft x 2ft x 3ft) sitting on a raised concrete/composite pad directly below the disconnect boxes, against the same brick wall, with conduit running from the disconnect down into the top of the unit\", \"distance_ft\": 4, \"reference_object\": \"Standard residential utility meter (~14 in. diameter) used as scale reference; battery cabinet appears to be a compact ~2ft-wide unit consistent with the stated dimensions\", \"needs_more_photos\": false, \"missing_views\": [], \"justification\": \"Photos 11-14 show the completed run: meter, panel disconnect, and BASE disconnect are mounted in sequence on a clear, uninterrupted brick wall section with no windows in that segment. The battery sits on a dedicated pad within ~4 ft of the meter, directly below the disconnect for a clean conduit drop. The surrounding ground is grass/dirt with no pool, driveway, or gas meter/regulator visible nearby, and the only obstacles (AC condenser, tool boxes, tables) are set well off to the side and are movable/non-blocking.\"}",
+ "json": {
+  "decision": "pass",
+  "disconnect_location": "Gray breaker/disconnect panel mounted on the brick wall directly beside the utility meter, with the BASE-branded disconnect box mounted just to its right on the same wall run",
+  "battery_location": "White battery cabinet (approx. 2ft x 2ft x 3ft) sitting on a raised concrete/composite pad directly below the disconnect boxes, against the same brick wall, with conduit running from the disconnect down into the top of the unit",
+  "distance_ft": 4,
+  "reference_object": "Standard residential utility meter (~14 in. diameter) used as scale reference; battery cabinet appears to be a compact ~2ft-wide unit consistent with the stated dimensions",
+  "needs_more_photos": false,
+  "missing_views": [],
+  "justification": "Photos 11-14 show the completed run: meter, panel disconnect, and BASE disconnect are mounted in sequence on a clear, uninterrupted brick wall section with no windows in that segment. The battery sits on a dedicated pad within ~4 ft of the meter, directly below the disconnect for a clean conduit drop. The surrounding ground is grass/dirt with no pool, driveway, or gas meter/regulator visible nearby, and the only obstacles (AC condenser, tool boxes, tables) are set well off to the side and are movable/non-blocking."
+ },
+ "usage": {
+  "input_tokens": 549,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 25329,
+  "output_tokens": 1469
+ },
+ "cost_usd": 0.0208538,
+ "latency_s": 19.66,
+ "stop": "end_turn",
+ "prompt_id": "p06_battery_disconnect_placement",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p06": "pass"
+ }
+}

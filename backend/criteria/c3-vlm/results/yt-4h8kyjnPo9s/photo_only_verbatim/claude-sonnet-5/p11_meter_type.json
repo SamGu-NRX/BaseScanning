@@ -1,0 +1,29 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"meter_head_y_min\": 0, \"meter_head_y_max\": 0, \"meter_can_y_min\": 0, \"meter_can_y_max\": 0, \"distance_ratio\": 0, \"reasoning\": \"None of the provided photos show an electric meter; the images depict house exteriors, windows, a gas meter, brickwork, cars, and yard areas. No round meter head or meter can is visible in any frame, so no measurement can be made.\", \"type\": \"unknown\", \"clean-decision\": false}",
+ "json": {
+  "meter_head_y_min": 0,
+  "meter_head_y_max": 0,
+  "meter_can_y_min": 0,
+  "meter_can_y_max": 0,
+  "distance_ratio": 0,
+  "reasoning": "None of the provided photos show an electric meter; the images depict house exteriors, windows, a gas meter, brickwork, cars, and yard areas. No round meter head or meter can is visible in any frame, so no measurement can be made.",
+  "type": "unknown",
+  "clean-decision": false
+ },
+ "usage": {
+  "input_tokens": 21873,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 164
+ },
+ "cost_usd": 0.045386,
+ "latency_s": 3.08,
+ "stop": "end_turn",
+ "prompt_id": "p11_meter_type",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p11": "unknown"
+ }
+}

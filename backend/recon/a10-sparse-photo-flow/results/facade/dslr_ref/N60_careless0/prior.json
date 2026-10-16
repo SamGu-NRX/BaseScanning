@@ -1,0 +1,714 @@
+{
+ "db": {
+  "images": 76,
+  "extract_s": 95.00253486633301,
+  "match_s": 137.62989830970764,
+  "prior_drawn_scale": 0.9833565193944482
+ },
+ "prior_draw": {
+  "scale": 1.026,
+  "jitter_m": 0.02,
+  "sigma_m": 0.03,
+  "robust": false,
+  "source": "A6 real LaMAR ARKit, no-depth sessions"
+ },
+ "mapper_s": 82.6,
+ "models": 1,
+ "registered": 59,
+ "model_sizes": [
+  59
+ ],
+ "points3D": 51126,
+ "mean_reproj_px": 0.32383442494403875,
+ "centre_rms_sim3_m": 0.012718116186801577,
+ "centres_within_0p3m": 59,
+ "centre_rms_rigid_m": 0.21177911567317553,
+ "scale_error_pct": 2.5929600159965593,
+ "score_args": [
+  "--cameras",
+  "/home/ubuntu/a10/runs/facade/dslr_ref/N60_careless0/prior/model",
+  "--metric"
+ ],
+ "scene": "facade",
+ "quality": "dslr_ref",
+ "set": "N60_careless0",
+ "method": "prior",
+ "n": 60,
+ "score": {
+  "kd": {
+   "n": 25,
+   "median_in": 1.81,
+   "p90_in": 7.17,
+   "max_in": 31.26,
+   "share_le_2in": 0.56,
+   "share_le_4in": 0.76,
+   "share_le_6in": 0.84,
+   "calibration": 0.96
+  },
+  "kd_observed": {
+   "n": 21,
+   "median_in": 1.83,
+   "p90_in": 6.2,
+   "max_in": 9.61,
+   "share_le_2in": 0.524,
+   "share_le_4in": 0.762,
+   "share_le_6in": 0.857,
+   "calibration": 1.0
+  },
+  "status": {
+   "scored": 25,
+   "missing": 31,
+   "extent_limited": 1,
+   "phantom": 0,
+   "scale_reference": 0
+  },
+  "false_observed_claims": 0,
+  "scale_error_pct": 2.746,
+  "cloud_scale_error_pct": 2.593,
+  "anchor_m": 0.1199,
+  "completeness_10cm_icp": {
+   "meter_wall": 0.5571,
+   "wall_face": 0.5192,
+   "ground_strip": 0.0066,
+   "overhead": 0.3365
+  },
+  "coverage_by_rule": {
+   "meter_wall": {
+    "truly_observed_by_rule": 0.9992,
+    "claimed_by_rule": 0.9983,
+    "false_observed_by_rule": 0.0006,
+    "claimed_observed": 0.3519,
+    "truly_seen": 0.9995,
+    "sensitivity": null
+   },
+   "wall_face": {
+    "truly_observed_by_rule": 0.8926,
+    "claimed_by_rule": 0.8872,
+    "false_observed_by_rule": 0.0013,
+    "claimed_observed": 0.3507,
+    "truly_seen": 0.9008,
+    "sensitivity": null
+   },
+   "ground_strip": {
+    "truly_observed_by_rule": 0.1921,
+    "claimed_by_rule": 0.1855,
+    "false_observed_by_rule": 0.0252,
+    "claimed_observed": 0.0595,
+    "truly_seen": 0.0327,
+    "sensitivity": [
+     {
+      "max_incidence_deg": 75.0,
+      "truth_by_rule": "grazing",
+      "truly_observed_by_rule": 0.0,
+      "truly_grazing_only": 0.5071,
+      "rule_id": "angle75",
+      "claimed_by_rule": 0.0,
+      "false_observed_by_rule": 0.0
+     },
+     {
+      "max_incidence_deg": 80.0,
+      "truth_by_rule": "partial",
+      "truly_observed_by_rule": 0.1921,
+      "truly_grazing_only": 0.315,
+      "rule_id": "angle80",
+      "claimed_by_rule": 0.1855,
+      "false_observed_by_rule": 0.0252
+     },
+     {
+      "max_incidence_deg": 88.0,
+      "truth_by_rule": "partial",
+      "truly_observed_by_rule": 0.432,
+      "truly_grazing_only": 0.0751,
+      "rule_id": "footprint3in",
+      "max_footprint_m": 0.0762,
+      "claimed_by_rule": 0.3541,
+      "false_observed_by_rule": 0.0199
+     }
+    ]
+   },
+   "overhead": {
+    "truly_observed_by_rule": 0.9927,
+    "claimed_by_rule": 0.9927,
+    "false_observed_by_rule": 0.002,
+    "claimed_observed": 0.4405,
+    "truly_seen": 0.9947,
+    "sensitivity": null
+   }
+  },
+  "rows": {
+   "meter.height": {
+    "err_in": -0.26,
+    "gt": 1.524,
+    "status": "scored"
+   },
+   "corner.s[c1]": {
+    "err_in": null,
+    "gt": 3.0179,
+    "status": "missing"
+   },
+   "corner.turn[c1]": {
+    "err_in": null,
+    "gt": 91.11,
+    "status": "missing"
+   },
+   "corner.s[c2]": {
+    "err_in": null,
+    "gt": 6.5604,
+    "status": "missing"
+   },
+   "corner.turn[c2]": {
+    "err_in": null,
+    "gt": -91.08,
+    "status": "missing"
+   },
+   "wall.length[w1]": {
+    "err_in": -82.311,
+    "gt": 15.85,
+    "status": "extent_limited"
+   },
+   "wall.length[w2]": {
+    "err_in": null,
+    "gt": 3.5426,
+    "status": "missing"
+   },
+   "wall.length[w3]": {
+    "err_in": null,
+    "gt": 4.9485,
+    "status": "missing"
+   },
+   "opening.edge_s[win1:left]": {
+    "err_in": null,
+    "gt": -12.2164,
+    "status": "missing"
+   },
+   "opening.edge_s[win1:right]": {
+    "err_in": null,
+    "gt": -10.6588,
+    "status": "missing"
+   },
+   "opening.bottom[win1]": {
+    "err_in": null,
+    "gt": 0.9144,
+    "status": "missing"
+   },
+   "opening.top[win1]": {
+    "err_in": null,
+    "gt": 3.3882,
+    "status": "missing"
+   },
+   "opening.width[win1]": {
+    "err_in": null,
+    "gt": 1.5576,
+    "status": "missing"
+   },
+   "opening.edge_s[win2:left]": {
+    "err_in": -9.606,
+    "gt": -8.9181,
+    "status": "scored"
+   },
+   "opening.edge_s[win2:right]": {
+    "err_in": -7.811,
+    "gt": -7.3281,
+    "status": "scored"
+   },
+   "opening.bottom[win2]": {
+    "err_in": 2.15,
+    "gt": 0.8755,
+    "status": "scored"
+   },
+   "opening.top[win2]": {
+    "err_in": 4.083,
+    "gt": 3.4292,
+    "status": "scored"
+   },
+   "opening.width[win2]": {
+    "err_in": 1.795,
+    "gt": 1.59,
+    "status": "scored"
+   },
+   "opening.edge_s[win3:left]": {
+    "err_in": -6.201,
+    "gt": -5.6655,
+    "status": "scored"
+   },
+   "opening.edge_s[win3:right]": {
+    "err_in": -4.386,
+    "gt": -4.043,
+    "status": "scored"
+   },
+   "opening.bottom[win3]": {
+    "err_in": 1.307,
+    "gt": 0.958,
+    "status": "scored"
+   },
+   "opening.top[win3]": {
+    "err_in": 3.248,
+    "gt": 3.5282,
+    "status": "scored"
+   },
+   "opening.width[win3]": {
+    "err_in": 1.815,
+    "gt": 1.6225,
+    "status": "scored"
+   },
+   "opening.edge_s[win4:left]": {
+    "err_in": -2.74,
+    "gt": -2.4778,
+    "status": "scored"
+   },
+   "opening.edge_s[win4:right]": {
+    "err_in": -0.909,
+    "gt": -0.7831,
+    "status": "scored"
+   },
+   "opening.bottom[win4]": {
+    "err_in": 0.48,
+    "gt": 1.0116,
+    "status": "scored"
+   },
+   "opening.top[win4]": {
+    "err_in": 2.362,
+    "gt": 3.5756,
+    "status": "scored"
+   },
+   "opening.width[win4]": {
+    "err_in": 1.831,
+    "gt": 1.6947,
+    "status": "scored"
+   },
+   "opening.edge_s[win5:left]": {
+    "err_in": 0.681,
+    "gt": 0.7754,
+    "status": "scored"
+   },
+   "opening.edge_s[win5:right]": {
+    "err_in": 2.378,
+    "gt": 2.4127,
+    "status": "scored"
+   },
+   "opening.bottom[win5]": {
+    "err_in": -0.37,
+    "gt": 1.0732,
+    "status": "scored"
+   },
+   "opening.top[win5]": {
+    "err_in": 1.465,
+    "gt": 3.6508,
+    "status": "scored"
+   },
+   "opening.width[win5]": {
+    "err_in": 1.697,
+    "gt": 1.6373,
+    "status": "scored"
+   },
+   "opening.edge_s[win_w2_arch:left]": {
+    "err_in": null,
+    "gt": 3.3227,
+    "status": "missing"
+   },
+   "opening.edge_s[win_w2_arch:right]": {
+    "err_in": null,
+    "gt": 4.9991,
+    "status": "missing"
+   },
+   "opening.bottom[win_w2_arch]": {
+    "err_in": null,
+    "gt": 1.0668,
+    "status": "missing"
+   },
+   "opening.top[win_w2_arch]": {
+    "err_in": null,
+    "gt": 3.9624,
+    "status": "missing"
+   },
+   "opening.width[win_w2_arch]": {
+    "err_in": null,
+    "gt": 1.6764,
+    "status": "missing"
+   },
+   "opening.edge_s[door:left]": {
+    "err_in": null,
+    "gt": 7.2624,
+    "status": "missing"
+   },
+   "opening.edge_s[door:right]": {
+    "err_in": null,
+    "gt": 9.4522,
+    "status": "missing"
+   },
+   "opening.bottom[door]": {
+    "err_in": null,
+    "gt": 0.2116,
+    "status": "missing"
+   },
+   "opening.top[door]": {
+    "err_in": null,
+    "gt": 4.074,
+    "status": "missing"
+   },
+   "opening.width[door]": {
+    "err_in": null,
+    "gt": 2.1898,
+    "status": "missing"
+   },
+   "opening.gap[win1~win2]": {
+    "err_in": null,
+    "gt": 1.7407,
+    "status": "missing"
+   },
+   "opening.gap[win2~win3]": {
+    "err_in": 1.61,
+    "gt": 1.6626,
+    "status": "scored"
+   },
+   "opening.gap[win3~win4]": {
+    "err_in": 1.646,
+    "gt": 1.5652,
+    "status": "scored"
+   },
+   "opening.gap[win4~win5]": {
+    "err_in": 1.591,
+    "gt": 1.5585,
+    "status": "scored"
+   },
+   "opening.gap[win5~win_w2_arch]": {
+    "err_in": null,
+    "gt": 0.91,
+    "status": "missing"
+   },
+   "opening.gap[win_w2_arch~door]": {
+    "err_in": null,
+    "gt": 2.2633,
+    "status": "missing"
+   },
+   "facing.depth[w1@2.79]": {
+    "err_in": null,
+    "gt": 0.309,
+    "status": "missing"
+   },
+   "facing.depth[w2@3.14]": {
+    "err_in": null,
+    "gt": 0.315,
+    "status": "missing"
+   },
+   "facing.depth[w3@6.68]": {
+    "err_in": null,
+    "gt": 0.749,
+    "status": "missing"
+   },
+   "facing.depth[w3@6.93]": {
+    "err_in": null,
+    "gt": 0.749,
+    "status": "missing"
+   },
+   "facing.depth[w3@9.94]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "facing.depth[w3@10.19]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "facing.depth[w3@10.44]": {
+    "err_in": null,
+    "gt": 0.708,
+    "status": "missing"
+   },
+   "overhead.clearance[w1@2.79]": {
+    "err_in": -31.26,
+    "gt": 2.136,
+    "status": "scored"
+   }
+  },
+  "score_s": 40.8
+ },
+ "c1": {
+  "g80": {
+   "decision": "manual_review",
+   "reasons": [
+    "unsure_checks",
+    "unobserved_area",
+    "unexplored_end"
+   ],
+   "n_criteria": 13,
+   "outcomes": {
+    "unsure": 11,
+    "pass": 2
+   },
+   "decidable_share": 0.15384615384615385,
+   "unsure_causes": {
+    "unobserved": 9,
+    "margin": 2
+   },
+   "by_criterion": {
+    "wall_backing": {
+     "unsure": 1
+    },
+    "ground_surface": {
+     "unsure": 1
+    },
+    "meter_working_space": {
+     "unsure": 1
+    },
+    "gas_clearance": {
+     "unsure": 1
+    },
+    "ac_clearance": {
+     "unsure": 1
+    },
+    "drive_clearance": {
+     "unsure": 1
+    },
+    "pool_clearance": {
+     "unsure": 1
+    },
+    "opening_clearance": {
+     "unsure": 1
+    },
+    "wall_equipment_above": {
+     "unsure": 1
+    },
+    "facing_gap": {
+     "unsure": 1
+    },
+    "headroom": {
+     "unsure": 1
+    },
+    "route_path": {
+     "pass": 1
+    },
+    "route_length": {
+     "pass": 1
+    }
+   },
+   "views_needed": [
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -2.15,
+      1.508
+     ],
+     "criteria": [
+      "gas_clearance",
+      "opening_clearance",
+      "wall_backing",
+      "wall_equipment_above"
+     ],
+     "why": "Show the wall from 7 ft 1 in left of the meter to 4 ft 11 in right of the meter.",
+     "band": "wall",
+     "id": "vn1"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -4.286,
+      3.015
+     ],
+     "criteria": [
+      "ac_clearance",
+      "drive_clearance",
+      "gas_clearance",
+      "ground_surface",
+      "opening_clearance",
+      "pool_clearance"
+     ],
+     "why": "Show the ground in front of the wall from 14 ft 1 in left of the meter to 9 ft 11 in right of the meter, at least 13 ft 7 in out from the wall.",
+     "band": "ground",
+     "out_m": 4.13,
+     "target": "downward photo of the ground in front of this wall, from chest height",
+     "id": "vn2"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -0.494,
+      0.073
+     ],
+     "criteria": [
+      "facing_gap"
+     ],
+     "why": "Show the gap in front of the wall from 1 ft 7 in left of the meter to 0 ft 3 in right of the meter, clear at least 4 ft 10 in out from the wall.",
+     "band": "facing",
+     "out_m": 1.473,
+     "id": "vn3"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -0.715,
+      0.073
+     ],
+     "criteria": [
+      "headroom"
+     ],
+     "why": "Show the space overhead from 2 ft 4 in left of the meter to 0 ft 3 in right of the meter, clear at least 6 ft 6 in up.",
+     "band": "overhead",
+     "out_m": 1.981,
+     "id": "vn4"
+    },
+    {
+     "kind": "past_end",
+     "wall_id": "w1",
+     "s_m": [
+      3.015,
+      3.015
+     ],
+     "criteria": [],
+     "why": "Keep walking past the right end of the scan (9 ft 11 in right of the meter): a spot within reach may be there.",
+     "side": "right",
+     "id": "vn5"
+    }
+   ],
+   "candidates": 10
+  },
+  "g75": {
+   "decision": "manual_review",
+   "reasons": [
+    "unsure_checks",
+    "unobserved_area",
+    "unexplored_end"
+   ],
+   "n_criteria": 13,
+   "outcomes": {
+    "unsure": 11,
+    "pass": 2
+   },
+   "decidable_share": 0.15384615384615385,
+   "unsure_causes": {
+    "unobserved": 9,
+    "margin": 2
+   },
+   "by_criterion": {
+    "wall_backing": {
+     "unsure": 1
+    },
+    "ground_surface": {
+     "unsure": 1
+    },
+    "meter_working_space": {
+     "unsure": 1
+    },
+    "gas_clearance": {
+     "unsure": 1
+    },
+    "ac_clearance": {
+     "unsure": 1
+    },
+    "drive_clearance": {
+     "unsure": 1
+    },
+    "pool_clearance": {
+     "unsure": 1
+    },
+    "opening_clearance": {
+     "unsure": 1
+    },
+    "wall_equipment_above": {
+     "unsure": 1
+    },
+    "facing_gap": {
+     "unsure": 1
+    },
+    "headroom": {
+     "unsure": 1
+    },
+    "route_path": {
+     "pass": 1
+    },
+    "route_length": {
+     "pass": 1
+    }
+   },
+   "views_needed": [
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -2.15,
+      1.508
+     ],
+     "criteria": [
+      "gas_clearance",
+      "opening_clearance",
+      "wall_backing",
+      "wall_equipment_above"
+     ],
+     "why": "Show the wall from 7 ft 1 in left of the meter to 4 ft 11 in right of the meter.",
+     "band": "wall",
+     "id": "vn1"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -4.286,
+      3.015
+     ],
+     "criteria": [
+      "ac_clearance",
+      "drive_clearance",
+      "gas_clearance",
+      "ground_surface",
+      "opening_clearance",
+      "pool_clearance"
+     ],
+     "why": "Show the ground in front of the wall from 14 ft 1 in left of the meter to 9 ft 11 in right of the meter, at least 13 ft 7 in out from the wall.",
+     "band": "ground",
+     "out_m": 4.13,
+     "target": "downward photo of the ground in front of this wall, from chest height",
+     "id": "vn2"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -0.494,
+      0.073
+     ],
+     "criteria": [
+      "facing_gap"
+     ],
+     "why": "Show the gap in front of the wall from 1 ft 7 in left of the meter to 0 ft 3 in right of the meter, clear at least 4 ft 10 in out from the wall.",
+     "band": "facing",
+     "out_m": 1.473,
+     "id": "vn3"
+    },
+    {
+     "kind": "band",
+     "wall_id": "w1",
+     "s_m": [
+      -0.715,
+      0.073
+     ],
+     "criteria": [
+      "headroom"
+     ],
+     "why": "Show the space overhead from 2 ft 4 in left of the meter to 0 ft 3 in right of the meter, clear at least 6 ft 6 in up.",
+     "band": "overhead",
+     "out_m": 1.981,
+     "id": "vn4"
+    },
+    {
+     "kind": "past_end",
+     "wall_id": "w1",
+     "s_m": [
+      3.015,
+      3.015
+     ],
+     "criteria": [],
+     "why": "Keep walking past the right end of the scan (9 ft 11 in right of the meter): a spot within reach may be there.",
+     "side": "right",
+     "id": "vn5"
+    }
+   ],
+   "candidates": 10
+  }
+ },
+ "total_s": 128.0
+}

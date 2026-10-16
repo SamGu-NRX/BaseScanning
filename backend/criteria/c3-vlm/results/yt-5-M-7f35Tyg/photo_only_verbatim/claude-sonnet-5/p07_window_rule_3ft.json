@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"justification\": \"The electric meter (Photo 11) has open, unobstructed siding to its side for the Disco with a clear conduit path down to grade. Following that wall around the corner (Photos 12-15) there is a long clear stretch of mulch/rock-lined foundation past the ground-floor windows, with no driveway, pool, or window well nearby and normal roofline overhead clearance - giving a valid battery spot more than 3 ft from any opening and 5+ ft from the distant gas meter/pipes seen in Photos 1-4. No door or garage lies between the meter and this spot, so the harness run is feasible.\", \"decision\": \"pass\"}",
+ "json": {
+  "justification": "The electric meter (Photo 11) has open, unobstructed siding to its side for the Disco with a clear conduit path down to grade. Following that wall around the corner (Photos 12-15) there is a long clear stretch of mulch/rock-lined foundation past the ground-floor windows, with no driveway, pool, or window well nearby and normal roofline overhead clearance - giving a valid battery spot more than 3 ft from any opening and 5+ ft from the distant gas meter/pipes seen in Photos 1-4. No door or garage lies between the meter and this spot, so the harness run is feasible.",
+  "decision": "pass"
+ },
+ "usage": {
+  "input_tokens": 8622,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 5624
+ },
+ "cost_usd": 0.073484,
+ "latency_s": 70.97,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p07": "pass"
+ }
+}

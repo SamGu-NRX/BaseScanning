@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasCl320Meter\":false,\"cl320Label\":\"cl320_unclear\",\"insufficientEvidence\":true,\"evidence\":\"An electric meter is only seen at a distance/edge of the frame with no readable meter-face or label text.\",\"notes\":\"No readable CL320 text is visible; cannot determine meter class from these images.\"}",
+ "json": {
+  "hasCl320Meter": false,
+  "cl320Label": "cl320_unclear",
+  "insufficientEvidence": true,
+  "evidence": "An electric meter is only seen at a distance/edge of the frame with no readable meter-face or label text.",
+  "notes": "No readable CL320 text is visible; cannot determine meter class from these images."
+ },
+ "usage": {
+  "input_tokens": 18052,
+  "cached_tokens": 0,
+  "output_tokens": 246,
+  "reasoning_tokens": 172
+ },
+ "cost_usd": 0.09764,
+ "latency_s": 5.57,
+ "stop": "completed",
+ "prompt_id": "p03_cl320_meter",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p03": "cl320_unclear"
+ }
+}

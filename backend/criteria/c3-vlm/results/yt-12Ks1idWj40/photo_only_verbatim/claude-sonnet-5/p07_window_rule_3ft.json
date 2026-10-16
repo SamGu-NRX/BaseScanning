@@ -1,0 +1,23 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"justification\": \"The photos show the completed install: meter and Disco (BASE disconnect) mounted on clear brick wall with a rigid conduit run, and the battery sitting on a concrete pad on the ground well clear of the AC condenser, with several feet of clearance from the nearby window and no doors, garage, pool, or drivable surface in the area (only lawn/dirt and a fence-enclosed yard).\", \"decision\": \"pass\"}",
+ "json": {
+  "justification": "The photos show the completed install: meter and Disco (BASE disconnect) mounted on clear brick wall with a rigid conduit run, and the battery sitting on a concrete pad on the ground well clear of the AC condenser, with several feet of clearance from the nearby window and no doors, garage, pool, or drivable surface in the area (only lawn/dirt and a fence-enclosed yard).",
+  "decision": "pass"
+ },
+ "usage": {
+  "input_tokens": 29946,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 350
+ },
+ "cost_usd": 0.063392,
+ "latency_s": 6.8,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p07": "pass"
+ }
+}

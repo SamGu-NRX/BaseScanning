@@ -1,0 +1,8 @@
+{
+  "metric": "false_observed_by_rule",
+  "false_observed_by_rule": 0.069,
+  "rule": "ground_strip",
+  "floor": 0.0247,
+  "claims": [],
+  "source": "WS-04 round 3 facade metric rescore (SD-93). Meter wall 0.0003, wall face 0.0002. The excess sits only in the ground strip."
+}

@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"trueMultipleMainPanels\": false, \"panelLayout\": \"unclear\", \"evidence\": \"Photo 1 shows a single meter with one main panel (gray breaker box) mounted on the exterior wall. As the installation progresses (Photos 3-14), a second gray box appears next to the meter, along with a small red-labeled disconnect box below it, and a white 'BASE' branded device (likely an inverter or battery disconnect) is added between the meter and the original panel. Photo 3 shows the original panel open, revealing breakers inside - this appears to be the single main service panel. The second gray box next to it (visible from Photo 5 onward) is small and could be a secondary disconnect or the utility/meter combo, but no photo shows it open to reveal an independent main breaker. The 'BASE' labeled box is branded equipment related to the battery installation itself (likely a Base Power disconnect/gateway device), not a second service main.\", \"notes\": \"Only one panel (the original one, shown open in Photo 3) is confirmed to have visible breakers indicating a main service panel. The second gray box and BASE-branded box are not opened/shown with internals, so their function as independent mains cannot be confirmed. These appear more consistent with a disconnect switch and battery-related equipment added during installation rather than a second true main panel.\", \"insufficientEvidence\": true}",
+ "json": {
+  "trueMultipleMainPanels": false,
+  "panelLayout": "unclear",
+  "evidence": "Photo 1 shows a single meter with one main panel (gray breaker box) mounted on the exterior wall. As the installation progresses (Photos 3-14), a second gray box appears next to the meter, along with a small red-labeled disconnect box below it, and a white 'BASE' branded device (likely an inverter or battery disconnect) is added between the meter and the original panel. Photo 3 shows the original panel open, revealing breakers inside - this appears to be the single main service panel. The second gray box next to it (visible from Photo 5 onward) is small and could be a secondary disconnect or the utility/meter combo, but no photo shows it open to reveal an independent main breaker. The 'BASE' labeled box is branded equipment related to the battery installation itself (likely a Base Power disconnect/gateway device), not a second service main.",
+  "notes": "Only one panel (the original one, shown open in Photo 3) is confirmed to have visible breakers indicating a main service panel. The second gray box and BASE-branded box are not opened/shown with internals, so their function as independent mains cannot be confirmed. These appear more consistent with a disconnect switch and battery-related equipment added during installation rather than a second true main panel.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 440,
+  "cache_creation_input_tokens": 25329,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 444
+ },
+ "cost_usd": 0.0686425,
+ "latency_s": 8.64,
+ "stop": "end_turn",
+ "prompt_id": "p01_true_multiple_main_panels",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p01": "unclear"
+ }
+}

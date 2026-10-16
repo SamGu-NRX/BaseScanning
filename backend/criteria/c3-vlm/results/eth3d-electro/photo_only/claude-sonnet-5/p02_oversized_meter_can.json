@@ -1,0 +1,25 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"feature\": \"meter_can_unclear\", \"evidence\": \"None of the 15 photos show a round utility meter or a discrete meter can; the images depict transformer/switch rooms with large gray metal doors (Photos 1, 5, 6, 14, 15), electrical cabinets/enclosures with louvered vents (Photos 3, 8), building entrances (Photos 2, 9), conduit/cable scaffolding (Photos 10, 12, 13), and empty parking areas (Photos 4, 7, 11).\", \"notes\": \"This appears to be a commercial/institutional site (ETH-labeled) with transformer rooms and electrical distribution equipment, not a residential meter installation. No meter-holding enclosure is visible in any photo.\", \"insufficientEvidence\": true}",
+ "json": {
+  "feature": "meter_can_unclear",
+  "evidence": "None of the 15 photos show a round utility meter or a discrete meter can; the images depict transformer/switch rooms with large gray metal doors (Photos 1, 5, 6, 14, 15), electrical cabinets/enclosures with louvered vents (Photos 3, 8), building entrances (Photos 2, 9), conduit/cable scaffolding (Photos 10, 12, 13), and empty parking areas (Photos 4, 7, 11).",
+  "notes": "This appears to be a commercial/institutional site (ETH-labeled) with transformer rooms and electrical distribution equipment, not a residential meter installation. No meter-holding enclosure is visible in any photo.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 331,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 260
+ },
+ "cost_usd": 0.0096962,
+ "latency_s": 4.89,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "eth3d-electro",
+ "variant": "photo_only",
+ "verdicts": {
+  "p02": "meter_can_unclear"
+ }
+}

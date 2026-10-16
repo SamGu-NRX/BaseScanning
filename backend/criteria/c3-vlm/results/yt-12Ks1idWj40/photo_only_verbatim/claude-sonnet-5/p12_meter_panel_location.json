@@ -1,0 +1,40 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\n  \"meterNotAccessible\": {\n    \"verdict\": \"no\",\n    \"reasoning\": \"Photo 1 (the clean, pre-work survey shot) shows the meter mounted on an exterior wall with open dirt/grass directly in front of it; the AC condenser is off to the side near the fence, roughly 8-10 ft away, well outside the 3ft working envelope. No gas equipment is visible nearby, and the roof eave above is a normal overhang, not an added low obstruction.\"\n  },\n  \"panelNotAccessible\": {\n    \"verdict\": \"no\",\n    \"reasoning\": \"The main panel is mounted right beside the meter on the same open exterior wall; the baseline photo shows clear ground in front with no fixed obstructions, racks, or vegetation within the working envelope, and the AC condenser sits well off to the side, out of range.\"\n  },\n  \"panelInHouse\": {\n    \"verdict\": \"no\",\n    \"reasoning\": \"The panel is clearly mounted outside on an exterior brick wall in the backyard, surrounded by grass, a wood fence, and landscaping \u2014 not inside any interior living space.\"\n  },\n  \"notSameWall\": {\n    \"verdict\": \"no\",\n    \"reasoning\": \"Multiple photos (e.g., Photo 1, Photo 14) clearly show the meter and main panel mounted together, side by side, on the same curved exterior brick wall of the house.\"\n  }\n}",
+ "json": {
+  "meterNotAccessible": {
+   "verdict": "no",
+   "reasoning": "Photo 1 (the clean, pre-work survey shot) shows the meter mounted on an exterior wall with open dirt/grass directly in front of it; the AC condenser is off to the side near the fence, roughly 8-10 ft away, well outside the 3ft working envelope. No gas equipment is visible nearby, and the roof eave above is a normal overhang, not an added low obstruction."
+  },
+  "panelNotAccessible": {
+   "verdict": "no",
+   "reasoning": "The main panel is mounted right beside the meter on the same open exterior wall; the baseline photo shows clear ground in front with no fixed obstructions, racks, or vegetation within the working envelope, and the AC condenser sits well off to the side, out of range."
+  },
+  "panelInHouse": {
+   "verdict": "no",
+   "reasoning": "The panel is clearly mounted outside on an exterior brick wall in the backyard, surrounded by grass, a wood fence, and landscaping \u2014 not inside any interior living space."
+  },
+  "notSameWall": {
+   "verdict": "no",
+   "reasoning": "Multiple photos (e.g., Photo 1, Photo 14) clearly show the meter and main panel mounted together, side by side, on the same curved exterior brick wall of the house."
+  }
+ },
+ "usage": {
+  "input_tokens": 28269,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 4263
+ },
+ "cost_usd": 0.099168,
+ "latency_s": 51.94,
+ "stop": "end_turn",
+ "prompt_id": "p12_meter_panel_location",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p12.meterNotAccessible": "no",
+  "p12.panelNotAccessible": "no",
+  "p12.panelInHouse": "no",
+  "p12.notSameWall": "no"
+ }
+}

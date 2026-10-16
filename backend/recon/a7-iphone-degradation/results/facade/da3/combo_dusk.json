@@ -1,0 +1,87 @@
+{
+ "scene": "facade",
+ "condition": "combo_dusk",
+ "model": "da3",
+ "net": [
+  504,
+  378
+ ],
+ "infer_s": 24.1,
+ "conf_median": 6.649169921875,
+ "pose_centre_rms_sim3_m": 3.6974358778415204e-07,
+ "pose_rot_err_median_deg": 0.0,
+ "alignment": {
+  "camera_rms_m": 1.0835709901976646e-06
+ },
+ "score": {
+  "kd": {
+   "n": 25,
+   "median_in": 10.29,
+   "p90_in": 28.24,
+   "max_in": 70.18,
+   "share_le_2in": 0.04,
+   "share_le_4in": 0.12,
+   "share_le_6in": 0.16,
+   "calibration": 0.84
+  },
+  "kd_observed": {
+   "n": 21,
+   "median_in": 10.41,
+   "p90_in": 31.45,
+   "max_in": 70.18,
+   "share_le_2in": 0.0,
+   "share_le_4in": 0.095,
+   "share_le_6in": 0.095,
+   "calibration": 0.857
+  },
+  "status": {
+   "scored": 25,
+   "missing": 31,
+   "extent_limited": 1,
+   "phantom": 22,
+   "scale_reference": 0
+  },
+  "false_observed_claims": 0,
+  "scale_error_pct": -14.024,
+  "anchor_m": 1.6664,
+  "wall_face_10cm_icp": 0.676,
+  "meter_wall_10cm_icp": 0.7128,
+  "rows": {
+   "meter.height": -10.287,
+   "opening.edge_s[win1:left]": 70.177,
+   "opening.edge_s[win1:right]": 58.524,
+   "opening.bottom[win1]": -7.843,
+   "opening.top[win1]": -23.417,
+   "opening.width[win1]": -11.654,
+   "opening.edge_s[win3:left]": 31.453,
+   "opening.edge_s[win3:right]": 21.047,
+   "opening.bottom[win3]": -7.248,
+   "opening.top[win3]": -22.406,
+   "opening.width[win3]": -10.406,
+   "opening.edge_s[win4:left]": 11.732,
+   "opening.edge_s[win4:right]": 2.461,
+   "opening.bottom[win4]": -7.236,
+   "opening.top[win4]": -21.138,
+   "opening.width[win4]": -9.272,
+   "opening.edge_s[win5:left]": -2.224,
+   "opening.edge_s[win5:right]": -9.846,
+   "opening.bottom[win5]": -7.169,
+   "opening.top[win5]": -20.071,
+   "opening.width[win5]": -7.622,
+   "opening.gap[win3~win4]": -9.315,
+   "opening.gap[win4~win5]": -4.685,
+   "facing.depth[w1@2.79]": 0.433,
+   "overhead.clearance[w1@2.79]": 17.953
+  },
+  "score_s": 1715.7
+ },
+ "surface": {
+  "points": 29797,
+  "acc_med_in": 3.2598532133327356,
+  "acc_p90_in": 9.778480878572713,
+  "within_2in": 0.2429439205289123,
+  "off_surface_share": 0.3114743094942444,
+  "compl_5cm": 0.44984766563680056,
+  "icp": true
+ }
+}

@@ -1,0 +1,37 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\"decision\": \"manual_review\",\n \"disconnect_location\": \"Likely beside or below the electric meter near the corner (photo 11), but the wall space around the meter and the conduit exit below it are not clearly shown\",\n \"battery_location\": null,\n \"route\": \"Undetermined. The possible route would be rigid conduit from the meter to a disconnect on the same wall, then a harness along the cream/white side wall. That wall has a gas meter and the AC unit (photos 1-9), and the adjacent yellow wall has windows and ends at a deck (photos 12-15).\",\n \"distance_ft\": null,\n \"nearest_opening_ft\": null,\n \"reference_object\": \"Standard residential gas meter (about 1 ft wide) and condensing AC unit (about 2.5 ft square). Rough scale only.\",\n \"needs_more_photos\": true,\n \"missing_views\": [\n  \"A wide photo taken from farther back showing the whole wall with the electric meter, including both corners, so we can see how far the meter is from the gas meter\",\n  \"A close-up of the electric meter showing the wall below it and about 2-3 ft to each side\",\n  \"A wide photo of the wall with the gas meter and AC unit, showing all windows and doors on that wall and the spacing between them\",\n  \"A wide photo of the yellow wall with the windows (photos 12-15), taken from farther back, showing how far apart the windows are and where the deck starts\",\n  \"Please tell us whether the windows near the meter walls can be opened and whether there are any basement window wells hidden by the vines or rocks\"\n ],\n \"justification\": \"The electric meter (photo 11) is near a corner, and the orange cable suggests it sits close to the gas meter. However, no photo shows the meter wall's full width or the actual distance to the gas meter. Battery placement needs 5 ft of clearance from the gas meter and must stay out of the AC footprint. Both walls have first-floor windows, likely operable, and their spacing cannot be measured from these photos. The yellow wall has windows and a bump-out, with a raised deck at its end. No placement can be confirmed to meet the gas and window clearances, and the disconnect and conduit room at the meter is not clearly visible.\"}\n```",
+ "json": {
+  "decision": "manual_review",
+  "disconnect_location": "Likely beside or below the electric meter near the corner (photo 11), but the wall space around the meter and the conduit exit below it are not clearly shown",
+  "battery_location": null,
+  "route": "Undetermined. The possible route would be rigid conduit from the meter to a disconnect on the same wall, then a harness along the cream/white side wall. That wall has a gas meter and the AC unit (photos 1-9), and the adjacent yellow wall has windows and ends at a deck (photos 12-15).",
+  "distance_ft": null,
+  "nearest_opening_ft": null,
+  "reference_object": "Standard residential gas meter (about 1 ft wide) and condensing AC unit (about 2.5 ft square). Rough scale only.",
+  "needs_more_photos": true,
+  "missing_views": [
+   "A wide photo taken from farther back showing the whole wall with the electric meter, including both corners, so we can see how far the meter is from the gas meter",
+   "A close-up of the electric meter showing the wall below it and about 2-3 ft to each side",
+   "A wide photo of the wall with the gas meter and AC unit, showing all windows and doors on that wall and the spacing between them",
+   "A wide photo of the yellow wall with the windows (photos 12-15), taken from farther back, showing how far apart the windows are and where the deck starts",
+   "Please tell us whether the windows near the meter walls can be opened and whether there are any basement window wells hidden by the vines or rocks"
+  ],
+  "justification": "The electric meter (photo 11) is near a corner, and the orange cable suggests it sits close to the gas meter. However, no photo shows the meter wall's full width or the actual distance to the gas meter. Battery placement needs 5 ft of clearance from the gas meter and must stay out of the AC footprint. Both walls have first-floor windows, likely operable, and their spacing cannot be measured from these photos. The yellow wall has windows and a bump-out, with a raised deck at its end. No placement can be confirmed to meet the gas and window clearances, and the disconnect and conduit room at the meter is not clearly visible."
+ },
+ "usage": {
+  "input_tokens": 1095,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 4005,
+  "output_tokens": 1640
+ },
+ "cost_usd": 0.037981,
+ "latency_s": 19.72,
+ "stop": "end_turn",
+ "prompt_id": "p07_window_rule_3ft",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p07": "manual_review"
+ }
+}

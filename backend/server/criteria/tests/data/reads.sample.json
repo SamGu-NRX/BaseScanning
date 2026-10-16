@@ -1,0 +1,130 @@
+{
+  "format": "base-reads/v0",
+  "capture_id": "cap_sample",
+  "status": "complete",
+  "facts": [
+    {
+      "id": "meter_number",
+      "scope": "site",
+      "outcome": "unsure",
+      "unsure_cause": "not_evaluated",
+      "reason": "vision calls disabled",
+      "measured": null,
+      "threshold": null,
+      "fact": {
+        "value": "000000000",
+        "clean": false,
+        "raw": "",
+        "coverage": [
+          {
+            "region": {
+              "element_ids": ["meter"],
+              "images": [],
+              "description": "meter close-up"
+            },
+            "status": "unobserved",
+            "probes": 0,
+            "observed_share": 0.0,
+            "seen_share": 0.0,
+            "views_min": 0,
+            "views_median": 0.0,
+            "best_incidence_deg": null,
+            "worst_best_incidence_deg": null,
+            "rule": {
+              "min_views": 1,
+              "surface": "free",
+              "max_incidence_deg": null,
+              "observed_share": 1.0
+            },
+            "method": "reads/v0"
+          }
+        ]
+      },
+      "evidence": {"element_ids": ["meter"], "views": [], "coverage": "unobserved"},
+      "views_needed": []
+    },
+    {
+      "id": "cl320",
+      "scope": "site",
+      "outcome": "unsure",
+      "unsure_cause": "not_evaluated",
+      "reason": "vision calls disabled",
+      "measured": null,
+      "threshold": null,
+      "fact": {
+        "value": null,
+        "clean": false,
+        "raw": "",
+        "coverage": [
+          {
+            "region": {
+              "element_ids": ["meter"],
+              "images": [],
+              "description": "meter close-up"
+            },
+            "status": "unobserved",
+            "probes": 0,
+            "observed_share": 0.0,
+            "seen_share": 0.0,
+            "views_min": 0,
+            "views_median": 0.0,
+            "best_incidence_deg": null,
+            "worst_best_incidence_deg": null,
+            "rule": {
+              "min_views": 1,
+              "surface": "free",
+              "max_incidence_deg": null,
+              "observed_share": 1.0
+            },
+            "method": "reads/v0"
+          }
+        ]
+      },
+      "evidence": {"element_ids": ["meter"], "views": [], "coverage": "unobserved"},
+      "views_needed": []
+    },
+    {
+      "id": "panel_recall",
+      "scope": "site",
+      "outcome": "unsure",
+      "unsure_cause": "not_evaluated",
+      "reason": "vision calls disabled",
+      "measured": null,
+      "threshold": null,
+      "fact": {
+        "value": null,
+        "clean": false,
+        "raw": "",
+        "coverage": [
+          {
+            "region": {
+              "element_ids": ["panel"],
+              "images": [],
+              "description": "panel close-up"
+            },
+            "status": "unobserved",
+            "probes": 0,
+            "observed_share": 0.0,
+            "seen_share": 0.0,
+            "views_min": 0,
+            "views_median": 0.0,
+            "best_incidence_deg": null,
+            "worst_best_incidence_deg": null,
+            "rule": {
+              "min_views": 1,
+              "surface": "free",
+              "max_incidence_deg": null,
+              "observed_share": 1.0
+            },
+            "method": "reads/v0"
+          }
+        ]
+      },
+      "evidence": {"element_ids": ["panel"], "views": [], "coverage": "unobserved"},
+      "views_needed": []
+    }
+  ],
+  "views_needed": [],
+  "cost_usd": 0.0,
+  "warnings": []
+}

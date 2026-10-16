@@ -1,0 +1,28 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\n  \"mainPanelLocation\": \"not_visible\",\n  \"meterGaragePosition\": \"not_garage_wall\",\n  \"meterPanelRelationship\": \"insufficient_evidence\",\n  \"relationshipSubtype\": \"non_garage_meter_wall\",\n  \"evidenceSufficiency\": \"insufficient\",\n  \"confidence\": 0.8,\n  \"rationale\": \"The electric meter is on the red-sided house wall beside the entry door, next to the front steps (Photos 3 and 6). No garage or garage opening appears in any photo. There are no interior photos, and no main panel is visible. The small box near the AC unit in Photo 9 cannot be identified as main service equipment. The meter-to-panel relationship cannot be established.\"\n}\n```",
+ "json": {
+  "mainPanelLocation": "not_visible",
+  "meterGaragePosition": "not_garage_wall",
+  "meterPanelRelationship": "insufficient_evidence",
+  "relationshipSubtype": "non_garage_meter_wall",
+  "evidenceSufficiency": "insufficient",
+  "confidence": 0.8,
+  "rationale": "The electric meter is on the red-sided house wall beside the entry door, next to the front steps (Photos 3 and 6). No garage or garage opening appears in any photo. There are no interior photos, and no main panel is visible. The small box near the AC unit in Photo 9 cannot be identified as main service equipment. The meter-to-panel relationship cannot be established."
+ },
+ "usage": {
+  "input_tokens": 7595,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 433
+ },
+ "cost_usd": 0.03904,
+ "latency_s": 6.08,
+ "stop": "end_turn",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p05": "insufficient_evidence"
+ }
+}

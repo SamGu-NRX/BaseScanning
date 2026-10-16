@@ -1,0 +1,58 @@
+{
+ "segment": "2022-02-10_14.47.24_s1",
+ "set": "N40_guided",
+ "method": "prior",
+ "n": 40,
+ "run": {
+  "mapper_s": 1.5,
+  "models": 1,
+  "db": {
+   "extract_s": 42.263132095336914,
+   "match_s": 85.18733835220337,
+   "frames": 87
+  },
+  "registered": 2,
+  "model_sizes": [
+   2
+  ],
+  "points3D": 33
+ },
+ "cams": {
+  "registered": 2,
+  "gt_views_registered": 1,
+  "gt_views": 39,
+  "rigid_rms_to_gt_m": null,
+  "scale_vs_gt_pct": null
+ },
+ "metric": {
+  "points": 33,
+  "sim3_scale_err_pct": 145.42408775438668,
+  "global_sim3_rms_m": 0.05952865343342958,
+  "outlier_frac": 0.0,
+  "0.5-2m (openings)": {
+   "n": 164709,
+   "med_in": 58.876729313192016,
+   "p90_in": 99.60120685465542,
+   "le2": 0.0,
+   "le4": 0.0,
+   "le6": 0.0,
+   "bias_in": 58.876729313192016
+  },
+  "2-4.57m": {
+   "n": 75533,
+   "med_in": 148.8219650406455,
+   "p90_in": 197.47083902765263,
+   "le2": 0.0,
+   "le4": 0.0,
+   "le6": 0.0,
+   "bias_in": 148.8219650406455
+  },
+  "4.57-7.92m (15-26 ft)": null,
+  "patches": 2,
+  "long_ratio_err_pct": null
+ },
+ "oracle_scale": {
+  "points": 0
+ },
+ "total_s": 3.9
+}

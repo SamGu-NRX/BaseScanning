@@ -1,0 +1,101 @@
+# Rule profiles for the 3D engine. Lengths in feet.
+#
+# public: PR #11 server/rules.yaml at t3/server cd0da8b (IRC R328.4, NEC 110.26, Base help page,
+#         placeholders for drive / pool / reach / headroom).
+# A, B, C: the three conflicting Base placement profiles from the Notion "Site Survey Criteria -
+#         Quick Reference" (summarised in internal/house-scanning-context.md section 2). Where a
+#         profile says nothing, the public value is inherited and listed under `inherited`.
+# strictest: per parameter, the most restrictive of A, B, C and public (the plan's default).
+#
+# Interpretations that are judgement calls (flagged `assumed` in the report):
+# - "ground-level window" = sill no higher than 6 ft above the local ground (B, C).
+# - A's "clear of windows" = no window on the same wall overlapping the battery's stretch at any
+#   height (under_window_any_height), plus the public 3 ft opening rule.
+# - C's headroom "6-7 ft" = fail below 6, review 6-7, pass above 7.
+# - C's "usable wall about 3 ft+" = 3 ft of continuous backing wall centred on the battery.
+# - max slope 10% and max step 0.25 ft under the footprint are placeholders for "mild slope".
+
+base:
+  policy: {auto_approve: true, allow_reject: true}
+  battery: {width_ft: 2.583333, depth_ft: 1.833333, height_ft: 3.291667}
+  backing_min_ft: 0.0
+  clearance_measure: plan
+  clearances: {gas_ft: 3.0, ac_ft: 3.0, drive_ft: 5.0, pool_ft: 10.0, wall_equipment_ft: 0.0}
+  wall_equipment_types: [elec_box, vent]
+  openings:
+    types: [door, garage_door, window]
+    min_ft: 3.0
+    measure: plan
+    ground_level_max_bottom_ft: null
+    exempt_fixed_windows: false
+    under_window_any_height: false
+  facing: {min_ft: 3.0, measured_from: battery_front}
+  headroom: {min_ft: 6.5, zone_out_ft: 3.0}
+  meter_working_space: {width_ft: 2.5, depth_ft: 3.0}
+  ground:
+    allowed: [concrete, gravel, lawn, mulch]
+    drivable: [drive]
+    max_slope: 0.10
+    max_step_ft: 0.25
+  route:
+    max_ft: 20.0
+    confident_reach_ft: 15.0
+    corner_allowance_ft: 0.5
+    height_ft: 1.0
+    max_corners: 99
+    crossing: {door: fail, garage_door: fail, window: detour, elec_box: detour, vent: detour,
+               gas_meter: detour, ac: allow, downspout: allow, pool: allow}
+
+# Any profile can be run under the shared contract's evidence rule by merging `contract` on top:
+# a FAIL resting on a wall stretch or object no camera saw becomes UNSURE (unobserved).
+contract: {fail_needs_observed: true}
+
+profiles:
+  public:
+    id: public
+    source: "PR #11 server/rules.yaml (cd0da8b)"
+  A:
+    id: A
+    source: "Base profile A, Battery Disconnect (meter -> disconnect -> battery)"
+    policy: {allow_reject: false}
+    battery: {width_ft: 2.0, depth_ft: 2.0, height_ft: 3.0}
+    clearances: {gas_ft: 5.0, drive_ft: 5.0, pool_ft: 5.0}
+    openings: {under_window_any_height: true}
+    route: {max_ft: 15.0, confident_reach_ft: 15.0, max_corners: 0,
+            crossing: {window: fail, door: fail, garage_door: fail}}
+    inherited: [ac_ft, opening min_ft 3, facing, headroom, ground, meter_working_space]
+  B:
+    id: B
+    source: "Base profile B, 3 ft Window Rule (ComEd)"
+    policy: {allow_reject: false}
+    battery: {width_ft: 2.0, depth_ft: 2.0, height_ft: 3.0}
+    clearances: {gas_ft: 5.0, drive_ft: 5.0, pool_ft: 5.0}
+    openings: {min_ft: 3.0, ground_level_max_bottom_ft: 6.0}
+    route: {max_ft: 25.0, confident_reach_ft: 25.0, max_corners: 1,
+            crossing: {window: detour, door: fail, garage_door: fail}}
+    inherited: [ac_ft, facing, headroom, ground, meter_working_space]
+  C:
+    id: C
+    source: "Base profile C, Battery Space (meter -> battery harness)"
+    battery: {width_ft: 2.583333, depth_ft: 1.833333, height_ft: 3.0}
+    backing_min_ft: 3.0
+    clearances: {gas_ft: 3.0, drive_ft: 3.0, pool_ft: 10.0}
+    openings: {min_ft: 0.0, ground_level_max_bottom_ft: 6.0}
+    facing: {min_ft: 5.0, measured_from: wall}
+    headroom: {min_ft: 6.0, pass_above_ft: 7.0}
+    ground: {allowed: [concrete, gravel, lawn, mulch, dirt]}
+    route: {max_ft: 26.0, confident_reach_ft: 16.0,
+            crossing: {window: detour, door: door_over_review, garage_door: fail}}
+    inherited: [ac_ft, meter_working_space]
+  strictest:
+    id: strictest
+    source: "per-parameter strictest of public, A, B, C"
+    policy: {allow_reject: false}
+    battery: {width_ft: 2.583333, depth_ft: 2.0, height_ft: 3.291667}
+    backing_min_ft: 3.0
+    clearances: {gas_ft: 5.0, drive_ft: 5.0, pool_ft: 10.0}
+    openings: {min_ft: 3.0, under_window_any_height: true}
+    facing: {min_ft: 5.0, measured_from: wall}
+    headroom: {min_ft: 7.0}
+    route: {max_ft: 15.0, confident_reach_ft: 15.0, max_corners: 0,
+            crossing: {window: fail, door: fail, garage_door: fail}}

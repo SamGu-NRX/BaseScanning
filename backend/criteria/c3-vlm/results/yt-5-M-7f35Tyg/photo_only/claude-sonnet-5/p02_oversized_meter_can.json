@@ -1,0 +1,25 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"feature\": \"standard_meter_can\", \"evidence\": \"Photo 11 shows the electric meter mounted in a compact rectangular socket enclosure on the siding, sized just slightly larger than the round meter face itself.\", \"notes\": \"The enclosure appears to be a standard-size meter socket, not an oversized 320A-style can. No other photos show the meter can from a different angle.\", \"insufficientEvidence\": false}",
+ "json": {
+  "feature": "standard_meter_can",
+  "evidence": "Photo 11 shows the electric meter mounted in a compact rectangular socket enclosure on the siding, sized just slightly larger than the round meter face itself.",
+  "notes": "The enclosure appears to be a standard-size meter socket, not an oversized 320A-style can. No other photos show the meter can from a different angle.",
+  "insufficientEvidence": false
+ },
+ "usage": {
+  "input_tokens": 331,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 4005,
+  "output_tokens": 139
+ },
+ "cost_usd": 0.002853,
+ "latency_s": 3.63,
+ "stop": "end_turn",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p02": "standard_meter_can"
+ }
+}

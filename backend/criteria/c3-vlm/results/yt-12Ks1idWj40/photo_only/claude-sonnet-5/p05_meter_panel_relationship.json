@@ -1,0 +1,28 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"main_panel_location\": \"exterior_service_equipment\", \"meter_relative_to_garage\": \"not_visible\", \"relationship\": \"co_located_exterior\", \"subtype\": \"meter and main breaker panel mounted adjacent on same exterior brick wall, no garage visible\", \"confidence\": \"high\", \"rationale\": \"Photos show the electric meter and gray main panel mounted side-by-side on the exterior brick wall of the house, with conduit running between them and down to a battery unit. No garage structure or garage wall is visible in any photo; this appears to be a house exterior wall, not a garage.\", \"insufficientEvidence\": false}",
+ "json": {
+  "main_panel_location": "exterior_service_equipment",
+  "meter_relative_to_garage": "not_visible",
+  "relationship": "co_located_exterior",
+  "subtype": "meter and main breaker panel mounted adjacent on same exterior brick wall, no garage visible",
+  "confidence": "high",
+  "rationale": "Photos show the electric meter and gray main panel mounted side-by-side on the exterior brick wall of the house, with conduit running between them and down to a battery unit. No garage structure or garage wall is visible in any photo; this appears to be a house exterior wall, not a garage.",
+  "insufficientEvidence": false
+ },
+ "usage": {
+  "input_tokens": 512,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 25329,
+  "output_tokens": 207
+ },
+ "cost_usd": 0.0081598,
+ "latency_s": 4.96,
+ "stop": "end_turn",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only",
+ "verdicts": {
+  "p05": "co_located_exterior"
+ }
+}

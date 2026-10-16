@@ -1,0 +1,28 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "```json\n{\n  \"mainPanelLocation\": \"not_visible\",\n  \"meterGaragePosition\": \"not_garage_wall\",\n  \"meterPanelRelationship\": \"insufficient_evidence\",\n  \"relationshipSubtype\": \"unknown\",\n  \"evidenceSufficiency\": \"insufficient\",\n  \"confidence\": 0.8,\n  \"rationale\": \"All 16 photos are exterior views of a brick single-story house. They show the yard, fence, a driveway of concrete strips ending at the backyard, the chimney, windows and a gas meter. No garage or garage door opening is visible. What appears to be an electric meter is mounted on a plain brick exterior wall (Photo 2, right side; possibly the gray box in Photo 14) with no garage anchors nearby. No interior photos exist and no main panel is visible, so the meter-to-panel relationship cannot be established.\"\n}\n```",
+ "json": {
+  "mainPanelLocation": "not_visible",
+  "meterGaragePosition": "not_garage_wall",
+  "meterPanelRelationship": "insufficient_evidence",
+  "relationshipSubtype": "unknown",
+  "evidenceSufficiency": "insufficient",
+  "confidence": 0.8,
+  "rationale": "All 16 photos are exterior views of a brick single-story house. They show the yard, fence, a driveway of concrete strips ending at the backyard, the chimney, windows and a gas meter. No garage or garage door opening is visible. What appears to be an electric meter is mounted on a plain brick exterior wall (Photo 2, right side; possibly the gray box in Photo 14) with no garage anchors nearby. No interior photos exist and no main panel is visible, so the meter-to-panel relationship cannot be established."
+ },
+ "usage": {
+  "input_tokens": 20107,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 419
+ },
+ "cost_usd": 0.088808,
+ "latency_s": 10.43,
+ "stop": "end_turn",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "yt-4h8kyjnPo9s",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p05": "insufficient_evidence"
+ }
+}

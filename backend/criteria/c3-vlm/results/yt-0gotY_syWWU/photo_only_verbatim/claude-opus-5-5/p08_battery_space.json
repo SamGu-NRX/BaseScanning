@@ -1,0 +1,30 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"requires_member_action\": false, \"justification\": \"The meter sits on the gable-end wall just right of the entry door (photo 3). The harness can run right, under the window, to the nearby corner and onto the long side wall. Photos 1\u20132 show that side wall has about 5\u20136 ft of blank siding between the corner and the first window, with flat dirt/lawn in front, a wide-open front and full headroom. No gas meter, pool or drive is near that spot; the only car (photo 6) is far off across the yard.\", \"decision\": \"pass\", \"reference_object\": \"entry door ~3 ft wide; window with shutters ~3 ft wide; siding boards ~8 in\", \"needs_more_photos\": false, \"distance_ft\": 10, \"missing_views\": [], \"front_clearance_ft\": 99, \"drive_path_ft\": 40}",
+ "json": {
+  "requires_member_action": false,
+  "justification": "The meter sits on the gable-end wall just right of the entry door (photo 3). The harness can run right, under the window, to the nearby corner and onto the long side wall. Photos 1\u20132 show that side wall has about 5\u20136 ft of blank siding between the corner and the first window, with flat dirt/lawn in front, a wide-open front and full headroom. No gas meter, pool or drive is near that spot; the only car (photo 6) is far off across the yard.",
+  "decision": "pass",
+  "reference_object": "entry door ~3 ft wide; window with shutters ~3 ft wide; siding boards ~8 in",
+  "needs_more_photos": false,
+  "distance_ft": 10,
+  "missing_views": [],
+  "front_clearance_ft": 99,
+  "drive_path_ft": 40
+ },
+ "usage": {
+  "input_tokens": 16107,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 1197
+ },
+ "cost_usd": 0.088368,
+ "latency_s": 16.87,
+ "stop": "end_turn",
+ "prompt_id": "p08_battery_space",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p08": "pass"
+ }
+}

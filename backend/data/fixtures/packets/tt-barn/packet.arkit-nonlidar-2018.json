@@ -1,0 +1,8936 @@
+{
+ "format": "house-capture-packet",
+ "formatVersion": "0.4",
+ "packetId": "d26d8358-0361-471b-8c40-9d23353c4de9",
+ "createdAt": "2026-09-26T20:53:50.650Z",
+ "units": {
+  "length": "meters",
+  "angle": "degrees",
+  "time": "seconds of device uptime, the clock of ARFrame.timestamp and CMDeviceMotion.timestamp",
+  "image": "pixels of the saved JPEG",
+  "rotationRate": "radians per second",
+  "acceleration": "g (9.80665 m/s^2)",
+  "magneticField": "microtesla"
+ },
+ "conventions": {
+  "world": "ARKit world frame with worldAlignment .gravity: right-handed, y up (away from gravity), origin at the device's position when the session (epoch) started, -z the camera's initial facing projected onto the horizontal",
+  "camera": "ARKit camera frame: +x right and +y up in the unrotated landscape sensor image, the camera looks along -z",
+  "device": "Core Motion device frame: +x right and +y toward the top with the phone upright in portrait, +z out of the screen",
+  "pose": "camera-to-world 4x4 matrix, 16 numbers column by column (simd_float4x4 layout), meters",
+  "intrinsics": "[fx, fy, cx, cy] in pixels of the saved, unrotated landscape image",
+  "pixel": "[u, v] continuous image coordinates: (0, 0) is the top-left corner of the top-left pixel, v grows down",
+  "ray": "origin is the camera position; direction is a unit vector; camera-space direction ((u - cx)/fx, -(v - cy)/fy, -1)",
+  "geodetic": "WGS84 degrees; altitude above mean sea level, ellipsoidalAltitude above the WGS84 ellipsoid, meters",
+  "heading": "degrees clockwise from north, 0 to 360"
+ },
+ "source": {
+  "kind": "synthetic",
+  "generator": "packetgen 0.1.0",
+  "variant": "arkit-nonlidar-2018",
+  "noiseProfile": "nonlidar_2018",
+  "sourceDataset": "Tanks and Temples benchmark, training scene 'Barn'; https://www.tanksandtemples.org/download/; CC BY 4.0 per tanksandtemples.org/license (verify before any external use)",
+  "synthesizedFields": [
+   "keyframes[].pose (clean pose from the source + ARKit-like drift, profile nonlidar_2018)",
+   "keyframes[].intrinsics (source calibration + per-session focal and principal-point error)",
+   "keyframes[].timestamp (walking-speed model)",
+   "keyframes[].tracking",
+   "epochs",
+   "keyframes[].exposure",
+   "keyframes[].lightEstimate",
+   "keyframes[].features (SfM points re-expressed in the drifted world)",
+   "planes (RANSAC on reference geometry)",
+   "taps (auto reference point)",
+   "streams.motion",
+   "streams.heading",
+   "streams.location",
+   "streams.imuRaw (from streams.motion plus gyro bias and sensor noise)",
+   "streams.arkitPoses (observed trajectory interpolated per epoch at 30 Hz)"
+  ],
+  "notes": ""
+ },
+ "session": {
+  "id": "D7A7BDB4-9E5C-5DA0-9F6E-0BDA29EAFE15",
+  "startedAt": "2026-09-26T15:02:38.755Z",
+  "startedAtUptime": 60304.5115,
+  "endedAtUptime": 60560.4752,
+  "timeZone": "America/Chicago",
+  "appVersion": "packetgen-synthetic 0.1.0",
+  "deviceModel": "iPhone8,1",
+  "systemVersion": "15.8.3",
+  "tier": "arkit",
+  "lidarAvailable": false,
+  "sceneDepthEnabled": false,
+  "meshReconstructionSupported": false,
+  "sceneReconstruction": "none",
+  "worldAlignment": "gravity",
+  "planeDetection": [
+   "horizontal",
+   "vertical"
+  ],
+  "videoFormat": {
+   "imageResolution": [
+    1920,
+    1080
+   ],
+   "framesPerSecond": 60
+  },
+  "locationAuthorization": "fullAccuracy",
+  "motionReferenceFrame": "xTrueNorthZVertical",
+  "gates": {
+   "trackingStableSeconds": 1.0,
+   "minimumGroundLookDown": 30.0,
+   "minimumContactSeparation": 2.0,
+   "maximumAngleFromWallNormal": 60.0,
+   "wallValidationTolerance": 0.0508,
+   "minimumCameraOffsetFromWall": 0.1,
+   "minimumRayAngle": 15.0,
+   "maximumRayGap": 0.0508,
+   "keyframeSpacingMeters": 0.5,
+   "keyframeSpacingDegrees": 15.0
+  }
+ },
+ "epochs": [
+  {
+   "id": "e1",
+   "startTime": 60304.5115,
+   "reason": "sessionStart"
+  }
+ ],
+ "keyframes": [
+  {
+   "id": "k00001",
+   "img": "keyframes/k00001.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.99982,
+    -0.01881,
+    0.002337,
+    0.0,
+    0.018707,
+    0.999093,
+    0.038249,
+    0.0,
+    -0.003054,
+    -0.038199,
+    0.999265,
+    0.0,
+    -0.001408,
+    -0.002617,
+    -0.000764,
+    1.0
+   ],
+   "timestamp": 60307.9089,
+   "tracking": "limited.initializing",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001565058649546449,
+    "offset": -0.11,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1279.6,
+    "ambientColorTemperature": 5837.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00001.bin",
+    "count": 90
+   },
+   "depth": null
+  },
+  {
+   "id": "k00002",
+   "img": "keyframes/k00002.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.999332,
+    -0.012047,
+    -0.034502,
+    0.0,
+    0.013475,
+    0.999049,
+    0.041459,
+    0.0,
+    0.03397,
+    -0.041897,
+    0.998544,
+    0.0,
+    -1.043815,
+    0.089697,
+    0.121701,
+    1.0
+   ],
+   "timestamp": 60309.2613,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0008440067124866178,
+    "offset": 0.183,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1318.9,
+    "ambientColorTemperature": 6352.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00002.bin",
+    "count": 65
+   },
+   "depth": null
+  },
+  {
+   "id": "k00003",
+   "img": "keyframes/k00003.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.959524,
+    -0.020587,
+    0.280874,
+    0.0,
+    0.011688,
+    0.999376,
+    0.033324,
+    0.0,
+    -0.281385,
+    -0.028692,
+    0.959166,
+    0.0,
+    -2.238746,
+    0.062397,
+    -0.327152,
+    1.0
+   ],
+   "timestamp": 60310.7052,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013495722467794335,
+    "offset": -0.194,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1199.2,
+    "ambientColorTemperature": 6798.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00003.bin",
+    "count": 95
+   },
+   "depth": null
+  },
+  {
+   "id": "k00004",
+   "img": "keyframes/k00004.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.917795,
+    -0.017186,
+    0.396683,
+    0.0,
+    0.012175,
+    0.999811,
+    0.015147,
+    0.0,
+    -0.396868,
+    -0.009072,
+    0.917831,
+    0.0,
+    -2.65672,
+    0.00784,
+    -0.009877,
+    1.0
+   ],
+   "timestamp": 60311.7239,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0024080876976873794,
+    "offset": -0.272,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1166.9,
+    "ambientColorTemperature": 5732.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00004.bin",
+    "count": 88
+   },
+   "depth": null
+  },
+  {
+   "id": "k00005",
+   "img": "keyframes/k00005.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.874867,
+    -0.019741,
+    0.483961,
+    0.0,
+    0.023713,
+    0.999717,
+    -0.002088,
+    0.0,
+    -0.483783,
+    0.013302,
+    0.875087,
+    0.0,
+    -1.800216,
+    0.134382,
+    0.539039,
+    1.0
+   ],
+   "timestamp": 60313.4345,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.00180352600749901,
+    "offset": -0.147,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1143.6,
+    "ambientColorTemperature": 5772.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00005.bin",
+    "count": 79
+   },
+   "depth": null
+  },
+  {
+   "id": "k00006",
+   "img": "keyframes/k00006.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.86801,
+    -0.012151,
+    0.496398,
+    0.0,
+    0.024035,
+    0.999557,
+    -0.017561,
+    0.0,
+    -0.495964,
+    0.027173,
+    0.867918,
+    0.0,
+    -0.248711,
+    -0.018013,
+    0.459704,
+    1.0
+   ],
+   "timestamp": 60315.7599,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0017052544302545367,
+    "offset": -0.038,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1101.3,
+    "ambientColorTemperature": 5645.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00006.bin",
+    "count": 66
+   },
+   "depth": null
+  },
+  {
+   "id": "k00007",
+   "img": "keyframes/k00007.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.849066,
+    -0.004122,
+    0.52827,
+    0.0,
+    0.021363,
+    0.999419,
+    -0.026539,
+    0.0,
+    -0.527854,
+    0.033819,
+    0.848661,
+    0.0,
+    1.42998,
+    -0.186317,
+    0.477617,
+    1.0
+   ],
+   "timestamp": 60317.9723,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0021950597587173997,
+    "offset": 0.255,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 981.1,
+    "ambientColorTemperature": 5473.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00007.bin",
+    "count": 72
+   },
+   "depth": null
+  },
+  {
+   "id": "k00008",
+   "img": "keyframes/k00008.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.871584,
+    0.008223,
+    0.490177,
+    0.0,
+    0.015198,
+    0.998926,
+    -0.043781,
+    0.0,
+    -0.490011,
+    0.045608,
+    0.870522,
+    0.0,
+    3.126986,
+    -0.353031,
+    -0.020489,
+    1.0
+   ],
+   "timestamp": 60320.2807,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0016486738725448049,
+    "offset": -0.391,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1069.7,
+    "ambientColorTemperature": 6707.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00008.bin",
+    "count": 84
+   },
+   "depth": null
+  },
+  {
+   "id": "k00009",
+   "img": "keyframes/k00009.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.943329,
+    0.007136,
+    0.331782,
+    0.0,
+    0.004521,
+    0.9994,
+    -0.034348,
+    0.0,
+    -0.331828,
+    0.033901,
+    0.94273,
+    0.0,
+    4.829284,
+    -0.319046,
+    -0.292044,
+    1.0
+   ],
+   "timestamp": 60322.4498,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0018304069118325935,
+    "offset": 0.005,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1152.6,
+    "ambientColorTemperature": 5254.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00009.bin",
+    "count": 95
+   },
+   "depth": null
+  },
+  {
+   "id": "k00010",
+   "img": "keyframes/k00010.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.984372,
+    0.028677,
+    -0.173752,
+    0.0,
+    -0.029977,
+    0.999539,
+    -0.004864,
+    0.0,
+    0.173532,
+    0.009997,
+    0.984777,
+    0.0,
+    5.653128,
+    -0.253539,
+    -0.713937,
+    1.0
+   ],
+   "timestamp": 60323.9318,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0011730574470159834,
+    "offset": -0.156,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1248.0,
+    "ambientColorTemperature": 6790.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00010.bin",
+    "count": 149
+   },
+   "depth": null
+  },
+  {
+   "id": "k00011",
+   "img": "keyframes/k00011.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.639009,
+    0.058731,
+    -0.766954,
+    0.0,
+    -0.038684,
+    0.998273,
+    0.044213,
+    0.0,
+    0.768226,
+    0.001416,
+    0.640177,
+    0.0,
+    6.462206,
+    -0.229716,
+    -0.703696,
+    1.0
+   ],
+   "timestamp": 60325.4097,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0012385807300524158,
+    "offset": 0.207,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1293.2,
+    "ambientColorTemperature": 5415.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00011.bin",
+    "count": 100
+   },
+   "depth": null
+  },
+  {
+   "id": "k00012",
+   "img": "keyframes/k00012.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.590941,
+    0.038017,
+    -0.805819,
+    0.0,
+    -0.022698,
+    0.999277,
+    0.030498,
+    0.0,
+    0.806396,
+    0.000268,
+    0.591376,
+    0.0,
+    7.137207,
+    -0.323872,
+    -0.899335,
+    1.0
+   ],
+   "timestamp": 60326.3356,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0009200273868244803,
+    "offset": 0.054,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1340.5,
+    "ambientColorTemperature": 5765.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00012.bin",
+    "count": 95
+   },
+   "depth": null
+  },
+  {
+   "id": "k00013",
+   "img": "keyframes/k00013.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.522647,
+    0.020568,
+    -0.852301,
+    0.0,
+    -0.01802,
+    0.999752,
+    0.013076,
+    0.0,
+    0.852359,
+    0.008524,
+    0.522888,
+    0.0,
+    8.073972,
+    -0.325064,
+    -0.829228,
+    1.0
+   ],
+   "timestamp": 60327.8319,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001377700676271898,
+    "offset": 0.059,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1326.2,
+    "ambientColorTemperature": 6589.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00013.bin",
+    "count": 99
+   },
+   "depth": null
+  },
+  {
+   "id": "k00014",
+   "img": "keyframes/k00014.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.639269,
+    -0.00283,
+    -0.768978,
+    0.0,
+    0.001968,
+    0.999996,
+    -0.002044,
+    0.0,
+    0.76898,
+    -0.000206,
+    0.639272,
+    0.0,
+    8.819418,
+    -0.213575,
+    -1.693517,
+    1.0
+   ],
+   "timestamp": 60329.1326,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0011238987011263051,
+    "offset": -0.106,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1321.7,
+    "ambientColorTemperature": 6261.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00014.bin",
+    "count": 99
+   },
+   "depth": null
+  },
+  {
+   "id": "k00015",
+   "img": "keyframes/k00015.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.695797,
+    -0.008619,
+    -0.718187,
+    0.0,
+    0.018202,
+    0.999818,
+    0.005636,
+    0.0,
+    0.718008,
+    -0.016994,
+    0.695828,
+    0.0,
+    10.418585,
+    -0.198296,
+    -1.929317,
+    1.0
+   ],
+   "timestamp": 60331.2378,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0009358829205499069,
+    "offset": -0.038,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1341.8,
+    "ambientColorTemperature": 5832.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00015.bin",
+    "count": 124
+   },
+   "depth": null
+  },
+  {
+   "id": "k00016",
+   "img": "keyframes/k00016.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.640113,
+    -0.010132,
+    -0.768214,
+    0.0,
+    0.038053,
+    0.999104,
+    0.01853,
+    0.0,
+    0.767338,
+    -0.041094,
+    0.639925,
+    0.0,
+    11.819648,
+    -0.050322,
+    -2.682318,
+    1.0
+   ],
+   "timestamp": 60333.3242,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0011480485107418544,
+    "offset": 0.141,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1394.2,
+    "ambientColorTemperature": 6326.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00016.bin",
+    "count": 114
+   },
+   "depth": null
+  },
+  {
+   "id": "k00017",
+   "img": "keyframes/k00017.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.673113,
+    -0.015871,
+    -0.73937,
+    0.0,
+    0.043124,
+    0.998911,
+    0.017818,
+    0.0,
+    0.738281,
+    -0.043878,
+    0.673064,
+    0.0,
+    13.182465,
+    -0.104434,
+    -3.522849,
+    1.0
+   ],
+   "timestamp": 60335.4622,
+   "tracking": "limited.excessiveMotion",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0007432462306336706,
+    "offset": -0.196,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1432.6,
+    "ambientColorTemperature": 6484.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00017.bin",
+    "count": 100
+   },
+   "depth": null
+  },
+  {
+   "id": "k00018",
+   "img": "keyframes/k00018.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.471446,
+    -0.006346,
+    -0.881872,
+    0.0,
+    0.038021,
+    0.999191,
+    0.013135,
+    0.0,
+    0.881075,
+    -0.039722,
+    0.471306,
+    0.0,
+    14.823147,
+    -0.157215,
+    -3.742856,
+    1.0
+   ],
+   "timestamp": 60337.729,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.00046874588824553584,
+    "offset": 0.003,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1492.5,
+    "ambientColorTemperature": 5616.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00018.bin",
+    "count": 95
+   },
+   "depth": null
+  },
+  {
+   "id": "k00019",
+   "img": "keyframes/k00019.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.315098,
+    0.007763,
+    -0.949028,
+    0.0,
+    0.015478,
+    0.999792,
+    0.013318,
+    0.0,
+    0.948933,
+    -0.018885,
+    0.314912,
+    0.0,
+    16.339992,
+    -0.167211,
+    -4.324997,
+    1.0
+   ],
+   "timestamp": 60339.7774,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0010896876648424274,
+    "offset": 0.194,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1430.1,
+    "ambientColorTemperature": 6497.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00019.bin",
+    "count": 92
+   },
+   "depth": null
+  },
+  {
+   "id": "k00020",
+   "img": "keyframes/k00020.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.2749,
+    0.008576,
+    -0.961435,
+    0.0,
+    -0.036797,
+    0.999321,
+    -0.001607,
+    0.0,
+    0.960768,
+    0.03582,
+    0.275029,
+    0.0,
+    17.221835,
+    -0.069839,
+    -5.777493,
+    1.0
+   ],
+   "timestamp": 60342.1927,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0015944556392328355,
+    "offset": -0.108,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1289.8,
+    "ambientColorTemperature": 5560.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00020.bin",
+    "count": 90
+   },
+   "depth": null
+  },
+  {
+   "id": "k00021",
+   "img": "keyframes/k00021.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.285654,
+    0.00231,
+    -0.95833,
+    0.0,
+    -0.041016,
+    0.99911,
+    -0.009817,
+    0.0,
+    0.957455,
+    0.042111,
+    0.285495,
+    0.0,
+    17.671556,
+    0.116248,
+    -7.255591,
+    1.0
+   ],
+   "timestamp": 60344.1868,
+   "tracking": "limited.excessiveMotion",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001524564749137844,
+    "offset": -0.168,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1233.1,
+    "ambientColorTemperature": 5251.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00021.bin",
+    "count": 113
+   },
+   "depth": null
+  },
+  {
+   "id": "k00022",
+   "img": "keyframes/k00022.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.105392,
+    0.00362,
+    -0.994424,
+    0.0,
+    -0.089286,
+    0.995989,
+    -0.005837,
+    0.0,
+    0.990414,
+    0.089403,
+    0.105293,
+    0.0,
+    18.200708,
+    0.098496,
+    -8.65094,
+    1.0
+   ],
+   "timestamp": 60345.9605,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0022052115705795653,
+    "offset": 0.15,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1065.8,
+    "ambientColorTemperature": 5766.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00022.bin",
+    "count": 126
+   },
+   "depth": null
+  },
+  {
+   "id": "k00023",
+   "img": "keyframes/k00023.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.251378,
+    0.020351,
+    -0.967675,
+    0.0,
+    -0.101146,
+    0.993753,
+    0.047174,
+    0.0,
+    0.962589,
+    0.109735,
+    -0.247749,
+    0.0,
+    18.595571,
+    0.09779,
+    -10.13805,
+    1.0
+   ],
+   "timestamp": 60347.7578,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0019884178208723177,
+    "offset": 0.161,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 930.6,
+    "ambientColorTemperature": 5842.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00023.bin",
+    "count": 133
+   },
+   "depth": null
+  },
+  {
+   "id": "k00024",
+   "img": "keyframes/k00024.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.168515,
+    0.034825,
+    -0.985084,
+    0.0,
+    -0.127446,
+    0.990217,
+    0.056809,
+    0.0,
+    0.977425,
+    0.135118,
+    -0.162428,
+    0.0,
+    18.721516,
+    0.11953,
+    -11.252224,
+    1.0
+   ],
+   "timestamp": 60349.3303,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0031713525069131743,
+    "offset": 0.09,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 858.3,
+    "ambientColorTemperature": 5482.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00024.bin",
+    "count": 146
+   },
+   "depth": null
+  },
+  {
+   "id": "k00025",
+   "img": "keyframes/k00025.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.191421,
+    -0.005526,
+    -0.981492,
+    0.0,
+    -0.128709,
+    0.991208,
+    -0.030683,
+    0.0,
+    0.973032,
+    0.1322,
+    0.189027,
+    0.0,
+    18.727482,
+    0.205726,
+    -12.064796,
+    1.0
+   ],
+   "timestamp": 60350.4352,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0029238529208565817,
+    "offset": -0.014,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 847.8,
+    "ambientColorTemperature": 5205.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00025.bin",
+    "count": 145
+   },
+   "depth": null
+  },
+  {
+   "id": "k00026",
+   "img": "keyframes/k00026.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.026526,
+    -0.009682,
+    -0.999601,
+    0.0,
+    -0.085941,
+    0.996273,
+    -0.007369,
+    0.0,
+    0.995947,
+    0.085711,
+    -0.027259,
+    0.0,
+    18.176181,
+    0.223891,
+    -13.670451,
+    1.0
+   ],
+   "timestamp": 60352.6749,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002373135842951795,
+    "offset": 0.017,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 883.3,
+    "ambientColorTemperature": 5274.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00026.bin",
+    "count": 145
+   },
+   "depth": null
+  },
+  {
+   "id": "k00027",
+   "img": "keyframes/k00027.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.456141,
+    0.027682,
+    -0.889477,
+    0.0,
+    -0.046465,
+    0.997412,
+    0.05487,
+    0.0,
+    0.888694,
+    0.066358,
+    -0.453674,
+    0.0,
+    17.686764,
+    0.184689,
+    -15.00911,
+    1.0
+   ],
+   "timestamp": 60354.9984,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0029202923372402757,
+    "offset": 0.141,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 902.4,
+    "ambientColorTemperature": 6583.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00027.bin",
+    "count": 135
+   },
+   "depth": null
+  },
+  {
+   "id": "k00028",
+   "img": "keyframes/k00028.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.815921,
+    0.044818,
+    -0.576423,
+    0.0,
+    -0.001508,
+    0.996823,
+    0.07964,
+    0.0,
+    0.578161,
+    0.065849,
+    -0.813261,
+    0.0,
+    17.280609,
+    -0.145439,
+    -16.382229,
+    1.0
+   ],
+   "timestamp": 60356.8716,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0017146708659543034,
+    "offset": 0.005,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 907.3,
+    "ambientColorTemperature": 5326.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00028.bin",
+    "count": 120
+   },
+   "depth": null
+  },
+  {
+   "id": "k00029",
+   "img": "keyframes/k00029.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.850886,
+    0.052486,
+    -0.522723,
+    0.0,
+    0.014278,
+    0.99694,
+    0.07686,
+    0.0,
+    0.525157,
+    0.057936,
+    -0.849031,
+    0.0,
+    16.604525,
+    -0.315534,
+    -17.771314,
+    1.0
+   ],
+   "timestamp": 60359.0619,
+   "tracking": "limited.excessiveMotion",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002156331204621818,
+    "offset": -0.168,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 901.8,
+    "ambientColorTemperature": 5241.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00029.bin",
+    "count": 116
+   },
+   "depth": null
+  },
+  {
+   "id": "k00030",
+   "img": "keyframes/k00030.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.860154,
+    0.039713,
+    -0.508487,
+    0.0,
+    -0.067317,
+    0.979403,
+    0.190363,
+    0.0,
+    0.505573,
+    0.197971,
+    -0.839764,
+    0.0,
+    15.88831,
+    -0.504811,
+    -18.900663,
+    1.0
+   ],
+   "timestamp": 60360.9316,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.004774062798927088,
+    "offset": -0.181,
+    "iso": 200,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 654.4,
+    "ambientColorTemperature": 5411.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00030.bin",
+    "count": 114
+   },
+   "depth": null
+  },
+  {
+   "id": "k00031",
+   "img": "keyframes/k00031.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.807264,
+    0.027434,
+    -0.589553,
+    0.0,
+    -0.115855,
+    0.972118,
+    0.203875,
+    0.0,
+    0.578708,
+    0.232883,
+    -0.781577,
+    0.0,
+    15.026963,
+    -0.489044,
+    -19.391321,
+    1.0
+   ],
+   "timestamp": 60362.5557,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0032492901432869003,
+    "offset": 0.056,
+    "iso": 200,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 636.9,
+    "ambientColorTemperature": 6760.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00031.bin",
+    "count": 128
+   },
+   "depth": null
+  },
+  {
+   "id": "k00032",
+   "img": "keyframes/k00032.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.807117,
+    0.02861,
+    -0.589698,
+    0.0,
+    -0.129044,
+    0.966125,
+    0.223496,
+    0.0,
+    0.576117,
+    0.256484,
+    -0.776083,
+    0.0,
+    13.926853,
+    -0.457993,
+    -19.662078,
+    1.0
+   ],
+   "timestamp": 60363.9144,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002493195583188771,
+    "offset": 0.088,
+    "iso": 200,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 650.8,
+    "ambientColorTemperature": 5492.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00032.bin",
+    "count": 131
+   },
+   "depth": null
+  },
+  {
+   "id": "k00033",
+   "img": "keyframes/k00033.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.973378,
+    0.040221,
+    -0.22565,
+    0.0,
+    -0.011407,
+    0.974763,
+    0.22295,
+    0.0,
+    0.228922,
+    0.219589,
+    -0.948354,
+    0.0,
+    13.23029,
+    -0.520124,
+    -20.057427,
+    1.0
+   ],
+   "timestamp": 60364.8842,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.003045207147652602,
+    "offset": 0.145,
+    "iso": 200,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 712.5,
+    "ambientColorTemperature": 6033.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00033.bin",
+    "count": 95
+   },
+   "depth": null
+  },
+  {
+   "id": "k00034",
+   "img": "keyframes/k00034.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.979161,
+    0.053729,
+    -0.195848,
+    0.0,
+    0.03627,
+    0.995129,
+    0.091667,
+    0.0,
+    0.199819,
+    0.082653,
+    -0.97634,
+    0.0,
+    12.374097,
+    -0.576704,
+    -20.319222,
+    1.0
+   ],
+   "timestamp": 60366.79,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002602926262907814,
+    "offset": 0.144,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 909.8,
+    "ambientColorTemperature": 6452.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00034.bin",
+    "count": 104
+   },
+   "depth": null
+  },
+  {
+   "id": "k00035",
+   "img": "keyframes/k00035.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.997918,
+    0.034068,
+    -0.054763,
+    0.0,
+    0.030579,
+    0.997523,
+    0.063349,
+    0.0,
+    0.056786,
+    0.061543,
+    -0.996488,
+    0.0,
+    11.485798,
+    -0.54935,
+    -20.757354,
+    1.0
+   ],
+   "timestamp": 60368.7504,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002322657231284366,
+    "offset": -0.257,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 939.7,
+    "ambientColorTemperature": 5311.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00035.bin",
+    "count": 100
+   },
+   "depth": null
+  },
+  {
+   "id": "k00036",
+   "img": "keyframes/k00036.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.997943,
+    0.034557,
+    -0.054003,
+    0.0,
+    0.031883,
+    0.99826,
+    0.049608,
+    0.0,
+    0.055623,
+    0.047784,
+    -0.997308,
+    0.0,
+    11.25517,
+    -0.364797,
+    -21.964826,
+    1.0
+   ],
+   "timestamp": 60370.5045,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0024472971191285098,
+    "offset": -0.002,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 877.0,
+    "ambientColorTemperature": 5889.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00036.bin",
+    "count": 94
+   },
+   "depth": null
+  },
+  {
+   "id": "k00037",
+   "img": "keyframes/k00037.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.911405,
+    0.016937,
+    -0.411161,
+    0.0,
+    -0.013426,
+    0.997397,
+    0.070847,
+    0.0,
+    0.411291,
+    0.07009,
+    -0.908805,
+    0.0,
+    11.479204,
+    -0.24759,
+    -23.009302,
+    1.0
+   ],
+   "timestamp": 60371.9005,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0017651259487054182,
+    "offset": -0.16,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 948.9,
+    "ambientColorTemperature": 6136.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00037.bin",
+    "count": 91
+   },
+   "depth": null
+  },
+  {
+   "id": "k00038",
+   "img": "keyframes/k00038.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.835218,
+    0.002456,
+    -0.549914,
+    0.0,
+    -0.012563,
+    0.999644,
+    0.023546,
+    0.0,
+    0.549776,
+    0.026575,
+    -0.834889,
+    0.0,
+    11.316283,
+    -0.276784,
+    -23.974142,
+    1.0
+   ],
+   "timestamp": 60374.7085,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0026779434607723408,
+    "offset": 0.095,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1075.0,
+    "ambientColorTemperature": 5347.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00038.bin",
+    "count": 62
+   },
+   "depth": null
+  },
+  {
+   "id": "k00039",
+   "img": "keyframes/k00039.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.966648,
+    0.015004,
+    -0.25567,
+    0.0,
+    0.030874,
+    0.997829,
+    -0.058174,
+    0.0,
+    0.254242,
+    -0.064128,
+    -0.965012,
+    0.0,
+    9.890892,
+    -0.237095,
+    -24.42309,
+    1.0
+   ],
+   "timestamp": 60376.4449,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002022553948469213,
+    "offset": 0.018,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1131.0,
+    "ambientColorTemperature": 6087.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00039.bin",
+    "count": 52
+   },
+   "depth": null
+  },
+  {
+   "id": "k00040",
+   "img": "keyframes/k00040.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.989509,
+    0.023916,
+    -0.142476,
+    0.0,
+    0.032935,
+    0.997577,
+    -0.061284,
+    0.0,
+    0.140665,
+    -0.065333,
+    -0.987899,
+    0.0,
+    8.304131,
+    -0.289473,
+    -24.897634,
+    1.0
+   ],
+   "timestamp": 60378.4682,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0023566868967722643,
+    "offset": -0.08,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1098.4,
+    "ambientColorTemperature": 6559.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00040.bin",
+    "count": 69
+   },
+   "depth": null
+  },
+  {
+   "id": "k00041",
+   "img": "keyframes/k00041.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.976754,
+    0.036662,
+    0.211203,
+    0.0,
+    0.029707,
+    0.99891,
+    -0.036008,
+    0.0,
+    -0.212293,
+    -0.028896,
+    -0.976779,
+    0.0,
+    6.759838,
+    -0.199888,
+    -24.646762,
+    1.0
+   ],
+   "timestamp": 60380.444,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0023682641044487974,
+    "offset": -0.081,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1047.7,
+    "ambientColorTemperature": 6528.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00041.bin",
+    "count": 124
+   },
+   "depth": null
+  },
+  {
+   "id": "k00042",
+   "img": "keyframes/k00042.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.982798,
+    0.036147,
+    0.181113,
+    0.0,
+    0.025227,
+    0.997742,
+    -0.062243,
+    0.0,
+    -0.182954,
+    -0.056603,
+    -0.981491,
+    0.0,
+    4.903767,
+    -0.059346,
+    -24.513044,
+    1.0
+   ],
+   "timestamp": 60382.9573,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.00123033335865393,
+    "offset": 0.074,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1130.1,
+    "ambientColorTemperature": 5964.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00042.bin",
+    "count": 113
+   },
+   "depth": null
+  },
+  {
+   "id": "k00043",
+   "img": "keyframes/k00043.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.958799,
+    0.027144,
+    0.282785,
+    0.0,
+    -0.015403,
+    0.988993,
+    -0.147157,
+    0.0,
+    -0.283666,
+    -0.14545,
+    -0.947828,
+    0.0,
+    3.045555,
+    -0.197538,
+    -24.118019,
+    1.0
+   ],
+   "timestamp": 60385.2296,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013817627970057352,
+    "offset": 0.246,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1291.9,
+    "ambientColorTemperature": 6101.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00043.bin",
+    "count": 120
+   },
+   "depth": null
+  },
+  {
+   "id": "k00044",
+   "img": "keyframes/k00044.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.999779,
+    0.012528,
+    0.01688,
+    0.0,
+    0.010389,
+    0.992554,
+    -0.121359,
+    0.0,
+    -0.018275,
+    -0.121157,
+    -0.992465,
+    0.0,
+    1.494317,
+    -0.211375,
+    -23.991766,
+    1.0
+   ],
+   "timestamp": 60387.254,
+   "tracking": "limited.excessiveMotion",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0011275519534692904,
+    "offset": -0.171,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1311.7,
+    "ambientColorTemperature": 5240.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00044.bin",
+    "count": 115
+   },
+   "depth": null
+  },
+  {
+   "id": "k00045",
+   "img": "keyframes/k00045.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.974925,
+    0.030967,
+    0.220368,
+    0.0,
+    0.006363,
+    0.993744,
+    -0.111498,
+    0.0,
+    -0.222442,
+    -0.1073,
+    -0.969023,
+    0.0,
+    -0.396352,
+    -0.296353,
+    -23.709268,
+    1.0
+   ],
+   "timestamp": 60390.1036,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0010248670795038807,
+    "offset": 0.029,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1322.5,
+    "ambientColorTemperature": 5313.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00045.bin",
+    "count": 118
+   },
+   "depth": null
+  },
+  {
+   "id": "k00046",
+   "img": "keyframes/k00046.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.763514,
+    0.040334,
+    0.64453,
+    0.0,
+    -0.039538,
+    0.993256,
+    -0.108994,
+    0.0,
+    -0.644579,
+    -0.108702,
+    -0.75677,
+    0.0,
+    -1.942286,
+    -0.169555,
+    -23.06031,
+    1.0
+   ],
+   "timestamp": 60392.7546,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0014024602506106318,
+    "offset": -0.098,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1314.3,
+    "ambientColorTemperature": 6377.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00046.bin",
+    "count": 117
+   },
+   "depth": null
+  },
+  {
+   "id": "k00047",
+   "img": "keyframes/k00047.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.626147,
+    0.036628,
+    0.778844,
+    0.0,
+    -0.050838,
+    0.994853,
+    -0.087657,
+    0.0,
+    -0.778046,
+    -0.094481,
+    -0.621062,
+    0.0,
+    -3.68534,
+    -0.190885,
+    -22.014723,
+    1.0
+   ],
+   "timestamp": 60395.0987,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0012303882681362647,
+    "offset": 0.08,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1266.4,
+    "ambientColorTemperature": 5360.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00047.bin",
+    "count": 109
+   },
+   "depth": null
+  },
+  {
+   "id": "k00048",
+   "img": "keyframes/k00048.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.621339,
+    0.034738,
+    0.782771,
+    0.0,
+    -0.036237,
+    0.996674,
+    -0.072995,
+    0.0,
+    -0.782703,
+    -0.07372,
+    -0.618014,
+    0.0,
+    -5.350282,
+    -0.17334,
+    -21.068675,
+    1.0
+   ],
+   "timestamp": 60397.6461,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0015572640192210456,
+    "offset": -0.025,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1261.8,
+    "ambientColorTemperature": 5364.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00048.bin",
+    "count": 82
+   },
+   "depth": null
+  },
+  {
+   "id": "k00049",
+   "img": "keyframes/k00049.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.616922,
+    0.026692,
+    0.786572,
+    0.0,
+    -0.034289,
+    0.997564,
+    -0.060745,
+    0.0,
+    -0.786277,
+    -0.064446,
+    -0.614504,
+    0.0,
+    -7.163006,
+    -0.193393,
+    -20.1314,
+    1.0
+   ],
+   "timestamp": 60400.0822,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0011011493604814165,
+    "offset": 0.186,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1270.6,
+    "ambientColorTemperature": 5470.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00049.bin",
+    "count": 74
+   },
+   "depth": null
+  },
+  {
+   "id": "k00050",
+   "img": "keyframes/k00050.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.564359,
+    0.027835,
+    0.82506,
+    0.0,
+    -0.014691,
+    0.998935,
+    -0.043749,
+    0.0,
+    -0.825399,
+    -0.036811,
+    -0.563349,
+    0.0,
+    -8.763168,
+    -0.255738,
+    -19.073547,
+    1.0
+   ],
+   "timestamp": 60403.2806,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0017875376717982673,
+    "offset": -0.087,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1226.3,
+    "ambientColorTemperature": 5517.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00050.bin",
+    "count": 79
+   },
+   "depth": null
+  },
+  {
+   "id": "k00051",
+   "img": "keyframes/k00051.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.502446,
+    0.023614,
+    0.864286,
+    0.0,
+    0.013867,
+    0.999718,
+    -0.019253,
+    0.0,
+    -0.864497,
+    0.002312,
+    -0.502632,
+    0.0,
+    -9.822753,
+    -0.257908,
+    -17.559273,
+    1.0
+   ],
+   "timestamp": 60405.4711,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0016536485295343532,
+    "offset": -0.038,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1168.2,
+    "ambientColorTemperature": 6582.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00051.bin",
+    "count": 76
+   },
+   "depth": null
+  },
+  {
+   "id": "k00052",
+   "img": "keyframes/k00052.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.580824,
+    0.025135,
+    0.813641,
+    0.0,
+    0.02755,
+    0.999558,
+    -0.011212,
+    0.0,
+    -0.813563,
+    0.015904,
+    -0.58126,
+    0.0,
+    -10.799985,
+    -0.276403,
+    -15.755901,
+    1.0
+   ],
+   "timestamp": 60407.6814,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0021612166390056016,
+    "offset": -0.126,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1144.4,
+    "ambientColorTemperature": 5869.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00052.bin",
+    "count": 75
+   },
+   "depth": null
+  },
+  {
+   "id": "k00053",
+   "img": "keyframes/k00053.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.509184,
+    0.030186,
+    0.860128,
+    0.0,
+    0.056816,
+    0.998384,
+    -0.001403,
+    0.0,
+    -0.85878,
+    0.048154,
+    -0.510076,
+    0.0,
+    -11.772744,
+    -0.179182,
+    -14.122234,
+    1.0
+   ],
+   "timestamp": 60409.8697,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0021203053262631604,
+    "offset": -0.188,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1076.2,
+    "ambientColorTemperature": 5851.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00053.bin",
+    "count": 76
+   },
+   "depth": null
+  },
+  {
+   "id": "k00054",
+   "img": "keyframes/k00054.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.289052,
+    0.030921,
+    0.956814,
+    0.0,
+    0.052137,
+    0.998503,
+    -0.016517,
+    0.0,
+    -0.955893,
+    0.045111,
+    -0.290232,
+    0.0,
+    -12.518709,
+    -0.140638,
+    -12.400762,
+    1.0
+   ],
+   "timestamp": 60411.9826,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001751869739118275,
+    "offset": 0.093,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1013.7,
+    "ambientColorTemperature": 6780.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00054.bin",
+    "count": 93
+   },
+   "depth": null
+  },
+  {
+   "id": "k00055",
+   "img": "keyframes/k00055.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.151252,
+    0.03335,
+    0.987933,
+    0.0,
+    0.059155,
+    0.997945,
+    -0.024631,
+    0.0,
+    -0.986724,
+    0.054716,
+    -0.152914,
+    0.0,
+    -12.764136,
+    -0.107384,
+    -10.616685,
+    1.0
+   ],
+   "timestamp": 60415.1269,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0030887930789449108,
+    "offset": -0.023,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1018.9,
+    "ambientColorTemperature": 6094.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00055.bin",
+    "count": 92
+   },
+   "depth": null
+  },
+  {
+   "id": "k00056",
+   "img": "keyframes/k00056.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.293958,
+    0.029341,
+    0.955368,
+    0.0,
+    0.064866,
+    0.997837,
+    -0.010687,
+    0.0,
+    -0.953615,
+    0.058829,
+    -0.295225,
+    0.0,
+    -12.616526,
+    -0.047821,
+    -8.89455,
+    1.0
+   ],
+   "timestamp": 60417.209,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002803822735186617,
+    "offset": -0.102,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1027.4,
+    "ambientColorTemperature": 5496.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00056.bin",
+    "count": 84
+   },
+   "depth": null
+  },
+  {
+   "id": "k00057",
+   "img": "keyframes/k00057.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.108691,
+    0.028212,
+    0.993675,
+    0.0,
+    0.035733,
+    0.999062,
+    -0.024457,
+    0.0,
+    -0.993433,
+    0.032848,
+    -0.109597,
+    0.0,
+    -12.588024,
+    0.028987,
+    -7.289498,
+    1.0
+   ],
+   "timestamp": 60419.6308,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0023692570441028126,
+    "offset": -0.011,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1038.5,
+    "ambientColorTemperature": 5534.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00057.bin",
+    "count": 79
+   },
+   "depth": null
+  },
+  {
+   "id": "k00058",
+   "img": "keyframes/k00058.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.285404,
+    0.031904,
+    0.957876,
+    0.0,
+    0.00528,
+    0.999378,
+    -0.03486,
+    0.0,
+    -0.958393,
+    0.015006,
+    0.285058,
+    0.0,
+    -12.22087,
+    0.151523,
+    -5.661512,
+    1.0
+   ],
+   "timestamp": 60422.2725,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0014207527532379095,
+    "offset": -0.195,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1035.8,
+    "ambientColorTemperature": 5906.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00058.bin",
+    "count": 49
+   },
+   "depth": null
+  },
+  {
+   "id": "k00059",
+   "img": "keyframes/k00059.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.605035,
+    0.031847,
+    0.795561,
+    0.0,
+    -0.01711,
+    0.999489,
+    -0.026998,
+    0.0,
+    -0.796015,
+    0.002722,
+    0.605271,
+    0.0,
+    -11.422064,
+    0.026429,
+    -4.209277,
+    1.0
+   ],
+   "timestamp": 60424.2265,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0020510840037420977,
+    "offset": 0.16,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1075.7,
+    "ambientColorTemperature": 6636.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00059.bin",
+    "count": 42
+   },
+   "depth": null
+  },
+  {
+   "id": "k00060",
+   "img": "keyframes/k00060.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.657653,
+    0.025695,
+    0.752883,
+    0.0,
+    -0.01804,
+    0.999669,
+    -0.01836,
+    0.0,
+    -0.753105,
+    -0.001508,
+    0.657899,
+    0.0,
+    -10.692863,
+    0.054783,
+    -2.614697,
+    1.0
+   ],
+   "timestamp": 60427.0801,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.00185180978977067,
+    "offset": -0.093,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1102.6,
+    "ambientColorTemperature": 5786.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00060.bin",
+    "count": 40
+   },
+   "depth": null
+  },
+  {
+   "id": "k00061",
+   "img": "keyframes/k00061.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.768659,
+    0.015776,
+    0.639465,
+    0.0,
+    -0.01406,
+    0.999871,
+    -0.007768,
+    0.0,
+    -0.639505,
+    -0.00302,
+    0.768781,
+    0.0,
+    -9.575952,
+    0.000188,
+    -1.537625,
+    1.0
+   ],
+   "timestamp": 60429.3062,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0014436893989047187,
+    "offset": 0.063,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1150.1,
+    "ambientColorTemperature": 6634.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00061.bin",
+    "count": 36
+   },
+   "depth": null
+  },
+  {
+   "id": "k00062",
+   "img": "keyframes/k00062.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.729978,
+    0.014817,
+    0.68331,
+    0.0,
+    -0.012707,
+    0.999886,
+    -0.008107,
+    0.0,
+    -0.683353,
+    -0.002765,
+    0.730083,
+    0.0,
+    -8.392455,
+    -0.031073,
+    -0.471555,
+    1.0
+   ],
+   "timestamp": 60433.0606,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0016130452347056783,
+    "offset": 0.105,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1202.2,
+    "ambientColorTemperature": 6178.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00062.bin",
+    "count": 62
+   },
+   "depth": null
+  },
+  {
+   "id": "k00063",
+   "img": "keyframes/k00063.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.737654,
+    0.004683,
+    0.675163,
+    0.0,
+    0.000152,
+    0.999975,
+    -0.007102,
+    0.0,
+    -0.675179,
+    0.005341,
+    0.737635,
+    0.0,
+    -6.750126,
+    -0.096842,
+    -0.31969,
+    1.0
+   ],
+   "timestamp": 60434.9739,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0017964821289564443,
+    "offset": -0.239,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1192.1,
+    "ambientColorTemperature": 6771.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00063.bin",
+    "count": 78
+   },
+   "depth": null
+  },
+  {
+   "id": "k00064",
+   "img": "keyframes/k00064.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.75166,
+    0.005778,
+    0.659526,
+    0.0,
+    0.006615,
+    0.999845,
+    -0.016298,
+    0.0,
+    -0.659518,
+    0.016613,
+    0.751505,
+    0.0,
+    -5.137546,
+    -0.219523,
+    -0.766174,
+    1.0
+   ],
+   "timestamp": 60436.8917,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.00164086707819986,
+    "offset": -0.057,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1117.6,
+    "ambientColorTemperature": 6610.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00064.bin",
+    "count": 98
+   },
+   "depth": null
+  },
+  {
+   "id": "k00065",
+   "img": "keyframes/k00065.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.811819,
+    0.00532,
+    0.583885,
+    0.0,
+    0.01008,
+    0.999682,
+    -0.023123,
+    0.0,
+    -0.583822,
+    0.024657,
+    0.811507,
+    0.0,
+    -4.049197,
+    -0.075153,
+    -1.484734,
+    1.0
+   ],
+   "timestamp": 60438.5929,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0024308644493642073,
+    "offset": -0.188,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1125.4,
+    "ambientColorTemperature": 5417.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00065.bin",
+    "count": 100
+   },
+   "depth": null
+  },
+  {
+   "id": "k00066",
+   "img": "keyframes/k00066.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.673885,
+    0.004551,
+    0.738822,
+    0.0,
+    -0.011799,
+    0.99992,
+    0.004603,
+    0.0,
+    -0.738742,
+    -0.011819,
+    0.673884,
+    0.0,
+    -2.821296,
+    -0.401385,
+    -1.518419,
+    1.0
+   ],
+   "timestamp": 60440.1253,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002113733584693299,
+    "offset": -0.099,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1073.5,
+    "ambientColorTemperature": 6116.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00066.bin",
+    "count": 112
+   },
+   "depth": null
+  },
+  {
+   "id": "k00067",
+   "img": "keyframes/k00067.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.485072,
+    0.010354,
+    0.874413,
+    0.0,
+    0.103018,
+    0.99229,
+    -0.068898,
+    0.0,
+    -0.868385,
+    0.123501,
+    0.480265,
+    0.0,
+    -1.737663,
+    -0.89865,
+    -1.946696,
+    1.0
+   ],
+   "timestamp": 60442.3703,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0030747664310710634,
+    "offset": 0.053,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1072.7,
+    "ambientColorTemperature": 5211.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00067.bin",
+    "count": 109
+   },
+   "depth": null
+  },
+  {
+   "id": "k00068",
+   "img": "keyframes/k00068.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.395509,
+    0.003103,
+    0.918457,
+    0.0,
+    0.11897,
+    0.991396,
+    -0.054581,
+    0.0,
+    -0.910724,
+    0.130856,
+    0.391737,
+    0.0,
+    -0.666059,
+    -0.6897,
+    -2.010489,
+    1.0
+   ],
+   "timestamp": 60443.8286,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001957679455084742,
+    "offset": -0.218,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1115.3,
+    "ambientColorTemperature": 6785.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00068.bin",
+    "count": 76
+   },
+   "depth": null
+  },
+  {
+   "id": "k00069",
+   "img": "keyframes/k00069.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.402225,
+    -0.000862,
+    0.91554,
+    0.0,
+    -0.060751,
+    0.99777,
+    0.02763,
+    0.0,
+    -0.913523,
+    -0.066733,
+    0.401276,
+    0.0,
+    0.183187,
+    -0.381457,
+    -1.629812,
+    1.0
+   ],
+   "timestamp": 60445.0766,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0019175093937261057,
+    "offset": -0.124,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1195.1,
+    "ambientColorTemperature": 5466.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00069.bin",
+    "count": 73
+   },
+   "depth": null
+  },
+  {
+   "id": "k00070",
+   "img": "keyframes/k00070.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.904457,
+    0.019715,
+    0.42611,
+    0.0,
+    -0.0482,
+    0.997257,
+    0.056169,
+    0.0,
+    -0.423833,
+    -0.071341,
+    0.902926,
+    0.0,
+    0.874304,
+    -0.323085,
+    -1.163381,
+    1.0
+   ],
+   "timestamp": 60446.6322,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013523944006556428,
+    "offset": 0.114,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1257.7,
+    "ambientColorTemperature": 6078.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00070.bin",
+    "count": 150
+   },
+   "depth": null
+  },
+  {
+   "id": "k00071",
+   "img": "keyframes/k00071.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.938406,
+    0.043507,
+    -0.342784,
+    0.0,
+    -0.01444,
+    0.996112,
+    0.0869,
+    0.0,
+    0.345232,
+    -0.076597,
+    0.935386,
+    0.0,
+    1.596805,
+    -0.23749,
+    -1.294015,
+    1.0
+   ],
+   "timestamp": 60448.0507,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0010479993919323776,
+    "offset": 0.136,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1398.0,
+    "ambientColorTemperature": 5759.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00071.bin",
+    "count": 136
+   },
+   "depth": null
+  },
+  {
+   "id": "k00072",
+   "img": "keyframes/k00072.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.894793,
+    0.017865,
+    -0.446124,
+    0.0,
+    0.021321,
+    0.996349,
+    0.082663,
+    0.0,
+    0.445972,
+    -0.083478,
+    0.891146,
+    0.0,
+    2.137998,
+    0.050538,
+    -1.562478,
+    1.0
+   ],
+   "timestamp": 60448.9876,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0009666085961246055,
+    "offset": 0.064,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1462.3,
+    "ambientColorTemperature": 5498.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00072.bin",
+    "count": 79
+   },
+   "depth": null
+  },
+  {
+   "id": "k00073",
+   "img": "keyframes/k00073.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.982132,
+    -0.002034,
+    -0.188182,
+    0.0,
+    0.016844,
+    0.996878,
+    0.077134,
+    0.0,
+    0.187438,
+    -0.078925,
+    0.9791,
+    0.0,
+    2.9423,
+    -0.085341,
+    -1.382581,
+    1.0
+   ],
+   "timestamp": 60450.859,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0007292177072070856,
+    "offset": -0.021,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1381.9,
+    "ambientColorTemperature": 6241.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00073.bin",
+    "count": 150
+   },
+   "depth": null
+  },
+  {
+   "id": "k00074",
+   "img": "keyframes/k00074.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.821496,
+    -0.020159,
+    0.569858,
+    0.0,
+    -0.026286,
+    0.996974,
+    0.073161,
+    0.0,
+    -0.569608,
+    -0.075081,
+    0.81848,
+    0.0,
+    3.316762,
+    -0.03724,
+    -1.384222,
+    1.0
+   ],
+   "timestamp": 60451.9689,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001268844059208106,
+    "offset": -0.165,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1111.5,
+    "ambientColorTemperature": 6698.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00074.bin",
+    "count": 143
+   },
+   "depth": null
+  },
+  {
+   "id": "k00075",
+   "img": "keyframes/k00075.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.407196,
+    -0.007665,
+    0.913308,
+    0.0,
+    -0.065626,
+    0.997135,
+    0.037628,
+    0.0,
+    -0.91098,
+    -0.075259,
+    0.405527,
+    0.0,
+    3.788344,
+    -0.141236,
+    -1.203757,
+    1.0
+   ],
+   "timestamp": 60453.2061,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0019150263255895664,
+    "offset": -0.091,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1062.0,
+    "ambientColorTemperature": 6730.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00075.bin",
+    "count": 76
+   },
+   "depth": null
+  },
+  {
+   "id": "k00076",
+   "img": "keyframes/k00076.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.476509,
+    0.004557,
+    0.879158,
+    0.0,
+    -0.081785,
+    0.99588,
+    0.039166,
+    0.0,
+    -0.875357,
+    -0.090565,
+    0.474918,
+    0.0,
+    4.883583,
+    -0.329475,
+    -0.440865,
+    1.0
+   ],
+   "timestamp": 60455.0007,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0018940629380034706,
+    "offset": 0.039,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1053.7,
+    "ambientColorTemperature": 5653.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00076.bin",
+    "count": 79
+   },
+   "depth": null
+  },
+  {
+   "id": "k00077",
+   "img": "keyframes/k00077.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.787711,
+    0.007064,
+    0.616004,
+    0.0,
+    -0.068313,
+    0.994769,
+    0.075947,
+    0.0,
+    -0.612246,
+    -0.101905,
+    0.784073,
+    0.0,
+    6.1447,
+    -0.365491,
+    -0.228919,
+    1.0
+   ],
+   "timestamp": 60456.9957,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002636456490939946,
+    "offset": -0.081,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1042.6,
+    "ambientColorTemperature": 5639.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00077.bin",
+    "count": 101
+   },
+   "depth": null
+  },
+  {
+   "id": "k00078",
+   "img": "keyframes/k00078.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.998719,
+    0.027799,
+    -0.042285,
+    0.0,
+    -0.026482,
+    0.999156,
+    0.031387,
+    0.0,
+    0.043122,
+    -0.030227,
+    0.998612,
+    0.0,
+    6.745937,
+    -0.359592,
+    0.744372,
+    1.0
+   ],
+   "timestamp": 60458.5365,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0011896374503138928,
+    "offset": 0.186,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1216.1,
+    "ambientColorTemperature": 6186.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00078.bin",
+    "count": 150
+   },
+   "depth": null
+  },
+  {
+   "id": "k00079",
+   "img": "keyframes/k00079.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.834385,
+    0.030586,
+    -0.550333,
+    0.0,
+    -0.035157,
+    0.999379,
+    0.00224,
+    0.0,
+    0.55006,
+    0.017479,
+    0.834942,
+    0.0,
+    7.556007,
+    -0.394173,
+    0.242673,
+    1.0
+   ],
+   "timestamp": 60459.7475,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0014498586494238821,
+    "offset": -0.079,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1273.8,
+    "ambientColorTemperature": 6074.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00079.bin",
+    "count": 90
+   },
+   "depth": null
+  },
+  {
+   "id": "k00080",
+   "img": "keyframes/k00080.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.694774,
+    0.024289,
+    -0.718818,
+    0.0,
+    0.039068,
+    0.99668,
+    0.07144,
+    0.0,
+    0.718167,
+    -0.077717,
+    0.691518,
+    0.0,
+    8.485956,
+    -0.135448,
+    -0.684324,
+    1.0
+   ],
+   "timestamp": 60461.2478,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013068886485122263,
+    "offset": 0.265,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1330.5,
+    "ambientColorTemperature": 6634.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00080.bin",
+    "count": 98
+   },
+   "depth": null
+  },
+  {
+   "id": "k00081",
+   "img": "keyframes/k00081.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.711645,
+    0.010189,
+    -0.702465,
+    0.0,
+    0.134448,
+    0.979439,
+    0.150411,
+    0.0,
+    0.689554,
+    -0.201484,
+    0.695643,
+    0.0,
+    9.641824,
+    -0.029373,
+    -0.83057,
+    1.0
+   ],
+   "timestamp": 60462.5458,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0010921175286450263,
+    "offset": -0.045,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1425.2,
+    "ambientColorTemperature": 6561.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00081.bin",
+    "count": 102
+   },
+   "depth": null
+  },
+  {
+   "id": "k00082",
+   "img": "keyframes/k00082.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.76714,
+    -0.010313,
+    -0.641397,
+    0.0,
+    0.128295,
+    0.982136,
+    0.137655,
+    0.0,
+    0.62852,
+    -0.187888,
+    0.754759,
+    0.0,
+    11.112895,
+    0.086035,
+    -1.006884,
+    1.0
+   ],
+   "timestamp": 60464.2635,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0006426628380004605,
+    "offset": 0.225,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1549.5,
+    "ambientColorTemperature": 5811.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00082.bin",
+    "count": 107
+   },
+   "depth": null
+  },
+  {
+   "id": "k00083",
+   "img": "keyframes/k00083.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.857942,
+    -0.01952,
+    -0.513376,
+    0.0,
+    0.059987,
+    0.996249,
+    0.062368,
+    0.0,
+    0.510233,
+    -0.084305,
+    0.855894,
+    0.0,
+    12.188177,
+    -0.060338,
+    -1.021892,
+    1.0
+   ],
+   "timestamp": 60466.0197,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013684355130047102,
+    "offset": -0.033,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1282.7,
+    "ambientColorTemperature": 5417.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00083.bin",
+    "count": 118
+   },
+   "depth": null
+  },
+  {
+   "id": "k00084",
+   "img": "keyframes/k00084.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.898412,
+    -0.014379,
+    -0.438918,
+    0.0,
+    -0.063068,
+    0.984879,
+    -0.161357,
+    0.0,
+    0.434602,
+    0.172646,
+    0.88392,
+    0.0,
+    12.414266,
+    -0.421319,
+    -1.183024,
+    1.0
+   ],
+   "timestamp": 60467.1238,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0022621254253731857,
+    "offset": 0.165,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1050.5,
+    "ambientColorTemperature": 5231.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00084.bin",
+    "count": 109
+   },
+   "depth": null
+  },
+  {
+   "id": "k00085",
+   "img": "keyframes/k00085.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.854702,
+    -0.013376,
+    -0.518947,
+    0.0,
+    -0.149643,
+    0.950885,
+    -0.270971,
+    0.0,
+    0.497083,
+    0.309256,
+    0.810721,
+    0.0,
+    12.804552,
+    -0.297057,
+    -2.053594,
+    1.0
+   ],
+   "timestamp": 60468.1785,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0033196556139021157,
+    "offset": -0.078,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 975.0,
+    "ambientColorTemperature": 6293.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00085.bin",
+    "count": 124
+   },
+   "depth": null
+  },
+  {
+   "id": "k00086",
+   "img": "keyframes/k00086.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.798316,
+    0.001252,
+    -0.602237,
+    0.0,
+    0.008593,
+    0.999872,
+    0.01347,
+    0.0,
+    0.602177,
+    -0.015928,
+    0.798204,
+    0.0,
+    13.343195,
+    0.089479,
+    -3.338928,
+    1.0
+   ],
+   "timestamp": 60470.174,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.003107566932700979,
+    "offset": 0.414,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1042.5,
+    "ambientColorTemperature": 5604.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00086.bin",
+    "count": 109
+   },
+   "depth": null
+  },
+  {
+   "id": "k00087",
+   "img": "keyframes/k00087.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.666067,
+    0.004917,
+    -0.745876,
+    0.0,
+    0.046558,
+    0.997754,
+    0.048154,
+    0.0,
+    0.744437,
+    -0.066801,
+    0.664342,
+    0.0,
+    13.618851,
+    0.046075,
+    -5.003942,
+    1.0
+   ],
+   "timestamp": 60472.1396,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0017476688609480934,
+    "offset": 0.202,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1083.2,
+    "ambientColorTemperature": 5587.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00087.bin",
+    "count": 120
+   },
+   "depth": null
+  },
+  {
+   "id": "k00088",
+   "img": "keyframes/k00088.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.488672,
+    0.005923,
+    -0.872447,
+    0.0,
+    0.071097,
+    0.996381,
+    0.046587,
+    0.0,
+    0.869566,
+    -0.084794,
+    0.486483,
+    0.0,
+    13.681602,
+    -0.010854,
+    -6.673247,
+    1.0
+   ],
+   "timestamp": 60474.1773,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0017913241040408714,
+    "offset": 0.263,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1141.0,
+    "ambientColorTemperature": 6359.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00088.bin",
+    "count": 141
+   },
+   "depth": null
+  },
+  {
+   "id": "k00089",
+   "img": "keyframes/k00089.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.32723,
+    0.014581,
+    -0.944832,
+    0.0,
+    0.084731,
+    0.9954,
+    0.044707,
+    0.0,
+    0.941138,
+    -0.094687,
+    0.324489,
+    0.0,
+    14.126535,
+    0.089681,
+    -7.859936,
+    1.0
+   ],
+   "timestamp": 60476.3876,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0015959020703856016,
+    "offset": 0.016,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1183.6,
+    "ambientColorTemperature": 5661.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00089.bin",
+    "count": 146
+   },
+   "depth": null
+  },
+  {
+   "id": "k00090",
+   "img": "keyframes/k00090.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.033645,
+    0.016609,
+    -0.999296,
+    0.0,
+    -0.060894,
+    0.998038,
+    0.014538,
+    0.0,
+    0.997577,
+    0.060362,
+    0.03459,
+    0.0,
+    14.385474,
+    0.220859,
+    -8.605203,
+    1.0
+   ],
+   "timestamp": 60477.5213,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002135863230855308,
+    "offset": 0.075,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 912.8,
+    "ambientColorTemperature": 6279.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00090.bin",
+    "count": 150
+   },
+   "depth": null
+  },
+  {
+   "id": "k00091",
+   "img": "keyframes/k00091.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.440635,
+    0.037022,
+    -0.896923,
+    0.0,
+    -0.081606,
+    0.99336,
+    0.081094,
+    0.0,
+    0.89397,
+    0.108927,
+    -0.434687,
+    0.0,
+    14.085536,
+    0.158547,
+    -9.482828,
+    1.0
+   ],
+   "timestamp": 60478.8127,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002644499910605736,
+    "offset": 0.155,
+    "iso": 200,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 747.6,
+    "ambientColorTemperature": 5387.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00091.bin",
+    "count": 140
+   },
+   "depth": null
+  },
+  {
+   "id": "k00092",
+   "img": "keyframes/k00092.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.682347,
+    0.059617,
+    -0.728594,
+    0.0,
+    -0.035521,
+    0.992788,
+    0.114501,
+    0.0,
+    0.730165,
+    0.10401,
+    -0.675308,
+    0.0,
+    13.483658,
+    0.12395,
+    -10.352219,
+    1.0
+   ],
+   "timestamp": 60480.1204,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0026598223301568698,
+    "offset": -0.302,
+    "iso": 200,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 787.0,
+    "ambientColorTemperature": 6367.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00092.bin",
+    "count": 129
+   },
+   "depth": null
+  },
+  {
+   "id": "k00093",
+   "img": "keyframes/k00093.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.79695,
+    0.050011,
+    -0.601972,
+    0.0,
+    -0.01265,
+    0.994966,
+    0.099407,
+    0.0,
+    0.603913,
+    0.086837,
+    -0.792305,
+    0.0,
+    13.073233,
+    -0.091292,
+    -11.377936,
+    1.0
+   ],
+   "timestamp": 60481.8246,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.00230173598687698,
+    "offset": -0.346,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 858.0,
+    "ambientColorTemperature": 5362.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00093.bin",
+    "count": 113
+   },
+   "depth": null
+  },
+  {
+   "id": "k00094",
+   "img": "keyframes/k00094.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.87768,
+    0.040106,
+    -0.477566,
+    0.0,
+    0.027509,
+    0.999065,
+    0.033344,
+    0.0,
+    0.478457,
+    0.016128,
+    -0.877963,
+    0.0,
+    12.702325,
+    -0.144616,
+    -12.559976,
+    1.0
+   ],
+   "timestamp": 60483.4136,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0021571983317234212,
+    "offset": -0.279,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 994.5,
+    "ambientColorTemperature": 5355.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00094.bin",
+    "count": 95
+   },
+   "depth": null
+  },
+  {
+   "id": "k00095",
+   "img": "keyframes/k00095.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.885551,
+    0.031715,
+    -0.463459,
+    0.0,
+    0.018028,
+    0.999261,
+    0.033935,
+    0.0,
+    0.464193,
+    0.021696,
+    -0.885469,
+    0.0,
+    12.11273,
+    -0.147772,
+    -13.512711,
+    1.0
+   ],
+   "timestamp": 60485.9255,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0032826704979588596,
+    "offset": 0.083,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1074.2,
+    "ambientColorTemperature": 6023.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00095.bin",
+    "count": 81
+   },
+   "depth": null
+  },
+  {
+   "id": "k00096",
+   "img": "keyframes/k00096.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.843995,
+    0.020357,
+    -0.535964,
+    0.0,
+    -0.015976,
+    0.997882,
+    0.063059,
+    0.0,
+    0.536113,
+    0.061784,
+    -0.841882,
+    0.0,
+    11.951274,
+    -0.152972,
+    -13.995688,
+    1.0
+   ],
+   "timestamp": 60486.7522,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002849621846929366,
+    "offset": -0.015,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1094.1,
+    "ambientColorTemperature": 6750.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00096.bin",
+    "count": 116
+   },
+   "depth": null
+  },
+  {
+   "id": "k00097",
+   "img": "keyframes/k00097.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.715895,
+    0.016849,
+    -0.698005,
+    0.0,
+    -0.209303,
+    0.948555,
+    0.237564,
+    0.0,
+    0.666098,
+    0.316165,
+    -0.675539,
+    0.0,
+    11.888624,
+    -0.211231,
+    -13.91576,
+    1.0
+   ],
+   "timestamp": 60487.4613,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.003032657263884476,
+    "offset": -0.196,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 875.4,
+    "ambientColorTemperature": 5928.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00097.bin",
+    "count": 135
+   },
+   "depth": null
+  },
+  {
+   "id": "k00098",
+   "img": "keyframes/k00098.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.715756,
+    0.014837,
+    -0.698192,
+    0.0,
+    -0.138373,
+    0.976939,
+    0.162614,
+    0.0,
+    0.684504,
+    0.213003,
+    -0.697197,
+    0.0,
+    11.10563,
+    0.026324,
+    -14.211943,
+    1.0
+   ],
+   "timestamp": 60489.0528,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0016431704019990946,
+    "offset": 0.034,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1042.6,
+    "ambientColorTemperature": 5970.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00098.bin",
+    "count": 97
+   },
+   "depth": null
+  },
+  {
+   "id": "k00099",
+   "img": "keyframes/k00099.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.674144,
+    0.001754,
+    -0.738597,
+    0.0,
+    0.071015,
+    0.995518,
+    -0.062454,
+    0.0,
+    0.735178,
+    -0.094555,
+    -0.671248,
+    0.0,
+    10.090684,
+    0.120192,
+    -14.535085,
+    1.0
+   ],
+   "timestamp": 60490.653,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0006863248219099941,
+    "offset": 0.337,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1403.3,
+    "ambientColorTemperature": 6357.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00099.bin",
+    "count": 78
+   },
+   "depth": null
+  },
+  {
+   "id": "k00100",
+   "img": "keyframes/k00100.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.815198,
+    0.01282,
+    -0.57904,
+    0.0,
+    0.08334,
+    0.991947,
+    -0.095369,
+    0.0,
+    0.573154,
+    -0.126002,
+    -0.809702,
+    0.0,
+    8.548194,
+    0.002429,
+    -14.608425,
+    1.0
+   ],
+   "timestamp": 60492.8916,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013315060122678032,
+    "offset": -0.019,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1316.7,
+    "ambientColorTemperature": 6475.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00100.bin",
+    "count": 89
+   },
+   "depth": null
+  },
+  {
+   "id": "k00101",
+   "img": "keyframes/k00101.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.915346,
+    0.014485,
+    -0.402409,
+    0.0,
+    0.069887,
+    0.989901,
+    -0.123336,
+    0.0,
+    0.396558,
+    -0.141018,
+    -0.907114,
+    0.0,
+    6.986391,
+    -0.055395,
+    -14.480658,
+    1.0
+   ],
+   "timestamp": 60494.9815,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013388526145808476,
+    "offset": -0.072,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1355.1,
+    "ambientColorTemperature": 6018.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00101.bin",
+    "count": 95
+   },
+   "depth": null
+  },
+  {
+   "id": "k00102",
+   "img": "keyframes/k00102.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.997599,
+    0.035597,
+    -0.059411,
+    0.0,
+    0.043943,
+    0.988354,
+    -0.14569,
+    0.0,
+    0.053533,
+    -0.147951,
+    -0.987545,
+    0.0,
+    5.491049,
+    0.004333,
+    -14.725397,
+    1.0
+   ],
+   "timestamp": 60497.0523,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0018059359292027486,
+    "offset": -0.05,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1264.0,
+    "ambientColorTemperature": 6324.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00102.bin",
+    "count": 115
+   },
+   "depth": null
+  },
+  {
+   "id": "k00103",
+   "img": "keyframes/k00103.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.932396,
+    0.05048,
+    0.357896,
+    0.0,
+    -0.020566,
+    0.981185,
+    -0.191973,
+    0.0,
+    -0.360853,
+    -0.186356,
+    -0.913814,
+    0.0,
+    4.042711,
+    0.021695,
+    -14.689848,
+    1.0
+   ],
+   "timestamp": 60499.2028,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0007486073677020636,
+    "offset": -0.087,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1387.9,
+    "ambientColorTemperature": 5326.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00103.bin",
+    "count": 145
+   },
+   "depth": null
+  },
+  {
+   "id": "k00104",
+   "img": "keyframes/k00104.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.684153,
+    0.059174,
+    0.726934,
+    0.0,
+    -0.10178,
+    0.979204,
+    -0.1755,
+    0.0,
+    -0.722202,
+    -0.194057,
+    -0.663903,
+    0.0,
+    2.798512,
+    0.032513,
+    -14.395809,
+    1.0
+   ],
+   "timestamp": 60500.8964,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0020735180196085313,
+    "offset": 0.195,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1213.4,
+    "ambientColorTemperature": 6718.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00104.bin",
+    "count": 143
+   },
+   "depth": null
+  },
+  {
+   "id": "k00105",
+   "img": "keyframes/k00105.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.544157,
+    0.035065,
+    0.83825,
+    0.0,
+    -0.090197,
+    0.990891,
+    -0.100002,
+    0.0,
+    -0.834121,
+    -0.130024,
+    -0.536037,
+    0.0,
+    1.556086,
+    0.017745,
+    -13.225405,
+    1.0
+   ],
+   "timestamp": 60502.8564,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.00145990685965869,
+    "offset": -0.135,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1196.9,
+    "ambientColorTemperature": 6775.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00105.bin",
+    "count": 133
+   },
+   "depth": null
+  },
+  {
+   "id": "k00106",
+   "img": "keyframes/k00106.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.608216,
+    0.029564,
+    0.793221,
+    0.0,
+    -0.036485,
+    0.997209,
+    -0.065142,
+    0.0,
+    -0.792933,
+    -0.068561,
+    -0.60544,
+    0.0,
+    0.584777,
+    0.021385,
+    -12.646557,
+    1.0
+   ],
+   "timestamp": 60504.7972,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0011333965310509405,
+    "offset": -0.014,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1326.2,
+    "ambientColorTemperature": 6159.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00106.bin",
+    "count": 143
+   },
+   "depth": null
+  },
+  {
+   "id": "k00107",
+   "img": "keyframes/k00107.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.941331,
+    0.010454,
+    0.337322,
+    0.0,
+    0.000111,
+    0.99953,
+    -0.030666,
+    0.0,
+    -0.337484,
+    -0.02883,
+    -0.94089,
+    0.0,
+    0.134294,
+    -0.048063,
+    -12.253037,
+    1.0
+   ],
+   "timestamp": 60505.8253,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0012810561795670197,
+    "offset": -0.058,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1425.8,
+    "ambientColorTemperature": 5254.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00107.bin",
+    "count": 117
+   },
+   "depth": null
+  },
+  {
+   "id": "k00108",
+   "img": "keyframes/k00108.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.933654,
+    0.014685,
+    0.357874,
+    0.0,
+    0.002393,
+    0.999393,
+    -0.034767,
+    0.0,
+    -0.358167,
+    -0.031604,
+    -0.933122,
+    0.0,
+    -1.060836,
+    -0.019303,
+    -11.498844,
+    1.0
+   ],
+   "timestamp": 60507.5786,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001522997315551097,
+    "offset": -0.03,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1414.5,
+    "ambientColorTemperature": 5202.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00108.bin",
+    "count": 119
+   },
+   "depth": null
+  },
+  {
+   "id": "k00109",
+   "img": "keyframes/k00109.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.821449,
+    0.021737,
+    0.569867,
+    0.0,
+    0.007406,
+    0.999596,
+    -0.027453,
+    0.0,
+    -0.570234,
+    -0.018331,
+    -0.821278,
+    0.0,
+    -2.056981,
+    -0.06867,
+    -10.587795,
+    1.0
+   ],
+   "timestamp": 60509.1836,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.000667580347967403,
+    "offset": -0.282,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1481.3,
+    "ambientColorTemperature": 6610.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00109.bin",
+    "count": 133
+   },
+   "depth": null
+  },
+  {
+   "id": "k00110",
+   "img": "keyframes/k00110.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.340078,
+    0.047549,
+    0.939194,
+    0.0,
+    -0.017963,
+    0.99821,
+    -0.057041,
+    0.0,
+    -0.940226,
+    -0.036269,
+    -0.338615,
+    0.0,
+    -2.650261,
+    0.172902,
+    -9.634062,
+    1.0
+   ],
+   "timestamp": 60511.164,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001487105140649578,
+    "offset": 0.033,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1268.2,
+    "ambientColorTemperature": 5427.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00110.bin",
+    "count": 127
+   },
+   "depth": null
+  },
+  {
+   "id": "k00111",
+   "img": "keyframes/k00111.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.303529,
+    0.02942,
+    0.952368,
+    0.0,
+    -0.035899,
+    0.99846,
+    -0.042286,
+    0.0,
+    -0.952146,
+    -0.047024,
+    -0.302006,
+    0.0,
+    -2.881701,
+    0.330735,
+    -8.285063,
+    1.0
+   ],
+   "timestamp": 60513.4028,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013315363794694118,
+    "offset": -0.099,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1224.2,
+    "ambientColorTemperature": 6280.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00111.bin",
+    "count": 123
+   },
+   "depth": null
+  },
+  {
+   "id": "k00112",
+   "img": "keyframes/k00112.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.503159,
+    0.020963,
+    0.863939,
+    0.0,
+    -0.034241,
+    0.998437,
+    -0.044168,
+    0.0,
+    -0.863515,
+    -0.051806,
+    -0.501655,
+    0.0,
+    -3.555997,
+    0.327907,
+    -7.122332,
+    1.0
+   ],
+   "timestamp": 60515.2396,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013236210574325215,
+    "offset": 0.032,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1350.3,
+    "ambientColorTemperature": 5457.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00112.bin",
+    "count": 120
+   },
+   "depth": null
+  },
+  {
+   "id": "k00113",
+   "img": "keyframes/k00113.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.50839,
+    0.022134,
+    0.860843,
+    0.0,
+    0.012984,
+    0.999753,
+    -0.018037,
+    0.0,
+    -0.861029,
+    0.002008,
+    -0.508552,
+    0.0,
+    -4.618105,
+    0.384812,
+    -6.474741,
+    1.0
+   ],
+   "timestamp": 60516.7146,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001080794822064758,
+    "offset": -0.223,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1365.2,
+    "ambientColorTemperature": 6485.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00113.bin",
+    "count": 112
+   },
+   "depth": null
+  },
+  {
+   "id": "k00114",
+   "img": "keyframes/k00114.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.490929,
+    0.023729,
+    0.870876,
+    0.0,
+    0.063371,
+    0.997954,
+    0.008531,
+    0.0,
+    -0.868892,
+    0.059376,
+    -0.491428,
+    0.0,
+    -5.896133,
+    0.250975,
+    -5.784116,
+    1.0
+   ],
+   "timestamp": 60519.6239,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0016899801836911799,
+    "offset": 0.026,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1224.9,
+    "ambientColorTemperature": 6753.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00114.bin",
+    "count": 109
+   },
+   "depth": null
+  },
+  {
+   "id": "k00115",
+   "img": "keyframes/k00115.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.48247,
+    0.013771,
+    0.875804,
+    0.0,
+    0.078643,
+    0.996519,
+    0.027655,
+    0.0,
+    -0.872375,
+    0.082218,
+    -0.481873,
+    0.0,
+    -6.603135,
+    0.262978,
+    -4.528479,
+    1.0
+   ],
+   "timestamp": 60521.4079,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0019518118333683515,
+    "offset": -0.007,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1126.3,
+    "ambientColorTemperature": 6247.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00115.bin",
+    "count": 83
+   },
+   "depth": null
+  },
+  {
+   "id": "k00116",
+   "img": "keyframes/k00116.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.332278,
+    0.019377,
+    0.942983,
+    0.0,
+    0.07529,
+    0.997143,
+    0.00604,
+    0.0,
+    -0.940172,
+    0.073004,
+    -0.332787,
+    0.0,
+    -6.871491,
+    0.206472,
+    -2.982508,
+    1.0
+   ],
+   "timestamp": 60523.9877,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002040880816782468,
+    "offset": 0.006,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1027.3,
+    "ambientColorTemperature": 6653.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00116.bin",
+    "count": 78
+   },
+   "depth": null
+  },
+  {
+   "id": "k00117",
+   "img": "keyframes/k00117.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.03802,
+    0.029843,
+    0.998831,
+    0.0,
+    0.060138,
+    0.997811,
+    -0.027524,
+    0.0,
+    -0.997466,
+    0.059022,
+    -0.039731,
+    0.0,
+    -6.735179,
+    0.207784,
+    -1.548322,
+    1.0
+   ],
+   "timestamp": 60525.7694,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0024262833521594258,
+    "offset": 0.042,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 991.0,
+    "ambientColorTemperature": 6676.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00117.bin",
+    "count": 138
+   },
+   "depth": null
+  },
+  {
+   "id": "k00118",
+   "img": "keyframes/k00118.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.327367,
+    0.027851,
+    0.944487,
+    0.0,
+    0.02867,
+    0.998813,
+    -0.03939,
+    0.0,
+    -0.944462,
+    0.039974,
+    0.32618,
+    0.0,
+    -6.675768,
+    0.290712,
+    -0.131501,
+    1.0
+   ],
+   "timestamp": 60527.7037,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0019973173666283156,
+    "offset": -0.049,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1034.8,
+    "ambientColorTemperature": 6515.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00118.bin",
+    "count": 70
+   },
+   "depth": null
+  },
+  {
+   "id": "k00119",
+   "img": "keyframes/k00119.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.579644,
+    0.042115,
+    0.813781,
+    0.0,
+    0.00181,
+    0.998595,
+    -0.052969,
+    0.0,
+    -0.814868,
+    0.032176,
+    0.578753,
+    0.0,
+    -5.707186,
+    0.227629,
+    0.703242,
+    1.0
+   ],
+   "timestamp": 60529.1651,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0018319112422256268,
+    "offset": 0.077,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 985.2,
+    "ambientColorTemperature": 5958.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00119.bin",
+    "count": 97
+   },
+   "depth": null
+  },
+  {
+   "id": "k00120",
+   "img": "keyframes/k00120.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.88026,
+    0.034212,
+    0.473257,
+    0.0,
+    -0.042865,
+    0.999053,
+    0.007506,
+    0.0,
+    -0.472552,
+    -0.026893,
+    0.880893,
+    0.0,
+    -4.529258,
+    0.077039,
+    1.010672,
+    1.0
+   ],
+   "timestamp": 60530.4643,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0017043607746292512,
+    "offset": -0.169,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1038.9,
+    "ambientColorTemperature": 5535.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00120.bin",
+    "count": 71
+   },
+   "depth": null
+  },
+  {
+   "id": "k00121",
+   "img": "keyframes/k00121.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.861937,
+    0.016447,
+    0.506749,
+    0.0,
+    -0.081575,
+    0.990951,
+    0.106589,
+    0.0,
+    -0.50041,
+    -0.133211,
+    0.855479,
+    0.0,
+    -4.286838,
+    0.127938,
+    2.080042,
+    1.0
+   ],
+   "timestamp": 60532.0557,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0012725007526857785,
+    "offset": 0.204,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1270.5,
+    "ambientColorTemperature": 6774.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00121.bin",
+    "count": 61
+   },
+   "depth": null
+  },
+  {
+   "id": "k00122",
+   "img": "keyframes/k00122.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.708371,
+    0.009249,
+    0.70578,
+    0.0,
+    0.010632,
+    0.999661,
+    -0.023771,
+    0.0,
+    -0.70576,
+    0.024343,
+    0.708033,
+    0.0,
+    -4.694952,
+    0.107909,
+    2.73402,
+    1.0
+   ],
+   "timestamp": 60533.1305,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002401418070032256,
+    "offset": -0.115,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1132.3,
+    "ambientColorTemperature": 5503.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00122.bin",
+    "count": 67
+   },
+   "depth": null
+  },
+  {
+   "id": "k00123",
+   "img": "keyframes/k00123.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.476876,
+    0.007923,
+    0.878935,
+    0.0,
+    0.057235,
+    0.997557,
+    -0.040046,
+    0.0,
+    -0.877105,
+    0.069403,
+    0.475258,
+    0.0,
+    -6.067433,
+    0.16096,
+    2.756382,
+    1.0
+   ],
+   "timestamp": 60535.0174,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0024824400860080234,
+    "offset": -0.031,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1060.5,
+    "ambientColorTemperature": 5869.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00123.bin",
+    "count": 70
+   },
+   "depth": null
+  },
+  {
+   "id": "k00124",
+   "img": "keyframes/k00124.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.200301,
+    0.007277,
+    0.979707,
+    0.0,
+    0.089946,
+    0.995613,
+    -0.025785,
+    0.0,
+    -0.975597,
+    0.093286,
+    0.198768,
+    0.0,
+    -7.34296,
+    0.174479,
+    2.283512,
+    1.0
+   ],
+   "timestamp": 60536.958,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0024857650321481327,
+    "offset": -0.009,
+    "iso": 100,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 944.4,
+    "ambientColorTemperature": 5876.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00124.bin",
+    "count": 51
+   },
+   "depth": null
+  },
+  {
+   "id": "k00125",
+   "img": "keyframes/k00125.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.18814,
+    0.006553,
+    0.98212,
+    0.0,
+    0.087947,
+    0.995848,
+    -0.023492,
+    0.0,
+    -0.978197,
+    0.090795,
+    0.186783,
+    0.0,
+    -8.548685,
+    0.205576,
+    1.390056,
+    1.0
+   ],
+   "timestamp": 60539.0849,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0025170109757854755,
+    "offset": 0.025,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 974.5,
+    "ambientColorTemperature": 6492.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00125.bin",
+    "count": 47
+   },
+   "depth": null
+  },
+  {
+   "id": "k00126",
+   "img": "keyframes/k00126.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    0.001724,
+    0.011655,
+    0.999931,
+    0.0,
+    0.073444,
+    0.99723,
+    -0.01175,
+    0.0,
+    -0.997298,
+    0.073459,
+    0.000863,
+    0.0,
+    -9.246,
+    0.247177,
+    -0.168987,
+    1.0
+   ],
+   "timestamp": 60541.1247,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0021786933175881435,
+    "offset": 0.033,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1042.1,
+    "ambientColorTemperature": 5574.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00126.bin",
+    "count": 65
+   },
+   "depth": null
+  },
+  {
+   "id": "k00127",
+   "img": "keyframes/k00127.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.071957,
+    0.01257,
+    0.997329,
+    0.0,
+    0.065017,
+    0.997853,
+    -0.007886,
+    0.0,
+    -0.995286,
+    0.064275,
+    -0.07262,
+    0.0,
+    -10.136322,
+    0.379404,
+    -1.416639,
+    1.0
+   ],
+   "timestamp": 60543.1218,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0018453466520303218,
+    "offset": 0.072,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1060.2,
+    "ambientColorTemperature": 6189.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00127.bin",
+    "count": 68
+   },
+   "depth": null
+  },
+  {
+   "id": "k00128",
+   "img": "keyframes/k00128.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.214615,
+    0.015794,
+    0.976571,
+    0.0,
+    0.054519,
+    0.998504,
+    -0.004167,
+    0.0,
+    -0.975176,
+    0.052348,
+    -0.215155,
+    0.0,
+    -10.469585,
+    0.421829,
+    -2.780675,
+    1.0
+   ],
+   "timestamp": 60544.9563,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002254966811926961,
+    "offset": 0.032,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1062.3,
+    "ambientColorTemperature": 6078.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00128.bin",
+    "count": 72
+   },
+   "depth": null
+  },
+  {
+   "id": "k00129",
+   "img": "keyframes/k00129.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.509531,
+    0.01668,
+    0.86029,
+    0.0,
+    0.052518,
+    0.998551,
+    0.011744,
+    0.0,
+    -0.858848,
+    0.051165,
+    -0.509669,
+    0.0,
+    -10.435829,
+    0.247792,
+    -4.084467,
+    1.0
+   ],
+   "timestamp": 60546.4868,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002983227769962488,
+    "offset": -0.045,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1124.5,
+    "ambientColorTemperature": 5212.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00129.bin",
+    "count": 55
+   },
+   "depth": null
+  },
+  {
+   "id": "k00130",
+   "img": "keyframes/k00130.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.660238,
+    0.021403,
+    0.750751,
+    0.0,
+    0.037698,
+    0.999278,
+    0.004666,
+    0.0,
+    -0.750109,
+    0.031382,
+    -0.660569,
+    0.0,
+    -9.701814,
+    0.290431,
+    -5.425787,
+    1.0
+   ],
+   "timestamp": 60548.7989,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002177593841807128,
+    "offset": -0.158,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1178.8,
+    "ambientColorTemperature": 5942.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00130.bin",
+    "count": 56
+   },
+   "depth": null
+  },
+  {
+   "id": "k00131",
+   "img": "keyframes/k00131.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.711474,
+    0.027112,
+    0.702189,
+    0.0,
+    0.025411,
+    0.999595,
+    -0.012848,
+    0.0,
+    -0.702253,
+    0.008702,
+    -0.711874,
+    0.0,
+    -8.929773,
+    0.346445,
+    -6.996037,
+    1.0
+   ],
+   "timestamp": 60550.9424,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0016517744313192916,
+    "offset": -0.066,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1219.9,
+    "ambientColorTemperature": 5250.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00131.bin",
+    "count": 66
+   },
+   "depth": null
+  },
+  {
+   "id": "k00132",
+   "img": "keyframes/k00132.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.740264,
+    0.03094,
+    0.671604,
+    0.0,
+    0.019138,
+    0.999505,
+    -0.024952,
+    0.0,
+    -0.672044,
+    -0.005618,
+    -0.74049,
+    0.0,
+    -8.032855,
+    0.292349,
+    -8.591149,
+    1.0
+   ],
+   "timestamp": 60553.4989,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.001743100300403395,
+    "offset": 0.214,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1259.5,
+    "ambientColorTemperature": 6114.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00132.bin",
+    "count": 82
+   },
+   "depth": null
+  },
+  {
+   "id": "k00133",
+   "img": "keyframes/k00133.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.744813,
+    0.035953,
+    0.666304,
+    0.0,
+    0.019616,
+    0.999296,
+    -0.031994,
+    0.0,
+    -0.666984,
+    -0.010759,
+    -0.744994,
+    0.0,
+    -7.245443,
+    0.216256,
+    -9.812026,
+    1.0
+   ],
+   "timestamp": 60555.1322,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0013558442166113599,
+    "offset": -0.092,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1254.8,
+    "ambientColorTemperature": 5316.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00133.bin",
+    "count": 81
+   },
+   "depth": null
+  },
+  {
+   "id": "k00134",
+   "img": "keyframes/k00134.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.752633,
+    0.024741,
+    0.657976,
+    0.0,
+    0.012554,
+    0.999651,
+    -0.023229,
+    0.0,
+    -0.658321,
+    -0.009223,
+    -0.752681,
+    0.0,
+    -6.28791,
+    0.045124,
+    -10.388438,
+    1.0
+   ],
+   "timestamp": 60556.5543,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.002029780643658662,
+    "offset": 0.088,
+    "iso": 50,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1254.1,
+    "ambientColorTemperature": 5508.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00134.bin",
+    "count": 98
+   },
+   "depth": null
+  },
+  {
+   "id": "k00135",
+   "img": "keyframes/k00135.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.772027,
+    0.029677,
+    0.634896,
+    0.0,
+    0.007568,
+    0.999268,
+    -0.037506,
+    0.0,
+    -0.635545,
+    -0.024151,
+    -0.771686,
+    0.0,
+    -5.828751,
+    -0.084447,
+    -10.330198,
+    1.0
+   ],
+   "timestamp": 60557.2496,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0014665996687912178,
+    "offset": 0.071,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1291.3,
+    "ambientColorTemperature": 6712.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00135.bin",
+    "count": 111
+   },
+   "depth": null
+  },
+  {
+   "id": "k00136",
+   "img": "keyframes/k00136.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.727469,
+    0.037506,
+    0.685115,
+    0.0,
+    -0.016612,
+    0.997249,
+    -0.072233,
+    0.0,
+    -0.68594,
+    -0.063929,
+    -0.724845,
+    0.0,
+    -5.661004,
+    -0.107157,
+    -10.351639,
+    1.0
+   ],
+   "timestamp": 60557.925,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0011061304663198268,
+    "offset": 0.18,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1333.3,
+    "ambientColorTemperature": 6153.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00136.bin",
+    "count": 105
+   },
+   "depth": null
+  },
+  {
+   "id": "k00137",
+   "img": "keyframes/k00137.jpg",
+   "w": 1920,
+   "h": 1080,
+   "intrinsics": [
+    1148.378,
+    1148.444,
+    954.844,
+    539.3
+   ],
+   "pose": [
+    -0.732145,
+    0.025853,
+    0.680658,
+    0.0,
+    -0.020598,
+    0.997982,
+    -0.060062,
+    0.0,
+    -0.680837,
+    -0.057994,
+    -0.730135,
+    0.0,
+    -5.676277,
+    -0.115341,
+    -10.319798,
+    1.0
+   ],
+   "timestamp": 60558.4752,
+   "tracking": "normal",
+   "epoch": "e1",
+   "reason": "motion",
+   "exposure": {
+    "duration": 0.0014629538659062945,
+    "offset": -0.123,
+    "iso": 32,
+    "fNumber": 2.2
+   },
+   "lightEstimate": {
+    "ambientIntensity": 1329.2,
+    "ambientColorTemperature": 5551.0
+   },
+   "features": {
+    "file": "features/arkit-nonlidar-2018/k00137.bin",
+    "count": 107
+   },
+   "depth": null
+  }
+ ],
+ "stills": [],
+ "taps": [
+  {
+   "id": "t1",
+   "time": 60445.1266,
+   "label": "reference_point",
+   "tool": "mark",
+   "step": "single",
+   "keyframe": "k00069",
+   "frozen": false,
+   "pixel": [
+    967.085,
+    547.03
+   ],
+   "rayOrigin": [
+    0.183187,
+    -0.381457,
+    -1.629812
+   ],
+   "rayDirection": [
+    0.91814669,
+    0.06000359,
+    -0.39167107
+   ],
+   "hit": {
+    "position": [
+     7.516718,
+     0.09781,
+     -4.758214
+    ],
+    "target": "estimatedPlane",
+    "alignment": "any",
+    "distance": 7.9873
+   },
+   "confirmedByUser": true,
+   "epoch": "e1"
+  }
+ ],
+ "tracking": [
+  {
+   "time": 60307.9089,
+   "state": "limited.initializing",
+   "epoch": "e1"
+  },
+  {
+   "time": 60309.2613,
+   "state": "normal",
+   "epoch": "e1"
+  },
+  {
+   "time": 60335.4622,
+   "state": "limited.excessiveMotion",
+   "epoch": "e1"
+  },
+  {
+   "time": 60337.729,
+   "state": "normal",
+   "epoch": "e1"
+  },
+  {
+   "time": 60344.1868,
+   "state": "limited.excessiveMotion",
+   "epoch": "e1"
+  },
+  {
+   "time": 60345.9605,
+   "state": "normal",
+   "epoch": "e1"
+  },
+  {
+   "time": 60359.0619,
+   "state": "limited.excessiveMotion",
+   "epoch": "e1"
+  },
+  {
+   "time": 60360.9316,
+   "state": "normal",
+   "epoch": "e1"
+  },
+  {
+   "time": 60387.254,
+   "state": "limited.excessiveMotion",
+   "epoch": "e1"
+  },
+  {
+   "time": 60390.1036,
+   "state": "normal",
+   "epoch": "e1"
+  }
+ ],
+ "planes": [
+  {
+   "id": "B147F127-D0CC-59CF-B12E-781EFF7E0F9A",
+   "epoch": "e1",
+   "alignment": "horizontal",
+   "classification": "notAvailable",
+   "transform": [
+    0.760297,
+    -0.013685,
+    0.649431,
+    0.0,
+    0.013739,
+    0.999893,
+    0.004985,
+    0.0,
+    -0.64943,
+    0.005132,
+    0.760404,
+    0.0,
+    2.813075,
+    -1.677742,
+    -7.228382,
+    1.0
+   ],
+   "center": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "planeExtent": {
+    "width": 19.73,
+    "height": 16.7726,
+    "rotationOnYAxis": 0.0
+   },
+   "boundary": [
+    [
+     9.8616,
+     -1.9869
+    ],
+    [
+     9.7623,
+     -1.1481
+    ],
+    [
+     7.4904,
+     7.7202
+    ],
+    [
+     6.1412,
+     8.247
+    ],
+    [
+     -0.2044,
+     8.3495
+    ],
+    [
+     -7.466,
+     8.3858
+    ],
+    [
+     -8.3313,
+     8.2839
+    ],
+    [
+     -8.4781,
+     8.1574
+    ],
+    [
+     -8.9856,
+     7.2084
+    ],
+    [
+     -9.6497,
+     4.5736
+    ],
+    [
+     -9.8603,
+     -0.112
+    ],
+    [
+     -9.8634,
+     -0.7758
+    ],
+    [
+     -9.8604,
+     -2.1653
+    ],
+    [
+     -9.8262,
+     -3.6567
+    ],
+    [
+     -9.7253,
+     -3.8967
+    ],
+    [
+     -9.6846,
+     -3.9292
+    ],
+    [
+     -6.7847,
+     -5.5127
+    ],
+    [
+     -1.1957,
+     -8.1793
+    ],
+    [
+     2.1492,
+     -8.3808
+    ],
+    [
+     5.4306,
+     -8.2788
+    ],
+    [
+     6.0889,
+     -8.2473
+    ],
+    [
+     7.4139,
+     -7.999
+    ],
+    [
+     9.6233,
+     -6.4911
+    ],
+    [
+     9.8105,
+     -5.5848
+    ],
+    [
+     9.8604,
+     -2.1413
+    ]
+   ],
+   "sourceInliers": 3179
+  },
+  {
+   "id": "9AFB9424-C713-5078-8043-04B5420A068C",
+   "epoch": "e1",
+   "alignment": "horizontal",
+   "classification": "notAvailable",
+   "transform": [
+    0.998213,
+    -0.005509,
+    0.059509,
+    0.0,
+    0.005897,
+    0.999963,
+    -0.006341,
+    0.0,
+    -0.059472,
+    0.00668,
+    0.998208,
+    0.0,
+    2.809437,
+    -1.55541,
+    -6.566982,
+    1.0
+   ],
+   "center": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "planeExtent": {
+    "width": 17.6138,
+    "height": 12.6382,
+    "rotationOnYAxis": 0.0
+   },
+   "boundary": [
+    [
+     -6.4736,
+     6.1203
+    ],
+    [
+     -8.0554,
+     5.8163
+    ],
+    [
+     -8.2434,
+     4.6636
+    ],
+    [
+     -8.7891,
+     -1.3671
+    ],
+    [
+     -8.7933,
+     -5.2286
+    ],
+    [
+     -8.7837,
+     -5.369
+    ],
+    [
+     -6.6761,
+     -6.3166
+    ],
+    [
+     5.9402,
+     -6.3132
+    ],
+    [
+     5.9503,
+     -6.3047
+    ],
+    [
+     8.5445,
+     -3.8613
+    ],
+    [
+     8.5638,
+     -3.736
+    ],
+    [
+     8.6985,
+     -1.4575
+    ],
+    [
+     8.7297,
+     -0.4386
+    ],
+    [
+     8.8054,
+     2.3132
+    ],
+    [
+     8.806,
+     2.4278
+    ],
+    [
+     8.7991,
+     2.7925
+    ],
+    [
+     8.3556,
+     4.8821
+    ]
+   ],
+   "sourceInliers": 1453
+  }
+ ],
+ "streams": {
+  "motion": {
+   "file": "streams/arkit-nonlidar-2018/motion.csv.gz",
+   "rateHz": 100,
+   "referenceFrame": "xTrueNorthZVertical",
+   "columns": [
+    "t",
+    "qx",
+    "qy",
+    "qz",
+    "qw",
+    "rotX",
+    "rotY",
+    "rotZ",
+    "gravX",
+    "gravY",
+    "gravZ",
+    "accX",
+    "accY",
+    "accZ",
+    "magX",
+    "magY",
+    "magZ",
+    "magAccuracy",
+    "heading"
+   ]
+  },
+  "heading": {
+   "file": "streams/arkit-nonlidar-2018/heading.csv.gz",
+   "headingOrientation": "portrait",
+   "headingFilter": 1.0,
+   "columns": [
+    "t",
+    "timestamp",
+    "magneticHeading",
+    "trueHeading",
+    "headingAccuracy",
+    "x",
+    "y",
+    "z"
+   ]
+  },
+  "location": {
+   "file": "streams/arkit-nonlidar-2018/location.csv.gz",
+   "desiredAccuracy": "best",
+   "columns": [
+    "t",
+    "timestamp",
+    "latitude",
+    "longitude",
+    "altitude",
+    "ellipsoidalAltitude",
+    "horizontalAccuracy",
+    "verticalAccuracy",
+    "course",
+    "courseAccuracy",
+    "speed",
+    "speedAccuracy"
+   ]
+  },
+  "imuRaw": {
+   "file": "streams/arkit-nonlidar-2018/imu_raw.csv.gz",
+   "rateHz": 100,
+   "columns": [
+    "t",
+    "ax",
+    "ay",
+    "az",
+    "gx",
+    "gy",
+    "gz"
+   ]
+  },
+  "arkitPoses": {
+   "file": "streams/arkit-nonlidar-2018/arkit_poses.csv.gz",
+   "rateHz": 30,
+   "columns": [
+    "t",
+    "epoch",
+    "tracking",
+    "tx",
+    "ty",
+    "tz",
+    "qx",
+    "qy",
+    "qz",
+    "qw",
+    "fx",
+    "fy",
+    "cx",
+    "cy"
+   ]
+  }
+ },
+ "scaleReference": {
+  "meterCloseUp": {
+   "captured": false,
+   "still": null
+  },
+  "ext": {
+   "method": "a9-meter-model",
+   "obliqueCloseUp": {
+    "captured": false,
+    "still": null
+   },
+   "doorViews": [],
+   "doorOnMeterSide": null,
+   "trueDepthScan": {
+    "captured": false
+   }
+  }
+ },
+ "files": [
+  {
+   "path": "features/arkit-nonlidar-2018/k00001.bin",
+   "bytes": 1800,
+   "sha256": "f7b13642204d79d60bf8e087140704f4716b49f63f52e8bbd718f3c85268db4f",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00002.bin",
+   "bytes": 1300,
+   "sha256": "f03033556a644418daa46ec1f82a19fc32df66cab15e23071c7afce1b5bb8b88",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00003.bin",
+   "bytes": 1900,
+   "sha256": "95e95b3e5163bfcedf7123943c972d71beeffa4f1ca31918b81926f5a394b055",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00004.bin",
+   "bytes": 1760,
+   "sha256": "83d5507bc2289321a4d046f84e9ac3e9f9f3cea9e272b5077bec0d6993b6b58c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00005.bin",
+   "bytes": 1580,
+   "sha256": "b681a45d0b2030634cedb6995297d910b8ac4fd1734eea2e50702d281c8ccf44",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00006.bin",
+   "bytes": 1320,
+   "sha256": "615a09f8049858f8de1a64e68616ac260a7729b467cde80be9d39f0560f218b8",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00007.bin",
+   "bytes": 1440,
+   "sha256": "418e5aeaf45be2158c44b74925061314aa71cef11e0f9ee0b5eff8aba4d2c046",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00008.bin",
+   "bytes": 1680,
+   "sha256": "b00d770891992c1e0013167f953a8eb2c59556e0b9b4e6ed20a01c7baf549068",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00009.bin",
+   "bytes": 1900,
+   "sha256": "7193ab646169136ebacb5c55175adb3b2e941e4fcd7116b272b7dc82a179c0af",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00010.bin",
+   "bytes": 2980,
+   "sha256": "12f0aba93bbde1ae58a434ff9d3bece18016acd592651b6fc70c7d760e540c34",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00011.bin",
+   "bytes": 2000,
+   "sha256": "e820e92bf2b036618c318f42c9029996448f5df3963397de9f0d540699b8495a",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00012.bin",
+   "bytes": 1900,
+   "sha256": "4167f370098fe750539af858a4f0c125895a3b7c80b3700cffecff1cf9a4f2e2",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00013.bin",
+   "bytes": 1980,
+   "sha256": "695de17944e589cc80f7d151c1cd415401163f7b51d442c0211576b4efb605ed",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00014.bin",
+   "bytes": 1980,
+   "sha256": "2b9f92523f82cdce7ae9af3e063e5a3a34eb2f48872bf355b4821ea36a531cd3",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00015.bin",
+   "bytes": 2480,
+   "sha256": "702c143eca49170d309123196a2614edabcfc727d150e5681892ba6a551e4fe0",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00016.bin",
+   "bytes": 2280,
+   "sha256": "29e98290e0c96e07513f2cc4fb196a34da6ada71146b16f7872b1f3f3f9eaab4",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00017.bin",
+   "bytes": 2000,
+   "sha256": "7209cf20365677ed47ec75ed9ab69a3ab33e579b5cfb9a09e5192d0e4df3b25c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00018.bin",
+   "bytes": 1900,
+   "sha256": "5fcae4be1b92a15990194cec58dae40c078e421ea0234b1803c771371538fc8e",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00019.bin",
+   "bytes": 1840,
+   "sha256": "d2759e40554b0980b86d4dc45e909780794d5c25f44cbebb8096e631aff407fa",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00020.bin",
+   "bytes": 1800,
+   "sha256": "8681618d2fd33bdfc7d11fc95ecde58f625f4653d47151dfeae6989d10b8e294",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00021.bin",
+   "bytes": 2260,
+   "sha256": "01cb588a48c1bb28183396ccd2ea9ed55c5850ef0ade9e569ff6a8cd492aa78d",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00022.bin",
+   "bytes": 2520,
+   "sha256": "3bcaddb90ed3688a1e60ee915efc6b0856f07946e5296bddf9b32c6c3ffe7845",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00023.bin",
+   "bytes": 2660,
+   "sha256": "c4550f3242ce2d8ca2694af54ccd569b73fe75cf88e95be12a1d131b6138f32f",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00024.bin",
+   "bytes": 2920,
+   "sha256": "269d7b2609a4b851b930f7fff7d6cee40ba273425557eff933525271313eea79",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00025.bin",
+   "bytes": 2900,
+   "sha256": "38bb38922654c83f51933ac4a5c07b77a674bfdbd8e85d4245c6eb4e98592bae",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00026.bin",
+   "bytes": 2900,
+   "sha256": "b681e74aa96ffd7d127d0ff3c967b18b1140beef3f317a48ce1233bb6faf3c41",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00027.bin",
+   "bytes": 2700,
+   "sha256": "0ed91cb71d8b20b9623dba3c274dbed6563aa57d8dd5326122e5872fcaa9538d",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00028.bin",
+   "bytes": 2400,
+   "sha256": "8102c07cd5a7c2b1cd0c9e35fd041ca038e152a4908f01003ab11375d37d04e1",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00029.bin",
+   "bytes": 2320,
+   "sha256": "3fe9646efa6022496a5022563d2765ffea27b5bf8182aa867c0ad028e470024c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00030.bin",
+   "bytes": 2280,
+   "sha256": "bb501fa12071dcab1baf5c0d2d8857cc8275e0e8f4051b096918c7b27740962f",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00031.bin",
+   "bytes": 2560,
+   "sha256": "29cc2c775f1d44a62d89b5eb92cea1b1431abb2623c6a2095d655c259bff31f5",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00032.bin",
+   "bytes": 2620,
+   "sha256": "0f3f96ff9c91a91e307fa035f7ace3b5841d26f2c22b74865406b68e1c36cc2e",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00033.bin",
+   "bytes": 1900,
+   "sha256": "9c4e500ba07e7e17c74d0854f91deeb64072451131f88e078910a5bf198d65fa",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00034.bin",
+   "bytes": 2080,
+   "sha256": "211a937e7ae0d86a6778ba2dec4a21e3adfdb11c47b0b5b4a2ac59b39251eced",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00035.bin",
+   "bytes": 2000,
+   "sha256": "b3001ebca8d441a0933a3e9d705ac17f397cca12fbcedeb76e0f8bcc0ebfb3e9",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00036.bin",
+   "bytes": 1880,
+   "sha256": "22a9e67c3e5672d5ae3e9e93b41a2433df67122494633ac994fc9f481b74ef1f",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00037.bin",
+   "bytes": 1820,
+   "sha256": "9503945e5ea8be3e589007b12e6f983c67ddc38d7a6765b5e08e672b29f91872",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00038.bin",
+   "bytes": 1240,
+   "sha256": "212c30fba7afadc678ba2c3a0837f734406d8151a1db2c0fcf49e647e25fee79",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00039.bin",
+   "bytes": 1040,
+   "sha256": "bdfff7387ce007287efc03c1f915607752e5c6c4d396648db39b43559eb53a33",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00040.bin",
+   "bytes": 1380,
+   "sha256": "2d0b4675d6904b44f2d939290a0ff69b1b67f9ff2b6f2cd513b2d1433cf53625",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00041.bin",
+   "bytes": 2480,
+   "sha256": "c2e18030dcf99e284f0b44a804102d8bc577c85136836016f6e79585beec43d3",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00042.bin",
+   "bytes": 2260,
+   "sha256": "8ff34f52400b4432f8c662ce1e94f8b982fc17b7045772abcb5fed9d3bcec200",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00043.bin",
+   "bytes": 2400,
+   "sha256": "f7006bbc9211d9166137d3e97805a842beec73ba486f6962ec9a2d86e90848d1",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00044.bin",
+   "bytes": 2300,
+   "sha256": "ae70d5d2322862dbd187037d0b8e57afd06c161bacd3a2ede7566ed1b58847b3",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00045.bin",
+   "bytes": 2360,
+   "sha256": "3ae00c6b1b3e3cf22819f3ad7e632808952b0990dbf4d3d6711112d795548391",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00046.bin",
+   "bytes": 2340,
+   "sha256": "62978605c8e2e441a423671929d333859e80769543a8ea8d314a23a625b362c2",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00047.bin",
+   "bytes": 2180,
+   "sha256": "14653cade1dcf4f87e66129c4b7349c0c61a091c5fc02ea53ff1265622d79206",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00048.bin",
+   "bytes": 1640,
+   "sha256": "c4d2af893f47a117806a19283094e16b3ffaec4323186f66041329059719677c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00049.bin",
+   "bytes": 1480,
+   "sha256": "6ba3c59df1fca4323ed42ae75d76825752aef35e716f6940cb62cd78a918f93f",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00050.bin",
+   "bytes": 1580,
+   "sha256": "13838e31650b5c45ab1d84b61137dd96af8eedb0e77939035211cbd5cb64f77e",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00051.bin",
+   "bytes": 1520,
+   "sha256": "7eda6e68eb42bb20843f57f48655c4e2bab99054e0fcee0c9b89afeee63bf21f",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00052.bin",
+   "bytes": 1500,
+   "sha256": "aebdcde9489c3c630a477e852605af19661e4e0b67e6f9c2f00e15e0662cc557",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00053.bin",
+   "bytes": 1520,
+   "sha256": "702c57f3d7d9146a01fe0dc250af95cf48b02f52a4239bca665e22b7d496a796",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00054.bin",
+   "bytes": 1860,
+   "sha256": "20314ee8935da3cca5f3c4e80cd5c35e5635734d650c79b3bbaf969eb5f3aa8c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00055.bin",
+   "bytes": 1840,
+   "sha256": "0798820d15a68203fb21794cbcda2b8e4c6554bbc8392399ef40f18d5e6b92a9",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00056.bin",
+   "bytes": 1680,
+   "sha256": "e41568653772d5e71398629754eb026d7b6689fd4cc7128aa82d6180bd441f02",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00057.bin",
+   "bytes": 1580,
+   "sha256": "26ee8508abe093b775b98cfc716813dcc5aea7c62e4f2a1fa70024036c561f62",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00058.bin",
+   "bytes": 980,
+   "sha256": "789705490ca31d50dba0c6df09e1a53c65b3a0524befde23e327d89db1cfaead",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00059.bin",
+   "bytes": 840,
+   "sha256": "af7a6e688eb6754ee7e73312629aabecff1826ca0917e1572cc8efb8e3aa2b7f",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00060.bin",
+   "bytes": 800,
+   "sha256": "38cc63ae0ab090a5a309680fa91eaf1c01873e8c3a62a5dc37ba5f642d51ae51",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00061.bin",
+   "bytes": 720,
+   "sha256": "36a1cab10645b060755c71626223d46b27a5e7f7d4c8a95578cb489e0ca5fbde",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00062.bin",
+   "bytes": 1240,
+   "sha256": "5b227b5db47029a1eea909967e4e5dc57bd9f7945bd7c1edc6ccea1b1c85ca61",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00063.bin",
+   "bytes": 1560,
+   "sha256": "3f8873b449ce3ff208039e0ce8154d291be814cc09ef7cc7525054b367c027ad",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00064.bin",
+   "bytes": 1960,
+   "sha256": "dbaa0f55ddd5f659ff8855c4b96d9abef98399a239a4f7ed8e9792b1d3614c6e",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00065.bin",
+   "bytes": 2000,
+   "sha256": "48c659147ed420cf843de66758b474fc769be7fcb73f97b45499fceb72ac2401",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00066.bin",
+   "bytes": 2240,
+   "sha256": "a1c361d69cfbc411db65f0f86ade7a4b81c405d1dc03587f2649e7ef3bdc5d8c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00067.bin",
+   "bytes": 2180,
+   "sha256": "dc3effe19ab177d553eefbcd9d8972a5a09b6372a092ef8af95fab97461f2b4b",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00068.bin",
+   "bytes": 1520,
+   "sha256": "fce3f1c88f35ebb0d9e416672f89213d6bdae2c9f61f6c6cbcfc39c1ddafe3ac",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00069.bin",
+   "bytes": 1460,
+   "sha256": "ae99dcd6631d94cda22c75befc8c7a41b2b4ce54d507c62b50faab95ba64916e",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00070.bin",
+   "bytes": 3000,
+   "sha256": "0d76bba2f7fee8e660219b1eaa31cffd469c8dd28cfd16054163bb50ed0b7c87",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00071.bin",
+   "bytes": 2720,
+   "sha256": "641c1b3f750af4c48412b0f0b0537e601e4800e283858ee426c1e99865f0866e",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00072.bin",
+   "bytes": 1580,
+   "sha256": "d35841820eed88bcd21a6a9cf80689ed8b3d9adfbe9ad2ab4d64dee877b7e056",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00073.bin",
+   "bytes": 3000,
+   "sha256": "432e36caa8c89410823f2172974b8a909d31fece01304147c5aaa519cda45e9d",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00074.bin",
+   "bytes": 2860,
+   "sha256": "b741d877ad8a7cd2cf134e90ff877d26dd5c1056b0c389228756863433d145d9",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00075.bin",
+   "bytes": 1520,
+   "sha256": "5fe8f7a17e7a7a4beab00445c8da0023dc2d0bfde6b40a11bd53b48147c369b0",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00076.bin",
+   "bytes": 1580,
+   "sha256": "166834e455ecf0d4a78899fdbc577bf9776a7c1c4f21252ed1284a2c352deb2f",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00077.bin",
+   "bytes": 2020,
+   "sha256": "427eb1564d948aa6b1cd7d01853cbc16d9e6029d66187c7ac13e10341a1b70cf",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00078.bin",
+   "bytes": 3000,
+   "sha256": "f2d9c8999e1efb78c9b6f63b02a27036111a29a0cf3b68c791f402a5eb4ef3ba",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00079.bin",
+   "bytes": 1800,
+   "sha256": "0f407a5af39b35b28077052a809dd4a7a41c64a5aa3c0fd8901db09acb9cda98",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00080.bin",
+   "bytes": 1960,
+   "sha256": "c24a9bccf7b3e5e9bef813ff9a5905c71a92801862b71c2e480ba0a636ad9c42",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00081.bin",
+   "bytes": 2040,
+   "sha256": "e02b3d3a9b355e523a8a1244a6b25f2f8222c807b02a45f499989ce341429d3f",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00082.bin",
+   "bytes": 2140,
+   "sha256": "199f9e271b4f04256612b73c0cf824b777d1824c92faa6832e779ce1deacfcc2",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00083.bin",
+   "bytes": 2360,
+   "sha256": "8f770ef5d6320ae19eafca835d900f5e531ab3644bc48fc4cdb3433170e3d9f1",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00084.bin",
+   "bytes": 2180,
+   "sha256": "e8d2e7fd4b189c29dc6b1f9752837b1cd3066c869011f2d46a8fac4b35bbe766",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00085.bin",
+   "bytes": 2480,
+   "sha256": "f374597c5d6613614d9164109dac32b1482703156c74c73019b47b1fa2d10a9f",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00086.bin",
+   "bytes": 2180,
+   "sha256": "e3a4dd3cacb73853d86cc83561bf38c37fa5b30a6ac7e9a7bebd8bbeb841d0f8",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00087.bin",
+   "bytes": 2400,
+   "sha256": "ad7257255f3d8f80ab6abae4d7e70e2d1293ec3b25c944e7e0825fc6415ff625",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00088.bin",
+   "bytes": 2820,
+   "sha256": "0c8580bd747459731e70ff615de87f0ca4ec80ede64fd8a954645027d511966e",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00089.bin",
+   "bytes": 2920,
+   "sha256": "e269b87ffb42c7d69c6e3aab3716261bd4786e2655947acfee11fbf2586b873e",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00090.bin",
+   "bytes": 3000,
+   "sha256": "fb2defd0fd72cb52e569fa4ac97ffc9c820e2e184fd1f88ab24966ce6eef93aa",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00091.bin",
+   "bytes": 2800,
+   "sha256": "7549a24fec0e15fbf6846b15697f6887b219ddae44f5bdc356d92229f7746a0c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00092.bin",
+   "bytes": 2580,
+   "sha256": "94acedf0e0d25b5153c363650b273dca186a2320d797cbe9cdd2925b876e5ab7",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00093.bin",
+   "bytes": 2260,
+   "sha256": "fa4b22f4093d9b3f5035a2cc888fa109c5c45fbff01c466049d57e0ea8ee837b",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00094.bin",
+   "bytes": 1900,
+   "sha256": "46cc08906dad79c480a0ba956e002c3b2ba92774d26cf11806ff9088b70a1c92",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00095.bin",
+   "bytes": 1620,
+   "sha256": "98d813a4c8daa8a3db673188df7b365c27bed193c3dcccb6eb79f12e2e92db0c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00096.bin",
+   "bytes": 2320,
+   "sha256": "500d2cafbe6658efa9af16691c3ab8a5dce3bc4b31a666ee5141618bf9769b40",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00097.bin",
+   "bytes": 2700,
+   "sha256": "909c5c6939acbc2b56dfee382f1598b5461263da1f5b71ae8b5689bf1f44a1a4",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00098.bin",
+   "bytes": 1940,
+   "sha256": "b2eed9ea484d652869441fe711ee4c1c038a41cd2079d33a01364af6887b4aa5",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00099.bin",
+   "bytes": 1560,
+   "sha256": "bb4b20d0fc63a6db95097a40fce1a70ac663dd2681d3fc450fbd2c0dea00e92f",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00100.bin",
+   "bytes": 1780,
+   "sha256": "51eca7abaafcce87091c6832a9e60694a10f11a413b9189128ae265a720f2c87",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00101.bin",
+   "bytes": 1900,
+   "sha256": "8360d3a4c885cf1844ec98dcd085cbd94ab38830b9c633af08299cec44795b97",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00102.bin",
+   "bytes": 2300,
+   "sha256": "5ccb9011a5d43140d1a5038e0abb9a8fefea2a2601473de7d270f7a45a5bd36a",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00103.bin",
+   "bytes": 2900,
+   "sha256": "26185ed960e6adb21ad9487a5fc187af73732e14c891639795d14f37dc889ff8",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00104.bin",
+   "bytes": 2860,
+   "sha256": "1dc5bf60f21139f7ae01c957af50fa57ab640d8c7dc7ed8315b5cc34991f97fa",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00105.bin",
+   "bytes": 2660,
+   "sha256": "2501c7cbf8029aae1be9d6d2d788ae639801c872fd4606d1a6bc50855da54eaa",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00106.bin",
+   "bytes": 2860,
+   "sha256": "b9689a366a74b7e5096a9808796332d2c9863b375e4ef1e82b5e89a46fbd4eaa",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00107.bin",
+   "bytes": 2340,
+   "sha256": "e8585ee54bc4fa5ddca5edd174902a6c45a7df0bdd314331fc74b0d8e03a2cde",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00108.bin",
+   "bytes": 2380,
+   "sha256": "c6f6db7f80b962f41eda3fd355c185889f704eceb8c16d8a860418c1a42f81a5",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00109.bin",
+   "bytes": 2660,
+   "sha256": "42516d7b531f3344999203b0651e48ed1dcafcb2b038376021e73ed5ec4b0b76",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00110.bin",
+   "bytes": 2540,
+   "sha256": "df683dedc605b5eed465447cb94ca24934584bb277afc7fe180023e49afd61bd",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00111.bin",
+   "bytes": 2460,
+   "sha256": "7ef02d971919a88147785461d0630cd8804459070183ef99b1528c97e0dba9b2",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00112.bin",
+   "bytes": 2400,
+   "sha256": "f90732124ac33b12f868678bc2b81ce5c3563ef30324d4c26904d543f506b18a",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00113.bin",
+   "bytes": 2240,
+   "sha256": "003a17faf6445420a3335c6d6499441e5444b72b6b608c2fa6db3f7ad1983749",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00114.bin",
+   "bytes": 2180,
+   "sha256": "f402befc956f4d9c750ebcfcb142e2e0b515b10ab41695d3a3b8fdd3a92b4016",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00115.bin",
+   "bytes": 1660,
+   "sha256": "e1ac35ce667d602dbb3d1b67b98691770a3b81f2948d47a0e871e2373f0f3c2c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00116.bin",
+   "bytes": 1560,
+   "sha256": "d5c6bbb1462620e2873199f3a54f5aeb6891325d5b7b9999f1df50d4b1bfb648",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00117.bin",
+   "bytes": 2760,
+   "sha256": "d0dfe46d8efc17e2761beeaa2e370a10cf1cc201b456d47c99f3cb0c6ffc17e9",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00118.bin",
+   "bytes": 1400,
+   "sha256": "f5fa7910032ac4c2e2ce1b4223b3f8e73f4e5dc008593dd9c29f8bf028197880",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00119.bin",
+   "bytes": 1940,
+   "sha256": "678720023612be2581ebeb338098ea68479daeb38026ec4add6b76e7a43ba9b6",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00120.bin",
+   "bytes": 1420,
+   "sha256": "156265ec89f2cfcd288692df2400561cba6f66d9f280e2668886d7612bcac857",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00121.bin",
+   "bytes": 1220,
+   "sha256": "655f783bde2161f49e04e0ff3c64931d8a438848772583ec5923f5d903bf6b58",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00122.bin",
+   "bytes": 1340,
+   "sha256": "37267b13e9250f71d75323d3b5dc90d3509af3ca5a634ae61e96d6c8cbfe2c11",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00123.bin",
+   "bytes": 1400,
+   "sha256": "9de19793b493fcb88db7d53b1104fd65b081029b1a19ed4da1c0300e6b17fa77",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00124.bin",
+   "bytes": 1020,
+   "sha256": "b9721016a6d0552c12e8d8a3690576daee8aeb17cd2b2095405c3de0c8cdb2a6",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00125.bin",
+   "bytes": 940,
+   "sha256": "e4ecec38d1785f16d9e119d959a472dc14a8631cce8514725e6b713086237e33",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00126.bin",
+   "bytes": 1300,
+   "sha256": "adc64ca5bf6e64e1a707342294b0c3b5d009b04d1f53d974f1410e09fd352390",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00127.bin",
+   "bytes": 1360,
+   "sha256": "a879d6401c17785474474db9262dff2241a7514e252032b71fdd023e851c8d20",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00128.bin",
+   "bytes": 1440,
+   "sha256": "c316f8ce75ceb93684b54cfc5c44be71daf393d9539f9cb9f3df43e7863b1fc1",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00129.bin",
+   "bytes": 1100,
+   "sha256": "6090cf5be8f52a3c069aa77b9383127aa4b06ac077ca3f9d41516daf99beace2",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00130.bin",
+   "bytes": 1120,
+   "sha256": "a9a9fd7dd9219f524a5cbe7437a9b2b2516128e7f04acdfa85d83f5822c60eaf",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00131.bin",
+   "bytes": 1320,
+   "sha256": "04c78961555f72e771f873c7e7d42db2620a48af3c97d8567a5dad22d621308b",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00132.bin",
+   "bytes": 1640,
+   "sha256": "6bfd29b7619c74eb07c1ab479699c37e44b36855cca4d3f695e71ddb385c35e1",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00133.bin",
+   "bytes": 1620,
+   "sha256": "954556d58ee523a60148be3e634dd2d3c04bd159fe29b8100193781a8ed0f474",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00134.bin",
+   "bytes": 1960,
+   "sha256": "c265995195a40263fced420efbdf9adab63dedb3531284e186950c6da0ea4d08",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00135.bin",
+   "bytes": 2220,
+   "sha256": "f69017b0ddd6053b835ceae4655e3cef745c1f8bbc0234e394feae80e3977e5c",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00136.bin",
+   "bytes": 2100,
+   "sha256": "c9a2fa03de10953f0c90a52d356d0a92099a920cda0cce6404cbf1c02debbbc0",
+   "role": "features"
+  },
+  {
+   "path": "features/arkit-nonlidar-2018/k00137.bin",
+   "bytes": 2140,
+   "sha256": "c9fe786aacb4479d5780f1597defad500e189cf18c237e711589dfdf9d9f8f1e",
+   "role": "features"
+  },
+  {
+   "path": "keyframes/k00001.jpg",
+   "bytes": 409519,
+   "sha256": "0ffaf71e3c1f5e1744d4979de2a0a6582a9e1ee107428adb08b30f8d46278dbd",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00002.jpg",
+   "bytes": 406041,
+   "sha256": "ee3aa6875c3c90fdc9caffc83fb8dd250b6bbd706045ac2cd2b83a3c3e54fee2",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00003.jpg",
+   "bytes": 436440,
+   "sha256": "023c0853f22dabc1c28a6de6b37420ee0a865167412ee7f9ba23a59bcccb2cb5",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00004.jpg",
+   "bytes": 461932,
+   "sha256": "17cbc20398208cbd045a17894eafd77e73d90c4e2aff8d4bf593d3890515cbb0",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00005.jpg",
+   "bytes": 502100,
+   "sha256": "7656e3fc0ba1cfdd7b1d8b74b96e2b87bf9fe93a456c675595bfa55c1c650ef3",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00006.jpg",
+   "bytes": 526911,
+   "sha256": "5d72dc5f8b5ecd8a93ecd484042efad58474673fdfc54e4691a94e7e7373c19e",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00007.jpg",
+   "bytes": 581260,
+   "sha256": "809275af6484c013308b38a9aea7cd7e84675852140aab7048a1666b1800b7b5",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00008.jpg",
+   "bytes": 512233,
+   "sha256": "0ae3460e47c525431393b5baf790fca420d3492f4628e7c3d468787b7acb9023",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00009.jpg",
+   "bytes": 455914,
+   "sha256": "6074838801f37e0893bce7cc10f225d7aa8604190dbfba871c0a5b3bfee4cefc",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00010.jpg",
+   "bytes": 363466,
+   "sha256": "b04d2c520392195e46194335cbfe08b2ff0656c11414245ffd8bb030b3ffaeaf",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00011.jpg",
+   "bytes": 429317,
+   "sha256": "7f40a49e3cd2a23d11f24a0872baaa52509d8c47968f994dc565d4d50a1a9c40",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00012.jpg",
+   "bytes": 410919,
+   "sha256": "0ced3b40e0957a284fa161db8144c8e03014f7a4d1f963125058d067a043d526",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00013.jpg",
+   "bytes": 409721,
+   "sha256": "c470847f6f66e297df3875912b87371e95e9e727e37a98a14ec24360f3be2402",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00014.jpg",
+   "bytes": 382746,
+   "sha256": "ce5f29009011463683dd2e9b59be6e6c17ae1cc93a32951e5bf779b3d599f092",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00015.jpg",
+   "bytes": 364754,
+   "sha256": "97c66494b9a220c40703b7be01c2a263999a619b160b88d46343d664194d9f3e",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00016.jpg",
+   "bytes": 331768,
+   "sha256": "b3f2cb8399f1293d0c80faabd6ffd1b8ea1250b108b444f31309eb7eacd02691",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00017.jpg",
+   "bytes": 324440,
+   "sha256": "5bff838aba83df6051860fd20c4ad5a68cb2445c5832b17ca8bddbfe040be1a1",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00018.jpg",
+   "bytes": 326825,
+   "sha256": "1f790159708868acd0a942a2695fe49bdb08bd358868b5ce52c0ce8fabdf31b6",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00019.jpg",
+   "bytes": 358429,
+   "sha256": "a9c137bd635bbbb94fbea93a3936783b491f189fde0e70a685cf33b398f0e3d9",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00020.jpg",
+   "bytes": 414169,
+   "sha256": "8b5e7a1f6656c548f17e45662c95aefc755976b03eede9c57b8bb172c471f168",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00021.jpg",
+   "bytes": 426564,
+   "sha256": "6b64ef504e7ab50b82c492e515c13d8fcf023fb731663cd5bd7a1ca941a27363",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00022.jpg",
+   "bytes": 480059,
+   "sha256": "667b610856981693a2f8928d2ad1acee9f3a6f362d8d7c30e031c65cad98a3dc",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00023.jpg",
+   "bytes": 534931,
+   "sha256": "371fa749071c5a0016fbcd3738b8499c10e92b1bc317ef33b279f476ee05e64b",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00024.jpg",
+   "bytes": 518307,
+   "sha256": "96d496126cb3b243ac3490f9d9f535ac352b0bc756207ad2a58d69b8197a94bc",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00025.jpg",
+   "bytes": 517293,
+   "sha256": "18b10db321b3c9e68903d3f35b7be55f9ba29bc6fa310e47ef70500b117592d5",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00026.jpg",
+   "bytes": 488996,
+   "sha256": "0274682943c54047ca5d33f4fc70236759a58cc8c25462f64db5d168f96d10fa",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00027.jpg",
+   "bytes": 503452,
+   "sha256": "f1f70c16dffa4ac9eb4932b0d1f9fd20563b8c07be8a5b2ff811f5cce72b2d4c",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00028.jpg",
+   "bytes": 527928,
+   "sha256": "0166265ab6c7e7035c228c61505d252cbba8861fe6b4a7d85b5547b9751140b4",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00029.jpg",
+   "bytes": 505097,
+   "sha256": "6e57d0180a32a085b94ceba6380775e354a8c4ed2d5b09bdbd19cc5c4896ef7e",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00030.jpg",
+   "bytes": 529214,
+   "sha256": "6cec40d1b9f5737fb883af6b1d9ca54e232399a6ab24b7990f6d95635760a8c1",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00031.jpg",
+   "bytes": 524526,
+   "sha256": "321a010c468e724a657625f5f873e3cdd6691ee8fb2fdd09ae33c00869b48c13",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00032.jpg",
+   "bytes": 511359,
+   "sha256": "2c5676d46e1cc1a1e843cd39303afbb3450b0b819445a1c907729d20f9042d43",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00033.jpg",
+   "bytes": 499166,
+   "sha256": "1bbf9c57dee16bf1871a33f23218f6684a1123e15f25d0e667611eb15ec764d5",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00034.jpg",
+   "bytes": 458170,
+   "sha256": "82bdb82a71ac62317d8383bc1b482a47ab86b76fa319b31838abb52df9c294a0",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00035.jpg",
+   "bytes": 447732,
+   "sha256": "c0e52ba4123bd21116696881f6ea0f44ad442eedea550ceb4c340f66429a1078",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00036.jpg",
+   "bytes": 491638,
+   "sha256": "cb0f38ce22cf83b1c8a3b70fdaca0c71c25aca03cf07377fad317c2dd92fda2e",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00037.jpg",
+   "bytes": 497904,
+   "sha256": "f99006d9532c71f37eaf940d6abb84bf0db5588274ba12ebb64d81cfe5175b4a",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00038.jpg",
+   "bytes": 474341,
+   "sha256": "d5fbc25422b458f7ce82aeab04122a4cd0e2560b29bb3b809fea3f77623af0f3",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00039.jpg",
+   "bytes": 435916,
+   "sha256": "1ee39241013b6e8fe26e6e560f8dfe4e955238cc0445f60a391a6c0f56b81e58",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00040.jpg",
+   "bytes": 416825,
+   "sha256": "50467589061effd1db34e21ab7dc3e7a31c3166f7c1631a9158f4c9859863aa6",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00041.jpg",
+   "bytes": 438673,
+   "sha256": "f2d6ec849f7bc7735e9f89d5f36ac0a3139e02d70955bb16c102187a8b74aae8",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00042.jpg",
+   "bytes": 421294,
+   "sha256": "2b5517e82b9c66987d9287313afebd97d97d32b6e59b766a8df4e01c1baf61b0",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00043.jpg",
+   "bytes": 365534,
+   "sha256": "567874087823aebfd212945b34cc7c54959dbc4e02787c15e1b7168ecaff24c8",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00044.jpg",
+   "bytes": 366191,
+   "sha256": "88b646cb6fd30691d85e4449fabe284ace7dc63e2f14e0f8f73072ab58b37780",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00045.jpg",
+   "bytes": 373022,
+   "sha256": "3826cb593623df85ded06c48e785850753400a09c327f5bf8a01e42e4c2c9c11",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00046.jpg",
+   "bytes": 374763,
+   "sha256": "ba9b82822e5d554941ce1d3083dbb5e63e41a65da876ebbf7e787daf93bc6a81",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00047.jpg",
+   "bytes": 409958,
+   "sha256": "e2ded446ad9ab4503915602aec0f8516a830db8106cddf954139e58be358fbcc",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00048.jpg",
+   "bytes": 412073,
+   "sha256": "2551a2b006f9a662096eeff8fcc7a51f44b9609ea753ebbc7a0d145a6acc65f1",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00049.jpg",
+   "bytes": 416860,
+   "sha256": "c8c49b20b787267d1b30019a2eeb3414c1c09356ffbd4d69e09c25b9003d199d",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00050.jpg",
+   "bytes": 446858,
+   "sha256": "f450a70f72cfc3009da1e6e5301121230600f65b8fe6caffaa0e46fce983b147",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00051.jpg",
+   "bytes": 463789,
+   "sha256": "ee4729ae6686eeaff08067c0875589b3926f14ec3e966ec8bd0bca2627e418d2",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00052.jpg",
+   "bytes": 472731,
+   "sha256": "245658dbab4a2c404531aafd8eec4e8147a87ea7bc605496b5ba6fb562c45230",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00053.jpg",
+   "bytes": 501150,
+   "sha256": "722ac51cdb671c75273c68d9084cfb419936e87c5a8efbe1c77a13554f675aeb",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00054.jpg",
+   "bytes": 511916,
+   "sha256": "f7164ed06680d0218ae60a29e8d87e81d1579d55e9c8f3e44dbff4692b3652f1",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00055.jpg",
+   "bytes": 507154,
+   "sha256": "b9bbcd25ce89645054916cb5c6756b374e0282a467a4c5b3ab36b6e1810a1240",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00056.jpg",
+   "bytes": 484060,
+   "sha256": "546ac4bce81dff2e2253446139298a887a027c3c10e66040698e7975072c00ba",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00057.jpg",
+   "bytes": 492821,
+   "sha256": "7f9164b5421dbb108502d0f6fc324824621ff9a91c2348399b2f2ec69f2d27c5",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00058.jpg",
+   "bytes": 494625,
+   "sha256": "3d8ba5f450436bdceaa9f371b8d11dd7721a4540b85bec976d7725fb918195c7",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00059.jpg",
+   "bytes": 486840,
+   "sha256": "713aa667bb0b1d3b3736aed9039be1d849b14795cd6a9f4caa42999bb5c242e0",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00060.jpg",
+   "bytes": 487854,
+   "sha256": "718deb711e76568604ccbc7251d186fd5659d8080dda15b448b614ef73ef1aa8",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00061.jpg",
+   "bytes": 464230,
+   "sha256": "c53fbc8a9490160c7b1ba5031504218f4638219964a0c28b016f6e4bf811db36",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00062.jpg",
+   "bytes": 461329,
+   "sha256": "5eadc0b4f1a56565b72d6dca1b4c1c53783c9820c5ced50ce86a84d944c68a59",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00063.jpg",
+   "bytes": 471688,
+   "sha256": "cda7f569defb5e87bee01f55c6da690f18a7c0455229f69432366718463a9681",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00064.jpg",
+   "bytes": 490994,
+   "sha256": "47ce5a7be55fd562ac89294136c91537ec06eba6d466ee38ed7cb75905e5cc60",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00065.jpg",
+   "bytes": 457860,
+   "sha256": "2249d614d6eec2dbbdbe2d2c7da9f556fe9ccbfb74bff64623fca04f366540b2",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00066.jpg",
+   "bytes": 450927,
+   "sha256": "b41e368774bff1b2cd5b4ffbaf878a585a34a3fdb553892c1f414447712d9798",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00067.jpg",
+   "bytes": 516948,
+   "sha256": "854030adb46b61e1c5facbced7b0a2fedf24070e7c1bd3535d808eeebe2f2934",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00068.jpg",
+   "bytes": 473339,
+   "sha256": "3328d052ea36e64d454f38b38bfc618675ba360f2323fdf27a487e2778a5e45d",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00069.jpg",
+   "bytes": 453686,
+   "sha256": "359aaacc79f3bcfdcf5f4c70d0ce3f428362e93498d0cd9890daba5391763b5e",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00070.jpg",
+   "bytes": 339252,
+   "sha256": "34d8f605d0dab0a2e1e0bd5f6f6618e2d4016811c6eb7d8b388826004cd72a8c",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00071.jpg",
+   "bytes": 309408,
+   "sha256": "630134ec9813ccc08d5f5c4e1fa07e611487694fbcce152192750b214e2d5c8e",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00072.jpg",
+   "bytes": 291840,
+   "sha256": "844d6b9d55124caeea44f02cede1919a35e6343c36be7d2f290783fc1935e1f0",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00073.jpg",
+   "bytes": 256673,
+   "sha256": "8c677574460daf480fd9f935130366309b75ec9294c477d4742fb86b5a58a8ae",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00074.jpg",
+   "bytes": 362704,
+   "sha256": "e51bc3c42cc783faad32754d86f23b03df6e3fca6e3de37ac7894b5587f7bacc",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00075.jpg",
+   "bytes": 495430,
+   "sha256": "22bbd706ce3814077bbf487647f72a03bf2bc05783b5fe7ade1f50ff34c74639",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00076.jpg",
+   "bytes": 502441,
+   "sha256": "74d701d8ffdceda1e681a7af4098f71dbe13c078e2ed2de1c00b215de8bea38a",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00077.jpg",
+   "bytes": 460310,
+   "sha256": "0bce56fce8d75471c37098ba0090556a4d258f8fb6590a666c716a8240e8b775",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00078.jpg",
+   "bytes": 368659,
+   "sha256": "7de0b3f9cac6c67c2370d21ac98f035233746d98fb79793009b45403416bfae8",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00079.jpg",
+   "bytes": 374650,
+   "sha256": "24a927e70580660f501171208588496d0244ee4f2688eeabd56fb234dbe42426",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00080.jpg",
+   "bytes": 364692,
+   "sha256": "f42c481b61cf3ac8d21108381acaa69a4a080111a048445eca91cb82fd0d2ccf",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00081.jpg",
+   "bytes": 301540,
+   "sha256": "71a275fec4826fff1c1978c3b2e0e9d9590c7258f29be209f4fd59aae8bfdee0",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00082.jpg",
+   "bytes": 279060,
+   "sha256": "366bd068ae8f75131a2d106b461d377b1c6c53d91c8d9c50f3d0838c786593b2",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00083.jpg",
+   "bytes": 360294,
+   "sha256": "c19246b336e96d25c2b094b10b254507c3b89f4287074e1ba5e218ad764d9f44",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00084.jpg",
+   "bytes": 465576,
+   "sha256": "e2e590c90866e1a66e78cd597581ba50c525c5fd551dafba78e4ca9e19502469",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00085.jpg",
+   "bytes": 540955,
+   "sha256": "7887c221066396b0b5401e09164c50be2764a1e669ff1c043da7df7d8451ba23",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00086.jpg",
+   "bytes": 492912,
+   "sha256": "9759dd9eb4df1022ba79469d65ed7474a6376f6e722995c6ba8dbd30d4770fcd",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00087.jpg",
+   "bytes": 495570,
+   "sha256": "2a133728ebd55f55d06e52d4aa5ee5bc5a8a53594dc264e0b48b1c0532b69152",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00088.jpg",
+   "bytes": 442755,
+   "sha256": "121e433977f03cb0c86ac4e9393e764da4da47230c8891df9d39511f8a8296a0",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00089.jpg",
+   "bytes": 394704,
+   "sha256": "a473d3f19618e370bf63906e723bb7fe917db948a6a0585e1e45d93bc97c255d",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00090.jpg",
+   "bytes": 461470,
+   "sha256": "6bb29be14002ac5835633389a50fa07d95920d64d56423dfdf9c6eb03363a24f",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00091.jpg",
+   "bytes": 563635,
+   "sha256": "b044866d3e73c25eb1c8e719a00ef5ccbc0b91d1125de44ac88c3baa3786734b",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00092.jpg",
+   "bytes": 560267,
+   "sha256": "f9d59d676cb022d2c5de828d8410512363a1fe391cb2c6f57f161e565243da0b",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00093.jpg",
+   "bytes": 500534,
+   "sha256": "60ff330ed34838e5f793a65e7d0db7b27b814ae125f84cb23bbc29e3e66b472a",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00094.jpg",
+   "bytes": 435209,
+   "sha256": "c9caaa2d92ef2946d3208e91c18fad4037ced7041b1826357510eba84628819d",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00095.jpg",
+   "bytes": 401664,
+   "sha256": "d1ac7c36959aae70059327bea3a8e6340c7f14dc8c3908031d63391b7a929663",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00096.jpg",
+   "bytes": 383921,
+   "sha256": "c6831fc69f14e038517a2324750da1fc05a45fe8214ef47c6f2264196f39d526",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00097.jpg",
+   "bytes": 469049,
+   "sha256": "8d53a5f8a3e819cde3c69f35f124e74fed8e980a7fd250068d0949a8df2a3a5b",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00098.jpg",
+   "bytes": 405971,
+   "sha256": "190d9276ee649b72de0d923885b1aeed21a0ed6c3a8a1065e203cce05f51c4ff",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00099.jpg",
+   "bytes": 330510,
+   "sha256": "c4dad59efbeffb595cf2f7cd757aca094de6827399dc306dd638a003391ce6ca",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00100.jpg",
+   "bytes": 356923,
+   "sha256": "c93595db79a53fb7509b3bb45158fb8312c1e3fb94f2c9443fce692271dd0e37",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00101.jpg",
+   "bytes": 375911,
+   "sha256": "c512faafc7db6168daf2431160e2f0a74a7e39186ac1bca74bffcc3301b515e3",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00102.jpg",
+   "bytes": 384684,
+   "sha256": "e96e444f2050d2e18340530aca645ae64dd0a636c3409da57c6d19863e82e580",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00103.jpg",
+   "bytes": 341617,
+   "sha256": "ab48cec7b0f12ad397edc2a56eed5e48e609a1ca324042dc0fa2bdd4829bdc0f",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00104.jpg",
+   "bytes": 397000,
+   "sha256": "141ae467359d004ff7d3d2c77c55ccb54ed9dbb868b76a6a721596547dad4f53",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00105.jpg",
+   "bytes": 418857,
+   "sha256": "89346e3855b558c7f8e19249284db3d7082c6dff01e53a42789b4a936729a68f",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00106.jpg",
+   "bytes": 376835,
+   "sha256": "36503ae2acba69ca5fea53ad8ff807ec374ff89c07668c5611a4d54f6ee753c9",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00107.jpg",
+   "bytes": 377470,
+   "sha256": "ef9646ac4bed4eeaa99a66c6247a7ab61e007e1fd4fd0d397b2bb3ea9eb87ad8",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00108.jpg",
+   "bytes": 397277,
+   "sha256": "b7fd44ffa361ee0a7a68ecc4a22e7ac692d289354fe75883650d16ffa3e6574d",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00109.jpg",
+   "bytes": 389378,
+   "sha256": "b0a0f33760146e0cd7fa3db48cefa39072fca659a68a7a6afa0b8cac53ee8da1",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00110.jpg",
+   "bytes": 460079,
+   "sha256": "f9e8a39c9f455dc79b776582ca3c70adb9df342ebc51f2368f318589f5b754c9",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00111.jpg",
+   "bytes": 477188,
+   "sha256": "03f1cf64e9dc40175a14fb922c842a9c1dc970f648d754b5a9bca9e95b3e4dbf",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00112.jpg",
+   "bytes": 438523,
+   "sha256": "2cdc1d122ca7c5be8eb628b721d72ea4242c7ef7120feee8c4b2633eace2bb6c",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00113.jpg",
+   "bytes": 434702,
+   "sha256": "a39c424a73608dbcbec9983417d8668f16375b0bb30b0316d22d69b3a75c8496",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00114.jpg",
+   "bytes": 397898,
+   "sha256": "a007313167d3d5f2a98e7199de9f6edb914eb616219609777c7384038cb7949a",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00115.jpg",
+   "bytes": 376425,
+   "sha256": "4bb89cd3390af56e6eb2816d165ef4dfbef40d0f360ba062f231f0416a5a1be5",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00116.jpg",
+   "bytes": 317956,
+   "sha256": "1be5222183b4634e5e5569016cca317cd1c8afa863589aff80c87e461097c65a",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00117.jpg",
+   "bytes": 290224,
+   "sha256": "6aa5501e850bdda2ebc1343a39cd7d14fe3313852f06814cf4d2473a47d212d6",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00118.jpg",
+   "bytes": 312230,
+   "sha256": "f2a84fa811f346b4583943ea13d7923c184d827a96b108405c2debe289c0b06e",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00119.jpg",
+   "bytes": 308123,
+   "sha256": "d8bff3e4bfc49c70c1bd210a5d215f87b543bc8ee2ddd7c88eb52abb2e31eed0",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00120.jpg",
+   "bytes": 303817,
+   "sha256": "e03faacb3205b4458f91f0f26367007c3779f2ccc96595a7f27e313e4c7af500",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00121.jpg",
+   "bytes": 282727,
+   "sha256": "54f4f5f20c9ae630927408c76471ae6898f63fd34011f96bd9232d3b79e15257",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00122.jpg",
+   "bytes": 390329,
+   "sha256": "4b99a6a4df3e872fb894bdf429e9d12e7417fce4487fdb3af78fe2a6bb9e3799",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00123.jpg",
+   "bytes": 475181,
+   "sha256": "1c0ad64b0f59bebcdc9375cf2be74f165de5bc2eca48ae0f0fba18bcadae6033",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00124.jpg",
+   "bytes": 501529,
+   "sha256": "65e1aeca7fe19a8074e073c0855b37d85de1ee40973ff7929751206ab1bd8e44",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00125.jpg",
+   "bytes": 526299,
+   "sha256": "1d67f6c2096f563a9f21eabe45b18100eac389191da45c8e3d3bafaf368d6364",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00126.jpg",
+   "bytes": 505604,
+   "sha256": "a63f8c0d23007f1ab5620de13ee051fce50992fbb4517433fbb6d1519483a57e",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00127.jpg",
+   "bytes": 512739,
+   "sha256": "f11ab52acbb084a054c2fb275343dd6307b9510259b10839ceb03ecc04c2e974",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00128.jpg",
+   "bytes": 500426,
+   "sha256": "35eb29986dbac0a9976b4d33e6438e19b42751ba5cffdd46fba7cd048a75ca4c",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00129.jpg",
+   "bytes": 467320,
+   "sha256": "bf9be8d95477ae0f324bf5548ba1b3b6164ccc8fae7d0a7925735b31fd5b1f42",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00130.jpg",
+   "bytes": 465948,
+   "sha256": "9af954b64de31074af6e68b225965cc91719c9bcada7c0a5a62986a7d68ea819",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00131.jpg",
+   "bytes": 468868,
+   "sha256": "7de41d39506489736b086113115218796fa90225464e9cf8b0f558d69d83cc03",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00132.jpg",
+   "bytes": 460198,
+   "sha256": "c9e0caaa453e53319d9b514191b026f483cdc27af8d3acc9ba60de5b1ee881a9",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00133.jpg",
+   "bytes": 465320,
+   "sha256": "7002e1a36701f7b8485d04dce84b682bc264b5de03c3293cadd1a7a4c2f9e953",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00134.jpg",
+   "bytes": 472909,
+   "sha256": "af75ef1b8e5f4c1f0dacfddbb395a7c32e8d0899a33bbeb5ee7f6cb928965b1e",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00135.jpg",
+   "bytes": 460322,
+   "sha256": "44fdfe42916b69625fde4f7b57437951d2056638d7ac51bae2a5421cb805001e",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00136.jpg",
+   "bytes": 450000,
+   "sha256": "9fb593ec5ceee94b3a017b2467dee5a4aa64794c20f3730cc136647bd3d53ff7",
+   "role": "keyframe"
+  },
+  {
+   "path": "keyframes/k00137.jpg",
+   "bytes": 451170,
+   "sha256": "7b683e957e21c424e6dcd42b5659934cd7de4b54b8fa6f78963b797e018cebf8",
+   "role": "keyframe"
+  },
+  {
+   "path": "streams/arkit-nonlidar-2018/arkit_poses.csv.gz",
+   "bytes": 240474,
+   "sha256": "1c229fca6a8be34bab762b0af2b569272035fbb4eec7a755442a0f8af0751346",
+   "role": "stream"
+  },
+  {
+   "path": "streams/arkit-nonlidar-2018/heading.csv.gz",
+   "bytes": 59272,
+   "sha256": "a1214ef39ef1f95bce927fc98faa4aa27a48f2aba664c6cf64de3eb42a669f9c",
+   "role": "stream"
+  },
+  {
+   "path": "streams/arkit-nonlidar-2018/imu_raw.csv.gz",
+   "bytes": 588195,
+   "sha256": "dd6edaeee1dd90fcda006cab0dad24733448ab9a6a6dd527882e3a9f31d54cf8",
+   "role": "stream"
+  },
+  {
+   "path": "streams/arkit-nonlidar-2018/location.csv.gz",
+   "bytes": 12508,
+   "sha256": "d92976c3f32db96ebca5d6b6a9b94f169469cb59bd81991b49252eb5df908c24",
+   "role": "stream"
+  },
+  {
+   "path": "streams/arkit-nonlidar-2018/motion.csv.gz",
+   "bytes": 1747904,
+   "sha256": "efca7f03138f5eb288ae027820596146f2f7c93a1f60875d86526525df52dc94",
+   "role": "stream"
+  }
+ ]
+}

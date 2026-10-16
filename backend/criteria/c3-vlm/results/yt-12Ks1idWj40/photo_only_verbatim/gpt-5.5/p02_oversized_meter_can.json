@@ -1,0 +1,26 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"hasLargeOrOversizedMeterCan\":false,\"meterCanLabel\":\"normal_meter_can\",\"insufficientEvidence\":false,\"evidence\":\"The round electric meter is mounted in a compact square meter socket/can that is only modestly larger than the meter face.\",\"notes\":\"Large adjacent gray/white cabinets and disconnect/load equipment are separate enclosures and not counted as the meter can.\"}",
+ "json": {
+  "hasLargeOrOversizedMeterCan": false,
+  "meterCanLabel": "normal_meter_can",
+  "insufficientEvidence": false,
+  "evidence": "The round electric meter is mounted in a compact square meter socket/can that is only modestly larger than the meter face.",
+  "notes": "Large adjacent gray/white cabinets and disconnect/load equipment are separate enclosures and not counted as the meter can."
+ },
+ "usage": {
+  "input_tokens": 23713,
+  "cached_tokens": 0,
+  "output_tokens": 195,
+  "reasoning_tokens": 111
+ },
+ "cost_usd": 0.124415,
+ "latency_s": 5.08,
+ "stop": "completed",
+ "prompt_id": "p02_oversized_meter_can",
+ "house": "yt-12Ks1idWj40",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p02": "normal_meter_can"
+ }
+}

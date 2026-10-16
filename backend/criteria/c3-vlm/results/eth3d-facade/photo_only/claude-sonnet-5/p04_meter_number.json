@@ -1,0 +1,24 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"meter_number\": \"\", \"clean_decision\": false, \"reasoning\": \"These photos show exterior views of a large brick institutional building, a bike rack sculpture, and staircases/entrances. No electric utility meter is visible in any of the 15 photos.\"}",
+ "json": {
+  "meter_number": "",
+  "clean_decision": false,
+  "reasoning": "These photos show exterior views of a large brick institutional building, a bike rack sculpture, and staircases/entrances. No electric utility meter is visible in any of the 15 photos."
+ },
+ "usage": {
+  "input_tokens": 310,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 32171,
+  "output_tokens": 85
+ },
+ "cost_usd": 0.0079042,
+ "latency_s": 2.44,
+ "stop": "end_turn",
+ "prompt_id": "p04_meter_number",
+ "house": "eth3d-facade",
+ "variant": "photo_only",
+ "verdicts": {
+  "p04": "none"
+ }
+}

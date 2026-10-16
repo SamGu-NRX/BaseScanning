@@ -1,0 +1,33 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"reference_object\": \"window AC unit and window (~2.5 ft wide) on rear wall in photos 14/15, used as scale\", \"distance_ft\": null, \"front_clearance_ft\": null, \"drive_path_ft\": null, \"requires_member_action\": false, \"decision\": \"manual_review\", \"needs_more_photos\": true, \"missing_views\": [\"clear photo of the electrical meter/service panel location on the house\", \"wider shot showing the wall segment between the meter and the candidate battery wall (photos 14/15)\"], \"justification\": \"The photos show several exterior walls with plausible open space for a battery (e.g., photos 14 and 15 show a long cinder-block-footed wall with grass/dirt ground, ~3ft+ gaps between windows and AC unit, and apparently open yard in front). However, no photo clearly shows the electrical meter itself, so the harness starting point and routed distance cannot be established. Without knowing the meter location relative to the candidate wall, the run length (possibly through brush seen in photos 7/9/12 or around porch/lattice areas in photo 13) cannot be judged, and some walls are partly obscured by branches/shrubs (photos 7, 9, 12) or lead to deck/lattice clutter (photo 13) that would need clearing. Because the meter position is not visible in any of the 16 photos, this case requires additional photos before a pass/reject determination can be made.\"}",
+ "json": {
+  "reference_object": "window AC unit and window (~2.5 ft wide) on rear wall in photos 14/15, used as scale",
+  "distance_ft": null,
+  "front_clearance_ft": null,
+  "drive_path_ft": null,
+  "requires_member_action": false,
+  "decision": "manual_review",
+  "needs_more_photos": true,
+  "missing_views": [
+   "clear photo of the electrical meter/service panel location on the house",
+   "wider shot showing the wall segment between the meter and the candidate battery wall (photos 14/15)"
+  ],
+  "justification": "The photos show several exterior walls with plausible open space for a battery (e.g., photos 14 and 15 show a long cinder-block-footed wall with grass/dirt ground, ~3ft+ gaps between windows and AC unit, and apparently open yard in front). However, no photo clearly shows the electrical meter itself, so the harness starting point and routed distance cannot be established. Without knowing the meter location relative to the candidate wall, the run length (possibly through brush seen in photos 7/9/12 or around porch/lattice areas in photo 13) cannot be judged, and some walls are partly obscured by branches/shrubs (photos 7, 9, 12) or lead to deck/lattice clutter (photo 13) that would need clearing. Because the meter position is not visible in any of the 16 photos, this case requires additional photos before a pass/reject determination can be made."
+ },
+ "usage": {
+  "input_tokens": 2229,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 6885,
+  "output_tokens": 1257
+ },
+ "cost_usd": 0.018405,
+ "latency_s": 16.13,
+ "stop": "end_turn",
+ "prompt_id": "p08_battery_space",
+ "house": "yt-0gotY_syWWU",
+ "variant": "photo_only",
+ "verdicts": {
+  "p08": "manual_review"
+ }
+}

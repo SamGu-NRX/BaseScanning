@@ -1,0 +1,23 @@
+{
+ "model": "claude-opus-5-5",
+ "text": "{\"decision\": \"manual_review\", \"justification\": \"The photos show only the home's exterior: a gas meter, an AC condenser with its small disconnect box, a single electric meter socket, siding and a deck. No main breaker panel, open breaker view or main disconnect enclosure is pictured, so the number of independent service mains cannot be determined.\"}",
+ "json": {
+  "decision": "manual_review",
+  "justification": "The photos show only the home's exterior: a gas meter, an AC condenser with its small disconnect box, a single electric meter socket, siding and a deck. No main breaker panel, open breaker view or main disconnect enclosure is pictured, so the number of independent service mains cannot be determined."
+ },
+ "usage": {
+  "input_tokens": 5479,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "output_tokens": 171
+ },
+ "cost_usd": 0.025336,
+ "latency_s": 3.78,
+ "stop": "end_turn",
+ "prompt_id": "p09_main_panel_type",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p09": "manual_review"
+ }
+}

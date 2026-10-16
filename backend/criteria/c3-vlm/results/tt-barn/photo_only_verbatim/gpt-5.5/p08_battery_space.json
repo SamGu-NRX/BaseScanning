@@ -1,0 +1,30 @@
+{
+ "model": "gpt-5.5",
+ "text": "{\"requires_member_action\": false, \"justification\": \"A clear workable spot is visible on the same exterior wall to the left of the meter, on the blank wall area left of the louvered vents; the ground is flat gravel/concrete with wide-open space in front and no facing obstruction. The harness can run continuously along that same wall from the meter, passing the vents/windows without crossing a door or garage, and the route is clearly shown in the wide shots.\", \"decision\": \"pass\", \"reference_object\": \"horizontal siding courses assumed about 8 in tall\", \"needs_more_photos\": false, \"distance_ft\": 14, \"missing_views\": [], \"front_clearance_ft\": 99, \"drive_path_ft\": 12}",
+ "json": {
+  "requires_member_action": false,
+  "justification": "A clear workable spot is visible on the same exterior wall to the left of the meter, on the blank wall area left of the louvered vents; the ground is flat gravel/concrete with wide-open space in front and no facing obstruction. The harness can run continuously along that same wall from the meter, passing the vents/windows without crossing a door or garage, and the route is clearly shown in the wide shots.",
+  "decision": "pass",
+  "reference_object": "horizontal siding courses assumed about 8 in tall",
+  "needs_more_photos": false,
+  "distance_ft": 14,
+  "missing_views": [],
+  "front_clearance_ft": 99,
+  "drive_path_ft": 12
+ },
+ "usage": {
+  "input_tokens": 32778,
+  "cached_tokens": 5888,
+  "output_tokens": 1698,
+  "reasoning_tokens": 1552
+ },
+ "cost_usd": 0.188334,
+ "latency_s": 22.01,
+ "stop": "completed",
+ "prompt_id": "p08_battery_space",
+ "house": "tt-barn",
+ "variant": "photo_only_verbatim",
+ "verdicts": {
+  "p08": "pass"
+ }
+}

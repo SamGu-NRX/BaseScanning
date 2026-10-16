@@ -1,0 +1,16 @@
+{
+ "house": "tt-barn",
+ "frames": 137,
+ "models": 1,
+ "model_sizes": [
+  137
+ ],
+ "registered": 137,
+ "points3D": 21336,
+ "mean_reproj_px": 0.5060685840191103,
+ "seconds": {
+  "extract": 42.914241790771484,
+  "match": 250.36856508255005,
+  "map": 27.004445791244507
+ }
+}

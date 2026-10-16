@@ -1,0 +1,28 @@
+{
+ "model": "claude-sonnet-5",
+ "text": "{\"main_panel_location\": \"not_visible\", \"meter_relative_to_garage\": \"non_garage_wall\", \"relationship\": \"insufficient_evidence\", \"subtype\": \"no_main_panel_photo\", \"confidence\": \"high\", \"rationale\": \"Photos show an exterior gas meter, an electric meter (photo 11), AC units, and house siding/foundation, but no main electrical panel is visible in any photo. There is also no visible garage door or garage structure to establish a garage-relative position. Without a photo of the main panel, the geometric relationship to the meter cannot be determined.\", \"insufficientEvidence\": true}",
+ "json": {
+  "main_panel_location": "not_visible",
+  "meter_relative_to_garage": "non_garage_wall",
+  "relationship": "insufficient_evidence",
+  "subtype": "no_main_panel_photo",
+  "confidence": "high",
+  "rationale": "Photos show an exterior gas meter, an electric meter (photo 11), AC units, and house siding/foundation, but no main electrical panel is visible in any photo. There is also no visible garage door or garage structure to establish a garage-relative position. Without a photo of the main panel, the geometric relationship to the meter cannot be determined.",
+  "insufficientEvidence": true
+ },
+ "usage": {
+  "input_tokens": 512,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 4005,
+  "output_tokens": 203
+ },
+ "cost_usd": 0.003855,
+ "latency_s": 4.37,
+ "stop": "end_turn",
+ "prompt_id": "p05_meter_panel_relationship",
+ "house": "yt-5-M-7f35Tyg",
+ "variant": "photo_only",
+ "verdicts": {
+  "p05": "insufficient_evidence"
+ }
+}

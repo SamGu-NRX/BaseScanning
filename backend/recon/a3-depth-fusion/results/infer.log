@@ -1,0 +1,357 @@
+Traceback (most recent call last):
+  File "/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal/breadth/a3-depth-fusion/infer.py", line 169, in <module>
+    main()
+  File "/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal/breadth/a3-depth-fusion/infer.py", line 145, in main
+    model = build(args.model)
+            ^^^^^^^^^^^^^^^^^
+  File "/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal/breadth/a3-depth-fusion/infer.py", line 119, in build
+    return MoGe2(repo)
+           ^^^^^^^^^^^
+  File "/cursor/stores/bc-5bc79926-909c-4cfb-aa62-24b3a44735e2/internal/breadth/a3-depth-fusion/infer.py", line 39, in __init__
+    from moge.model.v2 import MoGeModel
+ModuleNotFoundError: No module named 'moge'
+Cannot import NystromAttention, you can not run original UniDepth. UniDepthV2 is available.
+Not loading pretrained weights for backbone
+electro unidepth2-vits DSC_9258 5.2s median depth 5.28 m
+electro unidepth2-vits DSC_9259 4.9s median depth 4.93 m
+electro unidepth2-vits DSC_9260 4.8s median depth 5.58 m
+electro unidepth2-vits DSC_9261 5.1s median depth 7.84 m
+electro unidepth2-vits DSC_9262 4.9s median depth 6.92 m
+electro unidepth2-vits DSC_9263 4.9s median depth 7.94 m
+electro unidepth2-vits DSC_9264 4.4s median depth 8.61 m
+electro unidepth2-vits DSC_9265 5.0s median depth 13.86 m
+electro unidepth2-vits DSC_9266 4.7s median depth 7.19 m
+electro unidepth2-vits DSC_9267 5.2s median depth 11.72 m
+electro unidepth2-vits DSC_9268 4.9s median depth 20.05 m
+electro unidepth2-vits DSC_9269 4.5s median depth 9.35 m
+electro unidepth2-vits DSC_9270 5.6s median depth 8.54 m
+electro unidepth2-vits DSC_9271 4.6s median depth 7.67 m
+electro unidepth2-vits DSC_9272 5.8s median depth 7.20 m
+electro unidepth2-vits DSC_9273 7.2s median depth 5.68 m
+electro unidepth2-vits DSC_9274 7.9s median depth 6.21 m
+electro unidepth2-vits DSC_9275 7.4s median depth 17.76 m
+electro unidepth2-vits DSC_9276 7.9s median depth 10.37 m
+electro unidepth2-vits DSC_9277 8.0s median depth 10.10 m
+electro unidepth2-vits DSC_9278 8.0s median depth 7.52 m
+electro unidepth2-vits DSC_9280 7.8s median depth 6.90 m
+electro unidepth2-vits DSC_9281 8.4s median depth 21.92 m
+electro unidepth2-vits DSC_9282 8.3s median depth 5.51 m
+electro unidepth2-vits DSC_9283 7.0s median depth 5.44 m
+electro unidepth2-vits DSC_9284 5.6s median depth 14.27 m
+electro unidepth2-vits DSC_9285 5.9s median depth 7.93 m
+electro unidepth2-vits DSC_9287 5.5s median depth 20.22 m
+electro unidepth2-vits DSC_9289 6.0s median depth 57.23 m
+electro unidepth2-vits DSC_9290 6.2s median depth 12.84 m
+electro unidepth2-vits DSC_9291 5.8s median depth 193.51 m
+electro unidepth2-vits DSC_9292 6.0s median depth 65.63 m
+electro unidepth2-vits DSC_9293 6.3s median depth 7.18 m
+electro unidepth2-vits DSC_9294 5.4s median depth 3.38 m
+electro unidepth2-vits DSC_9295 6.0s median depth 3.89 m
+electro unidepth2-vits DSC_9296 6.2s median depth 3.83 m
+electro unidepth2-vits DSC_9297 5.7s median depth 4.07 m
+electro unidepth2-vits DSC_9298 6.2s median depth 32.87 m
+electro unidepth2-vits DSC_9299 6.4s median depth 5.20 m
+electro unidepth2-vits DSC_9300 6.3s median depth 4.93 m
+electro unidepth2-vits DSC_9301 6.1s median depth 5.05 m
+electro unidepth2-vits DSC_9302 6.2s median depth 5.23 m
+electro unidepth2-vits DSC_9303 6.5s median depth 4.88 m
+Downloading: "https://huggingface.co/JUGGHM/Metric3D/resolve/main/metric_depth_vit_small_800k.pth" to /home/ubuntu/.cache/torch/hub/checkpoints/metric_depth_vit_small_800k.pth
+  0%|          | 0.00/143M [00:00<?, ?B/s]  0%|          | 128k/143M [00:00<06:54, 362kB/s]  2%|▏         | 2.50M/143M [00:00<00:20, 7.26MB/s]  5%|▍         | 6.88M/143M [00:00<00:07, 18.1MB/s]  7%|▋         | 10.4M/143M [00:00<00:05, 23.3MB/s] 13%|█▎        | 18.1M/143M [00:00<00:03, 39.9MB/s] 17%|█▋        | 23.9M/143M [00:00<00:02, 45.8MB/s] 20%|██        | 29.0M/143M [00:01<00:03, 36.9MB/s] 23%|██▎       | 33.2M/143M [00:01<00:03, 36.9MB/s] 27%|██▋       | 38.2M/143M [00:01<00:02, 40.7MB/s] 31%|███       | 44.1M/143M [00:01<00:02, 45.9MB/s] 34%|███▍      | 49.1M/143M [00:01<00:02, 46.7MB/s] 38%|███▊      | 54.1M/143M [00:01<00:01, 48.0MB/s] 42%|████▏     | 59.6M/143M [00:01<00:01, 50.6MB/s] 46%|████▌     | 65.9M/143M [00:01<00:01, 54.7MB/s] 53%|█████▎    | 76.0M/143M [00:01<00:01, 69.6MB/s] 62%|██████▏   | 88.2M/143M [00:02<00:00, 86.6MB/s] 69%|██████▊   | 98.2M/143M [00:02<00:00, 91.9MB/s] 76%|███████▌  | 109M/143M [00:02<00:00, 96.7MB/s]  83%|████████▎ | 118M/143M [00:02<00:00, 98.2MB/s] 89%|████████▉ | 128M/143M [00:02<00:00, 74.3MB/s] 95%|█████████▍| 136M/143M [00:02<00:00, 52.6MB/s] 99%|█████████▉| 142M/143M [00:03<00:00, 41.1MB/s]100%|██████████| 143M/143M [00:03<00:00, 48.0MB/s]
+electro metric3d2-vits DSC_9258 14.5s median depth 5.16 m
+electro metric3d2-vits DSC_9259 14.0s median depth 4.64 m
+electro metric3d2-vits DSC_9260 8.6s median depth 4.88 m
+electro metric3d2-vits DSC_9261 3.0s median depth 7.47 m
+electro metric3d2-vits DSC_9262 3.1s median depth 7.79 m
+electro metric3d2-vits DSC_9263 3.1s median depth 6.67 m
+electro metric3d2-vits DSC_9264 3.7s median depth 7.54 m
+electro metric3d2-vits DSC_9265 12.7s median depth 10.46 m
+electro metric3d2-vits DSC_9266 12.3s median depth 5.62 m
+electro metric3d2-vits DSC_9267 16.6s median depth 8.76 m
+electro metric3d2-vits DSC_9268 16.8s median depth 15.74 m
+electro metric3d2-vits DSC_9269 15.2s median depth 7.52 m
+electro metric3d2-vits DSC_9270 11.7s median depth 7.02 m
+electro metric3d2-vits DSC_9271 22.5s median depth 6.51 m
+electro metric3d2-vits DSC_9272 21.4s median depth 5.84 m
+electro metric3d2-vits DSC_9273 14.5s median depth 5.13 m
+electro metric3d2-vits DSC_9274 12.1s median depth 5.19 m
+electro metric3d2-vits DSC_9275 11.5s median depth 14.69 m
+electro metric3d2-vits DSC_9276 11.4s median depth 7.78 m
+electro metric3d2-vits DSC_9277 12.0s median depth 9.47 m
+electro metric3d2-vits DSC_9278 14.5s median depth 7.38 m
+electro metric3d2-vits DSC_9280 15.0s median depth 5.53 m
+electro metric3d2-vits DSC_9281 15.5s median depth 16.46 m
+electro metric3d2-vits DSC_9282 10.6s median depth 5.01 m
+electro metric3d2-vits DSC_9283 12.3s median depth 4.49 m
+electro metric3d2-vits DSC_9284 11.7s median depth 10.57 m
+electro metric3d2-vits DSC_9285 12.7s median depth 6.50 m
+electro metric3d2-vits DSC_9287 13.4s median depth 16.52 m
+electro metric3d2-vits DSC_9289 20.7s median depth 7.74 m
+electro metric3d2-vits DSC_9290 10.8s median depth 14.05 m
+electro metric3d2-vits DSC_9291 13.1s median depth 12.25 m
+electro metric3d2-vits DSC_9292 11.4s median depth 5.57 m
+electro metric3d2-vits DSC_9293 13.3s median depth 5.08 m
+electro metric3d2-vits DSC_9294 13.5s median depth 4.13 m
+electro metric3d2-vits DSC_9295 14.6s median depth 3.74 m
+electro metric3d2-vits DSC_9296 20.0s median depth 3.62 m
+electro metric3d2-vits DSC_9297 26.4s median depth 3.14 m
+electro metric3d2-vits DSC_9298 27.1s median depth 8.59 m
+electro metric3d2-vits DSC_9299 26.1s median depth 4.31 m
+electro metric3d2-vits DSC_9300 25.7s median depth 4.20 m
+electro metric3d2-vits DSC_9301 22.9s median depth 4.22 m
+electro metric3d2-vits DSC_9302 16.5s median depth 4.51 m
+electro metric3d2-vits DSC_9303 14.2s median depth 4.52 m
+electro moge2-vitl DSC_9258 8.1s median depth 4.38 m
+electro moge2-vitl DSC_9259 56.4s median depth 3.78 m
+electro moge2-vitl DSC_9260 18.9s median depth 4.91 m
+electro moge2-vitl DSC_9261 7.1s median depth 7.47 m
+electro moge2-vitl DSC_9262 7.2s median depth 7.01 m
+electro moge2-vitl DSC_9263 7.9s median depth 6.49 m
+electro moge2-vitl DSC_9264 12.1s median depth 6.34 m
+electro moge2-vitl DSC_9265 64.2s median depth 5.81 m
+electro moge2-vitl DSC_9266 29.5s median depth 4.61 m
+electro moge2-vitl DSC_9267 25.5s median depth 6.02 m
+electro moge2-vitl DSC_9268 24.3s median depth 10.05 m
+electro moge2-vitl DSC_9269 21.2s median depth 7.80 m
+electro moge2-vitl DSC_9270 15.3s median depth 7.44 m
+electro moge2-vitl DSC_9271 7.0s median depth 6.75 m
+electro moge2-vitl DSC_9272 7.1s median depth 5.90 m
+electro moge2-vitl DSC_9273 6.9s median depth 4.79 m
+electro moge2-vitl DSC_9274 6.8s median depth 5.15 m
+electro moge2-vitl DSC_9275 7.1s median depth 17.64 m
+electro moge2-vitl DSC_9276 7.0s median depth 4.09 m
+electro moge2-vitl DSC_9277 7.1s median depth 9.35 m
+electro moge2-vitl DSC_9278 7.8s median depth 6.98 m
+electro moge2-vitl DSC_9280 65.1s median depth 3.91 m
+electro moge2-vitl DSC_9281 73.6s median depth 11.34 m
+electro moge2-vitl DSC_9282 25.6s median depth 4.78 m
+electro moge2-vitl DSC_9283 29.3s median depth 4.13 m
+electro moge2-vitl DSC_9284 23.1s median depth 8.57 m
+electro moge2-vitl DSC_9285 21.7s median depth 6.16 m
+electro moge2-vitl DSC_9287 30.5s median depth 12.83 m
+electro moge2-vitl DSC_9289 24.7s median depth 9.26 m
+electro moge2-vitl DSC_9290 21.3s median depth 3.80 m
+electro moge2-vitl DSC_9291 26.9s median depth 9.59 m
+electro moge2-vitl DSC_9292 27.5s median depth 7.81 m
+electro moge2-vitl DSC_9293 24.3s median depth 3.52 m
+electro moge2-vitl DSC_9294 125.4s median depth 3.37 m
+electro moge2-vitl DSC_9295 199.0s median depth 2.96 m
+Cannot import NystromAttention, you can not run original UniDepth. UniDepthV2 is available.
+Not loading pretrained weights for backbone
+electro moge2-vitl DSC_9296 327.8s median depth 3.07 m
+electro moge2-vitl DSC_9297 159.2s median depth 2.59 m
+electro moge2-vitl DSC_9298 252.5s median depth 5.53 m
+electro moge2-vitl DSC_9299 193.4s median depth 4.68 m
+electro moge2-vitl DSC_9300 145.8s median depth 4.42 m
+facade moge2-vits DSC_0324 10.3s median depth 12.99 m
+facade moge2-vits DSC_0325 6.7s median depth 13.28 m
+facade moge2-vits DSC_0326 6.8s median depth 11.77 m
+facade moge2-vits DSC_0327 7.0s median depth 10.42 m
+facade moge2-vits DSC_0328 7.1s median depth 10.80 m
+facade moge2-vits DSC_0329 7.0s median depth 8.80 m
+facade moge2-vits DSC_0330 7.3s median depth 10.00 m
+facade moge2-vits DSC_0331 8.1s median depth 10.91 m
+facade moge2-vits DSC_0332 6.9s median depth 12.83 m
+facade moge2-vits DSC_0333 6.8s median depth 13.06 m
+facade moge2-vits DSC_0334 7.0s median depth 13.40 m
+facade moge2-vits DSC_0335 7.0s median depth 14.38 m
+facade moge2-vits DSC_0336 6.9s median depth 14.41 m
+facade moge2-vits DSC_0337 7.0s median depth 13.14 m
+facade moge2-vits DSC_0338 7.5s median depth 13.10 m
+facade moge2-vits DSC_0339 7.5s median depth 13.01 m
+facade moge2-vits DSC_0340 7.4s median depth 12.66 m
+facade moge2-vits DSC_0341 8.1s median depth 13.30 m
+facade moge2-vits DSC_0342 6.6s median depth 13.89 m
+facade moge2-vits DSC_0343 6.7s median depth 13.87 m
+facade moge2-vits DSC_0344 6.9s median depth 13.75 m
+facade moge2-vits DSC_0345 4.7s median depth 13.56 m
+facade moge2-vits DSC_0346 3.9s median depth 13.01 m
+facade moge2-vits DSC_0347 4.0s median depth 13.31 m
+facade moge2-vits DSC_0348 3.9s median depth 13.79 m
+facade moge2-vits DSC_0349 4.0s median depth 13.60 m
+facade moge2-vits DSC_0350 3.9s median depth 13.60 m
+facade moge2-vits DSC_0351 3.8s median depth 12.82 m
+facade moge2-vits DSC_0352 4.0s median depth 12.68 m
+facade moge2-vits DSC_0353 3.9s median depth 12.10 m
+facade moge2-vits DSC_0354 3.9s median depth 11.70 m
+facade moge2-vits DSC_0355 3.9s median depth 11.35 m
+facade moge2-vits DSC_0356 3.8s median depth 11.39 m
+facade moge2-vits DSC_0357 3.9s median depth 11.40 m
+facade moge2-vits DSC_0358 3.9s median depth 12.15 m
+facade moge2-vits DSC_0359 3.9s median depth 11.66 m
+facade moge2-vits DSC_0360 3.8s median depth 11.08 m
+facade moge2-vits DSC_0361 4.2s median depth 10.14 m
+facade moge2-vits DSC_0362 4.2s median depth 9.67 m
+facade moge2-vits DSC_0363 3.9s median depth 10.21 m
+facade moge2-vits DSC_0364 3.9s median depth 12.32 m
+facade moge2-vits DSC_0365 3.8s median depth 14.26 m
+facade moge2-vits DSC_0366 3.9s median depth 14.34 m
+facade moge2-vits DSC_0386 3.9s median depth 17.05 m
+facade moge2-vits DSC_0387 3.9s median depth 14.39 m
+facade moge2-vits DSC_0388 3.9s median depth 13.82 m
+facade moge2-vits DSC_0389 3.9s median depth 12.45 m
+facade moge2-vits DSC_0390 3.9s median depth 8.65 m
+facade moge2-vits DSC_0391 4.1s median depth 9.61 m
+facade moge2-vits DSC_0392 4.0s median depth 8.84 m
+facade moge2-vits DSC_0393 4.0s median depth 10.24 m
+facade moge2-vits DSC_0394 4.1s median depth 12.44 m
+facade moge2-vits DSC_0395 4.0s median depth 10.57 m
+facade moge2-vits DSC_0396 4.1s median depth 10.31 m
+facade moge2-vits DSC_0397 4.0s median depth 10.18 m
+facade moge2-vits DSC_0398 4.0s median depth 11.42 m
+facade moge2-vits DSC_0399 3.9s median depth 11.44 m
+facade moge2-vits DSC_0400 4.2s median depth 11.31 m
+facade moge2-vits DSC_0401 4.0s median depth 11.46 m
+facade moge2-vits DSC_0402 7.4s median depth 9.92 m
+facade moge2-vits DSC_0404 16.4s median depth 10.80 m
+facade moge2-vits DSC_0405 18.6s median depth 10.08 m
+facade moge2-vits DSC_0406 17.9s median depth 10.88 m
+facade moge2-vits DSC_0407 15.3s median depth 12.02 m
+facade moge2-vits DSC_0408 18.8s median depth 13.42 m
+facade moge2-vits DSC_0409 15.2s median depth 14.41 m
+facade moge2-vits DSC_0410 15.5s median depth 15.34 m
+facade moge2-vits DSC_0411 14.9s median depth 15.80 m
+facade moge2-vits DSC_0412 11.1s median depth 13.70 m
+facade moge2-vits DSC_0413 9.8s median depth 13.16 m
+facade moge2-vits DSC_0414 9.1s median depth 12.06 m
+facade moge2-vits DSC_0415 9.1s median depth 11.92 m
+facade moge2-vits DSC_0419 9.5s median depth 9.57 m
+facade moge2-vits DSC_0420 9.8s median depth 10.57 m
+facade moge2-vits DSC_0421 9.1s median depth 14.81 m
+facade moge2-vits DSC_0422 9.8s median depth 16.15 m
+Cannot import NystromAttention, you can not run original UniDepth. UniDepthV2 is available.
+Not loading pretrained weights for backbone
+facade unidepth2-vits DSC_0324 5.5s median depth 14.77 m
+facade unidepth2-vits DSC_0325 4.9s median depth 14.83 m
+facade unidepth2-vits DSC_0326 4.9s median depth 12.35 m
+facade unidepth2-vits DSC_0327 3.4s median depth 10.75 m
+facade unidepth2-vits DSC_0328 4.0s median depth 10.91 m
+facade unidepth2-vits DSC_0329 3.9s median depth 11.21 m
+facade unidepth2-vits DSC_0330 4.8s median depth 12.98 m
+facade unidepth2-vits DSC_0331 5.6s median depth 12.99 m
+facade unidepth2-vits DSC_0332 5.8s median depth 15.31 m
+facade unidepth2-vits DSC_0333 5.3s median depth 16.23 m
+facade unidepth2-vits DSC_0334 5.3s median depth 22.16 m
+facade unidepth2-vits DSC_0335 5.7s median depth 23.83 m
+facade unidepth2-vits DSC_0336 5.1s median depth 39.73 m
+facade unidepth2-vits DSC_0337 4.9s median depth 43.15 m
+facade unidepth2-vits DSC_0338 4.7s median depth 41.07 m
+facade unidepth2-vits DSC_0339 5.0s median depth 49.65 m
+facade unidepth2-vits DSC_0340 5.0s median depth 36.54 m
+facade unidepth2-vits DSC_0341 4.8s median depth 79.71 m
+facade unidepth2-vits DSC_0342 2.6s median depth 65.06 m
+facade unidepth2-vits DSC_0343 5.3s median depth 70.84 m
+facade unidepth2-vits DSC_0344 5.6s median depth 76.06 m
+facade unidepth2-vits DSC_0345 5.8s median depth 73.39 m
+facade unidepth2-vits DSC_0346 5.1s median depth 63.62 m
+facade unidepth2-vits DSC_0347 5.4s median depth 42.06 m
+facade unidepth2-vits DSC_0348 5.0s median depth 26.51 m
+facade unidepth2-vits DSC_0349 4.6s median depth 28.98 m
+facade unidepth2-vits DSC_0350 5.1s median depth 21.46 m
+facade unidepth2-vits DSC_0351 4.7s median depth 18.31 m
+facade unidepth2-vits DSC_0352 5.1s median depth 15.96 m
+facade unidepth2-vits DSC_0353 4.9s median depth 18.18 m
+facade unidepth2-vits DSC_0354 4.3s median depth 26.30 m
+facade unidepth2-vits DSC_0355 4.0s median depth 19.34 m
+facade unidepth2-vits DSC_0356 5.1s median depth 18.24 m
+facade unidepth2-vits DSC_0357 5.7s median depth 16.07 m
+facade unidepth2-vits DSC_0358 5.4s median depth 14.20 m
+facade unidepth2-vits DSC_0359 4.8s median depth 13.28 m
+facade unidepth2-vits DSC_0360 5.1s median depth 12.42 m
+facade unidepth2-vits DSC_0361 5.4s median depth 12.25 m
+facade unidepth2-vits DSC_0362 5.0s median depth 11.94 m
+facade unidepth2-vits DSC_0363 5.1s median depth 10.41 m
+facade unidepth2-vits DSC_0364 4.8s median depth 11.76 m
+facade unidepth2-vits DSC_0365 4.9s median depth 13.54 m
+facade unidepth2-vits DSC_0366 5.3s median depth 14.97 m
+facade unidepth2-vits DSC_0386 5.0s median depth 18.87 m
+facade unidepth2-vits DSC_0387 4.8s median depth 15.99 m
+facade unidepth2-vits DSC_0388 7.1s median depth 15.97 m
+facade unidepth2-vits DSC_0389 8.0s median depth 13.53 m
+facade unidepth2-vits DSC_0390 7.3s median depth 10.00 m
+facade unidepth2-vits DSC_0391 7.7s median depth 10.92 m
+facade unidepth2-vits DSC_0392 7.9s median depth 10.30 m
+facade unidepth2-vits DSC_0393 8.1s median depth 11.19 m
+facade unidepth2-vits DSC_0394 7.3s median depth 21.13 m
+facade unidepth2-vits DSC_0395 7.9s median depth 14.87 m
+facade unidepth2-vits DSC_0396 7.7s median depth 13.07 m
+facade unidepth2-vits DSC_0397 7.5s median depth 11.77 m
+facade unidepth2-vits DSC_0398 7.2s median depth 19.93 m
+facade unidepth2-vits DSC_0399 7.0s median depth 25.73 m
+facade unidepth2-vits DSC_0400 8.9s median depth 25.92 m
+facade unidepth2-vits DSC_0401 8.5s median depth 17.52 m
+facade unidepth2-vits DSC_0402 8.3s median depth 13.64 m
+facade unidepth2-vits DSC_0404 7.6s median depth 57.44 m
+facade unidepth2-vits DSC_0405 7.6s median depth 49.35 m
+facade unidepth2-vits DSC_0406 7.7s median depth 45.80 m
+facade unidepth2-vits DSC_0407 7.9s median depth 49.96 m
+facade unidepth2-vits DSC_0408 7.2s median depth 49.31 m
+facade unidepth2-vits DSC_0409 7.6s median depth 50.77 m
+facade unidepth2-vits DSC_0410 7.3s median depth 62.02 m
+facade unidepth2-vits DSC_0411 7.1s median depth 70.24 m
+facade unidepth2-vits DSC_0412 8.0s median depth 64.57 m
+facade unidepth2-vits DSC_0413 7.3s median depth 17.45 m
+facade unidepth2-vits DSC_0414 7.3s median depth 17.66 m
+facade unidepth2-vits DSC_0415 7.4s median depth 18.41 m
+facade unidepth2-vits DSC_0419 8.0s median depth 11.08 m
+facade unidepth2-vits DSC_0420 9.0s median depth 10.21 m
+facade unidepth2-vits DSC_0421 8.3s median depth 17.78 m
+facade unidepth2-vits DSC_0422 8.2s median depth 22.46 m
+facade metric3d2-vits DSC_0324 19.4s median depth 15.89 m
+facade metric3d2-vits DSC_0325 20.0s median depth 16.63 m
+facade metric3d2-vits DSC_0326 19.2s median depth 16.64 m
+facade metric3d2-vits DSC_0327 22.4s median depth 16.56 m
+facade metric3d2-vits DSC_0328 23.0s median depth 15.54 m
+facade metric3d2-vits DSC_0329 21.0s median depth 14.52 m
+facade metric3d2-vits DSC_0330 19.6s median depth 15.45 m
+facade metric3d2-vits DSC_0331 18.9s median depth 16.53 m
+facade metric3d2-vits DSC_0332 19.6s median depth 18.47 m
+facade metric3d2-vits DSC_0333 19.9s median depth 18.94 m
+facade metric3d2-vits DSC_0334 20.3s median depth 19.13 m
+facade metric3d2-vits DSC_0335 21.2s median depth 20.14 m
+facade metric3d2-vits DSC_0336 19.2s median depth 19.31 m
+facade metric3d2-vits DSC_0337 20.5s median depth 20.00 m
+facade metric3d2-vits DSC_0338 17.2s median depth 18.91 m
+facade metric3d2-vits DSC_0339 22.3s median depth 19.45 m
+facade metric3d2-vits DSC_0340 21.3s median depth 18.62 m
+facade metric3d2-vits DSC_0341 20.3s median depth 19.84 m
+facade metric3d2-vits DSC_0342 29.8s median depth 19.71 m
+facade metric3d2-vits DSC_0343 32.4s median depth 19.90 m
+facade metric3d2-vits DSC_0344 30.9s median depth 20.39 m
+facade metric3d2-vits DSC_0345 29.2s median depth 20.31 m
+facade metric3d2-vits DSC_0346 29.8s median depth 20.00 m
+facade metric3d2-vits DSC_0347 29.9s median depth 20.26 m
+facade metric3d2-vits DSC_0348 34.9s median depth 20.16 m
+facade metric3d2-vits DSC_0349 31.0s median depth 19.25 m
+facade metric3d2-vits DSC_0350 30.0s median depth 18.56 m
+facade metric3d2-vits DSC_0351 30.4s median depth 17.84 m
+facade metric3d2-vits DSC_0352 30.7s median depth 17.40 m
+facade metric3d2-vits DSC_0353 32.9s median depth 17.21 m
+facade metric3d2-vits DSC_0354 31.9s median depth 17.73 m
+facade metric3d2-vits DSC_0355 30.9s median depth 17.50 m
+facade metric3d2-vits DSC_0356 32.1s median depth 17.35 m
+facade metric3d2-vits DSC_0357 35.3s median depth 17.01 m
+facade metric3d2-vits DSC_0358 30.7s median depth 17.88 m
+facade metric3d2-vits DSC_0359 28.6s median depth 18.41 m
+facade metric3d2-vits DSC_0360 23.1s median depth 17.24 m
+facade metric3d2-vits DSC_0361 29.8s median depth 15.58 m
+facade metric3d2-vits DSC_0362 22.7s median depth 15.03 m
+facade metric3d2-vits DSC_0363 25.4s median depth 12.65 m
+facade metric3d2-vits DSC_0364 35.0s median depth 11.62 m
+facade metric3d2-vits DSC_0365 36.7s median depth 11.15 m
+facade metric3d2-vits DSC_0366 38.5s median depth 10.11 m
+facade metric3d2-vits DSC_0386 37.1s median depth 15.45 m
+facade metric3d2-vits DSC_0387 29.5s median depth 15.91 m
+facade metric3d2-vits DSC_0388 27.5s median depth 17.26 m
+facade metric3d2-vits DSC_0389 26.4s median depth 17.59 m
+facade metric3d2-vits DSC_0390 25.2s median depth 12.64 m
+facade metric3d2-vits DSC_0391 23.7s median depth 13.36 m
+facade metric3d2-vits DSC_0392 26.9s median depth 13.45 m
+facade metric3d2-vits DSC_0393 24.8s median depth 11.87 m
+facade metric3d2-vits DSC_0394 30.5s median depth 17.68 m
+facade metric3d2-vits DSC_0395 25.7s median depth 13.75 m
+facade metric3d2-vits DSC_0396 21.1s median depth 13.32 m
+facade metric3d2-vits DSC_0397 19.7s median depth 11.31 m
+facade metric3d2-vits DSC_0398 19.2s median depth 15.60 m
+facade metric3d2-vits DSC_0399 20.4s median depth 15.71 m
+facade metric3d2-vits DSC_0400 21.0s median depth 15.05 m
+facade metric3d2-vits DSC_0401 20.0s median depth 15.51 m
