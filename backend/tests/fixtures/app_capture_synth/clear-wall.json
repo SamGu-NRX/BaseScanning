@@ -1,0 +1,10 @@
+{
+  "name": "clear-wall",
+  "seed": 1401,
+  "wall": {"xMin": -1.0, "xMax": 5.0, "height": 2.8, "distance": 2.0},
+  "camera": {"height": 1.45},
+  "meter": {"x": 2.0, "centreHeight": 1.2, "size": [0.45, 0.65, 0.18]},
+  "gasMeter": null,
+  "windows": [{"x": 3.6, "sillHeight": 1.0, "size": [1.2, 1.4]}],
+  "vents": [{"x": 0.4, "centreHeight": 2.45, "size": [0.3, 0.15]}]
+}
