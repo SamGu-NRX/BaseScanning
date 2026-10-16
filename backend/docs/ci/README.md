@@ -1,4 +1,4 @@
-# backend/docs/ci — the proposed backend CI job
+# backend/docs/ci — the proposed backend CI workflow
 
 `backend/docs/ci/backend.yml.proposed` is a ready-to-apply GitHub Actions
 workflow for `backend/**`, and `backend/scripts/ci_local.sh` runs the same
@@ -15,6 +15,20 @@ Aikido — nothing executes a single backend test.
 Agents may not edit `.github/`, so the workflow ships as a reviewed proposal
 instead of a commit.
 
+## What the workflow runs
+
+Two jobs:
+
+- **`backend-checks`** — install, ruff check, ruff format check, import
+  contracts, `make test` (with the four expired SD-96 gate test ids and the
+  cold-restart file deselected by name; see "Known failures"), `make
+  schemas`, `make validate`. Green on alpha as it stands; this is the job a
+  merge signal would require.
+- **`backend-hygiene-known-red`** — `make hygiene` on its own, with
+  `continue-on-error: true`. The step is known red on alpha (see "Known
+  failures"), so it lives outside the required signal while staying visible;
+  the job name says what a failed annotation means.
+
 ## How to apply
 
 Copy **one file**:
@@ -23,8 +37,8 @@ Copy **one file**:
 cp backend/docs/ci/backend.yml.proposed .github/workflows/backend.yml
 ```
 
-That is the whole change. The workflow that activates is the one proved below.
-The applying pull request itself changes `.github/workflows/backend.yml`,
+That is the whole change. The workflow that activates is the one proved
+below. The applying pull request itself changes `.github/workflows/backend.yml`,
 which is inside the workflow's own `paths` filter, so the first run happens on
 that PR before anything merges. Nothing else is touched: no `.github/` edits,
 no `uv.lock` or dependency pins, no thresholds or gate windows, no secrets.
@@ -32,54 +46,68 @@ no `uv.lock` or dependency pins, no thresholds or gate windows, no secrets.
 ## How to run the same steps locally
 
 ```sh
-bash backend/scripts/ci_local.sh               # fails fast: nonzero on the first failing step
-bash backend/scripts/ci_local.sh --keep-going  # runs every step, still exits nonzero if any failed
+bash backend/scripts/ci_local.sh               # fails fast: nonzero on the first failing gating step
+bash backend/scripts/ci_local.sh --keep-going  # runs every step, still exits nonzero if any gating step failed
 ```
 
-The script mirrors the job step for step; the job's `actions/checkout` and
-`astral-sh/setup-uv` steps are environment provisioning with no local
+The script mirrors the workflow job for job: the gating steps of
+`backend-checks` first, the hygiene job last. The job's `actions/checkout`
+and `astral-sh/setup-uv` steps are environment provisioning with no local
 equivalent. Run it from a checkout with uv installed.
+
+The hygiene step runs through a soft wrapper that mirrors the job's
+`continue-on-error: true`: the failure prints and the run still exits 0 when
+only that step failed, exactly like the workflow. A gating-step failure fails
+the run as it fails the job. Step timing uses a portable `now_ms` timer:
+python3 milliseconds when python3 exists, whole-second timestamps otherwise —
+GNU `date`'s `%N` is not available on macOS/BSD, where the team's shared Mac
+runs (Codex P2 on PR #288).
 
 ## Measured proof run
 
-Fresh clone of `SamGu-NRX/BaseScanning`, checked out at `alpha` =
-`4bcbedba` (the planning-time head), branch
-`obv/burst11-bs-backend-ci-proposal`, run with
-`bash backend/scripts/ci_local.sh --keep-going`:
+Fresh clone of `SamGu-NRX/BaseScanning`, branch
+`obv/burst11-bs-backend-ci-proposal` at the restructure head `5e51801a`
+(`alpha` = `4bcbedba` plus this branch's commits), run with
+`/bin/bash backend/scripts/ci_local.sh` on the packet's Debian 13 fleet
+sandbox (8 cores, uv 0.13.1, Python 3.12; the uv cache was warm for this
+run — the session's first sync had downloaded the ~2 GB set once, cold):
 
-The same clone first ran `make test` on **untouched alpha** (`4bcbedba`) as a
-baseline: **4 failed** (exactly the four SD-96 gate tests named below),
-1425 passed, 19 skipped, **14 collection errors** (all of
-`tests/test_capture_cold_restart.py`) in 487.78s — establishing that the
-deselections target precisely the pre-existing failures.
-
-Canonical proof run, per step (start `08:05:13`, end `08:14:13`):
-
-| Job step | Command | Result | Wall time |
+| Step | Command | Result | Wall time |
 |---|---|---|---|
-| Install dependencies (locked) | `uv sync --frozen --extra api` | ok | 0.0s (warm cache; cold sync downloads ~2 GB once) |
-| Ruff check | `uv run --frozen ruff check .` | ok | <0.1s |
-| Ruff format check | `uv run --frozen ruff format --check .` | ok | <0.1s |
-| Import contracts | `uv run --frozen lint-imports` | ok (5 kept, 0 broken) | 0.1s |
-| Tests | `make test` with the deselections | ok — **1425 passed, 19 skipped, 4 deselected**, 8 warnings | 527.3s (pytest 525.91s) |
+| Install dependencies (locked) | `uv sync --frozen --extra api` | ok (warm cache; the session's cold sync downloaded ~2 GB once) | 0.0s |
+| Ruff check | `uv run --frozen ruff check .` | ok | 0.0s |
+| Ruff format check | `uv run --frozen ruff format --check .` | ok | 0.0s |
+| Import contracts | `uv run --frozen lint-imports` | ok (5 kept, 0 broken) | 0.2s |
+| Tests | `make test` with the deselections | ok — **1429 passed, 19 skipped, 4 deselected**, 8 warnings (1425 alpha + the 4 new regression tests) | 550.8s (pytest 548.72s) |
 | Schemas | `make schemas` | ok | 0.3s |
-| Repo hygiene | `make hygiene` | **FAILED — named known failure** (see below) | 0.3s |
-| Committed fixtures | `make validate` | ok — scenes=5 verdicts=16 labels=61 packets=36 | 2.1s |
+| Committed fixtures | `make validate` | ok — scenes=5 verdicts=16 labels=61 packets=36 | 2.6s |
+| Repo hygiene | `make hygiene` | **FAILED — named known failure, non-blocking** (mirrors the job's `continue-on-error`) | 0.4s |
 
-Overall script exit: **1**, from the hygiene step only — the `--keep-going`
-mode runs every step and exits nonzero when any failed; it does not hide
-anything. The test-step result is the point: with the four SD-96 ids
-deselected and the cold-restart file ignored, the suite is exactly the alpha
-baseline minus the named pre-existing failures (same 1425 passed / 19 skipped;
-the 4 failures and 14 errors are gone). An earlier `ci_local.sh` pass on the
-same clone recorded the test step at 576.2s (the sandbox is shared with
-concurrent fleet threads, so timings vary between runs).
+Start `11:01:58`, end `11:11:13` UTC. Overall script exit: **0** with the
+closing line `gating steps green; the known-red hygiene step failed
+non-blocking, as the mirrored job does on alpha` — the only failure is the
+known-red hygiene step, which the mirrored job wraps in `continue-on-error`;
+every gating step was green. The prior canonical run at the pre-restructure
+head `528661c7` (hygiene as a required step, `--keep-going`, overall exit 1,
+test step 527.3s / pytest 525.91s) is preserved in this file's history; its
+per-step results match this run's.
 
-Sandbox: the packet's Debian 13 fleet sandbox (8 cores), uv 0.13.1,
-Python 3.12 (`.python-version`), `.venv` 2.1 GB after sync. On a hosted
-`ubuntu-24.04` runner the first run additionally downloads the
-dependency set once (uv cache 2.1 GB here), after which `setup-uv`'s cache
-restores it.
+Baseline checks that the deselections target exactly the pre-existing
+failures, re-verified at `5e51801a` on untouched alpha state:
+
+- `uv run --frozen --extra api pytest server/eval/tests/test_gates.py -q`
+  without any deselection: **4 failed, 90 passed in 6.92s** — the four
+  failures are exactly the ids listed below.
+- `make hygiene`: fails with
+  `server/orchestrator/tests/data/packets/synthetic-meter.tar: deny-list
+  (synthetic-meter.tar)` — the tracked `.tar` the repo's own rules deny.
+- `make test` on untouched alpha was measured at the prior head: 4 failed
+  (the four SD-96 ids), 1425 passed, 19 skipped, 14 collection errors (all
+  of `tests/test_capture_cold_restart.py`), 487.78s.
+
+Regressions: `backend/tests/test_ci_proposal_portability.py` pins both PR
+#288 fixes. All four tests fail on the unfixed tree (hygiene step inside the
+required job; `%N` in the script; no `now_ms`) and pass after.
 
 ## Cache
 
@@ -90,6 +118,9 @@ restores it.
   does not re-download Python per run.
 - First run on a cold runner pays the download once (~2 GB, dominated by the
   torch pin in the default dependency groups); later runs restore from cache.
+- The hygiene job runs the same cache. Its sync skips the `api` extra (the
+  hygiene script is stdlib-only), so it restores the same cache and adds no
+  new download.
 
 ## Runner image
 
@@ -102,8 +133,8 @@ which matches this repository's existing convention.
 ## Known failures on alpha (named, not hidden)
 
 At `alpha` = `4bcbedba`, three kinds of failures pre-exist this proposal. The
-job deselects or names them so its signal stays usable; deleting the relevant
-block returns them to CI.
+required job deselects the test ones by name and the hygiene one runs outside
+the required signal; deleting the relevant block returns everything to CI.
 
 1. **Four expired SD-96 gate tests** — `server/eval/tests/test_gates.py`:
    - `test_committed_fixtures_are_scored_against_their_labels`
@@ -125,27 +156,102 @@ block returns them to CI.
 
 3. **Repo hygiene** — `make hygiene` fails on alpha:
    `server/orchestrator/tests/data/packets/synthetic-meter.tar: deny-list
-   (synthetic-meter.tar)` — the tracked file sits in the repo's own
-   `DENY_NAMES`. The job keeps the step and names the state in a comment; it
-   goes green when alpha stops tracking that file or the deny-list changes —
-   both outside this proposal.
+   (synthetic-meter.tar)` — the hygiene script denies every tracked `.tar`,
+   and alpha tracks that file. The step runs in the separate
+   `backend-hygiene-known-red` job with `continue-on-error: true`; it turns
+   solid green when alpha stops tracking the file or the deny-list changes —
+   both outside this proposal — and the flag can then be deleted.
+
+### The known-red hygiene step: both restructurings, exact diff
+
+Codex P1 on this PR: do not ship a workflow with a permanently failing
+required step. The failure itself cannot be fixed here: un-tracking the tar
+or editing the deny-list is a `server/**`-side or history decision outside
+this proposal. Two restructurings keep the default green:
+
+**Option 1 — a separate, clearly named non-blocking job (shipped default).**
+The step keeps running on every backend change, its failure stays visible in
+the run graph and annotations, and the pull-request check stays green:
+
+```diff
+     jobs:
+       backend-checks:
+         name: Backend checks
+         runs-on: ubuntu-24.04
+         timeout-minutes: 30
+         steps:
+           ...
+-          - name: Repo hygiene (make hygiene)
+-            run: make hygiene
++
++      backend-hygiene-known-red:
++        name: Repo hygiene (known red on alpha)
++        continue-on-error: true
++        runs-on: ubuntu-24.04
++        timeout-minutes: 15
++        defaults:
++          run:
++            working-directory: backend
++        steps:
++          - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++            with:
++              persist-credentials: false
++          - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
++            with:
++              working-directory: backend
++              enable-cache: true
++              cache-dependency-glob: uv.lock
++              cache-python: true
++              version: "0.13.1"
++          - name: Install dependencies (locked)
++            run: uv sync --frozen
++          - name: Repo hygiene (make hygiene)
++            run: make hygiene
+```
+
+Cost: a second runner pays a cache-restored sync for a step that fails in
+about 0.3s. Benefit: the denial keeps executing on every backend change, so
+the moment alpha stops tracking the file, the job turns solid green on its
+own and someone notices.
+
+**Option 2 — leave the step out of the workflow until it can pass** (the
+reviewer's literal alternative). Delete the whole
+`backend-hygiene-known-red` job block above. Greenest check list; the cost is
+that the failing deny-list check runs nowhere until someone re-adds it, so
+the regression stays invisible.
+
+Either way `backend-checks` is green on alpha. Option 1 ships.
 
 ### The SD-96 decision (Sam's)
 
-Two options, with their exact effect on the proposed job:
+Two options, with the exact diff between them:
 
 - **Option A — run them.** Delete the `PYTEST_ADDOPTS` env block from the
-  `Tests (make test)` step in `backend.yml.proposed` (and the matching line in
-  `ci_local.sh`). The four tests run on every backend pull request and fail
-  until SD-96 is decided; the job is red from day one and cannot gate merges;
-  the failure set is exactly these four tests plus, until the in-flight repair
-  lands, the 14 cold-restart collection errors.
+  `Tests (make test)` step in `backend.yml.proposed` (and the matching
+  `PYTEST_ADDOPTS` line in `ci_local.sh`). The four tests run on every
+  backend pull request and fail until SD-96 is decided; the job is red from
+  day one and cannot gate merges; the failure set is exactly these four tests
+  plus, until the in-flight repair lands, the 14 cold-restart collection
+  errors:
+
+  ```diff
+       - name: Tests (make test)
+   -     env:
+   -       PYTEST_ADDOPTS: >-
+   -         --deselect server/eval/tests/test_gates.py::test_committed_fixtures_are_scored_against_their_labels
+   -         --deselect server/eval/tests/test_gates.py::test_offline_table_skips_the_engine_and_passes_the_unpatched_reference
+   -         --deselect server/eval/tests/test_gates.py::test_route_over_the_bar_is_known_until_expiry
+   -         --deselect server/eval/tests/test_gates.py::test_refresh_rewrites_pins_after_a_committed_edit
+   -         --ignore=tests/test_capture_cold_restart.py
+         run: make test
+  ```
+
 - **Option B — deselect those four test ids by name (as proposed).** The job
-  is green except the named hygiene step; the other gate tests in
-  `test_gates.py` still run (the deselection is by exact test id, so the
-  blast radius is exactly four tests); restoring them later is deleting one
-  env block, and the block's comment plus this README point at the SD-96
-  decision.
+  is green; the other gate tests in `test_gates.py` still run (the
+  deselection is by exact test id, so the blast radius is exactly four
+  tests); restoring them later is deleting one env block, and the block's
+  comment plus this README point at the SD-96 decision. This is the shipped
+  default and the diff above is what Option A would apply on top of it.
 
 **Recommendation: Option B.** A job that is red from day one trains everyone
 to ignore it and can never gate a merge — it re-creates the current situation
@@ -178,10 +284,14 @@ tests come back.
 
 ## Not verified here
 
-- Actual execution on a GitHub-hosted runner (applying the workflow requires a
-  `.github/` change — that is Sam's copy step). The workflow text, its pins
+- Actual execution on a GitHub-hosted runner (applying the workflow requires
+  a `.github/` change — that is Sam's copy step). The workflow text, its pins
   and its inputs are verified against the actions' published `action.yml` at
   the pinned tags, and both pins are the exact commits `server.yml` already
   runs.
 - Hosted-runner wall times (see the caveat under the measured table).
+- macOS hardware: `ci_local.sh` portability is verified against a BSD-like
+  `date` stub (a `%N`-less date, and a run with no `python3` on PATH) plus
+  code inspection (no `%N`, no bash-4-only constructs, `set -euo pipefail`
+  and arithmetic that work on the stock `/bin/bash` 3.2), not on a real Mac.
 - The behavior of the four SD-96 tests after Sam's decision.
