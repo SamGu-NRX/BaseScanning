@@ -131,3 +131,77 @@ def test_escaped_failure_publishes_before_releasing_the_worker_slot(client, monk
     assert second.status_code == 202, second.text
     assert extras(deps, capture_id).get("run_started") is True
     assert second.json()["status"] == "processing"
+
+
+def test_failure_publication_error_releases_the_worker_slot(auto_client, monkeypatch):
+    """Finding: _guard (PR #293 Greptile P1) — the slot was cleared and the future
+    settled only after the failure publication. A publication that itself raises —
+    a transient state outage makes put_capture fail — exited the thread with the
+    slot busy and the future unsettled: later finalize retries answered
+    processing forever and no worker ever started again. The failure write stays
+    under the lock; the slot release and the future settlement always run.
+    """
+    import server.api.finalize as finalize_module
+    from server.api.tests.test_hooks_orchestrator import (
+        PACKET,
+        PACKET_ID,
+        _upload_and_commit,
+    )
+    from server.api.tests.test_hooks_orchestrator import (
+        _finalize as _finalize_packet,
+    )
+
+    client = auto_client
+    created = client.post(
+        "/v1/captures",
+        json={
+            "packetId": PACKET_ID,
+            "formatVersion": "0.4",
+            "tier": PACKET["session"]["tier"],
+            "device": {"model": "iPhone", "systemVersion": "18", "appVersion": "1"},
+        },
+        headers={"Idempotency-Key": PACKET_ID},
+    )
+    assert created.status_code == 201, created.text
+    capture_id = created.json()["captureId"]
+    _upload_and_commit(client, capture_id)
+
+    deps = client.app_state
+
+    def offline(_key):
+        raise RuntimeError("volume offline")
+
+    def failing_publication(*args, **kwargs):
+        raise RuntimeError("state outage: failure write raised")
+
+    original_get_bytes = deps.storage.get_bytes
+    original_publication = finalize_module._on_background_failure
+    # The finalize work and its failure publication both hit the outage. Both
+    # seams are swapped by hand and restored before the healed retry:
+    # monkeypatch.undo would also revert the fixture's env settings
+    # (HSS_ORCH_STAGE_STUBS), which the retry's handoff still needs.
+    deps.storage.get_bytes = offline
+    finalize_module._on_background_failure = failing_publication
+    client.hold_finalize = True
+    try:
+        body = _finalize_packet(client, capture_id)
+        assert body["status"] == "processing", body
+        # The worker's original error is what the Future carries, publication
+        # failure or not.
+        with pytest.raises(RuntimeError):
+            drain_finalize(deps)
+    finally:
+        client.hold_finalize = False
+        deps.storage.get_bytes = original_get_bytes
+        finalize_module._on_background_failure = original_publication
+
+    # The slot is free even though the publication raised.
+    assert finalize_module._slots[capture_id].inflight is False
+
+    # A finalize retry starts a new worker and the capture reaches a terminal
+    # state, instead of sitting on processing with no worker alive.
+    body = _finalize_packet(client, capture_id)
+    assert body["status"] == "processing"
+    assert deps.state.get_capture(capture_id).status == "manual_review"
+    run = deps.state.get_run(body["runId"])
+    assert run is not None and run.status == "done"

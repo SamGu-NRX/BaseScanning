@@ -510,16 +510,33 @@ def _guard(deps: Deps, capture_id: str, future: Future[None]) -> None:
         # publishes its success under the same lock, so this older worker can
         # never reset a healed retry or emit a contradictory terminal event after
         # it.
-        with deps.locks.finish_sync(capture_id):
-            if not extras(deps, capture_id).get("run_started"):
-                failure = (
-                    exc
-                    if isinstance(exc, ApiFailure)
-                    else fail(503, "finalize_failed", "/", f"finalize background work failed ({type(exc).__name__})")
-                )
-                _on_background_failure(deps, capture_id, failure)
-        _clear_slot(capture_id)
-        future.set_exception(exc)
+        # The publication write can itself fail — a transient state outage makes
+        # put_capture raise. The thread must still release the worker slot and
+        # settle its Future, or later finalize retries answer "processing"
+        # forever with no worker ever starting again, and the drain waits on a
+        # Future nobody settles. The failure write stays under the lock; the
+        # slot release and the settlement always run.
+        try:
+            with deps.locks.finish_sync(capture_id):
+                if not extras(deps, capture_id).get("run_started"):
+                    failure = (
+                        exc
+                        if isinstance(exc, ApiFailure)
+                        else fail(
+                            503, "finalize_failed", "/", f"finalize background work failed ({type(exc).__name__})"
+                        )
+                    )
+                    _on_background_failure(deps, capture_id, failure)
+        except Exception as publication_error:
+            log_event(
+                "finalize.failure_publish_error",
+                capture_id=capture_id,
+                error_code=type(publication_error).__name__,
+                level="error",
+            )
+        finally:
+            _clear_slot(capture_id)
+            future.set_exception(exc)
         return
     future.set_result(None)
 
