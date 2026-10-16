@@ -132,6 +132,7 @@ def test_loader_refuses_a_non_object_session(tmp_path: Path) -> None:
             load_plan(path)
 
 
+@pytest.mark.skipif(not MINIARKIT_DIR.exists(), reason="repo checkout required")
 def test_runner_manifest_records_the_loaded_generator(tmp_path: Path) -> None:
     """The manifest names the generator that produced the run's fixture."""
     import argparse
