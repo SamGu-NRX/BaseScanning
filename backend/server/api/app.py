@@ -31,6 +31,7 @@ from server.api.routes import (
     uploads,
 )
 from server.common.config import Settings, load, resolve_state, resolve_storage
+from server.common.lease import LeaseBusy
 from server.common.logging import log_event, request_fields
 
 _MB = 1024 * 1024
@@ -201,6 +202,13 @@ def create_app(
     @app.exception_handler(ApiFailure)
     async def api_failure(_request: Request, failure: ApiFailure):
         return error_response(failure)
+
+    @app.exception_handler(LeaseBusy)
+    async def lease_busy(_request: Request, exc: LeaseBusy):
+        # The file-index merge never ran, so the registration is safe to retry.
+        return error_response(
+            fail(503, "lease_busy", "/", "file index is busy; retry the registration", **{"Retry-After": "1"})
+        )
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_request: Request, exc: RequestValidationError):

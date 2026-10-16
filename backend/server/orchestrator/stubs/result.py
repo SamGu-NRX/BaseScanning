@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
+from typing import Literal
 
 from server.contracts.jobs import Profile, StageContext, StageResult
-from server.contracts.result import Outcome, ResultResponse
+from server.contracts.result import MeterBlock, Outcome, ResultResponse
 from server.orchestrator.stubs._common import json_bytes, sha256, write_files
 
 _PROFILES: frozenset[str] = frozenset({"A", "B", "C", "S"})
@@ -37,6 +39,7 @@ def run(ctx: StageContext) -> StageResult:
             viewsNeeded=[],
             reasons=[],
         ),
+        meter=_stub_meter(ctx),
     )
     body = response.model_dump(mode="json")
     ResultResponse.model_validate(body)
@@ -57,3 +60,48 @@ def _profile(ctx: StageContext) -> Profile:
     if configured in _PROFILES:
         return configured  # type: ignore[return-value]
     return "C"
+
+
+def _meter_status(raw: str) -> Literal["auto_filled", "prefill_confirm", "unreadable", "not_captured"]:
+    """The real composer's meter mapping, with autofill enabled."""
+    if raw == "auto_fill":
+        return "auto_filled"
+    if raw in {"prefill", "choose", "single_reader"}:
+        return "prefill_confirm"
+    if raw == "unreadable":
+        return "unreadable"
+    return "not_captured"
+
+
+def _stub_meter(ctx: StageContext) -> MeterBlock:
+    """The reads-derived meter, as the real composer reports it.
+
+    The result stage hydrates ``reads/reads.json``; serving the meter from it is
+    what makes a recomposition after a late confirmation observable on
+    ``GET /result`` without editing the verdict. The mapping mirrors
+    ``server.result.meter.meter_block`` with autofill enabled.
+    """
+
+    try:
+        doc = json.loads((Path(ctx.work_dir) / "reads" / "reads.json").read_text())
+        meter = doc.get("meter") or {}
+    except (OSError, json.JSONDecodeError, AttributeError):
+        meter = {}
+    status = _meter_status(str(meter.get("status") or ""))
+    value = meter.get("value")
+    shown = str(value) if isinstance(value, str) else None
+    if status == "not_captured":
+        shown = None
+    candidates = [
+        str(item.get("value"))
+        for item in (meter.get("candidates") or [])
+        if isinstance(item, dict) and item.get("value")
+    ][:3]
+    return MeterBlock(
+        status=status,
+        value=shown,
+        candidates=candidates,
+        barcodeConfirmed=bool(meter.get("barcode_match")),
+        readersAgree=bool(meter.get("agree")),
+        clean=False,
+    )

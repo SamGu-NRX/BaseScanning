@@ -78,8 +78,53 @@ def test_background_exception_fails_retryably(client, monkeypatch):
     assert failures and failures[0]["data"]["next"] == "retry_finalize"
     assert deps.state.get_capture(capture_id).status == "uploading"
 
-    # Storage healthy again: a later finalize completes the handoff.
+
+def test_escaped_failure_publishes_before_releasing_the_worker_slot(client, monkeypatch):
+    """Finding: _guard — the slot was released before the failure was published.
+
+    A finalize retry that lands in the gap sees a free slot, publishes its
+    success, and is then overwritten by the older worker's failure — the healed
+    capture resets to uploading behind a failure event for a run that started.
+    With publication and the run_started check serialized under the finish lock,
+    the older worker observes the retry's success and defers; either order ends
+    consistent. This pins the ordering half: at the moment the failure is
+    published, this worker still owns the slot.
+    """
+    import server.api.finalize as finalize_module
+
+    capture_id, packet = _ready_capture(client, "packet-bg-order")
+    deps = client.app_state
+
+    def offline(_key):
+        raise RuntimeError("volume offline")
+
+    publication_slot_state: list[bool] = []
+    original_failure_path = finalize_module._on_background_failure
+
+    def probing_failure_path(*args, **kwargs):
+        publication_slot_state.append(capture_id in finalize_module._slots)
+        return original_failure_path(*args, **kwargs)
+
+    monkeypatch.setattr(deps.storage, "get_bytes", offline)
+    monkeypatch.setattr(finalize_module, "_on_background_failure", probing_failure_path)
+    client.hold_finalize = True
+    try:
+        response, _raw = _finalize(client, capture_id, packet)
+        assert response.status_code == 202, response.text
+        with pytest.raises(RuntimeError):
+            drain_finalize(deps)
+    finally:
+        client.hold_finalize = False
+
+    # The failure published while this worker still held the slot: a retry that
+    # starts after the slot frees sees the failure already published (or the
+    # run_started flag of a healed retry) — never both.
+    assert publication_slot_state == [True]
+    assert deps.state.get_capture(capture_id).status == "uploading"
+
+    # And the healed retry still lands one healthy run.
     monkeypatch.undo()
     second, _raw = _finalize(client, capture_id, packet)
     assert second.status_code == 202, second.text
+    assert extras(deps, capture_id).get("run_started") is True
     assert second.json()["status"] == "processing"
