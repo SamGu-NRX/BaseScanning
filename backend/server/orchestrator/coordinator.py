@@ -37,11 +37,48 @@ from server.orchestrator.modal_spawn import (
 from server.orchestrator.outcomes import Decision, Facts, decide
 from server.orchestrator.runner import error_parts, is_retryable
 from server.orchestrator.runner import run_stage as execute_stage
-from server.orchestrator.services import Services
+from server.orchestrator.services import Services, deadline_from
 from server.orchestrator.spend import attempt_usd, gpu_spawn_blocked, vlm_budget_usd
 from server.orchestrator.stateio import get_json, put_json
 
 _FINAL = {"verdict_ready", "retake_request", "failed"}
+
+
+def pending_correction_key(run_id: str) -> str:
+    return f"run_pending_correction:{run_id}"
+
+
+def reset_criteria_and_result(services: Services, run: RunRecord) -> None:
+    """Send criteria and result back through the coordinator with the run alive.
+
+    The shared tail of both correction paths (a finished run recomposed by
+    ``on_confirmation`` and a live run that recorded a pending correction): the
+    two stages return to pending, the run re-enters the normal lifecycle, and
+    the re-executed stages overwrite the same artifact keys. The run's deadline
+    measured its earlier pass, so the re-run gets the same HARD_STOP_MIN budget
+    ``start_run`` gives a new run, counted from now.
+    """
+    state = services.state
+    now = services.clock.iso()
+    for stage in ("criteria", "result"):
+        rec = state.get_stage(run.run_id, stage)
+        state.upsert_stage(
+            StageRecord(
+                run_id=run.run_id,
+                stage=stage,
+                status="pending",
+                attempt=(rec.attempt if rec is not None else 0) + 1,
+                heartbeat=now,
+            )
+        )
+    run.status = "running"
+    run.deadline_at = deadline_from(services.clock, services.settings.HARD_STOP_MIN)
+    state.put_run(run)
+    raw = dict(get_json(state, f"run_control:{run.run_id}") or {})
+    raw["merge_done"] = False
+    put_json(state, f"run_control:{run.run_id}", raw)
+
+
 _PROFILES = {"A", "B", "C", "S"}
 
 
@@ -542,6 +579,23 @@ class RunCoordinator:
         control.merge_done = True
         self._save_control(run.run_id, control)
 
+    def _consume_pending_correction(self, run: RunRecord) -> bool:
+        """A correction accepted while criteria or result was mid-flight may sit
+        already-consumed inside their hydrated inputs. Before the run closes as
+        done, send the two stages back through once so the served result carries
+        every accepted answer. Consumed first, so a repeated finish or a replayed
+        hook call cannot reset twice; the second pass's extra final event is
+        already covered by the ``final_event_seq`` the first close recorded.
+        """
+        key = pending_correction_key(run.run_id)
+        marker = get_json(self.s.state, key)
+        if not marker:
+            return False
+        self.s.state.delete_blob(key)
+        reset_criteria_and_result(self.s, run)
+        log_event("confirmation.recompose_live", capture_id=run.capture_id, run_id=run.run_id)
+        return True
+
     def _maybe_finish(self, run: RunRecord) -> None:
         stages = self._rows(run.run_id)
         if any(rec.status == "running" for rec in stages):
@@ -555,6 +609,8 @@ class RunCoordinator:
             return
         result = self.s.state.get_stage(run.run_id, "result")
         if result is None or result.status != "done":
+            return
+        if self._consume_pending_correction(run):
             return
         self._write_run_files(run)
         self._apply_success(run)
