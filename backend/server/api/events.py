@@ -44,10 +44,13 @@ async def poll_events(deps: Deps, record: CaptureRecord, after: int, wait_s: flo
         # this loop, so its writers can never set the waiter. Wait in slices of
         # HSS_INGEST_EVENTS_POLL_MS and re-read the store between slices, so the
         # poll observes events from any writer while an in-process emit still
-        # wakes it the moment the waiter is set.
+        # wakes it the moment the waiter is set. With ModalDictState the store
+        # reads are synchronous remote calls, so every read runs in a worker
+        # thread (asyncio.to_thread): on the event loop, each slice would park
+        # the whole app for the length of its read.
         slice_s = deps.settings.HSS_INGEST_EVENTS_POLL_MS / 1000
         while True:
-            rows = deps.state.events_after(record.capture_id, after, limit=100)
+            rows = await asyncio.to_thread(deps.state.events_after, record.capture_id, after, limit=100)
             timed_out = time.monotonic() >= deadline
             if rows or wait_s == 0 or timed_out:
                 break
@@ -59,8 +62,8 @@ async def poll_events(deps: Deps, record: CaptureRecord, after: int, wait_s: flo
             except TimeoutError:
                 pass
             waiter.clear()
-        rows = deps.state.events_after(record.capture_id, after, limit=100)
-        fresh = deps.state.get_capture(record.capture_id) or record
+        rows = await asyncio.to_thread(deps.state.events_after, record.capture_id, after, limit=100)
+        fresh = await asyncio.to_thread(deps.state.get_capture, record.capture_id) or record
         events = [Event(seq=row.seq, type=row.type, at=row.at, data=row.data) for row in rows]
         nxt = events[-1].seq if events else after
         return EventsResponse(status=fresh.status, next=nxt, events=events)
