@@ -15,10 +15,12 @@ from pathlib import Path
 from server.contracts.api import ConfirmationRequest
 from server.contracts.jobs import FileRecord, RunRecord, StageRecord
 from server.orchestrator.api import on_confirmation
+from server.orchestrator.artifacts import overlay_stage_artifacts
 from server.orchestrator.clock import Clock
 from server.orchestrator.coordinator import RunCoordinator
 from server.orchestrator.events import emit_failed
 from server.orchestrator.services import bind
+from server.orchestrator.stubs._common import scene_document
 from server.orchestrator.tests.conftest import build_services
 from server.packet.integrity import check_files
 from server.packet.report import Bag
@@ -125,7 +127,20 @@ def test_confirmation_updates_the_reads_record(tmp_path: Path) -> None:
         confirm=ConfirmBlock(candidates=["00000"]),
     )
     services.storage.put_bytes(key, reads.model_dump_json().encode(), "application/json")
-    run = _run(services, "run_reads", status="done", artifacts={"reads/reads.json": key})
+    scene_key = "captures/cap_test/runs/run_reads/scene/scene.json"
+    services.storage.put_bytes(
+        scene_key, json.dumps(scene_document("cap_test"), sort_keys=True).encode(), "application/json"
+    )
+    objects_key = "captures/cap_test/runs/run_reads/objects/objects_3d.json"
+    services.storage.put_bytes(
+        objects_key, json.dumps({"format": "hss-objects-3d/v0", "objects": []}).encode(), "application/json"
+    )
+    run = _run(
+        services,
+        "run_reads",
+        status="done",
+        artifacts={"reads/reads.json": key, "scene/scene.json": scene_key, "objects/objects_3d.json": objects_key},
+    )
     services.state.put_run(run)
     request = ConfirmationRequest(
         fieldId="meter_number",
@@ -142,6 +157,58 @@ def test_confirmation_updates_the_reads_record(tmp_path: Path) -> None:
     assert stored.meter.status == "auto_fill"
     assert stored.confirm is not None
     assert stored.confirm.answer == "12345"
+    # The recompose preserves the upstream work as terminal records at attempt 1
+    # — the re-run reads stage that once threatened the answer never executes.
+    rows = {rec.stage: rec for rec in services.state.stages("run_reads")}
+    for upstream in ("validate", "poses", "objects", "reads", "scale", "dense", "coverage", "scene", "objects_3d", "placement"):
+        assert rows[upstream].status == "done", upstream
+        assert rows[upstream].attempt == 1, upstream
+    assert rows["criteria"].status == "done"
+    assert rows["result"].status == "done"
+    assert services.state.get_run("run_reads").status == "done"
+    # The served result is rebuilt from the corrected record, not stale.
+    stored_run = overlay_stage_artifacts(services.state, services.state.get_run("run_reads"))
+    served = json.loads(services.storage.get_bytes(stored_run.artifacts["result/result.json"]))
+    assert served["meter"]["value"] == "12345"
+
+
+def test_correction_on_a_legacy_run_without_scene_artifact_fails_loudly(tmp_path: Path) -> None:
+    """Finding: api.py:171 (PR #277 Greptile P1) — the old guard kept the run
+    closed, so a correction on a finished run missing stage records reported
+    success while GET /result kept serving the previous answer.
+
+    When the rebuild cannot run — here the run predates the scene artifact, so
+    the coordinator-owned merge has nothing to merge — the run must fail loudly
+    instead of quietly staying done with a stale served result.
+    """
+    services, _uri, _digest = build_services(tmp_path, "memory")
+    key = "captures/cap_test/runs/run_noscene/reads/reads.json"
+    reads = Reads(
+        capture_id="cap_test",
+        status="complete",
+        meter=MeterRead(status="auto_fill", value="00000", core="00000", confidence=0.5),
+        confirm=ConfirmBlock(candidates=["00000"]),
+    )
+    services.storage.put_bytes(key, reads.model_dump_json().encode(), "application/json")
+    run = _run(services, "run_noscene", status="done", artifacts={"reads/reads.json": key})
+    services.state.put_run(run)
+    request = ConfirmationRequest(
+        fieldId="meter_number",
+        kind="corrected",
+        value="12345",
+        imageId="s1",
+        clientAt="2026-10-15T00:00:00.000Z",
+    )
+    with bind(services):
+        on_confirmation("cap_test", request, "cfm_3", by="device")
+    # The answer itself is still persisted either way.
+    stored_reads = Reads.model_validate(json.loads(services.storage.get_bytes(key)))
+    assert stored_reads.meter is not None
+    assert stored_reads.meter.value == "12345"
+    # And the stale-result silence is gone: the run reports its failed rebuild.
+    stored = services.state.get_run("run_noscene")
+    assert stored.status == "failed"
+    assert stored.failure_code == "artifact_invalid:scene"
 
 
 def test_new_attempt_clears_entered_at(tmp_path: Path) -> None:
