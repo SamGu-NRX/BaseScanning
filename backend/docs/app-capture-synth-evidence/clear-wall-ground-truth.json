@@ -1,0 +1,113 @@
+{
+  "scene": "clear-wall",
+  "seed": 1401,
+  "generator": "backend/scripts/gen_app_capture.py",
+  "world": "packet.json conventions: ARKit .gravity, y up, origin at the device position at session start",
+  "units": {
+    "length": "meters",
+    "angle": "degrees"
+  },
+  "wall": {
+    "plane": {
+      "point": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "normal": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "xRange": [
+      -1.0,
+      5.0
+    ],
+    "bottomY": -1.45,
+    "height": 2.8
+  },
+  "meter": {
+    "kind": "electric",
+    "centre": [
+      2.0,
+      -0.25,
+      -1.91
+    ],
+    "size": [
+      0.45,
+      0.65,
+      0.18
+    ],
+    "frontFaceZ": -1.82,
+    "aabb": {
+      "lo": [
+        1.775,
+        -0.575,
+        -2.0
+      ],
+      "hi": [
+        2.225,
+        0.07500000000000001,
+        -1.82
+      ]
+    }
+  },
+  "hazards": [],
+  "clearances": {
+    "note": "horizontal distances on the wall plane, metres; no rule values live here"
+  },
+  "windows": [
+    {
+      "centre": [
+        3.6,
+        0.25
+      ],
+      "size": [
+        1.2,
+        1.4
+      ],
+      "sillY": -0.45
+    }
+  ],
+  "vents": [
+    {
+      "centre": [
+        0.4,
+        1.0
+      ],
+      "size": [
+        0.3,
+        0.15
+      ]
+    }
+  ],
+  "capture": {
+    "keyframes": 30,
+    "keyframeResolution": [
+      640,
+      480
+    ],
+    "depthResolution": [
+      256,
+      192
+    ],
+    "walkDistanceToWallM": [
+      1.5,
+      2.5
+    ],
+    "tap": {
+      "keyframe": "k00012",
+      "pixel": [
+        320.0,
+        218.728
+      ],
+      "hitPosition": [
+        2.0,
+        -0.250001,
+        -1.82
+      ],
+      "hitDistanceM": 1.5266
+    }
+  }
+}
