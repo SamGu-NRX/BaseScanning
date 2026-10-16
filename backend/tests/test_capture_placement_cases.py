@@ -592,11 +592,13 @@ def test_every_case_walks_the_real_front_door_with_case_true_boundaries(receipt)
     # The one nonempty objects_3d case: the observed tap hazard, merged exactly once.
     assert _case(receipt, runner.TAP_CASE_ID)["tapHazardMergeCount"] == 1
 
-    # Both positives refused: no merged scenes, so the cross-capture comparison
-    # cannot run and must say so instead of passing vacuously.
+    # Both positives refuse, but the merged runtime persists their merged scenes
+    # and their geometry hashes, so the cross-capture comparison actually runs —
+    # and must not pass vacuously: the two scenes and their normalized geometry
+    # are distinct.
     cross = receipt["crossCapture"]
-    assert cross["status"] == "not_applicable"
-    assert cross["distinctScenes"] is None and cross["distinctNormalizedGeometry"] is None
+    assert cross["status"] == "evaluated"
+    assert cross["distinctScenes"] is True and cross["distinctNormalizedGeometry"] is True
     assert cross["captureIds"] == [
         _case(receipt, "hazard-right-ground-gap")["captureId"],
         _case(receipt, "hazard-left-ground-gap")["captureId"],
