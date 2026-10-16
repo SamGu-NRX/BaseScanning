@@ -28,7 +28,7 @@ from server.orchestrator.graph import STAGE_NAMES, select_stage_artifacts
 from server.orchestrator.runner import stage_callable
 from server.orchestrator.services import Services, bind, packet_sha256
 
-FIXTURE = Path(__file__).resolve().parents[4] / "data" / "fixtures" / "packets" / "mini-arkit"
+FIXTURE = Path(__file__).resolve().parents[3] / "data" / "fixtures" / "packets" / "mini-arkit"
 PACKET_RAW = (FIXTURE / "packet.json").read_bytes()
 PACKET = json.loads(PACKET_RAW)
 
@@ -118,7 +118,7 @@ def test_selected_stage_runs_real_under_stubs(monkeypatch: pytest.MonkeyPatch) -
     assert poses.__module__ == "server.orchestrator.stubs.poses"
     # The stubs_exempt stage stays real, as today.
     placement = stage_callable("placement", stubs=True)
-    assert placement.__module__ == "server.placement"
+    assert placement.__module__ == "server.placement.adapter"
 
 
 def test_unselected_stages_keep_the_stub(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -246,5 +246,5 @@ def test_unset_selection_records_today_implementations(tmp_path: Path, monkeypat
     assert _impl_body(services, run, "validate")["implementation"] == "stand-in"
     assert _impl_body(services, run, "poses")["implementation"] == "stand-in"
     assert _impl_body(services, run, "placement")["implementation"] == "real"
-    assert _impl_body(services, run, "placement")["callable"] == "server.placement.run"
+    assert _impl_body(services, run, "placement")["callable"] == "server.placement.adapter.run"
     assert _impl_body(services, run, "result")["implementation"] == "stand-in"
