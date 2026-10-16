@@ -221,6 +221,22 @@ def _scene_bytes(document: dict[str, Any]) -> bytes:
     return json.dumps(document, sort_keys=True).encode()
 
 
+def _objects_3d_for(record: case_suite.CaseRecord) -> list[dict[str, Any]]:
+    """The objects_3d list this case's boundary delivers.
+
+    The tap hazard is delivered only where the upstream source does not already
+    carry it: the merge contract replaces only detector/VLM twins, so a same-id
+    re-delivery of a source-carried (tap-sourced) hazard is never replaced — it
+    duplicates the id and the merged scene is refused as inconsistent. A
+    source-carried hazard still reaches the one-time tap checks through the real
+    merge and real conversion.
+    """
+    if record.id != TAP_CASE_ID:
+        return []
+    source_object_ids = {obj.get("id") for obj in json.loads(record.source_path.read_text()).get("objects") or []}
+    return [] if TAP_HAZARD["id"] in source_object_ids else [copy.deepcopy(TAP_HAZARD)]
+
+
 def _injected_scene_run(ctx: StageContext) -> StageResult:
     """The scene stage boundary: this capture's stamped source scene, or a loud
     refusal. The default stub scene never runs here."""
@@ -381,19 +397,11 @@ def _walk_front_door(
     journey["captureId"] = capture_id
 
     # Register the case at both boundaries before finalize can start the pipeline.
-    # The tap hazard is delivered only where the upstream source does not already
-    # carry it: the merge contract replaces only detector/VLM twins, so a same-id
-    # re-delivery of a source-carried (tap-sourced) hazard is never replaced — it
-    # duplicates the id and the merged scene is refused as inconsistent. A
-    # source-carried hazard still reaches the one-time tap checks through the real
-    # merge and real conversion below.
-    source_object_ids = {obj.get("id") for obj in json.loads(record.source_path.read_text()).get("objects") or []}
-    inject_tap = record.id == TAP_CASE_ID and TAP_HAZARD["id"] not in source_object_ids
     _REGISTRY[capture_id] = {
         "record": record,
         "packet_id": packet_id,
         "packet_sha256": journey["packetSha256"],
-        "objects_3d": [copy.deepcopy(TAP_HAZARD)] if inject_tap else [],
+        "objects_3d": _objects_3d_for(record),
     }
 
     files = []

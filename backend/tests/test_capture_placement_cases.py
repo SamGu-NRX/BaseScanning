@@ -27,6 +27,7 @@ import capture_placement_cases as runner  # noqa: E402
 
 from server.eval.sceneio import validate  # noqa: E402
 from server.orchestrator.stubs._common import json_bytes, write_files  # noqa: E402
+from server.scene.merge import merge_object_lists  # noqa: E402
 
 MANIFEST = BACKEND / "server" / "placement" / "tests" / "data" / "cases" / "manifest.json"
 
@@ -1011,6 +1012,27 @@ def test_run_cases_restores_the_process_environment(tmp_path):
     before = dict(os.environ)
     runner.run_cases(MANIFEST, tmp_path / "run", case_ids=["multiwall-source-unsupported"])
     assert dict(os.environ) == before
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [
+        pytest.param(MANIFEST, id="legacy-cases"),
+        pytest.param(runner.DEFAULT_MANIFEST, id="capture-cases-v1"),
+    ],
+)
+def test_the_tap_case_merges_exactly_one_vent_on_every_committed_manifest(manifest):
+    """The source fixture and the runner's injected objects_3d must agree on who
+    supplies the observed tap vent. The merge keeps a tap-sourced source object
+    and appends the incoming one, so a fixture that already carries the vent plus
+    an injected copy merges two vents and the supported positive stops solving.
+    Whichever side supplies it, the merged scene holds exactly the runner's
+    TAP_HAZARD once, so the converted-span check measures the right object."""
+    record = next(record for record in runner.case_suite.load_cases(manifest) if record.id == runner.TAP_CASE_ID)
+    source_objects = json.loads(record.source_path.read_text())["objects"]
+    merged = merge_object_lists({"objects": source_objects}, runner._objects_3d_for(record))
+    vents = [obj for obj in merged["objects"] if obj["id"] == runner.TAP_HAZARD["id"]]
+    assert vents == [runner.TAP_HAZARD]
 
 
 @pytest.mark.parametrize(
