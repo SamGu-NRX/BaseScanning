@@ -177,9 +177,9 @@ final class LoopbackCaptureAPI: Sendable {
 
     private func handle(_ request: Request, _ connection: NWConnection) {
         let route = Self.route(request)
-        let (drop, hold, redirect) = state.withLock { s -> (Bool, Bool, String?) in
+        let (drop, redirect) = state.withLock { s -> (Bool, String?) in
             s.log.append(request)
-            return (s.dropNext.remove(route) != nil, s.held.contains(route), s.redirects[route])
+            return (s.dropNext.remove(route) != nil, s.redirects[route])
         }
         let (status, body) = redirect == nil ? answer(request) : (307, Data())
         let location = redirect.map { "Location: \($0)\r\n" } ?? ""
@@ -188,11 +188,14 @@ final class LoopbackCaptureAPI: Sendable {
             let head = "HTTP/1.1 \(status) X\r\n\(location)Content-Type: application/json\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
             connection.send(content: Data(head.utf8) + body, completion: .contentProcessed { _ in connection.cancel() })
         }
-        if hold {
-            state.withLock { $0.parked[route, default: []].append(send) }
-        } else {
-            send()
+        // Releasing a route and parking its reply share the lock: a release cannot miss a
+        // reply that was still being computed when it arrived.
+        let parked = state.withLock { s in
+            guard s.held.contains(route) else { return false }
+            s.parked[route, default: []].append(send)
+            return true
         }
+        if !parked { send() }
     }
 
     // MARK: API behaviour

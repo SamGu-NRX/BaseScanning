@@ -93,3 +93,30 @@ def test_cli_runs_from_a_clean_directory_and_exits_zero(runner, tmp_path) -> Non
     assert completed.returncode == 0, completed.stdout + completed.stderr
     receipt = _read_receipt(workdir / "receipt.json")
     assert receipt["ok"] is True and receipt["finalCaptureStatus"] == "processing"
+
+
+def test_rerun_into_a_used_workdir_fails_closed(runner, tmp_path) -> None:
+    """The replay action the receipt invites — rerun with its recorded --workdir —
+    hits the already-present packet copy, so the crash must exit 1, not report
+    success with the errorDetail tucked beside ok:true."""
+    used = tmp_path / "replay"
+    assert runner.run_capture_flow(used)["ok"] is True
+
+    receipt = runner.run_capture_flow(used)
+    assert receipt["ok"] is False
+    assert "runner_exception" in receipt["errorCodes"]
+    assert receipt["errorDetail"]
+
+    code = runner.main(["--workdir", str(used)])
+    assert code == 1
+    stored = _read_receipt(used / "receipt.json")
+    assert stored["ok"] is False and "runner_exception" in stored["errorCodes"]
+
+
+def test_missing_packet_dir_fails_closed(runner, tmp_path) -> None:
+    code = runner.main(["--packet", str(tmp_path / "no-such-packet"), "--workdir", str(tmp_path / "w")])
+    assert code == 1
+    stored = _read_receipt(tmp_path / "w" / "receipt.json")
+    assert stored["ok"] is False
+    assert "runner_exception" in stored["errorCodes"]
+    assert stored["errorDetail"]

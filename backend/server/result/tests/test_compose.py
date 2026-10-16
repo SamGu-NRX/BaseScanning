@@ -302,7 +302,7 @@ def test_review_page_lists_profiles_criteria_and_offline_notice(tmp_path):
         assert name in html
     assert "three.js" in html
     assert "offline" in html
-    assert 'action="/captures/cap_test/confirmations"' in html
+    assert 'action="/v1/captures/cap_test/confirmations"' in html
     assert "TODO queue" in html
     assert ("SS" + "R") not in html
 
@@ -362,6 +362,107 @@ def test_run_sets_status(tmp_path, monkeypatch):
     assert state.get_capture(capture.capture_id).status == "complete"
     assert "result/result.json" in result.artifacts
     assert (tmp_path / "out" / "review.html").is_file()
+
+
+def test_run_resolves_reads_and_scale_from_work_dir(tmp_path, monkeypatch):
+    """Orchestrated runs hydrate reads/reads.json and scale/scale.json into work_dir without short keys."""
+
+    class _Settings:
+        RULES_PROFILE_DEFAULT = "C"
+        SHOW_REJECT_TO_HOMEOWNER = False
+        HSS_RESULT_MAX_VIEWS = 6
+        HSS_RESULT_SIGNED_URL_TTL_S = 900
+        HSS_RESULT_PREVIEW_MAX_POINTS = 200_000
+        HSS_RESULT_METER_AUTOFILL = "barcode"
+        HSS_RESULT_REVIEW_THREEJS_URL = "https://unpkg.com/three@0.160.0/build/three.module.js"
+        HSS_RESULT_PROMPTS_PATH = str(DATA / "prompts.en-US.json")
+        BASE_WEBHOOK_URL = None
+
+    for name in ("WEBHOOK_HMAC_SECRET", "BASE_WEBHOOK_URL", "SHOW_REJECT_TO_HOMEOWNER", "HSS_RESULT_PROMPTS_PATH"):
+        monkeypatch.delenv(name, raising=False)
+    capture, run_rec, epochs = _capture_run()
+    state = MemoryState()
+    state.put_capture(capture)
+    state.put_run(run_rec)
+    (tmp_path / "reads").mkdir(parents=True)
+    (tmp_path / "reads" / "reads.json").write_bytes((DATA / "reads.auto_fill.json").read_bytes())
+    (tmp_path / "scale").mkdir()
+    (tmp_path / "scale" / "scale.json").write_text(
+        json.dumps({"source": "lidar", "status": "verified", "rel_bound_95": 0.1})
+    )
+
+    ctx = StageContext(
+        capture_id=capture.capture_id,
+        run_id=run_rec.run_id,
+        stage="result",
+        attempt=1,
+        branch="lidar",
+        flow="guided",
+        tier="arkit",
+        work_dir=tmp_path,
+        inputs={
+            "scene": str(DATA / "synthetic"),
+            "verdicts": str(DATA / "synthetic" / "verdicts"),
+            "out": str(tmp_path / "out"),
+            "epochs": ",".join(epochs),
+        },
+        deadline_at="2026-09-27T00:00:00Z",
+        heartbeat=lambda _step: None,
+        vlm_budget_usd=0,
+        storage=None,
+        state=state,
+        settings=_Settings(),
+    )
+    run(ctx)
+    body = json.loads((tmp_path / "out" / "result.json").read_text())
+    internal = json.loads((tmp_path / "out" / "result.internal.json").read_text())
+    assert "reads_missing" not in internal["warnings"]
+    assert body["scale"]["source"] == "lidar"
+    assert body["meter"]["status"] == "auto_filled"
+
+
+class _SigningStorage:
+    """Storage double that signs any key, the way the deployed backends do."""
+
+    def __init__(self) -> None:
+        self.objects: dict[str, bytes] = {}
+
+    def exists(self, key: str) -> bool:
+        return key in self.objects
+
+    def get_bytes(self, key: str) -> bytes:
+        return self.objects[key]
+
+    def put_bytes(self, key: str, data: bytes, content_type: str) -> None:
+        del content_type
+        self.objects[key] = data
+
+    def signed_get_url(self, key: str, ttl_s: int) -> str:
+        return f"https://signed.test/{key}?ttl={ttl_s}"
+
+
+def test_review_page_signs_photos_and_raw_links(tmp_path):
+    """The review page is served under /v1/captures/{id}/review, so bare names are dead links."""
+    capture, run_rec, _epochs = _capture_run()
+    storage = _SigningStorage()
+    storage.put_bytes(f"captures/{capture.capture_id}/k01.jpg", b"jpeg-bytes", "image/jpeg")
+    compose_result(
+        capture,
+        run_rec,
+        DATA / "photo",
+        DATA / "photo" / "verdicts",
+        tmp_path,
+        reads=DATA / "reads.auto_fill.json",
+        scale=None,
+        catalogue=_catalogue(),
+        config=ResultConfig(catalogue_path=DATA / "prompts.en-US.json"),
+        storage=storage,
+    )
+    html = (tmp_path / "review.html").read_text()
+    assert f"https://signed.test/captures/{capture.capture_id}/k01.jpg" in html
+    assert f"https://signed.test/captures/{capture.capture_id}/runs/{run_rec.run_id}/verdicts/verdict.C.json" in html
+    assert f"https://signed.test/captures/{capture.capture_id}/runs/{run_rec.run_id}/result/result.json" in html
+    assert 'href="verdict.C.json"' not in html
 
 
 def test_deliver_signs_current_time_and_warns_on_failure(monkeypatch):

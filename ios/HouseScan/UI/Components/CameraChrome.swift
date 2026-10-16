@@ -1,3 +1,4 @@
+import HouseScanKit
 import SwiftUI
 
 /// The frame shared by every camera screen: status row and one instruction at the top, the
@@ -26,12 +27,22 @@ struct CameraChrome<Bottom: View>: View {
     /// the card folds its detail and the legend under "Details" (`InstructionCard.foldsDetail`)
     /// and leaves the camera open. Questions and refusals keep every word in view.
     var aims = false
+    /// Whether the card's note takes its room out of the least open camera instead of pushing
+    /// the actions down. For a screen whose note shows only when the camera has nothing to draw
+    /// ("See it on your wall"): at AX5 its off-screen note is about 290 pt, and pushed below it
+    /// Done left the screen (CI run of #241 at d5d137ed).
+    var noteTakesCameraRoom = false
     @ViewBuilder var bottom: Bottom
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// The card's note's height, kept only for `noteTakesCameraRoom`.
+    @State private var noteRoom: CGFloat = 0
 
     private var folds: Bool { aims && typeSize.isAccessibilitySize }
+
+    /// The least open camera without a note (`CameraChromeLayout.minCameraWindow` when folded).
+    private var leastCameraWindow: CGFloat { folds ? CameraChromeLayout.minCameraWindow : 0 }
 
     var body: some View {
         // One layout at every text size: the chrome fills the screen and, only when the largest
@@ -51,9 +62,26 @@ struct CameraChrome<Bottom: View>: View {
                                 .accessibilityHidden(true)
                         }
                     }
+                    .background {
+                        GeometryReader { geometry in
+                            Color.clear.preference(key: CameraChromeMeasurements.self,
+                                                   value: .init(content: geometry.frame(in: .global)))
+                        }
+                    }
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
+            .onPreferenceChange(CameraChromeMeasurements.self) { measurements in
+                // Publish one layout, never a new note height against the old camera frame.
+                // At AX5 that mixed snapshot toggled the note between 0 and 253.33 pt after
+                // scrolling Details, keeping the main thread in layout (PR #241 trace).
+                // This reader is the safe-area viewport. The ScrollView's global frame extends
+                // under the system bars and shifted the reconstructed camera in #241 at 602bd92.
+                guard let layout = measurements.layout(viewport: proxy.frame(in: .global),
+                                                       minimumHeight: leastCameraWindow) else { return }
+                cameraWindow?.layout = layout
+                if noteTakesCameraRoom { noteRoom = layout.noteRoom }
+            }
         }
     }
 
@@ -69,7 +97,9 @@ struct CameraChrome<Bottom: View>: View {
             .frame(minHeight: 36)
             InstructionCard(
                 instruction: instruction, tone: tone, reply: reply, eyebrow: eyebrow,
-                foldsDetail: folds, legend: folds ? legend : nil
+                foldsDetail: folds, legend: folds ? legend : nil,
+                onDetailsShown: { shown in cameraWindow?.detailsShown = shown },
+                measuresNoteRoom: cameraWindow != nil
             )
             if let legend, !folds {
                 legendLine(legend)
@@ -77,9 +107,12 @@ struct CameraChrome<Bottom: View>: View {
             // The open camera between the card and the actions; the aim ring shows only inside
             // it (B-36). On an aiming step at the accessibility sizes it keeps at least
             // `minCameraWindow`, and the actions below scroll into reach.
-            Spacer(minLength: folds ? CameraChromeLayout.minCameraWindow : 0)
-                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { window in
-                    if let cameraWindow, cameraWindow.frame != window { cameraWindow.frame = window }
+            Spacer(minLength: max(leastCameraWindow - (noteTakesCameraRoom ? noteRoom : 0), 0))
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: CameraChromeMeasurements.self,
+                                               value: .init(window: geometry.frame(in: .global)))
+                    }
                 }
             bottom
         }
@@ -109,12 +142,42 @@ struct CameraChrome<Bottom: View>: View {
 }
 
 /// The open camera between the instruction card and the actions, in global coordinates.
-/// `CameraChrome` writes it and only `WayfindingOverlay` reads it, so scrolling the chrome
-/// redraws the aim overlay, not the whole screen.
+/// `CameraChrome` measures it and writes its disclosure state. The overlay uses the frame; the
+/// walk uses both to explain when open Details has pushed the camera below the screen.
 @MainActor
 @Observable
 final class CameraWindow {
-    var frame: CGRect?
+    private(set) var frame: CGRect?
+    /// `frame` as it would be if the card had no note (`OpenCameraWithoutNote`). A note shown
+    /// because of what the camera holds is judged against this, so its own height can't keep it
+    /// up. It restores the minimum camera height and settled scroll even just after note removal.
+    private(set) var noteFreeFrame: CGRect?
+    var detailsShown = false
+
+    /// What `CameraChrome` measures. Not observed itself: it changes on every scroll, and
+    /// readers follow `frame` and `noteFreeFrame`.
+    struct Layout: Equatable {
+        var window: CGRect?
+        var content: CGRect?
+        var viewport: CGRect?
+        /// How much taller the card's note makes the card (`InstructionCard.measuresNoteRoom`).
+        var noteRoom: CGFloat = 0
+        /// The least open camera the chrome keeps without a note.
+        var minimumHeight: CGFloat = 0
+    }
+
+    @ObservationIgnored var layout = Layout() {
+        didSet {
+            guard layout != oldValue else { return }
+            if frame != layout.window { frame = layout.window }
+            let noteFree = layout.window.map { window in
+                guard let content = layout.content, let viewport = layout.viewport else { return window }
+                return OpenCameraWithoutNote.frame(window: window, content: content, viewport: viewport,
+                                                   noteRoom: layout.noteRoom, minimumHeight: layout.minimumHeight)
+            }
+            if noteFreeFrame != noteFree { noteFreeFrame = noteFree }
+        }
+    }
 }
 
 /// `CameraChrome`'s layout constants, outside it because a generic type can't hold stored
