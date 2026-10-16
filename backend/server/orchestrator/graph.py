@@ -55,7 +55,6 @@ def _cpu(
     optional: bool = False,
     module: str | None = None,
     entry: str = "run",
-    stubs_exempt: bool = False,
 ) -> StageSpec:
     return StageSpec(
         name=name,
@@ -68,7 +67,6 @@ def _cpu(
         artifacts=artifacts,
         module=module or name,
         entry=entry,
-        stubs_exempt=stubs_exempt,
     )
 
 
@@ -194,12 +192,6 @@ STAGES: dict[StageName, StageSpec] = {
             (("criteria", _D), ("placement", _T)),
             60,
             ("result/result.json", "result/result.internal.json", "result/review.html", "result/preview.ply"),
-            # The real composer is deterministic CPU work (verdicts, scene and the
-            # catalogue are all local), so the stub journey publishes a real
-            # reviewer page instead of a placeholder — that page is what the
-            # reviewer sees, and the page itself discloses which stages were
-            # stand-ins.
-            stubs_exempt=True,
         ),
     )
 }
