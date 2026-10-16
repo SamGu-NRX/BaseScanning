@@ -38,6 +38,14 @@ async def poll_events(deps: Deps, record: CaptureRecord, after: int, wait_s: flo
     try:
         deadline = time.monotonic() + wait_s
         waiter = _waiter(deps, record.capture_id)
+        # Only same-process server.api.events.emit sets the wake event. The
+        # orchestrator's server.orchestrator.events.emit writes straight to state
+        # storage, and a separate worker or Modal deployment shares no process with
+        # this loop, so its writers can never set the waiter. Wait in slices of
+        # HSS_INGEST_EVENTS_POLL_MS and re-read the store between slices, so the
+        # poll observes events from any writer while an in-process emit still
+        # wakes it the moment the waiter is set.
+        slice_s = deps.settings.HSS_INGEST_EVENTS_POLL_MS / 1000
         while True:
             rows = deps.state.events_after(record.capture_id, after, limit=100)
             timed_out = time.monotonic() >= deadline
@@ -47,7 +55,7 @@ async def poll_events(deps: Deps, record: CaptureRecord, after: int, wait_s: flo
             if remaining <= 0:
                 break
             try:
-                await asyncio.wait_for(waiter.wait(), timeout=remaining)
+                await asyncio.wait_for(waiter.wait(), timeout=min(slice_s, remaining))
             except TimeoutError:
                 pass
             waiter.clear()
