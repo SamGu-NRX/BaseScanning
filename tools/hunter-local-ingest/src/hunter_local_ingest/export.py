@@ -474,9 +474,16 @@ def validate_manifest(manifest: object, ctx: ExportContext, known: Mapping[str, 
         "generator",
     )
     v.integer(fixture["format_version"], "/fixture/format_version", low=1, high=100)
-    # The mini-arkit family is fixture-determined, not seeded: null seed.
-    if fixture["seed"] is not None:
+    # Seed semantics belong to the generator family: the synthetic family is
+    # seeded (bounded), the mini-arkit family is fixture-determined with a
+    # null seed. Enforcing the pairing here keeps a rewritten manifest from
+    # claiming the other family and still passing verification.
+    if fixture["generator"] == "gen_synthetic_packet":
+        if fixture["seed"] is None:
+            raise v.fail("/fixture/seed", "synthetic-fixture-requires-a-seed")
         v.integer(fixture["seed"], "/fixture/seed", low=0, high=2**31)
+    elif fixture["seed"] is not None:
+        raise v.fail("/fixture/seed", "miniarkit-fixture-seed-must-be-null")
     for key in ("plan_file_sha256", "plan_sha256", "packet_sha256", "create_sha256"):
         v.match(fixture[key], f"/fixture/{key}", _HEX64_RE, "not-a-digest")
     v.member(
