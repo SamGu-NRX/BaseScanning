@@ -20,9 +20,21 @@ from server.contracts.jobs import (
     StageStatus,
 )
 
+# How long upsert_file waits for the per-capture index lease before failing.
+# A module constant so tests can shorten it without sleeping through the real
+# budget.
+_INDEX_LEASE_WAIT_S = 3.0
+
 _OPEN = frozenset({"uploading", "awaiting_files"})
 _APPEND_GUARD = threading.Lock()
 _APPEND_LOCKS: dict[int, threading.Lock] = {}
+
+# Serializes create_stage_if_absent on the plain-dict fallback, where put_if_absent
+# is an in-process check-then-set; a real Modal Dict claims atomically on its own.
+# One lock, not one per (run, stage): a per-key registry kept a lock for every run
+# a long-lived worker ever touched. Claims only happen for records missing from
+# the coordinator's read, so the shared lock serializes only that recovery path.
+_STAGE_CLAIM_LOCK = threading.Lock()
 
 
 def _append_lock(mapping: object) -> threading.Lock:
@@ -335,9 +347,10 @@ class ModalDictState(MemoryState):
         self._kv[tomb] = {"capture_id": capture_id}
 
     def upsert_file(self, rec: FileRecord) -> None:
-        self._kv[f"file:{rec.capture_id}:{rec.path}"] = rec.model_dump(mode="json")
-
         def merge() -> None:
+            # The record is written inside the lease too: a busy lease then saves
+            # nothing, so the caller's retry still sees the file in its old state.
+            self._kv[f"file:{rec.capture_id}:{rec.path}"] = rec.model_dump(mode="json")
             paths = set(self._kv.get(f"files:{rec.capture_id}") or [])
             paths.add(rec.path)
             self._kv[f"files:{rec.capture_id}"] = sorted(paths)
@@ -346,7 +359,11 @@ class ModalDictState(MemoryState):
         # only guards one process. Merge the index under the shared Dict lease so
         # a stale read in one container cannot drop the other's entry. The lease
         # claims its slot with the Dict's atomic skip_if_exists put.
-        with_lease(self, f"files:{rec.capture_id}", merge)
+        #
+        # The merge runs strictly under the lease: a busy lease raises LeaseBusy
+        # (the route turns it into a retryable 503) instead of merging unlocked
+        # while an abandoned-but-valid lease holds the slot.
+        with_lease(self, f"files:{rec.capture_id}", merge, wait_s=_INDEX_LEASE_WAIT_S, strict=True)
 
     def get_file(self, capture_id: str, path: str) -> FileRecord | None:
         return self._model(f"file:{capture_id}:{path}", FileRecord)
@@ -492,6 +509,19 @@ class ModalDictState(MemoryState):
 
     def upsert_stage(self, rec: StageRecord) -> None:
         self._kv[f"stage:{rec.run_id}:{rec.stage}"] = rec.model_dump(mode="json")
+
+    def create_stage_if_absent(self, rec: StageRecord) -> StageRecord:
+        """Insert-if-absent across processes: Modal Dict ``skip_if_exists`` is the
+        atomic claim, so two coordinators resuming the same old run cannot both
+        create the record — the loser reads back the winner's record instead of
+        resetting a running stage to pending. The module lock covers the plain-dict
+        fallback, where the check-then-set is only in-process."""
+
+        key = f"stage:{rec.run_id}:{rec.stage}"
+        with _STAGE_CLAIM_LOCK:
+            self.put_if_absent(key, rec.model_dump(mode="json"))
+        stored = self._model(key, StageRecord)
+        return stored if stored is not None else rec.model_copy(deep=True)
 
     def get_stage(self, run_id: str, stage: StageName) -> StageRecord | None:
         return self._model(f"stage:{run_id}:{stage}", StageRecord)

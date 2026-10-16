@@ -162,6 +162,55 @@ final class PhotoProcessingUITests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: run.gate.appending(path: "uploading.held").path), "the Legacy upload ran")
     }
 
+    // MARK: A capture API on this Mac
+
+    /// Runs only when HOUSESCAN_CAPTURE_API names a capture API on this Mac and
+    /// HOUSESCAN_CAPTURE_API_TOKEN holds its static test token, such as backend/ started locally
+    /// (ios/README.md), so CI never needs a server. The synthetic capture goes through the app's
+    /// real transport to that server. The scan may end on any state, a refusal included: what the
+    /// server answered is the finding, so the test fails only when the scan never ends, or ends on
+    /// the fixture's or Legacy's path.
+    @MainActor
+    func testTheSyntheticCaptureReachesALocalCaptureAPI() throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let api = environment["HOUSESCAN_CAPTURE_API"], !api.isEmpty,
+              let token = environment["HOUSESCAN_CAPTURE_API_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Set HOUSESCAN_CAPTURE_API and HOUSESCAN_CAPTURE_API_TOKEN to a capture API on this Mac to run this test.")
+        }
+        let run = try Run.launch(
+            backend: "photoProcessing", fixture: nil, holding: ["onboarding"],
+            extra: ["-photoProcessingSyntheticCapture", "-photoProcessingAPI", api, "-photoProcessingAPIToken", token])
+        defer { run.finish() }
+        run.waitFor("onboarding")
+        run.openOptions()
+        let row = run.reveal("developer.processing.photoProcessing")
+        XCTAssertTrue(row.label.contains("Sends to \(api)"), "the option doesn't say where it sends: \(row.label)")
+        run.attach("localAPI-selection")
+        run.closeOptions()
+        try run.open("onboarding")
+
+        run.waitFor("findMeter")
+        XCTAssertTrue(run.send.waitForExistence(timeout: 20), "no photo question before the meter was marked")
+        run.attach("localAPI-consent")
+        run.send.tap()
+        run.waitFor("processing", timeout: 300)
+        run.attach("localAPI-processing")
+
+        let working: Set<String> = ["queued", "uploading", "processing"]
+        let states = run.app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'photo.state.'"))
+        var ended: String?
+        let deadline = Date().addingTimeInterval(600)
+        while ended == nil, Date() < deadline {
+            let id = states.firstMatch.exists ? String(states.firstMatch.identifier.dropFirst("photo.state.".count)) : nil
+            if let id, !working.contains(id) { ended = id } else { Thread.sleep(forTimeInterval: 1) }
+        }
+        let end = try XCTUnwrap(ended, "the scan never left \(working.sorted()) in 10 minutes")
+        run.attach("localAPI-end-\(end)")
+        XCTAssertFalse(run.app.descendants(matching: .any)["photo.standIn"].exists, "a local API answer is marked as the phone's own test answer")
+        XCTAssertEqual(run.routes(), [], "the in-app fixture answered")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: run.gate.appending(path: "uploading.held").path), "the Legacy upload ran")
+    }
+
     /// An answer naming another run than the capture started is refused, and the scan says so
     /// instead of showing it.
     @MainActor

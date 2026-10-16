@@ -289,7 +289,7 @@ final class ScanEngine {
         let photoSetup = Self.photoProcessingSetup(options)
         photoProcessing = PhotoProcessingController(setup: photoSetup.setup)
         syntheticCapture = photoSetup.synthetic
-        ProcessingBackendSetting.shared.photoProcessingAnswers = photoProcessing.profile.answers
+        ProcessingBackendSetting.shared.photoProcessingProfile = photoProcessing.profile
         photoProcessing.onChange = { [weak self] status in self?.state.photoProcessing = status }
         photoProcessing.meterAnchor = { [weak self] in self?.meterTracking?.pose }
         state.isAutopilot = options.autopilot

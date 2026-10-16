@@ -134,7 +134,7 @@ private struct ProcessingChoice: View {
                             Text(ProcessingCopy.summary(backend))
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
-                            if backend == .photoProcessing, let note = ProcessingCopy.setupNote(setting.photoProcessingAnswers) {
+                            if backend == .photoProcessing, let note = ProcessingCopy.setupNote(setting.photoProcessingProfile) {
                                 Text(note)
                                     .font(.footnote.weight(.semibold))
                                     .foregroundStyle(.primary)
