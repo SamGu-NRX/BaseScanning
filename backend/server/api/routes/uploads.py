@@ -8,6 +8,7 @@ import hashlib
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+from starlette.requests import ClientDisconnect
 
 from server.api.deps import get_deps
 from server.api.errors import fail
@@ -142,6 +143,14 @@ def register(app: FastAPI, settings) -> None:
             deps.storage.commit_tmp(payload["key"], tmp, content_type, digest, size)
             return Response(status_code=200)
         except _TooLarge:
+            if tmp is not None:
+                deps.storage.discard_tmp(tmp)
+            return Response(content=b"BadDigest", status_code=400, media_type="text/plain")
+        except ClientDisconnect:
+            # The phone dropped the connection mid-body — it does this when a
+            # retried PUT opens while the old attempt still drains. Nothing is
+            # committed and the temp file goes away, so the retry starts clean
+            # instead of leaving `{key}.uploading` litter in the volume.
             if tmp is not None:
                 deps.storage.discard_tmp(tmp)
             return Response(content=b"BadDigest", status_code=400, media_type="text/plain")
