@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 
 from pydantic import BaseModel, ConfigDict
@@ -54,6 +55,8 @@ def _local_stage_delay_s(env: dict[str, str]) -> float:
         value = float(raw)
     except ValueError:
         raise ValueError(f"HSS_LOCAL_STAGE_DELAY_S={raw!r} is not a number of seconds") from None
+    if not math.isfinite(value):
+        raise ValueError(f"HSS_LOCAL_STAGE_DELAY_S={raw!r} is not a finite number of seconds")
     if not 0 <= value <= 30:
         raise ValueError(f"HSS_LOCAL_STAGE_DELAY_S={raw!r} is outside the range 0 to 30 seconds")
     _require_dev_stubs("HSS_LOCAL_STAGE_DELAY_S", env)

@@ -28,6 +28,7 @@ from server.contracts.result import (
 )
 from server.orchestrator.stubs._common import json_bytes, scripted_outcome, sha256, write_files
 from server.result import ar
+from server.result.compose import FOOTPRINT
 from server.result.copy import FALLBACK, Catalogue, load_catalogue, render, select_prompt
 
 _PROFILES: frozenset[str] = frozenset({"A", "B", "C", "S"})
@@ -55,8 +56,7 @@ _MESSAGE = {
     ),
 }
 
-# The profile-C footprint, as the real composer's FOOTPRINT table holds it.
-_FOOTPRINT_C = (0.7874, 1.0033, 0.5588)
+# The profile-C footprint fallback is FOOTPRINT["C"] (real composer's table).
 _STANDOFF_M = 0.02
 
 # The committed prompt catalogue; the production catalogue may not exist here.
@@ -141,9 +141,11 @@ def _placement(profile: str, epoch: str | None) -> RecommendedPlacement:
 
     The stub scene is meter-anchored with scale 1.0, so the scene-to-ARKit
     transform is the identity: the box pose is the meter-frame box pose, and
-    the epoch comes from the capture packet's own ``epochs`` list.
+    the epoch comes from the capture packet's own ``epochs`` list. The
+    footprint comes from the real composer's ``FOOTPRINT`` table, so the
+    scripted proposal exercises the configured profile's product geometry.
     """
-    width, height, depth = _FOOTPRINT_C
+    width, height, depth = FOOTPRINT.get(profile, FOOTPRINT["C"])
     size = [width, height, depth]
     center = [0.6937, height / 2, depth / 2 + _STANDOFF_M]
     box_arkit = None
@@ -175,6 +177,11 @@ def _packet_epoch(ctx: StageContext) -> str | None:
 
 
 def _packet_epochs(ctx: StageContext) -> list[str]:
+    """The packet's epoch ids, as the real composer feeds ``ar.epoch_id``.
+
+    Packet ``epochs`` entries are objects like ``{"id": "e1"}``; plain strings
+    are tolerated for older hand-written packets.
+    """
     try:
         raw = (Path(str(ctx.inputs["packet_dir"])) / "packet.json").read_text()
         packet = json.loads(raw)
@@ -183,7 +190,13 @@ def _packet_epochs(ctx: StageContext) -> list[str]:
     epochs = packet.get("epochs") if isinstance(packet, dict) else None
     if not isinstance(epochs, list):
         return []
-    return [str(item) for item in epochs if isinstance(item, str)]
+    ids = []
+    for item in epochs:
+        if isinstance(item, str):
+            ids.append(item)
+        elif isinstance(item, dict) and isinstance(item.get("id"), str):
+            ids.append(item["id"])
+    return ids
 
 
 def _views_needed() -> list[ViewNeededDevice]:

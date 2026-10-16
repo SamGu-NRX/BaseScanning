@@ -42,6 +42,7 @@ from server.common.config import Settings
 from server.contracts.result import ResultResponse
 from server.orchestrator.config import load_orch
 from server.orchestrator.outcomes import Facts, decide
+from server.result.compose import FOOTPRINT
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PACKET_FIXTURE = REPO_ROOT / "backend" / "data" / "fixtures" / "packets" / "mini-arkit"
@@ -283,10 +284,11 @@ def test_hss_local_outcome_walks_the_app_to_each_state(
         assert placement is not None
         assert placement["footprintM"] == {"w": 0.7874, "h": 1.0033, "d": 0.5588}
         assert placement["startSM"] == 0.3
-        # The fixture packet carries no ARKit epoch, so the proposal stays in
-        # scene metres: AR data only when the frames match.
-        assert payload["outcome"]["arkitEpoch"] is None
-        assert placement["boxArkitWorld"] is None
+        # The fixture packet carries exactly one ARKit epoch ("e1", an object
+        # with an id), so the proposal is anchored in ARKit world.
+        assert payload["outcome"]["arkitEpoch"] == "e1"
+        assert placement["boxArkitWorld"] is not None
+        assert placement["boxArkitWorld"]["size"] == [0.7874, 1.0033, 0.5588]
     if outcome == "needs_more_photos":
         view = payload["viewsNeeded"][0]
         assert view["kind"] == "band"
@@ -335,6 +337,38 @@ def test_stage_delay_paces_the_stub_run(local_app) -> None:
     assert elapsed >= 12 * 0.03 - 0.05, f"12 stub stages slept nowhere near 0.36s ({elapsed:.2f}s)"
 
 
+def test_failed_validation_artifact_is_scoped_to_its_run(local_app) -> None:
+    """Two failed captures in a row: each ends ``failed`` with its own
+    validation.json, at the run-prefixed key the stage publisher uses — a later
+    capture can never overwrite an earlier run's evidence."""
+    root, packet, client, app, deps = local_app("failed")
+    first_capture, first_run, first = _run_capture(root, packet, client, app, "failed-1")
+    second_capture, second_run, second = _run_capture(root, packet, client, app, "failed-2")
+    assert first.status == "failed"
+    assert second.status == "failed"
+    for capture_id, run_id in ((first_capture, first_run), (second_capture, second_run)):
+        run = deps.state.get_run(run_id)
+        key = run.artifacts["packet/validation.json"]
+        assert key == f"captures/{capture_id}/runs/{run_id}/packet/validation.json"
+        doc = json.loads(deps.storage.get_bytes(key))
+        assert doc["imagesUsable"] is False
+
+
+@pytest.mark.parametrize("profile", ["A", "B", "C"])
+def test_eligible_footprint_follows_the_configured_profile(local_app, monkeypatch, profile) -> None:
+    """The scripted placement advertises the configured profile, so its footprint
+    must come from that profile's row in the real composer's FOOTPRINT table."""
+    monkeypatch.setenv("RULES_PROFILE_DEFAULT", profile)
+    root, packet, client, app, deps = local_app("eligible")
+    capture_id, run_id, capture = _run_capture(root, packet, client, app, f"local-footprint-{profile}")
+    assert capture.status == "complete"
+    payload = client.get(f"/v1/captures/{capture_id}/result").json()
+    outcome = payload["outcome"]
+    assert outcome["profile"] == profile
+    width, height, depth = FOOTPRINT[profile]
+    assert outcome["recommendedPlacement"]["footprintM"] == {"w": width, "h": height, "d": depth}
+
+
 # --- loud refusals -----------------------------------------------------------
 
 
@@ -367,6 +401,20 @@ def test_local_delay_out_of_range_is_refused() -> None:
                 "HSS_LOCAL_STAGE_DELAY_S": "45",
             }
         )
+
+
+def test_local_delay_non_finite_is_refused() -> None:
+    """``float()`` accepts ``nan`` and ``inf``; refuse them by name with a
+    message that says the value must be finite, before the range comparison."""
+    for raw in ("nan", "inf", "-inf"):
+        with pytest.raises(ValueError, match="not a finite number of seconds"):
+            load_orch(
+                {
+                    "HSS_ORCH_STAGE_STUBS": "1",
+                    "SMP_ENVIRONMENT": "dev",
+                    "HSS_LOCAL_STAGE_DELAY_S": raw,
+                }
+            )
 
 
 def test_local_settings_parse_when_dev_stage_stubs_are_on() -> None:

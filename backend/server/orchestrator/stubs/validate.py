@@ -32,9 +32,13 @@ def _script_failed(ctx: StageContext) -> None:
     status is ``failed``: the validate stage failed while
     ``packet/validation.json`` says the images are unusable. The stand-in
     registers itself on the run record directly, because a failing stage's
-    ``StageResult`` is discarded.
+    ``StageResult`` is discarded. The bytes land at the same run-prefixed
+    storage key ``runner._publish`` uses for stage artifacts, so one run's
+    validation evidence can never be overwritten by a later capture's, and
+    ``coordinator._read_json`` resolves it from storage through the run
+    record's artifact map.
     """
-    key = "packet/validation.json"
+    key = f"captures/{ctx.capture_id}/runs/{ctx.run_id}/packet/validation.json"
     body = json_bytes(
         {
             "imagesUsable": False,
@@ -45,7 +49,7 @@ def _script_failed(ctx: StageContext) -> None:
     )
     ctx.storage.put_bytes(key, body, "application/json")
     run = ctx.state.get_run(ctx.run_id)
-    run.artifacts[key] = key
+    run.artifacts["packet/validation.json"] = key
     ctx.state.put_run(run)
     raise RuntimeError(
         "local_scripted_failure: HSS_LOCAL_OUTCOME=failed ends the run on outcome row 1 "

@@ -11,7 +11,7 @@
     "value": null
   },
   "outcome": {
-    "arkitEpoch": null,
+    "arkitEpoch": "e1",
     "cableRoutePolylineArkit": null,
     "frameToArkit": null,
     "kind": "needs_more_photos",
@@ -51,9 +51,9 @@
       }
     ]
   },
-  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjE0NDY4Mywia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTUyMUZYMFlZWE5HUlBWQVFITUZYNEZLL3J1bnMvcnVuX2I3ZDAxZDk2ZTQyZTc4MTIvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.35dcaa965488d0774d4d9f6f270394319ac7df1726f68ce6bd2afdcd14c63a00",
-  "reviewUrl": "/v1/captures/cap_01M521FX0YYXNGRPVAQHMFX4FK/review",
-  "runId": "run_b7d01d96e42e7812",
+  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjE3NDc2Nywia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTUyWTYwNzA5V0hTUUdWSkE3M01QSkJSL3J1bnMvcnVuX2I0MzU3MDBlNjE0YmY2YjYvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.89caf174294df6418f3c4481e4156cc88defae5c2d7185fd1f039188311dd32f",
+  "reviewUrl": "/v1/captures/cap_01M52Y60709WHSQGVJA73MPJBR/review",
+  "runId": "run_b435700e614bf6b6",
   "scale": null,
   "site": null,
   "status": "needs_views",

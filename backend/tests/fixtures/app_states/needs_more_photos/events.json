@@ -2,7 +2,7 @@
   "captureStatus": "needs_views",
   "events": [
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "committed": 11,
         "listed": null,
@@ -24,7 +24,7 @@
       "type": "files_committed"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "code": "frames_blurry",
         "frames": [
@@ -36,7 +36,7 @@
       "type": "hint"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "complete": true,
         "meterRead": "absent",
@@ -46,13 +46,13 @@
       "type": "capture_check"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": null,
         "errorCode": null,
         "gpu": null,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "validate",
         "status": "running"
       },
@@ -60,10 +60,10 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 0,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "validate",
         "status": "pending"
       },
@@ -71,7 +71,7 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "complete": false,
         "meterRead": "absent",
@@ -86,10 +86,10 @@
       "type": "capture_check"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "validate",
         "status": "running"
       },
@@ -97,11 +97,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.01,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "validate",
         "status": "done"
       },
@@ -109,11 +109,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "gpu": "L4",
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "poses",
         "status": "running"
       },
@@ -121,11 +121,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "gpu": "L4",
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "objects",
         "status": "running"
       },
@@ -133,10 +133,10 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "reads",
         "status": "running"
       },
@@ -144,12 +144,12 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.01,
         "gpu": "L4",
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "objects",
         "status": "done"
       },
@@ -157,12 +157,12 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.01,
         "gpu": "L4",
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "poses",
         "status": "done"
       },
@@ -170,11 +170,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.01,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "reads",
         "status": "done"
       },
@@ -182,10 +182,10 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "scale",
         "status": "running"
       },
@@ -193,11 +193,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.01,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "scale",
         "status": "done"
       },
@@ -205,11 +205,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "gpu": "L4",
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "dense",
         "status": "running"
       },
@@ -217,12 +217,12 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.01,
         "gpu": "L4",
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "dense",
         "status": "done"
       },
@@ -230,10 +230,10 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "coverage",
         "status": "running"
       },
@@ -241,11 +241,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.01,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "coverage",
         "status": "done"
       },
@@ -253,10 +253,10 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "scene",
         "status": "running"
       },
@@ -264,11 +264,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.01,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "scene",
         "status": "done"
       },
@@ -276,10 +276,10 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "objects_3d",
         "status": "running"
       },
@@ -287,11 +287,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.01,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "objects_3d",
         "status": "done"
       },
@@ -299,10 +299,10 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "placement",
         "status": "running"
       },
@@ -310,10 +310,10 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "criteria",
         "status": "running"
       },
@@ -321,11 +321,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.01,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "criteria",
         "status": "done"
       },
@@ -333,11 +333,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.0,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "placement",
         "status": "done"
       },
@@ -345,10 +345,10 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "result",
         "status": "running"
       },
@@ -356,20 +356,20 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "kind": "needs_more_photos",
-        "runId": "run_b7d01d96e42e7812"
+        "runId": "run_b435700e614bf6b6"
       },
       "seq": 30,
       "type": "verdict_ready"
     },
     {
-      "at": "2026-10-16T09:43:03Z",
+      "at": "2026-10-16T18:04:27Z",
       "data": {
         "attempt": 1,
         "durationS": 0.01,
-        "runId": "run_b7d01d96e42e7812",
+        "runId": "run_b435700e614bf6b6",
         "stage": "result",
         "status": "done"
       },

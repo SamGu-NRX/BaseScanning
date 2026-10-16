@@ -11,7 +11,7 @@
     "value": null
   },
   "outcome": {
-    "arkitEpoch": null,
+    "arkitEpoch": "e1",
     "cableRoutePolylineArkit": null,
     "frameToArkit": null,
     "kind": "eligible",
@@ -19,7 +19,31 @@
     "profile": "C",
     "reasons": [],
     "recommendedPlacement": {
-      "boxArkitWorld": null,
+      "boxArkitWorld": {
+        "pose": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.6937,
+          0.50165,
+          0.2994,
+          1.0
+        ],
+        "size": [
+          0.7874,
+          1.0033,
+          0.5588
+        ]
+      },
       "boxSceneM": {
         "centerM": [
           0.6937,
@@ -45,9 +69,9 @@
     },
     "viewsNeeded": []
   },
-  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjE0NDY4Miwia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTUyMUZXUEZTTUJCWjVQQ0dFS1pYRDA1L3J1bnMvcnVuXzBlZmU1MTJjNTAyYTVmM2IvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.46c8a0df6373617e682be7f977ca2f1a94ec89e5d121540abe38748ff5ce51a2",
-  "reviewUrl": "/v1/captures/cap_01M521FWPFSMBBZ5PCGEKZXD05/review",
-  "runId": "run_0efe512c502a5f3b",
+  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjE3NDc2Nywia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTUyWTVaVjFHUVkxQTFTRE01OE5YNzJYL3J1bnMvcnVuX2JhNjA5ZmViM2FiNTUxODUvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.1022d38e5ec26e01cc412a8b3d4e67575691efc32aae73bf0b8c6c78efc08251",
+  "reviewUrl": "/v1/captures/cap_01M52Y5ZV1GQY1A1SDM58NX72X/review",
+  "runId": "run_ba609feb3ab55185",
   "scale": null,
   "site": null,
   "status": "complete",
