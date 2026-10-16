@@ -765,16 +765,25 @@ class RunCoordinator:
         create only the missing pending records: existing records keep their
         attempts, failures and artifacts, and terminal runs never reach here
         because tick returns before spawning.
+
+        Only stages absent from the rows this tick already read are claimed: with
+        ModalDictState each claim is a conditional remote write plus a read-back,
+        so claiming every stage cost two round-trips per stage on every tick.
         """
+        present = {rec.stage for rec in self._rows(run.run_id)}
+        missing = [name for name in STAGE_NAMES if name not in present]
+        if not missing:
+            return
         now = self.s.clock.iso()
-        for name in STAGE_NAMES:
+        for name in missing:
             # Atomic insert-if-absent: two coordinators can resume the same old run
             # (sweeper, _resume_if_stale, worker tick) without an exclusive claim. A
             # plain check-then-upsert would reset a record the other coordinator
             # created and a worker started inside the race window.
-            self.s.state.create_stage_if_absent(  # type: ignore[attr-defined]
+            stored = self.s.state.create_stage_if_absent(  # type: ignore[attr-defined]
                 StageRecord(run_id=run.run_id, stage=name, status="pending", attempt=1, heartbeat=now)
             )
+            self._remember_stage(stored)
 
     def _snapshot(self, run_id: str) -> str:
         parts = [f"{rec.stage}:{rec.status}:{rec.attempt}:{rec.failures}:{rec.respawns}" for rec in self._rows(run_id)]

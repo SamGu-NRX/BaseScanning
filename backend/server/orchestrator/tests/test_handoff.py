@@ -415,3 +415,36 @@ def test_materialize_yields_to_a_record_that_raced_in(tmp_path, monkeypatch) -> 
     assert poses is not None
     assert poses.status == "running", poses
     assert poses.attempt == 2 and poses.worker_call_id == "other-coord", poses
+
+
+def test_materialize_claims_only_the_missing_records(tmp_path, monkeypatch) -> None:
+    """With ModalDictState each claim is a conditional remote write plus a read-back,
+    so claiming all stages on every tick costs two round-trips per stage even when
+    every record exists. The tick already read the run's records; only the stages
+    missing from that read may be claimed."""
+    services, _uri, digest = build_services(tmp_path, "memory")
+    deadline = (services.clock.now() + timedelta(hours=1)).isoformat()
+    run = _run(services, digest, deadline=deadline)
+    now = services.clock.iso()
+    for name in STAGE_NAMES:
+        if name != "poses":
+            services.state.upsert_stage(
+                StageRecord(run_id=run.run_id, stage=name, status="pending", attempt=1, heartbeat=now)
+            )
+
+    claimed: list[str] = []
+    real_create = MemoryState.create_stage_if_absent
+
+    def counting_create(self, rec):
+        claimed.append(rec.stage)
+        return real_create(self, rec)
+
+    monkeypatch.setattr(MemoryState, "create_stage_if_absent", counting_create)
+
+    RunCoordinator(services).tick(run.run_id)
+    assert claimed == ["poses"], claimed
+    assert services.state.get_stage(run.run_id, "poses") is not None
+
+    claimed.clear()
+    RunCoordinator(services).tick(run.run_id)
+    assert claimed == [], "a tick whose run has every record must not claim any"
