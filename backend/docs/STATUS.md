@@ -1,230 +1,132 @@
 # Backend status
 
-Honest state of `backend/`. This file merges two earlier documents that had not
-met: the burst2 inventory written after the move into the monorepo (PR #248,
-checked 2026-10-15 on the port commit `2d0911f8` plus this branch's SSR fix),
-and the capture-chain status written for the integration-gate task
-(burst5-20261015-bs-integration-gate) on `alpha`. Both halves ran in fresh
-clones, from `backend/`, with `uv sync --frozen` and the `api` extra unless
-noted. Failures are listed, not summarized away. Where the two runs disagree,
-the newer evidence wins and the older number is kept, labeled: the capture-chain
-run is the newest, and where it saw an SSR-hygiene failure this branch's fix
-(`f4a8536c`) supersedes it, because the merged tree carries the fix.
+Honest state of `backend/`, measured on **pure `alpha` at `4bcbedba7ffd3d8c4d7f725395e33ed5a9d27d6c`**.
 
-## What the capture path proves
+This document merges three runs, newest wins: (1) the burst2 inventory after the
+monorepo move (PR #248, port commit `2d0911f8` + SSR fix `f4a8536c`,
+2026-10-15), (2) the capture-chain status on `alpha` (2026-10-15), and (3) the
+**sweep 2026-10-16** below: a fresh clone of pure `alpha`, every documented
+backend command measured and screen-recorded, plus a real-socket device journey.
+Failures are listed, not summarized away. Where runs disagree, the 2026-10-16
+sweep is the newest evidence; older numbers are kept and labeled.
 
-The device's own journey — `POST /v1/captures` → register → signed `PUT` →
-commit → finalize → poll events → read result — runs end to end over the
-committed `mini-arkit` packet fixture, in-process, with no cloud service:
+- **Measured at:** 2026-10-16, 07:27–08:05 UTC (single session, one fresh clone at `/home/user/work/burst11-bs-alpha-target-sweep`).
+- **Observer:** Obvious agent (Autobuild), no human output retyped. Debian 13, Python 3.12.15, uv 0.13.1, `uv sync --frozen --extra api`. No credentials set, no cloud services, nothing deployed (standing rule: never deploy). Every command ran under `asciinema rec`, rendered to PNG with `agg`; exit codes, wall times and first errors come from the recordings and logs, not memory.
 
-- `tests/test_capture_fixture_flow.py` — persisted bytes, stored hashes, commit
-  counts, the `awaiting_files` path when a file never arrives.
-- `scripts/capture_flow_e2e.py` — the same journey as one command, leaving a
-  JSON receipt (`captureId`, statuses, file counts, error codes). Ran clean
-  this session: exit 0.
-- `scripts/replay_capture.py` — re-sends a saved receipt to a fresh app
-  instance and asserts the idempotency invariants (retried create returns the
-  stored capture; retried finalize returns the same deterministic runId;
-  committed hashes equal the receipt's). Ran clean this session: `ok=true`,
-  terminal `manual_review`.
-- `tests/test_integration_gate.py` (the capture chain) — the gate: the committed
-  packet through create, upload, commit, finalize, **the configured local hook**
-  (`HSS_INGEST_HOOKS=auto` + `HSS_ORCH_STAGE_STUBS=1`, the documented SD-73 dev
-  setting; prewarm off via the documented SD-11 knob so the gate stays
-  no-cloud), event polling, and result retrieval. It asserts a useful terminal
-  result: the runId equals `run_id_for_capture(captureId, packet bytes)`, all
-  eleven stages reach done, exactly one terminal `verdict_ready` with that
-  runId and kind, and `GET /result` serves `outcome.kind == manual_review` with
-  the finalize runId and a masked verdict for the device principal. Every other
-  journey test on this chain runs with hooks `null` and stops at
-  `processing`; this file is the only proof of the last leg.
+## Every documented backend command, measured (sweep 2026-10-16)
 
-The wire contract the iOS uploader reads (`CaptureAPI.swift` keys, error-body
-shapes, signed-URL capabilities) is exercised at the HTTP boundary by these
-tests; the Swift decode side has never been executed (no Swift toolchain in the
-sandbox).
+| Command | Documented status | Measured result | Evidence |
+| --- | --- | --- | --- |
+| `make setup` | works | exit 0, 9 s | `01-setup.cast/.png` |
+| `uv sync --frozen --extra api` | works | exit 0, 1 s | `02-sync-api.cast/.png` |
+| `make lint` (ruff check, ruff format, import-linter) | works | exit 0, 1 s; 5 contracts kept | `03-lint.cast/.png` |
+| `make schemas` | works | exit 0, 1 s | `04-schemas.cast/.png` |
+| `make hygiene` | known FAIL (deny-list) | exit 2 (make Error 1), 1 s — `server/orchestrator/tests/data/packets/synthetic-meter.tar: deny-list`; pre-existing on pure `alpha` since `f0df5cd9` | `05-hygiene.cast/.png` |
+| `make validate` | works | exit 0, 5 s — `ok scenes=5 verdicts=16 labels=61 packets=36` | `06-validate.cast/.png` |
+| `make test` | 4 known gate failures | exit 2 (make Error 1), 827 s — **1425 passed, 19 skipped, 4 failed, 14 errors**. The 4 failures are exactly the SD-96 gate tests (`server/eval/tests/test_gates.py`); the 14 errors are `tests/test_capture_cold_restart.py` at setup (`:37` imports `scripts.capture_cold_restart`, which imports `load_receipt` from `scripts.replay_capture` — undefined on alpha's copy), identical on pure `alpha` | `07-test.cast/.png`, `07-test.log` |
+| `make gates-offline` | 134 pass / 1 fail / 1 warn / 28 skip | same table reproduced: **pass 134, fail 1, warn 1, skip 28**; exit 2 (make Error 1). The one FAIL: `positive/eth3d-facade/gt-laser-gravel/C/footprint3in` — "route 9.1834 ft exceeds 9.0", expired SD-96 window (`until: 2026-10-04`, `server/eval/gates.yaml`) | `08-gates-offline.cast/.png`, `08-gates-offline.log` |
+| `make orchestrator-e2e` | works | exit 0, 15 s — **176 passed** (was 153 in the burst2 run; suite has grown) | `09-orchestrator-e2e.cast/.png` |
+| `make result-golden` | works | exit 0, 2 s — 3 composes + schema validate, `ok synthetic photo reject` | `10-result-golden.cast/.png` |
+| `make evals` | blocked on laser fixtures | exit 2, 2 s — `CriteriaInputError: occluders_missing` at `server/criteria/run.py:78` via `server/eval/suite.py:144` | `11-evals.cast/.png` |
+| `make e2e-local` | SKIPs pipeline rows by design; exits 2 ("a missing API is not a PASS") | exit 2, 0 s, SKIP rows as documented. New observation: the `--local` flag is **dead** — `server/eval/e2e.py:33` folds it into the same `CAPTURE_API_URL`-unset branch and never imports the in-process API; `make e2e-local` runs no journey at all, only scores the committed fixture rows | `12-e2e-local.cast/.png`, `12-e2e-local.log` |
+| `make fixtures ONLY=small` | works | exit 0, <1 s — **119 items ok** (up from 108 in the 2026-10-15 run), zero missing items. The small tier does not carry the laser/occluder items at all (they are tier-`all`); no missing-item failures this run — the 2026-10-15 "laser items fail with missing" line applied to a run that attempted them | `13-fixtures-small.cast/.png`, `13-fixtures-small.log` |
+| `make criteria-golden` | blocked on laser fixtures | exit 2 (make Error 1), 117 s — pytest leg **118 passed, 1 skipped**; engine leg dies on `occluders_missing` (`server/criteria/run.py:78`), same fixture cause as `make evals` | `14-criteria-golden.cast/.png`, `14-criteria-golden.log` |
+| `make reads-gate` | not previously measured | exit 2 (make Error 1), <1 s — `STORE is unset and the breadth cache was not found` (`scripts/reads_gate.py`). Needs a cached breadth-read store passed via `STORE`; no network involved. New row: the offline gates document never mentioned this precondition | `15-reads-gate.cast/.png` |
+| `python scripts/capture_flow_e2e.py` | works | exit 0, 2 s — `ok: true`, receipt `/tmp/capture-flow-e2e-qz4bwp1z/receipt.json` | `16-capture-flow-e2e.cast/.png` |
+| `python scripts/replay_capture.py --receipt <r>` | works | exit 0, ~1 s — `ok: true`, terminal `manual_review`, replay receipt written. (A bare invocation without `--receipt` is argparse-rejected — that first failure was the observer's invocation, not the repo's) | `17-replay-capture.cast/.png` |
 
-## What the deterministic orchestrator proves
+Wall times are from the recordings; `make` wrappers report `Error 1` while the
+make process itself exits 2, which is why the exit column says 2.
 
-With stage stubs, the real coordinator, state store, storage, events and
-outcome table run inline: a finalized packet produces a run, eleven stage
-records reaching done, exactly one terminal event, and the `result/result.json`
-the result route serves. Stub verdicts are always `manual_review` — that is the
-deterministic path the gate asserts, not a hope. What this proves is the
-*wiring* (finalize handoff → `start_run` → coordinator → outcomes → API), not
-vision or geometry quality; that is the evaluator's domain below.
+### Documented commands deliberately not run (sweep)
 
-Suite: `server/orchestrator/tests` with `STATE_BACKEND=memory
-STORAGE_BACKEND=local HSS_ORCH_STAGE_STUBS=1` — **153 passed** in both runs
-(capture chain and burst2 inventory).
-
-## What passed, whole-package
-
-Checked 2026-10-15 on the port commit plus the SSR fix (burst2 inventory,
-Debian 13, Python 3.12, `uv sync --frozen` with the `api` extra); nothing was
-deployed and no external credentials were set.
-
-| Check | Result |
+| Command | Reason |
 | --- | --- |
-| `uv sync --frozen` | clean install, no resolver complaints |
-| `make lint` (ruff check, ruff format, import-linter) | all pass, 459 files, 5 architecture contracts kept |
-| `make schemas` | pass, exported schemas match committed copies |
-| `make hygiene` | pass (3093 tracked files) |
-| `make validate` | pass, 5 scenes, 16 verdicts, 61 labels, 36 packets |
-| `make test` | 1205 passed, 17 skipped, 4 failed (see gates below) |
-| `make gates-offline` | pass 134, fail 1, warn 1, skip 28 |
-| `make ios-kit` | pass (with a `zip` shim; see ios-kit below) |
-| orchestrator suite with stub env | 153 passed |
+| `make weights` | runs `modal run` (Modal + HuggingFace weight download to a Volume) — paid/cloud, prohibited |
+| `make e2e-dev` | hard-requires a live Modal deployment (`CAPTURE_API_URL` on `*.modal.run`) — networked deploy, prohibited |
+| `scripts/lamar` targets | need the LaMAR five-segment dataset download — prohibited; the gates table SKIPs lamar rows on this machine anyway |
+| `make ios-kit` | sandbox has no `zip` binary; packet excludes the produced zip; schema-copy steps are covered by `make schemas` + `make validate` (2026-10-15 run verified the full target with a `zip` shim) |
+| `make ci`, deploy targets, `make gates-update` | `ci` re-runs already-measured targets and exits 1 on SD-96 alone; deploy targets deploy; `gates-update` rewrites pinned gate hashes (mutates gate data) |
 
-The 17 skipped tests are the `live` marker (real OpenAI, xAI, GCS or R2 calls); no keys were set.
+## The device journey over a real socket (new evidence 2026-10-16)
 
-The short version from that run: the port is in good shape. One install ran
-clean, lint, schemas, hygiene and fixture validation all pass, and 1205 of 1209
-tests pass. The four failures share one cause that has nothing to do with the
-move: a known-failure window in the gate config expired on 2026-10-04. One real
-path bug from the move is fixed in this PR.
+The 2026-10-15 runs proved the journey in-process (TestClient). This sweep
+additionally drove it **over a real uvicorn HTTP socket**: `uvicorn
+server.api.app:create_app --factory` on `127.0.0.1:8641` with the documented
+dev settings — `STATE_BACKEND=memory`, `STORAGE_BACKEND=volume` (local volume
+root), static tokens (`CAPTURE_API_TOKENS` device+reviewer),
+`UPLOAD_URL_HMAC_SECRET` set, `HSS_INGEST_HOOKS=auto` +
+`HSS_ORCH_STAGE_STUBS=1` + `HSS_ORCH_PREWARM=0`, `VISION_EXTERNAL_CALLS=off`.
+Every request below is a real HTTP call from a separate `httpx` client; each
+step has its own recording.
 
-## Components
+| Step | Result | Evidence |
+| --- | --- | --- |
+| boot + `GET /v1/healthz` | 200, uvicorn up on 127.0.0.1:8641 | `j-boot` (server log), `j-create.cast` context |
+| `POST /v1/captures` (create projection, `Idempotency-Key: packetId`) | **201**, `status=uploading`, `captureId=cap_01M51VG6YG57X7M31K8PQAPGRY` | `j-create.cast/.png` |
+| `POST /v1/captures/{id}/files` (register 11 sealed files) | **200**, 11 targets, signed upload URLs on the same socket | `j-register.cast/.png` |
+| signed `PUT` × 11 | **11/11 HTTP 200** | `j-upload.cast/.png` |
+| `POST /v1/captures/{id}/files:commit` | **200**, `committed=11`, `notFound=[]`, `mismatch=[]` | `j-commit.cast/.png` |
+| `POST /v1/captures/{id}/finalize` (raw `packet.json`, `X-Packet-Sha256`) | **202**, `runId=run_8c8de965f367c707`, `status=processing`, `missing=[]` | `j-finalize.cast/.png` |
+| `GET /v1/captures/{id}/events` (poll) | **200**, 31 events, terminal `verdict_ready`, a `validate` stage event carrying the finalize runId, `status=manual_review` | `j-events.cast/.png` |
+| `GET /v1/captures/{id}` | **200**, `status=manual_review`, `filesCommitted=11` | `j-status.cast/.png` |
+| `GET /v1/captures/{id}/result` (device principal) | **200**, `outcome.kind=manual_review` ("Review required before a placement is shown.", `recommendedPlacement=null`), top-level `runId == run_8c8de965f367c707` | `j-result.cast/.png` |
+| retried `POST /v1/captures` (same key+body) | **200**, same `captureId` — idempotent replay of the stored create body (`server/api/routes/captures.py:66`), so the replayed body's `status` reads `uploading` by design | `j-recreate.cast/.png` |
 
-### Contracts (`server/contracts`)
+Two anomalies seen during the first pass were investigated and are **not** API
+defects: the re-create's `uploading` status is the stored create body replayed
+verbatim (above), and `runId` is top-level on the result document
+(`server/api/routes/result.py:83`), not inside `outcome`. The `/docs` page was
+not visually captured (no Playwright browser in the sandbox at run time); the
+OpenAPI document behind it is covered by `make schemas`.
 
-Pydantic models for the capture packet, result and API envelope, plus the JSON Schema exporter the iOS kit and the validator both read.
+## Components (unchanged conclusions, refreshed numbers)
 
-- Tests: `server/contracts/tests` runs green inside `make test`.
-- End to end: `make schemas` confirms the exported schemas match the committed copies in `server/contracts/schemas/` and `ios-kit/schemas/`. `make validate` proves the schema still accepts all 36 committed packet fixtures.
-- Nothing stubbed. The import-linter contract that keeps this package dependency-free passes.
+- **Contracts (`server/contracts`)** — `make schemas` and `make validate` pass (5 scenes, 16 verdicts, 61 labels, 36 packets). Nothing stubbed.
+- **Server API (`server/api`)** — in-process journey green (receipt + replay + orchestrator gate), and now proven over a real socket (table above). A deployed-stack run still needs `CAPTURE_API_URL` and is out of scope (never deploy).
+- **Eval (`server/eval`)** — gate table reproduces exactly: 134 pass / 1 fail (expired SD-96 window) / 1 warn / 28 skip. All four test failures are that one row.
+- **Criteria (`server/criteria`)** — unit tests pass; golden-scene engine runs blocked on tier-`all` laser/occluder fixtures (`occluders_missing`, `run.py:78`).
+- **Packet, scene, recon** — unchanged from 2026-10-15: packet fixtures all validate; breadth tracks still need weights/GPU (not run).
+- **ios-kit** — not re-run this sweep (no `zip` binary); last verified 2026-10-15 with the `zip` shim.
 
-### Server API (`server/api`)
+## Failures, kept visible (sweep 2026-10-16)
 
-The FastAPI capture API that takes a packet and returns a result.
-
-- Tests: `server/api/tests` runs green inside `make test` on the burst2 run.
-- End to end: the burst2 inventory recorded this as not verified; the capture-chain run since proved the device journey in process — create, upload, commit, finalize, event polling and result retrieval over the committed `mini-arkit` fixture, terminal `manual_review` (see "What the capture path proves"). A live deployment run still needs `CAPTURE_API_URL` and deployment is out of scope for both checks (never deploy). `make e2e` runs and correctly SKIPs the pipeline rows ("no ReplayRun timings"), scoring everything else from committed fixtures.
-- One wording wart: `server/eval/e2e.py` prints "the in-process API is not importable" whenever `CAPTURE_API_URL` is unset, whether or not the API would import. Cosmetic; see follow-up 5.
-
-### Eval (`server/eval`, `eval/`)
-
-The gate table: thresholds in `server/eval/gates.yaml`, the scorer in `server/eval/gates.py`, producers and the e2e driver. `eval/` is the breadth snapshot of scoring harness and schema builders.
-
-- Tests: `server/eval/tests` runs green except the four failures below. The offline gate run against committed fixtures produces a full table (see summary above).
-- End to end: `make gates-offline` works on committed fixtures alone. `make e2e` degrades gracefully: geometry rows SKIP without the laser PLYs, verdict and safety rows score from committed evidence.
-- Broken, and it is not the port: the SD-96 known-failure window in `server/eval/gates.yaml` (`positive_pass` entry for `eth3d-facade/gt-laser-gravel/C/footprint3in`, `until: "2026-10-04"`) has expired, so `server/eval/gates.py:_apply_known_failure` now leaves that row at FAIL. That single row is the entire content of all four test failures (`test_gates.py::test_committed_fixtures_are_scored_against_their_labels`, `::test_offline_table_skips_the_engine_and_passes_the_unpatched_reference`, `::test_route_over_the_bar_is_known_until_expiry`, `::test_refresh_rewrites_pins_after_a_committed_edit`) and the one FAIL in `make gates-offline`. The gate engine is doing exactly what it says: after `until`, the miss is a FAIL again. Someone who owns SD-96 has to decide whether to re-extend the window or treat the 9.18 ft route as a real miss. Follow-up 1.
-
-### Scene (`scene/`, `server/scene`)
-
-`scene/` holds the B1/B2 breadth snapshots (criteria objects, equipment close-up reading). `server/scene` holds the pipeline's scene build stages.
-
-- Tests: no committed tests under `scene/`; the pipeline stages are exercised through `server/tests` (for example `test_box_house.py`, which chains dense, coverage and scene publishing) and those pass.
-- End to end: the B1/B2 object models need the `objects` extra (torch, transformers, open_clip), which needs weights. Not installed, not run; see follow-up 4.
-
-### Recon (`recon/`, `server/poses`, `server/dense`, `server/scale`)
-
-`recon/` holds the A1-A5 breadth snapshots (SfM/MVS, feed-forward multi-view, metric depth, splatting, world models). The pipeline's pose, dense and scale stages live under `server/`.
-
-- Tests: `server/poses/tests`, `server/dense` (via `server/tests`, Open3D TSDF included through the dev group) and `server/scale/tests` all pass inside `make test`.
-- End to end: the actual A-track reconstructions need GPU weights and the ETH3D laser scans. Not run. See follow-up 4.
-
-### Criteria (`criteria/`, `server/criteria`)
-
-`criteria/` holds the C1/C2/C3 breadth snapshots and the spec with thresholds (`criteria/spec/criteria.yaml`). `server/criteria` is the verdict engine: C1 rules, C2 volumetric fit, C3 optional VLM judge.
-
-- Tests: `server/criteria/tests` runs green inside `make test`.
-- End to end: blocked on fixture data. `python -m server.criteria.run` on the committed `data/fixtures/scenes/eth3d-facade/gt-laser/scene.json` raises `CriteriaInputError: occluders_missing` (`server/criteria/run.py:78`), because the scene references a laser PLY that `data/fixtures/scenes/` does not carry. `make fixtures ONLY=small` fetches 108 items fine, but the laser items (`eth3d-*-laser`, `eth3d-*-occluders`, plus `eth3d-facade-colmap-*`) fail with "missing" from the fixture store, so `make criteria-golden`'s three scene runs could not execute here. This is a fixture-store access problem, not a path bug from the move. Follow-up 2.
-- C3 stays off by default without API keys, which matches the config; the 17 skipped live tests cover it.
-
-### Packet (`packet/`, `server/packet`)
-
-The capture packet schema and `packetgen`, the synthetic packet generator, plus the pipeline's packet validation stage.
-
-- Tests: `packet/tests` and `server/packet/tests` run green inside `make test` (the fuzz test in there is a good sign).
-- End to end: `python -m packetgen --help` and all its subcommands import and run; `make validate` passes all 36 packet fixtures, including the three pose-free and 2018-ARKit edge cases.
-
-### ios-kit (`ios-kit/`)
-
-The zip the iOS team installs: schemas, example packets, packetgen, prompts.
-
-- Tests: `ios-kit/tests` passes (18 tests) but is not in pytest's `testpaths`; run it with `uv run pytest ios-kit/tests`. That split is inherited from the source repo, not introduced by the move. Follow-up 3.
-- End to end: `make ios-kit` ran through staging, schema consistency (`cmp` of the two schema copies) and packing, producing a 121 KB zip with 78 entries. One sandbox caveat: the image has no `zip` binary and no root to install one, so the burst2 run used a small `zipfile`-based shim on PATH. Every other step of the target ran unmodified; the only unverified part is real `zip` byte-for-byte behavior, which nothing in the target depends on.
-
-## Current evaluator results
-
-- `make gates-offline` (capture-chain run, this session): **pass 134, fail 1, known_fail 0,
-  warn 1, skip 28.** The one FAIL is
-  `positive/eth3d-facade/gt-laser-gravel/C/footprint3in` — "route 9.1834 ft
-  exceeds 9.0". Its known-failure window (`until: "2026-10-04"`) in
-  `server/eval/gates.yaml` has expired, so the gate correctly reports FAIL
-  again. Extending a placement-criteria window is a WS-09 policy call, so it is
-  recorded here, not patched. `make ci` therefore exits 1 on both runs for
-  this reason alone.
-- Full suite `make test` results: see "Failures, kept visible" below.
-- `make schemas` passes; `make validate` passes (5 scenes, 16 verdicts,
-  61 labels, 36 packets); `make lint` passes (ruff check, ruff format,
-  import-linter: 5 contracts kept, 0 broken).
-
-## Fixed in this PR
-
-- `scripts/ssr_overlap_check.py` defaulted its root to `git rev-parse --show-toplevel`. In the source repo the toplevel held `data/hygiene/ssr_shingles.sha256`; in the monorepo the toplevel is BaseScanning root, one level above the package, so the script crashed with FileNotFoundError and `tests/test_ssr_overlap_check.py::test_repo_has_no_ssr_shingle_overlap` failed. The script now derives its root from its own location, and a new test (`test_default_root_resolves_inside_the_moved_package`) pins that the default root contains both the script and the hash list. Verified the test fails against the old script and passes with the fix. This is the one place the capture-chain run and the burst2 inventory disagreed: the capture chain, whose tree predated the fix, recorded the SSR-hygiene failure as pre-existing; on this branch and in the merged tree the test passes.
-- I checked the other path arithmetic that the move could have broken: `server/eval/gates.py`, `server/eval/eth3d/scene_from_recon.py`, `server/objects/*`, `server/orchestrator/stubs/_common.py` and the test `ROOT` constants all count parents from depths that are unchanged by the move, and `chain_hybrid.py` probes vendor locations with fallbacks that resolve. No other edits needed.
+| Check | Result | Why |
+| --- | --- | --- |
+| `make test` | 1425 passed, 19 skipped, 4 failed, 14 errors | 4 failed = SD-96 expired-window gate tests; 14 errors = `tests/test_capture_cold_restart.py` setup import of `load_receipt` missing from alpha's `scripts/replay_capture.py`; both identical on pure `alpha`, pre-existing |
+| `make gates-offline` / gate row | pass 134, fail 1, warn 1, skip 28 | the one FAIL is the expired SD-96 known-failure window (`gt-laser-gravel/C/footprint3in`, route 9.1834 ft > 9.0) |
+| `make hygiene` | exit 2 | deny-list hit on `server/orchestrator/tests/data/packets/synthetic-meter.tar`; pre-existing since `f0df5cd9` |
+| `make evals`, `make criteria-golden` | exit 2 | `occluders_missing` — tier-`all` laser/occluder fixtures not fetched (not in the authorized small tier) |
+| `make e2e-local` | exit 2 | by design; and its `--local` flag is dead code (`e2e.py:33`) |
+| `make reads-gate` | exit 2 | breadth cache absent; `STORE` unset (undocumented precondition, see follow-up 8) |
+| Swift / iOS | not run | no Swift toolchain |
+| GPU breadth tracks, live credentials, deployments | not run | weights and credentials absent; never deploy |
 
 ## What remains blocked
 
-- **Laser/occluder fixtures.** `make fixtures` cannot fetch the
-  `eth3d-*-laser`, `eth3d-*-occluders` or `colmap-*` items from the fixture
-  store, so `server.criteria.run` on the golden laser scenes raises
-  `occluders_missing` and `make criteria-golden` is not executable. The
-  criteria unit tests pass; the golden-scene engine run does not exist here.
-- **GPU weights.** The breadth tracks (scene/ B1 object detection, B2 close-up
-  reads, recon/ A1–A5) need the `objects`/`gpu` extras and model weights;
-  not installed, not run. Every real stage behind the stubs is unverified.
-- **Live credentials.** No Modal token, no GCS/R2 storage, no
-  `CAPTURE_API_URL` — so prewarm, remote spawn, cloud storage backends and any
-  deployed-stack check are unexercised (the standing rule is also: never
-  deploy). The evaluator's `runtime/e2e` row SKIPs for exactly this reason.
-- **The `/v1/placements` contract mismatch.** The iOS placement client
-  (`ios/HouseScanKit/.../PlacementHTTPClient.swift`) posts `scene.json` to
-  `POST /v1/placements` and expects a synchronous answer whose
-  `stats.input_sha256` matches the submitted bytes. The ported backend serves
-  the async `/v1/captures` journey and has no `/v1/placements` route at all.
-  Until one side moves, the app's placement client and this backend cannot
-  talk to each other; the capture path above is the backend's own contract,
-  proven without that endpoint.
-- **Swift.** No Xcode/Swift in this sandbox: no iOS build, no
-  `swift test` on HouseScanKit, no decode round-trip. The server side of every
-  key the Swift clients read is asserted; the client side is read, not run.
-
-## Failures, kept visible
-
-| Check | Result | Failure and why |
-| --- | --- | --- |
-| `make test` (burst2 run, with this PR's SSR fix) | 1205 passed, 17 skipped, 4 failed | the four eval-gate failures from the expired SD-96 known-failure window only; the SSR-hygiene test passes with the fix |
-| `make test` (capture-chain run, tree without the fix) | see below | 1 SSR-hygiene failure + eval-gate failures from the expired known-failure window; identical on the base branch, none touch this change |
-| `make gates-offline` (both runs) | pass 134, fail 1, warn 1, skip 28 | the expired window above; exit 1 |
-| `tests server/api/tests` (capture-chain run) | 203 passed, 1 failed | the SSR-hygiene pre-existing failure — superseded by this PR's fix, see "Fixed in this PR" |
-| `make hygiene` (merged tree and pure `alpha`) | FAIL | deny-list hit on `server/orchestrator/tests/data/packets/synthetic-meter.tar`; byte-identical failure on pure `alpha` (pre-existing since `f0df5cd9`), not introduced by this merge |
-| `tests/test_capture_cold_restart.py` (merged tree and pure `alpha`) | 14 errors at setup | `scripts/capture_cold_restart.py` imports `load_receipt` from `scripts.replay_capture`, which alpha's copy does not define; identical on pure `alpha`, not introduced by this merge |
-| `make criteria-golden` | not executable | laser/occluder fixtures cannot be fetched |
-| iOS suites | not run | no Swift toolchain |
-| `make lint` | pass | — |
-| `make schemas` | pass | — |
-| `make validate` | pass | — |
-| orchestrator stub suite | 153 passed | — |
-| runner receipt | exit 0 | — |
-| replay receipt | `ok=true`, terminal `manual_review` | — |
-| integration gate test | 1 passed | — |
-
-Final full-suite numbers were appended to each source document after its run;
-the failure classification was done before any code changed in either.
+Unchanged from 2026-10-15: laser/occluder fixture access (tier `all`), GPU
+weights for the breadth tracks, live credentials (Modal/GCS/R2/`CAPTURE_API_URL`),
+the `/v1/placements` contract mismatch with the iOS placement client, and all
+Swift-side verification. New this sweep: the cold-restart import break in
+`scripts/capture_cold_restart.py` (follow-up 9) and the undocumented
+`reads-gate` `STORE` precondition (follow-up 8).
 
 ## Follow-ups, priority order
 
-1. **Decide on the expired SD-96 known failure** (`server/eval/gates.yaml`, the `gt-laser-gravel/C/footprint3in` entry, `until: 2026-10-04`). Until someone with the WS-09 hat either re-extends the window with a fresh reason or closes the miss as real, `make test`, `make ci`, `make gates-offline` and `make e2e` all exit 1. This blocks every CI run of the package, so it goes first.
-2. **Restore access to the ETH3D laser and occluder fixtures** (`scripts/fetch_fixtures.py` items `eth3d-*-laser`, `eth3d-*-occluders`, `eth3d-facade-colmap-*`). Without them the criteria engine cannot run on the golden scenes and `make criteria-golden` cannot be verified anywhere fresh. If the store moved, update the manifest; if it needs credentials, document that in `data/README.md`.
-3. **Fold the orphan suites into `testpaths`** (`ios-kit/tests`, `scripts/lamar/tests`, `scripts/meter_models/tests`, `scripts/real_house/tests`). All 32 of their tests pass, but `make test` never runs them, so a regression there ships silently. The `testpaths` line is inherited from the source repo, so nothing broke in the move; it is just worth fixing now.
-4. **Verify the breadth tracks on a machine with weights and a GPU.** `scene/` B1/B2 and `recon/` A1-A5 were import-checked only through the pipeline stages they share. Running the OWLv2 parity test and one A1 reconstruction end to end would close the biggest honest gap in this inventory.
-5. **Fix the e2e skip message** (`server/eval/e2e.py`, around line 29). It claims the in-process API is "not importable" even when the real reason is that `CAPTURE_API_URL` is unset. A one-line wording change; worth it because the current text sent me down a wrong path during this check.
-6. **Wire the SSR overlap check into `make hygiene`.** Its own docstring says WS-00 should do this; right now only the test suite runs it.
-7. **Settle the `/v1/placements` contract mismatch** (see "What remains blocked"). One side has to move: the iOS placement client or the backend's async capture journey.
+1. **Decide the expired SD-96 known failure** (`server/eval/gates.yaml`, `gt-laser-gravel/C/footprint3in`, `until: 2026-10-04`). Re-extend with a fresh reason or close the miss as real. Blocks green `make test`/`make ci`/`make gates-offline`.
+2. **Restore/authorize tier-`all` fixture access** (`eth3d-*-laser`, `eth3d-*-occluders`, `eth3d-facade-colmap-*`) so `make evals`/`make criteria-golden` can run; the small tier (119 items) fetches clean, the engine run needs the laser PLYs.
+3. **Fix `scripts/capture_cold_restart.py`'s import** of `load_receipt` (missing from alpha's `scripts/replay_capture.py`) — 14 test errors at setup.
+4. **Fold the orphan suites into `testpaths`** (`ios-kit/tests`, `scripts/lamar/tests`, `scripts/meter_models/tests`, `scripts/real_house/tests`).
+5. **Fix the `e2e-local` skip path**: correct the misleading message (`server/eval/e2e.py`, "not importable" fires whenever `CAPTURE_API_URL` is unset) and either implement the `--local` in-process journey or remove the flag.
+6. **Document `reads-gate`'s `STORE` precondition** (or default it) in the gates docs/README.
+7. **Verify the breadth tracks on a machine with weights and a GPU.**
+8. **Wire the SSR overlap check into `make hygiene`** (its docstring says WS-00 should).
+9. **Settle the `/v1/placements` contract mismatch** (iOS placement client vs the async capture journey).
 
 ## CI proposal for the PR body
 
-The port deliberately excluded `.github/` (7 workflow files). To get the package under CI in the monorepo, a `backend-ci` job on a `push`/`pull_request` filter over `backend/**` running `make setup`, `make ci` and the orchestrator stub suite would cover everything verified above except the GPU-dependent breadth tracks and the live-marker tests. Python 3.12 with `uv sync --frozen` and the `api` extra matches the Makefile's own assumptions.
+Unchanged: a `backend-ci` job on `backend/**` running `make setup`, `make ci`
+and the orchestrator stub suite on Python 3.12 with `uv sync --frozen` and the
+`api` extra covers everything verified above except the GPU-dependent breadth
+tracks and the live-marker tests — and stays red on SD-96 until follow-up 1 is
+decided.
