@@ -181,6 +181,10 @@ def _recompose_after_correction(capture_id: str, run: RunRecord) -> None:
             )
         )
     run.status = "running"
+    # The run's deadline measured its first pass, so a correction accepted after
+    # it would hard-stop on the next tick. The re-run gets the same HARD_STOP_MIN
+    # budget start_run gives a new run, counted from the correction.
+    run.deadline_at = deadline_from(services.clock, services.settings.HARD_STOP_MIN)
     services.state.put_run(run)  # type: ignore[attr-defined]
     raw = dict(get_json(services.state, f"run_control:{run.run_id}") or {})  # type: ignore[attr-defined]
     raw["merge_done"] = False
