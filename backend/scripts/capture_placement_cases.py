@@ -24,9 +24,12 @@ Where the case enters the pipeline is the point:
 - The ``objects_3d`` stage boundary gets an explicit, successful object list for
   every case: an empty list where the source scene already carries the hazards,
   and one nonempty observed tap hazard case whose single hazard the coordinator's
-  one-time merge must place into the merged scene exactly once. The default
-  objects stubs never run on this path: a capture with no registered injection
-  fails loudly instead of fabricating a hazard.
+  one-time merge must place into the merged scene exactly once — delivered only
+  when the case's source does not already carry that hazard id, because the merge
+  contract replaces only detector/VLM twins and a same-id re-delivery of a
+  tap-sourced hazard would duplicate the id and be refused. The default objects
+  stubs never run on this path: a capture with no registered injection fails
+  loudly instead of fabricating a hazard.
 - Every other unavailable vision stage stays explicitly stubbed (prewarm off,
   external vision calls off). ``placement`` is ``stubs_exempt``: the real
   conversion and solver run behind the door when a case reaches them.
@@ -127,6 +130,23 @@ TEMPLATE_ENV = {
 
 # The one case whose objects_3d boundary carries a nonempty observed tap hazard.
 TAP_CASE_ID = "hazard-right-ground-gap"
+
+# Expectations pinned on the wire scene, evaluated against the journey's real
+# converted-path result: the wire's six-decimal rounding (declared by the packet as
+# 5e-7 ft) propagates through the real conversion and solver into derived feet
+# values, so those compare within the packet's declared 1e-4 ft derived-output
+# tolerance. Scene geometry itself is still compared exactly, field by field (see
+# _check_converted_geometry), and the case-suite evaluator stays exact by default
+# (tol_ft defaults to 0.0).
+_WIRE_DERIVED_TOLERANCE_FT = 1e-4
+
+# The supported case packet is the default replay target; the legacy W7 cases
+# manifest stays available explicitly via --manifest and keeps its own pinned
+# refusal state, reported as blockers rather than mistaken for acceptance.
+DEFAULT_MANIFEST = (
+    Path(__file__).resolve().parent.parent
+    / "server/placement/tests/data/capture_cases_v1/manifest.json"
+)
 
 # An observed tap hazard, hand-authored for this runner: a wall_rect vent on the
 # case's wall, away from the case's pinned decision geometry. It exists to prove
@@ -347,11 +367,21 @@ def _walk_front_door(
     journey["captureId"] = capture_id
 
     # Register the case at both boundaries before finalize can start the pipeline.
+    # The tap hazard is delivered only where the upstream source does not already
+    # carry it: the merge contract replaces only detector/VLM twins, so a same-id
+    # re-delivery of a source-carried (tap-sourced) hazard is never replaced — it
+    # duplicates the id and the merged scene is refused as inconsistent. A
+    # source-carried hazard still reaches the one-time tap checks through the real
+    # merge and real conversion below.
+    source_object_ids = {
+        obj.get("id") for obj in json.loads(record.source_path.read_text()).get("objects") or []
+    }
+    inject_tap = record.id == TAP_CASE_ID and TAP_HAZARD["id"] not in source_object_ids
     _REGISTRY[capture_id] = {
         "record": record,
         "packet_id": packet_id,
         "packet_sha256": journey["packetSha256"],
-        "objects_3d": [copy.deepcopy(TAP_HAZARD)] if record.id == TAP_CASE_ID else [],
+        "objects_3d": [copy.deepcopy(TAP_HAZARD)] if inject_tap else [],
     }
 
     files = []
@@ -740,6 +770,9 @@ def _collect_case(harness: _Harness, record: case_suite.CaseRecord, journey: dic
         case["convertedSha256"] = _sha256(converted_bytes) if converted_bytes else None
         case["resultSha256"] = _sha256(deps.storage.get_bytes(placement_artifact_key))
         case["solverPolicy"] = placement.get("policy")
+        # The solver's own decision, kept distinct from the device's served result
+        # kind (deviceOutcome) so the receipt shows both sides of the door.
+        case["solverDecision"] = placement.get("decision")
 
         # Both solver responses must bind their own input hash to their own exact
         # request bytes. Forging the same wrong hash in both replies leaves them in
@@ -788,7 +821,9 @@ def _collect_case(harness: _Harness, record: case_suite.CaseRecord, journey: dic
                         "direct POST /v1/placements on the captured bytes disagrees with the stage response"
                     )
         if record.wire_path is not None:
-            wire_mismatches = case_suite._evaluate_expectations(record.expectations, placement)
+            wire_mismatches = case_suite._evaluate_expectations(
+                record.expectations, placement, tol_ft=_WIRE_DERIVED_TOLERANCE_FT
+            )
             case["wireSemanticComparison"] = "matched" if not wire_mismatches else "mismatched"
             case["wireSemanticMismatches"] = wire_mismatches
             if wire_mismatches:
@@ -828,6 +863,7 @@ def _collect_case(harness: _Harness, record: case_suite.CaseRecord, journey: dic
         case["convertedSha256"] = None
         case["resultSha256"] = None
         case["solverPolicy"] = None
+        case["solverDecision"] = None
         case["directComparison"] = "not_applicable"
         case["wireSemanticComparison"] = "not_applicable"
     else:
@@ -992,8 +1028,12 @@ def run_cases(
         "generatedAt": datetime.now(UTC).isoformat(),
         "codeSha": code_sha,
         "producers": {
-            "caseSuiteBranch": "obv/burst7-bs-placement-cases@ffd476ddb3a4c6f0b21683f8c353d4280f05dca5",
-            "sceneStageBranch": "obv/burst7-bs-capture-scene-stage@38a5735abf6c48982f8131b6dc6814afb90e28f3",
+            # The integrated producer SHAs on this branch (base + imports), so the
+            # receipt names exactly which producer code ran, not just branches.
+            "base": "obv/burst7-bs-capture-placement-runner@bdfbb3fc649df8187675b880ba8df83a803fd119",
+            "caseIntegrityFix": "115b6ce313e51cede71496f267b65b8cd78aa118 (obv/burst7-bs-placement-cases, PR #271)",
+            "replayAcceptance": "5f9e29576556f635757eea0605d5a23d29ce1cc5 (obv/burst8-bs-replay-acceptance, PR #275)",
+            "supportedCasePairs": "e7ad2abc15d94691305bdb558a752ee535cf374e (obv/burst8-bs-supported-case-pairs, PR #276)",
         },
         "devSettings": dict(TEMPLATE_ENV),
         "stubbedStages": {
@@ -1028,7 +1068,7 @@ def _redaction_check(receipt: dict[str, Any]) -> str | None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Replay the placement case suite through the real capture front door.")
-    parser.add_argument("--manifest", type=Path, default=case_suite.DEFAULT_MANIFEST, help="Path to the case manifest.")
+    parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST, help="Path to the case manifest.")
     parser.add_argument("--output", type=Path, required=True, help="Where to write the JSON receipt.")
     parser.add_argument("--workdir", type=Path, help="run directory (default: a fresh temp dir)")
     parser.add_argument("--cases", help="comma-separated case ids to run (default: every case)")
