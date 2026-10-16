@@ -263,6 +263,7 @@ STAGE_INPUTS: dict[StageName, tuple[str, ...]] = {
         "verdicts/",
         "reads/reads.json",
         "scale/scale.json",
+        "impl/",
     ),
 }
 
