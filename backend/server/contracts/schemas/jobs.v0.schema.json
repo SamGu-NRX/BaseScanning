@@ -250,6 +250,7 @@
                 "coverage",
                 "scene",
                 "objects_3d",
+                "placement",
                 "criteria",
                 "result"
               ],
@@ -457,6 +458,7 @@
               "coverage",
               "scene",
               "objects_3d",
+              "placement",
               "criteria",
               "result"
             ],
@@ -758,6 +760,7 @@
             "coverage",
             "scene",
             "objects_3d",
+            "placement",
             "criteria",
             "result"
           ],

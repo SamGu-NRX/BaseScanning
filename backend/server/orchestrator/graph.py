@@ -1,4 +1,8 @@
-"""Eleven-stage graph. Deps and GPU attempts are the brief's §3 table (SD-08, SD-10)."""
+"""Twelve-stage graph: the brief's eleven stages (SD-08, SD-10) plus the real CPU placement
+stage after `objects_3d`. The GPU and vision stages stay stubbed in dev (`HSS_ORCH_STAGE_STUBS=1`);
+`placement` is `stubs_exempt` because it is deterministic CPU work with no GPU, network or
+credentials — running it for real on the stub path is the point.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +20,7 @@ STAGE_NAMES: tuple[StageName, ...] = (
     "coverage",
     "scene",
     "objects_3d",
+    "placement",
     "criteria",
     "result",
 )
@@ -36,6 +41,9 @@ class StageSpec:
     artifacts: tuple[str, ...]
     module: str
     entry: str = "run"
+    # True for a stage whose real implementation must run even when stage stubs are
+    # enabled: it is deterministic CPU work that needs no GPU, network or credentials.
+    stubs_exempt: bool = False
 
 
 def _cpu(
@@ -145,6 +153,23 @@ STAGES: dict[StageName, StageSpec] = {
             module="objects",
             entry="run_3d",
         ),
+        # The real placement stage (server/placement/): the repo's unchanged top-level
+        # solver behind `POST /v1/placements`, run on a wire-format scene. Optional: it
+        # adds a decision to the run and degrades (`degraded:placement`, capture
+        # `manual_review`) instead of sinking it. It is exempt from stage stubs — the
+        # only real stage on the dev path — because it is deterministic CPU work.
+        StageSpec(
+            name="placement",
+            deps=(("scene", _D),),
+            where="cpu",
+            timeout_s=120,
+            max_attempts=2,
+            gpu_by_attempt=(),
+            optional=True,
+            artifacts=("placement/placement.json", "placement/scene.json"),
+            module="placement",
+            stubs_exempt=True,
+        ),
         _cpu(
             "criteria",
             (("scene", _D), ("reads", _T), ("objects_3d", _T)),
@@ -211,6 +236,12 @@ STAGE_INPUTS: dict[StageName, tuple[str, ...]] = {
         "scene/scene.json",
         "objects/objects.json",
         "poses/registration_report.json",
+    ),
+    "placement": (
+        # A wire-format scene, the same bytes POST /v1/placements accepts. Nothing
+        # publishes this key yet (the bridge from Hunter's scene.json is future
+        # work), so the stage falls back to its committed reference fixture.
+        "placement/scene.json",
     ),
     "criteria": (
         "scene/",

@@ -192,6 +192,7 @@ def test_integration_gate_committed_packet_to_terminal_result(gate) -> None:
         "coverage",
         "scene",
         "objects_3d",
+        "placement",
         "criteria",
         "result",
     }

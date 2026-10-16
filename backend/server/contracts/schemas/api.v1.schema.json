@@ -2370,6 +2370,7 @@
             "coverage",
             "scene",
             "objects_3d",
+            "placement",
             "criteria",
             "result"
           ],

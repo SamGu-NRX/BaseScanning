@@ -34,6 +34,7 @@ StageName = Literal[
     "coverage",
     "scene",
     "objects_3d",
+    "placement",
     "criteria",
     "result",
 ]
@@ -67,6 +68,7 @@ STAGE_DEPS: dict[str, tuple[str, ...]] = {
     "coverage": ("dense",),
     "scene": ("coverage", "objects"),
     "objects_3d": ("scene", "objects"),
+    "placement": ("scene",),
     "criteria": ("scene", "reads", "objects_3d"),
     "result": ("criteria",),
 }
