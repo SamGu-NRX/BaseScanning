@@ -64,7 +64,8 @@ def join(runs: list[dict], spots: list[dict], sm, max_dist_m: float = 0.35, widt
             agreed_positions += 1
     return {
         "vetoes": vetoes,
-        "agreement_with_c1": round(agreed_positions / positions, 3) if positions else 1.0,
+        "positions_compared": positions,
+        "agreement_with_c1": round(agreed_positions / positions, 3) if positions else None,
     }
 
 

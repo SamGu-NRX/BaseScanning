@@ -135,6 +135,23 @@ import Testing
         }
     }
 
+    /// Review of #120: a replay frame shown for review gets its cues from `cues(for:)`, which
+    /// must judge step-back and step-aside from that frame's camera, not the last live one.
+    @Test func cuesJudgeTheAdviceFromTheCameraGiven() {
+        var map = CoverageMap(wall: standardWall())
+        map.observe(CoverageMapTests.frontCamera(), trackingNormal: true)
+        map.observe(CoverageMapTests.frontCamera(), trackingNormal: true)
+        let planner = GuidancePlanner()
+        let task = GuidanceTask.aimAtGround(s: 0)
+        let near = planner.cues(for: task, coverage: map, camera: Self.homeowner(out: 1))
+        #expect(near.stepBack)
+        let far = planner.cues(for: task, coverage: map, camera: Self.homeowner())
+        #expect(!far.stepBack)
+        #expect(planner.cues(for: task, coverage: map, camera: CoverageMapTests.frontCamera()).needsSecondPosition)
+        #expect(!planner.cues(for: task, coverage: map, camera: CoverageMapTests.frontCamera(x: 0.3)).needsSecondPosition)
+        #expect(!planner.cues(for: .walk(.left), coverage: map, camera: Self.homeowner(out: 1)).stepBack, "only aim steps carry the advice")
+    }
+
     @Test func tooCloseAsksToStepBack() {
         var planner = GuidancePlanner()
         let map = CoverageMap(wall: standardWall())

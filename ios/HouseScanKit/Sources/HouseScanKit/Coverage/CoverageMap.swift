@@ -1299,8 +1299,8 @@ public struct CoverageMap: Sendable {
         case .left: leftEnd = s
         case .right: rightEnd = s
         }
-        if limitEnds.remove(side) != nil { replayPastLimits() }
-        revision += 1
+        limitEnds.remove(side)
+        replayForChangedEnd()
     }
 
     /// Says whether the marked end on `side` is a real limit (scene.json's `limit`) or not
@@ -1314,13 +1314,27 @@ public struct CoverageMap: Sendable {
     }
 
     /// Forgets a marked end, for example to walk past it when the server asks what lies beyond.
+    /// Replays the kept cameras to restore sightings the end clipped, preserving skipped and
+    /// withdrawn cells. Without kept cameras, sightings supplied through `record` stay as they are.
     public mutating func clearEnd(_ side: WalkSide) {
         switch side {
         case .left: leftEnd = nil
         case .right: rightEnd = nil
         }
-        if limitEnds.remove(side) != nil { replayPastLimits() }
-        revision += 1
+        limitEnds.remove(side)
+        replayForChangedEnd()
+    }
+
+    private mutating func replayForChangedEnd() {
+        // Precomputed `record` maps have no kept frames to replay; preserve their sightings.
+        guard !observedCameras.isEmpty else {
+            replayPastLimits()
+            revision += 1
+            return
+        }
+        // Rebuild rather than merge: clear restores clipped sightings, and re-mark clips them
+        // again, without counting the same view twice.
+        replayObservedCameras(shiftingSkippedBy: 0)
     }
 
     /// Marks the not-yet-covered cells of `range` as skipped ("I can't get there").
@@ -1366,8 +1380,8 @@ public struct CoverageMap: Sendable {
     /// the air. So seen and covered cells are rebuilt by replaying `observedCameras`; marked ends
     /// move exactly (s is measured from the meter, so moving it by d along the wall moves every
     /// end by -d), and skipped cells move by whole cells, the remainder (under half a cell,
-    /// 7.6 cm, below tap error) waiting for later moves. The replay clips to the current ends, so
-    /// cells beyond an end seen before it was marked are gone until a new frame sees them.
+    /// 7.6 cm, below tap error) waiting for later moves. The replay clips to the current ends.
+    /// Clearing an end replays the kept cameras and restores sightings it clipped.
     /// Corners the walk followed move like the ends, so they keep their place in the world: pass
     /// `frame` with the corners it had (a copy of `wall` with a new meter or ground).
     ///

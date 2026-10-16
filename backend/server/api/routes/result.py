@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import ValidationError
 
 from server.api.deps import get_deps, load_owned, require_principal
@@ -121,3 +121,22 @@ def register(app: FastAPI) -> None:
         except FileNotFoundError as exc:
             raise fail(404, "result_not_ready", "/", "review is not ready") from exc
         return HTMLResponse(html)
+
+    @app.get("/v1/captures/{capture_id}/preview.ply")
+    def get_preview(capture_id: str, request: Request):
+        """Serve the run's result/preview.ply so the review page's relative fetch works."""
+        principal = require_principal(request)
+        deps = get_deps(request)
+        deps.charge(principal.label, "get", 120)
+        if deps.settings.HSS_AUTH_MODE != "none" and not principal.reviewer:
+            raise fail(403, "forbidden", "/", "review is for reviewers")
+        load_owned(deps, capture_id, principal)
+        run = _latest(deps, capture_id)
+        key = _artifacts(deps, run).get("result/preview.ply") if run else None
+        if not key:
+            raise fail(404, "result_not_ready", "/", "preview is not ready")
+        try:
+            data = deps.storage.get_bytes(key)
+        except FileNotFoundError as exc:
+            raise fail(404, "result_not_ready", "/", "preview is not ready") from exc
+        return Response(content=data, media_type="application/octet-stream")

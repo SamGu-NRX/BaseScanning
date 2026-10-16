@@ -182,6 +182,41 @@ def packet_cache_dir(capture_id: str, packet_sha256: str = "") -> Path | None:
     return Path("/vol/packet-cache") / slot
 
 
+def purge_packet_cache(capture_id: str) -> tuple[int, list[str]]:
+    """Remove every cached packet copy for a capture from the shared volume.
+
+    DELETE calls this because object-storage prefixes do not cover the packet
+    cache workers publish under /vol/packet-cache. Returns the number of files
+    removed and the paths that survived, so the caller can report a partial
+    purge instead of claiming a clean deletion.
+    """
+
+    base = packet_cache_dir(capture_id)
+    if base is None or not base.is_dir():
+        return 0, []
+    files = [path for path in base.rglob("*") if path.is_file() and not path.is_symlink()]
+    try:
+        shutil.rmtree(base)
+        return len(files), []
+    except OSError:
+        survivors = sorted(base.rglob("*"))
+        kept = sum(1 for path in survivors if path.is_file() and not path.is_symlink())
+        return len(files) - kept, [str(path) for path in survivors]
+
+
+def _capture_tombstoned(state: object, capture_id: str) -> bool:
+    """True once DELETE has removed the capture. States without kv storage never
+    tombstone, and a failing lookup must not block a live capture's stage."""
+
+    get_kv = getattr(state, "get_kv", None)
+    if not callable(get_kv):
+        return False
+    try:
+        return bool(get_kv(f"tomb:{capture_id}"))
+    except Exception:
+        return False
+
+
 def hydrate_packet(
     storage: object,
     state: object,
@@ -190,22 +225,32 @@ def hydrate_packet(
     *,
     include_files: bool = True,
     cache_dir: Path | None = None,
+    packet_key: str | None = None,
 ) -> None:
     """Copy the packet into ``packet_dir``.
 
     ``include_files`` is false for stages that only read ``packet.json``. A warm
     volume cache skips GCS for the frames a later stage does need.
+    ``packet_key`` is the manifest's storage key: an amendment run passes its
+    own ``captures/{capture_id}/amendments/{amendment_id}/packet.json``. A
+    capture the API has deleted must not hydrate at all: restoring it would
+    re-publish the packet cache DELETE just purged.
     """
 
+    if _capture_tombstoned(state, capture_id):
+        return
     packet_dir.mkdir(parents=True, exist_ok=True)
     if _copy_packet_cache(cache_dir, packet_dir, include_files=include_files):
         return
-    packet_key = f"captures/{capture_id}/packet.json"
-    _download_all(storage, [(packet_dir / "packet.json", packet_key)])
+    manifest_key = packet_key or f"captures/{capture_id}/packet.json"
+    _download_all(storage, [(packet_dir / "packet.json", manifest_key)])
     if not include_files:
         return
-    _download_all(storage, _packet_file_jobs(state, capture_id, packet_dir))
-    if cache_dir is not None and (packet_dir / "packet.json").is_file():
+    _download_all(storage, _packet_file_jobs(state, capture_id, packet_dir, manifest_key))
+    # A delete that lands mid-hydrate must be the last word: the entry check
+    # above ran before the tombstone existed, so re-check immediately before
+    # publishing, or this hydrate restores the cache the delete just purged.
+    if cache_dir is not None and (packet_dir / "packet.json").is_file() and not _capture_tombstoned(state, capture_id):
         _publish_packet_cache(packet_dir, cache_dir)
 
 
@@ -244,7 +289,7 @@ def hydrate_artifacts(storage: object, dest_root: Path, artifacts: dict[str, str
     return present
 
 
-def _packet_file_jobs(state: object, capture_id: str, packet_dir: Path) -> list[tuple[Path, str]]:
+def _packet_file_jobs(state: object, capture_id: str, packet_dir: Path, packet_key: str) -> list[tuple[Path, str]]:
     packet: dict | None = None
     manifest = packet_dir / "packet.json"
     if manifest.is_file():
@@ -254,6 +299,9 @@ def _packet_file_jobs(state: object, capture_id: str, packet_dir: Path) -> list[
             loaded = None
         if isinstance(loaded, dict):
             packet = loaded
+    # Manifest paths are relative to the packet. A base packet sits at
+    # captures/{capture_id}/packet.json, an amendment under its own prefix.
+    base = packet_key.rsplit("packet.json", 1)[0] or f"captures/{capture_id}/"
     jobs: list[tuple[Path, str]] = []
     seen: set[str] = set()
     files = getattr(state, "files", None)
@@ -273,7 +321,7 @@ def _packet_file_jobs(state: object, capture_id: str, packet_dir: Path) -> list[
         rel = _safe_rel(rel_text)
         if rel is None:
             continue
-        jobs.append((packet_dir / rel, f"captures/{capture_id}/{rel.as_posix()}"))
+        jobs.append((packet_dir / rel, f"{base}{rel.as_posix()}"))
         seen.add(rel.as_posix())
     return jobs
 

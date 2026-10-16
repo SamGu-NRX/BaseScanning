@@ -30,8 +30,22 @@ import Testing
         waiting.forEach { $0() }
     }
 
-    static func saved(_ rig: Rig) throws -> CaptureUploadState {
-        try CaptureUploadState.load(from: CaptureUploader.stateURL(in: rig.capture.folder))
+    /// The next request being parked does not prove the preceding state reached disk.
+    static func saved(_ rig: Rig) async throws -> CaptureUploadState {
+        let expected = await rig.uploader.snapshot
+        let url = CaptureUploader.stateURL(in: rig.capture.folder)
+        for _ in 0..<2000 {
+            if let saved = try? CaptureUploadState.load(from: url), saved == expected { return saved }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let saved = try CaptureUploadState.load(from: url)
+        try #require(saved == expected)
+        return saved
+    }
+
+    static func savedBytes(_ rig: Rig) async throws -> Data {
+        _ = try await saved(rig)
+        return try Data(contentsOf: CaptureUploader.stateURL(in: rig.capture.folder))
     }
 
     static func routes(_ server: LoopbackCaptureAPI) -> [String] { server.state.withLock { $0.log.map(LoopbackCaptureAPI.route) } }
@@ -89,7 +103,7 @@ import Testing
         }
         Self.deliver(rig.server, "PUT upload")
         try #require(await Self.parked(rig.server, "POST captures"))
-        let gone = try Self.saved(rig)
+        let gone = try await Self.saved(rig)
         #expect(gone.captureID == nil)
         #expect(gone.files.values.map(\.attempts) == Array(repeating: 0, count: n))
         #expect(gone.files.values.allSatisfy { $0.phase == .queued })
@@ -121,7 +135,7 @@ import Testing
         try #require(await Self.parked(rig.server, "POST captures/finalize"))
         Self.deliver(rig.server, "POST captures/finalize")
         try #require(await Self.parked(rig.server, "POST captures/finalize"))
-        #expect(try Self.saved(rig).finalizeRetries == 1)
+        #expect(try await Self.saved(rig).finalizeRetries == 1)
 
         // The second finalize is accepted. The server forgets the capture before the next poll.
         rig.server.state.withLock { s in
@@ -132,7 +146,7 @@ import Testing
         }
         Self.deliver(rig.server, "POST captures/finalize")
         try #require(await Self.parked(rig.server, "POST captures"))
-        let gone = try Self.saved(rig)
+        let gone = try await Self.saved(rig)
         #expect(gone.captureID == nil)
         #expect(gone.finalizeRetries == 0)
         rig.server.release("POST captures")
@@ -161,7 +175,7 @@ import Testing
         try #require(await Self.parked(rig.server, "POST captures"))
 
         let url = CaptureUploader.stateURL(in: folder)
-        let before = try Data(contentsOf: url)
+        let before = try await Self.savedBytes(rig)
         // A folder that takes no new file: the atomic save can't write its replacement.
         try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
         rig.server.release("POST captures")
@@ -215,7 +229,7 @@ import Testing
         try #require(await Self.parked(rig.server, "POST captures"))
 
         let url = CaptureUploader.stateURL(in: folder)
-        let before = try Data(contentsOf: url)
+        let before = try await Self.savedBytes(rig)
         try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
         if order == .saveFailureFirst {
             rig.server.release("POST captures")
@@ -282,7 +296,7 @@ import Testing
         await gate.entered()
 
         let url = CaptureUploader.stateURL(in: folder)
-        let before = try Data(contentsOf: url)
+        let before = try await Self.savedBytes(rig)
         try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
         await rig.uploader.add(images)
         gate.release()
@@ -340,7 +354,7 @@ import Testing
         try #require(await Self.parked(rig.server, route))
 
         let url = CaptureUploader.stateURL(in: folder)
-        let before = try Data(contentsOf: url)
+        let before = try await Self.savedBytes(rig)
         try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
         rig.server.release(route)
         try #require(await CaptureUploaderTests.settles(rig.uploader))

@@ -49,6 +49,7 @@ class MemoryState:
         self._spend: dict[str, float] = {}
         self._open_by_owner: dict[str, list[str]] = {}
         self._claim_lock = threading.Lock()
+        self._event_lock = threading.Lock()
         # Dedicated lock for stage-record creation (the append_event lesson: never
         # share one lock across unrelated write paths — lock-ordering deadlock).
         self._stage_lock = threading.Lock()
@@ -140,18 +141,21 @@ class MemoryState:
         run_id: str | None = None,
         stage: StageName | None = None,
     ) -> EventRecord:
-        prior = self._events.get(capture_id, [])
-        seq = (prior[-1].seq + 1) if prior else 1
-        rec = EventRecord(
-            capture_id=capture_id,
-            seq=seq,
-            type=type,
-            at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            data=dict(data),
-            run_id=run_id,
-            stage=stage,
-        )
-        self._events.setdefault(capture_id, []).append(rec)
+        with self._event_lock:
+            # Read the tail, assign the seq and append as one atomic step, so two
+            # producers never observe the same last event.
+            prior = self._events.get(capture_id, [])
+            seq = (prior[-1].seq + 1) if prior else 1
+            rec = EventRecord(
+                capture_id=capture_id,
+                seq=seq,
+                type=type,
+                at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                data=dict(data),
+                run_id=run_id,
+                stage=stage,
+            )
+            self._events.setdefault(capture_id, []).append(rec)
         return rec.model_copy(deep=True)
 
     def events_after(self, capture_id: str, seq: int, limit: int = 100) -> list[EventRecord]:

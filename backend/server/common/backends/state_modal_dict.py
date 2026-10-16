@@ -350,9 +350,17 @@ class ModalDictState(MemoryState):
 
     def upsert_file(self, rec: FileRecord) -> None:
         self._kv[f"file:{rec.capture_id}:{rec.path}"] = rec.model_dump(mode="json")
-        paths = set(self._kv.get(f"files:{rec.capture_id}") or [])
-        paths.add(rec.path)
-        self._kv[f"files:{rec.capture_id}"] = sorted(paths)
+
+        def merge() -> None:
+            paths = set(self._kv.get(f"files:{rec.capture_id}") or [])
+            paths.add(rec.path)
+            self._kv[f"files:{rec.capture_id}"] = sorted(paths)
+
+        # Two containers can register files in parallel; the route's capture lock
+        # only guards one process. Merge the index under the shared Dict lease so
+        # a stale read in one container cannot drop the other's entry. The lease
+        # claims its slot with the Dict's atomic skip_if_exists put.
+        with_lease(self, f"files:{rec.capture_id}", merge)
 
     def get_file(self, capture_id: str, path: str) -> FileRecord | None:
         return self._model(f"file:{capture_id}:{path}", FileRecord)
