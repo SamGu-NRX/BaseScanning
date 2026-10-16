@@ -1,0 +1,20 @@
+uv run --frozen pytest server/criteria/tests -q
+........................................................................ [ 60%]
+..............................................s                          [100%]
+118 passed, 1 skipped in 115.41s (0:01:55)
+HSS_CRITERIA_C3=off VISION_EXTERNAL_CALLS=off uv run --frozen python -m server.criteria.run --scene data/fixtures/scenes/eth3d-facade/gt-laser/scene.json --out /tmp/crit/facade --no-c3
+<frozen runpy>:128: RuntimeWarning: 'server.criteria.run' found in sys.modules after import of package 'server.criteria', but prior to execution of 'server.criteria.run'; this may result in unpredictable behaviour
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/criteria/run.py", line 672, in <module>
+    main()
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/criteria/run.py", line 662, in main
+    evaluate_scene(
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/criteria/run.py", line 327, in evaluate_scene
+    query = _query(scene, scene_dir, degraded, allow_missing=cfg.allow_missing_occluders)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/criteria/run.py", line 78, in _query
+    raise CriteriaInputError("occluders_missing")
+CriteriaInputError: occluders_missing
+make: *** [Makefile:66: criteria-golden] Error 1

@@ -1,0 +1,8 @@
+Downloading uvloop (4.2MiB)
+ Downloaded uvloop
+Prepared 4 packages in 134ms
+Installed 4 packages in 8ms
+ + httptools==0.8.0
+ + uvicorn==0.54.0
+ + uvloop==0.22.1
+ + websockets==17.1

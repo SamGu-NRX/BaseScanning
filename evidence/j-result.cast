@@ -1,0 +1,2 @@
+{"version": 2, "width": 80, "height": 24, "timestamp": 1792137507, "env": {"SHELL": "/bin/bash", "TERM": null}}
+[0.185526, "o", "{\"step\": \"result\", \"http\": 200, \"outcomeKind\": \"manual_review\", \"runIdMatches\": false, \"hasVerdictDetail\": true}\r\n"]

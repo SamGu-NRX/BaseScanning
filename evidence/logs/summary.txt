@@ -1,0 +1,17 @@
+01-setup exit=0 wall=9s
+02-sync-api exit=0 wall=1s
+03-lint exit=0 wall=1s
+04-schemas exit=0 wall=1s
+05-hygiene exit=2 wall=1s
+06-validate exit=0 wall=5s
+07-test exit=2 wall=827s
+08-gates-offline exit=2 wall=1s
+09-orchestrator-e2e exit=0 wall=15s
+10-result-golden exit=0 wall=2s
+11-evals exit=2 wall=2s
+12-e2e-local exit=2 wall=0s
+13-fixtures-small exit=0 wall=0s
+14-criteria-golden exit=2 wall=117s
+15-reads-gate exit=2 wall=0s
+16-capture-flow-e2e exit=0 wall=2s
+17-replay-capture exit=2 wall=1s

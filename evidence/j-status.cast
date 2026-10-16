@@ -1,0 +1,2 @@
+{"version": 2, "width": 80, "height": 24, "timestamp": 1792137506, "env": {"SHELL": "/bin/bash", "TERM": null}}
+[0.175338, "o", "{\"step\": \"status\", \"http\": 200, \"captureStatus\": \"manual_review\", \"filesCommitted\": 11}\r\n"]

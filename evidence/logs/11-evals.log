@@ -1,0 +1,118 @@
+nice -n 10 uv run --frozen python -m server.eval.suite --config server/eval/gates.yaml --inputs data/fixtures --out runs/suite/latest
+Traceback (most recent call last):
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/suite.py", line 144, in _pipeline_rows
+    produced = evaluate_scene(staged, out_dir, config=engine_cfg)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/adapters/criteria.py", line 63, in evaluate_scene
+    produced = engine.evaluate_scene(scene_dir, out_dir, reads=reads, config=engine_cfg)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/criteria/run.py", line 327, in evaluate_scene
+    query = _query(scene, scene_dir, degraded, allow_missing=cfg.allow_missing_occluders)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/criteria/run.py", line 78, in _query
+    raise CriteriaInputError("occluders_missing")
+server.criteria.run.CriteriaInputError: occluders_missing
+Traceback (most recent call last):
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/suite.py", line 144, in _pipeline_rows
+    produced = evaluate_scene(staged, out_dir, config=engine_cfg)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/adapters/criteria.py", line 63, in evaluate_scene
+    produced = engine.evaluate_scene(scene_dir, out_dir, reads=reads, config=engine_cfg)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/criteria/run.py", line 327, in evaluate_scene
+    query = _query(scene, scene_dir, degraded, allow_missing=cfg.allow_missing_occluders)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/criteria/run.py", line 78, in _query
+    raise CriteriaInputError("occluders_missing")
+server.criteria.run.CriteriaInputError: occluders_missing
+Traceback (most recent call last):
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/suite.py", line 144, in _pipeline_rows
+    produced = evaluate_scene(staged, out_dir, config=engine_cfg)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/adapters/criteria.py", line 63, in evaluate_scene
+    produced = engine.evaluate_scene(scene_dir, out_dir, reads=reads, config=engine_cfg)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/criteria/run.py", line 327, in evaluate_scene
+    query = _query(scene, scene_dir, degraded, allow_missing=cfg.allow_missing_occluders)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/criteria/run.py", line 78, in _query
+    raise CriteriaInputError("occluders_missing")
+server.criteria.run.CriteriaInputError: occluders_missing
+Traceback (most recent call last):
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/suite.py", line 468, in _geometry_rows
+    score = score_scene(gt_staged / "scene.json", recon_dir / "scene.json", out_dir, visibility=visibility)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/geomscore.py", line 331, in score_scene
+    laser, laser_missing = require_declared_cloud(
+                           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/coverage.py", line 120, in require_declared_cloud
+    raise MissingOccluderError(
+server.eval.coverage.MissingOccluderError: laser asset laser.ply is not a readable file under runs/suite/latest/work/eth3d-facade/gt-laser
+Traceback (most recent call last):
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/suite.py", line 468, in _geometry_rows
+    score = score_scene(gt_staged / "scene.json", recon_dir / "scene.json", out_dir, visibility=visibility)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/geomscore.py", line 331, in score_scene
+    laser, laser_missing = require_declared_cloud(
+                           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/coverage.py", line 120, in require_declared_cloud
+    raise MissingOccluderError(
+server.eval.coverage.MissingOccluderError: laser asset laser.ply is not a readable file under runs/suite/latest/work/eth3d-facade/gt-laser
+# Eval suite 20261016T074731Z
+
+git `4bcbedba7ffd3d8c4d7f725395e33ed5a9d27d6c` — engine: ground rule `footprint3in`, C2 on, C3 off, profiles A/B/C/S/public.
+
+**pass 3 · fail 21 · warn 0 · measured 3** — bars are the ones gates.yaml documents; geometry passes by equaling the committed reference scores.
+
+## fixtures
+
+| id | value | status | note |
+|---|---|---|---|
+| fixtures/eth3d-facade | {"labels_present": 4} | PASS | 4/5 profiles have committed labels |
+| fixtures/eth3d-electro | {"labels_present": 4} | PASS | 4/5 profiles have committed labels |
+| fixtures/eth3d-delivery | {"labels_present": 4} | PASS | 4/5 profiles have committed labels |
+
+## pipeline
+
+| id | value | status | note |
+|---|---|---|---|
+| pipeline/eth3d-facade | null | FAIL | criteria engine failed: CriteriaInputError: occluders_missing (laser PLY absent; run make gt) |
+| pipeline/eth3d-electro | null | FAIL | criteria engine failed: CriteriaInputError: occluders_missing (laser PLY absent; run make gt) |
+| pipeline/eth3d-delivery | null | FAIL | criteria engine failed: CriteriaInputError: occluders_missing (laser PLY absent; run make gt) |
+
+## criteria
+
+| id | value | status | note |
+|---|---|---|---|
+| criteria/eth3d-facade/report | null | FAIL | the pipeline stage produced no criteria report |
+| criteria/eth3d-electro/report | null | FAIL | the pipeline stage produced no criteria report |
+| criteria/eth3d-delivery/report | null | FAIL | the pipeline stage produced no criteria report |
+| criteria/eth3d-facade/verdict_decisions | {} | FAIL | A: missing produced or reference verdict; B: missing produced or reference verdict; C: missing produced or reference verdict; S: missing ... |
+
+## verdicts
+
+| id | value | status | note |
+|---|---|---|---|
+| verdict/eth3d-facade/A | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-facade/B | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-facade/C | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-facade/S | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-facade/public | null | MEASURED | no committed labels for this profile |
+| verdict/eth3d-electro/A | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-electro/B | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-electro/C | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-electro/S | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-electro/public | null | MEASURED | no committed labels for this profile |
+| verdict/eth3d-delivery/A | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-delivery/B | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-delivery/C | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-delivery/S | null | FAIL | the pipeline stage produced no verdict for this profile |
+| verdict/eth3d-delivery/public | null | MEASURED | no committed labels for this profile |
+
+## geometry
+
+| id | value | status | note |
+|---|---|---|---|
+| geometry/eth3d-facade/colmap-nonlidar | null | FAIL | recon asset missing: MissingOccluderError: laser asset laser.ply is not a readable file under runs/suite/latest/work/eth3d-facade/gt-lase... |
+| geometry/eth3d-facade/colmap-oracle | null | FAIL | recon asset missing: MissingOccluderError: laser asset laser.ply is not a readable file under runs/suite/latest/work/eth3d-facade/gt-lase... |
+make: *** [Makefile:80: evals] Error 1

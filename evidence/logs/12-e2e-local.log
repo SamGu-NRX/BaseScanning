@@ -1,0 +1,175 @@
+nice -n 10 uv run python -m server.eval.e2e --local --config server/eval/gates.yaml --inputs data/fixtures --out runs/e2e/local
+SKIP e2e: CAPTURE_API_URL is unset and the in-process API is not importable. Pipeline rows stay SKIP; this is not a pass.
+# Gate table 20261016T074731Z
+
+git `4bcbedba7ffd3d8c4d7f725395e33ed5a9d27d6c`
+
+| id | group | target | metric | value | threshold | status | evidence | note |
+|---|---|---|---|---|---|---|---|---|
+| geometry/eth3d-facade/arkit-lidar | geometry | eth3d-facade/arkit-lidar | geomscore |  | present | SKIP |  | no geomscore for this packet on this machine |
+| geometry/eth3d-facade/arkit-nonlidar | geometry | eth3d-facade/arkit-nonlidar | geomscore |  | present | SKIP |  | no geomscore for this packet on this machine |
+| geometry/eth3d-electro/arkit-nonlidar | geometry | eth3d-electro/arkit-nonlidar | geomscore |  | present | SKIP |  | no geomscore for this packet on this machine |
+| geometry/eth3d-facade/metric/ground_strip | geometry | eth3d-facade/arkit-lidar | false_observed_by_rule | 0.069 | 0.069 | WARN | data/fixtures/geometry/eth3d-facade/metric/ground_strip.json | false_observed_by_rule 0.069; on ground_strip; floor 0.0247; claims empty |
+| verdict/eth3d-facade/A/unsafe_passes | verdicts | eth3d-facade/A | unsafe_passes | 0 | 0 | PASS | data/fixtures/verdicts/eth3d-facade/c1-3d/A.json |  |
+| verdict/eth3d-facade/A/false_rejections | verdicts | eth3d-facade/A | false_rejections | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.A.json |  |
+| verdict/eth3d-facade/A/coverage_contract | verdicts | eth3d-facade/A | coverage_contract_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.A.json |  |
+| verdict/eth3d-facade/A/c5 | verdicts | eth3d-facade/A | c5_margin_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.A.json |  |
+| verdict/eth3d-facade/A/pass_recall | verdicts | eth3d-facade/A | pass_recall |  | 1.0 | SKIP | data/fixtures/labels/eth3d-facade.A.json | no scorable labelled pass |
+| verdict/eth3d-facade/A/start_agreement | verdicts | eth3d-facade/A | start_agreement |  |  | SKIP | data/fixtures/labels/eth3d-facade.A.json | no scorable labelled start range |
+| verdict/eth3d-facade/A/site_agreement | verdicts | eth3d-facade/A | site.agreement | 1.0 | 1.0 | PASS | data/fixtures/labels/eth3d-facade.A.json |  |
+| verdict/eth3d-facade/B/unsafe_passes | verdicts | eth3d-facade/B | unsafe_passes | 0 | 0 | PASS | data/fixtures/verdicts/eth3d-facade/c1-3d/B.json |  |
+| verdict/eth3d-facade/B/false_rejections | verdicts | eth3d-facade/B | false_rejections | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.B.json |  |
+| verdict/eth3d-facade/B/coverage_contract | verdicts | eth3d-facade/B | coverage_contract_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.B.json |  |
+| verdict/eth3d-facade/B/c5 | verdicts | eth3d-facade/B | c5_margin_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.B.json |  |
+| verdict/eth3d-facade/B/pass_recall | verdicts | eth3d-facade/B | pass_recall |  | 1.0 | SKIP | data/fixtures/labels/eth3d-facade.B.json | no scorable labelled pass |
+| verdict/eth3d-facade/B/start_agreement | verdicts | eth3d-facade/B | start_agreement |  |  | SKIP | data/fixtures/labels/eth3d-facade.B.json | no scorable labelled start range |
+| verdict/eth3d-facade/B/site_agreement | verdicts | eth3d-facade/B | site.agreement | 1.0 | 1.0 | PASS | data/fixtures/labels/eth3d-facade.B.json |  |
+| verdict/eth3d-facade/C/unsafe_passes | verdicts | eth3d-facade/C | unsafe_passes | 0 | 0 | PASS | data/fixtures/verdicts/eth3d-facade/c1-3d/C.json |  |
+| verdict/eth3d-facade/C/false_rejections | verdicts | eth3d-facade/C | false_rejections | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.C.json |  |
+| verdict/eth3d-facade/C/coverage_contract | verdicts | eth3d-facade/C | coverage_contract_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.C.json |  |
+| verdict/eth3d-facade/C/c5 | verdicts | eth3d-facade/C | c5_margin_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.C.json |  |
+| verdict/eth3d-facade/C/pass_recall | verdicts | eth3d-facade/C | pass_recall |  | 1.0 | SKIP | data/fixtures/labels/eth3d-facade.C.json | no scorable labelled pass |
+| verdict/eth3d-facade/C/start_agreement | verdicts | eth3d-facade/C | start_agreement |  |  | SKIP | data/fixtures/labels/eth3d-facade.C.json | no scorable labelled start range |
+| verdict/eth3d-facade/C/site_agreement | verdicts | eth3d-facade/C | site.agreement |  | 1.0 | SKIP | data/fixtures/labels/eth3d-facade.C.json | no scorable site labels |
+| verdict/eth3d-facade/S/unsafe_passes | verdicts | eth3d-facade/S | unsafe_passes | 0 | 0 | PASS | data/fixtures/verdicts/eth3d-facade/c1-3d/S.json |  |
+| verdict/eth3d-facade/S/false_rejections | verdicts | eth3d-facade/S | false_rejections | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.S.json |  |
+| verdict/eth3d-facade/S/coverage_contract | verdicts | eth3d-facade/S | coverage_contract_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.S.json |  |
+| verdict/eth3d-facade/S/c5 | verdicts | eth3d-facade/S | c5_margin_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.S.json |  |
+| verdict/eth3d-facade/S/pass_recall | verdicts | eth3d-facade/S | pass_recall |  | 1.0 | SKIP | data/fixtures/labels/eth3d-facade.S.json | no scorable labelled pass |
+| verdict/eth3d-facade/S/start_agreement | verdicts | eth3d-facade/S | start_agreement |  |  | SKIP | data/fixtures/labels/eth3d-facade.S.json | no scorable labelled start range |
+| verdict/eth3d-facade/S/site_agreement | verdicts | eth3d-facade/S | site.agreement | 1.0 | 1.0 | PASS | data/fixtures/labels/eth3d-facade.S.json |  |
+| verdict/eth3d-facade/demo/unsafe_passes | verdicts | eth3d-facade/demo | unsafe_passes | 0 | 0 | PASS | data/fixtures/verdicts/eth3d-facade/gt.C1.g80.json |  |
+| verdict/eth3d-facade/demo/false_rejections | verdicts | eth3d-facade/demo | false_rejections | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.demo.labels.json |  |
+| verdict/eth3d-facade/demo/coverage_contract | verdicts | eth3d-facade/demo | coverage_contract_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.demo.labels.json |  |
+| verdict/eth3d-facade/demo/c5 | verdicts | eth3d-facade/demo | c5_margin_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-facade.demo.labels.json |  |
+| verdict/eth3d-facade/demo/pass_recall | verdicts | eth3d-facade/demo | pass_recall |  | 1.0 | SKIP | data/fixtures/labels/eth3d-facade.demo.labels.json | no scorable labelled pass |
+| verdict/eth3d-facade/demo/start_agreement | verdicts | eth3d-facade/demo | start_agreement | 1.0 | 1.0 | PASS | data/fixtures/labels/eth3d-facade.demo.labels.json |  |
+| verdict/eth3d-facade/demo/site_agreement | verdicts | eth3d-facade/demo | site.agreement | 1.0 | 1.0 | PASS | data/fixtures/labels/eth3d-facade.demo.labels.json |  |
+| verdict/eth3d-electro/A | verdicts | eth3d-electro/A | score-verdicts |  | present | SKIP | data/fixtures/labels/eth3d-electro.A.json | no verdict for this profile |
+| verdict/eth3d-electro/B | verdicts | eth3d-electro/B | score-verdicts |  | present | SKIP | data/fixtures/labels/eth3d-electro.B.json | no verdict for this profile |
+| verdict/eth3d-electro/C | verdicts | eth3d-electro/C | score-verdicts |  | present | SKIP | data/fixtures/labels/eth3d-electro.C.json | no verdict for this profile |
+| verdict/eth3d-electro/S | verdicts | eth3d-electro/S | score-verdicts |  | present | SKIP | data/fixtures/labels/eth3d-electro.S.json | no verdict for this profile |
+| verdict/eth3d-delivery/A | verdicts | eth3d-delivery/A | score-verdicts |  | present | SKIP | data/fixtures/labels/eth3d-delivery.A.json | no verdict for this profile |
+| verdict/eth3d-delivery/B | verdicts | eth3d-delivery/B | score-verdicts |  | present | SKIP | data/fixtures/labels/eth3d-delivery.B.json | no verdict for this profile |
+| verdict/eth3d-delivery/C | verdicts | eth3d-delivery/C | score-verdicts |  | present | SKIP | data/fixtures/labels/eth3d-delivery.C.json | no verdict for this profile |
+| verdict/eth3d-delivery/S/unsafe_passes | verdicts | eth3d-delivery/S | unsafe_passes | 0 | 0 | PASS | data/fixtures/verdicts/eth3d-delivery/gt.C2.S.json |  |
+| verdict/eth3d-delivery/S/false_rejections | verdicts | eth3d-delivery/S | false_rejections | 0 | 0 | PASS | data/fixtures/labels/eth3d-delivery.S.json |  |
+| verdict/eth3d-delivery/S/coverage_contract | verdicts | eth3d-delivery/S | coverage_contract_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-delivery.S.json |  |
+| verdict/eth3d-delivery/S/c5 | verdicts | eth3d-delivery/S | c5_margin_errors | 0 | 0 | PASS | data/fixtures/labels/eth3d-delivery.S.json |  |
+| verdict/eth3d-delivery/S/pass_recall | verdicts | eth3d-delivery/S | pass_recall |  | 1.0 | SKIP | data/fixtures/labels/eth3d-delivery.S.json | no scorable labelled pass |
+| verdict/eth3d-delivery/S/start_agreement | verdicts | eth3d-delivery/S | start_agreement | 0.5239 |  | SKIP | data/fixtures/labels/eth3d-delivery.S.json | no start_agreement threshold for this target |
+| verdict/eth3d-delivery/S/site_agreement | verdicts | eth3d-delivery/S | site.agreement | 1.0 | 1.0 | PASS | data/fixtures/labels/eth3d-delivery.S.json |  |
+| positive/eth3d-facade/gt-laser-gravel/C/footprint3in | positive_pass | eth3d-facade/gt-laser-gravel/C/footprint3in | site.decision | pass | pass | FAIL | data/fixtures/positive/eth3d-facade/gt-laser-gravel/C/footprint3in.json | route 9.1834 ft exceeds 9.0 |
+| positive/eth3d-facade/gt-laser-gravel/C/angle80 | positive_pass | eth3d-facade/gt-laser-gravel/C/angle80 | site.decision | manual_review | manual_review | PASS | data/fixtures/positive/eth3d-facade/gt-laser-gravel/C/angle80.json |  |
+| positive/eth3d-facade/gt-laser/C/footprint3in | positive_pass | eth3d-facade/gt-laser/C/footprint3in | site.decision | manual_review | manual_review | PASS | data/fixtures/verdicts/eth3d-facade/c1-3d/C.json |  |
+| positive/eth3d-facade/e2e/arkit-lidar/C/footprint3in | positive_pass | eth3d-facade/e2e/arkit-lidar/C/footprint3in | site.decision |  | pass | SKIP |  | criteria verdict overlay is absent |
+| decidability/eth3d-facade/gt-laser/A | decidability | eth3d-facade | decidability.A.share | 0.6933 | 0.38 | PASS | data/fixtures/criteria/eth3d-facade/gt-laser/criteria_report.json |  |
+| decidability/eth3d-facade/gt-laser/B | decidability | eth3d-facade | decidability.B.share | 0.5714 | 0.38 | PASS | data/fixtures/criteria/eth3d-facade/gt-laser/criteria_report.json |  |
+| decidability/eth3d-facade/gt-laser/C | decidability | eth3d-facade | decidability.C.share | 0.6054 | 0.38 | PASS | data/fixtures/criteria/eth3d-facade/gt-laser/criteria_report.json |  |
+| decidability/eth3d-facade/gt-laser/S | decidability | eth3d-facade | decidability.S.share | 0.7049 | 0.38 | PASS | data/fixtures/criteria/eth3d-facade/gt-laser/criteria_report.json |  |
+| decidability/eth3d-facade/gt-laser/public | decidability | eth3d-facade | decidability.public.share | 0.6775 | 0.38 | PASS | data/fixtures/criteria/eth3d-facade/gt-laser/criteria_report.json |  |
+| decidability/eth3d-electro/gt-laser/A | decidability | eth3d-electro | decidability.A.share | 0.9383 | 0.75 | PASS | data/fixtures/criteria/eth3d-electro/gt-laser/criteria_report.json |  |
+| decidability/eth3d-electro/gt-laser/B | decidability | eth3d-electro | decidability.B.share | 0.9362 | 0.75 | PASS | data/fixtures/criteria/eth3d-electro/gt-laser/criteria_report.json |  |
+| decidability/eth3d-electro/gt-laser/C | decidability | eth3d-electro | decidability.C.share | 0.8668 | 0.75 | PASS | data/fixtures/criteria/eth3d-electro/gt-laser/criteria_report.json |  |
+| decidability/eth3d-electro/gt-laser/S | decidability | eth3d-electro | decidability.S.share | 0.9146 | 0.75 | PASS | data/fixtures/criteria/eth3d-electro/gt-laser/criteria_report.json |  |
+| decidability/eth3d-electro/gt-laser/public | decidability | eth3d-electro | decidability.public.share | 0.9241 | 0.75 | PASS | data/fixtures/criteria/eth3d-electro/gt-laser/criteria_report.json |  |
+| decidability/eth3d-facade/colmap-nonlidar | decidability | eth3d-facade | decidability.share |  | 0.29 | SKIP |  | no photo decidability share |
+| safety/no_coverage/facade-A-c2 | safety | facade-A-c2 | site.decision | manual_review | != pass | PASS | data/fixtures/safety/no_coverage/facade-A-c2.json |  |
+| safety/no_coverage/facade-A-noc2 | safety | facade-A-noc2 | site.decision | manual_review | != pass | PASS | data/fixtures/safety/no_coverage/facade-A-noc2.json |  |
+| safety/no_coverage/facade-B-c2 | safety | facade-B-c2 | site.decision | manual_review | != pass | PASS | data/fixtures/safety/no_coverage/facade-B-c2.json |  |
+| safety/no_coverage/facade-B-noc2 | safety | facade-B-noc2 | site.decision | manual_review | != pass | PASS | data/fixtures/safety/no_coverage/facade-B-noc2.json |  |
+| safety/no_coverage/facade-C-c2 | safety | facade-C-c2 | site.decision | manual_review | != pass | PASS | data/fixtures/safety/no_coverage/facade-C-c2.json |  |
+| safety/no_coverage/facade-C-noc2 | safety | facade-C-noc2 | site.decision | manual_review | != pass | PASS | data/fixtures/safety/no_coverage/facade-C-noc2.json |  |
+| safety/no_coverage/facade-S-c2 | safety | facade-S-c2 | site.decision | manual_review | != pass | PASS | data/fixtures/safety/no_coverage/facade-S-c2.json |  |
+| safety/no_coverage/facade-S-noc2 | safety | facade-S-noc2 | site.decision | manual_review | != pass | PASS | data/fixtures/safety/no_coverage/facade-S-noc2.json |  |
+| safety/no_coverage/facade-public-c2 | safety | facade-public-c2 | site.decision | manual_review | != pass | PASS | data/fixtures/safety/no_coverage/facade-public-c2.json |  |
+| safety/no_coverage/facade-public-noc2 | safety | facade-public-noc2 | site.decision | manual_review | != pass | PASS | data/fixtures/safety/no_coverage/facade-public-noc2.json |  |
+| safety/veto/facade-C-0000 | safety | facade-C-0000 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0000.json |  |
+| safety/veto/facade-C-0001 | safety | facade-C-0001 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0001.json |  |
+| safety/veto/facade-C-0002 | safety | facade-C-0002 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0002.json |  |
+| safety/veto/facade-C-0003 | safety | facade-C-0003 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0003.json |  |
+| safety/veto/facade-C-0004 | safety | facade-C-0004 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0004.json |  |
+| safety/veto/facade-C-0005 | safety | facade-C-0005 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0005.json |  |
+| safety/veto/facade-C-0006 | safety | facade-C-0006 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0006.json |  |
+| safety/veto/facade-C-0007 | safety | facade-C-0007 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0007.json |  |
+| safety/veto/facade-C-0008 | safety | facade-C-0008 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0008.json |  |
+| safety/veto/facade-C-0009 | safety | facade-C-0009 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0009.json |  |
+| safety/veto/facade-C-0010 | safety | facade-C-0010 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0010.json |  |
+| safety/veto/facade-C-0011 | safety | facade-C-0011 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0011.json |  |
+| safety/veto/facade-C-0012 | safety | facade-C-0012 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0012.json |  |
+| safety/veto/facade-C-0013 | safety | facade-C-0013 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0013.json |  |
+| safety/veto/facade-C-0014 | safety | facade-C-0014 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0014.json |  |
+| safety/veto/facade-C-0015 | safety | facade-C-0015 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0015.json |  |
+| safety/veto/facade-C-0016 | safety | facade-C-0016 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0016.json |  |
+| safety/veto/facade-C-0017 | safety | facade-C-0017 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0017.json |  |
+| safety/veto/facade-C-0018 | safety | facade-C-0018 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0018.json |  |
+| safety/veto/facade-C-0019 | safety | facade-C-0019 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0019.json |  |
+| safety/veto/facade-C-0020 | safety | facade-C-0020 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0020.json |  |
+| safety/veto/facade-C-0021 | safety | facade-C-0021 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0021.json |  |
+| safety/veto/facade-C-0022 | safety | facade-C-0022 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0022.json |  |
+| safety/veto/facade-C-0023 | safety | facade-C-0023 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0023.json |  |
+| safety/veto/facade-C-0024 | safety | facade-C-0024 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0024.json |  |
+| safety/veto/facade-C-0025 | safety | facade-C-0025 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0025.json |  |
+| safety/veto/facade-C-0026 | safety | facade-C-0026 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0026.json |  |
+| safety/veto/facade-C-0027 | safety | facade-C-0027 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0027.json |  |
+| safety/veto/facade-C-0028 | safety | facade-C-0028 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0028.json |  |
+| safety/veto/facade-C-0029 | safety | facade-C-0029 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0029.json |  |
+| safety/veto/facade-C-0030 | safety | facade-C-0030 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0030.json |  |
+| safety/veto/facade-C-0031 | safety | facade-C-0031 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0031.json |  |
+| safety/veto/facade-C-0032 | safety | facade-C-0032 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0032.json |  |
+| safety/veto/facade-C-0033 | safety | facade-C-0033 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0033.json |  |
+| safety/veto/facade-C-0034 | safety | facade-C-0034 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0034.json |  |
+| safety/veto/facade-C-0035 | safety | facade-C-0035 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0035.json |  |
+| safety/veto/facade-C-0036 | safety | facade-C-0036 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0036.json |  |
+| safety/veto/facade-C-0037 | safety | facade-C-0037 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0037.json |  |
+| safety/veto/facade-C-0038 | safety | facade-C-0038 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0038.json |  |
+| safety/veto/facade-C-0039 | safety | facade-C-0039 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0039.json |  |
+| safety/veto/facade-C-0040 | safety | facade-C-0040 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0040.json |  |
+| safety/veto/facade-C-0041 | safety | facade-C-0041 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0041.json |  |
+| safety/veto/facade-C-0042 | safety | facade-C-0042 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0042.json |  |
+| safety/veto/facade-C-0043 | safety | facade-C-0043 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0043.json |  |
+| safety/veto/facade-C-0044 | safety | facade-C-0044 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0044.json |  |
+| safety/veto/facade-C-0045 | safety | facade-C-0045 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0045.json |  |
+| safety/veto/facade-C-0046 | safety | facade-C-0046 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0046.json |  |
+| safety/veto/facade-C-0047 | safety | facade-C-0047 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0047.json |  |
+| safety/veto/facade-C-0048 | safety | facade-C-0048 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0048.json |  |
+| safety/veto/facade-C-0049 | safety | facade-C-0049 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0049.json |  |
+| safety/veto/facade-C-0050 | safety | facade-C-0050 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0050.json |  |
+| safety/veto/facade-C-0051 | safety | facade-C-0051 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0051.json |  |
+| safety/veto/facade-C-0052 | safety | facade-C-0052 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0052.json |  |
+| safety/veto/facade-C-0053 | safety | facade-C-0053 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0053.json |  |
+| safety/veto/facade-C-0054 | safety | facade-C-0054 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0054.json |  |
+| safety/veto/facade-C-0055 | safety | facade-C-0055 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0055.json |  |
+| safety/veto/facade-C-0056 | safety | facade-C-0056 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0056.json |  |
+| safety/veto/facade-C-0057 | safety | facade-C-0057 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0057.json |  |
+| safety/veto/facade-C-0058 | safety | facade-C-0058 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0058.json |  |
+| safety/veto/facade-C-0059 | safety | facade-C-0059 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0059.json |  |
+| safety/veto/facade-C-0060 | safety | facade-C-0060 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0060.json |  |
+| safety/veto/facade-C-0061 | safety | facade-C-0061 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0061.json |  |
+| safety/veto/facade-C-0062 | safety | facade-C-0062 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0062.json |  |
+| safety/veto/facade-C-0063 | safety | facade-C-0063 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0063.json |  |
+| safety/veto/facade-C-0064 | safety | facade-C-0064 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0064.json |  |
+| safety/veto/facade-C-0065 | safety | facade-C-0065 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0065.json |  |
+| safety/veto/facade-C-0066 | safety | facade-C-0066 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0066.json |  |
+| safety/veto/facade-C-0067 | safety | facade-C-0067 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0067.json |  |
+| safety/veto/facade-C-0068 | safety | facade-C-0068 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0068.json |  |
+| safety/veto/facade-C-0069 | safety | facade-C-0069 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0069.json |  |
+| safety/veto/facade-C-0070 | safety | facade-C-0070 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0070.json |  |
+| safety/veto/facade-C-0071 | safety | facade-C-0071 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0071.json |  |
+| safety/veto/facade-C-0072 | safety | facade-C-0072 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0072.json |  |
+| safety/veto/facade-C-0073 | safety | facade-C-0073 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0073.json |  |
+| safety/veto/facade-C-0074 | safety | facade-C-0074 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0074.json |  |
+| safety/veto/facade-C-0075 | safety | facade-C-0075 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0075.json |  |
+| safety/veto/facade-C-0076 | safety | facade-C-0076 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0076.json |  |
+| safety/veto/facade-C-0077 | safety | facade-C-0077 | veto_monotone | unsure | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0077.json |  |
+| safety/veto/facade-C-0078 | safety | facade-C-0078 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0078.json |  |
+| safety/veto/facade-C-0079 | safety | facade-C-0079 | veto_monotone | fail | <= without_c2 | PASS | data/fixtures/safety/veto/facade-C-0079.json |  |
+| safety/judge_monotone | safety | site | judge_monotone |  | reject < manual_review < pass | SKIP |  | the C3 judge is not wired |
+| safety/bounds_honest | safety | pipeline-scenes | plus_minus_m |  | honest | SKIP |  | no pipeline scene to check |
+| lamar/openings_p90_in | lamar | five-segments | max(openings_p90_in) |  | 4.6 | SKIP |  | LaMAR five-segment summary is not on this machine |
+| lamar/2022-02-10_s0/openings_p90_in | lamar | 2022-02-10_s0 | openings_p90_in | 3.75 | 4.6 | PASS | data/fixtures/lamar/2022-02-10_s0.json | real phone on ws-11-ci; openings median 1.65 in; far 5.91 / 9.55 in; frames {'registered': 82, 'failed': 0, 'carried': 17}; per-machine, not cross-machine |
+| lamar/host | lamar | ws-11-ci | gate_host | ws-11-ci | ws-11-ci | PASS | data/fixtures/lamar/2022-02-10_s0.json | pose determinism is per machine; pin this host before tightening the metric bar to 4.0 in. validator VM 66152 points, 0.300814 px, metric in-plane 2.03 in; builder VM 66770 points, 0.29849 px, metric in-plane 4.21 in |
+| runtime/e2e | runtime | dev | timings |  | 180 | SKIP |  | no ReplayRun timings (CAPTURE_API_URL was not smoked) |
+
+summary: pass 134, fail 1, known_fail 0, warn 1, skip 28
+make: *** [Makefile:57: e2e-local] Error 2

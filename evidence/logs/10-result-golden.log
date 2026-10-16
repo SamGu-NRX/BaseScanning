@@ -1,0 +1,26 @@
+uv run --frozen --extra result python -m server.result.compose \
+  --capture server/result/tests/data/capture.sample.json \
+  --run server/result/tests/data/run.ok.json \
+  --scene server/result/tests/data/synthetic \
+  --verdicts server/result/tests/data/synthetic/verdicts \
+  --out /tmp/res/synthetic \
+  --reads server/result/tests/data/reads.auto_fill.json \
+  --catalogue server/result/tests/data/prompts.en-US.json
+uv run --frozen --extra result python -m server.result.compose \
+  --capture server/result/tests/data/capture.sample.json \
+  --run server/result/tests/data/run.ok.json \
+  --scene server/result/tests/data/photo \
+  --verdicts server/result/tests/data/photo/verdicts \
+  --out /tmp/res/photo \
+  --catalogue server/result/tests/data/prompts.en-US.json
+uv run --frozen --extra result python -m server.result.compose \
+  --capture server/result/tests/data/capture.sample.json \
+  --run server/result/tests/data/run.ok.json \
+  --scene server/result/tests/data/synthetic \
+  --verdicts server/result/tests/data/reject/verdicts \
+  --out /tmp/res/reject \
+  --catalogue server/result/tests/data/prompts.en-US.json \
+  --show-reject
+uv run --frozen --extra result python -c "from server.contracts.result import ResultResponse; import json; \
+[ResultResponse.model_validate(json.load(open(f'/tmp/res/{name}/result.json'))) for name in ('synthetic','photo','reject')]; print('ok synthetic photo reject')"
+ok synthetic photo reject

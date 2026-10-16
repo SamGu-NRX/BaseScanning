@@ -1,0 +1,4 @@
+uv run --frozen python scripts/check_repo_hygiene.py
+hygiene failed:
+server/orchestrator/tests/data/packets/synthetic-meter.tar: deny-list (synthetic-meter.tar)
+make: *** [Makefile:23: hygiene] Error 1

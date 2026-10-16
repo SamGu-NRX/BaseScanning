@@ -1,0 +1,3 @@
+uv run --frozen python scripts/reads_gate.py --set meter --set panel --set extra --out /tmp/reads-gate
+STORE is unset and the breadth cache was not found
+make: *** [Makefile:143: reads-gate] Error 1

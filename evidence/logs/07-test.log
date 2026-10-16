@@ -1,0 +1,1557 @@
+uv run --frozen --extra api pytest -q
+.........................................EEEEEEEEEEEEEE................. [  4%]
+...................................{"level":"warning","event":"packet_issue","msg":"keyframe_resolution_differs","code":"keyframe_resolution_differs","pointer":"/keyframes/1/w","capture_id":"mini-arkit"}
+{"level":"warning","event":"packet_issue","msg":"low_resolution","code":"low_resolution","pointer":"/keyframes/0/w","capture_id":"mini-arkit"}
+{"level":"warning","event":"packet_issue","msg":"low_resolution","code":"low_resolution","pointer":"/keyframes/1/w","capture_id":"mini-arkit"}
+{"level":"warning","event":"packet_issue","msg":"low_resolution","code":"low_resolution","pointer":"/keyframes/2/w","capture_id":"mini-arkit"}
+{"level":"warning","event":"packet_issue","msg":"low_resolution","code":"low_resolution","pointer":"/keyframes/3/w","capture_id":"mini-arkit"}
+{"level":"warning","event":"packet_issue","msg":"few_images","code":"few_images","pointer":"/keyframes","capture_id":"mini-arkit"}
+..{"amendment_id": null, "attempt": null, "capture_id": "cap_01M51TCAAG3ZYWX61YJJ2P2AC3", "deployment.environment": null, "disagreement": null, "duration_ms": 81, "error_code": null, "event": "promotion.done", "git_sha": null, "gpu": null, "http.method": null, "http.route": null, "http.status": null, "level": "info", "msg": "", "packet_id": null, "principal": null, "product": null, "request_id": null, "run_id": null, "service.name": null, "stage": null, "state_backend": null, "storage_backend": null, "tokens_in": null, "tokens_out": null, "ts": "2026-10-16T07:38:45.677623Z", "vlm_cost_usd": null, "vlm_model": null, "vlm_provider": null}
+{"amendment_id": null, "attempt": null, "capture_id": "cap_01M51TCAAG3ZYWX61YJJ2P2AC3", "deployment.environment": null, "disagreement": null, "duration_ms": null, "error_code": null, "event": "run.started", "git_sha": null, "gpu": null, "http.method": null, "http.route": null, "http.status": null, "level": "info", "msg": "", "packet_id": null, "principal": null, "product": null, "request_id": null, "run_id": "run_02daa5c9ccdf720f", "service.name": null, "stage": null, "state_backend": null, "storage_backend": null, "tokens_in": null, "tokens_out": null, "ts": "2026-10-16T07:38:45.677839Z", "vlm_cost_usd": null, "vlm_model": null, "vlm_provider": null}
+................................... [  9%]
+..................................................................s..... [ 14%]
+........................................................................ [ 19%]
+........................................................................ [ 24%]
+........................................................................ [ 29%]
+........................................................................ [ 34%]
+........................................................................ [ 39%]
+.........sss.s.FF...F................................................... [ 44%]
+..................................F...................s................. [ 49%]
+...........s......s.......ss............................................ [ 54%]
+............................ssssss...................................... [ 59%]
+........................................................................ [ 64%]
+........................................................................ [ 68%]
+........................................................................ [ 73%]
+........................................................................ [ 78%]
+........................................................................ [ 83%]
+........................................................................ [ 88%]
+........................................................................ [ 93%]
+.................................................s...................... [ 98%]
+..........ss..........                                                   [100%]
+==================================== ERRORS ====================================
+________ ERROR at setup of test_missing_replay_fields_names_each_field _________
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+_ ERROR at setup of test_receipt_missing_replay_field_fails_loudly_naming_the_field[idempotencyKeys] _
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+_ ERROR at setup of test_receipt_missing_replay_field_fails_loudly_naming_the_field[files] _
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+_ ERROR at setup of test_receipt_missing_replay_field_fails_loudly_naming_the_field[packetSha256] _
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+________ ERROR at setup of test_cli_missing_replay_field_exits_nonzero _________
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+_ ERROR at setup of test_subprocess_recovery_after_client_process_exit[create-lost] _
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+_ ERROR at setup of test_subprocess_recovery_after_client_process_exit[pre-commit] _
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+_ ERROR at setup of test_subprocess_recovery_after_client_process_exit[commit-lost] _
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+_ ERROR at setup of test_subprocess_recovery_after_client_process_exit[pre-finalize] _
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+_ ERROR at setup of test_subprocess_recovery_after_client_process_exit[finalize-lost] _
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+___ ERROR at setup of test_commit_lost_resume_rebuilds_state_from_the_server ___
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+_ ERROR at setup of test_finalize_lost_resume_recovers_the_run_id_the_dead_process_never_saw _
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+_ ERROR at setup of test_create_lost_resume_recovers_a_capture_id_that_never_reached_the_client _
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+_ ERROR at setup of test_pre_commit_resume_uploads_and_commits_for_the_first_time _
+
+    @pytest.fixture
+    def cold():
+>       import scripts.capture_cold_restart as mod
+
+tests/test_capture_cold_restart.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    #!/usr/bin/env python3
+    """Close the cold-restart gap PR #262 admitted: a client that dies and comes back.
+    
+    One repeatable command for reviewers:
+    
+        cd backend && uv run --extra api python scripts/capture_cold_restart.py \
+            --receipt <workdir>/receipt.json --stop commit-lost
+    
+    ``scripts/replay_capture.py`` resumes a lost response inside one Python
+    process: the client that retries is the same interpreter that lost the reply,
+    so it still holds whatever it cached. A phone does not get that luxury — the
+    app dies, relaunches, and must recover from what it persisted and what the
+    server remembers. This command drives exactly that against the real app entry
+    point ``create_app()``, served by a local uvicorn process (memory state, local
+    volume storage, the documented dev handoff ``HSS_INGEST_HOOKS=auto`` with
+    orchestrator stage stubs — no GCP, no Modal, no network, no credentials). It
+    splits the client across two fresh Python processes:
+    
+    - the **primary client** is one Python process. It replays the saved journey
+      from a ``capture_flow_e2e`` receipt — create, register, PUT, commit,
+      finalize — and dies at the scripted interruption: right after a deliberately
+      lost response (``create-lost``, ``commit-lost``, ``finalize-lost``) or before
+      the next request (``pre-commit``, ``pre-finalize``). It persists only what a
+      device could: a journal of what it sent and which replies it actually saw.
+    - the **resume client** is a fresh Python process with fresh in-memory client
+      state. It reads the receipt and the journal and recovers through the real
+      capture routes: create again with the saved idempotency key, re-register to
+      learn the server's file states instead of trusting its own, re-send the
+      identical commit body, and replay the finalize for its stored run id. When
+      the dead process already finalized, the capture is closed to files and
+      commits, so recovery goes straight through the finalize replay; otherwise
+      the resume re-registers, uploads only what the server still lacks, commits,
+      and finalizes. It then reads status, result and events the way a device
+    does.
+    
+    Across the restart it asserts the four things a raw HTTP log cannot prove:
+    
+    - **one capture id** — the resume create answers 200 from the idempotency
+      store (never a second 201) with the capture id the dead process recorded,
+      and a final create after the verdict still maps to the same capture;
+    - **one deterministic run id** — the run id equals ``run_`` + sha256 of
+      captureId, NUL and the packet bytes, and a second finalize returns it
+      unchanged even though the first request came from a process that is gone;
+    - **the committed hashes** — the resumed commit reports the receipt's paths
+      and never a mismatch, on a first commit or a replayed one;
+    - **one terminal state** — the capture lands on one terminal status, served
+      once by ``GET /result`` with that run id and outcome, and the event feed
+      ends with exactly one terminal ``verdict_ready``.
+    
+    Nothing retries forever: the resume sends each step once more at most (the
+    second finalize is the determinism proof, not a retry), terminal and event
+    polling is capped at ``MAX_POLLS`` reads, each client leg is a subprocess with
+    a hard timeout, and the server readiness wait is bounded too. A receipt
+    written before the replay fields existed fails before anything is sent,
+    naming the missing field.
+    
+    It writes ``<workdir>/cold-restart-report.json`` and exits 0 when every
+    assertion held, 1 otherwise. It never changes route contracts, never touches
+    the iOS tree, ``.github/`` or deployment, and leaves ``replay_capture.py``'s
+    owned files alone.
+    """
+    
+    from __future__ import annotations
+    
+    import argparse
+    import hashlib
+    import json
+    import os
+    import socket
+    import subprocess
+    import sys
+    import tempfile
+    import time
+    import urllib.error
+    import urllib.request
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    
+>   from scripts.replay_capture import (  # noqa: E402
+        DEFAULT_PACKET,
+        TERMINAL_EVENTS,
+        TERMINAL_STATUSES,
+        check_fixture,
+        load_receipt,
+    )
+E   ImportError: cannot import name 'load_receipt' from 'scripts.replay_capture' (/home/user/work/burst11-bs-alpha-target-sweep/backend/scripts/replay_capture.py)
+
+scripts/capture_cold_restart.py:82: ImportError
+=================================== FAILURES ===================================
+___________ test_committed_fixtures_are_scored_against_their_labels ____________
+
+    def test_committed_fixtures_are_scored_against_their_labels():
+        report = evaluate(CONFIG, ROOT / "data" / "fixtures", repo=ROOT)
+        by_id = {row["id"]: row for row in report.rows}
+        demo = by_id["verdict/eth3d-facade/demo/start_agreement"]
+        assert demo["status"] == "PASS"
+        assert demo["value"] == 1.0
+        assert by_id["verdict/eth3d-facade/demo/unsafe_passes"]["status"] == "PASS"
+        assert by_id["verdict/eth3d-facade/A/false_rejections"]["status"] == "PASS"
+        assert by_id["verdict/eth3d-facade/A/pass_recall"]["status"] == "SKIP"
+        assert by_id["verdict/eth3d-facade/A/site_agreement"]["status"] == "PASS"
+        assert by_id["verdict/eth3d-delivery/S/unsafe_passes"]["value"] == 0
+>       assert report.summary["fail"] == 0
+E       assert 1 == 0
+
+server/eval/tests/test_gates.py:93: AssertionError
+____ test_offline_table_skips_the_engine_and_passes_the_unpatched_reference ____
+
+    def test_offline_table_skips_the_engine_and_passes_the_unpatched_reference():
+        report = evaluate(CONFIG, ROOT / "data" / "fixtures", repo=ROOT)
+        by_id = {row["id"]: row for row in report.rows}
+        unpatched = by_id["positive/eth3d-facade/gt-laser/C/footprint3in"]
+        assert unpatched["status"] == "PASS"
+        assert unpatched["value"] == "manual_review"
+        gravel = by_id["positive/eth3d-facade/gt-laser-gravel/C/footprint3in"]
+>       assert gravel["status"] == "KNOWN_FAIL"
+E       AssertionError: assert 'FAIL' == 'KNOWN_FAIL'
+E         
+E         - KNOWN_FAIL
+E         + FAIL
+
+server/eval/tests/test_gates.py:103: AssertionError
+________________ test_route_over_the_bar_is_known_until_expiry _________________
+
+tmp_path = PosixPath('/tmp/pytest-of-user/pytest-0/test_route_over_the_bar_is_kno0')
+
+    def test_route_over_the_bar_is_known_until_expiry(tmp_path: Path):
+        inputs = tmp_path / "inputs"
+        shutil.copytree(FIXTURES, inputs)
+        verdict = _verdict("pass")
+        verdict["criteria"][0]["measured"]["value_ft"] = 9.1834
+        planted = inputs / "positive/eth3d-facade/gt-laser-gravel/C/footprint3in.json"
+        planted.write_text(json.dumps(verdict))
+        config = _config_for(tmp_path, {"positive/eth3d-facade/gt-laser-gravel/C/footprint3in.json": planted})
+        report = evaluate(config, inputs, repo=ROOT)
+        row = next(r for r in report.rows if r["id"] == "positive/eth3d-facade/gt-laser-gravel/C/footprint3in")
+>       assert row["status"] == "KNOWN_FAIL"
+E       AssertionError: assert 'FAIL' == 'KNOWN_FAIL'
+E         
+E         - KNOWN_FAIL
+E         + FAIL
+
+server/eval/tests/test_gates.py:198: AssertionError
+______________ test_refresh_rewrites_pins_after_a_committed_edit _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-user/pytest-0/test_refresh_rewrites_pins_aft0')
+
+    def test_refresh_rewrites_pins_after_a_committed_edit(tmp_path: Path):
+        inputs = _copied_fixtures(tmp_path)
+        phone = inputs / "lamar/2022-02-10_s0.json"
+        payload = json.loads(phone.read_text())
+        payload["note"] = "rewritten overlay"
+        phone.write_text(json.dumps(payload))
+        before = evaluate(CONFIG, inputs, repo=ROOT)
+        row = next(item for item in before.rows if item["id"] == "lamar/2022-02-10_s0/openings_p90_in")
+        assert row["status"] == "FAIL"
+        assert row["note"] == "committed evidence invalid"
+        assert exit_code(before) == 1
+        config = tmp_path / "gates.yaml"
+        shutil.copy(CONFIG, config)
+        refresh_committed_hashes(config, inputs)
+        after = evaluate(config, inputs, repo=ROOT)
+>       assert after.summary["fail"] == 0
+E       assert 1 == 0
+
+server/eval/tests/test_gates.py:774: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /home/user/work/burst11-bs-alpha-target-sweep/backend/.venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+server/eval/tests/test_harness_defects.py::test_dense_bend_stays_one_meter_wall
+server/tests/test_box_house.py::test_dense_coverage_scene_chain_publishes_named_artifacts
+  /home/user/work/burst11-bs-alpha-target-sweep/backend/server/eval/coverage.py:700: RuntimeWarning: All-NaN axis encountered
+    wall_inc = np.nanmax([pp["best_incidence_deg"] for pp in per], axis=0)
+
+server/packet/tests/test_round2.py::test_wrong_type_fuzz_does_not_crash
+  /home/user/work/burst11-bs-alpha-target-sweep/backend/server/packet/poses.py:38: RuntimeWarning: overflow encountered in matmul
+    ortho = float(np.max(np.abs(rotation.T @ rotation - np.eye(3))))
+
+server/packet/tests/test_round2.py::test_wrong_type_fuzz_does_not_crash
+  /home/user/work/burst11-bs-alpha-target-sweep/backend/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py:2767: RuntimeWarning: overflow encountered in dot
+    sqnorm = x.dot(x)
+
+server/packet/tests/test_round2.py::test_wrong_type_fuzz_does_not_crash
+  /home/user/work/burst11-bs-alpha-target-sweep/backend/server/common/geometry.py:21: RuntimeWarning: divide by zero encountered in scalar divide
+    d_cam = np.array([(uv[0] - cx) / fx, -(uv[1] - cy) / fy, -1.0])
+
+server/packet/tests/test_round2.py::test_wrong_type_fuzz_does_not_crash
+  /home/user/work/burst11-bs-alpha-target-sweep/backend/server/common/geometry.py:22: RuntimeWarning: invalid value encountered in matmul
+    d = T_ar[:3, :3] @ d_cam
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED server/eval/tests/test_gates.py::test_committed_fixtures_are_scored_against_their_labels
+FAILED server/eval/tests/test_gates.py::test_offline_table_skips_the_engine_and_passes_the_unpatched_reference
+FAILED server/eval/tests/test_gates.py::test_route_over_the_bar_is_known_until_expiry
+FAILED server/eval/tests/test_gates.py::test_refresh_rewrites_pins_after_a_committed_edit
+ERROR tests/test_capture_cold_restart.py::test_missing_replay_fields_names_each_field
+ERROR tests/test_capture_cold_restart.py::test_receipt_missing_replay_field_fails_loudly_naming_the_field[idempotencyKeys]
+ERROR tests/test_capture_cold_restart.py::test_receipt_missing_replay_field_fails_loudly_naming_the_field[files]
+ERROR tests/test_capture_cold_restart.py::test_receipt_missing_replay_field_fails_loudly_naming_the_field[packetSha256]
+ERROR tests/test_capture_cold_restart.py::test_cli_missing_replay_field_exits_nonzero
+ERROR tests/test_capture_cold_restart.py::test_subprocess_recovery_after_client_process_exit[create-lost]
+ERROR tests/test_capture_cold_restart.py::test_subprocess_recovery_after_client_process_exit[pre-commit]
+ERROR tests/test_capture_cold_restart.py::test_subprocess_recovery_after_client_process_exit[commit-lost]
+ERROR tests/test_capture_cold_restart.py::test_subprocess_recovery_after_client_process_exit[pre-finalize]
+ERROR tests/test_capture_cold_restart.py::test_subprocess_recovery_after_client_process_exit[finalize-lost]
+ERROR tests/test_capture_cold_restart.py::test_commit_lost_resume_rebuilds_state_from_the_server
+ERROR tests/test_capture_cold_restart.py::test_finalize_lost_resume_recovers_the_run_id_the_dead_process_never_saw
+ERROR tests/test_capture_cold_restart.py::test_create_lost_resume_recovers_a_capture_id_that_never_reached_the_client
+ERROR tests/test_capture_cold_restart.py::test_pre_commit_resume_uploads_and_commits_for_the_first_time
+4 failed, 1425 passed, 19 skipped, 7 warnings, 14 errors in 822.51s (0:13:42)
+make: *** [Makefile:17: test] Error 1

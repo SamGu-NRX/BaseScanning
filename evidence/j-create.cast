@@ -1,0 +1,2 @@
+{"version": 2, "width": 80, "height": 24, "timestamp": 1792137501, "env": {"SHELL": "/bin/bash", "TERM": null}}
+[0.192322, "o", "{\"step\": \"create\", \"http\": 201, \"captureId\": \"cap_01M51VG6YG57X7M31K8PQAPGRY\", \"status\": \"uploading\", \"bodyKeys\": [\"captureId\", \"eventsUrl\", \"finalizeBy\", \"status\", \"upload\"]}\r\n"]

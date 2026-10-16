@@ -1,0 +1,2 @@
+{"version": 2, "width": 80, "height": 24, "timestamp": 1792137504, "env": {"SHELL": "/bin/bash", "TERM": null}}
+[2.3141, "o", "{\"step\": \"events\", \"http\": 200, \"count\": 31, \"seqs\": [26, 27, 28, 29, 30, 31], \"types\": [\"stage\", \"stage\", \"stage\", \"stage\", \"stage\", \"stage\", \"verdict_ready\", \"stage\"], \"validateForRun\": true, \"eventsStatus\": \"manual_review\"}\r\n"]

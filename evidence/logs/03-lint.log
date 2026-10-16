@@ -1,0 +1,30 @@
+uv run --frozen ruff check .
+All checks passed!
+uv run --frozen ruff format --check .
+496 files already formatted
+uv run --frozen lint-imports
+
+╔══╗─────────▶╔╗ ╔╗      ╔╗◀───┐
+╚╣╠╝◀─────┐  ╔╝╚╗║║────▶╔╝╚╗   │
+ ║║   ╔══╦══╦╩╗╔╝║║  ╔╦═╩╗╔╝╔═╦══╗
+ ║║╔══╣╔╗║╔╗║╔╣║ ║║ ╔╬╣╔╗║║ ║│║╔═╝
+╔╣╠╣║║║╚╝║╚╝║║║╚╗║╚═╝║║║║║╚╗║═╣║
+╚══╩╩╩╣╔═╩══╩╝╚═╝╚═══╩╩╝╚╩═╩╩═╩╝
+  └──▶║║                    ▲ 
+      ╚╝────────────────────┘
+
+
+---------
+Contracts
+---------
+
+Analyzed 436 files, 1385 dependencies.
+--------------------------------------
+
+Contracts import only themselves KEPT (1 ignored import)
+Common imports only contracts KEPT
+Eval imports only contracts and common KEPT (2 ignored imports)
+Stages do not import each other KEPT (4 ignored imports)
+API does not import stages or eval directly KEPT
+
+Contracts: 5 kept, 0 broken.

@@ -1,0 +1,2 @@
+{"version": 2, "width": 80, "height": 24, "timestamp": 1792137501, "env": {"SHELL": "/bin/bash", "TERM": null}}
+[0.220626, "o", "{\"step\": \"register\", \"http\": 200, \"registered\": 11, \"sampleUploadPath\": \"keyframes/k00001.features.bin\", \"sampleUploadUrlHost\": \"127.0.0.1:8641\"}\r\n"]
