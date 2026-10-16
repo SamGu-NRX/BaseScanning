@@ -1,20 +1,20 @@
 {
   "backend": {
     "declared_mode": "REAL_API",
-    "declared_ref": "4bcbedba",
+    "declared_ref": "46bed47e",
     "verified": false
   },
   "client": {
     "declared_ref": null,
     "git": {
-      "diff_sha256": "e9bb375f1675cfabf3dcdd59adfef30c0dbb63c3deb56f34cf7611da8cb9c0a5",
-      "dirty": true,
-      "head": "4bcbedba7ffd3d8c4d7f725395e33ed5a9d27d6c",
-      "untracked": 49
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dirty": false,
+      "head": "46bed47e3438b11439b7a2e004d10ae35a561647",
+      "untracked": 0
     },
     "interface": "2.0.0",
     "package_version": "0.2.0",
-    "source_sha256": "c31d1ba410f542b0d1522a477d7aaea0d87b121ab4a091a5f291adbe82c759eb"
+    "source_sha256": "1187b70d311a949318aa37d1935204dd4297f327ddd98e4debc88abc90ddbfe7"
   },
   "command": [
     "--endpoint",
@@ -24,7 +24,7 @@
     "--backend-mode",
     "REAL_API",
     "--backend-ref",
-    "4bcbedba",
+    "46bed47e",
     "--out",
     "<path>",
     "--label",
@@ -33,7 +33,7 @@
     "--restart-argv-json",
     "<argv>"
   ],
-  "created_utc": "2026-10-16T07:59:27.439Z",
+  "created_utc": "2026-10-16T11:33:52.327Z",
   "endpoint": "127.0.0.1:8000",
   "fixture": {
     "create_sha256": "e05e5b952a17707ec3d614f5f89729af41d22dc6c9464e049901edfae84c5efe",
@@ -117,7 +117,7 @@
       }
     ],
     "format_version": 2,
-    "generator": "gen_synthetic_packet",
+    "generator": "gen_miniarkit_packet",
     "packet_id": "mini-arkit",
     "packet_sha256": "9f59f921eddbdaed8bcda904db5c14dce364950c02d5d2902668ca756391fd0e",
     "plan_file_sha256": "61af8c94dc58cc08ffc0922a191285e019772b7e02ca1e1b783eaa9c3cb507aa",
@@ -128,12 +128,17 @@
   "origin_note": "Derived from published client behavior in HouseScanKit upload and result sources at alpha 263827ef. No private source, schema, spec, log or credential material appears in this package or its receipts.",
   "restart": {
     "argv": [
+      "<value>",
+      "<value>",
+      "-k",
+      "-t",
+      "<value>",
       "<value>"
     ],
     "configured": true,
     "timeout_s": 120.0
   },
-  "run_id": "0de19f9f3f674388",
+  "run_id": "d433c04240ec810d",
   "runtime": {
     "cpus": 8,
     "implementation": "CPython",

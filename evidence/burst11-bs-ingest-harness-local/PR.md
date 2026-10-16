@@ -1,3 +1,16 @@
+# Ingest harness receipts — regenerated 2026-10-16
+
+The five run directories below were regenerated at the review-findings head
+(`46bed47e`, harness + docs) so every receipt ships its mandatory
+`privacy-chain.jsonl` and the run manifests report the loaded plan's generator
+family. `hunter-verify-run` passes standalone on each directory. Verdicts match
+the original five runs exactly (same FAIL semantics: restart-recovery honestly
+fails against the memory-state dev backend). The mini-arkit journey ran with
+`HSS_INGEST_HOOKS=auto HSS_ORCH_STAGE_STUBS=1` — the same stubbed-stage
+behavior the original evidence records; see Notes for the full server-start
+recipe.
+
+
 # burst11-land-bs-ingest-harness-realapi
 
 Human author: Sam Gu (sgu07966@gmail.com)
@@ -71,7 +84,7 @@ Classification of every FAIL/BLOCKED across all runs:
 
 ## Test battery
 
-- `pytest tests/`: **390 passed** (was 377 before this change).
+- `pytest tests/`: **403 passed** at the review-findings head (was 390 at the original five runs).
 - `ruff check` and `ruff format --check`: clean on the package and tests.
 - `tests/test_plans.py` is new: seeded keyframe coverage, ARKit-without-keyframes loader refusal,
   mini-arkit load + digest binding.
@@ -83,19 +96,27 @@ Classification of every FAIL/BLOCKED across all runs:
   surface is `tests/test_contract.py`, which passes.
 - No `make local-api` target exists on alpha. The receipts record only the redacted client flags
   (`<path>`, `<argv>`); the backend server-start command is deliberately not part of any receipt.
-  A secret-free local server start for reproducing the REAL_API runs:
+  A local, secret-free server start for reproducing the REAL_API runs (all values are throwaway
+  dev-only: the HMAC key signs upload tokens for this process alone, no external credential):
 
   ```sh
   cd backend
   uv sync --locked --extra api
-  # Auth-off dev server, local storage: every request is the device principal `demo`.
-  SMP_ENVIRONMENT=dev uv run uvicorn server.api.app:create_app --factory --port 8000
-  # For the static-auth runs only: HSS_AUTH_MODE=static CAPTURE_API_TOKENS='<label>:<token(>=32 chars)>'
+  # Auth-off dev server; volume storage so upload URLs are loopback http capability tokens
+  # (the local-fs backend mints file:// URLs, which the published client rightly refuses).
+  SMP_ENVIRONMENT=dev \
+  STORAGE_BACKEND=volume \
+  VOLUME_ROOT=/tmp/hss-volume \
+  CAPTURE_API_PUBLIC_URL=http://127.0.0.1:8000 \
+  UPLOAD_URL_HMAC_SECRET=dev-only-throwaway \
+  uv run uvicorn server.api.app:create_app --factory --port 8000
+  # For the static-auth runs only, add to the server env and export the same token for the
+  # harness: HSS_AUTH_MODE=static CAPTURE_API_TOKENS='device:<token of 32+ chars>'
   # and run the harness with --api-token-env (the token is read from HUNTER_API_TOKEN).
   ```
 
-  `SMP_ENVIRONMENT=dev` is what selects `HSS_AUTH_MODE=none`; `STORAGE_BACKEND` defaults to
-  `local`, whose in-memory state is ephemeral across restarts — which is exactly what the
+  `SMP_ENVIRONMENT=dev` is what selects `HSS_AUTH_MODE=none`. `STATE_BACKEND` defaults to
+  `memory`, whose capture state is ephemeral across restarts — which is exactly what the
   restart-recovery run records as FAIL.
 
 🔗 [Obvious Project](https://app.obvious.ai/p/products-Uu1863v1) · 🧵 [Obvious Thread](https://app.obvious.ai/p/products-Uu1863v1?thread=th_uKOVRjtY) · 🔀 [Obvious PR Artifact](https://app.obvious.ai/link/pr-artifact/run-the-app-shaped-ingest-harness-in-realapi-mode-task:todo_2YMYcAxt)

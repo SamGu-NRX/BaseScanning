@@ -1,40 +1,44 @@
 {
   "backend": {
-    "declared_mode": "REAL_API",
-    "declared_ref": "4bcbedba",
+    "declared_mode": "FAKE_HUNTER",
+    "declared_ref": null,
     "verified": false
   },
   "client": {
     "declared_ref": null,
     "git": {
-      "diff_sha256": "c25b9ac5f89df66b427f85ac17d33db1bdef186099cb08c85a7de194c558d6f4",
-      "dirty": true,
-      "head": "4bcbedba7ffd3d8c4d7f725395e33ed5a9d27d6c",
-      "untracked": 40
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dirty": false,
+      "head": "46bed47e3438b11439b7a2e004d10ae35a561647",
+      "untracked": 0
     },
     "interface": "2.0.0",
     "package_version": "0.2.0",
-    "source_sha256": "f23f2fa0cfea69428f6c41edf42c5b5ea050c39788d9ffe1a9c628e7908072fb"
+    "source_sha256": "1187b70d311a949318aa37d1935204dd4297f327ddd98e4debc88abc90ddbfe7"
   },
   "command": [
     "--endpoint",
-    "127.0.0.1:8000",
+    "127.0.0.1:43913",
     "--plan-file",
     "<path>",
-    "--backend-mode",
-    "REAL_API",
-    "--backend-ref",
-    "4bcbedba",
     "--out",
     "<path>",
     "--label",
-    "realapi-restart",
+    "selfcheck",
+    "--backend-mode",
+    "FAKE_HUNTER",
+    "--poll-interval-s",
+    "0.05",
+    "--events-wait-s",
+    "0",
+    "--retry-backoff-s",
+    "0.0",
     "--with-faults",
     "--restart-argv-json",
     "<argv>"
   ],
-  "created_utc": "2026-10-16T07:58:13.465Z",
-  "endpoint": "127.0.0.1:8000",
+  "created_utc": "2026-10-16T11:19:23.490Z",
+  "endpoint": "127.0.0.1:43913",
   "fixture": {
     "create_sha256": "9c2dd5f33bb70b7199e85f165e87602986faa7f6b5beaee6f55db4f1f9edce97",
     "files": [
@@ -74,45 +78,47 @@
         "sha256": "ae96d9008b71882aeb0dbc1c5463897aa9c316fbda28d5503b4676e0bd85a161"
       },
       {
-        "bytes": 1536,
+        "bytes": 768,
         "contentType": "image/jpeg",
         "path": "keyframes/kf01.jpg",
         "role": "keyframe",
-        "sha256": "bd50404f25a754fafaa0f4fc54b35024bbe90016875afbbc410f83abd518612b"
+        "sha256": "3ee4012f8d1aad5e8b030eacf846677051e207d891a4587fcf8e57e6bea8eb5c"
       },
       {
-        "bytes": 1536,
+        "bytes": 768,
         "contentType": "image/jpeg",
         "path": "keyframes/kf02.jpg",
         "role": "keyframe",
-        "sha256": "2c4c2a550c4442385e445aca21c55007ed8695fbd02a33cda2d6713358b258b4"
+        "sha256": "1f19a24b5184b45b77ac39e8a73bca0068aeed712f91390b58efd551b9c2448f"
       },
       {
-        "bytes": 1536,
+        "bytes": 768,
         "contentType": "image/jpeg",
         "path": "keyframes/kf03.jpg",
         "role": "keyframe",
-        "sha256": "5f1332b09119fb108cef1b517da540b4750341966fc633e9ccf822116febe002"
+        "sha256": "ab61b8867e6e94cfbecddf130d718ce07ea0fa761b2e651b717f6d1e4c8dd801"
       }
     ],
     "format_version": 2,
     "generator": "gen_synthetic_packet",
     "packet_id": "synthetic-000001",
-    "packet_sha256": "a2b032fde771f02079cccc024c4fcc915d5cbccbcd6df7ab0e758f8843e4fb96",
-    "plan_file_sha256": "3891515e650ea4b37402a772f5663e232f4a4f1af9f7dc22eb5d31753cdbb4d3",
-    "plan_sha256": "fb98d2968cde811dc8b09d857403e31e2f05f5d503205556ca06fde9b6561f0c",
+    "packet_sha256": "551d7a302b9351113fbb6840754ef80a05f3c9545baa19cd9cd1e7ae657af184",
+    "plan_file_sha256": "605d1c8c24c3fd6222d50f266d208011a0f5149c658f5dfab72617ef3d52ba4a",
+    "plan_sha256": "8c9e543fd3dd3fee1e73edafe2bf07cdb6fe611f0fd46c529ea79636812a71b2",
     "seed": 1
   },
-  "label": "realapi-restart",
+  "label": "selfcheck",
   "origin_note": "Derived from published client behavior in HouseScanKit upload and result sources at alpha 263827ef. No private source, schema, spec, log or credential material appears in this package or its receipts.",
   "restart": {
     "argv": [
+      "<value>",
+      "-c",
       "<value>"
     ],
     "configured": true,
     "timeout_s": 120.0
   },
-  "run_id": "0ef07aed4c35d4c3",
+  "run_id": "eebbb6f25a6cea14",
   "runtime": {
     "cpus": 8,
     "implementation": "CPython",
@@ -124,11 +130,11 @@
   "sanitization": "Every value here passed the typed export schema before it was written: published enum words, package constants, digests, bounded numbers, and the plan's own synthetic paths and packet ids. A pattern screen then ran over the written files.",
   "schema": "hunter-local-ingest/run-manifest/2",
   "settings": {
-    "events_wait_s": 20,
+    "events_wait_s": 0,
     "max_retries": 2,
-    "poll_interval_s": 2.0,
+    "poll_interval_s": 0.05,
     "result_budget_s": 1500.0,
-    "retry_backoff_s": 1.0,
+    "retry_backoff_s": 0.0,
     "with_faults": true
   }
 }

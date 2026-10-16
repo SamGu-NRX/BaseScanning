@@ -1,7 +1,7 @@
 {
   "clean": true,
   "findings": [],
-  "finished_utc": "2026-10-16T07:52:59.578Z",
+  "finished_utc": "2026-10-16T11:22:52.312Z",
   "missing": [],
   "schema": "hunter-local-ingest/privacy-screen/2",
   "screened": [

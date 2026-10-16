@@ -1,7 +1,7 @@
 {
   "artifacts": {
-    "checks.jsonl": "15ec75cd847a042f41861a1df70c65065854c4c2c8e5c6ade54ddd86efe842eb",
-    "run-manifest.json": "b50deaa7e12d623dee07f20bee8639f7bef8b29dee19fb8be5df4f95f98b3528"
+    "checks.jsonl": "bbfcfc2a4b17beca611b6e488bb0d2381ba71f5f3864b3ac345e73404748d56c",
+    "run-manifest.json": "539ea16af34af0ba3ba077c1241e7b349cc18349cee730d4800ebb87b8582b23"
   },
   "blocked": [],
   "counts_by_transport": {
@@ -13,7 +13,7 @@
     }
   },
   "failed": [],
-  "finished_utc": "2026-10-16T07:52:55.875Z",
+  "finished_utc": "2026-10-16T11:19:26.208Z",
   "lead_questions": [
     "Amendment semantics: does the published contract allow amending a registered capture, and with which route and headers?",
     "--api-token-env opts into HUNTER_API_TOKEN for scoped API routes; token-protected proxy fault coverage remains BLOCKED.",
@@ -31,7 +31,7 @@
     "gpu-stub.vlm",
     "gpu-stub.dense"
   ],
-  "run_id": "8c74870b05917f8e",
+  "run_id": "eebbb6f25a6cea14",
   "schema": "hunter-local-ingest/summary/2",
   "total": 29,
   "verdict": "PASS"
