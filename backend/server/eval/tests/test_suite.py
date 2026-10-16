@@ -197,3 +197,106 @@ def test_committed_fixtures_suite(tmp_path: Path):
         return
     assert not failed, json.dumps(failed, indent=1, default=str)
     assert report["summary"]["pass"] > 0
+
+
+RECEIPT_STATUSES = ("PASS", "FAIL", "WARN", "MEASURED")
+SCORE_KEYS = {
+    "unsafe_passes",
+    "false_rejections",
+    "coverage_contract_errors",
+    "c5_margin_errors",
+    "site_agreement",
+    "pass_recall",
+    "manual_review_rate",
+}
+
+
+def _assert_receipt_contract(report: dict) -> None:
+    """The suite.json seam a machine consumes: a closed status vocabulary with no
+    SKIP, summary tallies that match the rows, a reason on every row that is not
+    a pass, and a fixed set of score keys on every verdict row that scored."""
+    rows = report["rows"]
+    assert all(row["status"] in RECEIPT_STATUSES for row in rows), sorted({row["status"] for row in rows})
+    assert not any(row["status"] == "SKIP" for row in rows)
+    for status in RECEIPT_STATUSES:
+        assert report["summary"][status.lower()] == sum(row["status"] == status for row in rows)
+    for row in rows:
+        if row["status"] != "PASS":
+            assert (row.get("note") or "").strip(), f"{row['id']} carries no reason"
+    for row in (r for r in rows if r["group"] == "verdicts" and r["status"] == "MEASURED"):
+        assert row["value"] is None, row["id"]
+        assert "no committed labels" in row["note"], row["note"]
+    for row in (r for r in rows if r["group"] == "verdicts" and r["value"] is not None):
+        assert set(row["value"]) == SCORE_KEYS, row["id"]
+
+
+def test_receipt_distinguishes_pass_fail_and_not_scored(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """suite.json alone separates pass, fail, skip-equivalent and blocked rows.
+
+    Not-scored rows are MEASURED with a "no committed ..." reason; blocked
+    fixture rows are FAIL rows whose note names the missing asset and how to
+    produce it. Parsing SUMMARY.md is never required to tell them apart.
+    """
+
+    def broken(*args, **kwargs):
+        raise ImportError("not_merged:ws-09")
+
+    monkeypatch.setattr("server.eval.suite.evaluate_scene", broken)
+    report = _run(CONFIG, FIXTURES, tmp_path / "out")
+    _assert_receipt_contract(report)
+    by_group: dict[str, list[dict]] = {}
+    for row in report["rows"]:
+        by_group.setdefault(row["group"], []).append(row)
+    # pass: fixture rows that are present and schema-valid
+    assert all(row["status"] == "PASS" for row in by_group["fixtures"])
+    # blocked: the engine cannot run, and every downstream row says why
+    assert all(row["status"] == "FAIL" and "criteria engine failed" in row["note"] for row in by_group["pipeline"])
+    # skip-equivalent: the public profile has no committed labels, so it is
+    # MEASURED (recorded, no bar) rather than FAIL or silently omitted
+    assert all(
+        row["id"].endswith("/public") and row["status"] == "MEASURED"
+        for row in by_group["verdicts"]
+        if row["id"].endswith("/public")
+    )
+    assert any(row["status"] == "FAIL" for row in by_group["verdicts"] if not row["id"].endswith("/public"))
+    # same contract on the green path: scored verdict rows keep the score keys
+    monkeypatch.undo()
+    inputs = tmp_path / "synthetic"
+    scene = write_flat_wall(inputs / "scenes" / "flat-wall" / "gt-laser")
+    probe = evaluate_scene(
+        scene,
+        tmp_path / "probe",
+        config=CriteriaConfig(profiles=("C",), ground_rule="angle80", c2=False, c3=False),
+    )
+    labels_dir = inputs / "labels"
+    labels_dir.mkdir(parents=True)
+    (labels_dir / "flat-wall.C.json").write_text(
+        json.dumps(
+            {
+                "format": "base-labels/v0",
+                "site": "synthetic-flatwall",
+                "rules_profile": "C",
+                "site_decision": probe["C"]["site"]["decision"],
+                "labels": [],
+            }
+        )
+        + "\n"
+    )
+    config = _config_for(
+        tmp_path,
+        {
+            "sites": {"flat-wall": {"labels": ["C"]}},
+            "suite": {"criteria": {"profiles": ["C"], "ground_rule": "angle80", "c2": False}},
+            "verdicts": {
+                "unsafe_passes_max": 0,
+                "false_rejections_max": 0,
+                "coverage_contract_errors_max": 0,
+                "c5_margin_errors_max": 0,
+            },
+        },
+    )
+    green = _run(config, inputs, tmp_path / "green")
+    _assert_receipt_contract(green)
+    assert green["summary"]["fail"] == 0
+    verdict = next(row for row in green["rows"] if row["id"] == "verdict/flat-wall/C")
+    assert verdict["status"] == "PASS" and verdict["value"]["unsafe_passes"] == 0
