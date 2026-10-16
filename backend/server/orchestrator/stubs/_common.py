@@ -5,16 +5,23 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import time
 from pathlib import Path
 
 import numpy as np
 
 from server.contracts.jobs import StageContext, StageResult
+from server.orchestrator.config import load_orch
 
 _PLY = b"ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n0 0 0\n"
 
 
 def write_files(ctx: StageContext, files: dict[str, bytes]) -> StageResult:
+    # The dev-only scripted delay: each stub sleeps so the app sees the stage
+    # move through processing. load_orch refuses a stray value at boot.
+    delay = load_orch().local_stage_delay_s
+    if delay > 0:
+        time.sleep(delay)
     artifacts: dict[str, str] = {}
     for key, data in files.items():
         path = ctx.work_dir / key
