@@ -48,12 +48,40 @@ boundaries. No TestClient, no `drain_finalize`: the orchestrator is driven inlin
 | `HSS_INGEST_HOOKS` | `auto` | finalize reaches the orchestrator (this is the point) |
 | `HSS_ORCH_STAGE_STUBS` | `1` | committed stage stubs instead of GPU/vision work |
 | `HSS_ORCH_PREWARM` | `0` | no prewarm work on capture create |
+| `HSS_ORCH_MODAL_REMOTE` | `0` | a 'local' run never dispatches to deployed Modal functions — remote workers cannot see this process's memory state or volume, and remote-on also flips state to a Modal Dict and storage to GCS (`server/common/deploy_switch.py`) |
 | `VISION_EXTERNAL_CALLS` | `off` | no networked model calls |
 | `BASE_WEBHOOK_URL` / `WEBHOOK_HMAC_SECRET` | unset | webhooks off |
 
 Pass through without interpretation: `HSS_LOCAL_OUTCOME` and `HSS_LOCAL_STAGE_DELAY_S`. The stage
 stubs honor them when the burst11-bs-local-outcome-states packet lands; this launcher never reads
 or changes them, so `HSS_LOCAL_OUTCOME=pass make local-api` just works.
+
+### What the launcher refuses from the shell
+
+Everything above pins **where work runs and where bytes go**. The same audit applied to the rest of
+the environment turned up eleven keys a developer's shell could export that would do exactly that,
+so the launcher drops them before uvicorn imports and prints one line naming what it refused
+(key names only, never values):
+
+| Refused key | Why |
+|---|---|
+| `MODAL_TOKEN_ID` / `MODAL_TOKEN_SECRET` | Modal credentials any code path reaching for Modal would authenticate with |
+| `MODAL_IDENTITY_TOKEN` | a Modal identity token that authenticates this process |
+| `MODAL_APP_NAME` | names the deployed Modal app a Modal call would target |
+| `MODAL_ENVIRONMENT` | selects which Modal environment the Modal client targets |
+| `MODAL_TASK_ID` | marks the process as inside Modal and flips packet-cache behavior (`orchestrator/artifacts.py`) |
+| `STATE_DICT_NAME` | names the shared Modal Dict state would land in |
+| `HSS_PACKET_CACHE` | redirects packet-cache bytes away from the local volume |
+| `HSS_ORCH_TEST_FAIL_STAGE` / `HSS_ORCH_TEST_HANG_STAGE` / `HSS_ORCH_TEST_KILL_COORDINATOR_AFTER` | fault-injection hooks a stray export would turn into a mysterious local failure or hang |
+
+Reviewed and left alone, with the reasons: `HSS_LOCAL_OUTCOME` / `HSS_LOCAL_STAGE_DELAY_S` are the
+deliberate harness pass-throughs above; `HSS_OBJECTS_CACHE_DIR`, `HSS_READS_CACHE_DIR` and
+`HSS_SCALE_METER_MODELS_PATH` are local-disk read paths for stages that run as committed stubs
+locally (only `placement` is real, and it reads none of them); `HF_HOME` / `HUGGINGFACE_HUB_CACHE`
+are weight-cache locations no local stage downloads into; `CAPTURE_API_URL` / `CAPTURE_API_TOKEN`
+are client-side harness variables the server never reads; and `HSS_MODAL_SCHEDULE` and the Modal
+runtime keys are only read inside Modal images, which a loopback-only memory-state run never
+reaches. `BASE_WEBHOOK_URL` / `WEBHOOK_HMAC_SECRET` stay unset (webhooks off), as before.
 
 ## The session file
 

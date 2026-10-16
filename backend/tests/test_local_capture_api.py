@@ -501,7 +501,6 @@ def test_child_env_forces_local_dispatch_against_a_poisoned_shell() -> None:
         git_sha="deadbee",
         base="http://127.0.0.1:8000",
         volume_root=Path("/tmp/local-api-volume"),
-        parent=parent,
     )
     assert overrides["HSS_ORCH_MODAL_REMOTE"] == "0"
     assert overrides["STATE_BACKEND"] == "memory"
@@ -558,4 +557,3 @@ def test_launcher_overrides_a_poisoned_shell_and_stays_healthy(tmp_path: Path) -
             proc.wait(timeout=15)
         except subprocess.TimeoutExpired:
             proc.kill()
-

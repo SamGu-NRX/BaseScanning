@@ -1,5 +1,5 @@
 # `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
-.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci gates-offline gates-update e2e e2e-local lamar criteria-golden evals e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra weights
+.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci gates-offline gates-update e2e e2e-local lamar criteria-golden evals e2e-dev orchestrator-e2e local-api local-api-smoke ios-kit result-golden reads-gate reads-extra weights
 
 ONLY ?= small
 

@@ -20,6 +20,10 @@ does not and is out of scope.
 
 Stand-in stages: `HSS_ORCH_STAGE_STUBS=1` runs every orchestrator stage as its
 committed stub except `placement`, which is `stubs_exempt` and solves for real.
+The launcher forces `HSS_ORCH_MODAL_REMOTE=0` — a developer's shell that exports
+it as 1 must not send a 'local' run to deployed Modal functions, which cannot
+see this process's memory state or volume — and refuses the other parent-shell
+keys that would move work or bytes off this machine (REFUSED_PARENT_KEYS below).
 Pass-through, without interpretation: `HSS_LOCAL_OUTCOME` and
 `HSS_LOCAL_STAGE_DELAY_S` are honored by the stage stubs when the
 burst11-bs-local-outcome-states packet lands; this script neither reads nor
@@ -150,6 +154,70 @@ def _announce(base: str, session_path: Path, timeout_s: float) -> None:
     threading.Thread(target=_ready, daemon=True).start()
 
 
+def _local_env_overrides(
+    *,
+    app_token: str,
+    reviewer_token: str,
+    hmac_secret: str,
+    git_sha: str,
+    base: str,
+    volume_root: Path,
+) -> dict[str, str]:
+    """The env a local run forces, wherever the developer's shell disagrees.
+
+    Every value pins where work runs and where bytes go: memory state, the
+    local volume, loopback-only URLs, and local dispatch — HSS_ORCH_MODAL_REMOTE=0
+    (the Greptile P1 raised on #293: with the inherited value 1 a 'local' run
+    dispatched to deployed Modal functions that cannot see this process's memory
+    state or volume, and remote-on also flips state to a Modal Dict and storage
+    to GCS via server/common/deploy_switch.py shared_remote_backends).
+    """
+    return {
+        "SMP_ENVIRONMENT": "dev",
+        "HSS_AUTH_MODE": "static",
+        "CAPTURE_API_TOKENS": f"device:{app_token},reviewer:local-review:{reviewer_token}",
+        "UPLOAD_URL_HMAC_SECRET": hmac_secret,
+        "STATE_BACKEND": "memory",
+        "STORAGE_BACKEND": "volume",
+        "VOLUME_ROOT": str(volume_root),
+        "CAPTURE_API_PUBLIC_URL": base,
+        "HSS_INGEST_HOOKS": "auto",
+        "HSS_ORCH_STAGE_STUBS": "1",
+        "HSS_ORCH_PREWARM": "0",
+        "HSS_ORCH_MODAL_REMOTE": "0",
+        "VISION_EXTERNAL_CALLS": "off",
+        "GIT_SHA": git_sha,
+    }
+
+
+# Parent-shell keys a local run refuses, each because it would move work or
+# bytes off this machine or sabotage the run: Modal credentials and app
+# targeting (any code path reaching for Modal would authenticate to the
+# deployed app), the shared Modal Dict and packet-cache names (state and bytes
+# would leave the local volume), and the fault-injection hooks a stray export
+# would turn into a mysterious local failure or hang. The value is the
+# one-line reason a refusal names.
+REFUSED_PARENT_KEYS: dict[str, str] = {
+    "MODAL_TOKEN_ID": "Modal credentials a Modal call would authenticate with",
+    "MODAL_TOKEN_SECRET": "Modal credentials a Modal call would authenticate with",
+    "MODAL_IDENTITY_TOKEN": "a Modal identity token that authenticates this process",
+    "MODAL_APP_NAME": "names the deployed Modal app a Modal call would target",
+    "MODAL_ENVIRONMENT": "selects which Modal environment the Modal client targets",
+    "MODAL_TASK_ID": "marks the process as inside Modal and flips packet-cache behavior",
+    "STATE_DICT_NAME": "names the shared Modal Dict state would land in",
+    "HSS_PACKET_CACHE": "redirects packet-cache bytes away from the local volume",
+    "HSS_ORCH_TEST_FAIL_STAGE": "injects a stage failure into the run",
+    "HSS_ORCH_TEST_HANG_STAGE": "injects a stage hang into the run",
+    "HSS_ORCH_TEST_KILL_COORDINATOR_AFTER": "kills the coordinator mid-run",
+}
+
+
+def _refused_parent_keys(parent: dict[str, str] | None = None) -> list[str]:
+    """Parent-shell keys this launcher refuses, in REFUSED_PARENT_KEYS order."""
+    env = os.environ if parent is None else parent
+    return [key for key in REFUSED_PARENT_KEYS if key in env]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--host", default="127.0.0.1", help="bind address; loopback only (127.0.0.1 or ::1)")
@@ -197,22 +265,21 @@ def main(argv: list[str] | None = None) -> int:
     _write_session(session_path, session)
 
     os.environ.update(
-        {
-            "SMP_ENVIRONMENT": "dev",
-            "HSS_AUTH_MODE": "static",
-            "CAPTURE_API_TOKENS": f"device:{app_token},reviewer:local-review:{reviewer_token}",
-            "UPLOAD_URL_HMAC_SECRET": hmac_secret,
-            "STATE_BACKEND": "memory",
-            "STORAGE_BACKEND": "volume",
-            "VOLUME_ROOT": str(volume_root),
-            "CAPTURE_API_PUBLIC_URL": base,
-            "HSS_INGEST_HOOKS": "auto",
-            "HSS_ORCH_STAGE_STUBS": "1",
-            "HSS_ORCH_PREWARM": "0",
-            "VISION_EXTERNAL_CALLS": "off",
-            "GIT_SHA": git_sha,
-        }
+        _local_env_overrides(
+            app_token=app_token,
+            reviewer_token=reviewer_token,
+            hmac_secret=hmac_secret,
+            git_sha=git_sha,
+            base=base,
+            volume_root=volume_root,
+        )
     )
+    refused = _refused_parent_keys()
+    for key in refused:
+        os.environ.pop(key, None)
+    if refused:
+        reasons = "; ".join(f"{key} ({REFUSED_PARENT_KEYS[key]})" for key in refused)
+        print(f"refusing inherited shell env: {reasons}", file=sys.stderr, flush=True)
     # Webhooks stay off: no outbound target, no signing key.
     os.environ.pop("BASE_WEBHOOK_URL", None)
     os.environ.pop("WEBHOOK_HMAC_SECRET", None)
