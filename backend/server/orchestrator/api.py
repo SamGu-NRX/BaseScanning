@@ -161,6 +161,18 @@ def _recompose_after_correction(capture_id: str, run: RunRecord) -> None:
     and the recomposition's ``verdict_ready`` land on ``GET /events``. A replayed
     confirmation still short-circuits upstream, so one correction recomposes once.
 
+    A finished run without a record for every stage predates per-stage records.
+    Its upstream stages really finished — the run is done — so the rebuild
+    preserves that work instead of skipping it: every stage history never wrote
+    gets a terminal done record (idempotent, the same recovery shape the
+    coordinator's missing-record materialization uses), and only the criteria and
+    result records reset. No succeeded stage reopens, so the re-run reads stage
+    that would overwrite the just-persisted correction never executes. If the
+    stored upstream artifacts cannot support the rebuild — no scene bytes for the
+    coordinator-owned merge, say — the coordinator closes the run with its normal
+    artifact_invalid failure instead of leaving the stale result served as
+    success.
+
     A live run is left alone — its result stage has not consumed the corrected
     reads yet, so it recomposes by simply running.
     """
@@ -169,19 +181,23 @@ def _recompose_after_correction(capture_id: str, run: RunRecord) -> None:
     if run.status != "done":
         return
     present = {rec.stage for rec in services.state.stages(run.run_id)}  # type: ignore[attr-defined]
-    if not present.issuperset(STAGE_NAMES):
-        # A finished run without a record for every stage predates per-stage
-        # records. Reopening it would let the coordinator's missing-record
-        # recovery re-run its upstream stages, and the re-run reads stage would
-        # overwrite the correction just persisted. Keep the run closed instead.
+    missing = [name for name in STAGE_NAMES if name not in present]
+    if missing:
+        now = services.clock.iso()
+        preserved = 0
+        for name in missing:
+            if name in ("criteria", "result"):
+                continue
+            services.state.create_stage_if_absent(  # type: ignore[attr-defined]
+                StageRecord(run_id=run.run_id, stage=name, status="done", attempt=1, heartbeat=now, finished_at=now)
+            )
+            preserved += 1
         log_event(
-            "confirmation.recompose_skipped",
-            level="warning",
-            msg="finished run has no record for every stage",
+            "confirmation.recompose_legacy",
             capture_id=capture_id,
             run_id=run.run_id,
+            preserved_stages=preserved,
         )
-        return
     now = services.clock.iso()
     for stage in ("criteria", "result"):
         rec = services.state.get_stage(run.run_id, stage)  # type: ignore[attr-defined]
