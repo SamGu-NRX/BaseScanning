@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import json
 import math
+import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -75,8 +77,17 @@ def as_string(value: Any, path: str) -> str:
 
 
 def as_int(value: Any, path: str) -> int:
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise DecodeFailure(path, "Swift Int expects an integer literal; a float or bool fails")
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise DecodeFailure(path, "Swift Int expects a JSON number; a bool or string fails")
+    if isinstance(value, float):
+        # Swift's JSONDecoder round-trips NSNumber: an exactly integral number (1.0, 1e0)
+        # decodes into Int, and a fractional one (1.5) fails. json.loads has no NaN/Inf,
+        # but a bare float() call could still produce one, so the finite check stays.
+        if not math.isfinite(value):
+            raise DecodeFailure(path, "Swift Int requires a finite number")
+        if not value.is_integer():
+            raise DecodeFailure(path, "Swift Int fails on a fractional number")
+        value = int(value)
     if not -(2**63) <= value < 2**63:
         raise DecodeFailure(path, "integer does not fit in Int64")
     return value
@@ -891,38 +902,41 @@ COMPOSED_FIXTURES = [
 def test_real_composer_output_decodes_for_each_committed_synthetic_case(
     client: TestClient, tmp_path: Path, case: str, scene_dir: str, reads_name: str | None, status: str
 ) -> None:
-    """The real `compose_result` output — not a hand-written stand-in — decodes as the app reads it.
+    """The real composer output — not a hand-written stand-in — decodes as the app reads it.
 
     The result stage writes `result.json` and the coordinator uploads it as the
-    `result/result.json` artifact the route serves. These cases run the real composer
-    over the committed synthetic fixtures and serve exactly those bytes, so a producer
-    change that breaks iOS decoding fails here instead of escaping the check.
+    `result/result.json` artifact the route serves. These cases run the composer's own
+    CLI (`python -m server.result.compose`, the `make result-golden` invocation) over the
+    committed synthetic fixtures and serve exactly those bytes, so a producer change
+    that breaks iOS decoding fails here instead of escaping the check. The CLI runs in a
+    subprocess because the import contract keeps api tests out of the result package.
     """
 
-    from server.contracts.jobs import CaptureRecord, RunRecord
-    from server.result.compose import compose_result
-    from server.result.config import ResultConfig
-    from server.result.copy import load_catalogue
-    from server.result.tests.support import DATA as COMPOSE_DATA
-
-    raw = json.loads((COMPOSE_DATA / "capture.sample.json").read_text())
-    epochs = list(raw.pop("epochs"))
-    capture = CaptureRecord.model_validate(raw)
-    run = RunRecord.model_validate(json.loads((COMPOSE_DATA / "run.ok.json").read_text()))
-    composed = compose_result(
-        capture,
-        run,
-        COMPOSE_DATA / scene_dir,
-        COMPOSE_DATA / case / "verdicts",
-        tmp_path,
-        reads=COMPOSE_DATA / reads_name if reads_name else None,
-        scale=None,
-        catalogue=load_catalogue(COMPOSE_DATA / "prompts.en-US.json"),
-        config=ResultConfig(catalogue_path=COMPOSE_DATA / "prompts.en-US.json"),
-        epochs=epochs,
-    )
-    assert composed.response.status == status
+    backend_root = Path(__file__).resolve().parents[3]
+    fixture_data = backend_root / "server" / "result" / "tests" / "data"
+    command = [
+        sys.executable,
+        "-m",
+        "server.result.compose",
+        "--capture",
+        str(fixture_data / "capture.sample.json"),
+        "--run",
+        str(fixture_data / "run.ok.json"),
+        "--scene",
+        str(fixture_data / scene_dir),
+        "--verdicts",
+        str(fixture_data / case / "verdicts"),
+        "--out",
+        str(tmp_path),
+        "--catalogue",
+        str(fixture_data / "prompts.en-US.json"),
+    ]
+    if reads_name:
+        command += ["--reads", str(fixture_data / reads_name)]
+    composed = subprocess.run(command, cwd=backend_root, capture_output=True, text=True, check=False)
+    assert composed.returncode == 0, f"{case}: the real composer failed:\n{composed.stderr}"
     stored = json.loads((tmp_path / "result.json").read_text())
+    assert stored["status"] == status
 
     capture_id = _create(client, f"packet-composed-{case}")["captureId"]
     _seed_ready_result(client, capture_id, f"run-composed-{case}", stored, status)
@@ -932,7 +946,7 @@ def test_real_composer_output_decodes_for_each_committed_synthetic_case(
     decoded = decode_served(response.json(), RESULT_RESPONSE)
     assert decoded["status"] == status
     assert decoded["outcome"] is not None
-    assert decoded["outcome"]["kind"] == composed.response.outcome.kind
+    assert decoded["outcome"]["kind"] == stored["outcome"]["kind"]
     assert decoded["reviewUrl"] == f"/v1/captures/{capture_id}/review"
     # AR numbers the app checks later: the contract's Mat4 is 16 numbers.
     placement = decoded["outcome"]["recommendedPlacement"]

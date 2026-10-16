@@ -236,7 +236,16 @@ def create_app(
     @app.exception_handler(StarletteHTTPException)
     async def http_error(_request: Request, exc: StarletteHTTPException):
         code = {404: "not_found", 405: "method_not_allowed"}.get(exc.status_code, "http_error")
-        return error_response(fail(exc.status_code, code, "/", str(exc.detail or code)))
+        # Framework headers survive the rewrite: the 405 Allow list, WWW-Authenticate, …
+        return error_response(
+            fail(
+                exc.status_code,
+                code,
+                "/",
+                str(exc.detail or code),
+                **(exc.headers or {}),
+            )
+        )
 
     @app.exception_handler(Exception)
     async def unhandled(_request: Request, exc: Exception):
