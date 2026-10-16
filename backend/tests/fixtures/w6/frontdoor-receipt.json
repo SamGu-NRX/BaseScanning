@@ -1,0 +1,142 @@
+{
+  "artifacts": {
+    "placement/placement.json": "captures/cap_01M509F1JWE71MCP006WX0QV9M/runs/run_2fdd98fc49ca3516/placement/placement.json",
+    "placement/scene.json": "captures/cap_01M509F1JWE71MCP006WX0QV9M/runs/run_2fdd98fc49ca3516/placement/scene.json",
+    "placement/scene.json_equals_committed_fixture": true,
+    "placement/scene.json_sha256": "07bda024c682be365f0f7a6ad7a83fb44c0726344193e7a8b2d8d79499b4bef0"
+  },
+  "captureId": "cap_01M509F1JWE71MCP006WX0QV9M",
+  "direct_placements": {
+    "committed_scene_sha256": "07bda024c682be365f0f7a6ad7a83fb44c0726344193e7a8b2d8d79499b4bef0",
+    "decision": "manual_review",
+    "input_sha256": "07bda024c682be365f0f7a6ad7a83fb44c0726344193e7a8b2d8d79499b4bef0",
+    "status": 200
+  },
+  "format": "hss-w6-frontdoor/v0",
+  "journey": {
+    "capture_status": "manual_review",
+    "dev_settings": "SD-73 (HSS_INGEST_HOOKS=auto, stage stubs, memory state, volume storage)",
+    "files_registered": 11,
+    "packet_fixture": "backend/data/fixtures/packets/mini-arkit",
+    "placement_stage_error_code": null,
+    "placement_stage_status": "done",
+    "result_outcome_kind": "manual_review",
+    "result_runId": "run_2fdd98fc49ca3516",
+    "result_status": 200,
+    "run_degraded": [],
+    "run_outcome_kind": "manual_review",
+    "run_status": "done",
+    "stage_marks": [
+      [
+        "validate",
+        "running"
+      ],
+      [
+        "validate",
+        "pending"
+      ],
+      [
+        "validate",
+        "running"
+      ],
+      [
+        "validate",
+        "done"
+      ],
+      [
+        "poses",
+        "running"
+      ],
+      [
+        "objects",
+        "running"
+      ],
+      [
+        "reads",
+        "running"
+      ],
+      [
+        "objects",
+        "done"
+      ],
+      [
+        "poses",
+        "done"
+      ],
+      [
+        "reads",
+        "done"
+      ],
+      [
+        "scale",
+        "running"
+      ],
+      [
+        "scale",
+        "done"
+      ],
+      [
+        "dense",
+        "running"
+      ],
+      [
+        "dense",
+        "done"
+      ],
+      [
+        "coverage",
+        "running"
+      ],
+      [
+        "coverage",
+        "done"
+      ],
+      [
+        "scene",
+        "running"
+      ],
+      [
+        "scene",
+        "done"
+      ],
+      [
+        "objects_3d",
+        "running"
+      ],
+      [
+        "placement",
+        "running"
+      ],
+      [
+        "objects_3d",
+        "done"
+      ],
+      [
+        "placement",
+        "done"
+      ],
+      [
+        "criteria",
+        "running"
+      ],
+      [
+        "criteria",
+        "done"
+      ],
+      [
+        "result",
+        "running"
+      ],
+      [
+        "result",
+        "done"
+      ]
+    ],
+    "terminal_events": [
+      "verdict_ready"
+    ]
+  },
+  "packetId": "mini-arkit",
+  "producer": "backend/tests/test_capture_placement_frontdoor.py helpers (PR #269) driven once for W6 staging",
+  "runId": "run_2fdd98fc49ca3516"
+}

@@ -1,10 +1,68 @@
-# Backend status after the move into the monorepo
+# Backend status
 
-Checked 2026-10-15 on the port commit (`2d0911f8`, PR #247), Debian 13, Python 3.12, `uv sync --frozen` with the `api` extra. Everything below ran in a sandbox with outbound internet; nothing was deployed and no external credentials were set.
+Honest state of `backend/`. This file merges two earlier documents that had not
+met: the burst2 inventory written after the move into the monorepo (PR #248,
+checked 2026-10-15 on the port commit `2d0911f8` plus this branch's SSR fix),
+and the capture-chain status written for the integration-gate task
+(burst5-20261015-bs-integration-gate) on `alpha`. Both halves ran in fresh
+clones, from `backend/`, with `uv sync --frozen` and the `api` extra unless
+noted. Failures are listed, not summarized away. Where the two runs disagree,
+the newer evidence wins and the older number is kept, labeled: the capture-chain
+run is the newest, and where it saw an SSR-hygiene failure this branch's fix
+(`f4a8536c`) supersedes it, because the merged tree carries the fix.
 
-The short version: the port is in good shape. One install ran clean, lint, schemas, hygiene and fixture validation all pass, and 1205 of 1209 tests pass. The four failures share one cause that has nothing to do with the move: a known-failure window in the gate config expired on 2026-10-04. One real path bug from the move is fixed in this PR.
+## What the capture path proves
+
+The device's own journey — `POST /v1/captures` → register → signed `PUT` →
+commit → finalize → poll events → read result — runs end to end over the
+committed `mini-arkit` packet fixture, in-process, with no cloud service:
+
+- `tests/test_capture_fixture_flow.py` — persisted bytes, stored hashes, commit
+  counts, the `awaiting_files` path when a file never arrives.
+- `scripts/capture_flow_e2e.py` — the same journey as one command, leaving a
+  JSON receipt (`captureId`, statuses, file counts, error codes). Ran clean
+  this session: exit 0.
+- `scripts/replay_capture.py` — re-sends a saved receipt to a fresh app
+  instance and asserts the idempotency invariants (retried create returns the
+  stored capture; retried finalize returns the same deterministic runId;
+  committed hashes equal the receipt's). Ran clean this session: `ok=true`,
+  terminal `manual_review`.
+- `tests/test_integration_gate.py` (the capture chain) — the gate: the committed
+  packet through create, upload, commit, finalize, **the configured local hook**
+  (`HSS_INGEST_HOOKS=auto` + `HSS_ORCH_STAGE_STUBS=1`, the documented SD-73 dev
+  setting; prewarm off via the documented SD-11 knob so the gate stays
+  no-cloud), event polling, and result retrieval. It asserts a useful terminal
+  result: the runId equals `run_id_for_capture(captureId, packet bytes)`, all
+  eleven stages reach done, exactly one terminal `verdict_ready` with that
+  runId and kind, and `GET /result` serves `outcome.kind == manual_review` with
+  the finalize runId and a masked verdict for the device principal. Every other
+  journey test on this chain runs with hooks `null` and stops at
+  `processing`; this file is the only proof of the last leg.
+
+The wire contract the iOS uploader reads (`CaptureAPI.swift` keys, error-body
+shapes, signed-URL capabilities) is exercised at the HTTP boundary by these
+tests; the Swift decode side has never been executed (no Swift toolchain in the
+sandbox).
+
+## What the deterministic orchestrator proves
+
+With stage stubs, the real coordinator, state store, storage, events and
+outcome table run inline: a finalized packet produces a run, eleven stage
+records reaching done, exactly one terminal event, and the `result/result.json`
+the result route serves. Stub verdicts are always `manual_review` — that is the
+deterministic path the gate asserts, not a hope. What this proves is the
+*wiring* (finalize handoff → `start_run` → coordinator → outcomes → API), not
+vision or geometry quality; that is the evaluator's domain below.
+
+Suite: `server/orchestrator/tests` with `STATE_BACKEND=memory
+STORAGE_BACKEND=local HSS_ORCH_STAGE_STUBS=1` — **153 passed** in both runs
+(capture chain and burst2 inventory).
 
 ## What passed, whole-package
+
+Checked 2026-10-15 on the port commit plus the SSR fix (burst2 inventory,
+Debian 13, Python 3.12, `uv sync --frozen` with the `api` extra); nothing was
+deployed and no external credentials were set.
 
 | Check | Result |
 | --- | --- |
@@ -20,6 +78,12 @@ The short version: the port is in good shape. One install ran clean, lint, schem
 
 The 17 skipped tests are the `live` marker (real OpenAI, xAI, GCS or R2 calls); no keys were set.
 
+The short version from that run: the port is in good shape. One install ran
+clean, lint, schemas, hygiene and fixture validation all pass, and 1205 of 1209
+tests pass. The four failures share one cause that has nothing to do with the
+move: a known-failure window in the gate config expired on 2026-10-04. One real
+path bug from the move is fixed in this PR.
+
 ## Components
 
 ### Contracts (`server/contracts`)
@@ -34,8 +98,8 @@ Pydantic models for the capture packet, result and API envelope, plus the JSON S
 
 The FastAPI capture API that takes a packet and returns a result.
 
-- Tests: `server/api/tests` runs green inside `make test`.
-- End to end: not verified. A live run needs `CAPTURE_API_URL` or `make e2e-local`, and deployment is out of scope for this check. `make e2e` runs and correctly SKIPs the pipeline rows ("no ReplayRun timings"), scoring everything else from committed fixtures.
+- Tests: `server/api/tests` runs green inside `make test` on the burst2 run.
+- End to end: the burst2 inventory recorded this as not verified; the capture-chain run since proved the device journey in process — create, upload, commit, finalize, event polling and result retrieval over the committed `mini-arkit` fixture, terminal `manual_review` (see "What the capture path proves"). A live deployment run still needs `CAPTURE_API_URL` and deployment is out of scope for both checks (never deploy). `make e2e` runs and correctly SKIPs the pipeline rows ("no ReplayRun timings"), scoring everything else from committed fixtures.
 - One wording wart: `server/eval/e2e.py` prints "the in-process API is not importable" whenever `CAPTURE_API_URL` is unset, whether or not the API would import. Cosmetic; see follow-up 5.
 
 ### Eval (`server/eval`, `eval/`)
@@ -80,12 +144,74 @@ The capture packet schema and `packetgen`, the synthetic packet generator, plus 
 The zip the iOS team installs: schemas, example packets, packetgen, prompts.
 
 - Tests: `ios-kit/tests` passes (18 tests) but is not in pytest's `testpaths`; run it with `uv run pytest ios-kit/tests`. That split is inherited from the source repo, not introduced by the move. Follow-up 3.
-- End to end: `make ios-kit` ran through staging, schema consistency (`cmp` of the two schema copies) and packing, producing a 121 KB zip with 78 entries. One sandbox caveat: the image has no `zip` binary and no root to install one, so I ran the target with a small `zipfile`-based shim on PATH. Every other step of the target ran unmodified; the only unverified part is real `zip` byte-for-byte behavior, which nothing in the target depends on.
+- End to end: `make ios-kit` ran through staging, schema consistency (`cmp` of the two schema copies) and packing, producing a 121 KB zip with 78 entries. One sandbox caveat: the image has no `zip` binary and no root to install one, so the burst2 run used a small `zipfile`-based shim on PATH. Every other step of the target ran unmodified; the only unverified part is real `zip` byte-for-byte behavior, which nothing in the target depends on.
+
+## Current evaluator results
+
+- `make gates-offline` (capture-chain run, this session): **pass 134, fail 1, known_fail 0,
+  warn 1, skip 28.** The one FAIL is
+  `positive/eth3d-facade/gt-laser-gravel/C/footprint3in` — "route 9.1834 ft
+  exceeds 9.0". Its known-failure window (`until: "2026-10-04"`) in
+  `server/eval/gates.yaml` has expired, so the gate correctly reports FAIL
+  again. Extending a placement-criteria window is a WS-09 policy call, so it is
+  recorded here, not patched. `make ci` therefore exits 1 on both runs for
+  this reason alone.
+- Full suite `make test` results: see "Failures, kept visible" below.
+- `make schemas` passes; `make validate` passes (5 scenes, 16 verdicts,
+  61 labels, 36 packets); `make lint` passes (ruff check, ruff format,
+  import-linter: 5 contracts kept, 0 broken).
 
 ## Fixed in this PR
 
-- `scripts/ssr_overlap_check.py` defaulted its root to `git rev-parse --show-toplevel`. In the source repo the toplevel held `data/hygiene/ssr_shingles.sha256`; in the monorepo the toplevel is BaseScanning root, one level above the package, so the script crashed with FileNotFoundError and `tests/test_ssr_overlap_check.py::test_repo_has_no_ssr_shingle_overlap` failed. The script now derives its root from its own location, and a new test (`test_default_root_resolves_inside_the_moved_package`) pins that the default root contains both the script and the hash list. Verified the test fails against the old script and passes with the fix.
+- `scripts/ssr_overlap_check.py` defaulted its root to `git rev-parse --show-toplevel`. In the source repo the toplevel held `data/hygiene/ssr_shingles.sha256`; in the monorepo the toplevel is BaseScanning root, one level above the package, so the script crashed with FileNotFoundError and `tests/test_ssr_overlap_check.py::test_repo_has_no_ssr_shingle_overlap` failed. The script now derives its root from its own location, and a new test (`test_default_root_resolves_inside_the_moved_package`) pins that the default root contains both the script and the hash list. Verified the test fails against the old script and passes with the fix. This is the one place the capture-chain run and the burst2 inventory disagreed: the capture chain, whose tree predated the fix, recorded the SSR-hygiene failure as pre-existing; on this branch and in the merged tree the test passes.
 - I checked the other path arithmetic that the move could have broken: `server/eval/gates.py`, `server/eval/eth3d/scene_from_recon.py`, `server/objects/*`, `server/orchestrator/stubs/_common.py` and the test `ROOT` constants all count parents from depths that are unchanged by the move, and `chain_hybrid.py` probes vendor locations with fallbacks that resolve. No other edits needed.
+
+## What remains blocked
+
+- **Laser/occluder fixtures.** `make fixtures` cannot fetch the
+  `eth3d-*-laser`, `eth3d-*-occluders` or `colmap-*` items from the fixture
+  store, so `server.criteria.run` on the golden laser scenes raises
+  `occluders_missing` and `make criteria-golden` is not executable. The
+  criteria unit tests pass; the golden-scene engine run does not exist here.
+- **GPU weights.** The breadth tracks (scene/ B1 object detection, B2 close-up
+  reads, recon/ A1–A5) need the `objects`/`gpu` extras and model weights;
+  not installed, not run. Every real stage behind the stubs is unverified.
+- **Live credentials.** No Modal token, no GCS/R2 storage, no
+  `CAPTURE_API_URL` — so prewarm, remote spawn, cloud storage backends and any
+  deployed-stack check are unexercised (the standing rule is also: never
+  deploy). The evaluator's `runtime/e2e` row SKIPs for exactly this reason.
+- **The `/v1/placements` contract mismatch.** The iOS placement client
+  (`ios/HouseScanKit/.../PlacementHTTPClient.swift`) posts `scene.json` to
+  `POST /v1/placements` and expects a synchronous answer whose
+  `stats.input_sha256` matches the submitted bytes. The ported backend serves
+  the async `/v1/captures` journey and has no `/v1/placements` route at all.
+  Until one side moves, the app's placement client and this backend cannot
+  talk to each other; the capture path above is the backend's own contract,
+  proven without that endpoint.
+- **Swift.** No Xcode/Swift in this sandbox: no iOS build, no
+  `swift test` on HouseScanKit, no decode round-trip. The server side of every
+  key the Swift clients read is asserted; the client side is read, not run.
+
+## Failures, kept visible
+
+| Check | Result | Failure and why |
+| --- | --- | --- |
+| `make test` (burst2 run, with this PR's SSR fix) | 1205 passed, 17 skipped, 4 failed | the four eval-gate failures from the expired SD-96 known-failure window only; the SSR-hygiene test passes with the fix |
+| `make test` (capture-chain run, tree without the fix) | see below | 1 SSR-hygiene failure + eval-gate failures from the expired known-failure window; identical on the base branch, none touch this change |
+| `make gates-offline` (both runs) | pass 134, fail 1, warn 1, skip 28 | the expired window above; exit 1 |
+| `tests server/api/tests` (capture-chain run) | 203 passed, 1 failed | the SSR-hygiene pre-existing failure — superseded by this PR's fix, see "Fixed in this PR" |
+| `make criteria-golden` | not executable | laser/occluder fixtures cannot be fetched |
+| iOS suites | not run | no Swift toolchain |
+| `make lint` | pass | — |
+| `make schemas` | pass | — |
+| `make validate` | pass | — |
+| orchestrator stub suite | 153 passed | — |
+| runner receipt | exit 0 | — |
+| replay receipt | `ok=true`, terminal `manual_review` | — |
+| integration gate test | 1 passed | — |
+
+Final full-suite numbers were appended to each source document after its run;
+the failure classification was done before any code changed in either.
 
 ## Follow-ups, priority order
 
@@ -95,6 +221,7 @@ The zip the iOS team installs: schemas, example packets, packetgen, prompts.
 4. **Verify the breadth tracks on a machine with weights and a GPU.** `scene/` B1/B2 and `recon/` A1-A5 were import-checked only through the pipeline stages they share. Running the OWLv2 parity test and one A1 reconstruction end to end would close the biggest honest gap in this inventory.
 5. **Fix the e2e skip message** (`server/eval/e2e.py`, around line 29). It claims the in-process API is "not importable" even when the real reason is that `CAPTURE_API_URL` is unset. A one-line wording change; worth it because the current text sent me down a wrong path during this check.
 6. **Wire the SSR overlap check into `make hygiene`.** Its own docstring says WS-00 should do this; right now only the test suite runs it.
+7. **Settle the `/v1/placements` contract mismatch** (see "What remains blocked"). One side has to move: the iOS placement client or the backend's async capture journey.
 
 ## CI proposal for the PR body
 

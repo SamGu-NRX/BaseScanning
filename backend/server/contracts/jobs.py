@@ -34,6 +34,7 @@ StageName = Literal[
     "coverage",
     "scene",
     "objects_3d",
+    "placement",
     "criteria",
     "result",
 ]
@@ -67,8 +68,9 @@ STAGE_DEPS: dict[str, tuple[str, ...]] = {
     "coverage": ("dense",),
     "scene": ("coverage", "objects"),
     "objects_3d": ("scene", "objects"),
+    "placement": ("scene", "objects_3d"),
     "criteria": ("scene", "reads", "objects_3d"),
-    "result": ("criteria",),
+    "result": ("criteria", "placement"),
 }
 OPTIONAL_STAGES: frozenset[str] = frozenset({"objects", "reads", "objects_3d"})
 
@@ -120,6 +122,9 @@ class RunRecord(Strict):
     run_id: str
     capture_id: str
     packet_sha256: str
+    # Storage key of the accepted packet manifest. An amendment's packet lives
+    # under its amendment prefix, not captures/{capture_id}/packet.json.
+    packet_uri: str | None = None
     parent_run_id: str | None = None
     status: StageStatus
     branch: Branch

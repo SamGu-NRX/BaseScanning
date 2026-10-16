@@ -1,4 +1,8 @@
-"""Eleven-stage graph. Deps and GPU attempts are the brief's §3 table (SD-08, SD-10)."""
+"""Twelve-stage graph: the brief's eleven stages (SD-08, SD-10) plus the real CPU placement
+stage after `objects_3d`. The GPU and vision stages stay stubbed in dev (`HSS_ORCH_STAGE_STUBS=1`);
+`placement` is `stubs_exempt` because it is deterministic CPU work with no GPU, network or
+credentials — running it for real on the stub path is the point.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +20,7 @@ STAGE_NAMES: tuple[StageName, ...] = (
     "coverage",
     "scene",
     "objects_3d",
+    "placement",
     "criteria",
     "result",
 )
@@ -36,6 +41,9 @@ class StageSpec:
     artifacts: tuple[str, ...]
     module: str
     entry: str = "run"
+    # True for a stage whose real implementation must run even when stage stubs are
+    # enabled: it is deterministic CPU work that needs no GPU, network or credentials.
+    stubs_exempt: bool = False
 
 
 def _cpu(
@@ -145,6 +153,27 @@ STAGES: dict[StageName, StageSpec] = {
             module="objects",
             entry="run_3d",
         ),
+        # The real placement stage (server/placement/): the repo's unchanged top-level
+        # solver behind `POST /v1/placements`, run on the wire-format scene the bridge
+        # converts from the run's merged scene. Placement waits for `objects_3d` to be
+        # terminal (not just `scene` done) so it only ever solves the scene the
+        # coordinator has already merged — a missing or failed objects_3d stage refuses
+        # placement instead of implying no hazards. Optional: it adds a decision to the
+        # run and degrades (`degraded:placement`, capture `manual_review`) instead of
+        # sinking it. It is exempt from stage stubs — the only real stage on the dev
+        # path — because it is deterministic CPU work.
+        StageSpec(
+            name="placement",
+            deps=(("scene", _D), ("objects_3d", _T)),
+            where="cpu",
+            timeout_s=120,
+            max_attempts=2,
+            gpu_by_attempt=(),
+            optional=True,
+            artifacts=("placement/placement.json", "placement/scene.json"),
+            module="placement",
+            stubs_exempt=True,
+        ),
         _cpu(
             "criteria",
             (("scene", _D), ("reads", _T), ("objects_3d", _T)),
@@ -160,7 +189,7 @@ STAGES: dict[StageName, StageSpec] = {
         ),
         _cpu(
             "result",
-            (("criteria", _D),),
+            (("criteria", _D), ("placement", _T)),
             60,
             ("result/result.json", "result/result.internal.json", "result/review.html", "result/preview.ply"),
         ),
@@ -211,6 +240,15 @@ STAGE_INPUTS: dict[StageName, tuple[str, ...]] = {
         "scene/scene.json",
         "objects/objects.json",
         "poses/registration_report.json",
+    ),
+    "placement": (
+        # The run's merged source scene (metres) and the objects_3d artifact. The
+        # coordinator's `_merge_if_ready` merges detected objects into scene/scene.json
+        # before `_spawn_ready` can start placement, and placement's deps require
+        # objects_3d terminal, so hydration always carries the merged bytes here. The
+        # objects_3d artifact is readiness evidence only — placement never merges it.
+        "scene/scene.json",
+        "objects/objects_3d.json",
     ),
     "criteria": (
         "scene/",

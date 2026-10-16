@@ -23,5 +23,7 @@ server/prompts/
 
 # Experiment outputs, local-only notes and secrets
 data/
+# except the committed placement case-suite fixtures
+!backend/server/placement/tests/data/
 .local/
 .env.*

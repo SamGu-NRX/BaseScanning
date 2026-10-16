@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -31,6 +32,74 @@ def _verdicts() -> list[Path]:
 
 def _labels() -> list[Path]:
     return sorted(FIXTURES.glob("labels/*.json"))
+
+
+CAPTURE_JOURNEY_PACKET_ID = "mini-arkit"
+
+
+def capture_journey_errors(fixtures_dir: Path) -> list[str]:
+    """Named missing-input failures for the packet the capture journey test drives.
+
+    The committed packet check runs with --no-files, so the keyframes and streams
+    under data/fixtures/packets/mini-arkit were never re-verified: a file that left
+    the repository passed `make validate` and only surfaced as a raw FileNotFoundError
+    inside tests/test_capture_fixture_flow.py. The manifest now names the packet and
+    every file it references; this guard fails loudly, by name, when they disagree
+    with what is on disk.
+    """
+
+    document = json.loads((fixtures_dir / "manifest.json").read_text())
+    items = {item["id"]: item for item in document["items"]}
+    packet_item = items.get(CAPTURE_JOURNEY_PACKET_ID)
+    if packet_item is None or packet_item.get("kind") != "packet_dir":
+        return [f"{CAPTURE_JOURNEY_PACKET_ID}: no packet_dir item in the fixture manifest"]
+
+    packet_dir = fixtures_dir / Path(packet_item["repo_path"]).relative_to("data/fixtures")
+    packet_path = packet_dir / "packet.json"
+    errors: list[str] = []
+    packet_files: dict[str, int] = {}
+    if not packet_path.is_file():
+        return [f"{CAPTURE_JOURNEY_PACKET_ID}: missing input {packet_item['repo_path']}/packet.json"]
+    packet = json.loads(packet_path.read_text())
+    for index, entry in enumerate(packet["files"]):
+        packet_files[entry["path"]] = index
+
+    def _describe(item: dict) -> str:
+        return f"manifest item {item['id']}"
+
+    # The packet_dir entry itself pins packet.json; keep that hash guarded too.
+    raw = packet_path.read_bytes()
+    if len(raw) != int(packet_item["bytes"]) or hashlib.sha256(raw).hexdigest() != packet_item["sha256"]:
+        errors.append(f"{CAPTURE_JOURNEY_PACKET_ID}: packet.json does not match its {_describe(packet_item)}")
+
+    named: dict[str, dict] = {}
+    prefix = packet_item["repo_path"] + "/"
+    for item in document["items"]:
+        repo_path = item.get("repo_path")
+        if item is packet_item or not repo_path or not str(repo_path).startswith(prefix):
+            continue
+        relative = str(repo_path)[len(prefix) :]
+        named[relative] = item
+        path = fixtures_dir / Path(repo_path).relative_to("data/fixtures")
+        if not path.is_file():
+            errors.append(
+                f"{CAPTURE_JOURNEY_PACKET_ID}: missing input {repo_path} ({_describe(item)}, "
+                f"packet.json /files/{packet_files[relative]})"
+                if relative in packet_files
+                else f"{CAPTURE_JOURNEY_PACKET_ID}: missing input {repo_path} ({_describe(item)})"
+            )
+            continue
+        data = path.read_bytes()
+        if len(data) != int(item["bytes"]) or hashlib.sha256(data).hexdigest() != item["sha256"]:
+            errors.append(f"{CAPTURE_JOURNEY_PACKET_ID}: {repo_path} does not match {_describe(item)}")
+
+    for relative, index in sorted(packet_files.items(), key=lambda pair: pair[1]):
+        if relative not in named:
+            errors.append(
+                f"{CAPTURE_JOURNEY_PACKET_ID}: packet.json /files/{index} references {relative}, "
+                "which the fixture manifest does not name"
+            )
+    return errors
 
 
 def _packet_manifests() -> list[Path]:
@@ -67,6 +136,12 @@ def _validate_committed() -> int:
     )
     if code != 0:
         return code
+    journey_errors = capture_journey_errors(FIXTURES)
+    if journey_errors:
+        print("capture-journey fixture guard failed:", file=sys.stderr)
+        for error in journey_errors:
+            print("  " + error, file=sys.stderr)
+        return 1
     print(
         "validate ok "
         f"scenes={len(_scenes())} verdicts={len(_verdicts())} "

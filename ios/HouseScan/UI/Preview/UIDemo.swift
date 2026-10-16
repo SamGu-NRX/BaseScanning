@@ -46,9 +46,19 @@ import SwiftUI
 ///   the meter, and the ring is half full with its legend beside it. Unfrozen, it fills, the walk
 ///   goes on in the same update as on a phone, and the ring holds green with a tick for a moment.
 /// - `-uiDemoAimOffScreen`: as `-uiDemoAim`, for ground left of the view: the edge arrow shows.
+/// - `-uiDemoAimNoMarker`: keep the aim step's hint but remove its target, so no marker is drawn.
 /// - `-uiDemoCorner`: the wall turns an outside corner 1.8 m right of the meter and the walk
 ///   followed it, so the window and part of its clearance zone are round the corner. For the
 ///   result model: `-uiDemoPhase result -uiDemoCorner`.
+/// - `-uiDemoAimCardTitles`: an isolated folded aim card, cycling ring, arrow and covered
+///   titles for the same target. Exercises a nonempty reserve alongside a folded title.
+///   `-uiDemoAimSecondPositionToggle` also lets the test toggle second-position advice.
+/// - `-uiDemoAimHysteresis`: button-driven target and step changes in the real aim overlay.
+/// - `-uiDemoSpotHysteresis`: button-driven tracking loss and recovery in the real result screen.
+/// - `-uiDemoSpotOffScreen`: with `-uiDemoPhase resultAR`, place the camera 10 m left so the
+///   proposed spot needs an off-screen direction, including at accessibility text sizes.
+/// - `-uiDemoSpotLow`: with `-uiDemoPhase resultAR`, tilt the camera up so the proposed spot sits
+///   low in the open camera, below the folded card at AX5, where open Details covers it.
 /// - `-uiDemoPhase spotConfirm`: the spot check before the result, on the made-up sample spot.
 /// - `-uiDemoSpotAnswered <clear|somethingThere|cannotCheck>`: with `-uiDemoPhase spotConfirm`,
 ///   the check is answered and says what happens next. With `-uiDemoPhase result`, the result
@@ -66,8 +76,17 @@ import SwiftUI
 /// when the answer lists a view the camera can take.
 enum UIDemo {
     @MainActor
+    @ViewBuilder
     static func makeRoot() -> some View {
-        DemoHost()
+        if ProcessInfo.processInfo.arguments.contains("-uiDemoAimCardTitles") {
+            FoldedAimCardDemo()
+        } else if ProcessInfo.processInfo.arguments.contains("-uiDemoAimHysteresis") {
+            AimHysteresisDemo()
+        } else if ProcessInfo.processInfo.arguments.contains("-uiDemoSpotHysteresis") {
+            SpotHysteresisDemo()
+        } else {
+            DemoHost()
+        }
     }
 }
 
@@ -76,5 +95,60 @@ private struct DemoHost: View {
 
     var body: some View {
         ScanRootView(state: engine.state, actions: engine)
+    }
+}
+
+/// The card contract permits a folded lead and reserved titles together, even though today's
+/// live ground/wall aims have no separate folded lead. Keep that combination stable at AX5.
+private struct FoldedAimCardDemo: View {
+    private enum Variant {
+        case ring, arrow, covered
+
+        var hint: AimDirection? {
+            switch self {
+            case .ring: .onScreen
+            case .arrow: .above
+            case .covered: nil
+            }
+        }
+    }
+
+    @State private var variant = Variant.ring
+    @State private var needsSecondPosition = false
+    private let showsPositionToggle = ProcessInfo.processInfo.arguments.contains("-uiDemoAimSecondPositionToggle")
+
+    private var instruction: Instruction {
+        var copy = ScanCopy.guidance(.aimAtGround(s: 0.4), hint: GuidanceHint(aim: variant.hint, needsSecondPosition: needsSecondPosition))
+        copy.folded = Instruction.Folded(title: copy.title, detail: copy.detail ?? "")
+        return copy
+    }
+
+    var body: some View {
+        VStack(spacing: 24) {
+            InstructionCard(instruction: instruction, foldsDetail: true)
+                .transaction { transaction in
+                    transaction.animation = nil
+                    transaction.disablesAnimations = true
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("demo.aimCard")
+            Button("Next title") {
+                switch variant {
+                case .ring: variant = .arrow
+                case .arrow: variant = .covered
+                case .covered: variant = .ring
+                }
+            }
+            .frame(minHeight: Metrics.minTarget)
+            .accessibilityIdentifier("demo.nextAimTitle")
+            if showsPositionToggle {
+                Button("Change position advice") { needsSecondPosition.toggle() }
+                    .frame(minHeight: Metrics.minTarget)
+                    .accessibilityIdentifier("demo.toggleAimPosition")
+            }
+            Spacer()
+        }
+        .padding(Metrics.edge)
+        .background(Palette.ink)
     }
 }

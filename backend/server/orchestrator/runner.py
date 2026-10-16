@@ -32,7 +32,10 @@ def is_retryable(exc: BaseException) -> bool:
 
 def stage_callable(stage: StageName, *, stubs: bool) -> Any:
     spec = STAGES[stage]
-    if stubs:
+    # A stubs_exempt stage is deterministic CPU work (no GPU, network or credentials);
+    # it runs its real implementation even on the stub path. That is the point: the
+    # local stub journey exercises the real placement solver.
+    if stubs and not spec.stubs_exempt:
         module = importlib.import_module(f"server.orchestrator.stubs.{stage}")
         return module.run
     module = importlib.import_module(f"server.{spec.module}")

@@ -250,6 +250,7 @@
                 "coverage",
                 "scene",
                 "objects_3d",
+                "placement",
                 "criteria",
                 "result"
               ],
@@ -457,6 +458,7 @@
               "coverage",
               "scene",
               "objects_3d",
+              "placement",
               "criteria",
               "result"
             ],
@@ -513,6 +515,18 @@
         "packet_sha256": {
           "title": "Packet Sha256",
           "type": "string"
+        },
+        "packet_uri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Packet Uri"
         },
         "parent_run_id": {
           "anyOf": [
@@ -746,6 +760,7 @@
             "coverage",
             "scene",
             "objects_3d",
+            "placement",
             "criteria",
             "result"
           ],
