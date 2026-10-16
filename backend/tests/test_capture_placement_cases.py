@@ -527,14 +527,17 @@ def _write_twin_manifest(tmp_path: Path) -> Path:
             "kind": "positive",
             "source": source_ref,
             "wire": wire_ref,
-            "expectations": {"decision": "manual_review"},
+            # The hardened loader (case-integrity fix) rejects decision-only
+            # positives, so the twins pin the coverage chain ends too — the
+            # cross-capture refusal must still come from geometry, not the loader.
+            "expectations": {"decision": "manual_review", "ends": {"left": "unexplored", "right": "limit"}},
         },
         {
             "id": "twin-two",
             "kind": "positive",
             "source": source_ref,
             "wire": wire_ref,
-            "expectations": {"decision": "manual_review"},
+            "expectations": {"decision": "manual_review", "ends": {"left": "unexplored", "right": "limit"}},
         },
     ]
     manifest_path = tmp_path / "manifest.json"
