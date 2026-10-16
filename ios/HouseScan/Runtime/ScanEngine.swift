@@ -127,6 +127,9 @@ final class ScanEngine {
     private var gapCounter = 0
     /// Keyframes stored when the current gap request began: a request is closed only by new views.
     private var keyframesAtGapStart = 0
+    /// The walk-out request's "the space ends" reading, with the request it belongs to
+    /// (`noteWalkOut`).
+    private var spaceEndsShown: (request: Int, reading: SlowRelease<GapRequest.SpaceEnds>)?
     /// Tilt-up views kept when the current gap request began: an overhead request is closed by a
     /// new one (`keepOverheadView`); counting keyframes would not do, since the walk keeps them too.
     private var overheadViewsAtGapStart = 0
@@ -189,7 +192,8 @@ final class ScanEngine {
     /// Watches whether the AR scene draws the result (`watchResultInCamera`) while "See it on
     /// your wall" is up on the live camera.
     private var resultWatch: Task<Void, Never>?
-    /// The wall the model in the AR scene was built from; nil when none is in it.
+    /// The wall the AR result's model was built from, in the frame of the meter's anchor at the
+    /// time (`ScanEngine.inAnchorFrame`).
     private var resultBuiltFor: WallGeometry?
 
     // Upload
@@ -363,7 +367,9 @@ final class ScanEngine {
             closeUpRetake = nil
             meterReadout = nil
             closeUpCredit = CloseUpCredit()
+            // The brand belongs to the number it was read with, so it goes with it (review of #89).
             state.meterNumber = nil
+            state.meterBrand = nil
             state.closeUpFailedAttempts = 0
             live?.setMode(.closeUp)
             if let replay { replay.play(range: 0..<replay.frames.count, speed: replaySpeed) }
@@ -872,6 +878,7 @@ final class ScanEngine {
         closeUpRetake = (problem, screenTime)
         meterReadout = nil
         state.meterNumber = nil
+        state.meterBrand = nil
         state.closeUp = .aiming(hold: 0, problem: problem)
     }
 
@@ -1310,11 +1317,11 @@ final class ScanEngine {
         let output = planner.cues(for: task, coverage: map, camera: camera)
         state.target = output.target
         state.path = output.path
-        // The card follows the target on the frame shown, as the ring does.
-        if var hint = state.guidanceHint {
-            let previous = hint.aim.map(Self.aimHint)
-            hint.aim = output.target.map { Self.direction(AimHint.classify(target: $0, camera: camera, previous: previous)) }
-            state.guidanceHint = hint
+        // The card follows the frame shown, as the ring does: its direction (sticky near the
+        // view's edges, as on live frames) and whether to step back or aside from where this
+        // frame was taken (review of #120).
+        if let hint = state.guidanceHint {
+            state.guidanceHint = Self.hint(output, camera: camera, previous: hint.aim)
         }
     }
 
@@ -1504,23 +1511,30 @@ final class ScanEngine {
     /// card then gives the distance that counts where the phone is, or says the space ends
     /// before the line and "I can't get there" is the answer. The reading is rounded to 3 in, its
     /// out down and what counts up, so it changes every few strides rather than every frame and
-    /// never asks for less than counts; a guess at what reads calmly. Where the space ends is
-    /// kept for the request once shown: ARKit refines its planes about ten times a second, and a
-    /// headline that moved or came and went with them would re-arm the reply's lock each time
-    /// (`InstructionCard.replyLock`).
+    /// never asks for less than counts; a guess at what reads calmly. Where the space ends holds
+    /// still once shown: ARKit refines its planes about ten times a second, and a headline that
+    /// moved or came and went with them would re-arm the reply's lock each time
+    /// (`InstructionCard.replyLock`). It clears once no blocking plane has been found for
+    /// `spaceEndsRelease`, so a plane ARKit moves or removes gives the walk and its dotted line
+    /// back (review of #168).
     private func noteWalkOut(_ plan: GapPlan, _ map: CoverageMap, camera: CameraFrame?, into request: inout GapRequest) {
         guard case .walkOut = plan.need else { return }
         let step: Float = 0.0762
         let block = gapPlanner.walkOutBlock(plan, map)
         let ends = block.map { GapRequest.SpaceEnds(at: ($0.spaceEnds / step).rounded(.down) * step, needed: ($0.needed / step).rounded(.up) * step) }
-        if request.spaceEnds == nil, let block, let ends {
+        let id = request.id
+        var shown = spaceEndsShown.flatMap { $0.request == id ? $0.reading : nil } ?? SlowRelease(release: Self.spaceEndsRelease)
+        let before = shown.value
+        request.spaceEnds = shown.update(ends, time: screenTime)
+        spaceEndsShown = (id, shown)
+        // The log's message is an escaping autoclosure, which can't capture `request`.
+        if before == nil, let block, request.spaceEnds != nil {
             let found = String(
                 format: "the space ends %.2f m out over s %.2f...%.2f, short of the line at up to %.2f m",
                 block.spaceEnds, block.span.lowerBound, block.span.upperBound, block.needed)
-            // The log's message is an escaping autoclosure, which can't capture `request`.
-            let id = request.id
             RuntimeLog.engine.info("gap \(id) walk-out: \(found, privacy: .public)")
-            request.spaceEnds = ends
+        } else if before != nil, request.spaceEnds == nil {
+            RuntimeLog.engine.info("gap \(id) walk-out: no longer blocked for \(Self.spaceEndsRelease, privacy: .public) s; the walk is back")
         }
         request.walkOut = camera.flatMap { camera in
             let at = map.wall.wallPoint(camera.position)
@@ -1529,6 +1543,12 @@ final class ScanEngine {
             }
         }
     }
+
+    /// How long no plane may block a walk-out request's line before its "the space ends" line
+    /// clears: 2 s, twenty of ARKit's plane updates. Long enough that a plane being refined
+    /// doesn't flicker the card, short enough that the walk comes back while the homeowner is
+    /// still reading. A guess at what reads calmly, not measured on a phone.
+    static let spaceEndsRelease: Double = 2
 
     /// Where a gap request points the camera, and how far out from the wall to walk for it.
     private func gapCue(_ plan: GapPlan, _ map: CoverageMap, center: Float) -> (target: SIMD3<Float>, standOut: Float) {
@@ -1708,6 +1728,7 @@ final class ScanEngine {
         state.target = nil
         state.path = []
         state.features = []
+        state.featuresPastEnds = []
         // A mark half placed holds taps in the old frame's wall coordinates.
         state.marking = nil
         pendingTaps = []
@@ -1858,10 +1879,12 @@ final class ScanEngine {
         guard LiveCapture.supportsMesh, let live, let wall = state.wall, let result = state.result,
               let pose = meterTracking?.pose, state.spatialResultAvailable else { return }
         if rising || resultWatch == nil { watchResultInCamera() }
-        // Each rebuild takes the model out of the scene and puts a new one in, so a wall that
-        // moved by a centimeter or two (the ground or the meter's anchor refined) keeps the one
-        // it has. It hangs on the meter's anchor, so it follows the anchor's corrections anyway.
-        if !rising, let built = resultBuiltFor, Self.movedLittle(from: built, to: wall) { return }
+        // Each rebuild takes the model out of the scene and puts a new one in, cutting short its
+        // rise. It hangs on the meter's anchor, so it follows the anchor's corrections anyway:
+        // the wall is compared in the anchor's frame, and only a change to the wall itself (the
+        // ground or an end refined by more than a few centimeters) rebuilds it (review of #51).
+        let local = Self.inAnchorFrame(wall, pose: pose)
+        if !rising, let built = resultBuiltFor, Self.movedLittle(from: built, to: local) { return }
         let model = ResultARModel.build(wall: wall, result: result)
         // The battery's middle (the outline's, on the ground, for a spot that isn't clean), or the
         // meter without a spot, in the model's coordinates.
@@ -1870,7 +1893,7 @@ final class ScanEngine {
             resultBuiltFor = nil
             return
         }
-        resultBuiltFor = wall
+        resultBuiltFor = local
         live.setResultVisible(state.tracking == .normal)
         if rising { ResultARModel.rise(model) }
     }
@@ -1912,6 +1935,37 @@ final class ScanEngine {
     /// within what the ground and the meter's anchor are known to. Display choices, not measured.
     private static let resultRebuildDistance: Float = 0.05
     private static let resultRebuildTurnCosine: Float = cos(2 * Float.pi / 180)
+
+    /// `wall` in the frame of the meter's anchor at `pose`: what the result's model is built
+    /// from, less the anchor's own place and heading, which the model follows anyway. The ends
+    /// and spans are already measured along the wall. A corner piece's anchor is an offset from
+    /// the meter's foot, so it turns like a direction.
+    static func inAnchorFrame(_ wall: WallGeometry, pose: simd_float4x4) -> WallGeometry {
+        let inverse = pose.inverse
+        func point(_ p: SIMD3<Float>) -> SIMD3<Float> {
+            let v = inverse * SIMD4(p, 1)
+            return SIMD3(v.x, v.y, v.z)
+        }
+        func direction(_ d: SIMD3<Float>) -> SIMD3<Float> {
+            let v = inverse * SIMD4(d, 0)
+            return SIMD3(v.x, v.y, v.z)
+        }
+        var local = wall
+        local.meter = point(wall.meter)
+        local.along = direction(wall.along)
+        local.outward = direction(wall.outward)
+        // Under .gravity alignment the anchor's corrections turn about the vertical, so height
+        // above the anchor is the ground's place in its frame.
+        local.groundY = wall.groundY - pose.columns.3.y
+        local.cornerSegments = wall.cornerSegments.map { piece in
+            var piece = piece
+            piece.anchor = direction(piece.anchor)
+            piece.along = direction(piece.along)
+            piece.outward = direction(piece.outward)
+            return piece
+        }
+        return local
+    }
 
     /// True when `new` is `old` moved by less than `resultRebuildDistance` and turned by less
     /// than 2° in every part the model is built from: the meter, the ground, the ends and each
@@ -2035,6 +2089,7 @@ final class ScanEngine {
         gapPlan = plan
         keyframesAtGapStart = store.keyframes.count
         overheadViewsAtGapStart = coverage?.overheadCameras.count ?? 0
+        spaceEndsShown = nil
         let progress = coverage.map { gapPlanner.progress(of: plan, $0) } ?? 0
         state.gap = GapRequest(
             id: gapCounter, origin: origin, reason: reason, band: plan.band == .ground ? .ground : .wall, span: plan.span,
@@ -2463,6 +2518,7 @@ final class ScanEngine {
         state.wall = nil
         state.coverage = .empty
         state.features = []
+        state.featuresPastEnds = []
         state.groundAnswer = nil
         state.marking = nil
         state.gap = nil
@@ -2478,6 +2534,7 @@ final class ScanEngine {
         state.closeUp = .aiming(hold: 0, problem: nil)
         state.closeUpFailedAttempts = 0
         state.meterNumber = nil
+        state.meterBrand = nil
         closeUpRetake = nil
         meterReadout = nil
         state.isPracticeScan = false
@@ -2680,6 +2737,39 @@ extension ScanEngine {
 
 #if DEBUG
 extension ScanEngine {
+    /// Checks the server-request entry point without running a camera or sending a capture.
+    static func checkPastEndReplay() -> String {
+        guard let wall = WallFrame(meter: SIMD3(0, 1.5, 0), outward: SIMD3(0, 0, 1), groundY: 0),
+              let item = try? JSONDecoder().decode(PlacementMissingEvidence.self,
+                  from: Data(#"{"kind":"past_end","side":"right","message":"Look past the end"}"#.utf8)) else {
+            return "invalid past-end fixture"
+        }
+        for count in [2, 10] {
+            let engine = ScanEngine(options: LaunchOptions(arguments: ["-sampleResult"], defaultServerURL: nil))
+            var map = CoverageMap(wall: wall)
+            map.setEnd(.right, at: 0)
+            for index in 0..<count {
+                let camera = CameraFrame(cameraToWorld: simd_float4x4(
+                    SIMD4(0, 0, 1, 0), SIMD4(1, 0, 0, 0), SIMD4(0, 1, 0, 0),
+                    SIMD4(Float(index) * 0.3, 1, 0.6, 1)),
+                    intrinsics: SIMD4(500, 500, 320, 240), imageSize: SIMD2(640, 480))
+                map.observe(camera, trackingNormal: true)
+            }
+            let plan = engine.gapPlanner.pastEndPlan(side: .right, end: 0)
+            guard engine.gapPlanner.progress(of: plan, map) == 0 else { return "fixture was not clipped by the end" }
+            engine.coverage = map
+            engine.state.phase = .result
+            engine.beginServerGap(item, plan: plan)
+            guard engine.coverage?.rightEnd == nil, let request = engine.state.gap else { return "request did not clear the end" }
+            let expected = engine.coverage.map { engine.gapPlanner.progress(of: plan, $0) }
+            guard request.progress == expected, request.progress > 0 else { return "request lost restored sightings" }
+            if count == 2, request.progress >= 1 { return "partial fixture unexpectedly completed coverage" }
+            if count == 10, request.progress != 1 { return "complete fixture lost coverage" }
+            guard !request.isSatisfied else { return "old sightings bypassed the fresh-photo requirement" }
+        }
+        return "passed"
+    }
+
     /// Deterministic integration checks launched by EngineGuidanceTests in the existing journey
     /// target. Live sessions are never run; no replay, network, or elapsed-time waits participate.
     static func checkGuidanceEngine(_ scenario: String) -> String {

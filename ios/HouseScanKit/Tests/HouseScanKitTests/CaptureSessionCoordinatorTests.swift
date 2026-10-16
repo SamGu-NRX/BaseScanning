@@ -349,19 +349,23 @@ struct NativeCaptureFixture: Sendable {
     @Test func aWorldResetStartsANewPacketAndDropsTheOld() async throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let server = try LoopbackCaptureAPI()
-        server.state.withLock { $0.held = ["POST captures/files"] }
+        let http = HeldCaptureReplyHTTP(UncancellableHTTP(URLSessionCaptureHTTP.ephemeral(timeout: 10)), pathSuffix: "/files")
+        defer { http.release() }
         let coordinator = CaptureSessionCoordinator(
-            environment: NativeCaptureFixture.environment(endpoint: server.base, http: UncancellableHTTP(URLSessionCaptureHTTP.ephemeral(timeout: 10)), captures: captures))
+            environment: NativeCaptureFixture.environment(endpoint: server.base, http: http, captures: captures))
         coordinator.begin(recording: fixture.recording)
         coordinator.answerConsent(true)
         coordinator.kept(try fixture.photo(at: fixture.start + 2))
         let first = try #require(coordinator.session)
-        for _ in 0..<500 where server.requests("POST captures/files").isEmpty { try await Task.sleep(for: .milliseconds(10)) }
+        try await waitUntilHeld(http)
 
         coordinator.newWorld("world reset", recording: fixture.recording, newScan: false)
+        let stateURL = CaptureUploader.stateURL(in: first.folder)
+        // Retirement is synchronous, but abandonment runs on the uploader's next turn.
+        // Release the old reply only after that turn, so the test exercises a late reply.
+        try await waitUntilAbandoned(stateURL, reason: "world reset")
+        http.release()
         coordinator.kept(try fixture.photo(at: fixture.start + 4))
-        server.release("POST captures/files")
-        server.state.withLock { $0.held = [] }
         await coordinator.settle()
         await first.uploader!.settled()
 
@@ -570,15 +574,38 @@ struct NativeCaptureFixture: Sendable {
 
     /// Waits, suspending, until the loopback has parked an answer for `route`.
     func waitUntilParked(_ server: LoopbackCaptureAPI, _ route: String) async throws {
-        for _ in 0..<1000 where server.state.withLock({ $0.parked[route]?.isEmpty ?? true }) { try await Task.sleep(for: .milliseconds(10)) }
-        #expect(server.state.withLock { !($0.parked[route]?.isEmpty ?? true) })
+        for _ in 0..<1000 {
+            if server.state.withLock({ !($0.parked[route]?.isEmpty ?? true) }) { return }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(server.state.withLock { !($0.parked[route]?.isEmpty ?? true) })
     }
 
-    /// Blocks the main actor until `stateURL` holds something other than `before`, so nothing
-    /// queued on the main actor (the abandon task a withdrawal schedules) can run meanwhile.
-    func blockUntilSaved(_ stateURL: URL, differentFrom before: Data?) {
-        let deadline = Date().addingTimeInterval(5)
-        while Date() < deadline, (try? Data(contentsOf: stateURL)) == before { usleep(10_000) }
+    func waitUntilHeld(_ http: HeldCaptureReplyHTTP) async throws {
+        for _ in 0..<500 {
+            if http.parked { return }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(http.parked)
+    }
+
+    func waitUntilAbandoned(_ stateURL: URL, reason: String) async throws {
+        for _ in 0..<500 {
+            if (try? CaptureUploadState.load(from: stateURL))?.end == .abandoned(reason) { return }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(try CaptureUploadState.load(from: stateURL).end == .abandoned(reason))
+    }
+
+    /// Keeps the main actor's queued abandon task from masking the late reply's own save.
+    /// A changed file is insufficient: another queued write can replace the withdrawal first.
+    func blockUntilAbandoned(_ stateURL: URL, reason: String) -> CaptureUploadState? {
+        for _ in 0..<500 {
+            if let saved = try? CaptureUploadState.load(from: stateURL), saved.end == .abandoned(reason) { return saved }
+            usleep(10_000)
+        }
+        let saved = try? CaptureUploadState.load(from: stateURL)
+        return saved?.end == .abandoned(reason) ? saved : nil
     }
 
     /// A reply that lands after the homeowner withdrew, but before the uploader is abandoned,
@@ -589,9 +616,10 @@ struct NativeCaptureFixture: Sendable {
     @Test(arguments: [false, true]) func aReplyAfterWithdrawalCannotSaveAResumableCapture(markerBlocked: Bool) async throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let server = try LoopbackCaptureAPI()
-        server.state.withLock { $0.held = ["POST captures/files"] }
+        let http = HeldCaptureReplyHTTP(UncancellableHTTP(URLSessionCaptureHTTP.ephemeral(timeout: 10)), pathSuffix: "/files")
+        defer { http.release() }
         let environment = NativeCaptureFixture.environment(
-            endpoint: server.base, http: UncancellableHTTP(URLSessionCaptureHTTP.ephemeral(timeout: 10)), captures: captures)
+            endpoint: server.base, http: http, captures: captures)
         let coordinator = CaptureSessionCoordinator(environment: environment)
         coordinator.begin(recording: fixture.recording)
         coordinator.answerConsent(true)
@@ -599,7 +627,7 @@ struct NativeCaptureFixture: Sendable {
         let session = try #require(coordinator.session)
         let uploader = try #require(session.uploader)
         let stateURL = CaptureUploader.stateURL(in: session.folder)
-        try await waitUntilParked(server, "POST captures/files")
+        try await waitUntilHeld(http)
         if markerBlocked {
             // A directory where the marker goes makes writing it fail.
             try FileManager.default.createDirectory(
@@ -610,10 +638,9 @@ struct NativeCaptureFixture: Sendable {
         // No suspension from here to the checks.
         let before = try? Data(contentsOf: stateURL)
         #expect((before == nil) == markerBlocked)
-        server.release("POST captures/files")
+        http.release()
         // The uploader saves the register reply on its own executor.
-        blockUntilSaved(stateURL, differentFrom: before)
-        let saved = try CaptureUploadState.load(from: stateURL)
+        let saved = try #require(blockUntilAbandoned(stateURL, reason: "consent withdrawn"))
         #expect(saved.end == .abandoned("consent withdrawn"))
         if markerBlocked {
             // The blocking directory sits at the marker's path and would stop a resume by itself;
@@ -625,7 +652,6 @@ struct NativeCaptureFixture: Sendable {
         #expect(CaptureSessionCoordinator(environment: environment).resumeSealedCaptures().isEmpty)
         #expect(server.requests("PUT upload").isEmpty)
 
-        server.state.withLock { $0.held = [] }
         await uploader.settled()
         #expect(server.requests("PUT upload").isEmpty)
     }
@@ -635,9 +661,10 @@ struct NativeCaptureFixture: Sendable {
     @Test func aResultAfterWithdrawalSavesTheUploadAsAbandoned() async throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let server = try LoopbackCaptureAPI()
-        server.state.withLock { $0.held = ["GET captures/result"] }
+        let http = HeldCaptureReplyHTTP(UncancellableHTTP(URLSessionCaptureHTTP.ephemeral(timeout: 10)), pathSuffix: "/result")
+        defer { http.release() }
         let environment = NativeCaptureFixture.environment(
-            endpoint: server.base, http: UncancellableHTTP(URLSessionCaptureHTTP.ephemeral(timeout: 10)), captures: captures)
+            endpoint: server.base, http: http, captures: captures)
         let coordinator = CaptureSessionCoordinator(environment: environment)
         coordinator.begin(recording: fixture.recording)
         coordinator.answerConsent(true)
@@ -649,16 +676,14 @@ struct NativeCaptureFixture: Sendable {
         let session = try #require(coordinator.session)
         let uploader = try #require(session.uploader)
         let stateURL = CaptureUploader.stateURL(in: session.folder)
-        try await waitUntilParked(server, "GET captures/result")
+        try await waitUntilHeld(http)
 
         coordinator.answerConsent(false)
         // No suspension from here to the check.
-        let before = try? Data(contentsOf: stateURL)
-        server.release("GET captures/result")
-        blockUntilSaved(stateURL, differentFrom: before)
+        http.release()
+        _ = try #require(blockUntilAbandoned(stateURL, reason: "consent withdrawn"))
         #expect(try CaptureUploadState.load(from: stateURL).end == .abandoned("consent withdrawn"))
 
-        server.state.withLock { $0.held = [] }
         await uploader.settled()
         #expect(await uploader.snapshot.end == .abandoned("consent withdrawn"))
     }
