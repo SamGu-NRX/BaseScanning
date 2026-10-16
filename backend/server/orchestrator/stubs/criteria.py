@@ -9,7 +9,13 @@ from __future__ import annotations
 
 from server.contracts.jobs import StageContext, StageResult
 from server.eval.sceneio import schema_errors
-from server.orchestrator.stubs._common import json_bytes, scripted_outcome, scripted_verdict, verdict_document, write_files
+from server.orchestrator.stubs._common import (
+    json_bytes,
+    scripted_outcome,
+    scripted_verdict,
+    verdict_document,
+    write_files,
+)
 
 
 def run(ctx: StageContext) -> StageResult:

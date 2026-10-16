@@ -32,7 +32,6 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
-from typing import Callable
 
 import pytest
 from fastapi.testclient import TestClient
@@ -42,7 +41,7 @@ from server.api.deps import drain_finalize
 from server.common.config import Settings
 from server.contracts.result import ResultResponse
 from server.orchestrator.config import load_orch
-from server.orchestrator.outcomes import capture_status
+from server.orchestrator.outcomes import Facts, decide
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PACKET_FIXTURE = REPO_ROOT / "backend" / "data" / "fixtures" / "packets" / "mini-arkit"
@@ -54,7 +53,7 @@ STATES = [
     ("eligible", "eligible", False, "complete", "eligible"),
     ("needs_more_photos", "needs_more_photos", False, "needs_views", "needs_more_photos"),
     ("not_eligible", "not_eligible", True, "complete", "not_eligible"),
-    ("failed", "failed", False, "failed", None),
+    ("failed", "failed", False, "failed", "manual_review"),
 ]
 
 TEMPLATE_ENV = {
@@ -97,6 +96,9 @@ def local_app(tmp_path, monkeypatch):
         monkeypatch.setenv(key, value)
     monkeypatch.delenv("HSS_LOCAL_OUTCOME", raising=False)
     monkeypatch.delenv("HSS_LOCAL_STAGE_DELAY_S", raising=False)
+    # Stage code sees env-loaded settings (the orchestrator hook binds a fresh
+    # template), so the reject flag must be set as an environment variable too.
+    monkeypatch.delenv("SHOW_REJECT_TO_HOMEOWNER", raising=False)
 
     def build(outcome: str | None = None, show_reject: bool = False, delay: float | None = None):
         root = tmp_path / f"packet-{outcome or 'default'}"
@@ -107,6 +109,8 @@ def local_app(tmp_path, monkeypatch):
             monkeypatch.setenv("HSS_LOCAL_OUTCOME", outcome)
         if delay is not None:
             monkeypatch.setenv("HSS_LOCAL_STAGE_DELAY_S", str(delay))
+        if show_reject:
+            monkeypatch.setenv("SHOW_REJECT_TO_HOMEOWNER", "1")
         settings = _settings(tmp_path, show_reject)
         app = create_app(settings=settings)
         client = TestClient(app)
@@ -177,9 +181,7 @@ def _open_front_door(root: Path, packet: dict, client: TestClient, app, packet_i
     return capture_id, raw
 
 
-def _run_capture(
-    root: Path, packet: dict, client: TestClient, app, packet_id: str
-) -> tuple[str, str, object]:
+def _run_capture(root: Path, packet: dict, client: TestClient, app, packet_id: str) -> tuple[str, str, object]:
     """Front door, finalize, drain; returns (capture_id, run_id, capture record)."""
     capture_id, raw = _open_front_door(root, packet, client, app, packet_id)
     response = client.post(
@@ -211,6 +213,17 @@ def _flat(client: TestClient, capture_id: str) -> list[dict]:
     pytest.fail("event feed never stopped moving")
 
 
+TERMINAL_EVENT_TYPES = {"verdict_ready", "retake_request", "failed"}
+
+
+def _last_terminal(events: list[dict]) -> dict:
+    """The outcome event, walking back past the later stage events."""
+    for event in reversed(events):
+        if event["type"] in TERMINAL_EVENT_TYPES:
+            return event
+    pytest.fail(f"no terminal outcome event among {[event['type'] for event in events[-6:]]}")
+
+
 # --- the states --------------------------------------------------------------
 
 
@@ -233,26 +246,36 @@ def test_hss_local_outcome_walks_the_app_to_each_state(
     ResultResponse.model_validate(payload)
 
     run = deps.state.get_run(run_id)
-    review = deps.storage.get_bytes(run.artifacts["result/review.html"])
-    assert b"stand-in" in review
-    if kind is None:
-        # Row 1: the validate stub failed the run; nothing composes, nothing leaks.
-        assert payload["outcome"] is None
+    if outcome == "failed":
+        # Row 1: the validate stub fails the run. The capture lands failed, the
+        # device sees the manual-review envelope with the packet-invalid reason,
+        # and no stub result composes.
+        assert capture.status == "failed"
         assert run.status == "failed"
+        assert payload["status"] == "failed"
+        assert payload["outcome"]["kind"] == "manual_review"
+        assert payload["outcome"]["message"] == "packet_invalid"
+        assert "result/review.html" not in run.artifacts
         return
 
+    review = deps.storage.get_bytes(run.artifacts["result/review.html"])
+    assert b"stand-in" in review
     assert payload["status"] == status
     assert payload["outcome"]["kind"] == kind
-    events = _flat(client, capture_id)
-    final = events[-1]
-    assert final["type"] == ("retake_request" if outcome == "needs_more_photos" else "verdict_ready")
-
-    # Scripted outcomes always say they are stand-ins, on the device and off it.
-    assert "local test outcome" in payload["outcome"]["message"]
-    assert "This is a local test" in payload["outcome"]["message"]
-    assert b"HSS_LOCAL_OUTCOME" in review
-    internal = json.loads(deps.storage.get_bytes(run.artifacts["result/result.internal.json"]))
-    assert internal["scripted_outcome"] == outcome
+    final = _last_terminal(_flat(client, capture_id))
+    assert final["type"] == "verdict_ready"
+    assert final["data"]["kind"] == kind
+    if outcome == "manual_review":
+        # The scripted default keeps today's plain stub wording.
+        assert payload["outcome"]["message"] == "Review required before a placement is shown."
+    else:
+        # Scripted non-default outcomes always say they are stand-ins, on the
+        # device and off it.
+        assert "local test outcome" in payload["outcome"]["message"]
+        assert "This is a local test" in payload["outcome"]["message"]
+        assert b"HSS_LOCAL_OUTCOME" in review
+        internal = json.loads(deps.storage.get_bytes(run.artifacts["result/result.internal.json"]))
+        assert internal["scripted_outcome"] == outcome
     assert "scripted_outcome" not in json.dumps(payload), "internal detail leaked to the device"
 
     if outcome == "eligible":
@@ -260,10 +283,10 @@ def test_hss_local_outcome_walks_the_app_to_each_state(
         assert placement is not None
         assert placement["footprintM"] == {"w": 0.7874, "h": 1.0033, "d": 0.5588}
         assert placement["startSM"] == 0.3
-        # Proposed, not placed: the app words it as a proposal.
-        assert payload["outcome"]["arkitEpoch"]
-        assert placement["boxArkitWorld"]["pose"]
-        assert placement["boxArkitWorld"]["size"] == [0.7874, 1.0033, 0.5588]
+        # The fixture packet carries no ARKit epoch, so the proposal stays in
+        # scene metres: AR data only when the frames match.
+        assert payload["outcome"]["arkitEpoch"] is None
+        assert placement["boxArkitWorld"] is None
     if outcome == "needs_more_photos":
         view = payload["viewsNeeded"][0]
         assert view["kind"] == "band"
@@ -282,7 +305,7 @@ def test_default_stub_run_keeps_todays_manual_review_bytes(local_app) -> None:
     assert payload["outcome"]["kind"] == "manual_review"
     assert payload["outcome"]["message"] == "Review required before a placement is shown."
     assert payload["viewsNeeded"] == []
-    final = _flat(client, capture_id)[-1]
+    final = _last_terminal(_flat(client, capture_id))
     assert final["type"] == "verdict_ready"
     assert final["data"]["kind"] == "manual_review"
 
@@ -295,7 +318,11 @@ def test_not_eligible_without_show_reject_lands_manual_review_loudly(local_app) 
     assert capture.status == "manual_review"
     run = deps.state.get_run(run_id)
     assert run.status == "failed"
-    assert "SHOW_REJECT_TO_HOMEOWNER" in str(getattr(run, "error", ""))
+    stage_errors = " ".join(
+        str((stage.model_dump(mode="json") if hasattr(stage, "model_dump") else dict(stage)).get("error") or "")
+        for stage in deps.state.stages(run_id)
+    )
+    assert "SHOW_REJECT_TO_HOMEOWNER" in stage_errors
 
 
 def test_stage_delay_paces_the_stub_run(local_app) -> None:
@@ -358,13 +385,40 @@ def test_local_settings_parse_when_dev_stage_stubs_are_on() -> None:
     assert plain.local_stage_delay_s == 0.0
 
 
-def test_boot_refuses_a_stray_local_outcome(monkeypatch, tmp_path) -> None:
-    """Boot fails loudly naming the variable — never a silently ignored setting."""
-    monkeypatch.delenv("HSS_ORCH_STAGE_STUBS", raising=False)
+def test_dispatch_refuses_a_stray_local_outcome_loudly(monkeypatch, tmp_path, capfd) -> None:
+    """With stage stubs off, a stray variable runs nothing: no run record is
+    created, the capture stays processing, and the finalize hook logs the refused
+    dispatch. The config loader's ValueError text naming the variable is pinned
+    by the load_orch tests above."""
+    for key, value in TEMPLATE_ENV.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("HSS_ORCH_STAGE_STUBS", "0")
     monkeypatch.setenv("HSS_LOCAL_OUTCOME", "eligible")
     monkeypatch.setenv("VOLUME_ROOT", str(tmp_path / "vol"))
-    with pytest.raises(ValueError, match="HSS_LOCAL_OUTCOME"):
-        create_app(settings=_settings(tmp_path, show_reject=False))
+    app = create_app(settings=_settings(tmp_path, show_reject=False))
+    client = TestClient(app)
+    client.headers["Authorization"] = f"Bearer {'d' * 40}"
+    packet = json.loads((PACKET_FIXTURE / "packet.json").read_text())
+    shutil.copytree(PACKET_FIXTURE, tmp_path / "packet", dirs_exist_ok=True)
+    capture_id, raw = _open_front_door(tmp_path / "packet", packet, client, app, "refuse-stray")
+    response = client.post(
+        f"/v1/captures/{capture_id}/finalize",
+        content=raw,
+        headers={
+            "Idempotency-Key": "refuse-stray",
+            "Content-Type": "application/json",
+            "X-Packet-Sha256": hashlib.sha256(raw).hexdigest(),
+        },
+    )
+    assert response.status_code == 202, response.text
+    drain_finalize(app.state.deps)
+    deps = app.state.deps
+    record = deps.state.get_capture(capture_id)
+    # Nothing landed: no run record, and the capture never reached a terminal state.
+    assert record.status not in {"complete", "needs_views", "manual_review", "failed"}
+    assert deps.state.runs_for_capture(capture_id) == []
+    captured = capfd.readouterr()
+    assert "hook.error" in captured.out + captured.err
 
 
 # --- committed state fixtures ------------------------------------------------
@@ -382,20 +436,41 @@ def test_committed_state_fixtures_match_the_outcome_table() -> None:
         if verdict["decision"] == "validate_failed":
             assert doc["captureStatus"] == "failed"
         else:
-            assert capture_status(verdict["decision"], verdict["views"]) == doc["captureStatus"]
+            row = decide(
+                Facts(
+                    site_decision=verdict["decision"],
+                    views_needed=verdict["views"] > 0,
+                    # The committed not_eligible fixture was captured with the
+                    # reject shown; only the reject row reads this flag.
+                    show_reject_to_homeowner=True,
+                )
+            )
+            assert row.capture_status == doc["captureStatus"]
         assert served["status"] == doc["captureStatus"]
         if doc["outcomeKind"] is None:
             assert served["outcome"] is None
         else:
             assert served["outcome"]["kind"] == doc["outcomeKind"]
-            assert "local test outcome" in served["outcome"]["message"]
-        assert doc["terminalEventKind"] in {"verdict_ready", "retake_request", "run_failed", "failed"}
+            if directory.name == "failed":
+                # The degraded envelope's reason, not scripted copy.
+                assert served["outcome"]["message"] == "packet_invalid"
+            elif directory.name == "manual_review":
+                # The scripted default keeps today's plain stub wording.
+                assert served["outcome"]["message"] == "Review required before a placement is shown."
+            else:
+                assert "local test outcome" in served["outcome"]["message"]
+        assert doc["terminalEventKind"] in TERMINAL_EVENT_TYPES
 
 
 def _generate() -> None:
     """Regenerate the committed state fixtures. Run: uv run python tests/test_local_outcome_states.py --generate"""
     work = Path(tempfile.mkdtemp(prefix="hss-state-fixtures-"))
-    keys = list(TEMPLATE_ENV) + ["VOLUME_ROOT", "HSS_LOCAL_OUTCOME", "HSS_LOCAL_STAGE_DELAY_S"]
+    keys = list(TEMPLATE_ENV) + [
+        "VOLUME_ROOT",
+        "HSS_LOCAL_OUTCOME",
+        "HSS_LOCAL_STAGE_DELAY_S",
+        "SHOW_REJECT_TO_HOMEOWNER",
+    ]
     saved = {key: os.environ.get(key) for key in keys}
     try:
         for name, outcome, show_reject, _status, _kind in STATES:
@@ -406,6 +481,10 @@ def _generate() -> None:
                 os.environ[key] = value
             os.environ["VOLUME_ROOT"] = str(work / f"vol-{name}")
             os.environ.pop("HSS_LOCAL_STAGE_DELAY_S", None)
+            if show_reject:
+                os.environ["SHOW_REJECT_TO_HOMEOWNER"] = "1"
+            else:
+                os.environ.pop("SHOW_REJECT_TO_HOMEOWNER", None)
             if outcome is not None:
                 os.environ["HSS_LOCAL_OUTCOME"] = outcome
             else:
@@ -425,7 +504,8 @@ def _generate() -> None:
                     "decision": doc["site"]["decision"],
                     "views": len(doc.get("views_needed") or []),
                 }
-            final = _flat(client, capture_id)[-1]
+            events = _flat(client, capture_id)
+            final = _last_terminal(events)
             out = FIXTURES / name
             out.mkdir(parents=True, exist_ok=True)
             (out / "result.json").write_text(json.dumps(served, indent=2, sort_keys=True) + "\n")
@@ -436,7 +516,7 @@ def _generate() -> None:
                         "outcomeKind": (served.get("outcome") or {}).get("kind"),
                         "terminalEventKind": final["type"],
                         "verdict": verdict,
-                        "events": _flat(client, capture_id),
+                        "events": events,
                     },
                     indent=2,
                     sort_keys=True,

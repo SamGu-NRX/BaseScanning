@@ -26,7 +26,6 @@ from server.contracts.result import (
     ResultResponse,
     ViewNeededDevice,
 )
-from server.orchestrator.config import load_orch
 from server.orchestrator.stubs._common import json_bytes, scripted_outcome, sha256, write_files
 from server.result import ar
 from server.result.copy import FALLBACK, Catalogue, load_catalogue, render, select_prompt
@@ -67,9 +66,7 @@ _PROMPTS = Path(__file__).resolve().parents[2] / "result" / "tests" / "data" / "
 def run(ctx: StageContext) -> StageResult:
     outcome = scripted_outcome()
     if outcome == "failed":
-        raise RuntimeError(
-            "HSS_LOCAL_OUTCOME=failed must end the run at validate; the result stage should not run"
-        )
+        raise RuntimeError("HSS_LOCAL_OUTCOME=failed must end the run at validate; the result stage should not run")
     if outcome == "not_eligible" and not getattr(ctx.settings, "SHOW_REJECT_TO_HOMEOWNER", False):
         raise RuntimeError(
             "HSS_LOCAL_OUTCOME=not_eligible needs SHOW_REJECT_TO_HOMEOWNER=1; "

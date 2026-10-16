@@ -1,0 +1,33 @@
+{
+  "criteria": null,
+  "memberActions": [],
+  "meter": {
+    "barcodeConfirmed": false,
+    "candidates": [],
+    "clean": false,
+    "evidence": null,
+    "readersAgree": false,
+    "status": "not_captured",
+    "value": null
+  },
+  "outcome": {
+    "arkitEpoch": null,
+    "cableRoutePolylineArkit": null,
+    "frameToArkit": null,
+    "kind": "manual_review",
+    "message": "Review required before a placement is shown.",
+    "profile": "C",
+    "reasons": [],
+    "recommendedPlacement": null,
+    "viewsNeeded": []
+  },
+  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjE0NDY4Miwia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTUyMUZXMDlZU0dUWkdGRFo2UU1NRlozL3J1bnMvcnVuXzFlMTZiMGY3YmU1YzVkYTgvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.53340a965238d5c0a7026dff1a1850a3d27b1ea5c846922075f0ef675bc1e43d",
+  "reviewUrl": "/v1/captures/cap_01M521FW09YSGTZGFDZ6QMMFZ3/review",
+  "runId": "run_1e16b0f7be5c5da8",
+  "scale": null,
+  "site": null,
+  "status": "manual_review",
+  "verdict": null,
+  "verdictUrl": null,
+  "viewsNeeded": []
+}
