@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from collections.abc import Callable
 from datetime import datetime
@@ -43,9 +44,24 @@ def _log_route(path: str) -> str:
     return path
 
 
+# The review page's browser subresources (photos, raw files, preview.ply and the
+# vendored three.js module) cannot send a bearer header, so their routes check the
+# bearer-or-signed-review-token pair themselves; the token is HMAC'd with the
+# deployment's UPLOAD_URL_HMAC_SECRET and bound to one capture and file. Exempting
+# these shapes here does not open them: without a valid token or reviewer bearer
+# the routes still answer 401/403 (Greptile finding on PR #284, routes/result.py:125).
+_REVIEW_SUBRESOURCE_SHAPES = (
+    re.compile(r"^/v1/captures/[^/]+/review/files/.+$"),
+    re.compile(r"^/v1/captures/[^/]+/preview\.ply$"),
+    re.compile(r"^/v1/review-static/three\.module\.js$"),
+)
+
+
 def _needs_auth(request: Request) -> bool:
     path = request.url.path
     if path == "/v1/healthz":
+        return False
+    if any(shape.fullmatch(path) for shape in _REVIEW_SUBRESOURCE_SHAPES):
         return False
     return not path.startswith("/v1/uploads/")
 
