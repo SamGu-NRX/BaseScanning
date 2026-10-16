@@ -22,8 +22,10 @@ def test_failed_run_start_stays_retryable(client, monkeypatch):
     capture_id, packet = _ready_capture(client, "packet-hook-fail")
     deps = client.app_state
 
+    # A local fake of any orchestrator start_run failure — Modal is the
+    # production transport; this suite pins the retryable handoff contract.
     def boom(*args, **kwargs):
-        raise RuntimeError("modal start_run failed")
+        raise RuntimeError("orchestrator start_run failed")
 
     monkeypatch.setattr(deps.hooks, "on_finalized", boom)
     client.hold_finalize = True
