@@ -15,7 +15,6 @@ from server.api.deps import Deps, extras, isoformat, save_extras
 from server.api.errors import ApiFailure, fail, pointer_from_loc
 from server.api.events import emit
 from server.api.finalize_checks import manifest_errors
-from server.api.hooks import safe_hook
 from server.api.ids import require_contract_id
 from server.api.keys import packet_key
 from server.api.promotion import promote
@@ -345,7 +344,14 @@ def finish_ready(
         if record.status == "failed":
             raise fail(409, "invalid_state", "/", "promotion failed")
     if extra.get("started_run_id") != run_id:
-        safe_hook("on_finalized", deps.hooks.on_finalized, record.capture_id, digest, key, parent_run_id=parent_run_id)
+        try:
+            deps.hooks.on_finalized(record.capture_id, digest, key, parent_run_id=parent_run_id)
+        except Exception as exc:
+            log_event("hook.error", hook="on_finalized", error_code=type(exc).__name__, level="error")
+            # The run did not start. Leaving run_started unset keeps the handoff
+            # retryable: the background failure path restores the previous status,
+            # and a later finalize request schedules the run again.
+            raise fail(503, "run_start_failed", "/", "run start failed; finalize again") from exc
         log_event("run.started", run_id=run_id, capture_id=record.capture_id)
         extra = extras(deps, record.capture_id)
         extra["run_started"] = True
@@ -494,6 +500,18 @@ def _guard(deps: Deps, capture_id: str, future: Future[None]) -> None:
         _finish_loop(deps, capture_id)
     except Exception as exc:
         _clear_slot(capture_id)
+        # The 202 has already returned and the capture reads as processing, so a
+        # failure stored only on this Future would strand the client: no failure
+        # event, no retry, no run for the sweepers to recover. Route the exception
+        # through the normal failure path instead. Once the run has started, the
+        # handoff succeeded; later errors must not undo it.
+        if not extras(deps, capture_id).get("run_started"):
+            failure = (
+                exc
+                if isinstance(exc, ApiFailure)
+                else fail(503, "finalize_failed", "/", f"finalize background work failed ({type(exc).__name__})")
+            )
+            _on_background_failure(deps, capture_id, failure)
         future.set_exception(exc)
         return
     future.set_result(None)

@@ -10,6 +10,9 @@ struct CameraOverlays: View {
     /// The open camera between the card and the actions (`CameraChrome.cameraWindow`), for the
     /// aim ring to stay inside. Passed through unread, so its changes don't redraw the fog.
     var cameraWindow: CameraWindow? = nil
+    /// Set to what stands for the aim step's target on screen (`WayfindingOverlay.onAimMarker`),
+    /// for the screen's card to name it. Nil on screens whose card doesn't.
+    var aimMarker: Binding<AimMarker?>? = nil
 
     /// The step the aim ring's legend first showed with. The legend explains the first ring that
     /// fills and retires once that step ends (#81); it isn't needed on every ring after.
@@ -83,10 +86,14 @@ struct CameraOverlays: View {
                         wall: wall,
                         path: state.path,
                         target: state.target,
+                        step: state.guidance,
                         progress: state.aimProgress,
                         completed: heldTarget,
                         onFillingRingShown: { shown in fillingRingShown = shown },
-                        cameraWindow: cameraWindow
+                        cameraWindow: cameraWindow,
+                        onAimMarker: { marker in
+                            if let aimMarker, aimMarker.wrappedValue != marker { aimMarker.wrappedValue = marker }
+                        }
                     )
                     .transition(.opacity)
                 }

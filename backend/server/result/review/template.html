@@ -112,14 +112,58 @@
 <section>
   <h2>Meter</h2>
   <p>Status {{ meter.status }} · value {{ meter.value }} · candidates {{ meter.candidates }}</p>
-  <form method="post" action="/captures/{{ capture_id }}/confirmations">
+  <form id="meter-confirm" method="post" action="/v1/captures/{{ capture_id }}/confirmations">
     <input type="hidden" name="fieldId" value="meter_number">
     <input type="hidden" name="kind" value="confirmed">
     <input type="hidden" name="imageId" value="{{ meter.evidence.image if meter.evidence else "" }}">
     <label>Value <input name="value" value="{{ meter.value or "" }}"></label>
     <label>Client time <input name="clientAt" value="2026-09-26T00:00:00Z"></label>
+    <label>API token <input type="password" id="confirm-token" autocomplete="off" placeholder="reviewer token"></label>
     <button type="submit">Confirm meter number</button>
+    <p id="confirm-status" hidden></p>
   </form>
+  <script>
+    (() => {
+      const form = document.getElementById("meter-confirm");
+      if (!form) return;
+      const tokenInput = document.getElementById("confirm-token");
+      const status = document.getElementById("confirm-status");
+      const tokenKey = "hss-review-token";
+      if (tokenInput && sessionStorage.getItem(tokenKey)) tokenInput.value = sessionStorage.getItem(tokenKey);
+      const report = (message) => {
+        if (!status) return;
+        status.textContent = message;
+        status.hidden = false;
+      };
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const headers = { "Content-Type": "application/json" };
+        const token = tokenInput ? tokenInput.value.trim() : "";
+        if (token) {
+          headers["Authorization"] = "Bearer " + token;
+          sessionStorage.setItem(tokenKey, token);
+        }
+        const payload = {
+          fieldId: form.elements.fieldId.value,
+          kind: form.elements.kind.value,
+          value: form.elements.value.value || null,
+          imageId: form.elements.imageId.value,
+          clientAt: form.elements.clientAt.value,
+        };
+        try {
+          const res = await fetch(form.action, { method: "POST", headers, body: JSON.stringify(payload) });
+          const body = await res.json().catch(() => null);
+          if (res.ok) {
+            report("Confirmed" + (body && body.confirmationId ? " (" + body.confirmationId + ")" : ""));
+          } else {
+            report("Rejected: " + ((body && body.errors && body.errors[0] && body.errors[0].message) || ("HTTP " + res.status)));
+          }
+        } catch {
+          report("Network error: the confirmation did not reach the API.");
+        }
+      });
+    })();
+  </script>
 </section>
 
 <section>
@@ -129,9 +173,151 @@
   <script type="module">
     import * as THREE from "{{ three_url }}";
     const note = document.getElementById("three-offline");
-    if (note) note.hidden = true;
-    const renderer = new THREE.WebGLRenderer();
-    document.getElementById("cloud").appendChild(renderer.domElement);
+    const cloud = document.getElementById("cloud");
+    const fail = (message) => {
+      if (!note) return;
+      note.hidden = false;
+      note.textContent = message;
+    };
+    // Binary little-endian PLY as written by server.result.preview: one vertex
+    // element, fixed-width rows, properties of float/double/int/uchar.
+    function parseBinaryPly(buffer) {
+      const bytes = new Uint8Array(buffer);
+      const marker = "end_header";
+      let headerEnd = -1;
+      let headerText = "";
+      const limit = Math.min(bytes.length, 64 * 1024);
+      for (let i = 0; i < limit - marker.length; i++) {
+        if (bytes[i] === 101 && bytes[i + 1] === 110 && bytes[i + 2] === 100
+          && bytes[i + 3] === 95 && bytes[i + 4] === 104 && bytes[i + 5] === 101
+          && bytes[i + 6] === 97 && bytes[i + 7] === 100 && bytes[i + 8] === 101
+          && bytes[i + 9] === 114) {
+          headerEnd = i + marker.length;
+          break;
+        }
+      }
+      if (headerEnd < 0) throw new Error("no end_header");
+      headerText = new TextDecoder("ascii").decode(bytes.subarray(0, headerEnd));
+      if (!headerText.startsWith("ply") || !headerText.includes("binary_little_endian")) {
+        throw new Error("only binary_little_endian PLY is supported");
+      }
+      const lines = headerText.split("\n").map((line) => line.trim()).filter(Boolean);
+      const vertexIndex = lines.findIndex((line) => /^element vertex \d+$/.test(line));
+      if (vertexIndex < 0) throw new Error("no vertex element");
+      const count = Number(lines[vertexIndex].split(" ")[2]);
+      const sizes = { float: 4, double: 8, int: 4, uint: 4, short: 2, ushort: 2, uchar: 1, char: 1 };
+      const props = [];
+      let stride = 0;
+      for (const line of lines.slice(vertexIndex + 1)) {
+        if (!line.startsWith("property ")) break;
+        const [, , type, name] = line.split(/\s+/);
+        if (!(type in sizes)) throw new Error("unsupported property type " + type);
+        props.push({ name, type, offset: stride });
+        stride += sizes[type];
+      }
+      const read = {
+        float: (view, at) => view.getFloat32(at, true),
+        double: (view, at) => view.getFloat64(at, true),
+        int: (view, at) => view.getInt32(at, true),
+        uint: (view, at) => view.getUint32(at, true),
+        short: (view, at) => view.getInt16(at, true),
+        ushort: (view, at) => view.getUint16(at, true),
+        uchar: (view, at) => view.getUint8(at),
+        char: (view, at) => view.getInt8(at),
+      };
+      if (buffer.byteLength < headerEnd + 1 + count * stride) {
+        throw new Error("vertex data truncated");
+      }
+      const view = new DataView(buffer, headerEnd + 1);
+      const positions = new Float32Array(count * 3);
+      const generated = new Uint8Array(count);
+      let hasGenerated = false;
+      for (const prop of props) {
+        if (prop.name === "generated") hasGenerated = true;
+      }
+      for (let v = 0; v < count; v++) {
+        const base = v * stride;
+        for (const prop of props) {
+          const value = read[prop.type](view, base + prop.offset);
+          if (prop.name === "x") positions[v * 3] = value;
+          else if (prop.name === "y") positions[v * 3 + 1] = value;
+          else if (prop.name === "z") positions[v * 3 + 2] = value;
+          else if (prop.name === "generated") generated[v] = value;
+        }
+      }
+      return { positions, generated, hasGenerated };
+    }
+    try {
+      const res = await fetch("preview.ply");
+      if (!res.ok) throw new Error("preview.ply request failed with HTTP " + res.status);
+      const cloudData = parseBinaryPly(await res.arrayBuffer());
+      if (cloudData.positions.length === 0) throw new Error("preview.ply holds no points");
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(cloudData.positions, 3));
+      const colors = new Float32Array(cloudData.positions.length);
+      for (let v = 0; v < cloudData.generated.length; v++) {
+        if (cloudData.generated[v]) {
+          colors[v * 3] = 0.85; colors[v * 3 + 1] = 0.6; colors[v * 3 + 2] = 0.1;
+        } else {
+          colors[v * 3] = 0.16; colors[v * 3 + 1] = 0.5; colors[v * 3 + 2] = 0.66;
+        }
+      }
+      geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      geometry.computeBoundingBox();
+      const bounds = geometry.boundingBox;
+      const center = new THREE.Vector3();
+      bounds.getCenter(center);
+      const radius = bounds.getSize(new THREE.Vector3()).length() / 2 || 1;
+      const scene = new THREE.Scene();
+      const material = new THREE.PointsMaterial({
+        size: radius / 80, vertexColors: true, sizeAttenuation: true,
+      });
+      scene.add(new THREE.Points(geometry, material));
+      const camera = new THREE.PerspectiveCamera(60, 1, radius / 500, radius * 20);
+      camera.position.set(center.x + radius * 1.6, center.y + radius * 1.2, center.z + radius * 1.6);
+      camera.lookAt(center);
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      const width = Math.max(cloud.clientWidth || 640, 240);
+      const height = Math.max(Math.round(width * 0.5), 180);
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(window.devicePixelRatio || 1);
+      cloud.appendChild(renderer.domElement);
+      let azimuth = 0;
+      let elevation = 0.35;
+      let distance = radius * 2.4;
+      const draw = () => {
+        const sinAz = Math.sin(azimuth);
+        camera.position.set(
+          center.x + distance * Math.cos(elevation) * Math.cos(azimuth),
+          center.y + distance * Math.sin(elevation),
+          center.z + distance * Math.cos(elevation) * sinAz,
+        );
+        camera.lookAt(center);
+        renderer.render(scene, camera);
+      };
+      let dragging = null;
+      renderer.domElement.addEventListener("pointerdown", (event) => {
+        dragging = { x: event.clientX, y: event.clientY };
+        renderer.domElement.setPointerCapture(event.pointerId);
+      });
+      renderer.domElement.addEventListener("pointermove", (event) => {
+        if (!dragging) return;
+        azimuth -= (event.clientX - dragging.x) / 200;
+        elevation = Math.min(1.5, Math.max(-1.5, elevation + (event.clientY - dragging.y) / 200));
+        dragging = { x: event.clientX, y: event.clientY };
+        draw();
+      });
+      renderer.domElement.addEventListener("pointerup", () => { dragging = null; });
+      renderer.domElement.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        distance = Math.min(radius * 10, Math.max(radius * 0.5, distance * (1 + Math.sign(event.deltaY) * 0.1)));
+        draw();
+      }, { passive: false });
+      draw();
+      if (note) note.hidden = true;
+    } catch (error) {
+      fail("Point cloud preview unavailable: " + (error instanceof Error ? error.message : error));
+    }
   </script>
 </section>
 

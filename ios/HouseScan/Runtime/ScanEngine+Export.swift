@@ -307,6 +307,7 @@ extension ScanEngine {
             checks: checks,
             clearances: clearances,
             missing: missing,
+            marksNotUsed: result.objectsNotUsed.map(\.message),
             unseenEnd: unseen,
             isSample: isSample,
             rulesSHA256: result.policy.rulesSHA256

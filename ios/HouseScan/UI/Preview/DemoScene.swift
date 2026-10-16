@@ -24,6 +24,11 @@ enum DemoScene {
     /// A phone held upright 5 m from the wall, a little right of the meter, tilted 18° down:
     /// the walk.
     static let projection = camera(at: SIMD3(0.6, 1.5, 5.0), pitchDegrees: 18, focal: 1100)
+    /// The walk's phone tilted 10° up instead of 18° down, for "See it on your wall" with the
+    /// sample spot low in the open camera (`-uiDemoSpotLow`). Worked out from this projection,
+    /// not measured: the spot's middle lands at about y = 634 pt on a 402 × 874 pt iPhone 17
+    /// screen, where the default pose puts it at about 380 pt, under the folded AX5 card.
+    static let lowSpotProjection = camera(at: SIMD3(0.6, 1.5, 5.0), pitchDegrees: -10, focal: 1100)
     /// Standing 2.4 m back and aiming at the meter: finding it.
     static let meterProjection = camera(at: SIMD3(0.05, 1.5, 2.4), pitchDegrees: 0, focal: 1400)
     /// Close to the meter for its photo.

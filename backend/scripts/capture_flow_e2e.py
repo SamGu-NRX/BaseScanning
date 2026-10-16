@@ -118,7 +118,8 @@ def run_capture_flow(
     expect_status: str = "processing",
 ) -> dict:
     """Run the journey and return the receipt dict. Never raises: failures land
-    in ``receipt["errorCodes"]`` with ``receipt["ok"] is False``."""
+    in ``receipt["errorCodes"]`` with ``receipt["ok"] is False`` — including an
+    exception before any stage, which becomes the ``runner_exception`` code."""
     started_at = datetime.now(UTC).isoformat()
     packet_dir = packet_dir or DEFAULT_PACKET
     receipt: dict = {
@@ -296,6 +297,7 @@ def run_capture_flow(
         if expect_status == "processing" and not validate_ok:
             errors.append("events_missing_validate_stage")
     except Exception as exc:  # noqa: BLE001 - the receipt must survive any failure
+        errors.append("runner_exception")
         return _finish(receipt, errors, f"exception: {type(exc).__name__}: {exc}")
     return _finish(receipt, errors, None)
 
@@ -304,7 +306,9 @@ def _finish(receipt: dict, errors: list[str], detail: str | None) -> dict:
     if detail:
         receipt["errorDetail"] = detail
     receipt["finishedAt"] = datetime.now(UTC).isoformat()
-    receipt["ok"] = not errors
+    # A recorded detail without an error code is still a failure: a run that
+    # crashed before any stage could record a code must never report ok.
+    receipt["ok"] = not errors and not detail
     return receipt
 
 

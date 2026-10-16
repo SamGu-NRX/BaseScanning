@@ -99,6 +99,8 @@ def compose_result(
     catalogue: Catalogue,
     config: ResultConfig = _DEFAULT_CONFIG,
     epochs: list[str] | None = None,
+    storage: object = None,
+    settings: object = None,
 ) -> ComposeResult:
     warnings: list[str] = []
     if catalogue.source == "fallback":
@@ -225,7 +227,20 @@ def compose_result(
     (out_dir / "result.json").write_text(_dumps(payload))
     (out_dir / "result.internal.json").write_text(_dumps(internal))
     render_review(
-        _review_context(capture, run, verdicts, profile, report, scene, response, internal, meter, reads_doc),
+        _review_context(
+            capture,
+            run,
+            verdicts,
+            profile,
+            report,
+            scene,
+            response,
+            internal,
+            meter,
+            reads_doc,
+            storage=storage,
+            settings=settings,
+        ),
         out_dir / "review.html",
         three_url=config.threejs_url,
     )
@@ -251,12 +266,22 @@ def emit_events(result: ComposeResult, state) -> list[int]:
     return seqs
 
 
+def _stage_input(ctx: StageContext, short: str, key: str) -> Path | None:
+    """The short input key wins; orchestrated runs hydrate `work_dir/<key>` instead."""
+
+    raw = ctx.inputs.get(short)
+    if raw:
+        return Path(raw)
+    path = Path(ctx.work_dir) / key
+    return path if path.is_file() else None
+
+
 def run(ctx: StageContext) -> StageResult:
     config = load_config(ctx.settings)
     scene_dir = Path(ctx.inputs.get("scene") or Path(ctx.work_dir) / "scene")
     verdict_dir = Path(ctx.inputs.get("verdicts") or Path(ctx.work_dir) / "verdicts")
-    reads = Path(ctx.inputs["reads"]) if ctx.inputs.get("reads") else None
-    scale = Path(ctx.inputs["scale"]) if ctx.inputs.get("scale") else None
+    reads = _stage_input(ctx, "reads", "reads/reads.json")
+    scale = _stage_input(ctx, "scale", "scale/scale.json")
     out_dir = Path(ctx.inputs.get("out") or Path(ctx.work_dir) / "result")
     capture = ctx.state.get_capture(ctx.capture_id)
     run_rec = ctx.state.get_run(ctx.run_id)
@@ -276,6 +301,8 @@ def run(ctx: StageContext) -> StageResult:
             catalogue=catalogue,
             config=config,
             epochs=epochs,
+            storage=ctx.storage,
+            settings=ctx.settings,
         )
     except ResultError:
         raise
@@ -783,7 +810,33 @@ def _judge_flags(report: dict | None, verdict_dir: Path) -> list:
     return list(flags)
 
 
-def _review_context(capture, run, verdicts, profile, report, scene, response, internal, meter: MeterBlock, reads):
+def _signed_url(storage: object, settings: object, key: str) -> str | None:
+    """A time-limited download URL, or None when signing is unavailable (offline tests, CLI)."""
+
+    sign = getattr(storage, "signed_get_url", None)
+    if not callable(sign):
+        return None
+    ttl = getattr(settings, "HSS_INGEST_RESULT_URL_TTL_S", 900)
+    try:
+        return str(sign(key, int(ttl) if ttl else 900))
+    except Exception:
+        return None
+
+
+def _review_context(
+    capture,
+    run,
+    verdicts,
+    profile,
+    report,
+    scene,
+    response,
+    internal,
+    meter: MeterBlock,
+    reads,
+    storage=None,
+    settings=None,
+):
     profiles = []
     for name in ("A", "B", "C", "S"):
         doc = verdicts.get(name)
@@ -801,10 +854,19 @@ def _review_context(capture, run, verdicts, profile, report, scene, response, in
     if reads and reads.get("confirm") and reads["confirm"].get("still_id"):
         meter_ids.add(reads["confirm"]["still_id"])
     for kf in scene.get("keyframes") or []:
+        # Keyframe image names are packet-relative; the bytes a reviewer can open live
+        # under the capture's promoted prefix. Sign what exists; keep the raw name
+        # otherwise so an offline render still names the file.
+        image = kf.get("image")
+        url = None
+        if image:
+            photo_key = f"captures/{capture.capture_id}/{image}"
+            if storage is not None and getattr(storage, "exists", lambda _k: False)(photo_key):
+                url = _signed_url(storage, settings, photo_key)
         photos.append(
             {
                 "id": kf["id"],
-                "url": kf.get("image") or kf["id"],
+                "url": url or image or kf["id"],
                 "purpose": "meter close-up" if kf["id"] in meter_ids else "keyframe",
             }
         )
@@ -827,9 +889,32 @@ def _review_context(capture, run, verdicts, profile, report, scene, response, in
         "views": [view.model_dump(mode="json") for view in response.outcome.viewsNeeded] if response.outcome else [],
         "meter": meter.model_dump(mode="json"),
         "profile": profile,
-        "links": [f"verdict.{name}.json" for name in ("A", "B", "C", "S") if name in verdicts]
-        + ["criteria_report.json", "result.json", "result.internal.json"],
+        "links": _review_links(capture, run, verdicts, storage, settings),
     }
+
+
+def _review_links(capture, run, verdicts, storage, settings) -> list[str]:
+    """Reviewer links. Bare names offline; signed download URLs where storage can sign.
+
+    The page is served at /v1/captures/{id}/review, and the API has no route for
+    relative artifact names, so a bare name is a dead link whenever storage is
+    available. result.json and result.internal.json are written by this stage but
+    published with the run, which must land before anyone can open this page.
+    """
+
+    names = [f"verdict.{name}.json" for name in ("A", "B", "C", "S") if name in verdicts]
+    names += ["criteria_report.json", "result.json", "result.internal.json"]
+    prefix = f"captures/{capture.capture_id}/runs/{run.run_id}"
+    keys = [f"{prefix}/verdicts/verdict.{name}.json" for name in ("A", "B", "C", "S") if name in verdicts]
+    keys += [
+        f"{prefix}/verdicts/criteria_report.json",
+        f"{prefix}/result/result.json",
+        f"{prefix}/result/result.internal.json",
+    ]
+    links = []
+    for name, key in zip(names, keys, strict=False):
+        links.append(_signed_url(storage, settings, key) or name)
+    return links
 
 
 def _wall_strips(scene: dict, verdict: dict) -> list[dict]:

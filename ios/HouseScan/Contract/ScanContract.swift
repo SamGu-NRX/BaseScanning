@@ -757,6 +757,9 @@ struct ResultPresentation: Equatable, Sendable {
     var checks: [CheckRow]
     var clearances: [ClearanceZone]
     var missing: [MissingEvidence]
+    /// The server's sentence for each mark it set aside past an unexplored end
+    /// (`PlacementResult.objectsNotUsed`), so the homeowner knows it wasn't counted (#42).
+    var marksNotUsed: [String] = []
     /// Where the scan stopped on a side it didn't finish, nearer the meter than the spot, so a
     /// closer spot may lie past it (`PlacementResult.closerUnseenEnd`).
     var unseenEnd: UnseenEnd? = nil

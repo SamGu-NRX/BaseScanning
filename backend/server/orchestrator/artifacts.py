@@ -190,21 +190,24 @@ def hydrate_packet(
     *,
     include_files: bool = True,
     cache_dir: Path | None = None,
+    packet_key: str | None = None,
 ) -> None:
     """Copy the packet into ``packet_dir``.
 
     ``include_files`` is false for stages that only read ``packet.json``. A warm
     volume cache skips GCS for the frames a later stage does need.
+    ``packet_key`` is the manifest's storage key: an amendment run passes its
+    own ``captures/{capture_id}/amendments/{amendment_id}/packet.json``.
     """
 
     packet_dir.mkdir(parents=True, exist_ok=True)
     if _copy_packet_cache(cache_dir, packet_dir, include_files=include_files):
         return
-    packet_key = f"captures/{capture_id}/packet.json"
-    _download_all(storage, [(packet_dir / "packet.json", packet_key)])
+    manifest_key = packet_key or f"captures/{capture_id}/packet.json"
+    _download_all(storage, [(packet_dir / "packet.json", manifest_key)])
     if not include_files:
         return
-    _download_all(storage, _packet_file_jobs(state, capture_id, packet_dir))
+    _download_all(storage, _packet_file_jobs(state, capture_id, packet_dir, manifest_key))
     if cache_dir is not None and (packet_dir / "packet.json").is_file():
         _publish_packet_cache(packet_dir, cache_dir)
 
@@ -244,7 +247,7 @@ def hydrate_artifacts(storage: object, dest_root: Path, artifacts: dict[str, str
     return present
 
 
-def _packet_file_jobs(state: object, capture_id: str, packet_dir: Path) -> list[tuple[Path, str]]:
+def _packet_file_jobs(state: object, capture_id: str, packet_dir: Path, packet_key: str) -> list[tuple[Path, str]]:
     packet: dict | None = None
     manifest = packet_dir / "packet.json"
     if manifest.is_file():
@@ -254,6 +257,9 @@ def _packet_file_jobs(state: object, capture_id: str, packet_dir: Path) -> list[
             loaded = None
         if isinstance(loaded, dict):
             packet = loaded
+    # Manifest paths are relative to the packet. A base packet sits at
+    # captures/{capture_id}/packet.json, an amendment under its own prefix.
+    base = packet_key.rsplit("packet.json", 1)[0] or f"captures/{capture_id}/"
     jobs: list[tuple[Path, str]] = []
     seen: set[str] = set()
     files = getattr(state, "files", None)
@@ -273,7 +279,7 @@ def _packet_file_jobs(state: object, capture_id: str, packet_dir: Path) -> list[
         rel = _safe_rel(rel_text)
         if rel is None:
             continue
-        jobs.append((packet_dir / rel, f"captures/{capture_id}/{rel.as_posix()}"))
+        jobs.append((packet_dir / rel, f"{base}{rel.as_posix()}"))
         seen.add(rel.as_posix())
     return jobs
 

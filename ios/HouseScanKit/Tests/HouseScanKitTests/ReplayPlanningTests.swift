@@ -1,4 +1,4 @@
-import HouseScanKit
+@testable import HouseScanKit
 import simd
 import Testing
 
@@ -109,5 +109,47 @@ import Testing
         let map = ReplayPlanning.simulateWalk(frames, wall: standardWall())
         #expect(map.coveredFraction(.wall, in: -4...4) == 1)
         #expect(map.coveredFraction(.ground, in: -4...4) == 1)
+    }
+}
+
+/// Review of #169: the "Can't get there" flow's ends, planned, are where the engine's own
+/// chooser (`WalkedEnd.choose`) puts them from the farthest frame each way, not that frame's
+/// place.
+@Suite struct WalkedEndsPlanningTests {
+    static func frame(s: Float, out: Float = 2, trackingNormal: Bool = true) -> PlannedFrame {
+        PlannedFrame(camera: makeCamera(at: SIMD3(s, 1.2, out), forward: SIMD3(0, 0, -1), right: SIMD3(1, 0, 0)), timestamp: 0, trackingNormal: trackingNormal)
+    }
+
+    @Test func normalTrackingWithinTheKeptViewsEndsAtThePhone() throws {
+        let wall = standardWall()
+        let stood = [Self.frame(s: -3), Self.frame(s: 0), Self.frame(s: 3)]
+        let ends = try #require(ReplayPlanning.walkedEnds(stood: stood, walked: stood.map(\.camera.position), seen: nil, wall: wall))
+        #expect(nearlyEqual(ends.lowerBound, -3))
+        #expect(nearlyEqual(ends.upperBound, 3))
+    }
+
+    @Test func limitedTrackingAtTheFarthestFrameKeepsTheEndToTheKeptViews() throws {
+        let wall = standardWall()
+        let stood = [Self.frame(s: -3), Self.frame(s: 0), Self.frame(s: 2), Self.frame(s: 4, trackingNormal: false)]
+        let kept = stood.prefix(3).map(\.camera.position)
+        let ends = try #require(ReplayPlanning.walkedEnds(stood: stood, walked: kept, seen: nil, wall: wall))
+        #expect(nearlyEqual(ends.upperBound, 2), "limited tracking caps the end at the farthest kept view")
+        #expect(nearlyEqual(ends.lowerBound, -3))
+    }
+
+    @Test func aPhoneFarOutFromTheWallKeepsTheEndToTheKeptViews() throws {
+        let wall = standardWall()
+        let stood = [Self.frame(s: -3), Self.frame(s: 1), Self.frame(s: 4, out: WalkedEnd.phoneOutLimit + 1)]
+        let kept = stood.prefix(2).map(\.camera.position)
+        let ends = try #require(ReplayPlanning.walkedEnds(stood: stood, walked: kept, seen: nil, wall: wall))
+        #expect(nearlyEqual(ends.upperBound, 1))
+    }
+
+    @Test func aPhoneWellPastTheEvidenceStopsMaxPastEvidenceOn() throws {
+        let wall = standardWall()
+        let stood = [Self.frame(s: -3), Self.frame(s: 1), Self.frame(s: 6)]
+        let kept = stood.prefix(2).map(\.camera.position)
+        let ends = try #require(ReplayPlanning.walkedEnds(stood: stood, walked: kept, seen: nil, wall: wall))
+        #expect(nearlyEqual(ends.upperBound, 1 + WalkedEnd.maxPastEvidence))
     }
 }

@@ -105,6 +105,105 @@ def test_missing_authorization_is_the_demo_device(tmp_path) -> None:
     assert b"decision: reject" in review.content
 
 
+def test_review_page_preview_ply_is_served_and_reviewer_gated(tmp_path) -> None:
+    """The review page's relative fetch("preview.ply") must resolve through the API.
+
+    Served at GET /v1/captures/{id}/review, the browser resolves the page's
+    relative preview fetch to /v1/captures/{id}/preview.ply — PR #249 review
+    finding 1: nothing served that, so the point cloud never drew.
+    """
+
+    ply_bytes = (
+        b"ply\nformat binary_little_endian 1.0\nelement vertex 1\n"
+        b"property float x\nproperty float y\nproperty float z\nend_header\n"
+    ) + b"\x00" * 12
+    device_token = "d" * 40
+    reviewer_token = "r" * 40
+
+    def _boot(settings: Settings):
+        app = create_app(settings=settings)
+        return app, TestClient(app)
+
+    def _stage_preview(app, capture_id: str) -> None:
+        deps = app.state.deps
+        html_key = f"captures/{capture_id}/result/review.html"
+        ply_key = f"captures/{capture_id}/result/preview.ply"
+        deps.storage.put_bytes(html_key, b"<p>review</p>", "text/html")
+        deps.storage.put_bytes(ply_key, ply_bytes, "application/octet-stream")
+        deps.state.put_run(
+            RunRecord(
+                run_id=f"run_{capture_id}",
+                capture_id=capture_id,
+                packet_sha256="c" * 64,
+                status="done",
+                branch="image",
+                flow="photo",
+                tier="photo_only",
+                profile_default="C",
+                created_at="2026-09-26T00:00:00.000Z",
+                deadline_at="2026-09-26T01:00:00.000Z",
+                artifacts={"result/review.html": html_key, "result/preview.ply": ply_key},
+            )
+        )
+        deps.state.upsert_stage(
+            StageRecord(
+                run_id=f"run_{capture_id}",
+                stage="result",
+                status="done",
+                attempt=1,
+                heartbeat="2026-09-26T00:00:00.000Z",
+            )
+        )
+
+    # Auth-none demo mode: the page and its relative preview fetch both resolve.
+    app, client = _boot(_settings(tmp_path))
+    created = client.post(
+        "/v1/captures",
+        json=create_body("packet-preview"),
+        headers={"Idempotency-Key": "packet-preview"},
+    )
+    assert created.status_code == 201, created.text
+    capture_id = created.json()["captureId"]
+    _stage_preview(app, capture_id)
+
+    review = client.get(f"/v1/captures/{capture_id}/review")
+    assert review.status_code == 200, review.text
+    preview = client.get(f"/v1/captures/{capture_id}/preview.ply")
+    assert preview.status_code == 200, preview.text
+    assert preview.content == ply_bytes
+    assert preview.headers["content-type"] == "application/octet-stream"
+
+    # Static mode: the artifact is reviewer-gated, same as the page that links it.
+    static_settings = _settings(
+        tmp_path,
+        HSS_AUTH_MODE="static",
+        CAPTURE_API_TOKENS=f"dev:{device_token},reviewer:rev:{reviewer_token}",
+    )
+    app, client = _boot(static_settings)
+    created = client.post(
+        "/v1/captures",
+        json=create_body("packet-preview-static"),
+        headers={"Idempotency-Key": "packet-preview-static", "Authorization": f"Bearer {device_token}"},
+    )
+    assert created.status_code == 201, created.text
+    capture_id = created.json()["captureId"]
+    _stage_preview(app, capture_id)
+
+    anonymous = client.get(f"/v1/captures/{capture_id}/preview.ply")
+    assert anonymous.status_code == 401, anonymous.text
+    device = client.get(
+        f"/v1/captures/{capture_id}/preview.ply",
+        headers={"Authorization": f"Bearer {device_token}"},
+    )
+    assert device.status_code == 403, device.text
+    reviewer = client.get(
+        f"/v1/captures/{capture_id}/preview.ply",
+        headers={"Authorization": f"Bearer {reviewer_token}"},
+    )
+    assert reviewer.status_code == 200, reviewer.text
+    assert reviewer.content == ply_bytes
+
+
 def test_replay_mini_arkit_without_a_token(tmp_path) -> None:
     app = create_app(settings=_settings(tmp_path))
     client = TestClient(app)
