@@ -93,10 +93,17 @@ class LocalFsStorage:
             tmp.unlink()
 
     def commit_tmp(self, key: str, tmp: Path, content_type: str, md5_b64: str, nbytes: int) -> None:
+        # The rename and the metadata write happen under one lock. Replacing the
+        # final file before taking the lock lets two commits for one key
+        # interleave as A-rename, B-rename, B-metadata, A-metadata: the volume
+        # ends up with B's bytes while head() reports A's digest and size, and
+        # files:commit then marks a valid upload as a mismatch. Under the lock
+        # every commit is atomic — the last committer wins the bytes and the
+        # metadata together, which is the replay rule.
         final = self._path(key)
-        final.parent.mkdir(parents=True, exist_ok=True)
-        tmp.replace(final)
         with self._lock:
+            final.parent.mkdir(parents=True, exist_ok=True)
+            tmp.replace(final)
             self._meta[key] = ObjectMeta(
                 bytes=nbytes,
                 md5_b64=md5_b64,
