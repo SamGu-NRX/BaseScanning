@@ -232,15 +232,33 @@ extension ScanEngine {
     /// What photo processing can do in this build. Sending a capture off the phone is off in this
     /// slice: the 0.4 clock and privacy contract, a scoped credential and the deployment aren't
     /// settled. Per-frame intrinsics and the meter tap from the accepted mark's own frame are
-    /// recorded but unchecked on a phone. The one way to run it is DEBUG's fixture on a replay,
-    /// which answers on the phone (`CaptureFixtureLaunch`); a release build can't, since
-    /// `debugBuild` is decided at compile time and the launch options aren't even parsed there.
+    /// recorded but unchecked on a phone. The ways to run it are DEBUG-only, on a replay: a capture
+    /// API the developer runs on this machine (`LocalCaptureAPI`), or the fixture, which answers on
+    /// the phone (`CaptureFixtureLaunch`). A release build can't, since `debugBuild` is decided at
+    /// compile time and the launch options aren't even parsed there.
     static func photoProcessingSetup(_ options: LaunchOptions) -> (setup: PhotoProcessingController.Setup, synthetic: SyntheticCapture?) {
         #if DEBUG
         let debugBuild = true
         #else
         let debugBuild = false
         #endif
+        let local = LocalCaptureAPI.resolve(
+            debugBuild: debugBuild, onReplay: options.replayFolder != nil, address: options.photoProcessingAPI,
+            token: options.photoProcessingAPIToken)
+        switch local {
+        case .notRequested:
+            break
+        case .refused(let reason):
+            // An address was given, so the fixture never stands in for it.
+            return (.notSetUp(reason), nil)
+        case .on(let api):
+            #if DEBUG
+            let synthetic = options.photoProcessingSyntheticCapture
+            return (.ready(localAPIEnvironment(api, synthetic: synthetic), standIn: false), synthetic ? SyntheticCapture.standard : nil)
+            #else
+            return (.notSetUp("a release build sends to no developer capture API"), nil)
+            #endif
+        }
         let launch = CaptureFixtureLaunch.resolve(
             debugBuild: debugBuild, onReplay: options.replayFolder != nil, answer: options.photoProcessingFixture,
             syntheticCapture: options.photoProcessingSyntheticCapture)
@@ -274,17 +292,37 @@ extension ScanEngine {
         let folder = FileManager.default.temporaryDirectory.appending(path: "PhotoProcessingFixture", directoryHint: .isDirectory)
         return .init(
             endpoint: FixtureCaptureHTTP.base, sends: true, http: http, capturesFolder: folder,
-            sessionInfo: { packetID, video in
-                // The synthetic capture says so in its packet; a replay's photos say replay.
-                if synthetic { return SyntheticCapture.sessionInfo(packetID: packetID, video: video, appVersion: device.appVersion) }
-                return Packet04SessionInfo(
-                    packetID: packetID, sessionID: packetID, source: .replay, appVersion: device.appVersion, deviceModel: device.model,
-                    systemVersion: device.systemVersion, lidarAvailable: false, sceneDepthEnabled: false, meshReconstructionSupported: nil,
-                    sceneReconstruction: nil, planeDetection: nil, videoWidth: Int(video.x), videoHeight: Int(video.y), framesPerSecond: nil,
-                    timeZone: nil)
-            },
+            sessionInfo: debugSessionInfo(synthetic: synthetic, device: device),
             device: device, tier: .arkit, policy: policy,
             log: { line in RuntimeLog.engine.info("\(line, privacy: .public)") })
+    }
+
+    /// The developer's capture API on this machine, through the app's real transport with the
+    /// uploader's default retry policy, unlike the fixture's shortened one. The device fields say
+    /// what the packet is, synthetic or replay, as its session info does.
+    private static func localAPIEnvironment(_ api: LocalCaptureAPI, synthetic: Bool) -> CaptureSessionCoordinator.Environment {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
+        let kind = synthetic ? "synthetic" : "replay"
+        let device = CaptureAPI.Device(model: kind, systemVersion: kind, appVersion: version)
+        let folder = FileManager.default.temporaryDirectory.appending(path: "PhotoProcessingLocalAPI", directoryHint: .isDirectory)
+        RuntimeLog.engine.info("photo processing sends to the developer capture API at \(api.endpoint.absoluteString, privacy: .public)")
+        return .init(
+            endpoint: api.endpoint, sends: true, http: api.http(), capturesFolder: folder,
+            sessionInfo: debugSessionInfo(synthetic: synthetic, device: device),
+            device: device, tier: .arkit,
+            log: { line in RuntimeLog.engine.info("\(line, privacy: .public)") })
+    }
+
+    /// The synthetic capture says so in its packet; a replay's photos say replay.
+    private static func debugSessionInfo(synthetic: Bool, device: CaptureAPI.Device) -> @Sendable (String, SIMD2<Float>) -> Packet04SessionInfo {
+        { packetID, video in
+            if synthetic { return SyntheticCapture.sessionInfo(packetID: packetID, video: video, appVersion: device.appVersion) }
+            return Packet04SessionInfo(
+                packetID: packetID, sessionID: packetID, source: .replay, appVersion: device.appVersion, deviceModel: device.model,
+                systemVersion: device.systemVersion, lidarAvailable: false, sceneDepthEnabled: false, meshReconstructionSupported: nil,
+                sceneReconstruction: nil, planeDetection: nil, videoWidth: Int(video.x), videoHeight: Int(video.y), framesPerSecond: nil,
+                timeZone: nil)
+        }
     }
     #endif
 }

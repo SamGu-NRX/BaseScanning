@@ -304,6 +304,17 @@ def _packet_file_jobs(state: object, capture_id: str, packet_dir: Path, packet_k
     base = packet_key.rsplit("packet.json", 1)[0] or f"captures/{capture_id}/"
     jobs: list[tuple[Path, str]] = []
     seen: set[str] = set()
+    # The selected packet's manifest resolves first: its paths are authoritative
+    # for this run. An amendment that reuses a base filename (stills/s1.jpg) with
+    # different bytes must download its own copy under the amendment prefix — a
+    # committed base-file record entering `seen` first would silently hydrate the
+    # base bytes and the real validator would reject the size/hash mismatch.
+    for rel_text in _packet_paths(packet):
+        rel = _safe_rel(rel_text)
+        if rel is None or rel.as_posix() in seen:
+            continue
+        jobs.append((packet_dir / rel, f"{base}{rel.as_posix()}"))
+        seen.add(rel.as_posix())
     files = getattr(state, "files", None)
     records = files(capture_id) if callable(files) else []
     for rec in records:
@@ -311,17 +322,9 @@ def _packet_file_jobs(state: object, capture_id: str, packet_dir: Path, packet_k
             continue
         rel = _safe_rel(str(getattr(rec, "path", "") or ""))
         key = str(getattr(rec, "key", "") or "")
-        if rel is None or not key:
+        if rel is None or not key or rel.as_posix() in seen:
             continue
         jobs.append((packet_dir / rel, key))
-        seen.add(rel.as_posix())
-    for rel_text in _packet_paths(packet):
-        if rel_text in seen:
-            continue
-        rel = _safe_rel(rel_text)
-        if rel is None:
-            continue
-        jobs.append((packet_dir / rel, f"{base}{rel.as_posix()}"))
         seen.add(rel.as_posix())
     return jobs
 

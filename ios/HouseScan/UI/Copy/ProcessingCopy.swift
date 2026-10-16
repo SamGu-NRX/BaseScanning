@@ -20,11 +20,11 @@ enum ProcessingCopy {
         }
     }
 
-    /// What this build can do with a photo-processing scan, under its option; nil when a service
-    /// answers.
-    static func setupNote(_ answers: ProcessingProfile.Answers) -> String? {
-        switch answers {
-        case .service: nil
+    /// What this build can do with a photo-processing scan, under its option. A service says
+    /// where it sends, since only development and TestFlight installs see this.
+    static func setupNote(_ profile: ProcessingProfile) -> String? {
+        switch profile.answers {
+        case .service: profile.origin.map { "Sends to \($0.absoluteString)." }
         case .standIn: "Test build: answers come from a stand-in on this phone, and nothing leaves it."
         case .notSetUp: "Not set up in this build. A scan with it stops before the camera starts and offers a Legacy scan instead."
         }

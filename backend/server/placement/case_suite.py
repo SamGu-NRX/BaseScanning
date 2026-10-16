@@ -269,7 +269,32 @@ def _case_paths(record: CaseRecord, manifest_dir: Path) -> dict[str, Any]:
     }
 
 
-def _evaluate_expectations(expectations: dict[str, Any], body: dict[str, Any]) -> list[str]:
+def _numbers_match(actual: Any, expected: Any, tol_ft: float) -> bool:
+    """Equality with a declared tolerance for derived feet values: floats and
+    float lists compare within ``tol_ft``, everything else exactly."""
+    if isinstance(expected, list):
+        return (
+            isinstance(actual, list)
+            and len(actual) == len(expected)
+            and all(_numbers_match(a, e, tol_ft) for a, e in zip(actual, expected, strict=True))
+        )
+    if (
+        isinstance(expected, (int, float))
+        and not isinstance(expected, bool)
+        and isinstance(actual, (int, float))
+        and not isinstance(actual, bool)
+    ):
+        return abs(float(actual) - float(expected)) <= tol_ft
+    return actual == expected
+
+
+def _evaluate_expectations(expectations: dict[str, Any], body: dict[str, Any], tol_ft: float = 0.0) -> list[str]:
+    """Evaluate declared expectations against a placement body.
+
+    ``tol_ft`` widens only numeric feet comparisons (``spot`` values,
+    ``missing_evidence`` entries, ``sweep_failing_runs`` start points) to the
+    declared derived-output tolerance; the default 0.0 keeps the suite exact.
+    """
     mismatches: list[str] = []
     expected_decision = expectations.get("decision")
     if expected_decision is not None and body.get("decision") != expected_decision:
@@ -281,7 +306,7 @@ def _evaluate_expectations(expectations: dict[str, Any], body: dict[str, Any]) -
             mismatches.append(f"spot is None but expected {expected_spot!r}")
         else:
             for key, value in expected_spot.items():
-                if spot.get(key) != value:
+                if not _numbers_match(spot.get(key), value, tol_ft):
                     mismatches.append(f"spot.{key} {spot.get(key)!r} != expected {value!r}")
     checks_by_id = {check["id"]: check for check in body.get("checks", [])}
     for check_id, expected in (expectations.get("checks") or {}).items():
@@ -299,7 +324,7 @@ def _evaluate_expectations(expectations: dict[str, Any], body: dict[str, Any]) -
             )
     for expected in expectations.get("missing_evidence") or []:
         found = any(
-            all(actual.get(key) == value for key, value in expected.items())
+            all(_numbers_match(actual.get(key), value, tol_ft) for key, value in expected.items())
             for actual in body.get("missing_evidence", [])
         )
         if not found:
@@ -307,7 +332,7 @@ def _evaluate_expectations(expectations: dict[str, Any], body: dict[str, Any]) -
     sweep = body.get("sweep", [])
     for expected in expectations.get("sweep_failing_runs") or []:
         found = any(
-            run.get("start_ft") == expected.get("start_ft")
+            _numbers_match(run.get("start_ft"), expected.get("start_ft"), tol_ft)
             and set(expected.get("failing") or []).issubset(run.get("failing") or [])
             for run in sweep
         )

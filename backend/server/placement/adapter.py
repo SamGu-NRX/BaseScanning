@@ -111,6 +111,18 @@ class PlacementObjectsError(Exception):
         self.code = "placement_objects_3d_unavailable"
 
 
+class PlacementObjectsFormatError(PlacementObjectsError):
+    """The run's objects_3d artifact does not carry an explicit objects list.
+
+    Not retryable: a malformed manifest is a refusal, not an empty hazard set —
+    an empty list is a valid "no hazards", a missing or null list is not.
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.code = "placement_objects_3d_invalid"
+
+
 def _top_level_server_dir() -> Path:
     return _REPO_ROOT / "server"
 
@@ -236,6 +248,14 @@ def _objects_3d_evidence(ctx: StageContext) -> None:
     fmt = document.get("format") if isinstance(document, dict) else None
     if fmt != "hss-objects-3d/v0":
         raise PlacementObjectsError(f'{_OBJECTS_3D} must carry format "hss-objects-3d/v0", got {fmt!r}')
+    # An empty list is a valid "no hazards"; a missing or null list is a malformed
+    # manifest and must refuse, not decode as "no hazards".
+    objects = document.get("objects") if isinstance(document, dict) else None
+    if not isinstance(objects, list):
+        raise PlacementObjectsFormatError(
+            f'{_OBJECTS_3D} must carry an explicit "objects" list (an empty list is valid), got '
+            f"{'null' if objects is None else type(objects).__name__!r}"
+        )
 
 
 def _source_scene_bytes(ctx: StageContext) -> bytes:
