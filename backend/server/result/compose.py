@@ -8,11 +8,12 @@ import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import get_args
 
 import numpy as np
 from pydantic import ValidationError
 
-from server.contracts.jobs import CaptureRecord, EventRecord, RunRecord, StageContext, StageResult
+from server.contracts.jobs import CaptureRecord, EventRecord, RunRecord, StageContext, StageName, StageResult
 from server.contracts.result import (
     BoxArkitWorld,
     BoxSceneM,
@@ -56,6 +57,7 @@ FOOTPRINT = {
     "S": (0.7874, 1.0033, 0.5588),
 }
 _COVERAGE_WORST = ("unobserved", "generated", "partial", "grazing", "observed")
+_IMPL_SCHEMA = "hss-stage-impl/v1"
 _DEFAULT_CONFIG = ResultConfig()
 _TARGET_CLASSES = (
     "garage_door",
@@ -101,6 +103,7 @@ def compose_result(
     epochs: list[str] | None = None,
     storage: object = None,
     settings: object = None,
+    impl_dir: Path | None = None,
 ) -> ComposeResult:
     warnings: list[str] = []
     if catalogue.source == "fallback":
@@ -208,6 +211,7 @@ def compose_result(
         warnings.append(preview_warning)
         response = response.model_copy(update={"previewUrl": None})
 
+    stage_implementations, stand_ins = _stage_implementations(impl_dir)
     internal = {
         "decision": true_decision,
         "outcome_kind_internal": "not_eligible" if true_decision == "reject" else kind,
@@ -217,6 +221,8 @@ def compose_result(
         "c2_vetoes": (report or {}).get("c2", {}).get("vetoes") if report else None,
         "decidability": (report or {}).get("decidability") if report else None,
         "warnings": warnings,
+        "stageImplementations": stage_implementations,
+        "standIns": stand_ins,
     }
     # A hidden reject keeps the true kind even though `kind` was rewritten.
     if true_decision == "reject" and not config.show_reject:
@@ -300,6 +306,8 @@ def run(ctx: StageContext) -> StageResult:
     verdict_dir = Path(ctx.inputs.get("verdicts") or Path(ctx.work_dir) / "verdicts")
     reads = _stage_input(ctx, "reads", "reads/reads.json")
     scale = _stage_input(ctx, "scale", "scale/scale.json")
+    impl_raw = ctx.inputs.get("impl")
+    impl_dir = Path(impl_raw) if impl_raw else Path(ctx.work_dir) / "impl"
     out_dir = Path(ctx.inputs.get("out") or Path(ctx.work_dir) / "result")
     capture = ctx.state.get_capture(ctx.capture_id)
     run_rec = ctx.state.get_run(ctx.run_id)
@@ -321,6 +329,7 @@ def run(ctx: StageContext) -> StageResult:
             epochs=epochs,
             storage=ctx.storage,
             settings=ctx.settings,
+            impl_dir=impl_dir if impl_dir.is_dir() else None,
         )
     except ResultError:
         raise
@@ -335,6 +344,37 @@ def run(ctx: StageContext) -> StageResult:
     if (out_dir / "preview.ply").is_file():
         artifacts["result/preview.ply"] = str(out_dir / "preview.ply")
     return StageResult(artifacts=artifacts, metrics={"events": len(seqs)}, warnings=list(composed.warnings))
+
+
+def _stage_implementations(impl_dir: Path | None) -> tuple[dict[str, str], list[str]]:
+    """Stage -> real | stand-in | unknown, from the impl files the runner publishes.
+
+    The orchestration leaves one ``impl/<stage>.json`` per run stage in the result
+    stage's inputs; ``stand-in`` means the stage ran a module under
+    server.orchestrator.stubs, so its output is not real measurement work. A stage
+    with no file is ``unknown`` — as for runs composed before this record existed.
+    The result stage always reads as ``real``: this function runs inside it. A
+    file that does not carry the pinned schema stops the composition with a loud
+    error naming the file, because a mis-published marker would otherwise read as
+    a trustworthy name.
+    """
+
+    implementations = {stage: "unknown" for stage in get_args(StageName)}
+    if impl_dir is not None and impl_dir.is_dir():
+        for path in sorted(impl_dir.glob("*.json")):
+            try:
+                doc = json.loads(path.read_text())
+            except (OSError, ValueError) as exc:
+                raise ResultError("impl_invalid", f"{path}: unreadable impl file ({exc})") from exc
+            if not isinstance(doc, dict) or doc.get("schema") != _IMPL_SCHEMA:
+                raise ResultError("impl_invalid", f"{path}: schema is not {_IMPL_SCHEMA}")
+            implementation = doc.get("implementation")
+            if implementation not in {"real", "stand-in"}:
+                raise ResultError("impl_invalid", f"{path}: implementation is neither real nor stand-in")
+            implementations[str(doc.get("stage") or path.stem)] = implementation
+    implementations["result"] = "real"
+    stand_ins = sorted(stage for stage, impl in implementations.items() if impl == "stand-in")
+    return implementations, stand_ins
 
 
 def _catalogue(path: Path) -> tuple[Catalogue, bool]:
@@ -901,6 +941,7 @@ def _review_context(
         "timings": (report or {}).get("timings_s") or {},
         "vlm_cost": ((report or {}).get("c3") or {}).get("cost_usd"),
         "decidability": internal.get("decidability"),
+        "stand_ins": internal.get("standIns") or [],
         "photos": photos,
         "criteria": raw.get("criteria") or [],
         "walls": _wall_strips(scene, raw),
@@ -982,6 +1023,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--catalogue", type=Path)
     parser.add_argument("--profile", default=None)
     parser.add_argument("--show-reject", action="store_true")
+    parser.add_argument("--impl", type=Path, help="directory of impl/<stage>.json markers the orchestration published")
     args = parser.parse_args(argv)
     config = load_config()
     if args.profile:
@@ -1006,6 +1048,7 @@ def main(argv: list[str] | None = None) -> None:
         catalogue=catalogue,
         config=config,
         epochs=epochs,
+        impl_dir=args.impl,
     )
 
 
