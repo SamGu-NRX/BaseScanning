@@ -102,6 +102,12 @@ class Journey:
 
     def __init__(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scene_dir: Path, verdict: dict) -> None:
         # Prewarm off, webhooks off, result knobs from the committed catalogue.
+        # Real stages for the finalize thread's coordinator tick: the tick must
+        # close the run through the early no-VLM gates, which it cannot do on
+        # stubbed stages. Pin the flag because sibling runners (the placement
+        # case suite) write HSS_ORCH_STAGE_STUBS=1 straight into os.environ and
+        # that write outlives their test.
+        monkeypatch.setenv("HSS_ORCH_STAGE_STUBS", "0")
         monkeypatch.setenv("HSS_ORCH_PREWARM", "0")
         monkeypatch.delenv("WEBHOOK_HMAC_SECRET", raising=False)
         monkeypatch.setenv("BASE_WEBHOOK_URL", "")
