@@ -52,6 +52,10 @@ def read_token(token: str, secret: bytes) -> dict | None:
 
 class VolumeStorage(LocalFsStorage):
     def __init__(self, root: str | Path, public_url: str, hmac_secret: bytes) -> None:
+        if not hmac_secret:
+            # Refuse to sign tokens with an empty key: anyone who knows a storage
+            # key could forge one.
+            raise ValueError("VolumeStorage needs a non-empty UPLOAD_URL_HMAC_SECRET")
         super().__init__(Path(root))
         self.public_url = public_url.rstrip("/")
         self.hmac_secret = hmac_secret

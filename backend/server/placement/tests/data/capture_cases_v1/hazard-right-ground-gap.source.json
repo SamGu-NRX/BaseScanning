@@ -1,0 +1,255 @@
+{
+  "format": "base-scene/v0",
+  "scene_id": "burst8-hazard-right-ground-gap",
+  "provenance": {
+    "data": "synthetic",
+    "producer": {
+      "path": "hand-authored",
+      "version": "burst8"
+    },
+    "scale_source": "native_metric",
+    "gravity_source": "ground_truth",
+    "site": "burst8-hazard-right-ground-gap",
+    "notes": [
+      "Authored for the burst8 supported-case packet. It pairs with hazard-right-ground-gap.wire.json by construction (the same wall, on-wall meter anchor, observed wall_rect hazards, coverage gaps and ends, described once in meters and once in feet by hand), not by running any converter.",
+      "The vent obj-tap-vent carries the exact measured geometry of the replay runner's TAP_HAZARD (scripts/capture_placement_cases.py), so the coordinator's one-time same-id merge replaces it in place and the merged scene keeps exactly one vent."
+    ]
+  },
+  "frame": {
+    "units": "m",
+    "convention": "meter_anchored/v0",
+    "anchor": {
+      "element_id": "obj-meter",
+      "plus_minus_m": 0.09
+    }
+  },
+  "walls": [
+    {
+      "id": "side",
+      "role": "house",
+      "baseline_m": [
+        [
+          -0.4572,
+          0.0
+        ],
+        [
+          3.048,
+          0.0
+        ]
+      ],
+      "height_m": 2.7432,
+      "plus_minus_m": 0.09,
+      "evidence": "observed"
+    }
+  ],
+  "chain": {
+    "wall_ids": [
+      "side"
+    ],
+    "ends": {
+      "left": {
+        "kind": "limit",
+        "s_m": -0.4572,
+        "note": "fence at the left property line"
+      },
+      "right": {
+        "kind": "unexplored",
+        "s_m": 3.048,
+        "note": "wall continues right, not walked"
+      }
+    }
+  },
+  "ground": {
+    "surface": {
+      "kind": "plane",
+      "normal": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "offset_m": 0.0
+    },
+    "plus_minus_m": 0.05,
+    "regions": [
+      {
+        "id": "mulch",
+        "material": "mulch",
+        "polygon_m": [
+          [
+            -0.4572,
+            0.0
+          ],
+          [
+            3.048,
+            0.0
+          ],
+          [
+            3.048,
+            0.9144
+          ],
+          [
+            -0.4572,
+            0.9144
+          ]
+        ],
+        "evidence": "observed"
+      },
+      {
+        "id": "lawn",
+        "material": "lawn",
+        "polygon_m": [
+          [
+            -0.4572,
+            0.9144
+          ],
+          [
+            3.048,
+            0.9144
+          ],
+          [
+            3.048,
+            3.9624
+          ],
+          [
+            -0.4572,
+            3.9624
+          ]
+        ],
+        "evidence": "observed"
+      }
+    ]
+  },
+  "objects": [
+    {
+      "id": "obj-meter",
+      "class": "meter",
+      "geometry": {
+        "kind": "wall_rect",
+        "wall_id": "side",
+        "s_m": [
+          -0.1524,
+          0.1524
+        ],
+        "bottom_m": 0.1524,
+        "top_m": 1.3716
+      },
+      "confidence": 0.99,
+      "plus_minus_m": 0.09,
+      "source": {
+        "kind": "tap"
+      },
+      "evidence": "observed"
+    },
+    {
+      "id": "obj-gas",
+      "class": "gas_meter",
+      "wall_id": "side",
+      "geometry": {
+        "kind": "wall_rect",
+        "wall_id": "side",
+        "s_m": [
+          0.9144,
+          1.2192
+        ],
+        "bottom_m": 0.3048,
+        "top_m": 0.9144
+      },
+      "confidence": 0.9,
+      "plus_minus_m": 0.09,
+      "source": {
+        "kind": "tap"
+      },
+      "evidence": "observed"
+    },
+    {
+      "id": "obj-tap-vent",
+      "class": "vent",
+      "wall_id": "side",
+      "geometry": {
+        "kind": "wall_rect",
+        "wall_id": "side",
+        "s_m": [
+          1.6,
+          1.8
+        ],
+        "bottom_m": 0.5,
+        "top_m": 2.0
+      },
+      "confidence": 0.9,
+      "plus_minus_m": 0.05,
+      "source": {
+        "kind": "tap"
+      },
+      "evidence": "observed"
+    }
+  ],
+  "coverage": {
+    "method": "synthetic-authored",
+    "rule": {
+      "min_views": 1,
+      "max_incidence_deg": {
+        "wall": 60,
+        "ground": 60
+      }
+    },
+    "bands": [
+      {
+        "wall_id": "side",
+        "band": "wall",
+        "s_m": [
+          -0.4572,
+          3.048
+        ],
+        "out_m": 2.0
+      },
+      {
+        "wall_id": "side",
+        "band": "ground",
+        "s_m": [
+          -0.4572,
+          0.9144
+        ],
+        "out_m": 3.9624
+      },
+      {
+        "wall_id": "side",
+        "band": "ground",
+        "s_m": [
+          2.5908,
+          3.048
+        ],
+        "out_m": 3.9624
+      },
+      {
+        "wall_id": "side",
+        "band": "overhead",
+        "s_m": [
+          -0.4572,
+          3.048
+        ],
+        "out_m": 2.7432
+      },
+      {
+        "wall_id": "side",
+        "band": "facing",
+        "s_m": [
+          -0.4572,
+          3.048
+        ],
+        "out_m": 3.9624
+      }
+    ]
+  },
+  "facing": [
+    {
+      "wall_id": "side",
+      "s_m": [
+        -0.4572,
+        3.048
+      ],
+      "depth_m": 3.9624,
+      "plus_minus_m": 0.09,
+      "evidence": "observed"
+    }
+  ]
+}

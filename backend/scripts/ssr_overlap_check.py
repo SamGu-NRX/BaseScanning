@@ -44,8 +44,13 @@ BINARY_SUFFIXES = {
 
 
 def repo_root() -> Path:
-    out = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True)
-    return Path(out.strip())
+    """The package root, two levels above this script.
+
+    Before the port into the BaseScanning monorepo the git toplevel held
+    data/hygiene; the package now lives at backend/ inside the monorepo, so
+    the toplevel no longer contains data/hygiene/ssr_shingles.sha256.
+    """
+    return Path(__file__).resolve().parent.parent
 
 
 def normalized_words(text: str) -> list[str]:

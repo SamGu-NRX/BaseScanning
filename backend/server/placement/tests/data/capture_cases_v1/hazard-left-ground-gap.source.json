@@ -1,0 +1,233 @@
+{
+  "format": "base-scene/v0",
+  "scene_id": "burst8-hazard-left-ground-gap",
+  "provenance": {
+    "data": "synthetic",
+    "producer": {
+      "path": "hand-authored",
+      "version": "burst8"
+    },
+    "scale_source": "native_metric",
+    "gravity_source": "ground_truth",
+    "site": "burst8-hazard-left-ground-gap",
+    "notes": [
+      "Authored for the burst8 supported-case packet. It pairs with hazard-left-ground-gap.wire.json by construction (the same wall, on-wall meter anchor, observed wall_rect hazard, coverage gaps and ends, described once in meters and once in feet by hand), not by running any converter."
+    ]
+  },
+  "frame": {
+    "units": "m",
+    "convention": "meter_anchored/v0",
+    "anchor": {
+      "element_id": "obj-meter",
+      "plus_minus_m": 0.09
+    }
+  },
+  "walls": [
+    {
+      "id": "side",
+      "role": "house",
+      "baseline_m": [
+        [
+          -3.048,
+          0.0
+        ],
+        [
+          1.0668,
+          0.0
+        ]
+      ],
+      "height_m": 2.7432,
+      "plus_minus_m": 0.09,
+      "evidence": "observed"
+    }
+  ],
+  "chain": {
+    "wall_ids": [
+      "side"
+    ],
+    "ends": {
+      "left": {
+        "kind": "unexplored",
+        "s_m": -3.048,
+        "note": "wall continues left, not walked"
+      },
+      "right": {
+        "kind": "limit",
+        "s_m": 1.0668,
+        "note": "gate at the right property line"
+      }
+    }
+  },
+  "ground": {
+    "surface": {
+      "kind": "plane",
+      "normal": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "offset_m": 0.0
+    },
+    "plus_minus_m": 0.05,
+    "regions": [
+      {
+        "id": "mulch",
+        "material": "mulch",
+        "polygon_m": [
+          [
+            -3.048,
+            0.0
+          ],
+          [
+            1.0668,
+            0.0
+          ],
+          [
+            1.0668,
+            0.762
+          ],
+          [
+            -3.048,
+            0.762
+          ]
+        ],
+        "evidence": "observed"
+      },
+      {
+        "id": "lawn",
+        "material": "lawn",
+        "polygon_m": [
+          [
+            -3.048,
+            0.762
+          ],
+          [
+            1.0668,
+            0.762
+          ],
+          [
+            1.0668,
+            3.6576
+          ],
+          [
+            -3.048,
+            3.6576
+          ]
+        ],
+        "evidence": "observed"
+      }
+    ]
+  },
+  "objects": [
+    {
+      "id": "obj-meter",
+      "class": "meter",
+      "geometry": {
+        "kind": "wall_rect",
+        "wall_id": "side",
+        "s_m": [
+          -0.1524,
+          0.1524
+        ],
+        "bottom_m": 0.2286,
+        "top_m": 1.2192
+      },
+      "confidence": 0.99,
+      "plus_minus_m": 0.09,
+      "source": {
+        "kind": "tap"
+      },
+      "evidence": "observed"
+    },
+    {
+      "id": "obj-gas",
+      "class": "gas_meter",
+      "wall_id": "side",
+      "geometry": {
+        "kind": "wall_rect",
+        "wall_id": "side",
+        "s_m": [
+          -1.2192,
+          -0.9144
+        ],
+        "bottom_m": 0.3048,
+        "top_m": 0.9144
+      },
+      "confidence": 0.9,
+      "plus_minus_m": 0.09,
+      "source": {
+        "kind": "tap"
+      },
+      "evidence": "observed"
+    }
+  ],
+  "coverage": {
+    "method": "synthetic-authored",
+    "rule": {
+      "min_views": 1,
+      "max_incidence_deg": {
+        "wall": 60,
+        "ground": 60
+      }
+    },
+    "bands": [
+      {
+        "wall_id": "side",
+        "band": "wall",
+        "s_m": [
+          -3.048,
+          1.0668
+        ],
+        "out_m": 2.1336
+      },
+      {
+        "wall_id": "side",
+        "band": "ground",
+        "s_m": [
+          -0.3048,
+          1.0668
+        ],
+        "out_m": 3.6576
+      },
+      {
+        "wall_id": "side",
+        "band": "ground",
+        "s_m": [
+          -3.048,
+          -2.8956
+        ],
+        "out_m": 3.6576
+      },
+      {
+        "wall_id": "side",
+        "band": "overhead",
+        "s_m": [
+          -3.048,
+          1.0668
+        ],
+        "out_m": 2.4384
+      },
+      {
+        "wall_id": "side",
+        "band": "facing",
+        "s_m": [
+          -3.048,
+          1.0668
+        ],
+        "out_m": 3.6576
+      }
+    ]
+  },
+  "facing": [
+    {
+      "wall_id": "side",
+      "s_m": [
+        -3.048,
+        1.0668
+      ],
+      "depth_m": 3.6576,
+      "plus_minus_m": 0.09,
+      "evidence": "observed"
+    }
+  ]
+}

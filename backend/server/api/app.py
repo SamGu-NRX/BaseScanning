@@ -237,7 +237,7 @@ def create_app(
     amendments.register(app)
     confirmations.register(app)
     devices.register(app)
-    uploads.register(app)
+    uploads.register(app, settings)
     return app
 
 
