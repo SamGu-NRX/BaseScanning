@@ -68,6 +68,7 @@ def _cpu(
         artifacts=artifacts,
         module=module or name,
         entry=entry,
+        stubs_exempt=stubs_exempt,
     )
 
 
