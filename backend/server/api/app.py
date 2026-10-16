@@ -11,6 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.datastructures import MutableHeaders
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from server.api.auth import authenticate, parse_tokens
 from server.api.deps import Deps, default_id, utcnow
@@ -227,6 +228,29 @@ def create_app(
                 pointer = "/files"
             items.append({"code": code, "pointer": pointer, "message": err.get("msg", "invalid")})
         return JSONResponse({"errors": items}, status_code=422)
+
+    # INTEGRATION.md: "Errors are ApiError" — a body the app's errorCodes can read.
+    # Route misses and method mismatches arrive as StarletteHTTPException, and an
+    # unhandled stage crash arrives as Exception; both must decode as ErrorBody.
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(_request: Request, exc: StarletteHTTPException):
+        code = {404: "not_found", 405: "method_not_allowed"}.get(exc.status_code, "http_error")
+        # Framework headers survive the rewrite: the 405 Allow list, WWW-Authenticate, …
+        return error_response(
+            fail(
+                exc.status_code,
+                code,
+                "/",
+                str(exc.detail or code),
+                **(exc.headers or {}),
+            )
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled(_request: Request, exc: Exception):
+        # Starlette re-raises after this returns, so uvicorn still logs the traceback.
+        return error_response(fail(500, "internal", "/", "internal server error"))
 
     health.register(app)
     captures.register(app)
