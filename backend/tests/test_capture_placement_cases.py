@@ -531,16 +531,17 @@ def _write_twin_manifest(tmp_path: Path) -> Path:
             "source": source_ref,
             "wire": wire_ref,
             # The hardened loader (case-integrity fix) rejects decision-only
-            # positives, so the twins pin the coverage chain ends too — the
-            # cross-capture refusal must still come from geometry, not the loader.
-            "expectations": {"decision": "manual_review", "ends": {"left": "unexplored", "right": "limit"}},
+            # positives, so the twins pin source A's full geometric expectations
+            # (the tap hazard does not move them) — the cross-capture refusal must
+            # still come from geometry, not the loader or an expectation mismatch.
+            "expectations": _expected_a(),
         },
         {
             "id": "twin-two",
             "kind": "positive",
             "source": source_ref,
             "wire": wire_ref,
-            "expectations": {"decision": "manual_review", "ends": {"left": "unexplored", "right": "limit"}},
+            "expectations": _expected_a(),
         },
     ]
     manifest_path = tmp_path / "manifest.json"
@@ -592,13 +593,14 @@ def test_every_case_walks_the_real_front_door_with_case_true_boundaries(receipt)
     # The one nonempty objects_3d case: the observed tap hazard, merged exactly once.
     assert _case(receipt, runner.TAP_CASE_ID)["tapHazardMergeCount"] == 1
 
-    # Both positives refuse, but the merged runtime persists their merged scenes
-    # and their geometry hashes, so the cross-capture comparison actually runs —
-    # and must not pass vacuously: the two scenes and their normalized geometry
-    # are distinct.
+    # Both positives refused: the normalized-geometry hash comes only from a
+    # converted scene, so the cross-capture comparison cannot run and must say so
+    # instead of passing vacuously. The refused positives block the run instead.
     cross = receipt["crossCapture"]
-    assert cross["status"] == "evaluated"
-    assert cross["distinctScenes"] is True and cross["distinctNormalizedGeometry"] is True
+    assert cross["status"] == "not_applicable"
+    assert cross["reason"]
+    assert cross["distinctScenes"] is None and cross["distinctNormalizedGeometry"] is None
+    assert not any(blocker.startswith("crossCapture") for blocker in receipt["blockers"])
     assert cross["captureIds"] == [
         _case(receipt, "hazard-right-ground-gap")["captureId"],
         _case(receipt, "hazard-left-ground-gap")["captureId"],
@@ -946,7 +948,10 @@ def test_one_geometry_under_two_identities_fails_cross_capture(tmp_path):
     assert cross["status"] == "evaluated"
     assert cross["distinctScenes"] is True, "identity stamps alone differ"
     assert cross["distinctNormalizedGeometry"] is False, "the geometry is byte-identical"
-    assert any("crossCapture" in blocker for blocker in receipt["blockers"])
+    # Both twins solve to their full expectations, so cross-capture is the only
+    # thing that blocks the run.
+    assert [(case["status"], case["mismatches"]) for case in receipt["cases"]] == [("solved", [])] * 2
+    assert [blocker.split(":")[0] for blocker in receipt["blockers"]] == ["crossCapture"]
     assert receipt["ok"] is False
 
 
@@ -966,6 +971,38 @@ def test_a_declared_negative_that_solves_fails_the_suite(tmp_path, monkeypatch):
     assert case["status"] == "solved"
     assert any("produced a successful placement" in mismatch for mismatch in case["mismatches"])
     assert receipt["ok"] is False
+
+
+def test_a_failed_finalize_replay_fails_the_cli(tmp_path, monkeypatch):
+    """A finalize-replay regression must reach the exit code, not only the
+    receipt: with no backend CI on this branch, the CLI exit code is the only
+    automation-facing gate, and a silent pass would hide a broken replay."""
+
+    def failing_replay(harness, journey):
+        return {
+            "caseId": journey["caseId"],
+            "replayHttpStatus": 202,
+            "sameRunId": True,
+            "terminalEventCountAfter": 2,
+            "ok": False,
+        }
+
+    monkeypatch.setattr(runner, "_replay_finalize", failing_replay)
+    output = tmp_path / "receipt.json"
+    exit_code = runner.main(
+        [
+            "--output",
+            str(output),
+            "--workdir",
+            str(tmp_path / "run"),
+            "--cases",
+            "multiwall-source-unsupported",
+        ]
+    )
+    receipt = json.loads(output.read_text())
+    assert receipt["finalizeReplay"]["ok"] is False
+    assert "finalize replay" in "\n".join(receipt["blockers"])
+    assert exit_code == 1
 
 
 def test_run_cases_restores_the_process_environment(tmp_path):

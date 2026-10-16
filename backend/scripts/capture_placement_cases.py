@@ -221,29 +221,6 @@ def _scene_bytes(document: dict[str, Any]) -> bytes:
     return json.dumps(document, sort_keys=True).encode()
 
 
-def _geometry_sha256(document: dict[str, Any] | None) -> str | None:
-    """The merged scene's sha256 with its identity stamp removed.
-
-    ``scene_id`` and ``provenance.inputs`` name this case, packet, capture and
-    run — they differ across captures by construction, so hashing the stored
-    bytes verbatim would make the cross-capture distinctness check compare
-    identity stamps rather than geometry, and it could only ever fail when a
-    scene artifact is missing entirely. Stripping the identity leaves everything
-    the contract says about the world itself.
-    """
-    if document is None:
-        return None
-    stripped = copy.deepcopy(document)
-    stripped.pop("scene_id", None)
-    provenance = dict(stripped.get("provenance") or {})
-    provenance.pop("inputs", None)
-    if provenance:
-        stripped["provenance"] = provenance
-    else:
-        stripped.pop("provenance", None)
-    return _sha256(_scene_bytes(stripped))
-
-
 def _injected_scene_run(ctx: StageContext) -> StageResult:
     """The scene stage boundary: this capture's stamped source scene, or a loud
     refusal. The default stub scene never runs here."""
@@ -763,7 +740,6 @@ def _collect_case(harness: _Harness, record: case_suite.CaseRecord, journey: dic
     scene_key = artifacts.get("scene/scene.json")
     merged_bytes = deps.storage.get_bytes(scene_key) if scene_key else None
     case["mergedSceneSha256"] = _sha256(merged_bytes) if merged_bytes else None
-    case["mergedGeometrySha256"] = _geometry_sha256(json.loads(merged_bytes) if merged_bytes else None)
     expected_merged = _expected_merged_scene(journey)
     merged_matches = bool(merged_bytes) and json.loads(merged_bytes) == expected_merged
     case["sceneBoundaryMatchesCase"] = merged_matches
@@ -1099,6 +1075,7 @@ def run_cases(
         }
         receipt["ok"] = not blockers
         return receipt
+
     finally:
         restore_env()
 

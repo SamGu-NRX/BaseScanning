@@ -148,6 +148,54 @@ def dispatch_early(capture_id: str, files: list[CommittedFile]) -> None:
     dispatch(current(), capture_id, files)
 
 
+def _recompose_after_correction(capture_id: str, run: RunRecord) -> None:
+    """Re-run criteria and result on the finished run so the served result reflects a late correction.
+
+    A confirmation accepted after reads reached the result cannot retroactively
+    enter the composed payload. ``start_run`` cannot stage a fresh run here — it
+    derives the run id from the packet digest, so the same packet joins the
+    existing run instead of creating one. Instead the finished run's criteria and
+    result stages go back to pending, the run re-enters the normal coordinator
+    lifecycle, and the re-executed stages overwrite the same artifact keys: the
+    recomposed payload is what ``GET /result`` serves next. The acceptance event
+    and the recomposition's ``verdict_ready`` land on ``GET /events``. A replayed
+    confirmation still short-circuits upstream, so one correction recomposes once.
+
+    A live run is left alone — its result stage has not consumed the corrected
+    reads yet, so it recomposes by simply running.
+    """
+
+    services = current()
+    if run.status != "done":
+        return
+    now = services.clock.iso()
+    for stage in ("criteria", "result"):
+        rec = services.state.get_stage(run.run_id, stage)  # type: ignore[attr-defined]
+        services.state.upsert_stage(  # type: ignore[attr-defined]
+            StageRecord(
+                run_id=run.run_id,
+                stage=stage,
+                status="pending",
+                attempt=(rec.attempt if rec is not None else 0) + 1,
+                heartbeat=now,
+            )
+        )
+    run.status = "running"
+    # The run's deadline measured its first pass, so a correction accepted after
+    # it would hard-stop on the next tick. The re-run gets the same HARD_STOP_MIN
+    # budget start_run gives a new run, counted from the correction.
+    run.deadline_at = deadline_from(services.clock, services.settings.HARD_STOP_MIN)
+    services.state.put_run(run)  # type: ignore[attr-defined]
+    raw = dict(get_json(services.state, f"run_control:{run.run_id}") or {})  # type: ignore[attr-defined]
+    raw["merge_done"] = False
+    put_json(services.state, f"run_control:{run.run_id}", raw)  # type: ignore[attr-defined]
+    try:
+        RunCoordinator(services).drive(run.run_id)
+    except CoordinatorDied:
+        pass
+    log_event("confirmation.recompose", capture_id=capture_id, run_id=run.run_id)
+
+
 def on_confirmation(
     capture_id: str,
     confirmation: ConfirmationRequest,
@@ -183,6 +231,13 @@ def on_confirmation(
     )
     # Persist the corrected record so later results read the answer.
     services.storage.put_bytes(key, updated.model_dump_json().encode(), "application/json")  # type: ignore[attr-defined]
+    # A correction accepted after the result was composed must reach the served
+    # payload, not only the stored reads. The route replays short-circuit above
+    # this hook, so one accepted correction recomposes once.
+    runs = services.state.runs_for_capture(capture_id)  # type: ignore[attr-defined]
+    if runs:
+        newest = max(runs, key=lambda item: item.created_at)
+        _recompose_after_correction(capture_id, newest)
 
 
 def _latest_reads_key(services: object, capture_id: str) -> str | None:
