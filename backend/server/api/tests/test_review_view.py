@@ -645,7 +645,11 @@ def test_no_link_secret_keeps_the_stored_urls_and_says_so(tmp_path):
     app = create_app(settings=settings)
     test = TestClient(app)
     test.app_state = app.state.deps
-    made = test.post("/v1/captures", json=create_body("packet-review-0016"), headers={"Idempotency-Key": "packet-review-0016", "Authorization": f"Bearer {REVIEWER}"})
+    made = test.post(
+        "/v1/captures",
+        json=create_body("packet-review-0016"),
+        headers={"Idempotency-Key": "packet-review-0016", "Authorization": f"Bearer {REVIEWER}"},
+    )
     assert made.status_code == 201, made.text
     capture_id = made.json()["captureId"]
     _seed(
@@ -670,8 +674,12 @@ def test_no_link_secret_keeps_the_stored_urls_and_says_so(tmp_path):
     # and the page says why the 3D preview will not load here
     assert "preview unavailable: no link secret configured" in body
     assert 'id="review-no-secret"' in body
-    # the no-bearer sweep: nothing same-origin and gated is left to fetch
-    assert _page_subresources(body, capture_id) == []
+    # the no-bearer sweep: the only same-origin fetch left is the page's own
+    # original relative preview fetch, which refuses a browser (401) — the
+    # exact failure the note above discloses. No other gated reference remains.
+    remaining = _page_subresources(body, capture_id)
+    assert remaining == [f"/v1/captures/{capture_id}/preview.ply"]
+    assert TestClient(app).get(remaining[0]).status_code == 401
     # the run-status section still explains the bearer-gated links
     assert "UPLOAD_URL_HMAC_SECRET is not configured" in body
 
@@ -702,21 +710,29 @@ def _amendment(
         run_id=first_id,
         created_at="2026-09-26T00:00:00.000Z",
     )
-    client.app_state.storage.put_bytes(f"captures/{capture_id}/runs/{first_id}/stills/kf_01.jpg", first_still, "image/jpeg")
-    _seed(
-        client,
-        capture_id,
-        _render_review_html(capture_id, signed_photo=None, signed_link=None),
-        scene={"keyframes": [{"id": "kf_1", "image": "stills/kf_01.jpg"}]},
-        preview=second_ply,
-        run_id=second_id,
-        created_at="2026-09-26T01:00:00.000Z",
-    )
-    client.app_state.storage.put_bytes(f"captures/{capture_id}/runs/{second_id}/stills/kf_01.jpg", second_still, "image/jpeg")
-    # a verdict only the amendment produced, under the same name run 1 would use
     client.app_state.storage.put_bytes(
-        f"captures/{capture_id}/runs/{second_id}/verdicts/verdict.C.json", b'{"run": "two"}', "application/json"
+        f"captures/{capture_id}/runs/{first_id}/stills/kf_01.jpg", first_still, "image/jpeg"
     )
+
+    def publish_second_run() -> None:
+        _seed(
+            client,
+            capture_id,
+            _render_review_html(capture_id, signed_photo=None, signed_link=None),
+            scene={"keyframes": [{"id": "kf_1", "image": "stills/kf_01.jpg"}]},
+            preview=second_ply,
+            run_id=second_id,
+            created_at="2026-09-26T01:00:00.000Z",
+        )
+        client.app_state.storage.put_bytes(
+            f"captures/{capture_id}/runs/{second_id}/stills/kf_01.jpg", second_still, "image/jpeg"
+        )
+        # a verdict only the amendment produced, under the same name run 1 would use
+        client.app_state.storage.put_bytes(
+            f"captures/{capture_id}/runs/{second_id}/verdicts/verdict.C.json", b'{"run": "two"}', "application/json"
+        )
+
+    return publish_second_run
 
 
 def test_amended_run_links_serve_their_own_run(client: TestClient):
@@ -732,7 +748,7 @@ def test_amended_run_links_serve_their_own_run(client: TestClient):
     capture_id = _create(client, "packet-review-0017")
     first_id, second_id = f"{RUN_ID}_amend1", f"{RUN_ID}_amend2"
     first_still, second_still = b"\xff\xd8run-one-jpeg", b"\xff\xd8run-two-jpeg"
-    _amendment(
+    publish_second_run = _amendment(
         client,
         capture_id,
         first_id=first_id,
@@ -742,13 +758,15 @@ def test_amended_run_links_serve_their_own_run(client: TestClient):
         first_ply=b"ply-one",
         second_ply=b"ply-two",
     )
+    # the reviewer opens the page while run 1 is the capture's latest
     served = client.get(f"/v1/captures/{capture_id}/review", headers=REVIEWER_HEADERS)
     assert served.status_code == 200
     photo_link = _photo_link(served.text)
     preview_fetch = re.search(r'fetch\("preview\.ply\?rtok=([^"]+)"\)', served.text)
     assert preview_fetch, "the page's viewer fetch carries no signed review token"
-    # the page was served while run 1 was the latest, so its tokens name run 1
     assert _token_payload(photo_link)["run"] == first_id
+    # then the amendment starts a second run under the same capture
+    publish_second_run()
     bare = TestClient(client.app)
     photo = bare.get(photo_link)
     assert photo.status_code == 200

@@ -69,6 +69,21 @@ _THREE_DEGRADED_NOTE = (
     "backend/server/api/assets/three.module.js into the image to restore the viewer."
     "</section>"
 )
+# The no-link-secret note (Codex finding on PR #284, routes/result.py:375): a
+# deployment without UPLOAD_URL_HMAC_SECRET cannot mint review tokens, so the
+# page keeps its stored URLs and says explicitly that the 3D preview — and every
+# same-origin route a browser would have to hit without a bearer header — will
+# not load, instead of silently rewriting onto dead URLs.
+_NO_SECRET_NOTE = (
+    '<section id="review-no-secret" role="alert" '
+    'style="border:2px solid #b00;padding:8px;margin:8px 0">'
+    "<strong>3D preview unavailable: no link secret configured.</strong> This "
+    "deployment has no UPLOAD_URL_HMAC_SECRET, so the page could not mint signed "
+    "review links for the browser and kept its stored photo, file and preview "
+    "URLs. The 3D preview and same-origin downloads need the reviewer's bearer "
+    "header, which a browser request cannot send."
+    "</section>"
+)
 
 
 def _latest(deps, capture_id: str):
@@ -76,6 +91,26 @@ def _latest(deps, capture_id: str):
     if not runs:
         return None
     return max(runs, key=lambda item: item.created_at)
+
+
+def _token_run(deps, capture_id: str, payload: dict):
+    """The run the token was minted for — never a later run on the capture.
+
+    An amendment starts a second run under the same capture, and a page served
+    before it carries links minted for the earlier run. Those links must keep
+    serving that run's bytes (Greptile security finding on PR #284,
+    routes/result.py:480), so the signed ``run`` claim decides, not
+    ``_latest``. A token naming a run that is gone, or that belongs to another
+    capture, resolves to None and the route refuses.
+    """
+
+    run_id = str(payload.get("run") or "")
+    if not run_id:
+        return None
+    run = deps.state.get_run(run_id)
+    if run is None or getattr(run, "capture_id", None) != capture_id:
+        return None
+    return run
 
 
 def _strip_hidden(value):
@@ -367,6 +402,20 @@ def _serve_review_html(deps, capture_id: str, run, raw: bytes, holder: str = "")
 
     page = raw.decode("utf-8", errors="replace")
     try:
+        section = _runtime_section(deps, capture_id, run)
+        if _token_secret(deps.settings) is None:
+            # The Codex finding: with no HMAC secret no review token can be
+            # minted, so a rewritten link would demand a bearer header a browser
+            # cannot send. Keep the stored page's original URLs — its signed
+            # links still work while they live — and say explicitly that the
+            # 3D preview will not load here.
+            page = (
+                page.replace("</body>", _NO_SECRET_NOTE + section + "</body>", 1)
+                if "</body>" in page
+                else page + _NO_SECRET_NOTE + section
+            )
+            log_event("review.served_unsigned", capture_id=capture_id, level="info")
+            return HTMLResponse(page)
         files = _review_files(deps, capture_id, run)
         mint = _mint_suffix_factory(deps, capture_id, run, holder)
         page, three_degraded = _rewrite_three_import(page, mint(None))
@@ -374,16 +423,15 @@ def _serve_review_html(deps, capture_id: str, run, raw: bytes, holder: str = "")
         page = _rewrite_raw_files(page, capture_id, files, mint)
         suffix = mint("result/preview.ply")
         page = _PREVIEW_FETCH.sub(f'fetch("preview.ply{suffix}")', page, count=1)
-        section = _runtime_section(deps, capture_id, run)
         if three_degraded:
             section = _THREE_DEGRADED_NOTE + section
-        if "</body>" in page:
-            page = page.replace("</body>", section + "</body>", 1)
-        else:
-            page = page + section
     except Exception:
         log_event("review.rewrite_failed", capture_id=capture_id, level="warning")
         return HTMLResponse(raw)
+    if "</body>" in page:
+        page = page.replace("</body>", section + "</body>", 1)
+    else:
+        page = page + section
     return HTMLResponse(page)
 
 
@@ -469,8 +517,13 @@ def register(app: FastAPI) -> None:
         (Greptile finding on PR #284, routes/result.py:125), so the page's links
         carry a short-lived signed review token: HMAC'd with the deployment's
         upload-token secret, bound to this capture and file name, expired after
-        HSS_INGEST_RESULT_URL_TTL_S. The bearer path is unchanged: an anonymous
-        request 401s and a device token still 403s.
+        HSS_INGEST_RESULT_URL_TTL_S. The token also names its run, and that run —
+        not the capture's latest — is where the file resolves, so a link minted
+        for an earlier run keeps serving that run's bytes after an amendment
+        starts a second run (Greptile security finding on PR #284,
+        routes/result.py:480). The bearer path is unchanged: an anonymous
+        request 401s, a device token still 403s, and a reviewer's own fetch
+        follows the latest run.
         """
 
         deps = get_deps(request)
@@ -478,13 +531,14 @@ def register(app: FastAPI) -> None:
         if payload is not None:
             deps.charge(str(payload.get("for") or "review-token"), "get", 120)
             _capture_or_fail(deps, capture_id)
+            run = _token_run(deps, capture_id, payload)
         else:
             principal = require_principal(request)
             deps.charge(principal.label, "get", 120)
             if deps.settings.HSS_AUTH_MODE != "none" and not principal.reviewer:
                 raise fail(403, "forbidden", "/", "review is for reviewers")
             load_owned(deps, capture_id, principal)
-        run = _latest(deps, capture_id)
+            run = _latest(deps, capture_id)
         safe = name.strip("/")
         if not run or not safe or ".." in safe or "\\" in safe:
             raise fail(404, "result_not_ready", "/", "file is not ready")
@@ -525,7 +579,11 @@ def register(app: FastAPI) -> None:
         """Serve the run's result/preview.ply so the review page's relative fetch works.
 
         The page's viewer fetch is a plain browser request with no bearer header,
-        so it carries the same signed review token as the page's other links.
+        so it carries the same signed review token as the page's other links, and
+        the artifact resolves from the token's run — an earlier page's preview
+        keeps serving that page's run after an amendment (Greptile security
+        finding on PR #284, routes/result.py:480). A reviewer's own bearer fetch
+        follows the latest run.
         """
         deps = get_deps(request)
         payload = _review_token(
@@ -534,13 +592,14 @@ def register(app: FastAPI) -> None:
         if payload is not None:
             deps.charge(str(payload.get("for") or "review-token"), "get", 120)
             _capture_or_fail(deps, capture_id)
+            run = _token_run(deps, capture_id, payload)
         else:
             principal = require_principal(request)
             deps.charge(principal.label, "get", 120)
             if deps.settings.HSS_AUTH_MODE != "none" and not principal.reviewer:
                 raise fail(403, "forbidden", "/", "review is for reviewers")
             load_owned(deps, capture_id, principal)
-        run = _latest(deps, capture_id)
+            run = _latest(deps, capture_id)
         key = _artifacts(deps, run).get("result/preview.ply") if run else None
         if not key:
             raise fail(404, "result_not_ready", "/", "preview is not ready")
