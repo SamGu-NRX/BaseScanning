@@ -121,7 +121,11 @@ def resolve_storage(settings: Settings) -> Storage:
         return LocalFsStorage(root)
     if settings.STORAGE_BACKEND == "volume":
         if not settings.VOLUME_ROOT or not settings.CAPTURE_API_PUBLIC_URL or not settings.UPLOAD_URL_HMAC_SECRET:
-            raise RuntimeError("volume storage needs VOLUME_ROOT, CAPTURE_API_PUBLIC_URL, and UPLOAD_URL_HMAC_SECRET")
+            raise RuntimeError(
+                "volume storage needs VOLUME_ROOT, CAPTURE_API_PUBLIC_URL, and UPLOAD_URL_HMAC_SECRET; "
+                "UPLOAD_URL_HMAC_SECRET signs the upload tokens, and a missing key lets anyone who "
+                "knows a storage key forge one."
+            )
         from server.common.backends.storage_volume import VolumeStorage
 
         return VolumeStorage(

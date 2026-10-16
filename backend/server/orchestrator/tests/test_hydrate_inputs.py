@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import shutil
 import threading
 import time
 from pathlib import Path
 
 from server.contracts.jobs import FileRecord, RunRecord, StageRecord
-from server.orchestrator.artifacts import hydrate_artifacts, hydrate_packet, packet_cache_dir
+from server.orchestrator.artifacts import (
+    hydrate_artifacts,
+    hydrate_packet,
+    packet_cache_dir,
+    purge_packet_cache,
+)
 from server.orchestrator.graph import STAGE_NAMES, select_stage_artifacts, stage_needs_packet_files
 from server.orchestrator.services import bind
 from server.orchestrator.tests.conftest import build_services
@@ -159,6 +165,127 @@ def test_packet_cache_is_keyed_by_capture_and_sha(tmp_path: Path, monkeypatch) -
     (base / ".complete").write_text("ok")
     amended.mkdir(parents=True)
     assert not (amended / "packet.json").exists()
+
+
+def test_purge_packet_cache_removes_the_whole_capture_slot(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HSS_PACKET_CACHE", str(tmp_path / "cache"))
+    base = packet_cache_dir("cap_test", "a" * 64)
+    assert base is not None
+    (base / "photos").mkdir(parents=True)
+    (base / "packet.json").write_bytes(b"{}")
+    (base / ".complete").write_bytes(b"ok")
+    (base / "photos" / "k0.jpg").write_bytes(b"jpeg")
+    other = packet_cache_dir("cap_other")
+    assert other is not None
+    other.mkdir(parents=True)
+    (other / "keep.txt").write_bytes(b"keep")
+
+    removed, failed = purge_packet_cache("cap_test")
+
+    assert (removed, failed) == (3, [])
+    assert not (tmp_path / "cache" / "cap_test").exists()
+    assert (other / "keep.txt").is_file()
+
+
+def test_purge_packet_cache_reports_paths_it_could_not_remove(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HSS_PACKET_CACHE", str(tmp_path / "cache"))
+    base = packet_cache_dir("cap_test")
+    assert base is not None
+    base.mkdir(parents=True)
+    (base / "packet.json").write_bytes(b"{}")
+
+    def broken_rmtree(path, *args, **kwargs):
+        raise OSError("volume busy")
+
+    monkeypatch.setattr(shutil, "rmtree", broken_rmtree)
+    removed, failed = purge_packet_cache("cap_test")
+    assert removed == 0
+    assert failed == [str(base / "packet.json")]
+
+
+def test_hydrate_skips_a_tombstoned_capture(tmp_path: Path) -> None:
+    """A worker mid-run must not restore the cache DELETE just purged."""
+
+    cache = tmp_path / "cache" / "cap_test"
+    cache.mkdir(parents=True)
+    (cache / "packet.json").write_bytes(b"{}")
+    (cache / ".complete").write_bytes(b"ok")
+
+    class _TombstonedState:
+        def __init__(self) -> None:
+            self.asked: list[str] = []
+
+        def get_kv(self, key: str):
+            self.asked.append(key)
+            return {"deleted_at": "2026-10-15T00:00:00Z"}
+
+    state = _TombstonedState()
+    dest = tmp_path / "packet"
+    hydrate_packet(object(), state, "cap_test", dest, include_files=True, cache_dir=cache)
+    assert not dest.exists()
+    assert state.asked == ["tomb:cap_test"]
+
+
+def test_delete_mid_hydrate_does_not_republish_the_cache(tmp_path: Path, monkeypatch) -> None:
+    """Codex P1 on PR #250 (artifacts.py publish step): a hydrate that passed
+    the entry tombstone check while DELETE was still running used to publish
+    the cache slot back after DELETE purged it. Here DELETE lands mid-download
+    -- purge, then tombstone -- so the finishing hydrate must leave the cache
+    gone."""
+
+    monkeypatch.setenv("HSS_PACKET_CACHE", str(tmp_path / "cache"))
+    services, _uri, _digest = build_services(tmp_path, "memory")
+    services.storage.put_bytes("captures/cap_test/keyframes/k0.jpg", b"jpeg", "image/jpeg")
+    services.state.upsert_file(
+        FileRecord(
+            capture_id="cap_test",
+            path="keyframes/k0.jpg",
+            role="keyframe",
+            bytes=4,
+            sha256="cd" * 32,
+            md5="0" * 32,
+            content_type="image/jpeg",
+            state="committed",
+            key="captures/cap_test/keyframes/k0.jpg",
+        )
+    )
+
+    class _DeleteMidDownload:
+        """DELETE purges the cache and tombstones the capture while the hydrate
+        is downloading its files."""
+
+        def __init__(self, storage, state) -> None:
+            self._storage = storage
+            self._state = state
+
+        def get_bytes(self, key: str) -> bytes:
+            data = self._storage.get_bytes(key)
+            if key == "captures/cap_test/packet.json":
+                purge_packet_cache("cap_test")
+                self._state.put_kv("tomb:cap_test", {"deleted_at": "2026-10-16T00:00:00Z"})
+            return data
+
+        def exists(self, key: str) -> bool:
+            return self._storage.exists(key)
+
+        def list_prefix(self, prefix: str) -> list[str]:
+            return self._storage.list_prefix(prefix)
+
+    cache = packet_cache_dir("cap_test")
+    assert cache is not None
+    dest = tmp_path / "packet"
+    hydrate_packet(
+        _DeleteMidDownload(services.storage, services.state),
+        services.state,
+        "cap_test",
+        dest,
+        include_files=True,
+        cache_dir=cache,
+    )
+
+    # The run's own working copy is fine; the shared cache must stay gone.
+    assert (dest / "keyframes" / "k0.jpg").is_file()
+    assert not cache.exists()
 
 
 def test_artifact_downloads_overlap(tmp_path: Path) -> None:
