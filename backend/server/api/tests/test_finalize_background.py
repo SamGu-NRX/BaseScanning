@@ -118,8 +118,10 @@ def test_escaped_failure_publishes_before_releasing_the_worker_slot(client, monk
 
     # The failure published while this worker still held the slot: a retry that
     # starts after the slot frees sees the failure already published (or the
-    # run_started flag of a healed retry) — never both.
-    assert publication_slot_state == [True]
+    # run_started flag of a healed retry) — never both. Storage-offline failures
+    # are retryable, so the merged finalize republishes per exhausted attempt;
+    # the pinned invariant is that every publication happens under the slot.
+    assert publication_slot_state and all(publication_slot_state)
     assert deps.state.get_capture(capture_id).status == "uploading"
 
     # And the healed retry still lands one healthy run.
