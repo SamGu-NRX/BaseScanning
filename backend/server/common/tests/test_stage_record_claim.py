@@ -70,3 +70,25 @@ def test_modal_claim_many_threads_one_winner() -> None:
     assert len(set(results)) == 1, f"every claimant must read back the same winner: {results}"
     stored = state.get_stage("run", "poses")
     assert stored.worker_call_id == results[0] and stored.attempt == 1
+
+
+def test_modal_claims_leave_no_per_run_state_in_the_module() -> None:
+    """A long-lived worker claims records for many runs. Module-level lock state
+    must stay bounded: a lock kept per (run, stage) key grows without limit."""
+    from server.common.backends import state_modal_dict
+
+    state = ModalDictState()
+    state.create_stage_if_absent(_rec("warm", "poses"))
+
+    def sizes() -> dict[str, int]:
+        return {
+            name: len(value)
+            for name, value in vars(state_modal_dict).items()
+            if isinstance(value, dict) and not name.startswith("__")
+        }
+
+    before = sizes()
+    for index in range(200):
+        state.create_stage_if_absent(_rec(f"run-{index}", "poses"))
+
+    assert sizes() == before
