@@ -200,6 +200,8 @@ The zip the iOS team installs: schemas, example packets, packetgen, prompts.
 | `make test` (capture-chain run, tree without the fix) | see below | 1 SSR-hygiene failure + eval-gate failures from the expired known-failure window; identical on the base branch, none touch this change |
 | `make gates-offline` (both runs) | pass 134, fail 1, warn 1, skip 28 | the expired window above; exit 1 |
 | `tests server/api/tests` (capture-chain run) | 203 passed, 1 failed | the SSR-hygiene pre-existing failure — superseded by this PR's fix, see "Fixed in this PR" |
+| `make hygiene` (merged tree and pure `alpha`) | FAIL | deny-list hit on `server/orchestrator/tests/data/packets/synthetic-meter.tar`; byte-identical failure on pure `alpha` (pre-existing since `f0df5cd9`), not introduced by this merge |
+| `tests/test_capture_cold_restart.py` (merged tree and pure `alpha`) | 14 errors at setup | `scripts/capture_cold_restart.py` imports `load_receipt` from `scripts.replay_capture`, which alpha's copy does not define; identical on pure `alpha`, not introduced by this merge |
 | `make criteria-golden` | not executable | laser/occluder fixtures cannot be fetched |
 | iOS suites | not run | no Swift toolchain |
 | `make lint` | pass | — |
