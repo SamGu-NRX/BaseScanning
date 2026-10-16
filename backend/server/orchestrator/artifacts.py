@@ -247,7 +247,14 @@ def hydrate_packet(
     if not include_files:
         return
     _download_all(storage, _packet_file_jobs(state, capture_id, packet_dir, manifest_key))
-    if cache_dir is not None and (packet_dir / "packet.json").is_file():
+    # A delete that lands mid-hydrate must be the last word: the entry check
+    # above ran before the tombstone existed, so re-check immediately before
+    # publishing, or this hydrate restores the cache the delete just purged.
+    if (
+        cache_dir is not None
+        and (packet_dir / "packet.json").is_file()
+        and not _capture_tombstoned(state, capture_id)
+    ):
         _publish_packet_cache(packet_dir, cache_dir)
 
 

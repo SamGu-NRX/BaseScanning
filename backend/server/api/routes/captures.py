@@ -215,6 +215,13 @@ def register(app: FastAPI) -> None:
             except Exception as exc:
                 log_event("storage.error", op="delete_prefix", capture_id=capture_id, level="error")
                 raise fail(503, "storage_unavailable", "/", "storage delete failed", **{"Retry-After": "5"}) from exc
+            packet_id = record.packet_id
+            deps.state.delete_capture(capture_id)
+            deps.state.put_kv(f"tomb:{capture_id}", {"deleted_at": isoformat(deps.now()), "packet_id": packet_id})
+            # Tombstone before purging the cache: a hydrate that passed the
+            # entry tombstone check while this delete was running can only be
+            # stopped from republishing once the tombstone is visible, so every
+            # publish it attempts after that must land inside this purge.
             # Object storage is clean, but workers publish packet copies to the
             # shared volume too. Purge them; report what could not be removed
             # instead of claiming a clean deletion.
@@ -230,9 +237,6 @@ def register(app: FastAPI) -> None:
                         + ", ".join(cache_failed[:20])
                     ),
                 )
-            packet_id = record.packet_id
-            deps.state.delete_capture(capture_id)
-            deps.state.put_kv(f"tomb:{capture_id}", {"deleted_at": isoformat(deps.now()), "packet_id": packet_id})
             idem = deps.state.get_kv(f"idem:create:{packet_id}")
             if idem:
                 idem["tomb"] = True

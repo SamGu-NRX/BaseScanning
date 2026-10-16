@@ -14,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from server.api.app import create_app
+from server.api.routes import captures as captures_routes
 from server.api.tests.test_ingest import _create
 from server.common.backends.storage_volume import mint_token
 from server.common.config import Settings
@@ -107,6 +108,28 @@ def test_delete_purges_the_shared_packet_cache(client, monkeypatch, tmp_path) ->
 
     assert client.delete(f"/v1/captures/{capture_id}").status_code == 204
     assert not (cache_root / capture_id).exists()
+
+
+def test_delete_tombstones_before_purging_the_cache(client, monkeypatch) -> None:
+    """The delete half of the publish race (Codex P1 on PR #250): a hydrate
+    that checked the tombstone before DELETE wrote it can only be stopped from
+    republishing once the tombstone is visible, so every publish it attempts
+    afterwards must land inside the cache purge. Under the old order -- purge
+    first, tombstone second -- a publish that raced the purge survived the
+    delete. Recording the tombstone at purge time pins the order."""
+
+    capture_id = _create(client, "tomb-before-purge")
+    seen: dict = {}
+    real_purge = captures_routes.purge_packet_cache
+
+    def purge_and_note(cid: str):
+        seen["tomb_at_purge"] = client.app_state.state.get_kv(f"tomb:{cid}")
+        return real_purge(cid)
+
+    monkeypatch.setattr("server.api.routes.captures.purge_packet_cache", purge_and_note)
+
+    assert client.delete(f"/v1/captures/{capture_id}").status_code == 204
+    assert seen["tomb_at_purge"], "the tombstone must already be visible when the cache purge runs"
 
 
 def test_delete_reports_a_failed_packet_cache_purge(client, monkeypatch) -> None:
