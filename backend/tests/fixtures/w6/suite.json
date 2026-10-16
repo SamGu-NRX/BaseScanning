@@ -1,0 +1,335 @@
+{
+  "format": "hss-eval-suite/v0",
+  "stamp": "20261015T172144Z",
+  "git_sha": "9b177de649beae1e02e44491cb7b7800cc8d77a0",
+  "config": "server/eval/gates.yaml",
+  "inputs": "data/fixtures",
+  "sites": [
+    "eth3d-facade",
+    "eth3d-electro",
+    "eth3d-delivery"
+  ],
+  "engine": {
+    "ground_rule": "footprint3in",
+    "c2": true,
+    "c3": false,
+    "profiles": [
+      "A",
+      "B",
+      "C",
+      "S",
+      "public"
+    ]
+  },
+  "rows": [
+    {
+      "id": "fixtures/eth3d-facade",
+      "group": "fixtures",
+      "target": "eth3d-facade/gt-laser",
+      "metric": "scene_v0",
+      "value": {
+        "labels_present": 4
+      },
+      "threshold": "schema-valid",
+      "status": "PASS",
+      "evidence_path": "data/fixtures/scenes/eth3d-facade/gt-laser/scene.json",
+      "note": "4/5 profiles have committed labels"
+    },
+    {
+      "id": "fixtures/eth3d-electro",
+      "group": "fixtures",
+      "target": "eth3d-electro/gt-laser",
+      "metric": "scene_v0",
+      "value": {
+        "labels_present": 4
+      },
+      "threshold": "schema-valid",
+      "status": "PASS",
+      "evidence_path": "data/fixtures/scenes/eth3d-electro/gt-laser/scene.json",
+      "note": "4/5 profiles have committed labels"
+    },
+    {
+      "id": "fixtures/eth3d-delivery",
+      "group": "fixtures",
+      "target": "eth3d-delivery/gt-laser",
+      "metric": "scene_v0",
+      "value": {
+        "labels_present": 4
+      },
+      "threshold": "schema-valid",
+      "status": "PASS",
+      "evidence_path": "data/fixtures/scenes/eth3d-delivery/gt-laser/scene.json",
+      "note": "4/5 profiles have committed labels"
+    },
+    {
+      "id": "pipeline/eth3d-facade",
+      "group": "pipeline",
+      "target": "eth3d-facade/gt-laser",
+      "metric": "criteria_engine",
+      "value": null,
+      "threshold": "verdicts for A, B, C, S, public",
+      "status": "FAIL",
+      "evidence_path": "runs/suite/latest/work/eth3d-facade/criteria",
+      "note": "criteria engine failed: CriteriaInputError: occluders_missing (laser PLY absent; run make gt)"
+    },
+    {
+      "id": "pipeline/eth3d-electro",
+      "group": "pipeline",
+      "target": "eth3d-electro/gt-laser",
+      "metric": "criteria_engine",
+      "value": null,
+      "threshold": "verdicts for A, B, C, S, public",
+      "status": "FAIL",
+      "evidence_path": "runs/suite/latest/work/eth3d-electro/criteria",
+      "note": "criteria engine failed: CriteriaInputError: occluders_missing (laser PLY absent; run make gt)"
+    },
+    {
+      "id": "pipeline/eth3d-delivery",
+      "group": "pipeline",
+      "target": "eth3d-delivery/gt-laser",
+      "metric": "criteria_engine",
+      "value": null,
+      "threshold": "verdicts for A, B, C, S, public",
+      "status": "FAIL",
+      "evidence_path": "runs/suite/latest/work/eth3d-delivery/criteria",
+      "note": "criteria engine failed: CriteriaInputError: occluders_missing (laser PLY absent; run make gt)"
+    },
+    {
+      "id": "criteria/eth3d-facade/report",
+      "group": "criteria",
+      "target": "eth3d-facade/gt-laser",
+      "metric": "criteria_report",
+      "value": null,
+      "threshold": "reproduces committed evidence",
+      "status": "FAIL",
+      "evidence_path": null,
+      "note": "the pipeline stage produced no criteria report"
+    },
+    {
+      "id": "criteria/eth3d-electro/report",
+      "group": "criteria",
+      "target": "eth3d-electro/gt-laser",
+      "metric": "criteria_report",
+      "value": null,
+      "threshold": "reproduces committed evidence",
+      "status": "FAIL",
+      "evidence_path": null,
+      "note": "the pipeline stage produced no criteria report"
+    },
+    {
+      "id": "criteria/eth3d-delivery/report",
+      "group": "criteria",
+      "target": "eth3d-delivery/gt-laser",
+      "metric": "criteria_report",
+      "value": null,
+      "threshold": "reproduces committed evidence",
+      "status": "FAIL",
+      "evidence_path": null,
+      "note": "the pipeline stage produced no criteria report"
+    },
+    {
+      "id": "criteria/eth3d-facade/verdict_decisions",
+      "group": "criteria",
+      "target": "eth3d-facade/c1-3d",
+      "metric": "site.decision",
+      "value": {},
+      "threshold": "matches committed reference verdicts",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/verdicts/eth3d-facade/c1-3d",
+      "note": "A: missing produced or reference verdict; B: missing produced or reference verdict; C: missing produced or reference verdict; S: missing produced or reference verdict; public: missing produced or reference verdict"
+    },
+    {
+      "id": "verdict/eth3d-facade/A",
+      "group": "verdicts",
+      "target": "eth3d-facade/A",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-facade.A.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-facade/B",
+      "group": "verdicts",
+      "target": "eth3d-facade/B",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-facade.B.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-facade/C",
+      "group": "verdicts",
+      "target": "eth3d-facade/C",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-facade.C.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-facade/S",
+      "group": "verdicts",
+      "target": "eth3d-facade/S",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-facade.S.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-facade/public",
+      "group": "verdicts",
+      "target": "eth3d-facade/public",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": null,
+      "status": "MEASURED",
+      "evidence_path": null,
+      "note": "no committed labels for this profile"
+    },
+    {
+      "id": "verdict/eth3d-electro/A",
+      "group": "verdicts",
+      "target": "eth3d-electro/A",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-electro.A.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-electro/B",
+      "group": "verdicts",
+      "target": "eth3d-electro/B",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-electro.B.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-electro/C",
+      "group": "verdicts",
+      "target": "eth3d-electro/C",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-electro.C.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-electro/S",
+      "group": "verdicts",
+      "target": "eth3d-electro/S",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-electro.S.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-electro/public",
+      "group": "verdicts",
+      "target": "eth3d-electro/public",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": null,
+      "status": "MEASURED",
+      "evidence_path": null,
+      "note": "no committed labels for this profile"
+    },
+    {
+      "id": "verdict/eth3d-delivery/A",
+      "group": "verdicts",
+      "target": "eth3d-delivery/A",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-delivery.A.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-delivery/B",
+      "group": "verdicts",
+      "target": "eth3d-delivery/B",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-delivery.B.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-delivery/C",
+      "group": "verdicts",
+      "target": "eth3d-delivery/C",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-delivery.C.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-delivery/S",
+      "group": "verdicts",
+      "target": "eth3d-delivery/S",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": "scored against committed labels",
+      "status": "FAIL",
+      "evidence_path": "data/fixtures/labels/eth3d-delivery.S.json",
+      "note": "the pipeline stage produced no verdict for this profile"
+    },
+    {
+      "id": "verdict/eth3d-delivery/public",
+      "group": "verdicts",
+      "target": "eth3d-delivery/public",
+      "metric": "verdictscore",
+      "value": null,
+      "threshold": null,
+      "status": "MEASURED",
+      "evidence_path": null,
+      "note": "no committed labels for this profile"
+    },
+    {
+      "id": "geometry/eth3d-facade/colmap-nonlidar",
+      "group": "geometry",
+      "target": "eth3d-facade/colmap-nonlidar",
+      "metric": "geomscore",
+      "value": null,
+      "threshold": "matches committed reference scores",
+      "status": "FAIL",
+      "evidence_path": null,
+      "note": "recon asset missing: MissingOccluderError: laser asset laser.ply is not a readable file under runs/suite/latest/work/eth3d-facade/gt-laser \u2014 the recon PLYs are gitignored Modal-pipeline outputs (uv run modal run scripts/modal_scene.py); restore or produce them before this row can score"
+    },
+    {
+      "id": "geometry/eth3d-facade/colmap-oracle",
+      "group": "geometry",
+      "target": "eth3d-facade/colmap-oracle",
+      "metric": "geomscore",
+      "value": null,
+      "threshold": "matches committed reference scores",
+      "status": "FAIL",
+      "evidence_path": null,
+      "note": "recon asset missing: MissingOccluderError: laser asset laser.ply is not a readable file under runs/suite/latest/work/eth3d-facade/gt-laser \u2014 the recon PLYs are gitignored Modal-pipeline outputs (uv run modal run scripts/modal_scene.py); restore or produce them before this row can score"
+    }
+  ],
+  "summary": {
+    "pass": 3,
+    "fail": 21,
+    "warn": 0,
+    "measured": 3
+  }
+}
