@@ -333,7 +333,7 @@ def test_put_after_the_url_expires_is_410_and_a_wrong_op_token_is_403(server: Se
     capture_id = _create_capture(server, "tcp-expiry-1")
     data = _pattern(32 * 1024, seed=7)
     path = "photos/d.jpg"
-    target = _register(server, capture_id, path, data)
+    _register(server, capture_id, path, data)
     key = upload_key(capture_id, path)
 
     expired = mint_token(
@@ -346,7 +346,9 @@ def test_put_after_the_url_expires_is_410_and_a_wrong_op_token_is_403(server: Se
     assert late.status_code == 410, late.text
     assert late.json()["errors"][0]["code"] == "token_expired"
 
-    get_token = mint_token({"op": "get", "key": key, "md5": "", "ct": "", "exp": int(time.time()) + 300}, SECRET.encode())
+    get_token = mint_token(
+        {"op": "get", "key": key, "md5": "", "ct": "", "exp": int(time.time()) + 300}, SECRET.encode()
+    )
     wrong_op = server.client.put(
         f"/v1/uploads/{get_token}",
         content=data,
@@ -481,7 +483,9 @@ def test_eight_concurrent_puts_with_two_open_event_polls_all_finish(server: Serv
         assert status == 200
         assert elapsed < 15, f"a long-poll took {elapsed:.1f}s, longer than its wait"
 
-    commit_body = {"files": [{"path": path, "sha256": hashlib.sha256(data).hexdigest()} for path, data in files.items()]}
+    commit_body = {
+        "files": [{"path": path, "sha256": hashlib.sha256(data).hexdigest()} for path, data in files.items()]
+    }
     committed = server.client.post(f"/v1/captures/{capture_id}/files:commit", json=commit_body)
     assert committed.status_code == 200, committed.text
     answer = committed.json()
