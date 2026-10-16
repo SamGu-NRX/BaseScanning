@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import os
+import threading
 import time
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
@@ -144,3 +147,145 @@ def test_volume_sweeper_ages_uploads(client, tmp_path):
     _ = urlparse
     _ = StageRecord
     _ = tmp_path
+
+
+def _md5_b64(data: bytes) -> str:
+    return base64.b64encode(hashlib.md5(data).digest()).decode()
+
+
+class _GatedLock:
+    """Lets every acquire through except the first commit's, which it holds.
+
+    The hold happens before the real lock is taken, so the held writer blocks
+    nothing else. Reentrant acquires from the committing thread itself pass
+    through untouched.
+    """
+
+    def __init__(self, real: threading.RLock, gate: _HoldFirstCommitter) -> None:
+        self._real = real
+        self._gate = gate
+        self._owner: int | None = None
+        self._depth = 0
+
+    def acquire(self, *args, **kwargs) -> bool:
+        me = threading.get_ident()
+        if self._depth and self._owner == me:
+            self._depth += 1
+            return self._real.acquire(*args, **kwargs)
+        gate = self._gate
+        if getattr(gate.tl, "committing", None) == gate.key and not gate.held.is_set():
+            gate.held.set()
+            deadline = time.monotonic() + gate.timeout
+            while gate.completed == 0 and time.monotonic() < deadline:
+                time.sleep(0.005)
+        got = self._real.acquire(*args, **kwargs)
+        if got:
+            self._owner = me
+            self._depth += 1
+        return got
+
+    def release(self) -> None:
+        self._depth -= 1
+        if not self._depth:
+            self._owner = None
+        self._real.release()
+
+    def __enter__(self) -> _GatedLock:
+        self.acquire()
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.release()
+
+
+class _HoldFirstCommitter:
+    """Deterministic scheduler for two overlapping commits on one key.
+
+    The first committer is held at the metadata lock until a second commit has
+    fully completed — the interleave an old in-flight upload racing a
+    re-register produces when commits run on more than one thread. Holding the
+    first committer *after* its final-file replace but *before* its metadata
+    write is only possible when the replace sits outside the lock; once the
+    two are serialized, the hold lands before the replace and both writers
+    commit atomically.
+    """
+
+    def __init__(self, key: str, timeout: float = 10.0) -> None:
+        self.key = key
+        self.timeout = timeout
+        self.completed = 0
+        self.held = threading.Event()
+        self.tl = threading.local()
+
+    def install(self, storage) -> None:
+        original = type(storage).commit_tmp
+
+        def commit_tmp(key, tmp, content_type, md5_b64, nbytes, _storage=storage, _original=original):
+            self.tl.committing = key
+            try:
+                _original(_storage, key, tmp, content_type, md5_b64, nbytes)
+            finally:
+                if key == self.key:
+                    self.completed += 1
+                self.tl.committing = None
+
+        storage.commit_tmp = commit_tmp
+        storage._lock = _GatedLock(storage._lock, self)
+
+
+def test_volume_commit_tmp_leaves_bytes_and_metadata_agreeing_under_two_writers(tmp_path):
+    """Two overlapping commits for one key must not mix bytes and metadata.
+
+    The volume path hands every PUT attempt its own temp file, so an old
+    upload still in flight and a re-registered upload can both reach
+    commit_tmp. Whichever commits last must win the bytes AND the metadata
+    together; head() reporting one writer's digest and size while the volume
+    holds the other's bytes makes files:commit mark a valid upload as a
+    mismatch.
+    """
+    storage = VolumeStorage(tmp_path / "vol", "http://testserver", b"secret")
+    key = "uploads/cap/f.jpg"
+    old = b"old upload bytes still in flight"
+    new = b"re-registered replacement bytes!"
+    gate = _HoldFirstCommitter(key)
+    gate.install(storage)
+
+    def commit(data: bytes) -> None:
+        tmp = storage.prepare_tmp(key)
+        tmp.write_bytes(data)
+        storage.commit_tmp(key, tmp, "image/jpeg", _md5_b64(data), len(data))
+
+    first = threading.Thread(target=commit, args=(old,))
+    first.start()
+    assert gate.held.wait(5), "the first committer never reached the metadata lock"
+    second = threading.Thread(target=commit, args=(new,))
+    second.start()
+    first.join(10)
+    second.join(10)
+    assert not first.is_alive() and not second.is_alive(), "a committer deadlocked"
+
+    stored = storage.get_bytes(key)
+    meta = storage.head(key)
+    assert stored in (old, new)
+    assert meta.bytes == len(stored)
+    assert meta.md5_b64 == _md5_b64(stored), "head() reports metadata from another writer than the committed bytes"
+
+
+def test_volume_sweeper_ages_stale_single_attempt_temps(client):
+    """Per-attempt upload temporaries live outside the uploads walk — in
+    .uploads/singles — so the sweeper must visit them there. A process killed
+    between prepare_tmp and commit_tmp otherwise strands the file forever."""
+    root = client.app_state.settings.VOLUME_ROOT
+    singles = os.path.join(root, ".uploads", "singles")
+    os.makedirs(singles, exist_ok=True)
+    stale = os.path.join(singles, "stale-attempt.uploading")
+    live = os.path.join(singles, "live-attempt.uploading")
+    open(stale, "wb").write(b"abandoned attempt")
+    open(live, "wb").write(b"attempt still settling")
+    stale_time = time.time() - 8 * 86400
+    live_time = time.time() - 6 * 86400
+    os.utime(stale, (stale_time, stale_time))
+    os.utime(live, (live_time, live_time))
+    ingest_sweep(client.app_state)
+    assert not os.path.exists(stale), "a stale per-attempt temporary must be swept"
+    assert os.path.exists(live), "a fresh per-attempt temporary must survive"
