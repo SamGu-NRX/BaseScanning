@@ -50,6 +50,16 @@ def test_emit_writes_hashes_without_source_words(tmp_path: Path):
     assert checker.overlapping_shingle_count(source.read_text(), set(body.splitlines())) == 3
 
 
+def test_default_root_resolves_inside_the_moved_package():
+    # The port into the monorepo moved the package under backend/, so the git
+    # toplevel no longer holds data/hygiene/ssr_shingles.sha256; the package
+    # root does. The script must default to the package root, not the toplevel.
+    checker = load_checker()
+    root = checker.repo_root()
+    assert (root / "scripts" / "ssr_overlap_check.py").is_file()
+    assert (root / "data" / "hygiene" / "ssr_shingles.sha256").is_file()
+
+
 def test_repo_has_no_ssr_shingle_overlap():
     result = subprocess.run(
         ["python3", str(SCRIPT)],
