@@ -168,21 +168,19 @@ extension CoverageMap {
         WalkedEnd.farthest(side, walked: walkedPositions, wall: wall)
     }
 
-    /// True when both ends are marked closer together along the chain than
-    /// `WallFrame.minWallLength`: too short a wall to finish the walk with.
+    /// True when both marked ends are coincident or reversed along the wall chain.
     public var endsTooClose: Bool {
         guard let leftEnd, let rightEnd else { return false }
-        return rightEnd - leftEnd < WallFrame.minWallLength
+        return !WallFrame.hasPositiveLength(left: leftEnd, right: rightEnd)
     }
 
-    /// True when an end on `side` at `s` would leave the wall shorter than
-    /// `WallFrame.minWallLength` from the other end, or from the meter while the other side has
-    /// none: the same policy as `endsTooClose`, asked before the end is set (B-12, a past-end
-    /// request's end marked again nearer). The other end is never moved.
+    /// Whether an end would leave zero or reversed wall length, measured from the other end
+    /// or the meter when that side has no end yet. Positive narrow returns remain valid.
     public func endWouldLeaveTooLittle(_ side: WalkSide, at s: Float) -> Bool {
         let other: Float = side == .left ? (rightEnd ?? 0) : (leftEnd ?? 0)
-        let length = side == .left ? other - s : s - other
-        return length < WallFrame.minWallLength
+        return side == .left
+            ? !WallFrame.hasPositiveLength(left: s, right: other)
+            : !WallFrame.hasPositiveLength(left: other, right: s)
     }
 
     /// The unexplored end the camera stands beyond while its view shows nothing between the marked

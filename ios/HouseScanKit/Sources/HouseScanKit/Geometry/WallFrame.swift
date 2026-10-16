@@ -158,13 +158,9 @@ public struct WallFrame: Sendable, Equatable {
     /// A corner must lie at least this far along from the meter or the previous corner. A guess:
     /// 0.15 m (6 in, one coverage cell) is within tap error of there being no piece at all.
     public static let minSegmentLength: Float = 0.15
-    /// The walk can't finish with its ends closer together than this along the chain
-    /// (`CoverageMap.endsTooClose`): 0.79 m (31 in), one Base Core battery's width (docs/04;
-    /// battery.width_ft in the server's rules.yaml). A wall shorter than one battery has no room
-    /// for one, and ends that close came from ending both sides without walking: "Wall ends here"
-    /// or "Can't get there" at the meter put both ends there (review of #24). A sanity bound on
-    /// the scan, not a placement rule; the server decides placement from its own rules.
-    public static let minWallLength: Float = 0.79
+    /// D7 option A: any positive wall length may be sent; placement rules belong to the
+    /// server. Coincident or reversed ends still describe no wall.
+    public static func hasPositiveLength(left: Float, right: Float) -> Bool { right > left }
 
     /// The meter, on the wall face.
     public var meter: SIMD3<Float>

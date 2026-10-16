@@ -12,6 +12,8 @@ final class EngineGuidanceTests: XCTestCase {
         app.terminate()
     }
 
+    @MainActor func testAHalfMeterWallKeepsItsEndsAndEntersUpload() { check("narrowWallUpload") }
+    @MainActor func testAZeroLengthWallCannotFinish() { check("degenerateWallRefused") }
     @MainActor func testAnOldFrameCannotUndoAnInterruption() { check("staleBeforeEnd") }
     @MainActor func testAnOldFrameCannotEndRecoveryAfterTheInterruptionEnds() { check("staleAfterEnd") }
     @MainActor func testAnInterruptionPausesWithoutAnotherGuidanceUpdate() { check("interruptionRecord") }
