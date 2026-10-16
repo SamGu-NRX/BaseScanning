@@ -168,6 +168,20 @@ def _recompose_after_correction(capture_id: str, run: RunRecord) -> None:
     services = current()
     if run.status != "done":
         return
+    present = {rec.stage for rec in services.state.stages(run.run_id)}  # type: ignore[attr-defined]
+    if not present.issuperset(STAGE_NAMES):
+        # A finished run without a record for every stage predates per-stage
+        # records. Reopening it would let the coordinator's missing-record
+        # recovery re-run its upstream stages, and the re-run reads stage would
+        # overwrite the correction just persisted. Keep the run closed instead.
+        log_event(
+            "confirmation.recompose_skipped",
+            level="warning",
+            msg="finished run has no record for every stage",
+            capture_id=capture_id,
+            run_id=run.run_id,
+        )
+        return
     now = services.clock.iso()
     for stage in ("criteria", "result"):
         rec = services.state.get_stage(run.run_id, stage)  # type: ignore[attr-defined]

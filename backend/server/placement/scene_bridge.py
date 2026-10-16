@@ -54,9 +54,11 @@ observed meter anchor and level ground, in the declared meter-anchored frame):
 - `overheads` and `facing` — observed entries on the wall, converted with the lengths.
   `object_id` cross-references have no wire field and are dropped.
 - `coverage` — the chain ends (`limit`/`unexplored` with their notes) and the explicit
-  bands from `coverage.bands` and every `coverage.sensitivity[].bands` entry: band name,
-  `span_ft` and `out_ft` convert with the lengths; `views` and `best_incidence_deg` have
-  no wire field and are dropped. A coverage without bands converts to ends only, which
+  primary bands from `coverage.bands`: band name, `span_ft` and `out_ft` convert with
+  the lengths; `views` and `best_incidence_deg` have no wire field and are dropped.
+  Sensitivity bands (`coverage.sensitivity[].bands`) are validated the same way but are
+  not observations — they are what-if variants, not the ground-truth coverage the
+  device saw. A coverage without bands converts to ends only, which
   the wire parser reads as nothing observed — an absent band stays unobserved.
 
 Refusals — every refusal raises `SceneBridgeError`, a `ValueError` carrying a `code` and
@@ -583,7 +585,7 @@ def _coverage(scene: Scene, wall_id: str, checks: _SpanChecks) -> dict[str, Any]
 
     observed: list[dict[str, Any]] = []
 
-    def band_out(band, pointer: str) -> None:
+    def band_out(band, pointer: str) -> dict[str, Any]:
         if band.wall_id is not None and band.wall_id != wall_id:
             _invalid(f"the band names unknown wall {band.wall_id!r}", f"{pointer}/wall_id")
         record: dict[str, Any] = {
@@ -592,12 +594,16 @@ def _coverage(scene: Scene, wall_id: str, checks: _SpanChecks) -> dict[str, Any]
         }
         if band.out_m is not None:
             record["out_ft"] = _ft(band.out_m)
-        observed.append(record)
+        return record
 
     for index, band in enumerate(scene.coverage.bands or []):
-        band_out(band, f"/coverage/bands/{index}")
+        observed.append(band_out(band, f"/coverage/bands/{index}"))
     for sensitivity_index, sensitivity in enumerate(scene.coverage.sensitivity or []):
         for band_index, band in enumerate(sensitivity.bands):
+            # Sensitivity variants are validated but are not observations: the wire's
+            # observed list is the ground-truth coverage the device saw, and a what-if
+            # sensitivity band is not that. A sensitivity-only scene still converts to
+            # ends only — no observation is invented.
             band_out(band, f"/coverage/sensitivity/{sensitivity_index}/bands/{band_index}")
 
     if observed:

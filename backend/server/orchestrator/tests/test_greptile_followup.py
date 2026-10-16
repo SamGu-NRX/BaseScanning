@@ -142,6 +142,10 @@ def test_confirmation_updates_the_reads_record(tmp_path: Path) -> None:
     assert stored.meter.status == "auto_fill"
     assert stored.confirm is not None
     assert stored.confirm.answer == "12345"
+    # This done run has no stage records, so the correction must not reopen it:
+    # missing-record recovery would re-run reads and overwrite the answer.
+    assert services.state.stages("run_reads") == []
+    assert services.state.get_run("run_reads").status == "done"
 
 
 def test_new_attempt_clears_entered_at(tmp_path: Path) -> None:

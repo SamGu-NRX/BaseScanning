@@ -26,7 +26,8 @@ sys.path.insert(0, str(BACKEND / "scripts"))
 import capture_placement_cases as runner  # noqa: E402
 
 from server.eval.sceneio import validate  # noqa: E402
-from server.orchestrator.stubs._common import write_files  # noqa: E402
+from server.orchestrator.stubs._common import json_bytes, write_files  # noqa: E402
+from server.scene.merge import merge_object_lists  # noqa: E402
 
 MANIFEST = BACKEND / "server" / "placement" / "tests" / "data" / "cases" / "manifest.json"
 
@@ -146,6 +147,7 @@ def _supported_source_a() -> dict:
         ],
         "coverage": {
             "method": "capture-placement-cases-test",
+            "bands": [{"band": "wall", "s_m": [-2.0, 4.0], "out_m": 2.13}],
             "sensitivity": [
                 {
                     "surface": "wall",
@@ -252,6 +254,7 @@ def _supported_source_b() -> dict:
         ],
         "coverage": {
             "method": "capture-placement-cases-test",
+            "bands": [{"band": "wall", "s_m": [-4.0, 2.0], "out_m": 2.5}],
             "sensitivity": [
                 {
                     "surface": "wall",
@@ -528,6 +531,10 @@ def _write_twin_manifest(tmp_path: Path) -> Path:
             "kind": "positive",
             "source": source_ref,
             "wire": wire_ref,
+            # The hardened loader (case-integrity fix) rejects decision-only
+            # positives, so the twins pin source A's full geometric expectations
+            # (the tap hazard does not move them) — the cross-capture refusal must
+            # still come from geometry, not the loader or an expectation mismatch.
             "expectations": _expected_a(),
         },
         {
@@ -587,11 +594,14 @@ def test_every_case_walks_the_real_front_door_with_case_true_boundaries(receipt)
     # The one nonempty objects_3d case: the observed tap hazard, merged exactly once.
     assert _case(receipt, runner.TAP_CASE_ID)["tapHazardMergeCount"] == 1
 
-    # Both positives refused: no merged scenes, so the cross-capture comparison
-    # cannot run and must say so instead of passing vacuously.
+    # Both positives refused: the normalized-geometry hash comes only from a
+    # converted scene, so the cross-capture comparison cannot run and must say so
+    # instead of passing vacuously. The refused positives block the run instead.
     cross = receipt["crossCapture"]
     assert cross["status"] == "not_applicable"
+    assert cross["reason"]
     assert cross["distinctScenes"] is None and cross["distinctNormalizedGeometry"] is None
+    assert not any(blocker.startswith("crossCapture") for blocker in receipt["blockers"])
     assert cross["captureIds"] == [
         _case(receipt, "hazard-right-ground-gap")["captureId"],
         _case(receipt, "hazard-left-ground-gap")["captureId"],
@@ -701,7 +711,18 @@ def test_cli_runs_from_a_temporary_directory_and_exits_nonzero_while_blocked(tmp
     """The one-command entry point: receipt on disk, nonzero exit while the
     committed fixtures stay bridge-incompatible, no secrets in the file."""
     output = tmp_path / "receipt.json"
-    exit_code = runner.main(["--output", str(output), "--workdir", str(tmp_path / "run")])
+    # The committed legacy manifest, passed explicitly since the CLI's default
+    # moved to the supported packet (its refusal state stays pinned here).
+    exit_code = runner.main(
+        [
+            "--manifest",
+            str(runner.case_suite.DEFAULT_MANIFEST),
+            "--output",
+            str(output),
+            "--workdir",
+            str(tmp_path / "run"),
+        ]
+    )
     assert exit_code == 1
     receipt = json.loads(output.read_text())
     assert receipt["schemaVersion"] == runner.RECEIPT_SCHEMA_VERSION
@@ -791,6 +812,8 @@ def test_cli_on_the_committed_manifest_exits_nonzero_in_a_subprocess(tmp_path):
         [
             sys.executable,
             str(BACKEND / "scripts" / "capture_placement_cases.py"),
+            "--manifest",
+            str(runner.case_suite.DEFAULT_MANIFEST),
             "--output",
             str(output),
             "--workdir",
@@ -926,7 +949,10 @@ def test_one_geometry_under_two_identities_fails_cross_capture(tmp_path):
     assert cross["status"] == "evaluated"
     assert cross["distinctScenes"] is True, "identity stamps alone differ"
     assert cross["distinctNormalizedGeometry"] is False, "the geometry is byte-identical"
-    assert any("crossCapture" in blocker for blocker in receipt["blockers"])
+    # Both twins solve to their full expectations, so cross-capture is the only
+    # thing that blocks the run.
+    assert [(case["status"], case["mismatches"]) for case in receipt["cases"]] == [("solved", [])] * 2
+    assert [blocker.split(":")[0] for blocker in receipt["blockers"]] == ["crossCapture"]
     assert receipt["ok"] is False
 
 
@@ -986,3 +1012,52 @@ def test_run_cases_restores_the_process_environment(tmp_path):
     before = dict(os.environ)
     runner.run_cases(MANIFEST, tmp_path / "run", case_ids=["multiwall-source-unsupported"])
     assert dict(os.environ) == before
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [
+        pytest.param(MANIFEST, id="legacy-cases"),
+        pytest.param(runner.DEFAULT_MANIFEST, id="capture-cases-v1"),
+    ],
+)
+def test_the_tap_case_merges_exactly_one_vent_on_every_committed_manifest(manifest):
+    """The source fixture and the runner's injected objects_3d must agree on who
+    supplies the observed tap vent. The merge keeps a tap-sourced source object
+    and appends the incoming one, so a fixture that already carries the vent plus
+    an injected copy merges two vents and the supported positive stops solving.
+    Whichever side supplies it, the merged scene holds exactly the runner's
+    TAP_HAZARD once, so the converted-span check measures the right object."""
+    record = next(record for record in runner.case_suite.load_cases(manifest) if record.id == runner.TAP_CASE_ID)
+    source_objects = json.loads(record.source_path.read_text())["objects"]
+    merged = merge_object_lists({"objects": source_objects}, runner._objects_3d_for(record))
+    vents = [obj for obj in merged["objects"] if obj["id"] == runner.TAP_HAZARD["id"]]
+    assert vents == [runner.TAP_HAZARD]
+
+
+@pytest.mark.parametrize(
+    "objects_value", [pytest.param(None, id="null-objects"), pytest.param("omit", id="missing-objects")]
+)
+def test_a_format_correct_objects_3d_without_an_objects_list_refuses(tmp_path, monkeypatch, objects_value):
+    """Through the actual capture stage: a format-correct objects_3d artifact whose
+    objects list is missing or null is a malformed manifest and must refuse
+    placement with placement_objects_3d_invalid — never decode as an empty,
+    hazard-free scene — and no placement artifact may exist (the refusal is not a
+    fallback success)."""
+    body = {"format": "hss-objects-3d/v0"}
+    if objects_value != "omit":
+        body["objects"] = None
+
+    def malformed_objects_3d(ctx):
+        return write_files(ctx, {"objects/objects_3d.json": json_bytes(body)})
+
+    monkeypatch.setattr(runner, "_injected_objects_3d_run", malformed_objects_3d)
+    receipt = runner.run_cases(_write_supported_manifest(tmp_path), tmp_path / "run", case_ids=[runner.TAP_CASE_ID])
+    case = receipt["cases"][0]
+
+    assert case["status"] == "refused", case
+    assert case["refusal"]["code"] == "placement_objects_3d_invalid", case["refusal"]
+    assert case["hasPlacementArtifact"] is False, "a refused placement must not publish an artifact"
+    assert case["solverDecision"] is None
+    assert receipt["summary"]["solved"] == 0
+    assert receipt["ok"] is False, "an undeclared positive-case refusal is a blocker"

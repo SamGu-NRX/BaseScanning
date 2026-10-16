@@ -29,6 +29,13 @@ _OPEN = frozenset({"uploading", "awaiting_files"})
 _APPEND_GUARD = threading.Lock()
 _APPEND_LOCKS: dict[int, threading.Lock] = {}
 
+# Serializes create_stage_if_absent on the plain-dict fallback, where put_if_absent
+# is an in-process check-then-set; a real Modal Dict claims atomically on its own.
+# One lock, not one per (run, stage): a per-key registry kept a lock for every run
+# a long-lived worker ever touched. Claims only happen for records missing from
+# the coordinator's read, so the shared lock serializes only that recovery path.
+_STAGE_CLAIM_LOCK = threading.Lock()
+
 
 def _append_lock(mapping: object) -> threading.Lock:
     """One lock per backing map, so two states on the same dict share it."""
@@ -502,6 +509,19 @@ class ModalDictState(MemoryState):
 
     def upsert_stage(self, rec: StageRecord) -> None:
         self._kv[f"stage:{rec.run_id}:{rec.stage}"] = rec.model_dump(mode="json")
+
+    def create_stage_if_absent(self, rec: StageRecord) -> StageRecord:
+        """Insert-if-absent across processes: Modal Dict ``skip_if_exists`` is the
+        atomic claim, so two coordinators resuming the same old run cannot both
+        create the record — the loser reads back the winner's record instead of
+        resetting a running stage to pending. The module lock covers the plain-dict
+        fallback, where the check-then-set is only in-process."""
+
+        key = f"stage:{rec.run_id}:{rec.stage}"
+        with _STAGE_CLAIM_LOCK:
+            self.put_if_absent(key, rec.model_dump(mode="json"))
+        stored = self._model(key, StageRecord)
+        return stored if stored is not None else rec.model_copy(deep=True)
 
     def get_stage(self, run_id: str, stage: StageName) -> StageRecord | None:
         return self._model(f"stage:{run_id}:{stage}", StageRecord)
