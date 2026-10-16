@@ -94,6 +94,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -169,18 +170,34 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _apply_dev_env(volume_root: Path) -> None:
+def _apply_dev_env(volume_root: Path) -> Callable[[], None]:
     """The finalize handoff builds its service template from process env, so the
     dev flags must be environment, not only Settings fields — including the
     volume settings `services.current()` validates before the app's own state and
-    storage are bound in."""
-    for key, value in {
+    storage are bound in.
+
+    Returns a callable restoring the prior environment: run_cases runs in-process
+    inside the test suite, and leaked dev flags would make any later test that
+    asserts env-derived defaults order-dependent.
+    """
+    applied = {
         **TEMPLATE_ENV,
         "VOLUME_ROOT": str(volume_root),
         "CAPTURE_API_PUBLIC_URL": "http://testserver",
         "UPLOAD_URL_HMAC_SECRET": "h" * 32,
-    }.items():
+    }
+    saved: dict[str, str | None] = {key: os.environ.get(key) for key in applied}
+    for key, value in applied.items():
         os.environ[key] = value
+
+    def _restore() -> None:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    return _restore
 
 
 def _stamped_scene(
@@ -909,148 +926,157 @@ def run_cases(
     case_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     """Run the manifest's cases through the front door and return the receipt."""
-    _apply_dev_env(workdir / "vol")
-    workdir.mkdir(parents=True, exist_ok=True)
-    if case_ids is not None and not case_ids:
-        raise SystemExit("empty case selection: name at least one case id, or run every case")
-    records = case_suite.load_cases(manifest_path)
-    full_run = case_ids is None
-    if case_ids:
-        wanted = set(case_ids)
-        records = [record for record in records if record.id in wanted]
-        if len(records) != len(wanted):
-            raise SystemExit(f"unknown case ids: {sorted(wanted - {record.id for record in records})}")
+    restore_env = _apply_dev_env(workdir / "vol")
     try:
-        code_sha = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=Path(__file__).resolve().parents[2],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
-        code_sha = "unknown"
+        workdir.mkdir(parents=True, exist_ok=True)
+        if case_ids is not None and not case_ids:
+            raise SystemExit("empty case selection: name at least one case id, or run every case")
+        records = case_suite.load_cases(manifest_path)
+        full_run = case_ids is None
+        if case_ids:
+            wanted = set(case_ids)
+            records = [record for record in records if record.id in wanted]
+            if len(records) != len(wanted):
+                raise SystemExit(f"unknown case ids: {sorted(wanted - {record.id for record in records})}")
+        try:
+            code_sha = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=Path(__file__).resolve().parents[2],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+        except (OSError, subprocess.CalledProcessError):
+            code_sha = "unknown"
 
-    harness = _Harness(workdir / "app")
-    _install_boundaries()
-    try:
-        journeys = []
-        for index, record in enumerate(records):
-            journeys.append(_walk_front_door(harness, record, packet_id=f"placement-case-{index + 1:02d}"))
-        harness.drain()
-        cases = [_collect_case(harness, record, journey) for record, journey in zip(records, journeys, strict=True)]
-        if journeys and journeys[0].get("captureId") is not None:
-            replay = _replay_finalize(harness, journeys[0])
-            replay["applicable"] = True
-        elif journeys:
-            replay = {
-                "applicable": False,
-                "status": "not_applicable",
-                "reason": "the first journey never created a capture",
-                "ok": None,
-            }
-        else:
-            replay = {"applicable": False, "status": "not_applicable", "reason": "no case ran", "ok": None}
-    finally:
-        _remove_boundaries()
+        harness = _Harness(workdir / "app")
+        _install_boundaries()
+        try:
+            journeys = []
+            for index, record in enumerate(records):
+                journeys.append(_walk_front_door(harness, record, packet_id=f"placement-case-{index + 1:02d}"))
+            harness.drain()
+            cases = [_collect_case(harness, record, journey) for record, journey in zip(records, journeys, strict=True)]
+            if journeys and journeys[0].get("captureId") is not None:
+                replay = _replay_finalize(harness, journeys[0])
+                replay["applicable"] = True
+            elif journeys:
+                replay = {
+                    "applicable": False,
+                    "status": "not_applicable",
+                    "reason": "the first journey never created a capture",
+                    "ok": None,
+                }
+            else:
+                replay = {"applicable": False, "status": "not_applicable", "reason": "no case ran", "ok": None}
+        finally:
+            _remove_boundaries()
 
-    # Cross-capture: distinct captures in one app must carry distinct scenes — and
-    # distinct *normalized* geometry, not merely distinct identity stamps or
-    # stamped scene hashes. Only the two positive cases are compared.
-    positive_cases = [case for case in cases if case["kind"] == case_suite.KIND_POSITIVE]
-    pair = positive_cases[:2]
-    raw_hashes = [case.get("mergedSceneSha256") for case in pair]
-    geometry_hashes = [case.get("mergedGeometrySha256") for case in pair]
-    capture_ids = [case.get("captureId") for case in pair]
-    applicable = len(pair) == 2 and all(raw_hashes) and all(geometry_hashes) and all(capture_ids)
-    cross_capture = {
-        "applicable": applicable,
-        "status": "evaluated" if applicable else "not_applicable",
-        "reason": None
-        if applicable
-        else "not_applicable: this run does not include two positive cases that each carried a merged scene",
-        "captureIds": capture_ids,
-        "distinctScenes": (raw_hashes[0] != raw_hashes[1]) if applicable else None,
-        "distinctNormalizedGeometry": (geometry_hashes[0] != geometry_hashes[1]) if applicable else None,
-        "mergedGeometrySha256": dict(zip([case["id"] for case in pair], geometry_hashes, strict=False)) if pair else {},
-    }
+        # Cross-capture: distinct captures in one app must carry distinct scenes — and
+        # distinct *normalized* geometry, not merely distinct identity stamps or
+        # stamped scene hashes. Only the two positive cases are compared.
+        positive_cases = [case for case in cases if case["kind"] == case_suite.KIND_POSITIVE]
+        pair = positive_cases[:2]
+        raw_hashes = [case.get("mergedSceneSha256") for case in pair]
+        geometry_hashes = [case.get("mergedGeometrySha256") for case in pair]
+        capture_ids = [case.get("captureId") for case in pair]
+        applicable = len(pair) == 2 and all(raw_hashes) and all(geometry_hashes) and all(capture_ids)
+        cross_capture = {
+            "applicable": applicable,
+            "status": "evaluated" if applicable else "not_applicable",
+            "reason": None
+            if applicable
+            else "not_applicable: this run does not include two positive cases that each carried a merged scene",
+            "captureIds": capture_ids,
+            "distinctScenes": (raw_hashes[0] != raw_hashes[1]) if applicable else None,
+            "distinctNormalizedGeometry": (geometry_hashes[0] != geometry_hashes[1]) if applicable else None,
+            "mergedGeometrySha256": dict(zip([case["id"] for case in pair], geometry_hashes, strict=False))
+            if pair
+            else {},
+        }
 
-    blockers = []
-    for case in cases:
-        if case["status"] == "refused" and not case.get("refusal", {}).get("declared"):
-            blockers.append(
-                f"{case['id']}: refused at {case['refusal']['code']} — the manifest declares no expected error "
-                f"({case['refusal']['message'][:160]})"
-            )
-        for key in ("codeMatchesDeclaration", "pointerMatchesDeclaration"):
-            if case.get("refusal", {}).get(key) is False:
+        blockers = []
+        for case in cases:
+            if case["status"] == "refused" and not case.get("refusal", {}).get("declared"):
                 blockers.append(
-                    f"{case['id']}: refusal {key.replace('MatchesDeclaration', '')} does not match the declaration"
+                    f"{case['id']}: refused at {case['refusal']['code']} — the manifest declares no expected error "
+                    f"({case['refusal']['message'][:160]})"
                 )
-        if case["mismatches"]:
-            blockers.append(f"{case['id']}: " + "; ".join(case["mismatches"]))
-        if case["errors"]:
-            blockers.append(f"{case['id']}: " + "; ".join(case["errors"]))
-    if cross_capture["applicable"]:
-        if not (
-            cross_capture["distinctScenes"]
-            and cross_capture["distinctNormalizedGeometry"]
-            and len(set(cross_capture["captureIds"])) == 2
-        ):
+            for key in ("codeMatchesDeclaration", "pointerMatchesDeclaration"):
+                if case.get("refusal", {}).get(key) is False:
+                    blockers.append(
+                        f"{case['id']}: refusal {key.replace('MatchesDeclaration', '')} does not match the declaration"
+                    )
+            if case["mismatches"]:
+                blockers.append(f"{case['id']}: " + "; ".join(case["mismatches"]))
+            if case["errors"]:
+                blockers.append(f"{case['id']}: " + "; ".join(case["errors"]))
+        if cross_capture["applicable"]:
+            if not (
+                cross_capture["distinctScenes"]
+                and cross_capture["distinctNormalizedGeometry"]
+                and len(set(cross_capture["captureIds"])) == 2
+            ):
+                blockers.append(
+                    "crossCapture: the two positive cases do not carry distinct capture ids with distinct normalized "
+                    f"geometry (distinctScenes={cross_capture['distinctScenes']}, "
+                    f"distinctNormalizedGeometry={cross_capture['distinctNormalizedGeometry']})"
+                )
+        if replay is not None and replay.get("applicable", True) and replay.get("ok") is not True:
             blockers.append(
-                "crossCapture: the two positive cases do not carry distinct capture ids with distinct normalized "
-                f"geometry (distinctScenes={cross_capture['distinctScenes']}, "
-                f"distinctNormalizedGeometry={cross_capture['distinctNormalizedGeometry']})"
+                "finalizeReplay: the finalize replay is not an idempotent success (HTTP 202, same run id, one terminal "
+                f"event); got {json.dumps(replay)}"
             )
-    if replay is not None and replay.get("applicable", True) and replay.get("ok") is not True:
-        blockers.append(
-            "finalizeReplay: the finalize replay is not an idempotent success (HTTP 202, same run id, one terminal "
-            f"event); got {json.dumps(replay)}"
-        )
-    if full_run:
-        if len(positive_cases) < 2:
-            blockers.append(f"full run requires both positive cases; this manifest ran {len(positive_cases)}")
-        unsolved = [case["id"] for case in positive_cases if case["status"] != "solved"]
-        if unsolved:
-            blockers.append(
-                "full run requires both positive cases to solve and publish placement artifacts; not solved: "
-                + ", ".join(unsolved)
-            )
+        if full_run:
+            if len(positive_cases) < 2:
+                blockers.append(f"full run requires both positive cases; this manifest ran {len(positive_cases)}")
+            unsolved = [case["id"] for case in positive_cases if case["status"] != "solved"]
+            if unsolved:
+                blockers.append(
+                    "full run requires both positive cases to solve and publish placement artifacts; not solved: "
+                    + ", ".join(unsolved)
+                )
 
-    statuses = [case["status"] for case in cases]
-    receipt: dict[str, Any] = {
-        "schemaVersion": RECEIPT_SCHEMA_VERSION,
-        "generatedAt": datetime.now(UTC).isoformat(),
-        "codeSha": code_sha,
-        "producers": {
-            # The integrated producer SHAs on this branch (base + imports), so the
-            # receipt names exactly which producer code ran, not just branches.
-            "base": "obv/burst7-bs-capture-placement-runner@bdfbb3fc649df8187675b880ba8df83a803fd119",
-            "caseIntegrityFix": "115b6ce313e51cede71496f267b65b8cd78aa118 (obv/burst7-bs-placement-cases, PR #271)",
-            "replayAcceptance": "5f9e29576556f635757eea0605d5a23d29ce1cc5 (obv/burst8-bs-replay-acceptance, PR #275)",
-            "supportedCasePairs": "e7ad2abc15d94691305bdb558a752ee535cf374e (obv/burst8-bs-supported-case-pairs, PR #276)",
-        },
-        "devSettings": dict(TEMPLATE_ENV),
-        "stubbedStages": {
-            name: f"server.orchestrator.stubs.{STAGES[name].module}" for name in STAGES if not STAGES[name].stubs_exempt
-        },
-        "realStages": [name for name in STAGES if STAGES[name].stubs_exempt],
-        "tapHazardCase": TAP_CASE_ID,
-        "cases": cases,
-        "crossCapture": cross_capture,
-        "finalizeReplay": replay,
-        "blockers": blockers,
-    }
-    receipt["summary"] = {
-        "cases": len(cases),
-        "solved": statuses.count("solved"),
-        "refused": statuses.count("refused"),
-        "refusedDeclared": sum(1 for case in cases if case["status"] == "refused" and case["refusal"].get("declared")),
-        "mismatched": sum(1 for case in cases if case["mismatches"]),
-        "errored": statuses.count("error"),
-    }
-    receipt["ok"] = not blockers
-    return receipt
+        statuses = [case["status"] for case in cases]
+        receipt: dict[str, Any] = {
+            "schemaVersion": RECEIPT_SCHEMA_VERSION,
+            "generatedAt": datetime.now(UTC).isoformat(),
+            "codeSha": code_sha,
+            "producers": {
+                # The integrated producer SHAs on this branch (base + imports), so the
+                # receipt names exactly which producer code ran, not just branches.
+                "base": "obv/burst7-bs-capture-placement-runner@bdfbb3fc649df8187675b880ba8df83a803fd119",
+                "caseIntegrityFix": "115b6ce313e51cede71496f267b65b8cd78aa118 (obv/burst7-bs-placement-cases, PR #271)",
+                "replayAcceptance": "5f9e29576556f635757eea0605d5a23d29ce1cc5 (obv/burst8-bs-replay-acceptance, PR #275)",
+                "supportedCasePairs": "e7ad2abc15d94691305bdb558a752ee535cf374e (obv/burst8-bs-supported-case-pairs, PR #276)",
+            },
+            "devSettings": dict(TEMPLATE_ENV),
+            "stubbedStages": {
+                name: f"server.orchestrator.stubs.{STAGES[name].module}"
+                for name in STAGES
+                if not STAGES[name].stubs_exempt
+            },
+            "realStages": [name for name in STAGES if STAGES[name].stubs_exempt],
+            "tapHazardCase": TAP_CASE_ID,
+            "cases": cases,
+            "crossCapture": cross_capture,
+            "finalizeReplay": replay,
+            "blockers": blockers,
+        }
+        receipt["summary"] = {
+            "cases": len(cases),
+            "solved": statuses.count("solved"),
+            "refused": statuses.count("refused"),
+            "refusedDeclared": sum(
+                1 for case in cases if case["status"] == "refused" and case["refusal"].get("declared")
+            ),
+            "mismatched": sum(1 for case in cases if case["mismatches"]),
+            "errored": statuses.count("error"),
+        }
+        receipt["ok"] = not blockers
+        return receipt
+    finally:
+        restore_env()
 
 
 def _redaction_check(receipt: dict[str, Any]) -> str | None:

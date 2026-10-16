@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -961,3 +962,11 @@ def test_a_declared_negative_that_solves_fails_the_suite(tmp_path, monkeypatch):
     assert case["status"] == "solved"
     assert any("produced a successful placement" in mismatch for mismatch in case["mismatches"])
     assert receipt["ok"] is False
+
+
+def test_run_cases_restores_the_process_environment(tmp_path):
+    """The dev flags must not leak into the rest of the pytest process: any later
+    test asserting env-derived defaults would become order-dependent."""
+    before = dict(os.environ)
+    runner.run_cases(MANIFEST, tmp_path / "run", case_ids=["multiwall-source-unsupported"])
+    assert dict(os.environ) == before
