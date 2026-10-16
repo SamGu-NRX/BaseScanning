@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,6 +16,44 @@ from server.common.config import Settings
 TOKEN = "d" * 40
 OTHER = "e" * 40
 REVIEWER = "f" * 40
+
+# The documented dev handoff (SD-73): hooks on, stage stubs on, no external calls.
+AUTO_ENV = {
+    "STATE_BACKEND": "memory",
+    "STORAGE_BACKEND": "volume",
+    "HSS_ORCH_STAGE_STUBS": "1",
+    "VISION_EXTERNAL_CALLS": "off",
+    "SMP_ENVIRONMENT": "dev",
+}
+
+
+@pytest.fixture
+def auto_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ApiClient:
+    """An app whose hooks hand finalize off to the real orchestrator entry points."""
+    for key, value in AUTO_ENV.items():
+        monkeypatch.setenv(key, value)
+    # services.current() inside the hook builds from env: it needs the same
+    # volume root the API storage uses, or the bind fails and hooks no-op.
+    monkeypatch.setenv("VOLUME_ROOT", str(tmp_path / "vol"))
+    settings = Settings(
+        STORAGE_BACKEND="volume",
+        STATE_BACKEND="memory",
+        VOLUME_ROOT=str(tmp_path / "vol"),
+        CAPTURE_API_PUBLIC_URL="http://testserver",
+        CAPTURE_API_TOKENS=f"device:{TOKEN}",
+        UPLOAD_URL_HMAC_SECRET="h" * 32,
+        HSS_INGEST_HOOKS="auto",
+        HSS_AUTH_MODE="static",
+        GIT_SHA="0123456789abcdef",
+        VISION_EXTERNAL_CALLS="off",
+        SMP_ENVIRONMENT="dev",
+        SMP_SERVICE_NAME="capture-api",
+    )
+    app = create_app(settings=settings)
+    test = ApiClient(app)
+    test.headers["Authorization"] = f"Bearer {TOKEN}"
+    test.app_state = app.state.deps
+    return test
 
 
 @pytest.fixture

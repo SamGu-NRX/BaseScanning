@@ -12,6 +12,8 @@ import json
 from datetime import timedelta
 from pathlib import Path
 
+import pytest
+
 from server.contracts.api import ConfirmationRequest
 from server.contracts.jobs import FileRecord, RunRecord, StageRecord
 from server.orchestrator.api import on_confirmation
@@ -160,7 +162,18 @@ def test_confirmation_updates_the_reads_record(tmp_path: Path) -> None:
     # The recompose preserves the upstream work as terminal records at attempt 1
     # — the re-run reads stage that once threatened the answer never executes.
     rows = {rec.stage: rec for rec in services.state.stages("run_reads")}
-    for upstream in ("validate", "poses", "objects", "reads", "scale", "dense", "coverage", "scene", "objects_3d", "placement"):
+    for upstream in (
+        "validate",
+        "poses",
+        "objects",
+        "reads",
+        "scale",
+        "dense",
+        "coverage",
+        "scene",
+        "objects_3d",
+        "placement",
+    ):
         assert rows[upstream].status == "done", upstream
         assert rows[upstream].attempt == 1, upstream
     assert rows["criteria"].status == "done"
@@ -268,3 +281,92 @@ def test_success_reads_the_runs_profile_verdict(tmp_path: Path) -> None:
     # A-profile verdict asks for more views; verdict.C.json is absent, so the
     # old hard-coded read fell through to manual_review and blocked amendments.
     assert services.state.get_capture("cap_test").status == "needs_views"
+
+
+def test_correction_during_live_result_stage_recomposes_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Finding: orchestrator/api.py:169 (PR #293 Greptile P1) — a live run was left
+    alone on the assumption its result stage had not consumed the corrected reads.
+
+    A confirmation can arrive after the result stage hydrated its inputs but
+    before it finishes uploading. The hook saved the corrected reads and
+    returned: the run finished done with the pre-correction meter, and a
+    replayed confirmation short-circuits upstream, so nothing recomposed. The
+    hook must record a pending correction on the live run, and the coordinator
+    must consume it before marking the run done — resetting criteria and result
+    once, the same reset the done-run path uses.
+    """
+
+    import threading
+
+    import server.orchestrator.stubs.result as result_stub
+    from server.orchestrator.api import start_run
+    from server.orchestrator.coordinator import pending_correction_key
+    from server.orchestrator.stateio import get_json
+
+    services, uri, digest = build_services(tmp_path, "memory", coordinator_loop_s=0.05)
+
+    entered = threading.Event()
+    release = threading.Event()
+    original_result_run = result_stub.run
+    real_meter = result_stub._stub_meter
+
+    def gated_run(ctx):
+        # The stage has consumed its hydrated, pre-correction reads copy.
+        real_meter(ctx)
+        entered.set()
+        assert release.wait(30)
+        return original_result_run(ctx)
+
+    monkeypatch.setattr(result_stub, "run", gated_run)
+
+    errors: list[BaseException] = []
+
+    def drive() -> None:
+        try:
+            with bind(services):
+                start_run("cap_test", digest, uri)
+        except BaseException as exc:  # surfaced after the join below
+            errors.append(exc)
+
+    worker = threading.Thread(target=drive, daemon=True)
+    worker.start()
+    assert entered.wait(60), "result stage never reached its gate"
+
+    request = ConfirmationRequest(
+        fieldId="meter_number",
+        kind="corrected",
+        value="12345",
+        imageId="s1",
+        clientAt="2026-10-15T00:00:00.000Z",
+    )
+    # The correction and a replayed confirmation both land while the result
+    # stage holds its half-composed inputs. One pending marker must survive.
+    with bind(services):
+        on_confirmation("cap_test", request, "cfm_live", by="device")
+        on_confirmation("cap_test", request, "cfm_live", by="device")
+    release.set()
+    worker.join(60)
+    assert not errors, errors
+    assert not worker.is_alive(), "run never finished after the gate released"
+
+    (run,) = services.state.runs_for_capture("cap_test")
+    assert run.status == "done"
+    # The recomposed pass records attempt 1 again (the coordinator recomputes
+    # spawn attempts from failures+respawns), so "recomposed exactly once" is
+    # read from the event log: the original pass plus one re-run of each stage
+    # — the replayed confirmation is the same answer and must not add a third.
+    events = services.state.events_after("cap_test", 0, limit=500)
+    for stage in ("criteria", "result"):
+        started = [
+            event
+            for event in events
+            if event.type == "stage" and event.data.get("stage") == stage and event.data.get("status") == "running"
+        ]
+        assert len(started) == 2, [(e.type, e.data) for e in started]
+    # The pending marker is consumed, not left for a later finish to re-reset.
+    assert get_json(services.state, pending_correction_key(run.run_id)) is None
+    # The served result carries the corrected value, not the pre-correction meter.
+    served_run = overlay_stage_artifacts(services.state, run)
+    served = json.loads(services.storage.get_bytes(served_run.artifacts["result/result.json"]))
+    assert served["meter"]["value"] == "12345"
+    assert services.state.get_capture("cap_test").status == "manual_review"
