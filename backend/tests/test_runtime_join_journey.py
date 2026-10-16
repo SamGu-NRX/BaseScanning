@@ -288,6 +288,7 @@ def test_concurrent_event_producers_fully_visible_through_cursor_polling(journey
             producers_seen[slot].append(rec.seq)
 
     poller_pages: list[list[dict]] = []
+    poller_after: list[int] = []
     poller_stop = threading.Event()
 
     def poll() -> None:
@@ -296,6 +297,7 @@ def test_concurrent_event_producers_fully_visible_through_cursor_polling(journey
         while not poller_stop.is_set():
             page = client.get(f"/v1/captures/{capture_id}/events", params={"after": after}).json()
             poller_pages.append(page["events"])
+            poller_after.append(after)
             if page["next"] == after:
                 poller_stop.wait(0.02)
             else:
@@ -466,3 +468,135 @@ def test_amendment_hydrates_its_own_packet_bytes_and_files(journey) -> None:
     assert deps.storage.get_bytes(f"captures/{capture_id}/amendments/amd-join-1/stills/amend-wall.jpg") == blob
     with pytest.raises(OSError):
         deps.storage.get_bytes(f"captures/{capture_id}/stills/amend-wall.jpg")
+
+
+def _register_extra_still(root: Path, client: TestClient, app, capture_id: str, name: str, image_id: str) -> bytes:
+    """One still beyond the fixture manifest, carrying the meta the image lookup reads."""
+    blob = f"extra-still-{name}-bytes".encode()
+    item = {
+        "path": f"stills/{name}.jpg",
+        "bytes": len(blob),
+        "sha256": hashlib.sha256(blob).hexdigest(),
+        "md5": base64.b64encode(hashlib.md5(blob).digest()).decode(),
+        "role": "still",
+        "contentType": "image/jpeg",
+        "meta": {
+            "still": {
+                "id": image_id,
+                "purpose": "meter_close",
+                "img": f"stills/{name}.jpg",
+                "w": 2,
+                "h": 2,
+                "timestamp": 0,
+                "orientation": 1,
+            }
+        },
+    }
+    registered = client.post(f"/v1/captures/{capture_id}/files", json={"files": [item]})
+    assert registered.status_code == 200, registered.text
+    upload = registered.json()["files"][0]["upload"]
+    put = TestClient(app).put(upload["url"], content=blob, headers=upload.get("headers") or {})
+    assert put.status_code == 200, put.text
+    committed = client.post(
+        f"/v1/captures/{capture_id}/files:commit", json={"files": [{"path": item["path"], "sha256": item["sha256"]}]}
+    )
+    assert committed.status_code == 200, committed.text
+    return blob
+
+
+def _confirm(client: TestClient, capture_id: str, field: str, kind: str, value: str, image_id: str, at: str):
+    return client.post(
+        f"/v1/captures/{capture_id}/confirmations",
+        json={"fieldId": field, "kind": kind, "value": value, "imageId": image_id, "clientAt": at},
+    )
+
+
+def test_confirmation_before_reads_reaches_the_composed_result(journey) -> None:
+    """A confirmation accepted before reads exist is persisted, applied when the
+    reads stage creates its record, and served in the composed result — the
+    client never re-sends an already-accepted answer."""
+    root, packet, client, app = journey
+    deps = app.state.deps
+    capture_id, raw = _open_front_door(root, packet, client, app, "join-confirm-early")
+
+    # The capture is still open (uploading) when the device confirms the meter.
+    _register_extra_still(root, client, app, capture_id, "early-meter", "early-1")
+    accepted = _confirm(client, capture_id, "meter_number", "corrected", "31415", "early-1", "2026-10-15T00:00:00Z")
+    assert accepted.status_code == 201, accepted.text
+    first_id = accepted.json()["confirmationId"]
+
+    # The answer persists per field before any run exists.
+    listed = client.get(f"/v1/captures/{capture_id}/confirmations").json()
+    fields = [row["fieldId"] for row in listed["confirmations"]]
+    assert fields == ["meter_number"]
+    assert listed["confirmations"][0]["value"] == "31415"
+
+    finalized = _finalize(client, capture_id, raw, "join-confirm-early")
+    drain_finalize(deps)
+    run = deps.state.get_run(finalized["runId"])
+    assert run.status == "done"
+
+    # The composed result carries the early answer.
+    served = client.get(f"/v1/captures/{capture_id}/result").json()
+    assert served["meter"]["value"] == "31415"
+    assert served["meter"]["status"] == "auto_filled"
+
+    # Replaying the same answer is idempotent — same confirmation, one event, no
+    # new run, no recomposition.
+    replayed = _confirm(client, capture_id, "meter_number", "corrected", "31415", "early-1", "2026-10-15T00:00:00Z")
+    assert replayed.status_code == 200, replayed.text
+    assert replayed.json()["confirmationId"] == first_id
+    assert len(deps.state.runs_for_capture(capture_id)) == 1
+
+    events = _flat(client, capture_id)
+    confirmations = [e for e in events if e["type"] == "confirmation"]
+    assert [e["data"]["confirmationId"] for e in confirmations] == [first_id]
+    seqs = [e["seq"] for e in events]
+    assert seqs == sorted(set(seqs)) and seqs == list(range(1, len(seqs) + 1))
+
+
+def test_correction_after_the_result_recomposes_the_served_payload(journey) -> None:
+    """A late correction publishes the acceptance event and the recomposed result:
+    the run's criteria and result stages re-execute through the normal lifecycle
+    (one run, the same run id), the served meter carries the corrected value, and
+    replaying the correction neither runs anything new nor changes the payload."""
+    root, packet, client, app = journey
+    deps = app.state.deps
+    capture_id, raw = _open_front_door(root, packet, client, app, "join-confirm-late")
+    accepted = _finalize(client, capture_id, raw, "join-confirm-late")
+    run_id = accepted["runId"]
+    drain_finalize(deps)
+    assert deps.state.get_run(run_id).status == "done"
+
+    baseline = client.get(f"/v1/captures/{capture_id}/result").json()
+    assert baseline["meter"]["value"] != "777"
+    base_verdicts = len([e for e in _flat(client, capture_id) if e["type"] == "verdict_ready"])
+
+    image_id = packet["stills"][0]["id"]
+    corrected = _confirm(client, capture_id, "meter_number", "corrected", "777", image_id, "2026-10-15T00:01:00Z")
+    assert corrected.status_code == 201, corrected.text
+
+    # One run, re-driven in place: the recomposed result serves the correction.
+    runs = deps.state.runs_for_capture(capture_id)
+    assert len(runs) == 1 and runs[0].run_id == run_id and runs[0].status == "done"
+    served = client.get(f"/v1/captures/{capture_id}/result").json()
+    assert served["meter"]["value"] == "777"
+    assert served["meter"]["status"] == "auto_filled"
+
+    events = _flat(client, capture_id)
+    confirmations = [e for e in events if e["type"] == "confirmation"]
+    assert [e["data"]["confirmationId"] for e in confirmations] == [corrected.json()["confirmationId"]]
+    # The recomposition is visible: the run's result re-published its terminal.
+    assert len([e for e in events if e["type"] == "verdict_ready"]) == base_verdicts + 1
+    seqs = [e["seq"] for e in events]
+    assert seqs == sorted(set(seqs)) and seqs == list(range(1, len(seqs) + 1))
+
+    # Replaying the same correction changes nothing further.
+    replayed = _confirm(client, capture_id, "meter_number", "corrected", "777", image_id, "2026-10-15T00:01:00Z")
+    assert replayed.status_code == 200, replayed.text
+    assert client.get(f"/v1/captures/{capture_id}/result").json()["meter"]["value"] == "777"
+    events_after = _flat(client, capture_id)
+    assert len([e for e in events_after if e["type"] == "verdict_ready"]) == base_verdicts + 1
+    assert [e["data"]["confirmationId"] for e in events_after if e["type"] == "confirmation"] == [
+        corrected.json()["confirmationId"]
+    ]

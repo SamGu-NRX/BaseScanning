@@ -6,18 +6,22 @@ persistence, per-attempt timeout budgets, and the run's own rules profile.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 from datetime import timedelta
 from pathlib import Path
 
 from server.contracts.api import ConfirmationRequest
-from server.contracts.jobs import RunRecord, StageRecord
+from server.contracts.jobs import FileRecord, RunRecord, StageRecord
 from server.orchestrator.api import on_confirmation
 from server.orchestrator.clock import Clock
 from server.orchestrator.coordinator import RunCoordinator
 from server.orchestrator.events import emit_failed
 from server.orchestrator.services import bind
 from server.orchestrator.tests.conftest import build_services
+from server.packet.integrity import check_files
+from server.packet.report import Bag
 from server.reads.types import ConfirmBlock, MeterRead, Reads
 
 
@@ -59,6 +63,55 @@ def test_amendment_run_hydrates_its_own_packet(tmp_path: Path) -> None:
     assert json.loads((packet_dir / "packet.json").read_text()) == amend_packet
     # Manifest-listed files resolve under the amendment prefix.
     assert (packet_dir / "extra" / "photo.jpg").read_bytes() == b"jpeg"
+
+
+def test_amendment_same_name_still_hydrates_amendment_bytes(tmp_path: Path) -> None:
+    """Finding: _packet_file_jobs — a committed base file claimed the relative path first.
+
+    An amendment that re-captures a base filename (stills/s1.jpg) with different
+    bytes must hydrate its own copy under the amendment prefix. Under the
+    pre-fix derivation the committed base record entered the seen-set first and
+    the base bytes landed at packet_dir/stills/s1.jpg, so the real validator
+    would reject the size/sha256 mismatch against the amendment manifest.
+    """
+    services, _uri, _digest = build_services(tmp_path, "memory")
+    base_blob = b"base-still-bytes"
+    amend_blob = b"amendment-still-bytes-different"
+    services.storage.put_bytes("captures/cap_test/stills/s1.jpg", base_blob, "image/jpeg")
+    services.state.upsert_file(
+        FileRecord(
+            capture_id="cap_test",
+            path="stills/s1.jpg",
+            role="still",
+            bytes=len(base_blob),
+            sha256=hashlib.sha256(base_blob).hexdigest(),
+            md5=base64.b64encode(hashlib.md5(base_blob).digest()).decode(),
+            content_type="image/jpeg",
+            state="committed",
+            key="captures/cap_test/stills/s1.jpg",
+        )
+    )
+    amend_key = "captures/cap_test/amendments/amd-2/packet.json"
+    amend_packet = {
+        "keyframes": [],
+        "stills": [],
+        "files": [
+            {"path": "stills/s1.jpg", "sha256": hashlib.sha256(amend_blob).hexdigest(), "bytes": len(amend_blob)}
+        ],
+    }
+    services.storage.put_bytes(amend_key, json.dumps(amend_packet).encode(), "application/json")
+    services.storage.put_bytes("captures/cap_test/amendments/amd-2/stills/s1.jpg", amend_blob, "image/jpeg")
+    run = _run(services, "run_amend_2", packet_uri=amend_key)
+    rec = StageRecord(run_id=run.run_id, stage="poses", status="running", attempt=1, heartbeat=services.clock.iso())
+    with bind(services):
+        ctx = services.stage_context(run, rec, "call")
+    packet_dir = Path(ctx.inputs["packet_dir"])
+    # The amendment's bytes — not the committed base file's — sit at the manifest path.
+    assert (packet_dir / "stills" / "s1.jpg").read_bytes() == amend_blob
+    # And the real packet validator agrees with the amendment manifest.
+    bag = Bag()
+    check_files(amend_packet, packet_dir, bag, check_hashes=True, known_sha256=None)
+    assert bag.errors == []
 
 
 def test_confirmation_updates_the_reads_record(tmp_path: Path) -> None:
