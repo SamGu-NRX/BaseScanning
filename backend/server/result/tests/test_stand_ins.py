@@ -46,7 +46,12 @@ def _compose(out_dir: Path, impl_dir: Path | None):
 
 def _marker(stage: str, implementation: str) -> dict:
     callable_ = "server.orchestrator.stubs" if implementation == "stand-in" else "server"
-    return {"schema": IMPL_SCHEMA, "stage": stage, "implementation": implementation, "callable": f"{callable_}.{stage}.run"}
+    return {
+        "schema": IMPL_SCHEMA,
+        "stage": stage,
+        "implementation": implementation,
+        "callable": f"{callable_}.{stage}.run",
+    }
 
 
 def _write_impl_dir(root: Path, implementations: dict[str, str]) -> Path:
@@ -88,7 +93,10 @@ def test_two_stand_ins_are_named_in_the_record_and_the_page(tmp_path: Path):
 def test_no_impl_dir_leaves_every_other_stage_unknown(tmp_path: Path):
     composed = _compose(tmp_path / "out", None)
     internal = composed.internal
-    assert internal["stageImplementations"] == {**{stage: "unknown" for stage in _non_result_stages()}, "result": "real"}
+    assert internal["stageImplementations"] == {
+        **{stage: "unknown" for stage in _non_result_stages()},
+        "result": "real",
+    }
     assert internal["standIns"] == []
     # The reviewer page stays silent when nothing ran as a stand-in.
     page = (tmp_path / "out" / "review.html").read_text()
