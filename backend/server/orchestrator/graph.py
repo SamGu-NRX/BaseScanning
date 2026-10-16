@@ -263,6 +263,10 @@ STAGE_INPUTS: dict[StageName, tuple[str, ...]] = {
         "verdicts/",
         "reads/reads.json",
         "scale/scale.json",
+        # impl/ carries the hss-stage-impl/v1 markers run_stage publishes: one
+        # JSON per stage naming the implementation (real or stand-in) and the
+        # exact callable that served the run.
+        "impl/",
     ),
 }
 
