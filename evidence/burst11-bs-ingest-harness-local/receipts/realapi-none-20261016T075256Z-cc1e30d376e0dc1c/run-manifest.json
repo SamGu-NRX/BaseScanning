@@ -1,0 +1,130 @@
+{
+  "backend": {
+    "declared_mode": "REAL_API",
+    "declared_ref": "4bcbedba",
+    "verified": false
+  },
+  "client": {
+    "declared_ref": null,
+    "git": {
+      "diff_sha256": "c25b9ac5f89df66b427f85ac17d33db1bdef186099cb08c85a7de194c558d6f4",
+      "dirty": true,
+      "head": "4bcbedba7ffd3d8c4d7f725395e33ed5a9d27d6c",
+      "untracked": 20
+    },
+    "interface": "2.0.0",
+    "package_version": "0.2.0",
+    "source_sha256": "f23f2fa0cfea69428f6c41edf42c5b5ea050c39788d9ffe1a9c628e7908072fb"
+  },
+  "command": [
+    "--endpoint",
+    "127.0.0.1:8000",
+    "--plan-file",
+    "<path>",
+    "--backend-mode",
+    "REAL_API",
+    "--backend-ref",
+    "4bcbedba",
+    "--out",
+    "<path>",
+    "--label",
+    "realapi-none",
+    "--with-faults"
+  ],
+  "created_utc": "2026-10-16T07:52:56.627Z",
+  "endpoint": "127.0.0.1:8000",
+  "fixture": {
+    "create_sha256": "9c2dd5f33bb70b7199e85f165e87602986faa7f6b5beaee6f55db4f1f9edce97",
+    "files": [
+      {
+        "bytes": 65536,
+        "contentType": "application/octet-stream",
+        "path": "synthetic/scan00.bin",
+        "role": "other",
+        "sha256": "a1ca0aa5e471b98beddf42738d706871542520398ced6f3ed81008e8c9812d85"
+      },
+      {
+        "bytes": 65536,
+        "contentType": "application/octet-stream",
+        "path": "synthetic/scan01.bin",
+        "role": "other",
+        "sha256": "ef4380c88a7e0a2df7506640f6b435b153122e01070d7570870ebd2d3367d4be"
+      },
+      {
+        "bytes": 65536,
+        "contentType": "application/octet-stream",
+        "path": "synthetic/scan02.bin",
+        "role": "other",
+        "sha256": "3fda1dfcabd6f77b655435c16a6c7b75d5f2f2b4ef9dccd814fede0f2b69e1f1"
+      },
+      {
+        "bytes": 9793,
+        "contentType": "application/gzip",
+        "path": "streams/arkit_poses.csv.gz",
+        "role": "stream",
+        "sha256": "a23bcec6f6829c053e7bc1871999ca7b1a5e88639b5a6cde56afc655d3447388"
+      },
+      {
+        "bytes": 9443,
+        "contentType": "application/gzip",
+        "path": "streams/imu_raw.csv.gz",
+        "role": "stream",
+        "sha256": "ae96d9008b71882aeb0dbc1c5463897aa9c316fbda28d5503b4676e0bd85a161"
+      },
+      {
+        "bytes": 1536,
+        "contentType": "image/jpeg",
+        "path": "keyframes/kf01.jpg",
+        "role": "keyframe",
+        "sha256": "bd50404f25a754fafaa0f4fc54b35024bbe90016875afbbc410f83abd518612b"
+      },
+      {
+        "bytes": 1536,
+        "contentType": "image/jpeg",
+        "path": "keyframes/kf02.jpg",
+        "role": "keyframe",
+        "sha256": "2c4c2a550c4442385e445aca21c55007ed8695fbd02a33cda2d6713358b258b4"
+      },
+      {
+        "bytes": 1536,
+        "contentType": "image/jpeg",
+        "path": "keyframes/kf03.jpg",
+        "role": "keyframe",
+        "sha256": "5f1332b09119fb108cef1b517da540b4750341966fc633e9ccf822116febe002"
+      }
+    ],
+    "format_version": 2,
+    "generator": "gen_synthetic_packet",
+    "packet_id": "synthetic-000001",
+    "packet_sha256": "a2b032fde771f02079cccc024c4fcc915d5cbccbcd6df7ab0e758f8843e4fb96",
+    "plan_file_sha256": "3891515e650ea4b37402a772f5663e232f4a4f1af9f7dc22eb5d31753cdbb4d3",
+    "plan_sha256": "fb98d2968cde811dc8b09d857403e31e2f05f5d503205556ca06fde9b6561f0c",
+    "seed": 1
+  },
+  "label": "realapi-none",
+  "origin_note": "Derived from published client behavior in HouseScanKit upload and result sources at alpha 263827ef. No private source, schema, spec, log or credential material appears in this package or its receipts.",
+  "restart": {
+    "argv": [],
+    "configured": false,
+    "timeout_s": 120.0
+  },
+  "run_id": "cc1e30d376e0dc1c",
+  "runtime": {
+    "cpus": 8,
+    "implementation": "CPython",
+    "machine": "x86_64",
+    "python": "3.13.14",
+    "release": "6.1.158+",
+    "system": "Linux"
+  },
+  "sanitization": "Every value here passed the typed export schema before it was written: published enum words, package constants, digests, bounded numbers, and the plan's own synthetic paths and packet ids. A pattern screen then ran over the written files.",
+  "schema": "hunter-local-ingest/run-manifest/2",
+  "settings": {
+    "events_wait_s": 20,
+    "max_retries": 2,
+    "poll_interval_s": 2.0,
+    "result_budget_s": 1500.0,
+    "retry_backoff_s": 1.0,
+    "with_faults": true
+  }
+}

@@ -467,9 +467,16 @@ def validate_manifest(manifest: object, ctx: ExportContext, known: Mapping[str, 
             "files",
         },
     )
-    v.member(fixture["generator"], "/fixture/generator", {"gen_synthetic_packet"}, "generator")
+    v.member(
+        fixture["generator"],
+        "/fixture/generator",
+        {"gen_synthetic_packet", "gen_miniarkit_packet"},
+        "generator",
+    )
     v.integer(fixture["format_version"], "/fixture/format_version", low=1, high=100)
-    v.integer(fixture["seed"], "/fixture/seed", low=0, high=2**31)
+    # The mini-arkit family is fixture-determined, not seeded: null seed.
+    if fixture["seed"] is not None:
+        v.integer(fixture["seed"], "/fixture/seed", low=0, high=2**31)
     for key in ("plan_file_sha256", "plan_sha256", "packet_sha256", "create_sha256"):
         v.match(fixture[key], f"/fixture/{key}", _HEX64_RE, "not-a-digest")
     v.member(
@@ -643,7 +650,7 @@ SCREEN_SCHEMA = "hunter-local-ingest/privacy-screen/2"
 
 SCREENED_ARTIFACTS = ("run-manifest.json", "checks.jsonl", "summary.json")
 CHAINED_ARTIFACTS = ("run-manifest.json", "checks.jsonl", "summary.json", "privacy-screen.json")
-CONTENT_TYPES = ("application/octet-stream", "application/gzip")
+CONTENT_TYPES = ("application/octet-stream", "application/gzip", "image/jpeg")
 
 # PASS: every executed check passed and nothing was blocked. NOT_RUN rows
 # (GPU arms, an unconfigured restart) are listed in the summary, not hidden.

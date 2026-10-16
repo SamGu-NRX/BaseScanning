@@ -9,8 +9,10 @@ different seed changes every file's bytes, not only the packet id.
 The create body and the packet follow the published types in
 ios/HouseScanKit/Sources/HouseScanKit (Upload/CaptureAPI.swift
 CreateRequest, Packet/Packet04.swift Packet, Packet/Packet04Streams.swift
-column names) at alpha 263827ef. Keyframes are empty: the files are noise,
-not images, and the packet says so rather than pretending.
+column names) at alpha 263827ef. Keyframes are synthetic: small seeded
+noise JPEGs a pipeline never decodes, declared with the keyframe role, so
+an arkit-tier packet carries what the published contract requires (the
+first REAL_API run: the server refused an arkit packet without keyframes).
 
 The runner's loader (plan.py) re-verifies every digest written here.
 
@@ -45,6 +47,7 @@ POSE_COLUMNS = [
     "cy",
 ]
 IMU_COLUMNS = ["t", "ax", "ay", "az", "gx", "gy", "gz"]
+KEYFRAME_COUNT = 3
 
 
 def noise_bytes(seed: int, path: str, n: int) -> bytes:
@@ -127,6 +130,9 @@ def build(seed: int, mesh_count: int, mesh_kb: int) -> dict:
         )
     contents.append(("streams/arkit_poses.csv.gz", "stream", "application/gzip", pose_stream(seed)))
     contents.append(("streams/imu_raw.csv.gz", "stream", "application/gzip", imu_stream(seed)))
+    for i in range(KEYFRAME_COUNT):
+        path = f"keyframes/kf{i + 1:02d}.jpg"
+        contents.append((path, "keyframe", "image/jpeg", noise_bytes(seed, path, 1536)))
 
     files = []
     entries = []
@@ -186,7 +192,21 @@ def build(seed: int, mesh_count: int, mesh_kb: int) -> dict:
             "videoFormat": {"imageResolution": [1920, 1440]},
         },
         "epochs": [{"id": "e1", "startTime": 5000.0, "reason": "sessionStart"}],
-        "keyframes": [],
+        "keyframes": [
+            {
+                "id": f"kf{i + 1:02d}",
+                "img": f"keyframes/kf{i + 1:02d}.jpg",
+                "w": 64,
+                "h": 48,
+                "intrinsics": [48.07, 48.07, 31.9867, 23.98],
+                "pose": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0.02 * i, -0.01 * i, 0.0, 1],
+                "timestamp": 5000.0 + i / 15.0,
+                "tracking": "normal",
+                "epoch": "e1",
+                "reason": "motion",
+            }
+            for i in range(KEYFRAME_COUNT)
+        ],
         "tracking": [],
         "streams": {
             "imuRaw": {"file": "streams/imu_raw.csv.gz", "columns": IMU_COLUMNS, "rateHz": 100.0},

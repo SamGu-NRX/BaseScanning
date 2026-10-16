@@ -1,6 +1,8 @@
 """The synthetic capture plan: strict loading, digest binding, control identities.
 
-A plan file comes from fixtures/gen_synthetic_packet.py. Loading checks
+A plan file comes from the synthetic generator
+(fixtures/gen_synthetic_packet.py) or from the committed mini-arkit packet
+(fixtures/gen_miniarkit_plan.py). Loading checks
 every field against the generator's format and the published request
 types, and recomputes every digest from the bytes actually read, so the
 manifest's fixture identity describes the bytes the run sent. A plan that
@@ -27,12 +29,35 @@ from .contract import FORMAT_VERSION, ROLES, TIERS
 PLAN_FORMAT = "hunter-local-ingest-plan"
 PLAN_FORMAT_VERSION = 2
 
-PACKET_ID_RE = re.compile(r"^synthetic-[0-9]{6}$")
-# Exactly the paths the generator writes. A plan that names any other path
-# is refused, so a receipt can quote plan paths verbatim.
-PATH_RE = re.compile(r"^(synthetic/scan[0-9]{2}\.bin|streams/(arkit_poses|imu_raw)\.csv\.gz)$")
-CONTENT_TYPES = {"application/octet-stream", "application/gzip"}
-_DEVICE_TEXT_RE = re.compile(r"^[A-Za-z0-9 ._()-]{1,40}$")
+MINIARKIT_PACKET_ID = "mini-arkit"
+
+# Per generator family: the keys its generator section carries, whether it
+# is seeded, and exactly the paths it writes. A plan that names any other
+# path is refused, so a receipt can quote plan paths verbatim.
+FAMILIES = {
+    "gen_synthetic_packet": {
+        "generator_keys": {"name", "seed", "mesh_count", "mesh_kb", "sha256_of_plan"},
+        "seeded": True,
+        "packet_id_re": re.compile(r"^synthetic-[0-9]{6}$"),
+        "path_re": re.compile(
+            r"^(synthetic/scan[0-9]{2}\.bin|streams/(arkit_poses|imu_raw)\.csv\.gz"
+            r"|keyframes/kf[0-9]{2}\.jpg)$"
+        ),
+    },
+    "gen_miniarkit_packet": {
+        "generator_keys": {"name", "sha256_of_plan"},
+        "seeded": False,
+        "packet_id_re": re.compile(r"^mini-arkit$"),
+        "path_re": re.compile(
+            r"^(keyframes/k0000[1-4]\.jpg|keyframes/k0000[1-2]\.features\.bin"
+            r"|streams/(arkit_poses|heading|imu_raw|location|motion)\.csv\.gz)$"
+        ),
+    },
+}
+CONTENT_TYPES = {"application/octet-stream", "application/gzip", "image/jpeg"}
+# Bounded device-text charset; the comma is real deviceModel usage
+# ("iPhone15,4", the committed mini-arkit fixture's device).
+_DEVICE_TEXT_RE = re.compile(r"^[A-Za-z0-9 ._(),-]{1,40}$")
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 _NONCE_RE = re.compile(r"^[0-9a-f]{8}$")
 
@@ -139,7 +164,7 @@ def derived_id(packet_id: str, suffix: str, nonce: str = "") -> str:
 @dataclasses.dataclass(frozen=True)
 class LoadedPlan:
     plan: CapturePlan
-    seed: int
+    seed: int | None
     format_version: int
     plan_file_sha256: str
     plan_sha256: str
@@ -191,20 +216,24 @@ def load_plan(path: Path, expected_seed: int | None = None) -> LoadedPlan:
     _dict(document, "plan-file", {"format", "format_version", "generator", "plan"})
     _need(document["format"] == PLAN_FORMAT, "format", "not a hunter-local-ingest plan")
     _need(document["format_version"] == PLAN_FORMAT_VERSION, "format_version", "unsupported")
-    generator = _dict(
-        document["generator"],
-        "generator",
-        {"name", "seed", "mesh_count", "mesh_kb", "sha256_of_plan"},
-    )
-    _need(generator["name"] == "gen_synthetic_packet", "generator.name", "unknown generator")
-    seed = generator["seed"]
-    _need(
-        isinstance(seed, int) and not isinstance(seed, bool) and 0 <= seed < 2**31,
-        "generator.seed",
-        "not a seed",
-    )
-    if expected_seed is not None:
-        _need(seed == expected_seed, "generator.seed", "differs from --seed")
+    generator_raw = document["generator"]
+    _need(isinstance(generator_raw, dict), "generator", "not an object")
+    family_name = generator_raw.get("name")
+    _need(family_name in FAMILIES, "generator.name", "unknown generator")
+    family = FAMILIES[family_name]
+    generator = _dict(generator_raw, "generator", family["generator_keys"])
+    if family["seeded"]:
+        seed = generator["seed"]
+        _need(
+            isinstance(seed, int) and not isinstance(seed, bool) and 0 <= seed < 2**31,
+            "generator.seed",
+            "not a seed",
+        )
+        if expected_seed is not None:
+            _need(seed == expected_seed, "generator.seed", "differs from --seed")
+    else:
+        seed = None
+        _need(expected_seed is None, "generator.seed", "this plan family has no seed")
     recorded = generator["sha256_of_plan"]
     _need(
         isinstance(recorded, str) and bool(_HEX64_RE.fullmatch(recorded)),
@@ -224,11 +253,12 @@ def load_plan(path: Path, expected_seed: int | None = None) -> LoadedPlan:
     )
     packet_id = body["packet_id"]
     _need(
-        isinstance(packet_id, str) and bool(PACKET_ID_RE.fullmatch(packet_id)),
+        isinstance(packet_id, str) and bool(family["packet_id_re"].fullmatch(packet_id)),
         "plan.packet_id",
-        "not a synthetic packet id",
+        "not a generator packet id",
     )
-    _need(packet_id == f"synthetic-{seed:06d}", "plan.packet_id", "does not match the seed")
+    if family["seeded"]:
+        _need(packet_id == f"synthetic-{seed:06d}", "plan.packet_id", "does not match the seed")
 
     create = _dict(
         body["create_request"],
@@ -268,7 +298,7 @@ def load_plan(path: Path, expected_seed: int | None = None) -> LoadedPlan:
         )
         fpath = entry["path"]
         _need(
-            isinstance(fpath, str) and bool(PATH_RE.fullmatch(fpath)),
+            isinstance(fpath, str) and bool(family["path_re"].fullmatch(fpath)),
             f"{field}.path",
             "not a generator path",
         )
@@ -295,11 +325,49 @@ def load_plan(path: Path, expected_seed: int | None = None) -> LoadedPlan:
     _need(parsed.get("format") == "house-capture-packet", "packet.format", "not Packet04")
     _need(parsed.get("formatVersion") == FORMAT_VERSION, "packet.formatVersion", "not 0.4")
     _need(parsed.get("packetId") == packet_id, "packet.packetId", "differs from packet_id")
-    _need(parsed.get("source") == {"kind": "synthetic"}, "packet.source", "not synthetic")
+    if family["seeded"]:
+        _need(parsed.get("source") == {"kind": "synthetic"}, "packet.source", "not synthetic")
+    else:
+        _need(
+            isinstance(parsed.get("source"), dict) and parsed["source"].get("kind") == "synthetic",
+            "packet.source",
+            "not synthetic",
+        )
     listed = [
         {"path": f.path, "bytes": len(f.content), "sha256": f.sha256, "role": f.role} for f in files
     ]
     _need(parsed.get("files") == listed, "packet.files", "differs from the plan's files")
+
+    # The published Packet04 rule the first REAL_API run taught: an arkit
+    # tier carries keyframes, photo_only carries none, and every keyframe
+    # image is a declared file with the keyframe role.
+    tier = (parsed.get("session") or {}).get("tier")
+    _need(
+        tier in ("arkit", "arkit_lidar", "photo_only") and tier == create["tier"],
+        "packet.session.tier",
+        "not the create request's tier",
+    )
+    keyframes = parsed.get("keyframes")
+    if tier in ("arkit", "arkit_lidar"):
+        _need(
+            isinstance(keyframes, list) and len(keyframes) >= 1,
+            "packet.keyframes",
+            "arkit packets include at least one keyframe",
+        )
+        listed_by_path = {entry["path"]: entry for entry in listed}
+        for index, keyframe in enumerate(keyframes or []):
+            field = f"packet.keyframes[{index}]"
+            _need(isinstance(keyframe, dict), field, "not an object")
+            image = keyframe.get("img")
+            entry = listed_by_path.get(image) if isinstance(image, str) else None
+            _need(entry is not None, f"{field}.img", "not a declared file")
+            _need(
+                entry["role"] == "keyframe",
+                f"{field}.img",
+                "not declared with the keyframe role",
+            )
+    else:
+        _need(keyframes == [], "packet.keyframes", "photo_only packets have no keyframes")
 
     plan = CapturePlan(
         packet_id=packet_id, create_request=create, files=tuple(files), packet=packet
