@@ -1,0 +1,33 @@
+{
+  "criteria": null,
+  "memberActions": [],
+  "meter": {
+    "barcodeConfirmed": false,
+    "candidates": [],
+    "clean": false,
+    "evidence": null,
+    "readersAgree": false,
+    "status": "not_captured",
+    "value": null
+  },
+  "outcome": {
+    "arkitEpoch": null,
+    "cableRoutePolylineArkit": null,
+    "frameToArkit": null,
+    "kind": "not_eligible",
+    "message": "Local test stand-in: the not-eligible decision is scripted, not measured. This is a local test outcome, not a check of a wall.",
+    "profile": "C",
+    "reasons": [],
+    "recommendedPlacement": null,
+    "viewsNeeded": []
+  },
+  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjE0NDY4Mywia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTUyMUZYQkVDM0ZLWDZNUUFXWkE5RTREL3J1bnMvcnVuXzQ4NDY5OTg5NjVhNTQ1ZWEvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.7d11d88555a1b20b96a17e63555e2214a9413d17aaaa27a8bf8fb97383935ec7",
+  "reviewUrl": "/v1/captures/cap_01M521FXBEC3FKX6MQAWZA9E4D/review",
+  "runId": "run_4846998965a545ea",
+  "scale": null,
+  "site": null,
+  "status": "complete",
+  "verdict": null,
+  "verdictUrl": null,
+  "viewsNeeded": []
+}

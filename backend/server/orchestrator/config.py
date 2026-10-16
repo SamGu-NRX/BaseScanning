@@ -11,6 +11,55 @@ def _flag(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+_LOCAL_OUTCOMES = (
+    "manual_review",
+    "eligible",
+    "needs_more_photos",
+    "not_eligible",
+    "failed",
+)
+
+
+def _dev_stubs(env: dict[str, str]) -> bool:
+    """Scripted local outcomes are honored only under dev stage stubs."""
+    return _flag(env.get("HSS_ORCH_STAGE_STUBS", "0")) and env.get("SMP_ENVIRONMENT", "prod") == "dev"
+
+
+def _require_dev_stubs(name: str, env: dict[str, str]) -> None:
+    if _dev_stubs(env):
+        return
+    raise ValueError(
+        f"{name} is only honored with HSS_ORCH_STAGE_STUBS=1 and SMP_ENVIRONMENT=dev "
+        f"(got HSS_ORCH_STAGE_STUBS={env.get('HSS_ORCH_STAGE_STUBS', '0')!r}, "
+        f"SMP_ENVIRONMENT={env.get('SMP_ENVIRONMENT', '(unset)')!r}); "
+        "refusing to run with it silently ignored"
+    )
+
+
+def _local_outcome(env: dict[str, str]) -> str:
+    raw = env.get("HSS_LOCAL_OUTCOME", "")
+    if not raw:
+        return "manual_review"
+    if raw not in _LOCAL_OUTCOMES:
+        raise ValueError(f"HSS_LOCAL_OUTCOME={raw!r} is not one of {', '.join(_LOCAL_OUTCOMES)}")
+    _require_dev_stubs("HSS_LOCAL_OUTCOME", env)
+    return raw
+
+
+def _local_stage_delay_s(env: dict[str, str]) -> float:
+    raw = env.get("HSS_LOCAL_STAGE_DELAY_S", "")
+    if not raw:
+        return 0.0
+    try:
+        value = float(raw)
+    except ValueError:
+        raise ValueError(f"HSS_LOCAL_STAGE_DELAY_S={raw!r} is not a number of seconds") from None
+    if not 0 <= value <= 30:
+        raise ValueError(f"HSS_LOCAL_STAGE_DELAY_S={raw!r} is outside the range 0 to 30 seconds")
+    _require_dev_stubs("HSS_LOCAL_STAGE_DELAY_S", env)
+    return value
+
+
 class OrchConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -35,6 +84,10 @@ class OrchConfig(BaseModel):
     # cancels a live worker within 15s of the deadline.
     coordinator_loop_s: float = 1
     modal_remote: bool = False
+    # Dev-only scripted outcome for the stage stubs; see the README's Stubs
+    # section. Both are refused loudly outside dev stage stubs.
+    local_outcome: str = "manual_review"
+    local_stage_delay_s: float = 0.0
 
 
 def load_orch(environ: dict[str, str] | None = None) -> OrchConfig:
@@ -63,4 +116,6 @@ def load_orch(environ: dict[str, str] | None = None) -> OrchConfig:
         test_kill_coordinator_after=pick("HSS_ORCH_TEST_KILL_COORDINATOR_AFTER", ""),
         coordinator_loop_s=float(pick("HSS_ORCH_COORDINATOR_LOOP_S", "1")),
         modal_remote=_flag(pick("HSS_ORCH_MODAL_REMOTE", "0")),
+        local_outcome=_local_outcome(env),
+        local_stage_delay_s=_local_stage_delay_s(env),
     )
