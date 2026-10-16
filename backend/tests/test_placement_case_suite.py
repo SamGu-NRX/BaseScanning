@@ -187,3 +187,154 @@ def test_manifest_copy_is_untouched_by_mutations() -> None:
     original = copy.deepcopy(payload)
     payload["cases"][0]["expectations"]["decision"] = "reject"
     assert json.loads(MANIFEST.read_text()) == original
+
+
+def test_missing_cases_key_fails_with_manifest_path(tmp_path: Path) -> None:
+    """A manifest without a cases key cannot silently disable the gate."""
+    payload = _absolutized_payload()
+    del payload["cases"]
+    drift = tmp_path / "manifest.json"
+    drift.write_text(json.dumps(payload))
+    with pytest.raises(cs.CaseSuiteError) as excinfo:
+        cs.load_cases(drift)
+    message = str(excinfo.value)
+    assert str(drift) in message
+    assert "cases" in message
+
+
+def test_empty_cases_list_fails_at_the_cli(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    payload = _absolutized_payload()
+    payload["cases"] = []
+    drift = tmp_path / "manifest.json"
+    drift.write_text(json.dumps(payload))
+    out = tmp_path / "report.json"
+    assert cs.main(["--manifest", str(drift), "--output", str(out)]) == 1
+    assert "cases" in capsys.readouterr().err
+    assert not out.exists()
+
+
+def test_duplicate_case_ids_fail_with_field(tmp_path: Path) -> None:
+    payload = _absolutized_payload()
+    payload["cases"][1]["id"] = payload["cases"][0]["id"]
+    drift = tmp_path / "manifest.json"
+    drift.write_text(json.dumps(payload))
+    with pytest.raises(cs.CaseSuiteError) as excinfo:
+        cs.load_cases(drift)
+    message = str(excinfo.value)
+    assert "cases[1].id" in message
+    assert payload["cases"][0]["id"] in message
+
+
+@pytest.mark.parametrize("kind", ["positve", "", 3, None])
+def test_malformed_case_kinds_fail_with_field(tmp_path: Path, kind: object) -> None:
+    payload = _absolutized_payload()
+    payload["cases"][0]["kind"] = kind
+    drift = tmp_path / "manifest.json"
+    drift.write_text(json.dumps(payload))
+    with pytest.raises(cs.CaseSuiteError) as excinfo:
+        cs.load_cases(drift)
+    assert "cases[0].kind" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    ("mangle", "why"),
+    [
+        (lambda case: case.pop("expectations"), "absent"),
+        (lambda case: case.update(expectations={}), "empty"),
+        (lambda case: case.update(expectations={"decision": "manual_review"}), "decision only"),
+        (lambda case: case["expectations"].update(spot="the good spot"), "spot wrong type"),
+        (lambda case: case["expectations"].update(checks=["gas_clearance"]), "checks wrong type"),
+    ],
+    ids=["absent", "empty", "decision-only", "spot-wrong-type", "checks-wrong-type"],
+)
+def test_unusable_positive_expectations_fail_with_field(tmp_path: Path, mangle, why: str) -> None:
+    payload = _absolutized_payload()
+    mangle(payload["cases"][0])
+    drift = tmp_path / "manifest.json"
+    drift.write_text(json.dumps(payload))
+    with pytest.raises(cs.CaseSuiteError) as excinfo:
+        cs.load_cases(drift)
+    assert "cases[0].expectations" in str(excinfo.value), why
+
+
+def test_negative_case_requires_declared_error(tmp_path: Path) -> None:
+    payload = _absolutized_payload()
+    payload["cases"][2].pop("expected_error")
+    drift = tmp_path / "manifest.json"
+    drift.write_text(json.dumps(payload))
+    with pytest.raises(cs.CaseSuiteError) as excinfo:
+        cs.load_cases(drift)
+    assert "cases[2].expected_error" in str(excinfo.value)
+
+    thin = _absolutized_payload()
+    thin["cases"][2]["expected_error"] = {"code": "placement_scene_unsupported"}
+    thin_manifest = tmp_path / "thin.json"
+    thin_manifest.write_text(json.dumps(thin))
+    with pytest.raises(cs.CaseSuiteError) as excinfo:
+        cs.load_cases(thin_manifest)
+    assert "cases[2].expected_error" in str(excinfo.value)
+
+
+def _forging_client(monkeypatch: pytest.MonkeyPatch, mutate) -> None:
+    """Swap the suite's client for one that mutates every 200 response body,
+    simulating a solver/API regression in the echoed response."""
+    inner = cs._build_client()
+
+    class _ShimResponse:
+        def __init__(self, status_code: int, body: dict) -> None:
+            self.status_code = status_code
+            self.text = ""
+            self._body = body
+
+        def json(self) -> dict:
+            return self._body
+
+    class _ForgingClient:
+        def post(self, *args: object, **kwargs: object) -> _ShimResponse:
+            response = inner.post(*args, **kwargs)
+            assert response.status_code == 200
+            body = response.json()
+            mutate(body)
+            return _ShimResponse(200, body)
+
+    monkeypatch.setattr(cs, "_get_client", lambda: _ForgingClient())
+
+
+def test_forged_input_sha256_fails_the_report(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A response whose echoed hash points at other bytes must not match."""
+    _forging_client(
+        monkeypatch,
+        lambda body: body.setdefault("stats", {}).update(input_sha256="0" * 64),
+    )
+    report = cs.run_suite(MANIFEST)
+    case = next(case for case in report["cases"] if case["kind"] == cs.KIND_POSITIVE)
+    assert case["status"] == cs.STATUS_MISMATCHED
+    assert case["input_sha_matches_file"] is False
+    assert any("input_sha256" in mismatch for mismatch in case["mismatches"])
+    assert report["ok"] is False
+
+
+def test_missing_input_sha256_fails_the_report(monkeypatch: pytest.MonkeyPatch) -> None:
+    _forging_client(
+        monkeypatch,
+        lambda body: body.setdefault("stats", {}).pop("input_sha256", None),
+    )
+    report = cs.run_suite(MANIFEST)
+    case = next(case for case in report["cases"] if case["kind"] == cs.KIND_POSITIVE)
+    assert case["status"] == cs.STATUS_MISMATCHED
+    assert case["input_sha256"] is None
+
+
+def test_forged_input_sha256_fails_the_cli(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    _forging_client(
+        monkeypatch,
+        lambda body: body["stats"].update(input_sha256="f" * 64),
+    )
+    out = tmp_path / "report.json"
+    assert cs.main(["--output", str(out)]) == 1
+    assert json.loads(out.read_text())["ok"] is False
+    err = capsys.readouterr().err
+    assert "status=mismatched" in err
+    assert "input_sha256" in err

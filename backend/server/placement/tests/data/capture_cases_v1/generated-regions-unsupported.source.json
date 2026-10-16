@@ -1,0 +1,78 @@
+{
+  "format": "base-scene/v0",
+  "scene_id": "burst7-generated-hazard-unsupported",
+  "provenance": {
+    "data": "synthetic",
+    "site": "burst7-generated-hazard-unsupported",
+    "producer": {"path": "hand-authored", "version": "burst7"},
+    "scale_source": "native_metric",
+    "gravity_source": "ground_truth",
+    "notes": [
+      "Negative case for the burst7 placement case suite: a schema-valid source whose second object is a gas meter a generative model produced (evidence generated). The future bridge (W7) must refuse it with code placement_scene_unsupported at pointer /objects/1/evidence: generated geometry is never evidence. This suite never runs that bridge; the case stays labelled awaiting conversion."
+    ]
+  },
+  "frame": {
+    "units": "m",
+    "convention": "meter_anchored/v0",
+    "anchor": {"element_id": "obj-meter", "plus_minus_m": 0.09}
+  },
+  "walls": [
+    {
+      "id": "side",
+      "role": "house",
+      "baseline_m": [[-3.048, 0.0], [4.572, 0.0]],
+      "height_m": 2.7432,
+      "plus_minus_m": 0.09,
+      "evidence": "observed"
+    }
+  ],
+  "chain": {
+    "wall_ids": ["side"],
+    "ends": {
+      "left": {"kind": "limit", "s_m": -3.048, "note": "corner post"},
+      "right": {"kind": "unexplored", "s_m": 4.572, "note": "wall continues right, not walked"}
+    }
+  },
+  "ground": {
+    "surface": {"kind": "plane", "normal": [0.0, 1.0, 0.0], "offset_m": 0.0},
+    "plus_minus_m": 0.05
+  },
+  "objects": [
+    {
+      "id": "obj-meter",
+      "class": "meter",
+      "geometry": {"kind": "wall_rect", "wall_id": "side", "s_m": [-0.15, 0.15], "bottom_m": 0.15, "top_m": 1.2, "standoff_m": 0.1},
+      "confidence": 0.99,
+      "plus_minus_m": 0.09,
+      "source": {"kind": "tap"},
+      "evidence": "observed"
+    },
+    {
+      "id": "obj-gas-generated",
+      "class": "gas_meter",
+      "wall_id": "side",
+      "geometry": {
+        "kind": "footprint",
+        "polygon_m": [[1.2192, 0.0], [1.524, 0.0], [1.524, 0.3048], [1.2192, 0.3048]],
+        "bottom_m": 0.15,
+        "top_m": 0.76
+      },
+      "confidence": 0.4,
+      "plus_minus_m": 0.3,
+      "source": {"kind": "generated", "model": "inpaint-demo"},
+      "evidence": "generated"
+    }
+  ],
+  "generated_regions": [
+    {
+      "id": "gen-hazard",
+      "geometry": {"kind": "box", "center_m": [1.3716, 0.5, 0.45], "size_m": [0.6, 0.9, 0.5], "yaw_deg": 0.0},
+      "method": "hole-filling",
+      "note": "The hazard above was completed, not observed."
+    }
+  ],
+  "coverage": {
+    "method": "synthetic-authored",
+    "rule": {"min_views": 1, "max_incidence_deg": {"wall": 60, "ground": 60}}
+  }
+}

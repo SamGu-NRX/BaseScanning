@@ -136,6 +136,30 @@ final class ResultCardUITests: XCTestCase {
         attach(app, name: "\(name)-details")
     }
 
+    /// Review of #53 (#42): a mark the server set aside past an unexplored end is listed under
+    /// Details as not counted, in the server's words.
+    @MainActor
+    func testAMarkTheServerSetAsideIsListedAsNotCounted() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "result", "-uiDemoMarkPastEnd"]
+        app.launch()
+        XCTAssertTrue(element(app, "screen.result").waitForExistence(timeout: 15))
+        let details = element(app, "result.details")
+        scrollIntoView(details, in: app)
+        details.tap()
+        let mark = element(app, "result.markNotUsed")
+        XCTAssertTrue(mark.waitForExistence(timeout: 10), "the set-aside mark is missing under Details")
+        XCTAssertTrue(mark.label.contains("The window marked 12 ft left of the meter"), mark.label)
+        XCTAssertTrue(mark.label.contains("so it was not used"), mark.label)
+        scrollIntoView(mark, in: app)
+        let hint = app.staticTexts["These marks are outside the part of the wall used for this answer."]
+        scrollIntoView(hint, in: app)
+        XCTAssertTrue(hint.exists)
+        XCTAssertFalse(app.staticTexts["To count them, scan again and walk on past that end of the wall."].exists)
+        attach(app, name: "result-marksNotUsed")
+    }
+
     // MARK: Helpers
 
     @MainActor

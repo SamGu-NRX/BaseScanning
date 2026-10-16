@@ -92,6 +92,7 @@ extension ScanEngine: ScanActions {
         guard state.phase == .meterCloseUp else { return }
         state.closeUp = .skipped
         state.meterNumber = .skipped
+        state.meterBrand = nil
         // A photo on disk (one the reader turned down, or one confirmed just before the skip)
         // stays a plain photo of the scan: scene.json doesn't list it and the meter mark doesn't
         // link it.
@@ -472,6 +473,7 @@ extension ScanEngine: ScanActions {
 
     func deleteFeature(_ id: UUID) {
         state.features.removeAll { $0.id == id }
+        publishFeaturesPastEnds()
     }
 
     func setWindowOpens(_ id: UUID, opens: Bool?) {

@@ -1,0 +1,257 @@
+{
+  "schema_version": "placement-case-manifest/v0",
+  "description": [
+    "Burst8 supported-case packet. Each positive case pairs a schema-valid synthetic base-scene/v0 source (metres, hand-authored) with an independently authored root-wire scene (feet, hand-derived as metres divided by 0.3048 and rounded to six decimals) — the same wall, on-wall meter anchor, observed wall_rect hazard, level ground, coverage gap, and chain ends, described twice by construction, never produced by running the converter.",
+    "Positive cases run the unchanged top-level solver through POST /v1/placements on the wire scene and on the bridge's conversion of the source scene; the two responses must agree except stats.elapsed_ms (timing) and stats.input_sha256 plus response.input_sha256 (the posted bytes differ: the wire file carries a schema_version envelope field the bridge does not emit). They must also match these expectations, derived from the authored dimensions: the spot is the last failing start pushed to the 3 ft gas-clearance line (gas edge + 3.0), gas_clearance is unsure by margin (measured exactly 3.0 ft against 0.590552 ft of uncertainty), the ground gap makes ground_surface unsure-unobserved, and the unexplored end within reach asks for a walk past it. The merged ground band's six-decimal extent is the buffer union over the authored gaps and the clearance radii of rules.yaml; its span and out_ft are pinned as the serialized geometric consequence of the authored dimensions.",
+    "Negative cases are source-only: the bridge must refuse them with the declared error code and pointer. multiwall-source-unsupported and generated-object-evidence-unsupported are newly authored to be clean of every other unsupported feature, so the declared refusal is the scene's first one. The other three preserve W7's documented bridge limitations: standoff-meter-anchor-unsupported is a byte-identical copy of the W7 hazard-right-ground-gap source, generated-regions-unsupported a byte-identical copy of the W7 generated-hazard source, and footprint-hazard-unsupported is the W7 right source with only the meter's standoff_m field removed so the footprint hazard is the first unsupported feature left (its hash pins the derived bytes).",
+    "Every fixture path is relative to this manifest's directory and pinned by sha256; a missing or drifted file fails the suite with its path."
+  ],
+  "cases": [
+    {
+      "id": "hazard-right-ground-gap",
+      "kind": "positive",
+      "source": {
+        "path": "hazard-right-ground-gap.source.json",
+        "sha256": "57451d8af6e01ff5d1d40ee5911dbfceeefa1e87fab2cc9f3284533785bba059"
+      },
+      "wire": {
+        "path": "hazard-right-ground-gap.wire.json",
+        "sha256": "06ea13384eb8dfcff5025284d2314645568af395679128f08600c065523d9bf3"
+      },
+      "expectations": {
+        "decision": "manual_review",
+        "spot": {
+          "wall_id": "side",
+          "segment": 0,
+          "span_ft": [
+            7.0,
+            9.583333
+          ],
+          "outcome": "unsure"
+        },
+        "checks": {
+          "gas_clearance": {
+            "outcome": "unsure",
+            "unsure_cause": "margin"
+          },
+          "ground_surface": {
+            "outcome": "unsure",
+            "unsure_cause": "unobserved"
+          },
+          "meter_working_space": {
+            "outcome": "pass"
+          },
+          "wall_equipment_above": {
+            "outcome": "pass"
+          },
+          "route_length": {
+            "outcome": "pass"
+          }
+        },
+        "missing_evidence": [
+          {
+            "kind": "band",
+            "band": "ground",
+            "span_ft": [
+              -3.307693,
+              8.495
+            ],
+            "out_ft": 12.141026
+          },
+          {
+            "kind": "past_end",
+            "side": "right",
+            "span_ft": [
+              10.0,
+              10.0
+            ]
+          }
+        ],
+        "sweep_failing_runs": [
+          {
+            "start_ft": [
+              2.846457,
+              5.725066
+            ],
+            "failing": [
+              "gas_clearance",
+              "wall_equipment_above"
+            ]
+          },
+          {
+            "start_ft": [
+              5.74147,
+              6.069554
+            ],
+            "failing": [
+              "gas_clearance"
+            ]
+          }
+        ],
+        "ends": {
+          "left": "limit",
+          "right": "unexplored"
+        }
+      },
+      "note": "Geometry facts, not policy: the wall runs s [-1.5, 10.0] ft with a limit left end and an unexplored right end; the gas meter at s [3.0, 4.0] ft pushes the best spot to the 3 ft clearance line (s0 = 4.0 + 3.0 = 7.0, measured 3.0 ft +- 0.590552, unsure by margin, not by observation); every start closer to the meter either overlaps the working space or the meter (estimate-failing) and every start past the clearance line has unsure ground too but a longer route. The wall_rect vent obj-tap-vent (the replay runner's TAP_HAZARD geometry) sits at s [5.249344, 5.905512] ft +- 0.164042: the chosen spot clears it (gap 1.094488 ft), while the pinned sweep runs overlap the gas meter and the vent — the second run ends exactly at the vent's tolerance line 5.905512 + 0.164042 = 6.069554. Ground is observed only at [-1.5, 3.0] and [8.5, 10.0] ft out 13, so the spot's ground is unsure-unobserved and the response must request the ground band and a walk past the right end."
+    },
+    {
+      "id": "hazard-left-ground-gap",
+      "kind": "positive",
+      "source": {
+        "path": "hazard-left-ground-gap.source.json",
+        "sha256": "8000f6c9d0ae47f6203c0a3a42e61ff3e9ee891bc33c2396c80cec591f0d9e5b"
+      },
+      "wire": {
+        "path": "hazard-left-ground-gap.wire.json",
+        "sha256": "6e8b6e001f55e99a17d202ce64f39297554cafaa9e32f0c3a33cd6ab35813839"
+      },
+      "expectations": {
+        "decision": "manual_review",
+        "spot": {
+          "wall_id": "side",
+          "segment": 0,
+          "span_ft": [
+            -9.583333,
+            -7.0
+          ],
+          "outcome": "unsure"
+        },
+        "checks": {
+          "gas_clearance": {
+            "outcome": "unsure",
+            "unsure_cause": "margin"
+          },
+          "ground_surface": {
+            "outcome": "unsure",
+            "unsure_cause": "unobserved"
+          },
+          "meter_working_space": {
+            "outcome": "pass"
+          },
+          "opening_clearance": {
+            "outcome": "unsure",
+            "unsure_cause": "unobserved"
+          },
+          "route_length": {
+            "outcome": "pass"
+          }
+        },
+        "missing_evidence": [
+          {
+            "kind": "band",
+            "band": "ground",
+            "span_ft": [
+              -10.0,
+              -1.004999
+            ],
+            "out_ft": 12.141026
+          },
+          {
+            "kind": "past_end",
+            "side": "left",
+            "span_ft": [
+              -10.0,
+              -10.0
+            ]
+          }
+        ],
+        "sweep_failing_runs": [
+          {
+            "start_ft": [
+              -8.975557,
+              -4.458333
+            ],
+            "failing": [
+              "gas_clearance"
+            ]
+          },
+          {
+            "start_ft": [
+              -0.590552,
+              0.621391
+            ],
+            "failing": [
+              "meter_working_space"
+            ]
+          }
+        ],
+        "ends": {
+          "left": "unexplored",
+          "right": "limit"
+        }
+      },
+      "note": "Geometry facts, not policy: the wall runs s [-10.0, 3.5] ft with an unexplored left end and a limit right end; the gas meter at s [-4.0, -3.0] ft pushes the best spot left onto the 3 ft clearance line (s1 = -4.0 - 3.0 = -7.0, s0 = -9.583333, measured 3.0 ft +- 0.590552, unsure by margin), and the wall's left end at -10.0 leaves no room for a fully clear gas spot so every left candidate keeps the gas unsure. Ground is observed only at [-10.0, -9.5] and [-1.0, 3.5] ft out 12, so the spot's ground is unsure-unobserved; the right stretch near the meter is blocked by the working space (the pinned meter_working_space run starts exactly at -(0.09 m + 0.09 m) = -0.590552 ft) and the wall's short right end blocks the rest. The response must request the ground band and a walk past the left end."
+    },
+    {
+      "id": "multiwall-source-unsupported",
+      "kind": "negative_source",
+      "source": {
+        "path": "multiwall-source-unsupported.source.json",
+        "sha256": "3e13bace8381dd56bdaaa6e5e874cca488c8ea08617eb09c8bf4e19b8c75de05"
+      },
+      "wire": null,
+      "expected_error": {
+        "code": "placement_scene_unsupported",
+        "pointer": "/walls"
+      },
+      "note": "Awaiting conversion: an L of two house walls with everything else inside the bridge's bounded scope (observed on-wall meter anchor, observed wall_rect hazard, level ground, band coverage, contract-valid chain ends), so the two-wall chain is the scene's first unsupported feature and the bridge must decline it with code placement_scene_unsupported at pointer /walls. This suite never runs the missing bridge, and this case is never reported as a successful conversion."
+    },
+    {
+      "id": "generated-object-evidence-unsupported",
+      "kind": "negative_source",
+      "source": {
+        "path": "generated-object-evidence-unsupported.source.json",
+        "sha256": "29fab430e733033655580d510121b4496e68bc264e23a6b56dfa0890bc7e315e"
+      },
+      "wire": null,
+      "expected_error": {
+        "code": "placement_scene_unsupported",
+        "pointer": "/objects/1/evidence"
+      },
+      "note": "Awaiting conversion: one straight wall with an observed on-wall meter anchor and one window object the producer completed rather than observed (evidence generated), with no generated_regions, no keyframes and band coverage, so the object's evidence is the scene's first unsupported feature and the bridge must decline it with code placement_scene_unsupported at pointer /objects/1/evidence. This suite never runs the missing bridge, and this case is never reported as a successful conversion."
+    },
+    {
+      "id": "standoff-meter-anchor-unsupported",
+      "kind": "negative_source",
+      "source": {
+        "path": "standoff-meter-anchor-unsupported.source.json",
+        "sha256": "670624f98e6366c15d8d0154e9d5f98338cbe65a3d31f204475619fe22c9f714"
+      },
+      "wire": null,
+      "expected_error": {
+        "code": "placement_scene_unsupported",
+        "pointer": "/objects/0/geometry/standoff_m"
+      },
+      "note": "Awaiting conversion: a byte-identical copy of the W7 hazard-right-ground-gap source, preserved unchanged so the declared refusal is the scene's actual first one — the stand-off meter anchor the bridge does not synthesise, at /objects/0/geometry/standoff_m. The suite never runs the missing bridge, and this case is never reported as a successful conversion."
+    },
+    {
+      "id": "footprint-hazard-unsupported",
+      "kind": "negative_source",
+      "source": {
+        "path": "footprint-hazard-unsupported.source.json",
+        "sha256": "953b0cb6d9fd32904f1aa84df7b4ecc62bcb6683cd5d1c0ea21bb10dd61b7184"
+      },
+      "wire": null,
+      "expected_error": {
+        "code": "placement_scene_unsupported",
+        "pointer": "/objects/1/geometry/kind"
+      },
+      "note": "Awaiting conversion: the W7 hazard-right-ground-gap source with only the meter anchor's standoff_m field removed (the scene is otherwise byte-for-byte the same document re-serialized), so the stand-off refusal no longer fires first and the footprint gas_meter hazard is the first unsupported feature left. The bridge must decline it with code placement_scene_unsupported at pointer /objects/1/geometry/kind. The suite never runs the missing bridge, and this case is never reported as a successful conversion."
+    },
+    {
+      "id": "generated-regions-unsupported",
+      "kind": "negative_source",
+      "source": {
+        "path": "generated-regions-unsupported.source.json",
+        "sha256": "a9b9a35f49f8811e7dd1fbccb9b1eead6de0418494192fa49ee51c5fe603ce34"
+      },
+      "wire": null,
+      "expected_error": {
+        "code": "placement_scene_unsupported",
+        "pointer": "/generated_regions"
+      },
+      "note": "Awaiting conversion: a byte-identical copy of the W7 generated-hazard source, preserved unchanged and declared at its actual first refusal /generated_regions (generated regions are unknown space, not observed geometry) rather than the /objects/1/evidence pointer its W7 manifest entry declared. The suite never runs the missing bridge, and this case is never reported as a successful conversion."
+    }
+  ]
+}

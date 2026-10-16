@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -527,14 +528,14 @@ def _write_twin_manifest(tmp_path: Path) -> Path:
             "kind": "positive",
             "source": source_ref,
             "wire": wire_ref,
-            "expectations": {"decision": "manual_review"},
+            "expectations": _expected_a(),
         },
         {
             "id": "twin-two",
             "kind": "positive",
             "source": source_ref,
             "wire": wire_ref,
-            "expectations": {"decision": "manual_review"},
+            "expectations": _expected_a(),
         },
     ]
     manifest_path = tmp_path / "manifest.json"
@@ -945,3 +946,43 @@ def test_a_declared_negative_that_solves_fails_the_suite(tmp_path, monkeypatch):
     assert case["status"] == "solved"
     assert any("produced a successful placement" in mismatch for mismatch in case["mismatches"])
     assert receipt["ok"] is False
+
+
+def test_a_failed_finalize_replay_fails_the_cli(tmp_path, monkeypatch):
+    """A finalize-replay regression must reach the exit code, not only the
+    receipt: with no backend CI on this branch, the CLI exit code is the only
+    automation-facing gate, and a silent pass would hide a broken replay."""
+
+    def failing_replay(harness, journey):
+        return {
+            "caseId": journey["caseId"],
+            "replayHttpStatus": 202,
+            "sameRunId": True,
+            "terminalEventCountAfter": 2,
+            "ok": False,
+        }
+
+    monkeypatch.setattr(runner, "_replay_finalize", failing_replay)
+    output = tmp_path / "receipt.json"
+    exit_code = runner.main(
+        [
+            "--output",
+            str(output),
+            "--workdir",
+            str(tmp_path / "run"),
+            "--cases",
+            "multiwall-source-unsupported",
+        ]
+    )
+    receipt = json.loads(output.read_text())
+    assert receipt["finalizeReplay"]["ok"] is False
+    assert "finalize replay" in "\n".join(receipt["blockers"])
+    assert exit_code == 1
+
+
+def test_run_cases_restores_the_process_environment(tmp_path):
+    """The dev flags must not leak into the rest of the pytest process: any later
+    test asserting env-derived defaults would become order-dependent."""
+    before = dict(os.environ)
+    runner.run_cases(MANIFEST, tmp_path / "run", case_ids=["multiwall-source-unsupported"])
+    assert dict(os.environ) == before

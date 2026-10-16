@@ -1155,6 +1155,35 @@ def test_join_vetoes_only_a_passing_candidate():
     assert blocked["cand"].checks[0].outcome == "unsure"
 
 
+def test_join_without_matches_reports_no_comparison():
+    """No C2 spot in range: the cross-check is unavailable, not perfect."""
+    from server.criteria.c1.engine3d import Check
+    from server.criteria.c2.veto import join
+
+    run_row = {
+        "wall": "w1",
+        "u0": 0.0,
+        "u1": 0.0,
+        "outcome": "pass",
+        "failing": [],
+        "unsure": [],
+        "cand": type("C", (), {"checks": [Check("wall_backing", "pass")]})(),
+    }
+    spots = [
+        {
+            "outcome": "pass",
+            "wall_id": "w2",
+            "s_m": 0.0,
+            "rear_mid_xy": [0, 0],
+            "checks": [{"id": "wall_backing", "outcome": "pass"}],
+        }
+    ]
+    stamped = join([run_row], spots, {"w1": (0.0, 1)})
+    assert stamped["positions_compared"] == 0
+    assert stamped["agreement_with_c1"] is None
+    assert run_row["outcome"] == "pass"
+
+
 def test_placement_box_is_metres_at_the_short_route_spot():
     """The AR box is d/2 + 0.02 m off the face, at the shortest spot inside the run."""
     from shapely.geometry import Polygon
@@ -1899,6 +1928,70 @@ def test_c2_sweep_counts_the_default_profile():
     assert doc["n_pass"] == 4
     assert doc["n_spots"] == 20
     assert doc["by_profile"]["S"]["n_pass"] == 0
+
+
+def test_c2_sweep_document_never_substitutes_another_profile():
+    from server.criteria.run import c2_sweep_document
+
+    doc = c2_sweep_document(
+        {
+            "S": {
+                "status": "ok",
+                "agreement_with_c1": 0.9,
+                "positions_compared": 30,
+                "vetoes": 2,
+                "n_pass": 9,
+                "n_spots": 30,
+            }
+        },
+        "C",
+    )
+    assert doc["status"] == "off"
+    assert doc["n_pass"] == 0
+    assert doc["n_spots"] == 0
+    assert doc["by_profile"]["S"]["n_pass"] == 9  # the evidence is kept, never promoted
+
+
+def test_c2_default_document_selects_the_whole_default_comparison():
+    from server.criteria.run import c2_default_document
+
+    by_profile = {
+        "S": {
+            "status": "ok",
+            "agreement_with_c1": 0.9,
+            "positions_compared": 30,
+            "vetoes": 2,
+            "n_pass": 9,
+            "n_spots": 30,
+        },
+        # #255: a zero-comparison sweep is ok with no agreement, never perfect agreement.
+        "C": {
+            "status": "ok",
+            "agreement_with_c1": None,
+            "positions_compared": 0,
+            "vetoes": 0,
+            "n_pass": 0,
+            "n_spots": 12,
+        },
+    }
+    assert c2_default_document(by_profile, "C") == {
+        "status": "ok",
+        "agreement_with_c1": None,
+        "positions_compared": 0,
+        "vetoes": 0,
+    }
+    assert c2_default_document(by_profile, "S") == {
+        "status": "ok",
+        "agreement_with_c1": 0.9,
+        "positions_compared": 30,
+        "vetoes": 2,
+    }
+    assert c2_default_document({}, "C") == {
+        "status": "off",
+        "agreement_with_c1": None,
+        "positions_compared": 0,
+        "vetoes": 0,
+    }
 
 
 def test_placement_margin_over_uncertainty():

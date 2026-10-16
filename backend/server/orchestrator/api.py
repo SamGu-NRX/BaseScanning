@@ -73,6 +73,7 @@ def start_run(
         run_id=run_id,
         capture_id=capture_id,
         packet_sha256=digest,
+        packet_uri=packet_uri,
         parent_run_id=parent_run_id,
         status="pending",
         branch=branch_of(packet),  # type: ignore[arg-type]
@@ -162,16 +163,39 @@ def on_confirmation(
     )
     try:
         from server.reads.policy import confirm
+        from server.reads.types import Reads
     except ImportError:
         return
-    confirm(
-        capture_id,
+    key = _latest_reads_key(services, capture_id)
+    if key is None:
+        return
+    try:
+        reads = Reads.model_validate(json.loads(services.storage.get_bytes(key)))  # type: ignore[attr-defined]
+    except (OSError, ValueError):
+        return
+    updated = confirm(
+        reads,
         still_id=confirmation.imageId,
         choice=confirmation.value if confirmation.kind == "confirmed" else None,
         typed=confirmation.value if confirmation.kind == "corrected" else None,
-        by=by,
+        by=by,  # type: ignore[arg-type]
         field_id=confirmation.fieldId,
     )
+    # Persist the corrected record so later results read the answer.
+    services.storage.put_bytes(key, updated.model_dump_json().encode(), "application/json")  # type: ignore[attr-defined]
+
+
+def _latest_reads_key(services: object, capture_id: str) -> str | None:
+    """The reads artifact of the capture's newest run, or None before reads exist."""
+
+    runs = services.state.runs_for_capture(capture_id)  # type: ignore[attr-defined]
+    if not runs:
+        return None
+    run = max(runs, key=lambda item: item.created_at)
+    from server.orchestrator.artifacts import overlay_stage_artifacts
+
+    key = overlay_stage_artifacts(services.state, run).artifacts.get("reads/reads.json")  # type: ignore[attr-defined]
+    return key or None
 
 
 def cancel_capture(capture_id: str) -> None:

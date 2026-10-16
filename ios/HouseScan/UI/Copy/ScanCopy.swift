@@ -14,6 +14,20 @@ struct Instruction: Hashable {
     /// situation and the detail holds what to do: the doing leads, and the situation moves under
     /// Details. Nil keeps the title and folds the detail.
     var folded: Folded? = nil
+    /// Other titles this card may swap to while it stays up, laid out unseen behind the title so
+    /// the card keeps one height whichever shows (`InstructionCard`). On an aim step the title
+    /// follows the marker the overlay draws, and the overlay draws within the camera the card
+    /// leaves open: a title that wrapped to a different height moved that camera, which could
+    /// flip the marker and the title back (review of #241).
+    var titleReserve: [String] = []
+    /// A planner aim keeps its identity while its marker, coaching and rounded distance change.
+    /// Exact coordinates distinguish adjacent targets whose displayed distances can be equal.
+    var aimTarget: AimTarget? = nil
+
+    enum AimTarget: Hashable {
+        case ground(s: Float)
+        case wall(s: Float)
+    }
 
     struct Folded: Hashable {
         /// What to do now, in place of `title`.
@@ -76,15 +90,18 @@ enum ScanCopy {
             )
         case .aimAtGround(let s):
             // A cell counts once seen from two places at least 0.25 m apart (`coveringBaseline`),
-            // so tilting down without moving never clears it.
+            // so tilting down without moving never clears it. A whole step, not a small one: a
+            // frame is kept for its place only 0.5 m from the last (`AutoCaptureConfig
+            // .spacingMeters`), and a shuffle can stop short of both (review of #117). The legend
+            // and the second-position title say the same step (`aimRingLegend`, `aim`).
             aim(
-                Instruction(title: "Tilt down to show the ground", detail: "The strip along the wall, \(Distance.fromMeter(s)). Take a small step sideways as you look."),
+                Instruction(title: "Tilt down to show the ground", detail: "The strip along the wall, \(Distance.fromMeter(s)). Take a step to the side as you look.", aimTarget: .ground(s: s)),
                 ground: true, hint: hint
             )
         case .aimAtWall(let s):
             // "Around at your meter" read wrong once the walk starts at the meter.
             aim(
-                Instruction(title: "Tilt up to show more wall", detail: abs(s) < Distance.metersPerInch * 3 ? "At your meter." : "Around \(Distance.fromMeter(s))."),
+                Instruction(title: "Tilt up to show more wall", detail: abs(s) < Distance.metersPerInch * 3 ? "At your meter." : "Around \(Distance.fromMeter(s)).", aimTarget: .wall(s: s)),
                 ground: false, hint: hint
             )
         case .stepBack:
@@ -122,18 +139,22 @@ enum ScanCopy {
     /// the side is the whole instruction (#77). Too close, "step back" joins the same card
     /// instead of replacing it with another (#77).
     private static func aim(_ base: Instruction, ground: Bool, hint: GuidanceHint?) -> Instruction {
-        guard let hint else { return base }
         var copy = base
+        // The same target can gain or lose its second-position advice without moving the card.
+        copy.titleReserve = ground
+            ? [base.title, aimTiltUp, aimRingOnStrip, aimSecondPosition]
+            : [base.title, aimTiltDown, aimSecondPosition]
+        guard let hint else { return copy }
         if hint.needsSecondPosition {
-            copy.title = "Now take one step to the side and look again"
+            copy.title = aimSecondPosition
         } else {
             switch hint.aim {
             case .above? where ground:
-                copy.title = "Tilt up a little"
+                copy.title = aimTiltUp
             case .below? where !ground:
-                copy.title = "Tilt down a little"
+                copy.title = aimTiltDown
             case .onScreen? where ground:
-                copy.title = "Put the ring on the strip"
+                copy.title = aimRingOnStrip
             default:
                 break
             }
@@ -143,6 +164,11 @@ enum ScanCopy {
         }
         return copy
     }
+
+    private static let aimSecondPosition = "Step sideways, look again"
+    private static let aimTiltUp = "Tilt up a little"
+    private static let aimTiltDown = "Tilt down a little"
+    private static let aimRingOnStrip = "Put the ring on the strip"
 
     // MARK: Coaching
 
@@ -229,10 +255,10 @@ enum ScanCopy {
     /// its stretch is captured (#81).
     /// A stretch counts only once it is seen from two places a step apart
     /// (`CoverageConfig.coveringBaseline`), so holding still never fills the ring: the line asks
-    /// for a step, in the tilt-down card's own words ("Take a small step sideways as you look."),
+    /// for a step, in the tilt-down card's own words ("Take a step to the side as you look."),
     /// so the two lines on screen together ask for the same thing. If the card's wording
     /// changes, change this with it.
-    static let aimRingLegend = "Keep the ring in view and take a small step sideways. It fills as your phone captures this spot."
+    static let aimRingLegend = "Keep the ring in view and take a step to the side. It fills as your phone captures this spot."
 
     // MARK: Wall ends
 
@@ -340,6 +366,16 @@ enum ScanCopy {
 
     /// Over "Looks complete" after its first tap found a question unanswered (#65).
     static let reviewUnanswered = "A question above has no answer yet. Answer it, or tap Looks complete again to send."
+
+    /// In place of the review's "Add something" chips while the phone has lost its place. It says
+    /// "finish with", not "tap to send": with a question unanswered, that tap first points to it
+    /// (review of #131).
+    static let reviewLostPlace = "Your phone lost its place. Point it back at the wall to add more, or finish with Looks complete."
+
+    /// Over the result's list of marks the server set aside (`ResultPresentation.marksNotUsed`).
+    static let marksNotUsedTitle = "Not counted"
+    /// Why the marks were set aside; the available follow-up is determined by the server answer.
+    static let marksNotUsedHint = "These marks are outside the part of the wall used for this answer."
 
     /// Under a reviewed mark that lies wholly past a marked end (`ScanViewState.featuresPastEnds`).
     static let featurePastEnd = "Past the end of your scan"
@@ -785,7 +821,24 @@ enum ScanCopy {
     /// The AR title over a possible spot, and the words for what the AR view draws there.
     static let proposedSpotOverlay = "A proposed battery spot, drawn on your wall"
     static let proposedSpotThisWay = "The proposed spot is this way"
-    static let proposedSpotOffScreen = "The proposed spot is off screen. Turn the phone toward the arrow."
+    /// The note shown outside Details when the open camera cannot hold the chevron, so there
+    /// is no arrow to turn toward (review of #241), and the chevron's VoiceOver label when it is
+    /// drawn. Not while open Details covers the camera: `cameraBelowDetails` says how to get it
+    /// back instead.
+    static func proposedSpotOffScreen(turn direction: AimDirection) -> String {
+        let turn = switch direction {
+        case .above: "Tilt the phone up"
+        case .below: "Tilt the phone down"
+        case .left: "Turn the phone left"
+        case .right: "Turn the phone right"
+        case .onScreen, .behind: "Turn the phone around"
+        }
+        return "The proposed spot is off screen. \(turn) to find it."
+    }
+
+    /// When open Details at the largest text sizes leaves almost none of the camera on screen,
+    /// on the walk and in "See it on your wall".
+    static let cameraBelowDetails = "The camera view is below. Close Details or scroll."
 
     static let seeOnWall = "See this spot on your wall"
     /// For a spot an installer still has to confirm against the meter's working space.
