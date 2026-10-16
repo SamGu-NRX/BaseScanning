@@ -22,6 +22,11 @@ if [[ -z "${STORE:-}" || ! -d "$STORE/internal" ]]; then
   exit 1
 fi
 
+# Before the port into the BaseScanning monorepo the git toplevel was this
+# package, so the toplevel held packet/, eval/ and the rest. The toplevel is
+# now the monorepo root one level above backend/: git operations still run at
+# the toplevel, but every copied file anchors under the package root.
+PACKAGE="$(cd "$(dirname "$0")/.." && pwd)"
 REPO="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 cd "$REPO"
 
@@ -44,16 +49,16 @@ RSYNC_OPTS=(-a --delete --max-size=5m
   --exclude=.pytest_cache --exclude=.ruff_cache --exclude=.DS_Store)
 
 mirror() {  # mirror <store-relative-src-dir> <repo-dst-dir> [extra rsync args]
-  local src="$STORE/$1" dst="$REPO/$2"
+  local src="$STORE/$1" dst="$PACKAGE/$2"
   shift 2
   if [[ ! -d "$src" ]]; then echo "skip: $src missing"; return; fi
   mkdir -p "$dst"
   rsync "${RSYNC_OPTS[@]}" "$@" "$src/" "$dst/"
-  echo "synced $src -> ${dst#"$REPO"/}"
+  echo "synced $src -> ${dst#"$PACKAGE"/}"
 }
 
 copy_file() {  # copy_file <store-relative-src> <repo-dst>
-  local src="$STORE/$1" dst="$REPO/$2"
+  local src="$STORE/$1" dst="$PACKAGE/$2"
   if [[ ! -f "$src" ]]; then echo "skip: $src missing"; return; fi
   mkdir -p "$(dirname "$dst")"
   cp "$src" "$dst"
