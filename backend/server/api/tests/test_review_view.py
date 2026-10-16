@@ -148,7 +148,8 @@ def test_stale_signed_links_are_served_fresh(client: TestClient):
         scene={"keyframes": [{"id": "kf_1", "image": "stills/kf_01.jpg"}]},
         still=b"\xff\xd8fakejpeg",
     )
-    time.sleep(2.5)  # the baked tokens expired: ttl was 2s
+    time.sleep(3.2)  # tokens mint exp=int(now)+2 with a strict `<` check, so expiry
+    # is only guaranteed once more than a full second has passed past the TTL
     expired = client.get(stale_photo)
     assert expired.status_code != 200  # the old page would show a broken image now
     served = client.get(f"/v1/captures/{capture_id}/review", headers=REVIEWER_HEADERS)
