@@ -519,18 +519,6 @@ def _guard(deps: Deps, capture_id: str, future: Future[None]) -> None:
                 )
                 _on_background_failure(deps, capture_id, failure)
         _clear_slot(capture_id)
-        # The 202 has already returned and the capture reads as processing, so a
-        # failure stored only on this Future would strand the client: no failure
-        # event, no retry, no run for the sweepers to recover. Route the exception
-        # through the normal failure path instead. Once the run has started, the
-        # handoff succeeded; later errors must not undo it.
-        if not extras(deps, capture_id).get("run_started"):
-            failure = (
-                exc
-                if isinstance(exc, ApiFailure)
-                else fail(503, "finalize_failed", "/", f"finalize background work failed ({type(exc).__name__})")
-            )
-            _on_background_failure(deps, capture_id, failure)
         future.set_exception(exc)
         return
     future.set_result(None)
