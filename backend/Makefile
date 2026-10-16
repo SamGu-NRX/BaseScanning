@@ -1,5 +1,5 @@
 # `ci` includes `validate` (committed fixtures only). Large PLYs and tars stay in `.fixtures/`.
-.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci gates-offline gates-update e2e e2e-local lamar criteria-golden e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra weights
+.PHONY: setup lint test schemas hygiene fixtures gt validate validate-full ci gates-offline gates-update e2e e2e-local lamar criteria-golden evals e2e-dev orchestrator-e2e ios-kit result-golden reads-gate reads-extra weights
 
 ONLY ?= small
 
@@ -66,6 +66,18 @@ criteria-golden:
 	HSS_CRITERIA_C3=off VISION_EXTERNAL_CALLS=off uv run --frozen python -m server.criteria.run --scene data/fixtures/scenes/eth3d-facade/gt-laser/scene.json --out /tmp/crit/facade --no-c3
 	HSS_CRITERIA_C3=off VISION_EXTERNAL_CALLS=off uv run --frozen python -m server.criteria.run --scene data/fixtures/scenes/eth3d-delivery/gt-laser/scene.json --out /tmp/crit/delivery --no-c3
 	HSS_CRITERIA_C3=off VISION_EXTERNAL_CALLS=off uv run --frozen python -m server.criteria.run --scene data/fixtures/scenes/eth3d-electro/gt-laser/scene.json --out /tmp/crit/electro --no-c3
+
+# One-command evaluation suite over the committed fixtures: runs the real
+# criteria engine (profiles A/B/C/S/public, footprint3in, C3 off — the criteria
+# -golden posture), scores the produced verdicts against the committed labels
+# under gates.yaml's bars, geomscores the committed recon scenes against the
+# committed reference scores, and writes runs/suite/latest/{suite.json,SUMMARY.md}.
+# Laser PLYs come from `make gt`; the recon PLYs (points.ply under
+# data/fixtures/scenes/*/colmap-*) are gitignored Modal-pipeline outputs
+# (uv run modal run scripts/modal_scene.py). A stage that cannot run FAILS;
+# nothing SKIPs.
+evals:
+	nice -n 10 uv run --frozen python -m server.eval.suite --config server/eval/gates.yaml --inputs data/fixtures --out runs/suite/latest
 
 # SD-77: the live stack only (Modal dev capture-api, house-scanning bucket).
 # CAPTURE_API_URL must be https://huntertcarver-dev--capture-api.modal.run

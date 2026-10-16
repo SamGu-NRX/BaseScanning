@@ -51,6 +51,7 @@ final class ScreenStatesUITests: XCTestCase {
         ("markFeatures-lostPlace", ["-uiDemoPhase", "markFeatures", "-uiDemoCoaching", "relocalizing"], "markFeatures"),
         ("markFeatures-groundQuestion", ["-uiDemoGroundQuestion"], "markFeatures"),
         ("markFeatures-groundAnswered", ["-uiDemoGroundAnswer", "mulch"], "markFeatures"),
+        ("markFeatures-pastEnd", ["-uiDemoPhase", "markFeatures", "-uiDemoMarkPastEnd"], "markFeatures"),
         ("gapRequest", ["-uiDemoPhase", "gapRequest"], "gapRequest"),
         ("gapRequest-groundOut", ["-uiDemoPhase", "gapRequest", "-uiDemoGap", "groundOut"], "gapRequest"),
         ("gapRequest-walkOut", ["-uiDemoPhase", "gapRequest", "-uiDemoGap", "walkOut"], "gapRequest"),
@@ -116,6 +117,10 @@ final class ScreenStatesUITests: XCTestCase {
         "markFeatures-groundQuestion": [(nil, "What's on the ground along this wall?")],
         "markFeatures-groundAnswered": [("ground.answered", "Mulch")],
         "markFeatures-lostPlace": [("review.lostPlace", "Your phone lost its place")],
+        // Review of #53: a mark wholly past a marked end says so on its row.
+        "markFeatures-pastEnd": [("review.featurePastEnd", "Window"),
+                                 ("review.featurePastEnd", "About 12 ft left of your meter"),
+                                 ("review.featurePastEnd", "Past the end of your scan")],
         // #80, #26: the gate's coaching rides on the task card.
         "wallWalk-slowDown": [("instruction", "Walk slowly to your right")],
         "wallWalk-tooDark": [("instruction", "It's dark here")],
@@ -686,6 +691,480 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertTrue(element(app, "screen.gapRequest").waitForExistence(timeout: 10), "the second tap must send anyway")
     }
 
+    /// Review of #131: once every question has an answer the gate re-arms. A window added after
+    /// that is pointed to by the next "Looks complete", not sent past.
+    @MainActor
+    func testAWindowAddedAfterEveryAnswerIsPointedToAgain() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoPhase", "markFeatures"]
+        app.launch()
+        XCTAssertTrue(element(app, "screen.markFeatures").waitForExistence(timeout: 15))
+        tap(app, "action.confirmFeatures")
+        XCTAssertTrue(element(app, "review.unanswered").waitForExistence(timeout: 5))
+        tap(app, "ground.answer.gravel")
+        tap(app, "window.opens.notSure")
+        XCTAssertTrue(element(app, "review.unanswered").waitForNonExistence(timeout: 5))
+
+        // A window takes two marks: bottom-left corner, then top-right.
+        tap(app, "feature.window")
+        tap(app, "action.markPoint", timeout: 5)
+        tap(app, "action.markPoint", timeout: 5)
+        XCTAssertTrue(element(app, "action.confirmFeatures").waitForExistence(timeout: 5), "the review must come back after the mark")
+        XCTAssertFalse(element(app, "review.unanswered").exists, "the warning must wait for a tap")
+
+        tap(app, "action.confirmFeatures")
+        XCTAssertTrue(element(app, "review.unanswered").waitForExistence(timeout: 5), "the new window's question must be pointed to")
+        XCTAssertFalse(element(app, "screen.gapRequest").exists, "the first tap after re-arming must not send")
+        tap(app, "action.confirmFeatures")
+        XCTAssertTrue(element(app, "screen.gapRequest").waitForExistence(timeout: 10), "the second tap must still send")
+    }
+
+    /// Review of #120: the card names what the overlay draws. The engine's angle to the target
+    /// and the open camera between the card and the actions can disagree; planted here as the
+    /// engine's hint, the card must still follow the ring or the arrow on screen.
+    @MainActor
+    func testTheAimCardNamesWhatIsDrawn() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        // A drawn ring, though the engine's angle says the target is above the view.
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAim",
+                               "-uiDemoAimHint", "above", "-uiDemoAimHintLater", "onScreen",
+                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
+        app.launch()
+        XCTAssertTrue(element(app, "screen.wallWalk").waitForExistence(timeout: 15))
+        // AX1 folds the legend into Details, leaving room for a ring at the optical center.
+        // Move the projection there while retaining the planted "above" engine hint.
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("dev.housescanning.uiDemo.aimHintLater" as CFString),
+            nil, nil, true)
+        XCTAssertTrue(element(app, "aim.ring").waitForExistence(timeout: 15))
+        let card = element(app, "instruction")
+        XCTAssertTrue(card.label.contains("Put the ring on the strip"), "with the ring drawn the card reads \(card.label)")
+        attach(app, name: "wallWalk-aimHint-ring")
+        app.terminate()
+
+        // An arrow, though the engine's angle says the target is on screen.
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAimOffScreen", "-uiDemoAimHint", "onScreen"]
+        app.launch()
+        XCTAssertTrue(element(app, "screen.wallWalk").waitForExistence(timeout: 15))
+        XCTAssertFalse(element(app, "aim.ring").exists, "off screen, the arrow stands in for the ring")
+        let offCard = element(app, "instruction")
+        XCTAssertTrue(offCard.waitForExistence(timeout: 5))
+        XCTAssertFalse(offCard.label.contains("ring"), "with an arrow drawn the card must not name the ring: \(offCard.label)")
+        attach(app, name: "wallWalk-aimHint-arrow")
+        app.terminate()
+
+        // The engine already calls the target off screen to the left, but the tall card puts
+        // its drawn arrow above. The card must follow the arrow, not that engine classification.
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk",
+                               "-uiDemoAim", "-uiDemoAimHint", "left", "-uiDemoAimHintLater", "above"] + Self.largestText
+        app.launch()
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
+        // Expanded Details fills the camera at AX5. Keep the tall card collapsed so its
+        // covered target has an open lane in which an arrow can actually be drawn.
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("dev.housescanning.uiDemo.aimHintLater" as CFString),
+            nil, nil, true)
+        let arrow = element(app, "aim.arrow")
+        XCTAssertTrue(arrow.waitForExistence(timeout: 5))
+        XCTAssertTrue(arrow.label.contains("above"), arrow.label)
+        let aboveCard = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "Tilt up a little")).firstMatch
+        XCTAssertTrue(aboveCard.waitForExistence(timeout: 5), "the card ignored an arrow that disagrees with an off-screen hint")
+        attach(app, name: "wallWalk-aimHint-offScreenMismatch-AX5")
+        app.terminate()
+
+        // With Details open at AX5, no camera lane remains. The card must name the step,
+        // not a ring that cannot be drawn, and say where the camera view went.
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk",
+                               "-uiDemoAim", "-uiDemoAimHint", "onScreen"] + Self.largestText
+        app.launch()
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
+        let coveredCard = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "The camera view is below")).firstMatch
+        XCTAssertFalse(coveredCard.exists, "closed Details must not ask the homeowner to close it")
+        tap(app, "instruction.details")
+        XCTAssertTrue(coveredCard.waitForExistence(timeout: 5), "covered camera instructions must remain visible")
+        XCTAssertFalse(element(app, "aim.ring").exists)
+        XCTAssertFalse(element(app, "aim.arrow").exists)
+        XCTAssertFalse(coveredCard.label.contains("Put the ring"), coveredCard.label)
+        XCTAssertTrue(coveredCard.label.contains("Tilt down"), coveredCard.label)
+        attach(app, name: "wallWalk-aimHint-covered-AX5")
+        tap(app, "instruction.details")
+        XCTAssertTrue(coveredCard.waitForNonExistence(timeout: 5), "closing Details must remove its camera obstruction advice")
+    }
+
+    /// At AX5, opening Details hides the arrow. An engine hint of above must not keep the
+    /// marker-specific title up after the overlay reports covered.
+    @MainActor
+    func testAimCardDropsDirectionWhenDetailsCoversMarker() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk",
+                               "-uiDemoAim", "-uiDemoAimHint", "above", "-uiDemoAimHintLater", "above"] + Self.largestText
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("dev.housescanning.uiDemo.aimHintLater" as CFString),
+            nil, nil, true)
+        let arrow = element(app, "aim.arrow")
+        XCTAssertTrue(arrow.waitForExistence(timeout: 5))
+        XCTAssertTrue(arrow.label.contains("above"), arrow.label)
+        let aboveCard = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "Tilt up a little")).firstMatch
+        XCTAssertTrue(aboveCard.waitForExistence(timeout: 5))
+
+        tap(app, "instruction.details")
+        let coveredCard = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "The camera view is below")).firstMatch
+        XCTAssertTrue(coveredCard.waitForExistence(timeout: 5))
+        XCTAssertTrue(arrow.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(element(app, "aim.ring").exists)
+        XCTAssertTrue(coveredCard.label.contains("Tilt down to show the ground"), coveredCard.label)
+        XCTAssertFalse(coveredCard.label.contains("Tilt up a little"), coveredCard.label)
+        attach(app, name: "wallWalk-aimHint-covered-direction-AX5")
+
+        tap(app, "instruction.details")
+        XCTAssertTrue(coveredCard.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(arrow.waitForExistence(timeout: 5))
+        XCTAssertTrue(aboveCard.waitForExistence(timeout: 5), "closing Details must restore the drawn arrow's direction")
+    }
+
+    /// A missing marker carries no actionable direction. The engine hint is deliberately planted
+    /// so this catches the card retaining a direction after the overlay reports no marker.
+    @MainActor
+    func testAimCardDropsDirectionWhenMarkerIsMissing() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk",
+                               "-uiDemoAimOffScreen", "-uiDemoAimHint", "above", "-uiDemoAimNoMarker"]
+        app.launch()
+        defer { app.terminate() }
+        let card = element(app, "instruction")
+        XCTAssertTrue(card.waitForExistence(timeout: 15))
+        XCTAssertFalse(element(app, "aim.ring").exists, "a missing target must not draw a ring")
+        XCTAssertFalse(element(app, "aim.arrow").exists, "a missing target must not draw an arrow")
+        XCTAssertTrue(card.label.contains("Tilt down to show the ground"), card.label)
+        XCTAssertFalse(card.label.contains("Tilt up a little"), card.label)
+    }
+
+    /// Marker memory belongs to the exact target and step, not the lifetime of the overlay.
+    @MainActor
+    func testAimHysteresisBelongsToTheExactTargetAndStep() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoAimHysteresis"]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(element(app, "demo.nextPose").waitForExistence(timeout: 15))
+        let expected = ["left", "left", "above", "ring", "left", "left", "ring", "left", "left", "above"]
+        for (stage, name) in expected.enumerated() {
+            let marker = app.staticTexts.matching(NSPredicate(format: "identifier == 'demo.marker' AND label == %@", name)).firstMatch
+            XCTAssertTrue(marker.waitForExistence(timeout: 5),
+                          "pose \(stage): expected \(name), got \(element(app, "demo.marker").label)")
+            if name == "ring" {
+                XCTAssertTrue(element(app, "aim.ring").exists, "pose \(stage): the reported ring must be drawn")
+            } else {
+                let arrow = element(app, "aim.arrow")
+                XCTAssertTrue(arrow.exists, "pose \(stage): the reported arrow must be drawn")
+                XCTAssertTrue(arrow.label.contains(name),
+                              "pose \(stage): VoiceOver direction disagreed with the card: \(arrow.label)")
+            }
+            if stage < expected.count - 1 { tap(app, "demo.nextPose") }
+        }
+    }
+
+    /// Losing a pose must not count as seeing the spot. A real in-view pose must clear memory,
+    /// including when it is the first valid pose after tracking recovers.
+    @MainActor
+    func testSpotHysteresisSurvivesUnavailableTrackingButClearsInView() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoSpotHysteresis"]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(element(app, "demo.nextPose").waitForExistence(timeout: 15))
+        let direction = element(app, "ar.spotDirection")
+        let expected = [true, false, true, false, true, false, false, true, false, false, false]
+        for (stage, offScreen) in expected.enumerated() {
+            if offScreen {
+                XCTAssertTrue(direction.waitForExistence(timeout: 5), "pose \(stage): off-screen memory was lost")
+                if direction.exists { XCTAssertTrue(direction.label.contains("Turn the phone left"), direction.label) }
+            } else {
+                XCTAssertTrue(direction.waitForNonExistence(timeout: 5), "pose \(stage): unavailable or visible spot must not draw a direction")
+            }
+            if stage < expected.count - 1 { tap(app, "demo.nextPose") }
+        }
+    }
+
+    /// With Details closed and no room in the open camera for the chevron and its words, the way
+    /// to turn is on the card, never folded under Details. At AX5 the sample's three-line title
+    /// leaves too little camera for the chevron's words; at AX3 the chevron fits, and since the
+    /// card no longer repeats a drawn chevron, AX3 can't show this state (review of #241).
+    @MainActor
+    func testTheOffScreenSpotInstructionStaysVisibleWithDetailsClosedAtAX5() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "resultAR",
+                               "-uiDemoSpotOffScreen"] + Self.largestText
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
+        let note = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "The proposed spot is off screen")).firstMatch
+        XCTAssertTrue(note.waitForExistence(timeout: 5), "the off-screen direction must not be folded into Details")
+        XCTAssertTrue(note.label.contains("Turn the phone right"), note.label)
+        XCTAssertFalse(element(app, "instruction.detail").exists, "Details must remain closed")
+        XCTAssertFalse(element(app, "ar.spotDirection").exists, "fixture must leave no room for a chevron and label")
+        XCTAssertTrue(app.frame.contains(note.frame), "the full instruction must be on the visible screen: \(note.frame)")
+        XCTAssertTrue(app.buttons["action.closeAR"].isHittable, "the note takes its room from the camera, not from Done")
+        attach(app, name: "resultAR-offScreen-note-AX5")
+    }
+
+    /// At AX3 with Details closed, an off-screen spot always has its direction: the chevron, or
+    /// the card's line when the chevron doesn't fit. Records which one, since the card no longer
+    /// repeats a drawn chevron below AX5.
+    @MainActor
+    func testTheOffScreenSpotAlwaysHasADirectionAtAX3() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "resultAR",
+                               "-uiDemoSpotOffScreen", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
+        let chevron = element(app, "ar.spotDirection")
+        let note = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", "The proposed spot is off screen")).firstMatch
+        let either = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in chevron.exists || note.exists }, object: nil)
+        XCTAssertEqual(XCTWaiter().wait(for: [either], timeout: 5), .completed, "an off-screen spot had neither a chevron nor a line")
+        XCTAssertFalse(element(app, "instruction.detail").exists, "Details must remain closed")
+        let done = app.buttons["action.closeAR"]
+        XCTAssertTrue(done.isHittable, "the chevron must not enlarge the screen and push Done away")
+        XCTAssertTrue(app.frame.contains(done.frame), "Done must stay inside the screen")
+        if chevron.exists {
+            XCTAssertTrue(chevron.label.contains("Turn the phone right"), "VoiceOver must hear the way to turn: \(chevron.label)")
+        } else {
+            XCTAssertTrue(note.label.contains("Turn the phone right"), note.label)
+        }
+        let shown = XCTAttachment(string: chevron.exists ? "chevron: \(chevron.label)" : "note: \(note.label)")
+        shown.name = "resultAR-offScreen-direction-AX3"
+        shown.lifetime = .keepAlways
+        add(shown)
+        attach(app, name: "resultAR-offScreen-direction-AX3")
+    }
+
+    /// At AX5 the folded card leaves the spot low in the open camera (`-uiDemoSpotLow`; the
+    /// default pose puts it under the sample's three-line title), and opening Details covers it.
+    /// At d5d137ed the card then said "Tilt the phone up" and kept saying it after Details
+    /// closed: the five-line note made the card cover the spot itself, and Done went below the
+    /// screen (CI run of #241, ProvisionalPlacementUITests). Closed again, the card must be as it
+    /// was, and open Details gives no direction to turn.
+    @MainActor
+    func testTheOffScreenNoteDoesNotKeepItselfUpAfterDetailsCloseAtAX5() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "resultAR", "-uiDemoSpotLow"] + Self.largestText
+        app.launch()
+        defer { app.terminate() }
+        let card = element(app, "instruction")
+        let details = element(app, "instruction.details")
+        let done = app.buttons["action.closeAR"]
+        func cardSaying(_ words: String) -> XCUIElement {
+            app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", words)).firstMatch
+        }
+        XCTAssertTrue(details.waitForExistence(timeout: 15))
+        XCTAssertFalse(cardSaying("off screen").waitForExistence(timeout: 2), "fixture: the folded card must leave the spot in view")
+        XCTAssertFalse(element(app, "ar.spotDirection").exists, "fixture: the spot must be in the open camera")
+        let folded = card.label
+        XCTAssertTrue(done.isHittable)
+
+        tap(app, "instruction.details")
+        XCTAssertTrue(element(app, "instruction.detail").waitForExistence(timeout: 5))
+        // Read once the card has had time to react to the covered camera; checked at the end, so
+        // the run before the fix fails on the note that stays. Open Details says the camera is
+        // below whenever the spot's chevron can't be drawn, not only when under 52 pt of camera
+        // is left: so the line doesn't depend on where the open card ends above the home
+        // indicator.
+        _ = cardSaying("The camera view is below").waitForExistence(timeout: 3)
+        let opened = card.label
+        attach(app, name: "resultAR-detailsOpen-AX5")
+        for _ in 0..<4 where !done.isHittable { app.swipeUp(velocity: .slow) }
+        XCTAssertTrue(done.isHittable, "with Details open, Done must be in reach after scrolling")
+        for _ in 0..<4 where !details.isHittable { app.swipeDown(velocity: .slow) }
+
+        tap(app, "instruction.details")
+        XCTAssertTrue(element(app, "instruction.detail").waitForNonExistence(timeout: 5), "Details didn't close")
+        XCTAssertTrue(cardSaying("off screen").waitForNonExistence(timeout: 5),
+                      "the off-screen note outlasted open Details: \(card.label)")
+        let refolded = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'instruction' AND label == %@", folded)).firstMatch
+        XCTAssertTrue(refolded.waitForExistence(timeout: 5), "closed again, the card must read as before: \(card.label)")
+        XCTAssertFalse(cardSaying("off screen").waitForExistence(timeout: 2), "the off-screen note came back on its own")
+        XCTAssertTrue(done.isHittable, "closing Details must leave Done in reach")
+        attach(app, name: "resultAR-detailsClosedAgain-AX5")
+
+        XCTAssertTrue(opened.contains("The camera view is below. Close Details or scroll."), "open Details covered the camera: \(opened)")
+        XCTAssertFalse(opened.contains("off screen"), "open Details must not give a direction to turn: \(opened)")
+    }
+
+    /// Review of #241: an aim card's title follows the marker the overlay draws, and the overlay
+    /// draws within the camera the card leaves open. If a title changed the card's height, a
+    /// target standing at the card's edge could flip the marker, then the title, then the marker
+    /// back, for as long as the phone stayed there. At the largest text the titles wrap to
+    /// different numbers of lines, so that is where the card must keep one height
+    /// (`Instruction.titleReserve`).
+    ///
+    /// Two frozen aim states whose cards carry different titles must lay the card out alike: its
+    /// Details row starts at one place. (The `instruction` element's own frame covers only the
+    /// words shown, not the reserved room.) Then a stationary target at the largest text, where
+    /// the card reaches down to the ring, must keep one title and one marker for several seconds.
+    /// Without the reserve this state never draws a frame: the app's main thread spins between
+    /// the overlay and the card, and the first query times out.
+    @MainActor
+    func testTheAimCardKeepsItsHeightSoAStillTargetDoesNotFlip() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        func card(_ arguments: [String]) -> (title: String, detailsTop: CGFloat) {
+            app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk"] + arguments + Self.largestText
+            app.launch()
+            let instruction = element(app, "instruction")
+            XCTAssertTrue(instruction.waitForExistence(timeout: 15))
+            XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 5), "at the largest text an aim card folds its detail")
+            // Let the overlay report its marker and the card follow it.
+            Thread.sleep(forTimeInterval: 1.5)
+            let title = ElementRead.snapshot(instruction)?.label ?? ""
+            return (title, ElementRead.snapshot(element(app, "instruction.details"))?.frame.minY ?? -1)
+        }
+        // The ring or an under-card arrow ("Put the ring on the strip" or "Tilt up a little")...
+        let near = card(["-uiDemoAim", "-uiDemoAimHint", "above"])
+        attach(app, name: "wallWalk-aimCard-near-AX5")
+        app.terminate()
+        // ...against a left edge arrow, which keeps the step's own title. Every live aim step
+        // has a hint, and with it the reserved titles.
+        let away = card(["-uiDemoAimOffScreen", "-uiDemoAimHint", "left"])
+        attach(app, name: "wallWalk-aimCard-away-AX5")
+        app.terminate()
+        XCTAssertNotEqual(near.title, away.title, "the two states must show different titles for the check to mean anything")
+        XCTAssertEqual(near.detailsTop, away.detailsTop, accuracy: 0.5, "the aim card's height changed with its title: \(near) vs \(away)")
+
+        // AX5 expanded Details fills the camera. At AX1 an arrow still fits beside the
+        // expanded card, so this checks an actual marker-driven title swap for one target.
+        // A left arrow becomes an above arrow after the camera moves; the engine stays left.
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAimOffScreen",
+                               "-uiDemoAimHint", "left", "-uiDemoAimHintLater", "above",
+                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
+        app.launch()
+        let instruction = element(app, "instruction")
+        XCTAssertTrue(instruction.waitForExistence(timeout: 15))
+        tap(app, "instruction.details")
+        XCTAssertTrue(element(app, "instruction.detail").waitForExistence(timeout: 5), "Details must open")
+        Thread.sleep(forTimeInterval: 1)
+        func sample() -> (title: String, line: String) {
+            let title = ElementRead.snapshot(instruction)?.label ?? "?"
+            let ring = element(app, "aim.ring").exists
+            let open = element(app, "instruction.detail").exists
+            let details = ElementRead.snapshot(element(app, "instruction.details"))?.frame.minY ?? -1
+            return (title, "ring \(ring) | Details open \(open) at \(Int(details)) pt")
+        }
+        var before: [String] = []
+        for _ in 0..<10 {
+            let (title, line) = sample()
+            before.append("\(title) | \(line)")
+            Thread.sleep(forTimeInterval: 0.4)
+        }
+        XCTAssertEqual(Set(before).count, 1, "a still target flipped with Details open: \(before)")
+        let held = sample()
+        XCTAssertTrue(element(app, "aim.arrow").label.contains("left"), "the baseline needs a drawn left arrow")
+        XCTAssertTrue(held.line.contains("Details open true"), "Details closed by itself: \(held)")
+
+        // `DemoEngine.aimHintNotification`.
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("dev.housescanning.uiDemo.aimHintLater" as CFString),
+            nil, nil, true)
+        let swapped = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'instruction' AND label != %@", held.title)).firstMatch
+        XCTAssertTrue(swapped.waitForExistence(timeout: 10), "the drawn marker's new direction never reached the card")
+        XCTAssertTrue(element(app, "aim.arrow").label.contains("above"), "the same target needs a drawn above arrow")
+        Thread.sleep(forTimeInterval: 1)
+        var after: [String] = []
+        for _ in 0..<5 {
+            let (title, line) = sample()
+            after.append("\(title) | \(line)")
+            Thread.sleep(forTimeInterval: 0.4)
+        }
+        XCTAssertEqual(Set(after).count, 1, "the card kept changing after the swap: \(after)")
+        XCTAssertNotEqual(sample().title, held.title)
+        XCTAssertEqual(sample().line, held.line, "a swap between reserved titles closed Details or moved the card")
+        attach(app, name: "wallWalk-aimCard-detailsOpen-AX1")
+    }
+
+    @MainActor
+    func testFoldedAimCardKeepsItsHeightAcrossMarkerTitlesAtAX5() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoAimCardTitles"] + Self.largestText
+        app.launch()
+        let card = element(app, "demo.aimCard")
+        XCTAssertTrue(card.waitForExistence(timeout: 15))
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 5))
+        let height = card.frame.height
+        XCTAssertGreaterThan(height, 0)
+        let titles = ["Put the ring on the strip", "Tilt up a little", "Tilt down to show the ground", "Put the ring on the strip"]
+        for (index, title) in titles.enumerated() {
+            let instruction = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", title)).firstMatch
+            XCTAssertTrue(instruction.waitForExistence(timeout: 5), "expected marker title: \(title)")
+            XCTAssertEqual(card.frame.height, height, accuracy: 0.5, "folded card moved for \(title)")
+            if index < titles.count - 1 { tap(app, "demo.nextAimTitle") }
+        }
+        attach(app, name: "foldedAim-cardHeight-AX5")
+    }
+
+    @MainActor
+    func testSecondPositionAdviceKeepsTheSameAimCardHeightAtAccessibilitySize() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoAimCardTitles", "-uiDemoAimSecondPositionToggle",
+                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
+        app.launch()
+        defer { app.terminate() }
+        let card = element(app, "demo.aimCard")
+        XCTAssertTrue(card.waitForExistence(timeout: 15))
+        XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 5))
+        let height = card.frame.height
+        XCTAssertGreaterThan(height, 0)
+        for title in ["Step sideways, look again", "Put the ring on the strip", "Step sideways, look again"] {
+            tap(app, "demo.toggleAimPosition")
+            let instruction = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", title)).firstMatch
+            XCTAssertTrue(instruction.waitForExistence(timeout: 5), "missing position advice: \(title)")
+            XCTAssertEqual(card.frame.height, height, accuracy: 0.5, "same-target card moved for \(title)")
+        }
+        attach(app, name: "foldedAim-secondPosition-cardHeight-AX1")
+    }
+
+    /// A new target closes Details even when it shares the old target's reserved titles or
+    /// rounds to the same displayed distance. The notification advances the actual demo aim.
+    @MainActor
+    func testANewAimTargetClosesDetailsEvenWithReservedTitles() throws {
+        continueAfterFailure = false
+        for target in ["-2.4", "0.401"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze", "-uiDemoPhase", "wallWalk", "-uiDemoAim",
+                                   "-uiDemoAimHint", "above", "-uiDemoAimTargetLater", target] + Self.largestText
+            app.launch()
+            XCTAssertTrue(element(app, "instruction.details").waitForExistence(timeout: 15))
+            tap(app, "instruction.details")
+            let detail = element(app, "instruction.detail")
+            XCTAssertTrue(detail.waitForExistence(timeout: 5), "Details must open before the task changes")
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("dev.housescanning.uiDemo.aimHintLater" as CFString),
+                nil, nil, true)
+            XCTAssertTrue(detail.waitForNonExistence(timeout: 5), "Details stayed open for the new aim at \(target)")
+            XCTAssertTrue(element(app, "instruction.details").exists, "the disclosure itself must remain available")
+            attach(app, name: "wallWalk-newAim-detailsClosed-\(target)-AX5")
+            app.terminate()
+        }
+    }
+
     /// #81: the first aim ring comes with a line under the card saying what it is for, clear of
     /// the card at every text size, and reads its progress to VoiceOver. Off screen, the edge
     /// arrow stands in for the ring, and neither shows.
@@ -827,7 +1306,9 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertTrue(reply.isHittable, "the card's reply must be reachable without scrolling")
         let cardBottom = max(card.frame.maxY, details.frame.maxY, reply.frame.maxY)
         let openCamera = CGRect(x: window.minX, y: cardBottom, width: window.width, height: mark.frame.minY - cardBottom)
-        XCTAssertGreaterThanOrEqual(openCamera.height, 150, "the camera must stay open between the card and the actions: \(openCamera)")
+        let visibleCamera = openCamera.intersection(window)
+        print("AX5 aim: cardBottom=\(cardBottom), openCamera=\(openCamera), visibleCamera=\(visibleCamera)")
+        XCTAssertGreaterThanOrEqual(visibleCamera.height, 150, "the camera must stay visibly open between the card and the actions: \(visibleCamera)")
 
         let ring = element(app, "aim.ring")
         let arrow = element(app, "aim.arrow")

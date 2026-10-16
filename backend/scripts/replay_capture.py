@@ -101,11 +101,20 @@ class FailureInjector:
         raise SimulatedTimeout(step)
 
 
-def load_receipt(path: Path) -> dict:
-    receipt = json.loads(path.read_text())
+def receipt_problem(receipt: object) -> str | None:
+    """A named reason the saved receipt cannot be replayed, or None.
+
+    The replay block the runner writes (files, idempotencyKeys, packetSha256)
+    is the replay's ground truth; a receipt without it was written by a
+    pre-replay runner and must be rejected, never replayed with guessed
+    hashes.
+    """
     if not isinstance(receipt, dict) or receipt.get("runner") != "capture_flow_e2e":
-        raise SystemExit(f"{path} is not a capture_flow_e2e receipt")
-    return receipt
+        return "not_a_capture_flow_e2e_receipt"
+    missing = [key for key in ("files", "idempotencyKeys", "packetSha256") if not receipt.get(key)]
+    if missing:
+        return f"missing_replay_block:{','.join(missing)}"
+    return None
 
 
 def check_fixture(packet_dir: Path, receipt: dict, errors: list[str]) -> dict | None:
@@ -126,6 +135,10 @@ def check_fixture(packet_dir: Path, receipt: dict, errors: list[str]) -> dict | 
             drift.append(path)
         if entry.get("sha256") and entry["sha256"] != digest:
             drift.append(f"{path}:packet-manifest")
+    manifest_paths = {entry["path"] for entry in packet["files"]}
+    for path in saved_hashes:
+        if path not in manifest_paths:
+            drift.append(f"{path}:not-in-manifest")
     saved_sha = receipt.get("packetSha256")
     actual_sha = hashlib.sha256(packet_json.read_bytes()).hexdigest()
     if saved_sha and saved_sha != actual_sha:
@@ -133,14 +146,6 @@ def check_fixture(packet_dir: Path, receipt: dict, errors: list[str]) -> dict | 
     if drift:
         errors.append(f"fixture_drift:{','.join(drift)}")
     return {"packet": packet, "packetSha256": actual_sha, "drift": drift}
-
-
-def _content_type(role: str) -> str:
-    if role == "stream":
-        return "application/gzip"
-    if role in {"features", "depth", "confidence", "mesh"}:
-        return "application/octet-stream"
-    return "image/jpeg"
 
 
 class _ReplayApp:
@@ -215,19 +220,17 @@ def run_replay(
     faults: dict[str, int] | None = None,
 ) -> dict:
     """Replay the saved receipt and return the report. Never raises: failures
-    land in ``report["errorCodes"]`` with ``report["ok"] is False``."""
+    land in ``report["errorCodes"]`` with ``report["ok"] is False`` — including
+    receipt problems and any unexpected exception."""
     started_at = datetime.now(UTC).isoformat()
-    receipt = load_receipt(receipt_path)
-    saved_dir = receipt.get("packetDir")
-    packet_dir = packet_dir or (Path(saved_dir) if saved_dir and Path(saved_dir).is_dir() else DEFAULT_PACKET)
     report: dict = {
         "replay": "replay_capture",
         "startedAt": started_at,
         "receiptPath": str(receipt_path),
-        "packetDir": str(packet_dir),
+        "packetDir": None,
         "workdir": str(workdir),
         "faults": dict(faults or {}),
-        "idempotencyKeys": receipt.get("idempotencyKeys") or {},
+        "idempotencyKeys": {},
         "captureId": None,
         "runId": None,
         "steps": [],
@@ -246,6 +249,15 @@ def run_replay(
 
     app: _ReplayApp | None = None
     try:
+        receipt = json.loads(Path(receipt_path).read_text())
+        problem = receipt_problem(receipt)
+        if problem:
+            errors.append(problem)
+            return _finish(report, errors, f"{receipt_path}: {problem} — written by a runner without the replay block")
+        saved_dir = receipt.get("packetDir")
+        packet_dir = packet_dir or (Path(saved_dir) if saved_dir and Path(saved_dir).is_dir() else DEFAULT_PACKET)
+        report["packetDir"] = str(packet_dir)
+        report["idempotencyKeys"] = receipt.get("idempotencyKeys") or {}
         fixture = check_fixture(packet_dir, receipt, errors)
         record(
             "fixture", files=len((fixture or {}).get("packet", {}).get("files", [])), drift=(fixture or {}).get("drift")
@@ -477,6 +489,7 @@ def run_replay(
         if terminals != ["verdict_ready"]:
             errors.append(f"terminal_events:{terminals}")
     except Exception as exc:  # noqa: BLE001 - the report must survive any failure
+        errors.append(f"exception:{type(exc).__name__}")
         return _finish(report, errors, f"exception: {type(exc).__name__}: {exc}")
     finally:
         if app is not None:

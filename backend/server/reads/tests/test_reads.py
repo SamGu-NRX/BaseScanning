@@ -603,6 +603,19 @@ def _wrap(criteria: list[dict], views: list[dict]) -> dict:
     }
 
 
+def test_build_reads_resolves_packet_paths_against_promoted_files() -> None:
+    """Packet stills name packet-relative paths; the bytes live under captures/ after promotion."""
+    storage = MemoryStorage()
+    still = _still()
+    storage.put_bytes(f"captures/cap_test/{Path(still.path).name}", _jpeg(), "image/jpeg")
+    packet = {
+        "stills": [{"id": still.still_id, "purpose": still.purpose, "img": "s1.jpg", "sha256": still.sha256}],
+        "files": [{"path": "s1.jpg", "sha256": still.sha256}],
+    }
+    reads = build_reads("cap_test", storage, _cfg(external_vision=False), packet)
+    assert reads.timings_s, "the packet still was never read"
+
+
 def test_worker_disabled_opens_no_socket(monkeypatch: pytest.MonkeyPatch) -> None:
     def boom(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("socket opened")
@@ -906,7 +919,8 @@ def test_empty_close_keeps_meter_identity() -> None:
 def test_packet_uses_img_and_file_digest() -> None:
     storage = MemoryStorage()
     path = "keyframes/k00003.jpg"
-    storage.put_bytes(path, _jpeg(), "image/jpeg")
+    # Promotion stores packet files under the capture's final prefix; uploads expire.
+    storage.put_bytes(f"captures/cap_test/{path}", _jpeg(), "image/jpeg")
     sha = "b" * 64
     packet = {
         "stills": [{"id": "s1", "purpose": "meter_close", "img": path}],

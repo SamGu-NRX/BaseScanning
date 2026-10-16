@@ -137,9 +137,10 @@ public enum ReplayPlanning {
     public enum EndPolicy: Sendable, Equatable {
         /// Marked at the covered extremes, as the autopilot's `markEnds` does.
         case coveredExtremes
-        /// Set where the phone stood farthest each way ("Can't get there", `WalkedEnd`), after
-        /// "Can't get there" on the ground by the meter. The gap must then lie `margin` meters
-        /// inside those ends: "Can't get there" at an end also skips the cells there.
+        /// Set as "Can't get there" sets them with the phone at the frame that stood farthest
+        /// each way (`walkedEnds`), after "Can't get there" on the ground by the meter. The gap
+        /// must then lie `margin` meters inside those ends: "Can't get there" at an end also
+        /// skips the cells there.
         case walked(margin: Float)
     }
 
@@ -174,7 +175,8 @@ public enum ReplayPlanning {
                     rest.record(sightings[index], from: frames[index].camera.position)
                 }
                 let stood = frames.indices.filter { !window.contains($0) }.map { frames[$0] }
-                guard let ends = self.ends(policy, rest, stood: stood, wall: wall) else { continue }
+                let keptPositions = kept.sorted().filter { !window.contains($0) }.map { frames[$0].camera.position }
+                guard let ends = self.ends(policy, rest, stood: stood, walked: keptPositions, wall: wall) else { continue }
                 prepare(&rest, ends: ends, policy: policy)
                 guard let gap = planner.plan(rest),
                       isWithinWalk(gap, kept.sorted().filter { !window.contains($0) }.map { frames[$0] }, wall: wall),
@@ -222,22 +224,45 @@ public enum ReplayPlanning {
         var rest = frames
         rest.removeSubrange(window)
         var walked = simulateWalk(rest, wall: wall, config: config)
-        guard let ends = self.ends(policy, walked, stood: rest, wall: wall) else { return nil }
+        guard let ends = self.ends(policy, walked, stood: rest, walked: walked.walkedPositions, wall: wall) else { return nil }
         prepare(&walked, ends: ends, policy: policy)
         guard let gap = planner.plan(walked), isWithinWalk(gap, rest, wall: wall), isInside(gap, ends: ends, policy: policy),
               satisfiedWithLeadIn(frames, window: window, walked: walked, gap: gap, planner: planner) else { return nil }
         return HeldBackWindow(frames: window, ends: ends, gap: gap)
     }
 
-    private static func ends(_ policy: EndPolicy, _ map: CoverageMap, stood: [PlannedFrame], wall: WallFrame) -> ClosedRange<Float>? {
+    /// `walked` holds the positions of the kept views, as `CoverageMap.walkedPositions` does.
+    private static func ends(
+        _ policy: EndPolicy, _ map: CoverageMap, stood: [PlannedFrame], walked: [SIMD3<Float>], wall: WallFrame
+    ) -> ClosedRange<Float>? {
         switch policy {
         case .coveredExtremes:
             return coveredExtremes(map)
         case .walked:
-            let s = stood.map { wall.wallPoint($0.camera.position).s }
-            guard let low = s.min(), let high = s.max(), low < 0, high > 0 else { return nil }
-            return low...high
+            return walkedEnds(stood: stood, walked: walked, seen: map.seenExtent, wall: wall)
         }
+    }
+
+    /// The ends the autopilot's "Can't get there" sets (`Autopilot.endWalkByCantGetThere`): on
+    /// each side the phone stands again at the frame that went farthest that way, and the engine
+    /// puts the end where `WalkedEnd.choose` does from there. That isn't always the frame's own
+    /// place: limited tracking, a phone far out from the wall or one well past the kept views
+    /// keeps the end short of it. Planning the held-back window against the frame's place alone
+    /// could leave a gap the walk never asks for (review of #169). Nil unless the ends fall
+    /// either side of the meter.
+    static func walkedEnds(
+        stood: [PlannedFrame], walked: [SIMD3<Float>], seen: ClosedRange<Float>?, wall: WallFrame
+    ) -> ClosedRange<Float>? {
+        func end(_ side: WalkSide) -> Float? {
+            let along = { (frame: PlannedFrame) in side.sign * wall.wallPoint(frame.camera.position).s }
+            guard let farthest = stood.max(by: { along($0) < along($1) }) else { return nil }
+            return WalkedEnd.choose(
+                side, phone: farthest.camera.position, trackingNormal: farthest.trackingNormal, walked: walked, wall: wall,
+                seen: seen
+            ).s
+        }
+        guard let low = end(.left), let high = end(.right), low < 0, high > 0 else { return nil }
+        return low...high
     }
 
     /// Sets the ends, and for a walked flow skips the ground by the meter, as "Can't get there"

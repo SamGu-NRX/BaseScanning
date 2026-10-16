@@ -73,6 +73,8 @@ import Testing
         rest.removeSubrange(held.frames)
         let stood = rest.map { wall.wallPoint($0.camera.position).s }
         let ends = (stood.min() ?? 0)...(stood.max() ?? 0)
+        // On this replay the farthest frames track normally and stand inside the kept views'
+        // reach, so the engine's chooser puts each end at the phone.
         #expect(held.ends == ends)
         #expect(ends.lowerBound + 1 <= held.gap.span.lowerBound && held.gap.span.upperBound <= ends.upperBound - 1)
         var walked = ReplayPlanning.simulateWalk(rest, wall: wall)

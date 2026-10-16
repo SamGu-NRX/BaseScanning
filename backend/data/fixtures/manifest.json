@@ -586,6 +586,127 @@
       "licence": "synthetic"
     },
     {
+      "id": "mini-arkit-file-keyframes-k00001-features-bin",
+      "kind": "file",
+      "repo_path": "data/fixtures/packets/mini-arkit/keyframes/k00001.features.bin",
+      "cache_path": null,
+      "source": null,
+      "bytes": 4240,
+      "sha256": "7710dcbc1ad6d99132a3cdf2c45f49cbae908eff3398c8edd779955e37962bf8",
+      "committed": true,
+      "licence": "synthetic"
+    },
+    {
+      "id": "mini-arkit-file-keyframes-k00001-jpg",
+      "kind": "file",
+      "repo_path": "data/fixtures/packets/mini-arkit/keyframes/k00001.jpg",
+      "cache_path": null,
+      "source": null,
+      "bytes": 714,
+      "sha256": "753a386b150b92e235357144459d2109ed480bed805fbb0ac4ca989c42bc6d79",
+      "committed": true,
+      "licence": "synthetic"
+    },
+    {
+      "id": "mini-arkit-file-keyframes-k00002-features-bin",
+      "kind": "file",
+      "repo_path": "data/fixtures/packets/mini-arkit/keyframes/k00002.features.bin",
+      "cache_path": null,
+      "source": null,
+      "bytes": 3740,
+      "sha256": "ee6e18a01b94f594c8f17cc92e6f3e3bcef5347190b02a6a67fce8b10dc1f8b9",
+      "committed": true,
+      "licence": "synthetic"
+    },
+    {
+      "id": "mini-arkit-file-keyframes-k00002-jpg",
+      "kind": "file",
+      "repo_path": "data/fixtures/packets/mini-arkit/keyframes/k00002.jpg",
+      "cache_path": null,
+      "source": null,
+      "bytes": 713,
+      "sha256": "80beae7b3ea40a8951f3001ea9e87a5bb342e9d4a402037bda815f953c3a3c8e",
+      "committed": true,
+      "licence": "synthetic"
+    },
+    {
+      "id": "mini-arkit-file-keyframes-k00003-jpg",
+      "kind": "file",
+      "repo_path": "data/fixtures/packets/mini-arkit/keyframes/k00003.jpg",
+      "cache_path": null,
+      "source": null,
+      "bytes": 714,
+      "sha256": "a53e442431e7041303f024d5432e133dac2e3dc5726cbed37653b3d656a8b143",
+      "committed": true,
+      "licence": "synthetic"
+    },
+    {
+      "id": "mini-arkit-file-keyframes-k00004-jpg",
+      "kind": "file",
+      "repo_path": "data/fixtures/packets/mini-arkit/keyframes/k00004.jpg",
+      "cache_path": null,
+      "source": null,
+      "bytes": 714,
+      "sha256": "98a40bb14e16042551263230a3474a2fa2ea688f2262ca2b84b6becc7dc67f65",
+      "committed": true,
+      "licence": "synthetic"
+    },
+    {
+      "id": "mini-arkit-file-streams-arkit-poses-csv-gz",
+      "kind": "file",
+      "repo_path": "data/fixtures/packets/mini-arkit/streams/arkit_poses.csv.gz",
+      "cache_path": null,
+      "source": null,
+      "bytes": 73,
+      "sha256": "8b95dff9754f3567bd2b8d03906aa24c97c7d97d0e881970a8ddb0dd55d3dc3e",
+      "committed": true,
+      "licence": "synthetic"
+    },
+    {
+      "id": "mini-arkit-file-streams-heading-csv-gz",
+      "kind": "file",
+      "repo_path": "data/fixtures/packets/mini-arkit/streams/heading.csv.gz",
+      "cache_path": null,
+      "source": null,
+      "bytes": 76,
+      "sha256": "4a9c16d18e22eeeb85c024b6fa0db32b9a22dd89c48e10bb14c989f183696a58",
+      "committed": true,
+      "licence": "synthetic"
+    },
+    {
+      "id": "mini-arkit-file-streams-imu-raw-csv-gz",
+      "kind": "file",
+      "repo_path": "data/fixtures/packets/mini-arkit/streams/imu_raw.csv.gz",
+      "cache_path": null,
+      "source": null,
+      "bytes": 44,
+      "sha256": "564ece90c04a9c78f7690ccae56c032dd4f1fb904e64b847697f66125bfd4b60",
+      "committed": true,
+      "licence": "synthetic"
+    },
+    {
+      "id": "mini-arkit-file-streams-location-csv-gz",
+      "kind": "file",
+      "repo_path": "data/fixtures/packets/mini-arkit/streams/location.csv.gz",
+      "cache_path": null,
+      "source": null,
+      "bytes": 107,
+      "sha256": "fc12d4b107cc3e7f7a903375c90310bcb2565fd3b50785b6bf3696282f83cc30",
+      "committed": true,
+      "licence": "synthetic"
+    },
+    {
+      "id": "mini-arkit-file-streams-motion-csv-gz",
+      "kind": "file",
+      "repo_path": "data/fixtures/packets/mini-arkit/streams/motion.csv.gz",
+      "cache_path": null,
+      "source": null,
+      "bytes": 95,
+      "sha256": "d21ce4423410a0b1c5178c268dbbe615090e1dd9521affd4c31a34f830b4ec54",
+      "committed": true,
+      "licence": "synthetic"
+    },
+    {
       "id": "score-gt.C1.fp3__eth3d-facade.demo.labels",
       "kind": "score",
       "repo_path": "data/fixtures/reference-scores/eth3d-facade/verdictscores/gt.C1.fp3__eth3d-facade.demo.labels.json",

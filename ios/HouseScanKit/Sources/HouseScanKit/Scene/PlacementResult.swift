@@ -464,6 +464,23 @@ public struct PlacementMissingEvidence: Codable, Sendable, Equatable {
     }
 }
 
+/// A marked object the server did not use (result.schema.json `objects_not_used`).
+public struct PlacementObjectNotUsed: Codable, Sendable, Equatable {
+    /// "objects[<index>] <type>", as in a check's `subject`.
+    public var object: String
+    /// "left" or "right". Kept as a string: the app doesn't read it, so a value the server adds
+    /// later mustn't stop the result screen.
+    public var side: String
+    /// The server's sentence for the homeowner.
+    public var message: String
+
+    public init(object: String, side: String, message: String) {
+        self.object = object
+        self.side = side
+        self.message = message
+    }
+}
+
 public struct PlacementEnd: Codable, Sendable, Equatable {
     public var kind: PlacementEndKind
     /// Where the wall chain ends, in s feet.
@@ -576,6 +593,9 @@ public struct PlacementResult: Codable, Sendable, Equatable {
     public var checks: [PlacementCheck]
     public var nearestConsidered: PlacementSpot?
     public var missingEvidence: [PlacementMissingEvidence]
+    /// Marks the server set aside: no footprint, past an unexplored end where the wall may turn
+    /// (`objects_not_used`). Optional in schema 1.0; empty when the answer has none.
+    public var objectsNotUsed: [PlacementObjectNotUsed]
     public var ends: PlacementEnds
     public var sweep: [PlacementSweepRun]
     public var stats: PlacementStats
@@ -585,6 +605,7 @@ public struct PlacementResult: Codable, Sendable, Equatable {
         case schemaVersion = "schema_version"
         case nearestConsidered = "nearest_considered"
         case missingEvidence = "missing_evidence"
+        case objectsNotUsed = "objects_not_used"
     }
 
     /// Decodes a server result, throwing `PlacementDecodingError` for anything outside the schema.
@@ -618,6 +639,7 @@ public struct PlacementResult: Codable, Sendable, Equatable {
         checks = try c.decode([PlacementCheck].self, forKey: .checks)
         nearestConsidered = try c.decodeIfPresent(PlacementSpot.self, forKey: .nearestConsidered)
         missingEvidence = try c.decode([PlacementMissingEvidence].self, forKey: .missingEvidence)
+        objectsNotUsed = try c.decodeIfPresent([PlacementObjectNotUsed].self, forKey: .objectsNotUsed) ?? []
         ends = try c.decode(PlacementEnds.self, forKey: .ends)
         sweep = try c.decode([PlacementSweepRun].self, forKey: .sweep)
         stats = try c.decode(PlacementStats.self, forKey: .stats)
@@ -635,6 +657,7 @@ public struct PlacementResult: Codable, Sendable, Equatable {
         try c.encode(checks, forKey: .checks)
         try c.encodeIfPresent(nearestConsidered, forKey: .nearestConsidered)
         try c.encode(missingEvidence, forKey: .missingEvidence)
+        if !objectsNotUsed.isEmpty { try c.encode(objectsNotUsed, forKey: .objectsNotUsed) }
         try c.encode(ends, forKey: .ends)
         try c.encode(sweep, forKey: .sweep)
         try c.encode(stats, forKey: .stats)

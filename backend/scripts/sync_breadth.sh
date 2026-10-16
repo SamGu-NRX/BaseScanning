@@ -7,10 +7,10 @@
 #             a9-no-tape-scale a10-sparse-photo-flow
 #             b1-detection b2-equipment-reading b3-cheap-gate
 #             c1-rules-3d c2-volumetric c3-vlm e2e-criteria-on-recon
-#
 # Each branch starts from origin/breadth/<path-id> if it exists, otherwise origin/main, and is
 # built in a temporary worktree so the current checkout is untouched. The store folder is mirrored
-# into the repo folder and the path's one-page result file is copied to <folder>/RESULTS.md.
+# into the package folder under backend/ and the path's one-page result file is copied to
+# <folder>/RESULTS.md. Git operations (fetch, worktrees, push) still run from the repository toplevel.
 # Before any commit or push, files that contain real meter numbers, Base SSR prompt text (or a
 # reconstruction/digest of it), API keys, or anything over 5 MB are removed from the tree.
 set -euo pipefail
@@ -83,7 +83,21 @@ RSYNC_OPTS=(-a --delete --max-size=5m
   --exclude=ssr_prompts.py --exclude=ssr_prompts_reconstructed.py --exclude=SSR_Prompts.md
   --exclude='*ssr*digest*' --exclude='*prompt*digest*')
 
+# Before the port into the BaseScanning monorepo the git toplevel was this package, so the
+# breadth folders mirrored at the toplevel root. The toplevel is now the monorepo root one
+# level above backend/: git operations (fetch, worktrees, push) still run at the toplevel,
+# but every mirrored file anchors under the package root, matching sync_from_store.sh.
+# pwd -P keeps PACKAGE comparable to REPO across symlinked parent directories.
+PACKAGE="$(cd "$(dirname "$0")/.." && pwd -P)"
 REPO="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+if [[ "$PACKAGE" == "$REPO" ]]; then
+  PACKAGE_REL=""
+elif [[ "$PACKAGE/" == "$REPO/"* ]]; then
+  PACKAGE_REL="${PACKAGE#"$REPO"/}"
+else
+  echo "error: package root $PACKAGE is not inside repository $REPO" >&2
+  exit 1
+fi
 cd "$REPO"
 git fetch -q origin
 
@@ -99,16 +113,18 @@ for id in "${ids[@]}"; do
 
   wt="$(mktemp -d)/wt"
   git worktree add -q -B "$branch" "$wt" "$base"
-  mkdir -p "$wt/$dst"
-  rsync "${RSYNC_OPTS[@]}" --exclude=README.md --exclude=RESULTS.md "$BREADTH/$src/" "$wt/$dst/"
-  if [[ -f "$BREADTH/$src/README.md" ]]; then cp "$BREADTH/$src/README.md" "$wt/$dst/README.md"; fi
+  dst_rel="$dst"
+  if [[ -n "$PACKAGE_REL" ]]; then dst_rel="$PACKAGE_REL/$dst"; fi
+  mkdir -p "$wt/$dst_rel"
+  rsync "${RSYNC_OPTS[@]}" --exclude=README.md --exclude=RESULTS.md "$BREADTH/$src/" "$wt/$dst_rel/"
+  if [[ -f "$BREADTH/$src/README.md" ]]; then cp "$BREADTH/$src/README.md" "$wt/$dst_rel/README.md"; fi
 
   shopt -s nullglob
   lower="$(printf '%s' "$prefix" | tr '[:upper:]' '[:lower:]')"
   results=("$BREADTH/$prefix"*.md "$BREADTH/$lower"*.md)
   shopt -u nullglob
   if [[ ${#results[@]} -gt 0 ]]; then
-    cp "${results[0]}" "$wt/$dst/RESULTS.md"
+    cp "${results[0]}" "$wt/$dst_rel/RESULTS.md"
     result_note="result file $(basename "${results[0]}")"
   else
     result_note="no result file yet"

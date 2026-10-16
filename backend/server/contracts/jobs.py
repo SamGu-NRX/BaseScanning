@@ -122,6 +122,9 @@ class RunRecord(Strict):
     run_id: str
     capture_id: str
     packet_sha256: str
+    # Storage key of the accepted packet manifest. An amendment's packet lives
+    # under its amendment prefix, not captures/{capture_id}/packet.json.
+    packet_uri: str | None = None
     parent_run_id: str | None = None
     status: StageStatus
     branch: Branch
