@@ -44,7 +44,7 @@ With stage stubs on and `SMP_ENVIRONMENT=dev`, `HSS_LOCAL_OUTCOME` scripts the t
 | unset / `manual_review` (default) | `manual_review` | Today's stub run, byte-identical. |
 | `eligible` | `complete` | Result carries a proposed placement (`boxArkitWorld` + `arkitEpoch` when the packet has one), worded as proposed. |
 | `needs_more_photos` | `needs_views` | One scripted band view; the app sends a retake request. |
-| `not_eligible` | `complete` | Needs `SHOW_REJECT_TO_HOMEOWNER=1`; without it the boot refuses. |
+| `not_eligible` | `complete` | Needs `SHOW_REJECT_TO_HOMEOWNER=1`; without it the criteria stub refuses and the run fails loudly, leaving the capture on `manual_review`. |
 | `failed` | `failed` | The validate stub fails the run onto outcome row 1 (validation stand-in `imagesUsable: false`). |
 
-Scripted messages and review pages always say it is a local test outcome, not a check of a wall. `HSS_LOCAL_STAGE_DELAY_S` (float, 0–30, default 0) makes each stub sleep so the app shows processing events. Both variables are refused loudly — at boot with an error naming the variable — when stage stubs are off, the environment is not dev, the value is unknown, or the number is out of range. A run keeps its scripted behavior across restart while the variables stay set.
+Scripted messages and review pages always say it is a local test outcome, not a check of a wall. `HSS_LOCAL_STAGE_DELAY_S` (float, 0–30, default 0) makes each stub sleep so the app shows processing events. Both variables are refused loudly — with an error naming the variable, at config load — when stage stubs are off, the environment is not dev, the value is unknown, or the number is out of range. A run keeps its scripted behavior across restart while the variables stay set.

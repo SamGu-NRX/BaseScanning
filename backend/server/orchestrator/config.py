@@ -84,6 +84,10 @@ class OrchConfig(BaseModel):
     # cancels a live worker within 15s of the deadline.
     coordinator_loop_s: float = 1
     modal_remote: bool = False
+    # Dev-only scripted outcome for the stage stubs; see the README's Stubs
+    # section. Both are refused loudly outside dev stage stubs.
+    local_outcome: str = "manual_review"
+    local_stage_delay_s: float = 0.0
 
 
 def load_orch(environ: dict[str, str] | None = None) -> OrchConfig:

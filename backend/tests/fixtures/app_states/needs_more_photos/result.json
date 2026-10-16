@@ -1,0 +1,93 @@
+{
+  "criteria": null,
+  "memberActions": [],
+  "meter": {
+    "barcodeConfirmed": false,
+    "candidates": [],
+    "clean": false,
+    "evidence": null,
+    "readersAgree": false,
+    "status": "not_captured",
+    "value": null
+  },
+  "outcome": {
+    "arkitEpoch": null,
+    "cableRoutePolylineArkit": null,
+    "frameToArkit": null,
+    "kind": "needs_more_photos",
+    "message": "Local test stand-in: the retake request is scripted, not measured. This is a local test outcome, not a check of a wall.",
+    "profile": "C",
+    "reasons": [],
+    "recommendedPlacement": null,
+    "viewsNeeded": [
+      {
+        "band": "wall",
+        "criteria": [
+          "stub"
+        ],
+        "id": "stub-wall-band",
+        "kind": "band",
+        "outM": null,
+        "prompt": {
+          "body": "Stand 8\u201312 ft back from the wall left, 7 ft along, face it squarely and take a photo.",
+          "title": "One more wall photo"
+        },
+        "promptId": "vn.wall.unobserved",
+        "referenceCrop": null,
+        "sM": [
+          0.2,
+          1.0
+        ],
+        "side": "left",
+        "suggestedCameraPoseArkit": null,
+        "target": null,
+        "targetRegionArkit": null,
+        "viewingAngleDeg": [
+          0,
+          30
+        ],
+        "wallId": "w1",
+        "why": "Local test stand-in: this retake request is scripted, not measured."
+      }
+    ]
+  },
+  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjE0NDY4Mywia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTUyMUZYMFlZWE5HUlBWQVFITUZYNEZLL3J1bnMvcnVuX2I3ZDAxZDk2ZTQyZTc4MTIvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.35dcaa965488d0774d4d9f6f270394319ac7df1726f68ce6bd2afdcd14c63a00",
+  "reviewUrl": "/v1/captures/cap_01M521FX0YYXNGRPVAQHMFX4FK/review",
+  "runId": "run_b7d01d96e42e7812",
+  "scale": null,
+  "site": null,
+  "status": "needs_views",
+  "verdict": null,
+  "verdictUrl": null,
+  "viewsNeeded": [
+    {
+      "band": "wall",
+      "criteria": [
+        "stub"
+      ],
+      "id": "stub-wall-band",
+      "kind": "band",
+      "outM": null,
+      "prompt": {
+        "body": "Stand 8\u201312 ft back from the wall left, 7 ft along, face it squarely and take a photo.",
+        "title": "One more wall photo"
+      },
+      "promptId": "vn.wall.unobserved",
+      "referenceCrop": null,
+      "sM": [
+        0.2,
+        1.0
+      ],
+      "side": "left",
+      "suggestedCameraPoseArkit": null,
+      "target": null,
+      "targetRegionArkit": null,
+      "viewingAngleDeg": [
+        0,
+        30
+      ],
+      "wallId": "w1",
+      "why": "Local test stand-in: this retake request is scripted, not measured."
+    }
+  ]
+}
