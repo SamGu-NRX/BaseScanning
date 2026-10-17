@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
 from server.placement.adapter import load_solver
 from server.placement.scene_bridge import (
@@ -706,3 +706,53 @@ def test_the_committed_orchestrator_stub_scene_converts_and_parses() -> None:
         "left": {"kind": "limit"},
         "right": {"kind": "limit"},
     }
+
+
+def test_a_ground_band_without_a_measured_depth_refuses() -> None:
+    """The source contract leaves out_m optional, but the wire scene requires out_ft
+    on every ground band. The bridge must refuse the band at its depth instead of
+    converting a document the root contract rejects — and never guess a depth."""
+    document = base_scene()
+    document["coverage"]["bands"] = [{"band": "ground", "s_m": [-1.0, 1.0]}]
+
+    with pytest.raises(SceneBridgeError) as excinfo:
+        convert_scene(document)
+
+    assert excinfo.value.code == UNSUPPORTED
+    assert excinfo.value.pointer == "/coverage/bands/0/out_m"
+
+    # The premise, checked against the root contract: an observed ground band
+    # without out_ft is exactly what scene.schema.json refuses.
+    with pytest.raises(ValidationError):
+        _WIRE_SCHEMA.validate({"band": "ground", "span_ft": [-1.0 / 0.3048, 1.0 / 0.3048]})
+
+    # A measured ground band converts and validates as an observation.
+    document["coverage"]["bands"] = [{"band": "ground", "s_m": [-1.0, 1.0], "out_m": 2.5}]
+    converted = convert_scene(document)
+    _WIRE_SCHEMA.validate(converted)
+    assert converted["coverage"]["observed"] == [
+        {"band": "ground", "span_ft": [-1.0 / 0.3048, 1.0 / 0.3048], "out_ft": 2.5 / 0.3048}
+    ]
+
+
+def test_observed_band_counts_past_the_wire_limit_refuse() -> None:
+    """scene.schema.json caps coverage.observed at 500 entries: a valid source with
+    501 bands must refuse at conversion, not produce a wire scene the placement
+    server cannot read."""
+    document = base_scene()
+    document["coverage"]["bands"] = [
+        {"band": "wall", "s_m": [-1.0 + index * 0.01, 1.0 + index * 0.01]} for index in range(501)
+    ]
+
+    with pytest.raises(SceneBridgeError) as excinfo:
+        convert_scene(document)
+
+    assert excinfo.value.code == UNSUPPORTED
+    assert excinfo.value.pointer == "/coverage/bands"
+    assert "500" in str(excinfo.value)
+
+    # The limit itself still converts, and the output is a valid wire scene.
+    document["coverage"]["bands"] = document["coverage"]["bands"][:500]
+    converted = convert_scene(document)
+    assert len(converted["coverage"]["observed"]) == 500
+    _WIRE_SCHEMA.validate(converted)

@@ -107,6 +107,9 @@ from server.contracts.scene import Scene, scene_consistency_errors
 UNSUPPORTED = "placement_scene_unsupported"
 INVALID = "placement_scene_invalid"
 
+# scene.schema.json: coverage.observed allows at most 500 band entries.
+_WIRE_MAX_OBSERVED_BANDS = 500
+
 # 1 ft = 0.3048 m exactly, so lengths convert with one exact factor in one direction:
 # dividing by 0.3048, the correctly rounded conversion, never multiplying by a rounded
 # reciprocal.
@@ -588,6 +591,16 @@ def _coverage(scene: Scene, wall_id: str, checks: _SpanChecks) -> dict[str, Any]
     def band_out(band, pointer: str) -> dict[str, Any]:
         if band.wall_id is not None and band.wall_id != wall_id:
             _invalid(f"the band names unknown wall {band.wall_id!r}", f"{pointer}/wall_id")
+        if band.band == "ground" and band.out_m is None:
+            # scene.schema.json requires out_ft on every ground band ("the ground in
+            # front of the wall out to out_ft"), while the source contract leaves
+            # out_m optional — this band cannot be represented, so refuse rather
+            # than guess a depth the capture never measured.
+            _unsupported(
+                "a ground band without a measured depth (out_m) has no wire out_ft; "
+                "the ground's depth was never captured",
+                f"{pointer}/out_m",
+            )
         record: dict[str, Any] = {
             "band": band.band,
             "span_ft": checks.span_ft(band.s_m, f"{pointer}/s_m", bounded=False),
@@ -606,6 +619,13 @@ def _coverage(scene: Scene, wall_id: str, checks: _SpanChecks) -> dict[str, Any]
             # ends only — no observation is invented.
             band_out(band, f"/coverage/sensitivity/{sensitivity_index}/bands/{band_index}")
 
+    if len(observed) > _WIRE_MAX_OBSERVED_BANDS:
+        _unsupported(
+            f"{len(observed)} observed bands exceed the wire scene's limit of "
+            f"{_WIRE_MAX_OBSERVED_BANDS} (scene.schema.json coverage.observed maxItems); "
+            "thin or merge the capture's bands before conversion",
+            "/coverage/bands",
+        )
     if observed:
         out["observed"] = observed
     return out
