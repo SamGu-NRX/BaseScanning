@@ -120,6 +120,10 @@ def check_format(folder: Path, session: dict) -> tuple[list[str], dict]:
         if missing:
             errors.append(f"{name}: missing {', '.join(missing)}")
             continue
+        # Replay projection uses the landscape sensor image; matching portrait metadata is
+        # insufficient to establish that its camera geometry was rotated with the pixels (#153).
+        if kf["w"] < kf["h"]:
+            errors.append(f"{name}: portrait keyframe; replay requires a landscape sensor image")
         tracking_counts[kf["tracking"]] = tracking_counts.get(kf["tracking"], 0) + 1
         image = folder / kf["img"]
         if not image.exists():
