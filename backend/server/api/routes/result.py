@@ -233,6 +233,41 @@ def _review_token(
     return payload
 
 
+def _browser_needs_token(settings) -> bool:
+    """Whether a plain browser request needs a signed review token to load a page link.
+
+    Under HSS_AUTH_MODE=none every request, header or not, authenticates as the
+    demo principal, so bare same-origin links load. Under static or jwt they
+    need a bearer header the browser cannot send, so only signed links work.
+    """
+
+    return settings.HSS_AUTH_MODE != "none"
+
+
+def _charge_page_resource(deps, holder: str, signed_capture: str | None) -> None:
+    """Charge one page-resource request to its own bucket, not the reviewer's ``get``.
+
+    Greptile finding on PR #284 (routes/result.py:532): every photo, download,
+    module and preview request spent the reviewer's 120/min ``get`` budget, so a
+    gallery over 120 photos exhausted it while images loaded, and the rest of
+    the page and the reviewer's ordinary result reads got 429. The page shows
+    one photo per keyframe, and keyframes are capture files, so one page load
+    needs at most HSS_INGEST_MAX_FILES photo requests plus a few raw-file,
+    module and preview links. Twice HSS_INGEST_MAX_FILES holds a full page with
+    room for a reload or a second tab; no traffic measurement backs the factor.
+
+    A signed request's bucket is keyed by reviewer and the capture its token
+    names, so pages for different captures opened together do not share one.
+    A bearer request passes ``signed_capture=None`` and is keyed by principal
+    alone: its capture id is an unchecked URL segment at this point, and keying
+    on it would hand out a fresh bucket per made-up id.
+    """
+
+    capacity = 2 * int(deps.settings.HSS_INGEST_MAX_FILES)
+    key = holder if signed_capture is None else f"{holder}/{signed_capture}"
+    deps.charge(key, "review-page", capacity)
+
+
 def _capture_or_fail(deps, capture_id: str) -> None:
     """Existence and tomb checks for a token-authenticated file request.
 
@@ -403,12 +438,15 @@ def _serve_review_html(deps, capture_id: str, run, raw: bytes, holder: str = "")
     page = raw.decode("utf-8", errors="replace")
     try:
         section = _runtime_section(deps, capture_id, run)
-        if _token_secret(deps.settings) is None:
+        if _token_secret(deps.settings) is None and _browser_needs_token(deps.settings):
             # The Codex finding: with no HMAC secret no review token can be
             # minted, so a rewritten link would demand a bearer header a browser
             # cannot send. Keep the stored page's original URLs — its signed
             # links still work while they live — and say explicitly that the
-            # 3D preview will not load here.
+            # 3D preview will not load here. Under HSS_AUTH_MODE=none a bare
+            # link loads as the demo principal, so that mode falls through to
+            # the rewrites below with unsigned links (Codex finding on PR #284,
+            # routes/result.py:411).
             page = (
                 page.replace("</body>", _NO_SECRET_NOTE + section + "</body>", 1)
                 if "</body>" in page
@@ -529,12 +567,12 @@ def register(app: FastAPI) -> None:
         deps = get_deps(request)
         payload = _review_token(request, deps.settings, op="review-file", capture_id=capture_id, name=name)
         if payload is not None:
-            deps.charge(str(payload.get("for") or "review-token"), "get", 120)
+            _charge_page_resource(deps, str(payload.get("for") or "review-token"), capture_id)
             _capture_or_fail(deps, capture_id)
             run = _token_run(deps, capture_id, payload)
         else:
             principal = require_principal(request)
-            deps.charge(principal.label, "get", 120)
+            _charge_page_resource(deps, principal.label, None)
             if deps.settings.HSS_AUTH_MODE != "none" and not principal.reviewer:
                 raise fail(403, "forbidden", "/", "review is for reviewers")
             load_owned(deps, capture_id, principal)
@@ -574,8 +612,13 @@ def register(app: FastAPI) -> None:
 
         deps = get_deps(request)
         payload = _review_token(request, deps.settings, op="review-static", capture_id=None)
-        if payload is None:
-            require_principal(request)
+        if payload is not None:
+            _charge_page_resource(deps, str(payload.get("for") or "review-token"), str(payload["cap"]))
+        else:
+            # Under auth-none this is how the page imports the module, so the
+            # bare path spends the principal's page bucket too.
+            principal = require_principal(request)
+            _charge_page_resource(deps, principal.label, None)
         if not _THREE_ASSET.is_file():
             raise fail(404, "result_not_ready", "/", "static asset is missing")
         return FileResponse(
@@ -600,12 +643,12 @@ def register(app: FastAPI) -> None:
             request, deps.settings, op="review-file", capture_id=capture_id, name="result/preview.ply"
         )
         if payload is not None:
-            deps.charge(str(payload.get("for") or "review-token"), "get", 120)
+            _charge_page_resource(deps, str(payload.get("for") or "review-token"), capture_id)
             _capture_or_fail(deps, capture_id)
             run = _token_run(deps, capture_id, payload)
         else:
             principal = require_principal(request)
-            deps.charge(principal.label, "get", 120)
+            _charge_page_resource(deps, principal.label, None)
             if deps.settings.HSS_AUTH_MODE != "none" and not principal.reviewer:
                 raise fail(403, "forbidden", "/", "review is for reviewers")
             load_owned(deps, capture_id, principal)

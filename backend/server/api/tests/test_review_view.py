@@ -13,6 +13,7 @@ import base64
 import json
 import re
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
@@ -22,6 +23,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from jwt import encode as jwt_encode
 
 from server.api.app import create_app
+from server.api.limits import Limiter
 from server.api.routes import result as result_routes
 from server.api.tests.conftest import REVIEWER, TOKEN, create_body
 from server.common.backends.storage_volume import mint_token
@@ -41,10 +43,13 @@ def _create(client: TestClient, packet_id: str = "packet-review-0001") -> str:
     return made.json()["captureId"]
 
 
-def _render_review_html(capture_id: str, *, signed_photo: str | None, signed_link: str | None) -> bytes:
+def _render_review_html(
+    capture_id: str, *, signed_photo: str | None, signed_link: str | None, photos: list[dict] | None = None
+) -> bytes:
     """A page exactly as compose.py writes it: signed URLs where storage could sign."""
 
-    photos = [{"id": "kf_1", "url": signed_photo or "stills/kf_01.jpg", "purpose": "keyframe"}]
+    if photos is None:
+        photos = [{"id": "kf_1", "url": signed_photo or "stills/kf_01.jpg", "purpose": "keyframe"}]
     links = [signed_link or "verdict.C.json"]
     context = {
         "capture_id": capture_id,
@@ -697,6 +702,9 @@ def test_no_link_secret_keeps_the_stored_urls_and_says_so(tmp_path):
     remaining = _page_subresources(body, capture_id)
     assert remaining == [f"/v1/captures/{capture_id}/preview.ply"]
     assert TestClient(app).get(remaining[0]).status_code == 401
+    # auth is configured, so no subresource route opens to a bare request either
+    assert TestClient(app).get("/v1/review-static/three.module.js").status_code == 401
+    assert TestClient(app).get(f"/v1/captures/{capture_id}/review/files/stills/kf_01.jpg").status_code == 401
     # the run-status section still explains the bearer-gated links
     assert "UPLOAD_URL_HMAC_SECRET is not configured" in body
 
@@ -810,3 +818,129 @@ def test_amended_run_links_serve_their_own_run(client: TestClient):
     latest = client.get(f"/v1/captures/{capture_id}/review/files/stills/kf_01.jpg", headers=REVIEWER_HEADERS)
     assert latest.status_code == 200
     assert latest.content == second_still
+
+
+def test_auth_none_without_a_link_secret_rewrites_to_live_routes(tmp_path):
+    """Codex finding on PR #284 (routes/result.py:411).
+
+    Under HSS_AUTH_MODE=none a bare browser request authenticates as the demo
+    principal, so the page's links load without a token. The no-secret fallback
+    still kept the CDN import and stored URLs and claimed the 3D preview was
+    unavailable. In this mode the page now points every link at the live routes,
+    unsigned, and each one loads with no Authorization header.
+    """
+
+    settings = Settings(
+        SMP_ENVIRONMENT="dev",
+        STORAGE_BACKEND="local",
+        STATE_BACKEND="memory",
+        VOLUME_ROOT=str(tmp_path / "store"),
+        CAPTURE_API_PUBLIC_URL="http://testserver",
+        HSS_INGEST_HOOKS="null",
+        HSS_AUTH_MODE="none",
+        GIT_SHA="0123456789abcdef",
+        VISION_EXTERNAL_CALLS="on",
+        SMP_SERVICE_NAME="capture-api",
+    )
+    assert settings.UPLOAD_URL_HMAC_SECRET is None
+    app = create_app(settings=settings)
+    test = TestClient(app)
+    test.app_state = app.state.deps
+    made = test.post(
+        "/v1/captures", json=create_body("packet-review-0018"), headers={"Idempotency-Key": "packet-review-0018"}
+    )
+    assert made.status_code == 201, made.text
+    capture_id = made.json()["captureId"]
+    _seed(
+        test,
+        capture_id,
+        _render_review_html(capture_id, signed_photo=None, signed_link=None),
+        scene={"keyframes": [{"id": "kf_1", "image": "stills/kf_01.jpg"}]},
+        still=b"\xff\xd8fakejpeg",
+        preview=b"idar-stub-preview",
+    )
+    verdict_bytes = (RESULT_DATA / "synthetic" / "verdicts" / "verdict.C.json").read_bytes()
+    test.app_state.storage.put_bytes(
+        f"captures/{capture_id}/runs/{RUN_ID}/verdicts/verdict.C.json", verdict_bytes, "application/json"
+    )
+    served = test.get(f"/v1/captures/{capture_id}/review")
+    assert served.status_code == 200
+    body = served.text
+    assert 'id="review-no-secret"' not in body
+    assert "3D preview unavailable" not in body
+    assert "?rtok=" not in body
+    assert 'import * as THREE from "/v1/review-static/three.module.js"' in body
+    assert f'src="/v1/captures/{capture_id}/review/files/stills/kf_01.jpg"' in body
+    urls = _page_subresources(body, capture_id)
+    assert f"/v1/captures/{capture_id}/review/files/verdicts/verdict.C.json" in urls
+    assert f"/v1/captures/{capture_id}/preview.ply" in urls
+    bare = TestClient(app)
+    for url in urls:
+        response = bare.get(url)
+        assert response.status_code == 200, (url, response.status_code, response.text[:200])
+
+
+def _gallery(client: TestClient, capture_id: str, count: int) -> None:
+    """A run whose page shows ``count`` photos, each a still in storage."""
+
+    names = [f"stills/kf_{index:03d}.jpg" for index in range(count)]
+    photos = [{"id": f"kf_{index}", "url": name, "purpose": "keyframe"} for index, name in enumerate(names)]
+    _seed(
+        client,
+        capture_id,
+        _render_review_html(capture_id, signed_photo=None, signed_link=None, photos=photos),
+        scene={"keyframes": [{"id": f"kf_{index}", "image": name} for index, name in enumerate(names)]},
+    )
+    for name in names:
+        client.app_state.storage.put_bytes(f"captures/{capture_id}/{name}", b"\xff\xd8" + name.encode(), "image/jpeg")
+
+
+def _freeze_limiter(client: TestClient) -> None:
+    """No refill during the test, so bucket exhaustion does not depend on timing."""
+
+    frozen = datetime(2026, 10, 22, tzinfo=UTC)
+    client.app_state.limiter = Limiter(lambda: frozen)
+
+
+def test_a_gallery_over_the_get_budget_loads_and_leaves_reads_alone(client: TestClient):
+    """Greptile finding on PR #284 (routes/result.py:532).
+
+    Every signed photo request spent the reviewer's 120/min ``get`` budget, so
+    a 150-photo gallery got 429 partway through, and the reviewer's own result
+    and review reads were refused after it. Page resources now spend their own
+    bucket.
+    """
+
+    capture_id = _create(client, "packet-review-0019")
+    _gallery(client, capture_id, 150)
+    _freeze_limiter(client)
+    served = client.get(f"/v1/captures/{capture_id}/review", headers=REVIEWER_HEADERS)
+    assert served.status_code == 200
+    links = re.findall(r'src="(/v1/captures/[^"]+/review/files/stills/[^"]+\?rtok=[^"]+)"', served.text)
+    assert len(links) == 150
+    bare = TestClient(client.app)
+    statuses = [bare.get(link).status_code for link in links]
+    assert statuses == [200] * 150, f"first refusal at photo {next(i for i, s in enumerate(statuses) if s != 200)}"
+    assert client.get(f"/v1/captures/{capture_id}/result", headers=REVIEWER_HEADERS).status_code == 200
+    assert client.get(f"/v1/captures/{capture_id}/review", headers=REVIEWER_HEADERS).status_code == 200
+
+
+def test_page_resources_are_rate_limited_including_the_module(client: TestClient):
+    """The page bucket is a real limit, and the vendored module spends it too.
+
+    The module route charged nothing, so a signed import link could be fetched
+    without bound. With HSS_INGEST_MAX_FILES=3 the page bucket holds six
+    requests; the seventh is refused, and the reviewer's ``get`` reads are not.
+    """
+
+    capture_id = _create(client, "packet-review-0020")
+    _seed(client, capture_id, _render_review_html(capture_id, signed_photo=None, signed_link=None))
+    client.app_state.settings.HSS_INGEST_MAX_FILES = 3
+    _freeze_limiter(client)
+    served = client.get(f"/v1/captures/{capture_id}/review", headers=REVIEWER_HEADERS)
+    module = re.search(r'import \* as THREE from "(/v1/review-static/three\.module\.js\?rtok=[^"]+)"', served.text)
+    assert module, "the served import carries no signed review token"
+    bare = TestClient(client.app)
+    statuses = [bare.get(module.group(1)).status_code for _ in range(7)]
+    assert statuses == [200] * 6 + [429]
+    assert client.get(f"/v1/captures/{capture_id}/result", headers=REVIEWER_HEADERS).status_code == 200
