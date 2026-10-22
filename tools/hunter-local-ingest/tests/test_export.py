@@ -137,7 +137,7 @@ def real_artifacts(fake, plan_path, tmp_path):
         (lambda m, c: m["fixture"].update(seed=None), "synthetic-fixture-requires-a-seed"),
         (
             lambda m, c: m["fixture"].update(generator="gen_miniarkit_packet"),
-            "miniarkit-fixture-seed-must-be-null",
+            "fixture-generator-does-not-match-plan",
         ),
     ],
 )
@@ -151,6 +151,16 @@ def test_manifest_mutations_rejected(real_artifacts, mutate, category):
         validate_manifest(bad, ctx, FLAG_KINDS)
     assert exc.value.category == category
     assert marker not in str(exc.value)
+
+
+def test_manifest_generator_must_match_the_plan_family(real_artifacts):
+    manifest, _summary, ctx = real_artifacts
+    bad = copy.deepcopy(manifest)
+    bad["fixture"]["generator"] = "gen_miniarkit_packet"
+    bad["fixture"]["seed"] = None
+    with pytest.raises(ExportError) as exc:
+        validate_manifest(bad, ctx, FLAG_KINDS)
+    assert exc.value.category == "fixture-generator-does-not-match-plan"
 
 
 def test_label_must_be_label_shaped(real_artifacts):

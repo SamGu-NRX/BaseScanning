@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from hunter_local_ingest.fixturegen import write_plan
+from hunter_local_ingest.fixturegen import build, write_plan
 from hunter_local_ingest.gen_miniarkit import MINIARKIT_PACKET_ID
 from hunter_local_ingest.gen_miniarkit import write_plan as write_miniarkit
 from hunter_local_ingest.plan import PlanError, canonical_digest, load_plan
@@ -61,6 +61,13 @@ def test_synthetic_arkit_packet_has_declared_keyframes(tmp_path: Path) -> None:
         assert entry["role"] == "keyframe"
         content = bytes.fromhex(entry["content_hex"])
         assert entry["sha256"] == hashlib.sha256(content).hexdigest()
+
+
+def test_synthetic_mesh_limit_stays_within_manifest_file_limit() -> None:
+    mesh_limit = 59
+    build(1, mesh_limit, 1)
+    with pytest.raises(ValueError, match=f"1..{mesh_limit}"):
+        build(1, mesh_limit + 1, 1)
 
 
 def test_loader_refuses_arkit_packet_without_keyframes(tmp_path: Path) -> None:

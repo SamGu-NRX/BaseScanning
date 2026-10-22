@@ -118,12 +118,20 @@ def context_for(paths: frozenset[str], packet_id: str, nonce: str = "") -> Expor
         for family in FAMILIES.values()
     ):
         raise ExportError(MANIFEST, "/fixture", "undeclared-identity")
+    family_name = next(
+        family_name
+        for family_name, family in FAMILIES.items()
+        if family["packet_id_re"].fullmatch(packet_id)
+        and all(family["path_re"].fullmatch(p) for p in paths)
+    )
     ids = {packet_id}
     for suffix in DERIVED_SUFFIXES:
         ids.add(derived_id(packet_id, suffix))
         if nonce:
             ids.add(derived_id(packet_id, suffix, nonce))
-    return ExportContext(paths=frozenset(paths), packet_ids=frozenset(ids))
+    return ExportContext(
+        paths=frozenset(paths), packet_ids=frozenset(ids), generator_name=family_name
+    )
 
 
 def _write_exclusive(path: Path, text: str) -> None:
