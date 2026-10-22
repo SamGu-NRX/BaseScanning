@@ -551,6 +551,16 @@ def register(app: FastAPI) -> None:
         except FileNotFoundError as exc:
             raise fail(404, "result_not_ready", "/", "file is not ready") from exc
         media_type = mimetypes.guess_type(safe)[0] or "application/octet-stream"
+        if media_type == "text/html":
+            filename = re.sub(r"[^A-Za-z0-9._-]", "_", Path(safe).name) or "download"
+            return Response(
+                content=data,
+                media_type="application/octet-stream",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"',
+                    "X-Content-Type-Options": "nosniff",
+                },
+            )
         return Response(content=data, media_type=media_type)
 
     @app.get("/v1/review-static/three.module.js")
