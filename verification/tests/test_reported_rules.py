@@ -28,14 +28,22 @@ def test_public_fingerprint_matches_recorded_public_solver():
     assert RULES.rules_sha256 == fixture["result"]["policy"]["rules_sha256"]
 
 
+@pytest.mark.parametrize(
+    "assumed",
+    [
+        {"battery_width": RULES.width_ft},
+        {"corner_allowance": RULES.corner_allowance_ft},
+    ],
+    ids=["battery_width", "corner_allowance"],
+)
 @pytest.mark.parametrize("identity", ["private source", "different fingerprint"])
-def test_unreported_override_is_unverified_even_when_case_matches_public(identity):
+def test_unreported_override_is_unverified_even_when_case_matches_public(assumed, identity):
     answer = {"policy": {"sources": ["public"], "rules_sha256": RULES.rules_sha256}}
     if identity == "private source":
         answer["policy"]["sources"].append("private")
     else:
         answer["policy"]["rules_sha256"] = "f" * 64
-    warnings = public_assumption_warnings({"battery_width": RULES.width_ft}, answer, RULES)
+    warnings = public_assumption_warnings(assumed, answer, RULES)
     assert len(warnings) == 1
     assert "assumed public rules; server may override" in warnings[0]
 
