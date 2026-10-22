@@ -4,8 +4,8 @@ import threading
 
 import pytest
 
-from server.common.lease import LeaseBusy, LeaseLost, with_lease
 from server.common.backends.state_memory import MemoryState
+from server.common.lease import LeaseBusy, LeaseLost, with_lease
 
 
 def test_lease_renews_while_callback_is_longer_than_expiry() -> None:

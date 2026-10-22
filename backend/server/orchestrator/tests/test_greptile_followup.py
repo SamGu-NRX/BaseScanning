@@ -9,14 +9,13 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-import time
 from datetime import timedelta
 from pathlib import Path
 
 import pytest
 
-from server.contracts.api import ConfirmationRequest
 from server.common.lease import LeaseBusy
+from server.contracts.api import ConfirmationRequest
 from server.contracts.jobs import FileRecord, RunRecord, StageRecord
 from server.orchestrator.api import on_confirmation
 from server.orchestrator.artifacts import overlay_stage_artifacts

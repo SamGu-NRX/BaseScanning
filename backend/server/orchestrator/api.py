@@ -326,7 +326,6 @@ def _record_pending_correction(
     log_event("confirmation.pending_correction", capture_id=capture_id, run_id=run.run_id)
 
 
-
 def _latest_reads_key(services: object, capture_id: str) -> str | None:
     """The reads artifact of the capture's newest run, or None before reads exist."""
 
