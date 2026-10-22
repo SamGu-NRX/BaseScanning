@@ -5,8 +5,8 @@
 Two parts:
 
 1. Format: the fields the app and server read are present, every listed JPEG exists with the
-   stated size, poses are rigid transforms, timestamps increase, and each `motion` keyframe
-   respects the spacing gate the session declares.
+   stated size in landscape sensor orientation, poses are rigid transforms, timestamps increase,
+   and each `motion` keyframe respects the spacing gate the session declares.
 2. Pose accuracy, when `ground_truth.json` sits beside `session.json`. The two worlds share
    gravity but not heading or origin, so the ground truth is aligned with a rotation about
    the vertical axis plus a translation. Reported two ways:
@@ -120,8 +120,8 @@ def check_format(folder: Path, session: dict) -> tuple[list[str], dict]:
         if missing:
             errors.append(f"{name}: missing {', '.join(missing)}")
             continue
-        # Replay projection uses the landscape sensor image; matching portrait metadata is
-        # insufficient to establish that its camera geometry was rotated with the pixels (#153).
+        # ReplayKeyframe.intrinsics is defined in the unrotated landscape JPEG's pixels
+        # (ios/HouseScanKit/Sources/HouseScanKit/Replay/ReplaySession.swift).
         if kf["w"] < kf["h"]:
             errors.append(f"{name}: portrait keyframe; replay requires a landscape sensor image")
         tracking_counts[kf["tracking"]] = tracking_counts.get(kf["tracking"], 0) + 1
