@@ -16,6 +16,7 @@ from server.api.idempotency import fingerprint
 from server.api.keys import packet_key
 from server.common.logging import log_event
 from server.contracts.api import ConfirmationData, ConfirmationRequest, ConfirmationResponse
+from server.orchestrator.corrections import newest_correction_run, record_correction
 
 _VALUE = re.compile(r"^[A-Za-z0-9 ./-]{1,32}$")
 _OPEN = {"uploading", "awaiting_files", "processing", "needs_views", "manual_review"}
@@ -100,6 +101,14 @@ def register(app: FastAPI) -> None:
             if existing and existing.get("fingerprint") != digest and by == "device":
                 raise fail(409, "confirmation_conflict", "/", "this field already has a different answer")
             confirmation_id = deps.new_id("cfm_")
+            # Freeze the target before publishing the compatibility slot. A retry
+            # after another run starts must not move this answer to that run.
+            record_correction(
+                deps.state,
+                capture_id,
+                {"confirmationId": confirmation_id, "by": by, **body.model_dump(mode="json", exclude={"clientAt"})},
+                newest_correction_run(deps.state, capture_id),
+            )
             event = ConfirmationData(
                 confirmationId=confirmation_id,
                 fieldId=body.fieldId,

@@ -22,7 +22,12 @@ from server.orchestrator.coordinator import (
     reset_criteria_and_result,
     with_correction_lease,
 )
-from server.orchestrator.corrections import pending_corrections, record_correction
+from server.orchestrator.corrections import (
+    newest_correction_run,
+    pending_corrections,
+    record_correction,
+    seed_run_corrections,
+)
 from server.orchestrator.early.capture_check import final_check, flush_pending
 from server.orchestrator.early.dispatch import dispatch
 from server.orchestrator.early.index import early_keys
@@ -91,6 +96,7 @@ def start_run(
         artifacts={},
         spend_usd={"gpu": 0.0, "cpu": 0.0, "vlm_reads": 0.0, "vlm_objects": 0.0, "vlm_c3": 0.0},
     )
+    seed_run_corrections(services.state, run)
     # The run record lands with the claim, before any slow read, so a dead
     # caller cannot leave a claim that blocks the capture forever.
     services.state.put_run(run)  # type: ignore[attr-defined]
@@ -218,11 +224,10 @@ def on_confirmation(
     by: str,
 ) -> None:
     services = current()
-    runs = services.state.runs_for_capture(capture_id)
-    newest = max(runs, key=lambda item: item.created_at) if runs else None
+    newest = newest_correction_run(services.state, capture_id)
     # This insertion, not a reads write or a lease, is the acceptance boundary.
     # The capture sequence also survives answers arriving before a run exists.
-    record_correction(
+    sequence = record_correction(
         services.state,
         capture_id,
         {
@@ -234,13 +239,15 @@ def on_confirmation(
         },
         newest,
     )
-    if newest is not None and newest.status == "done":
+    accepted = services.state.get_kv(f"capture_correction:{capture_id}:{sequence}")
+    target = services.state.get_run(accepted["targetRunId"]) if accepted.get("targetRunId") else None
+    if target is not None and target.status == "done":
         try:
-            _recompose_after_correction(capture_id, newest)
+            _recompose_after_correction(capture_id, target)
         except (LeaseBusy, LeaseLost):
             # The answer is durable and uncovered. The sweeper retries even if
             # completion races this status read or the lease owner disappears.
-            log_event("confirmation.recompose_deferred", capture_id=capture_id, run_id=newest.run_id)
+            log_event("confirmation.recompose_deferred", capture_id=capture_id, run_id=target.run_id)
 
 
 def cancel_capture(capture_id: str) -> None:

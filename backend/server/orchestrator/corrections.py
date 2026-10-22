@@ -5,9 +5,9 @@ reserved slot, mutable head pointer, or separately deletable pending marker.
 Readers stop at the first empty slot. Competing writers retry that same slot,
 so a crash cannot leave a hole hiding later records.
 
-Capture records also cover answers accepted before a run exists. A run copies
-that prefix into its own immutable sequence before acknowledging an answer or
-composing. A crash during the copy is recovered by the next snapshot read.
+Capture records freeze each answer's target before acknowledgment. Run sequences
+contain only answers for that run. Answers without a target are claimed by the
+next run at creation, never by a historical run checking its pending work.
 """
 
 from __future__ import annotations
@@ -38,26 +38,63 @@ def _append_correction(state: Any, prefix: str, correction: dict) -> int:
                 return sequence
             continue
         if prior["confirmationId"] == correction["confirmationId"]:
-            if prior != correction:
+            # A retry must keep its original target even if a newer run exists.
+            if {k: v for k, v in prior.items() if k != "targetRunId"} != {
+                k: v for k, v in correction.items() if k != "targetRunId"
+            }:
                 raise ValueError("confirmation ID was reused with different correction data")
             return sequence
         sequence += 1
 
 
+def newest_correction_run(state: Any, capture_id: str) -> RunRecord | None:
+    runs = state.runs_for_capture(capture_id)
+    newest = max(runs, key=lambda item: (item.created_at, item.run_id)) if runs else None
+    # Do not fall back to an older delivered run when the newest one failed.
+    return newest if newest is not None and newest.status in {"running", "done"} else None
+
+
 def record_correction(state: Any, capture_id: str, correction: dict, run: RunRecord | None = None) -> int:
-    sequence = _append_correction(state, f"capture_correction:{capture_id}", correction)
-    if run is not None:
-        correction_snapshot(state, run)
+    sequence = _append_correction(
+        state, f"capture_correction:{capture_id}", {**correction, "targetRunId": run.run_id if run else None}
+    )
+    accepted = state.get_kv(f"capture_correction:{capture_id}:{sequence}")
+    target = state.get_run(accepted["targetRunId"]) if accepted.get("targetRunId") else None
+    if run is not None and accepted.get("targetRunId") == run.run_id:
+        target = run
+    if target is not None:
+        correction_snapshot(state, target)
     return sequence
 
 
-def correction_snapshot(state: Any, run: RunRecord) -> list[dict]:
+def seed_run_corrections(state: Any, run: RunRecord) -> None:
+    """Freeze pre-run answers before publishing a newly created run record."""
     rows = _records(state, f"capture_correction:{run.capture_id}")
-    for sequence, row in enumerate(rows, 1):
-        key = f"run_correction:{run.run_id}:{sequence}"
-        if not state.put_if_absent(key, row) and state.get_kv(key) != row:
-            raise RuntimeError(f"correction sequence mismatch for {run.run_id} at {sequence}")
-    return rows
+    state.put_if_absent(
+        f"run_correction_seed:{run.run_id}",
+        {"confirmationIds": [row["confirmationId"] for row in rows if not row.get("targetRunId")]},
+    )
+    _claim_pre_run_answers(state, run)
+
+
+def _claim_pre_run_answers(state: Any, run: RunRecord) -> None:
+    seed = state.get_kv(f"run_correction_seed:{run.run_id}") or {}
+    for identifier in seed.get("confirmationIds", []):
+        state.put_if_absent(f"pre_run_owner:{run.capture_id}:{identifier}", {"runId": run.run_id})
+
+
+def correction_snapshot(state: Any, run: RunRecord) -> list[dict]:
+    # Finish an interrupted creation-time claim, but never adopt later answers.
+    _claim_pre_run_answers(state, run)
+    for row in _records(state, f"capture_correction:{run.capture_id}"):
+        target = row.get("targetRunId")
+        if target is None:
+            owner = state.get_kv(f"pre_run_owner:{run.capture_id}:{row['confirmationId']}") or {}
+            target = owner.get("runId")
+        if target == run.run_id:
+            answer = {key: value for key, value in row.items() if key != "targetRunId"}
+            _append_correction(state, f"run_correction:{run.run_id}", answer)
+    return _records(state, f"run_correction:{run.run_id}")
 
 
 def fold_reads(base: Reads, corrections: list[dict]) -> Reads:
