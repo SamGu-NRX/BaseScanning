@@ -50,6 +50,7 @@ POSE_COLUMNS = [
 ]
 IMU_COLUMNS = ["t", "ax", "ay", "az", "gx", "gy", "gz"]
 KEYFRAME_COUNT = 3
+MAX_MESH_COUNT = 59  # 59 meshes + 2 streams + 3 keyframes stays within MAX_FILES=64.
 
 # Keyframe geometry: the packet's declared keyframe w/h, a multiple of the
 # 8x8 JPEG block so no MCU is padded.
@@ -432,6 +433,8 @@ def imu_stream(seed: int) -> bytes:
 
 
 def build(seed: int, mesh_count: int, mesh_kb: int) -> dict:
+    if not (1 <= mesh_count <= MAX_MESH_COUNT):
+        raise ValueError(f"mesh_count must be 1..{MAX_MESH_COUNT}")
     packet_id = f"synthetic-{seed:06d}"
     contents: list[tuple[str, str, str, bytes]] = []
     for i in range(mesh_count):
@@ -594,8 +597,12 @@ def main() -> int:
     parser.add_argument("--mesh-count", type=int, default=3)
     parser.add_argument("--mesh-kb", type=int, default=64, help="per-file size in KiB")
     args = parser.parse_args()
-    if not (0 <= args.seed < 2**31) or not (1 <= args.mesh_count <= 62) or args.mesh_kb < 1:
-        parser.error("seed must be 0..2^31-1, mesh-count 1..62, mesh-kb >= 1")
+    if (
+        not (0 <= args.seed < 2**31)
+        or not (1 <= args.mesh_count <= MAX_MESH_COUNT)
+        or args.mesh_kb < 1
+    ):
+        parser.error(f"seed must be 0..2^31-1, mesh-count 1..{MAX_MESH_COUNT}, mesh-kb >= 1")
 
     out = Path(args.out)
     document = write_plan(out, args.seed, args.mesh_count, args.mesh_kb)

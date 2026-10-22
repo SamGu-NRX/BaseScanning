@@ -232,6 +232,7 @@ class ExportContext:
 
     paths: frozenset[str] = frozenset()
     packet_ids: frozenset[str] = frozenset()
+    generator_name: str | None = None
 
 
 class _V:
@@ -473,6 +474,8 @@ def validate_manifest(manifest: object, ctx: ExportContext, known: Mapping[str, 
         {"gen_synthetic_packet", "gen_miniarkit_packet"},
         "generator",
     )
+    if ctx.generator_name is not None and fixture["generator"] != ctx.generator_name:
+        raise v.fail("/fixture/generator", "fixture-generator-does-not-match-plan")
     v.integer(fixture["format_version"], "/fixture/format_version", low=1, high=100)
     # Seed semantics belong to the generator family: the synthetic family is
     # seeded (bounded), the mini-arkit family is fixture-determined with a
