@@ -588,10 +588,10 @@ def _coverage(scene: Scene, wall_id: str, checks: _SpanChecks) -> dict[str, Any]
 
     observed: list[dict[str, Any]] = []
 
-    def band_out(band, pointer: str) -> dict[str, Any]:
+    def band_out(band, pointer: str, *, require_ground_depth: bool) -> dict[str, Any]:
         if band.wall_id is not None and band.wall_id != wall_id:
             _invalid(f"the band names unknown wall {band.wall_id!r}", f"{pointer}/wall_id")
-        if band.band == "ground" and band.out_m is None:
+        if require_ground_depth and band.band == "ground" and band.out_m is None:
             # scene.schema.json requires out_ft on every ground band ("the ground in
             # front of the wall out to out_ft"), while the source contract leaves
             # out_m optional — this band cannot be represented, so refuse rather
@@ -610,14 +610,14 @@ def _coverage(scene: Scene, wall_id: str, checks: _SpanChecks) -> dict[str, Any]
         return record
 
     for index, band in enumerate(scene.coverage.bands or []):
-        observed.append(band_out(band, f"/coverage/bands/{index}"))
+        observed.append(band_out(band, f"/coverage/bands/{index}", require_ground_depth=True))
     for sensitivity_index, sensitivity in enumerate(scene.coverage.sensitivity or []):
         for band_index, band in enumerate(sensitivity.bands):
             # Sensitivity variants are validated but are not observations: the wire's
             # observed list is the ground-truth coverage the device saw, and a what-if
             # sensitivity band is not that. A sensitivity-only scene still converts to
             # ends only — no observation is invented.
-            band_out(band, f"/coverage/sensitivity/{sensitivity_index}/bands/{band_index}")
+            band_out(band, f"/coverage/sensitivity/{sensitivity_index}/bands/{band_index}", require_ground_depth=False)
 
     if len(observed) > _WIRE_MAX_OBSERVED_BANDS:
         _unsupported(

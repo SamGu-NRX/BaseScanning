@@ -197,6 +197,25 @@ def _pipeline_rows(sites, inputs: Path, repo: Path, work: Path, engine_cfg: Crit
     return rows
 
 
+def _report_shape_error(report: object) -> str | None:
+    """Return a stable refusal for a parsed report with unusable containers."""
+    if not isinstance(report, dict):
+        return f"criteria report must be an object, got {type(report).__name__}"
+    profiles = report.get("profiles")
+    if profiles is not None and (
+        not isinstance(profiles, list) or not all(isinstance(profile, str) for profile in profiles)
+    ):
+        return "criteria report profiles must be a list of strings"
+    decidability = report.get("decidability")
+    if decidability is not None and not isinstance(decidability, dict):
+        return "criteria report decidability must be an object"
+    if isinstance(decidability, dict):
+        for profile, value in decidability.items():
+            if not isinstance(profile, str) or not isinstance(value, dict):
+                return "criteria report decidability entries must be objects keyed by profile"
+    return None
+
+
 def _report_diff(produced: dict, committed: dict) -> list[str]:
     diffs = []
     for field in REPORT_FIELDS:
@@ -242,6 +261,22 @@ def _criteria_rows(sites, inputs: Path, work: Path):
                 )
             )
             continue
+        shape_error = _report_shape_error(produced)
+        if shape_error:
+            rows.append(
+                _row(
+                    f"criteria/{site}/report",
+                    "criteria",
+                    f"{site}/gt-laser",
+                    "criteria_report",
+                    None,
+                    "reproduces committed evidence",
+                    "FAIL",
+                    str(report_path),
+                    shape_error,
+                )
+            )
+            continue
         shares = {
             p: (produced.get("decidability") or {}).get(p, {}).get("share") for p in produced.get("profiles") or []
         }
@@ -275,6 +310,22 @@ def _criteria_rows(sites, inputs: Path, work: Path):
                     "FAIL",
                     str(committed_path),
                     f"committed criteria report is unreadable: {_err(exc)}",
+                )
+            )
+            continue
+        committed_shape_error = _report_shape_error(committed)
+        if committed_shape_error:
+            rows.append(
+                _row(
+                    f"criteria/{site}/report",
+                    "criteria",
+                    f"{site}/gt-laser",
+                    "criteria_report",
+                    shares,
+                    "reproduces committed evidence",
+                    "FAIL",
+                    str(committed_path),
+                    committed_shape_error,
                 )
             )
             continue
