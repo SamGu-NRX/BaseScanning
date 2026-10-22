@@ -1,0 +1,139 @@
+{
+  "captureStatus": "failed",
+  "events": [
+    {
+      "at": "2026-10-16T18:04:28Z",
+      "data": {
+        "committed": 11,
+        "listed": null,
+        "paths": [
+          "keyframes/k00001.features.bin",
+          "keyframes/k00001.jpg",
+          "keyframes/k00002.features.bin",
+          "keyframes/k00002.jpg",
+          "keyframes/k00003.jpg",
+          "keyframes/k00004.jpg",
+          "streams/arkit_poses.csv.gz",
+          "streams/heading.csv.gz",
+          "streams/imu_raw.csv.gz",
+          "streams/location.csv.gz",
+          "streams/motion.csv.gz"
+        ]
+      },
+      "seq": 1,
+      "type": "files_committed"
+    },
+    {
+      "at": "2026-10-16T18:04:28Z",
+      "data": {
+        "code": "frames_blurry",
+        "frames": [
+          "keyframes/k00003.jpg"
+        ],
+        "message": "Several frames in a row look blurry."
+      },
+      "seq": 2,
+      "type": "hint"
+    },
+    {
+      "at": "2026-10-16T18:04:28Z",
+      "data": {
+        "complete": true,
+        "meterRead": "absent",
+        "missing": []
+      },
+      "seq": 3,
+      "type": "capture_check"
+    },
+    {
+      "at": "2026-10-16T18:04:28Z",
+      "data": {
+        "attempt": 1,
+        "durationS": null,
+        "errorCode": null,
+        "gpu": null,
+        "runId": "run_223b03a5e1e6beb8",
+        "stage": "validate",
+        "status": "running"
+      },
+      "seq": 4,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:28Z",
+      "data": {
+        "attempt": 0,
+        "runId": "run_223b03a5e1e6beb8",
+        "stage": "validate",
+        "status": "pending"
+      },
+      "seq": 5,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:28Z",
+      "data": {
+        "complete": false,
+        "meterRead": "absent",
+        "missing": [
+          "panel_close",
+          "panel_open",
+          "main_disconnect",
+          "meter_tap"
+        ]
+      },
+      "seq": 6,
+      "type": "capture_check"
+    },
+    {
+      "at": "2026-10-16T18:04:28Z",
+      "data": {
+        "attempt": 1,
+        "runId": "run_223b03a5e1e6beb8",
+        "stage": "validate",
+        "status": "running"
+      },
+      "seq": 7,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:28Z",
+      "data": {
+        "attempt": 2,
+        "runId": "run_223b03a5e1e6beb8",
+        "stage": "validate",
+        "status": "running"
+      },
+      "seq": 8,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:28Z",
+      "data": {
+        "attempt": 2,
+        "errorCode": "local_scripted_failure",
+        "runId": "run_223b03a5e1e6beb8",
+        "stage": "validate",
+        "status": "failed"
+      },
+      "seq": 9,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:28Z",
+      "data": {
+        "code": "packet_invalid",
+        "message": "HSS_LOCAL_OUTCOME=failed ends the run on outcome row 1 (validate failed, images unusable)",
+        "next": "none"
+      },
+      "seq": 10,
+      "type": "failed"
+    }
+  ],
+  "outcomeKind": "manual_review",
+  "terminalEventKind": "failed",
+  "verdict": {
+    "decision": "validate_failed",
+    "views": 0
+  }
+}
