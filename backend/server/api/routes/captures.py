@@ -200,24 +200,33 @@ def register(app: FastAPI) -> None:
                 raise fail(403, "forbidden", "/", "capture belongs to another principal")
             if tomb:
                 return Response(status_code=204)
-            safe_hook("cancel_capture", deps.hooks.cancel_capture, capture_id)
-            deleted = 0
-            run_ids = [item.run_id for item in deps.state.runs_for_capture(capture_id)]
-            prefixes = [
-                f"uploads/{capture_id}/",
-                f"captures/{capture_id}/",
-                f"work/{capture_id}/",
-                *[f"work/{run_id}/" for run_id in run_ids],
-            ]
-            try:
-                for prefix in prefixes:
-                    deleted += deps.storage.delete_prefix(prefix)
-            except Exception as exc:
-                log_event("storage.error", op="delete_prefix", capture_id=capture_id, level="error")
-                raise fail(503, "storage_unavailable", "/", "storage delete failed", **{"Retry-After": "5"}) from exc
-            packet_id = record.packet_id
-            deps.state.delete_capture(capture_id)
-            deps.state.put_kv(f"tomb:{capture_id}", {"deleted_at": isoformat(deps.now()), "packet_id": packet_id})
+            fence = getattr(deps.storage, "capture_fence", None)
+            if fence is None:
+                raise fail(503, "storage_unavailable", "/", "storage has no shared capture fence")
+            with fence(capture_id):
+                if deps.storage.is_capture_deleted(capture_id) or deps.state.get_kv(f"tomb:{capture_id}"):
+                    return Response(status_code=204)
+                deps.storage.mark_capture_deleted(capture_id)
+                safe_hook("cancel_capture", deps.hooks.cancel_capture, capture_id)
+                deleted = 0
+                run_ids = [item.run_id for item in deps.state.runs_for_capture(capture_id)]
+                prefixes = [
+                    f"uploads/{capture_id}/",
+                    f"captures/{capture_id}/",
+                    f"work/{capture_id}/",
+                    *[f"work/{run_id}/" for run_id in run_ids],
+                ]
+                try:
+                    for prefix in prefixes:
+                        deleted += deps.storage.delete_prefix(prefix)
+                except Exception as exc:
+                    log_event("storage.error", op="delete_prefix", capture_id=capture_id, level="error")
+                    raise fail(
+                        503, "storage_unavailable", "/", "storage delete failed", **{"Retry-After": "5"}
+                    ) from exc
+                packet_id = record.packet_id
+                deps.state.delete_capture(capture_id)
+                deps.state.put_kv(f"tomb:{capture_id}", {"deleted_at": isoformat(deps.now()), "packet_id": packet_id})
             # Tombstone before purging the cache: a hydrate that passed the
             # entry tombstone check while this delete was running can only be
             # stopped from republishing once the tombstone is visible, so every

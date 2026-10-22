@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import base64
+import fcntl
 import hashlib
 import json
 import re
 import threading
 import uuid
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -108,6 +110,27 @@ class LocalFsStorage:
     def discard_tmp(self, tmp: Path) -> None:
         if tmp.is_file():
             tmp.unlink()
+
+    @contextmanager
+    def capture_fence(self, capture_id: str):
+        """Hold a storage-backed fence across a capture delete or upload commit."""
+        lock_root = self.root / ".locks"
+        lock_root.mkdir(parents=True, exist_ok=True)
+        name = hashlib.sha256(capture_id.encode()).hexdigest() + ".lock"
+        with (lock_root / name).open("a+") as handle:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+    def is_capture_deleted(self, capture_id: str) -> bool:
+        return (self.root / ".deleted" / (hashlib.sha256(capture_id.encode()).hexdigest() + ".tomb")).is_file()
+
+    def mark_capture_deleted(self, capture_id: str) -> None:
+        marker_root = self.root / ".deleted"
+        marker_root.mkdir(parents=True, exist_ok=True)
+        (marker_root / (hashlib.sha256(capture_id.encode()).hexdigest() + ".tomb")).touch(exist_ok=True)
 
     def commit_tmp(self, key: str, tmp: Path, content_type: str, md5_b64: str, nbytes: int) -> None:
         # The rename and the metadata write happen under one lock. Replacing the
