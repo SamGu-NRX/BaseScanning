@@ -54,6 +54,7 @@ import gzip
 import hashlib
 import json
 import math
+import struct
 import sys
 import uuid
 from pathlib import Path
@@ -538,14 +539,15 @@ def render_frame(
 
     d_origin, d_dir = ray_grid(pose, DEPTH_W, DEPTH_H)
     dt, _normal, _surface = cast_scene(scene, d_origin, d_dir)
-    depth = dt.astype("<f4")
-    confidence = np.where(np.isfinite(depth), np.where(depth <= 6.0, 3, 2).astype(np.uint8), np.uint8(0))
-    features = _features(rgb, t, frame_index, scene.seed)
+    camera_dir = np.einsum("ij,hwj->hwi", pose[:3, :3].T, d_dir)
+    depth = np.where(np.isfinite(dt), dt * -camera_dir[..., 2], 0.0).astype("<f4")
+    confidence = np.where(np.isfinite(dt), np.where(depth <= 6.0, 2, 1), 0).astype(np.uint8)
+    features = _features(rgb, t, pose, frame_index)
     return rgb, depth, confidence, features
 
 
-def _features(rgb, t, frame_index, seed) -> list[tuple[float, float, float, float, float]]:
-    """Deterministic 20-byte feature rows: u, v, response, scale, angle (float32 LE)."""
+def _features(rgb, t, pose, frame_index) -> list[tuple[float, float, float, int]]:
+    """Deterministic app raw-point rows: world x/y/z and a uint64 identifier."""
     h, w = t.shape
     rows = np.arange(FEATURES_STRIDE_PX, h - FEATURES_STRIDE_PX, FEATURES_STRIDE_PX)
     cols = np.arange(FEATURES_STRIDE_PX, w - FEATURES_STRIDE_PX, FEATURES_STRIDE_PX)
@@ -555,19 +557,21 @@ def _features(rgb, t, frame_index, seed) -> list[tuple[float, float, float, floa
     lum = rgb[rr, cc].astype(np.float64).mean(axis=-1)
     response = np.abs(lum - 118.0) * valid
     order = np.argsort(-response, axis=None)[:FEATURES_PER_FRAME]
-    rng = np.random.default_rng([seed, 7000 + frame_index])
+    origin, direction = ray_grid(pose, KEYFRAME_W, KEYFRAME_H)
     points = []
-    for flat in order:
+    for ordinal, flat in enumerate(order):
         r, c = np.unravel_index(flat, response.shape)
         if not valid[r, c]:
             continue
+        py, px = int(rr[r, c]), int(cc[r, c])
+        world = origin + float(t[py, px]) * direction[py, px]
+        identifier = (int(frame_index) << 32) | (ordinal + 1)
         points.append(
             (
-                float(cc[r, c] + 0.5),
-                float(rr[r, c] + 0.5),
-                float(response[r, c]),
-                float(rng.uniform(2.0, 5.0)),
-                0.0,
+                float(world[0]),
+                float(world[1]),
+                float(world[2]),
+                identifier,
             )
         )
     return points
@@ -844,7 +848,7 @@ def generate_packet(spec: dict, out_dir: Path) -> dict:
         conf_path = out_dir / "keyframes" / f"{kid}.confidence.u8"
         confidence.tofile(conf_path)
         feat_path = out_dir / "keyframes" / f"{kid}.features.bin"
-        feat_path.write_bytes(b"".join(np.asarray(p, dtype="<f4").tobytes() for p in features))
+        feat_path.write_bytes(b"".join(struct.pack("<fffQ", *feature) for feature in features))
         files += [
             _file_entry(jpg, out_dir, "keyframe"),
             _file_entry(depth_path, out_dir, "depth"),
@@ -902,7 +906,44 @@ def generate_packet(spec: dict, out_dir: Path) -> dict:
         img = out_dir / "stills" / f"{view['id']}.jpg"
         Image.fromarray(rgb).save(img, format="JPEG", quality=JPEG_QUALITY, subsampling=0)
         files.append(_file_entry(img, out_dir, "still"))
-        link = frames[min(range(len(frames)), key=lambda i: abs(walk_x(keyframe_times()[i]) - scene.meter["x"]))]["id"]
+        keyframe_id = f"k_{view['id']}"
+        depth_path = out_dir / "keyframes" / f"{keyframe_id}.depth.f32"
+        depth.tofile(depth_path)
+        conf_path = out_dir / "keyframes" / f"{keyframe_id}.confidence.u8"
+        confidence.tofile(conf_path)
+        feat_path = out_dir / "keyframes" / f"{keyframe_id}.features.bin"
+        feat_path.write_bytes(b"".join(struct.pack("<fffQ", *feature) for feature in features))
+        files.extend(
+            [
+                _file_entry(depth_path, out_dir, "depth"),
+                _file_entry(conf_path, out_dir, "confidence"),
+                _file_entry(feat_path, out_dir, "features"),
+            ]
+        )
+        frames.append(
+            {
+                "id": keyframe_id,
+                "img": f"stills/{view['id']}.jpg",
+                "w": KEYFRAME_W,
+                "h": KEYFRAME_H,
+                "intrinsics": [round(v, 3) for v in INTRINSICS],
+                "pose": _round_pose(pose),
+                "timestamp": round(view["timestamp"], 4),
+                "tracking": "normal",
+                "epoch": "e1",
+                "purpose": view["purpose"],
+                "reason": "request",
+                "exposure": {"duration": 0.008, "offset": 0.0, "iso": 50, "fNumber": 1.78},
+                "features": {"file": f"keyframes/{keyframe_id}.features.bin", "count": len(features)},
+                "depth": {
+                    "file": f"keyframes/{keyframe_id}.depth.f32",
+                    "confidenceFile": f"keyframes/{keyframe_id}.confidence.u8",
+                    "w": DEPTH_W,
+                    "h": DEPTH_H,
+                    "smoothed": False,
+                },
+            }
+        )
         stills.append(
             {
                 "id": view["id"],
@@ -912,7 +953,7 @@ def generate_packet(spec: dict, out_dir: Path) -> dict:
                 "h": KEYFRAME_H,
                 "timestamp": round(view["timestamp"], 4),
                 "orientation": 1,
-                "keyframe": link,
+                "keyframe": keyframe_id,
                 "intrinsics": [round(v, 3) for v in INTRINSICS],
                 "gravity": [round(float(v), 6) for v in _device_gravity(pose)],
             }
