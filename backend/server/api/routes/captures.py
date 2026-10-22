@@ -206,7 +206,6 @@ def register(app: FastAPI) -> None:
             with fence(capture_id):
                 if deps.storage.is_capture_deleted(capture_id) or deps.state.get_kv(f"tomb:{capture_id}"):
                     return Response(status_code=204)
-                deps.storage.mark_capture_deleted(capture_id)
                 safe_hook("cancel_capture", deps.hooks.cancel_capture, capture_id)
                 deleted = 0
                 run_ids = [item.run_id for item in deps.state.runs_for_capture(capture_id)]
