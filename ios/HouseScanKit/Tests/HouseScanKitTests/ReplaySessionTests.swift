@@ -63,9 +63,9 @@ struct ReplaySessionTests {
 
     @Test func sortsEqualTimestampsById() throws {
         let frames = """
-        [{"id": "b", "img": "b.jpg", "w": 1, "h": 1, "intrinsics": [1,1,0,0],
+        [{"id": "b", "img": "b.jpg", "w": 2, "h": 1, "intrinsics": [1,1,0,0],
           "pose": [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1], "timestamp": 5, "tracking": "normal"},
-         {"id": "a", "img": "a.jpg", "w": 1, "h": 1, "intrinsics": [1,1,0,0],
+         {"id": "a", "img": "a.jpg", "w": 2, "h": 1, "intrinsics": [1,1,0,0],
           "pose": [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1], "timestamp": 5, "tracking": "normal"}]
         """
         let session = try ReplaySession.decode(sessionJSON: Self.session(keyframes: frames))
