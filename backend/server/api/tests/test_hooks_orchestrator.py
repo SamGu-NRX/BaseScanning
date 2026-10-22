@@ -248,6 +248,68 @@ def test_confirmation_busy_is_retryable_and_replays_hook(auto_client: ApiClient)
     assert calls["count"] == 2
 
 
+@pytest.mark.parametrize("boundary", ["before_journal", "after_journal", "before_ack"])
+def test_confirmation_storage_fault_never_acknowledges_or_duplicates(
+    auto_client: ApiClient, monkeypatch: pytest.MonkeyPatch, boundary: str
+) -> None:
+    from server.orchestrator.corrections import correction_snapshot, latest_publication
+
+    client = auto_client
+    created = client.post(
+        "/v1/captures",
+        json={
+            "packetId": PACKET_ID,
+            "formatVersion": "0.4",
+            "tier": PACKET["session"]["tier"],
+            "device": {"model": "iPhone", "systemVersion": "18", "appVersion": "1"},
+        },
+        headers={"Idempotency-Key": PACKET_ID},
+    )
+    assert created.status_code == 201
+    capture_id = created.json()["captureId"]
+    _upload_and_commit(client, capture_id)
+    run_id = _finalize(client, capture_id)["runId"]
+    state = client.app_state.state
+    insert = state.put_if_absent
+    store = state.put_kv
+    hit = []
+
+    def journal(key, row):
+        if key.startswith("capture_correction:") and boundary != "before_ack":
+            hit.append(key)
+            if boundary == "after_journal":
+                assert insert(key, row)
+            raise LeaseBusy("injected storage interruption")
+        return insert(key, row)
+
+    def acknowledgment(key, row):
+        if key.startswith("confirm:") and row.get("hook_applied") and boundary == "before_ack":
+            hit.append(key)
+            raise LeaseBusy("injected acknowledgment interruption")
+        return store(key, row)
+
+    answer = {
+        "fieldId": "meter_number",
+        "kind": "corrected",
+        "value": "12345",
+        "imageId": PACKET["keyframes"][0]["id"],
+        "clientAt": "2026-10-16T00:00:00.000Z",
+    }
+    with monkeypatch.context() as patch:
+        patch.setattr(state, "put_if_absent", journal)
+        patch.setattr(state, "put_kv", acknowledgment)
+        interrupted = client.post(f"/v1/captures/{capture_id}/confirmations", json=answer)
+    assert hit, "the fault boundary was never reached"
+    assert interrupted.status_code == 503, interrupted.text
+    retry = client.post(f"/v1/captures/{capture_id}/confirmations", json=answer)
+    assert retry.status_code in {200, 201}, retry.text
+    run = state.get_run(run_id)
+    rows = correction_snapshot(state, run)
+    assert [row["confirmationId"] for row in rows] == [retry.json()["confirmationId"]]
+    assert latest_publication(state, run_id)["correctionIds"] == [retry.json()["confirmationId"]]
+    assert client.get(f"/v1/captures/{capture_id}/result").json()["meter"]["value"] == "12345"
+
+
 def test_confirmation_replay_recomposes_once(auto_client: ApiClient) -> None:
     """A corrected answer POSTed twice recomposes the result exactly once.
 

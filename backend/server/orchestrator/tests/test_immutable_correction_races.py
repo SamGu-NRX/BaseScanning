@@ -1,4 +1,4 @@
-"""Portable race regressions: these import only interfaces present at 2b696e4a."""
+"""Force races at active journal, lease, and publication boundaries."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from server.contracts.jobs import StageRecord
 from server.orchestrator.api import on_confirmation, start_run
 from server.orchestrator.artifacts import overlay_stage_artifacts
 from server.orchestrator.coordinator import RunCoordinator
+from server.orchestrator.corrections import correction_snapshot, pending_corrections
 from server.orchestrator.runner import run_stage
 from server.orchestrator.services import bind
 from server.orchestrator.stateio import put_json
@@ -79,60 +80,85 @@ def test_busy_acceptance_is_recovered_after_completion(tmp_path, monkeypatch):
     import server.orchestrator.api as api
 
     services, run, _ = setup_run(tmp_path)
+    run.status = "done"
+    services.state.put_run(run)
+    lease_attempts = []
 
     def busy(*_args):
+        lease_attempts.append(run.run_id)
+        assert [row["confirmationId"] for row in correction_snapshot(services.state, run)] == ["busy"]
+        assert pending_corrections(services.state, run)
         raise LeaseBusy("deterministically occupied")
 
     with monkeypatch.context() as patch:
         patch.setattr(api, "with_correction_lease", busy)
-        # Reproduce the historical API boundary that swallowed hook exceptions.
         with bind(services):
-            safe_hook("on_confirmation", on_confirmation, run.capture_id, request(), "busy", by="device")
-    run.status = "done"
-    services.state.put_run(run)
+            safe_hook("on_confirmation", on_confirmation, run.capture_id, request(), "busy", by="device", strict=True)
+    assert lease_attempts == [run.run_id], "the done-run recomposition lease was never attempted"
+    assert pending_corrections(services.state, run)
     sweep(services)
     assert served(services, run)["meter"]["value"] == "12345"
+    assert not pending_corrections(services.state, run)
 
 
-def test_crash_at_shared_reads_write_cannot_lose_accepted_answer(tmp_path, monkeypatch):
+@pytest.mark.parametrize("after_insert", [False, True])
+def test_crash_at_journal_insert_never_acknowledges_an_unstored_answer(tmp_path, monkeypatch, after_insert):
     services, run, reads_key = setup_run(tmp_path)
-    original = services.storage.put_bytes
+    original = services.state.put_if_absent
+    faults = []
+    acknowledged = []
 
-    def crash_after_write(key, data, content_type):
-        original(key, data, content_type)
-        if key == reads_key:
-            raise OSError("process crashed before marker storage")
+    def crash(key, row):
+        if key.startswith("capture_correction:"):
+            faults.append(key)
+            if after_insert:
+                assert original(key, row)
+            raise OSError("process crashed at journal insert")
+        return original(key, row)
 
     with monkeypatch.context() as patch:
-        patch.setattr(services.storage, "put_bytes", crash_after_write)
-        with bind(services):
-            safe_hook("on_confirmation", on_confirmation, run.capture_id, request(), "crash", by="device")
+        patch.setattr(services.state, "put_if_absent", crash)
+        with pytest.raises(OSError, match="journal insert"), bind(services):
+            safe_hook("on_confirmation", on_confirmation, run.capture_id, request(), "crash", by="device", strict=True)
+            acknowledged.append(True)
+    assert faults == [f"capture_correction:{run.capture_id}:1"]
+    assert acknowledged == []
+    assert bool(services.state.get_kv(f"capture_correction:{run.capture_id}:1")) is after_insert
+    if after_insert:
+        # Recovery does not require the unacknowledged client to retry.
+        run.status = "done"
+        services.state.put_run(run)
+        sweep(services)
+        assert served(services, run)["meter"]["value"] == "12345"
+    accept(services, request(), "crash")
     run.status = "done"
     services.state.put_run(run)
     sweep(services)
     assert served(services, run)["meter"]["value"] == "12345"
-    # The new implementation never enters the old storage-to-marker crash gap.
+    assert [row["confirmationId"] for row in correction_snapshot(services.state, run)] == ["crash"]
     assert Reads.model_validate_json(services.storage.get_bytes(reads_key)).meter.value == "00000"
 
 
 def test_two_workers_cannot_lose_different_field_corrections(tmp_path, monkeypatch):
     import server.orchestrator.stubs.criteria as criteria
 
-    services, run, reads_key = setup_run(tmp_path)
-    original_get = services.storage.get_bytes
-    stale_snapshots = Barrier(2)
+    services, run, _ = setup_run(tmp_path)
+    original_insert = services.state.put_if_absent
+    same_empty_slot = Barrier(2)
+    attempts = []
+    results = []
 
-    def both_read_the_old_bytes(key):
-        data = original_get(key)
-        if key == reads_key:
-            stale_snapshots.wait(timeout=5)
-        return data
+    def contend_for_journal_slot(key, row):
+        if key == f"capture_correction:{run.capture_id}:1":
+            attempts.append(row["confirmationId"])
+            same_empty_slot.wait(timeout=5)
+            inserted = original_insert(key, row)
+            results.append(inserted)
+            return inserted
+        return original_insert(key, row)
 
-    # On the old implementation this forces both API workers to read the same
-    # base bytes before either writes. The immutable path never reads that key
-    # during acceptance, so it has no storage read-modify-write to serialize.
     with monkeypatch.context() as patch:
-        patch.setattr(services.storage, "get_bytes", both_read_the_old_bytes)
+        patch.setattr(services.state, "put_if_absent", contend_for_journal_slot)
         with ThreadPoolExecutor(max_workers=2) as pool:
             futures = [
                 pool.submit(accept, services, row, identifier)
@@ -140,6 +166,9 @@ def test_two_workers_cannot_lose_different_field_corrections(tmp_path, monkeypat
             ]
             for future in futures:
                 future.result(timeout=10)
+    assert sorted(attempts) == ["meter", "panel"], "both workers must reach the immutable insertion boundary"
+    assert sorted(results) == [False, True], "one insertion must lose contention and retry"
+    assert {row["confirmationId"] for row in correction_snapshot(services.state, run)} == {"meter", "panel"}
     hydrated = []
     original_criteria = criteria.run
 

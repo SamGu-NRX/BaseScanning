@@ -54,9 +54,16 @@ def newest_correction_run(state: Any, capture_id: str) -> RunRecord | None:
     return newest if newest is not None and newest.status in {"running", "done"} else None
 
 
+def reserve_correction_target(state: Any, capture_id: str, identifier: str, run: RunRecord | None) -> dict:
+    key = f"correction_target:{capture_id}:{identifier}"
+    state.put_if_absent(key, {"runId": run.run_id if run else None})
+    return state.get_kv(key)
+
+
 def record_correction(state: Any, capture_id: str, correction: dict, run: RunRecord | None = None) -> int:
+    target = reserve_correction_target(state, capture_id, correction["confirmationId"], run)
     sequence = _append_correction(
-        state, f"capture_correction:{capture_id}", {**correction, "targetRunId": run.run_id if run else None}
+        state, f"capture_correction:{capture_id}", {**correction, "targetRunId": target["runId"]}
     )
     accepted = state.get_kv(f"capture_correction:{capture_id}:{sequence}")
     target = state.get_run(accepted["targetRunId"]) if accepted.get("targetRunId") else None
@@ -109,7 +116,9 @@ def import_legacy_corrections(state: Any, capture_id: str, run: RunRecord | None
             raise ValueError(f"legacy confirmation is missing required fields: {', '.join(missing)}")
         answer = {key: row[key] for key in required}
         answer["value"] = row.get("value")
-        _append_correction(state, f"capture_correction:{capture_id}", {**answer, "targetRunId": None, "legacy": True})
+        target = state.get_kv(f"correction_target:{capture_id}:{row['confirmationId']}")
+        metadata = {"targetRunId": target["runId"]} if target is not None else {"targetRunId": None, "legacy": True}
+        _append_correction(state, f"capture_correction:{capture_id}", {**answer, **metadata})
     if run is None or run.status not in {"pending", "running"}:
         return
     runs = state.runs_for_capture(capture_id)
