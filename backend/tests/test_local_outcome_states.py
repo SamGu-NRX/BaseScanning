@@ -14,7 +14,7 @@ journey tests — memory state, volume storage, static test auth, stage stubs,
 no Modal, no GPU, no network. The committed fixtures under
 ``tests/fixtures/app_states/<state>/`` are the served device payloads and
 event walks, one per state, regenerated with
-``uv run python tests/test_local_outcome_states.py --generate`` and re-checked
+``PYTHONPATH=. uv run python tests/test_local_outcome_states.py --generate`` and re-checked
 here so a later contract change cannot silently invalidate the evidence.
 
 The scripted outcomes are test stand-ins: every message and review page says so
@@ -516,8 +516,27 @@ def test_committed_state_fixtures_match_the_outcome_table() -> None:
         assert doc["terminalEventKind"] in TERMINAL_EVENT_TYPES
 
 
+@pytest.mark.parametrize("name,outcome,show_reject,_status,_kind", STATES, ids=[state[0] for state in STATES])
+def test_live_terminal_event_matches_committed_fixture(name, outcome, show_reject, _status, _kind, local_app) -> None:
+    root, packet, client, app, _deps = local_app(outcome, show_reject)
+    capture_id, run_id, capture = _run_capture(root, packet, client, app, f"fixture-check-{name}")
+    live = _last_terminal(_flat(client, capture_id))
+    fixture = json.loads((FIXTURES / name / "events.json").read_text())
+    expected = _last_terminal(fixture["events"])
+    assert capture.status == fixture["captureStatus"]
+    assert live["type"] == expected["type"] == fixture["terminalEventKind"]
+    # Run IDs change on regeneration; retain every other terminal payload field.
+    live_data = dict(live["data"])
+    expected_data = dict(expected["data"])
+    if "runId" in live_data:
+        assert live_data.pop("runId") == run_id
+        result = json.loads((FIXTURES / name / "result.json").read_text())
+        assert expected_data.pop("runId") == result["runId"]
+    assert live_data == expected_data
+
+
 def _generate() -> None:
-    """Regenerate the committed state fixtures. Run: uv run python tests/test_local_outcome_states.py --generate"""
+    """Regenerate the committed state fixtures. Run: PYTHONPATH=. uv run python tests/test_local_outcome_states.py --generate"""
     work = Path(tempfile.mkdtemp(prefix="hss-state-fixtures-"))
     keys = list(TEMPLATE_ENV) + [
         "VOLUME_ROOT",

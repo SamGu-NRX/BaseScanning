@@ -2,7 +2,7 @@
   "captureStatus": "failed",
   "events": [
     {
-      "at": "2026-10-16T18:04:28Z",
+      "at": "2026-10-22T18:45:55Z",
       "data": {
         "committed": 11,
         "listed": null,
@@ -24,7 +24,7 @@
       "type": "files_committed"
     },
     {
-      "at": "2026-10-16T18:04:28Z",
+      "at": "2026-10-22T18:45:55Z",
       "data": {
         "code": "frames_blurry",
         "frames": [
@@ -36,7 +36,7 @@
       "type": "hint"
     },
     {
-      "at": "2026-10-16T18:04:28Z",
+      "at": "2026-10-22T18:45:55Z",
       "data": {
         "complete": true,
         "meterRead": "absent",
@@ -46,13 +46,13 @@
       "type": "capture_check"
     },
     {
-      "at": "2026-10-16T18:04:28Z",
+      "at": "2026-10-22T18:45:55Z",
       "data": {
         "attempt": 1,
         "durationS": null,
         "errorCode": null,
         "gpu": null,
-        "runId": "run_223b03a5e1e6beb8",
+        "runId": "run_cb5d5f84d18c35a1",
         "stage": "validate",
         "status": "running"
       },
@@ -60,10 +60,10 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T18:04:28Z",
+      "at": "2026-10-22T18:45:55Z",
       "data": {
         "attempt": 0,
-        "runId": "run_223b03a5e1e6beb8",
+        "runId": "run_cb5d5f84d18c35a1",
         "stage": "validate",
         "status": "pending"
       },
@@ -71,7 +71,7 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T18:04:28Z",
+      "at": "2026-10-22T18:45:55Z",
       "data": {
         "complete": false,
         "meterRead": "absent",
@@ -86,10 +86,10 @@
       "type": "capture_check"
     },
     {
-      "at": "2026-10-16T18:04:28Z",
+      "at": "2026-10-22T18:45:55Z",
       "data": {
         "attempt": 1,
-        "runId": "run_223b03a5e1e6beb8",
+        "runId": "run_cb5d5f84d18c35a1",
         "stage": "validate",
         "status": "running"
       },
@@ -97,10 +97,10 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T18:04:28Z",
+      "at": "2026-10-22T18:45:55Z",
       "data": {
         "attempt": 2,
-        "runId": "run_223b03a5e1e6beb8",
+        "runId": "run_cb5d5f84d18c35a1",
         "stage": "validate",
         "status": "running"
       },
@@ -108,11 +108,11 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T18:04:28Z",
+      "at": "2026-10-22T18:45:55Z",
       "data": {
         "attempt": 2,
         "errorCode": "local_scripted_failure",
-        "runId": "run_223b03a5e1e6beb8",
+        "runId": "run_cb5d5f84d18c35a1",
         "stage": "validate",
         "status": "failed"
       },
@@ -120,7 +120,7 @@
       "type": "stage"
     },
     {
-      "at": "2026-10-16T18:04:28Z",
+      "at": "2026-10-22T18:45:55Z",
       "data": {
         "code": "packet_invalid",
         "message": "HSS_LOCAL_OUTCOME=failed ends the run on outcome row 1 (validate failed, images unusable)",
