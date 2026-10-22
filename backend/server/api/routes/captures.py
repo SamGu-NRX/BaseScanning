@@ -223,6 +223,7 @@ def register(app: FastAPI) -> None:
                     raise fail(
                         503, "storage_unavailable", "/", "storage delete failed", **{"Retry-After": "5"}
                     ) from exc
+                deps.storage.mark_capture_deleted(capture_id)
                 packet_id = record.packet_id
                 deps.state.delete_capture(capture_id)
                 deps.state.put_kv(f"tomb:{capture_id}", {"deleted_at": isoformat(deps.now()), "packet_id": packet_id})
