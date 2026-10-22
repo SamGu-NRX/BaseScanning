@@ -120,6 +120,17 @@ def check_format(folder: Path, session: dict) -> tuple[list[str], dict]:
         if missing:
             errors.append(f"{name}: missing {', '.join(missing)}")
             continue
+        # Every later check compares or does arithmetic with w and h, so a null, string,
+        # float or bool here would crash the CLI instead of being reported.
+        bad_size = next(
+            (f for f in ("w", "h") if type(kf[f]) is not int or kf[f] < 1),
+            None,
+        )
+        if bad_size is not None:
+            errors.append(
+                f"{name}: w and h must be integers of at least 1, got {bad_size}={kf[bad_size]!r}"
+            )
+            continue
         # ReplayFrame.intrinsics is defined in the unrotated landscape JPEG's pixels
         # (ios/HouseScanKit/Sources/HouseScanKit/Replay/ReplaySession.swift).
         if kf["w"] < kf["h"]:

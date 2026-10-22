@@ -109,6 +109,20 @@ def test_cli_rejects_portrait_keyframe_with_matching_dimensions_and_intrinsics(t
     assert any("k1: portrait keyframe" in error for error in report["format_errors"])
 
 
+@pytest.mark.parametrize("field", ["w", "h"])
+@pytest.mark.parametrize("bad", [None, "640", 640.0, True, 0, -480])
+def test_cli_reports_bad_image_dimensions_as_format_errors(tmp_path, capsys, field, bad):
+    session = session_with(tmp_path, [[0, 0, 0]])
+    session["keyframes"][0][field] = bad
+    (tmp_path / "session.json").write_text(json.dumps(session))
+
+    assert replaycheck.main([str(tmp_path), "--json"]) == 1
+
+    report = json.loads(capsys.readouterr().out)
+    expected = f"k1: w and h must be integers of at least 1, got {field}={bad!r}"
+    assert expected in report["format_errors"]
+
+
 def test_format_errors_are_specific(tmp_path):
     s = session_with(tmp_path, [[0, 0, -0.6 * i] for i in range(3)])
     s["keyframes"][1]["w"] = 1920  # disagrees with the JPEG
