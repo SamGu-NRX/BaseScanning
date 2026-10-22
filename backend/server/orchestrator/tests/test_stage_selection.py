@@ -9,6 +9,7 @@ pinned hss-stage-impl/v1 contract. No Modal, GPU, network or credentials.
 
 from __future__ import annotations
 
+import functools
 import importlib
 import json
 from pathlib import Path
@@ -22,23 +23,32 @@ from server.contracts.jobs import CaptureRecord
 from server.orchestrator import stage_selection
 from server.orchestrator.api import start_run
 from server.orchestrator.clock import Clock
-from server.orchestrator.config import OrchConfig
+from server.orchestrator.config import OrchConfig, load_orch
 from server.orchestrator.executor import InlineExecutor
-from server.orchestrator.graph import STAGE_NAMES, select_stage_artifacts
+from server.orchestrator.graph import STAGE_NAMES
 from server.orchestrator.runner import stage_callable
 from server.orchestrator.services import Services, bind, packet_sha256
+from server.orchestrator.stubs import result as stub_result
 
 FIXTURE = Path(__file__).resolve().parents[3] / "data" / "fixtures" / "packets" / "mini-arkit"
 PACKET_RAW = (FIXTURE / "packet.json").read_bytes()
 PACKET = json.loads(PACKET_RAW)
 
 IMPL_SCHEMA = "hss-stage-impl/v1"
+VISION_VAR = "VISION_EXTERNAL_CALLS"
 
 
 def _env(**overrides: str) -> dict[str, str]:
-    env = {stage_selection.ENV_VAR: "validate"}
+    env = {stage_selection.ENV_VAR: "validate", stage_selection.ENVIRONMENT_VAR: "dev"}
     env.update(overrides)
     return env
+
+
+@pytest.fixture
+def dev_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests that set HSS_ORCH_REAL_STAGES in os.environ need an explicit dev process."""
+
+    monkeypatch.setenv(stage_selection.ENVIRONMENT_VAR, "dev")
 
 
 # --- parsing -----------------------------------------------------------------
@@ -51,22 +61,52 @@ def test_unset_selects_nothing() -> None:
 
 def test_single_stage_and_whitespace() -> None:
     assert stage_selection.parse_real_stages(_env()) == frozenset({"validate"})
-    assert stage_selection.parse_real_stages({stage_selection.ENV_VAR: " validate , scale ,"}) == frozenset(
+    assert stage_selection.parse_real_stages(_env(**{stage_selection.ENV_VAR: " validate , scale ,"})) == frozenset(
         {"validate", "scale"}
     )
 
 
 def test_cpu_alias_covers_every_weightless_stage() -> None:
-    selected = stage_selection.parse_real_stages({stage_selection.ENV_VAR: "cpu"})
+    selected = stage_selection.parse_real_stages(_env(**{stage_selection.ENV_VAR: "cpu"}))
     assert selected == frozenset(stage_selection.CPU_STAGES)
+    # objects loads OWLv2/SigLIP; dense falls back to π³/MoGe/DA3 on photo-only packets.
     assert "objects" not in selected
-    assert selected | {"objects"} == frozenset(STAGE_NAMES)
+    assert "dense" not in selected
+    assert selected | {"objects", "dense"} == frozenset(STAGE_NAMES)
+
+
+def test_dense_can_still_be_listed_explicitly() -> None:
+    assert stage_selection.parse_real_stages(_env(**{stage_selection.ENV_VAR: "cpu,dense"})) == frozenset(
+        {*stage_selection.CPU_STAGES, "dense"}
+    )
+
+
+@pytest.mark.parametrize("value", ["on", "ON", " on ", "1", "true", "yes"])
+def test_cpu_alias_refused_when_vision_calls_are_on(value: str) -> None:
+    """reads and criteria call a paid vision model when VISION_EXTERNAL_CALLS is on."""
+
+    with pytest.raises(ValueError, match=VISION_VAR) as excinfo:
+        stage_selection.parse_real_stages(_env(**{stage_selection.ENV_VAR: "cpu", VISION_VAR: value}))
+    assert repr(value) in str(excinfo.value)
+
+
+@pytest.mark.parametrize("value", [None, "off", "0", ""])
+def test_cpu_alias_allowed_when_vision_calls_are_off(value: str | None) -> None:
+    env = _env(**{stage_selection.ENV_VAR: "cpu"})
+    if value is not None:
+        env[VISION_VAR] = value
+    assert stage_selection.parse_real_stages(env) == frozenset(stage_selection.CPU_STAGES)
+
+
+def test_explicit_reads_with_vision_on_is_the_callers_choice() -> None:
+    selected = stage_selection.parse_real_stages(_env(**{stage_selection.ENV_VAR: "reads", VISION_VAR: "on"}))
+    assert selected == frozenset({"reads"})
 
 
 def test_unknown_stage_names_the_variable_and_value() -> None:
     with pytest.raises(ValueError, match=stage_selection.ENV_VAR) as excinfo:
-        stage_selection.parse_real_stages({stage_selection.ENV_VAR: "poses,wat"})
-    assert "wat" in str(excinfo.value)
+        stage_selection.parse_real_stages(_env(**{stage_selection.ENV_VAR: "poses,wat"}))
+    assert "unknown stage 'wat'" in str(excinfo.value)
 
 
 def test_remote_refusal_names_both_variables() -> None:
@@ -75,27 +115,76 @@ def test_remote_refusal_names_both_variables() -> None:
     assert stage_selection.ENV_VAR in str(excinfo.value)
 
 
+@pytest.mark.parametrize("value", ["1", "true", "TRUE", "yes", "on", " on "])
+def test_remote_refusal_accepts_every_spelling_load_orch_treats_as_true(value: str) -> None:
+    assert load_orch({stage_selection.REMOTE_VAR: value}).modal_remote is True
+    with pytest.raises(ValueError, match=stage_selection.REMOTE_VAR) as excinfo:
+        stage_selection.parse_real_stages(_env(**{stage_selection.REMOTE_VAR: value}))
+    assert repr(value) in str(excinfo.value)
+
+
+@pytest.mark.parametrize("value", ["0", "false", "off", ""])
+def test_remote_false_spellings_do_not_refuse(value: str) -> None:
+    assert load_orch({stage_selection.REMOTE_VAR: value}).modal_remote is False
+    assert stage_selection.parse_real_stages(_env(**{stage_selection.REMOTE_VAR: value})) == frozenset({"validate"})
+
+
 def test_non_dev_environment_refusal_names_the_value() -> None:
     with pytest.raises(ValueError, match="production") as excinfo:
         stage_selection.parse_real_stages(_env(**{stage_selection.ENVIRONMENT_VAR: "production"}))
     assert stage_selection.ENVIRONMENT_VAR in str(excinfo.value)
 
 
+@pytest.mark.parametrize("value", [None, "", "   ", "Dev", " dev", "prod"])
+def test_environment_settings_reads_as_prod_is_refused(value: str | None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fail closed: Settings coerces a missing, blank or unknown SMP_ENVIRONMENT to
+    prod, so the selection must treat exactly those values as prod too."""
+
+    if value is None:
+        monkeypatch.delenv(stage_selection.ENVIRONMENT_VAR, raising=False)
+    else:
+        monkeypatch.setenv(stage_selection.ENVIRONMENT_VAR, value)
+    assert Settings().SMP_ENVIRONMENT == "prod"
+
+    env = {stage_selection.ENV_VAR: "validate"}
+    if value is not None:
+        env[stage_selection.ENVIRONMENT_VAR] = value
+    with pytest.raises(ValueError, match=stage_selection.ENVIRONMENT_VAR) as excinfo:
+        stage_selection.parse_real_stages(env)
+    assert "prod" in str(excinfo.value)
+
+
+def test_runner_import_refuses_a_selection_without_dev(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An unconfigured process (no SMP_ENVIRONMENT) is prod and must not start with a selection."""
+
+    import server.orchestrator.runner as runner_module
+
+    monkeypatch.delenv(stage_selection.ENVIRONMENT_VAR, raising=False)
+    monkeypatch.setenv(stage_selection.ENV_VAR, "validate")
+    try:
+        with pytest.raises(ValueError, match=stage_selection.ENVIRONMENT_VAR):
+            importlib.reload(runner_module)
+    finally:
+        monkeypatch.delenv(stage_selection.ENV_VAR, raising=False)
+        importlib.reload(runner_module)  # restore a fully initialised module
+
+
 def test_objects_refused_without_local_weights_device() -> None:
     with pytest.raises(ValueError, match=stage_selection.OBJECTS_DEVICE_VAR) as excinfo:
-        stage_selection.parse_real_stages({stage_selection.ENV_VAR: "objects"})
+        stage_selection.parse_real_stages(_env(**{stage_selection.ENV_VAR: "objects"}))
     assert "weights" in str(excinfo.value)
     with pytest.raises(ValueError, match=stage_selection.OBJECTS_DEVICE_VAR):
-        stage_selection.parse_real_stages({stage_selection.ENV_VAR: "cpu,objects"})
+        stage_selection.parse_real_stages(_env(**{stage_selection.ENV_VAR: "cpu,objects"}))
 
 
 def test_objects_allowed_with_cpu_device() -> None:
     selected = stage_selection.parse_real_stages(
-        {stage_selection.ENV_VAR: "objects", stage_selection.OBJECTS_DEVICE_VAR: "cpu"}
+        _env(**{stage_selection.ENV_VAR: "objects", stage_selection.OBJECTS_DEVICE_VAR: "cpu"})
     )
     assert selected == frozenset({"objects"})
 
 
+@pytest.mark.usefixtures("dev_environment")
 def test_selection_cache_follows_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(stage_selection.ENV_VAR, raising=False)
     assert stage_selection.is_real("validate") is False
@@ -109,6 +198,7 @@ def test_selection_cache_follows_the_environment(monkeypatch: pytest.MonkeyPatch
 # --- callable selection -------------------------------------------------------
 
 
+@pytest.mark.usefixtures("dev_environment")
 def test_selected_stage_runs_real_under_stubs(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(stage_selection.ENV_VAR, "validate")
     validate = stage_callable("validate", stubs=True)
@@ -128,6 +218,7 @@ def test_unselected_stages_keep_the_stub(monkeypatch: pytest.MonkeyPatch) -> Non
     assert stage_callable("poses", stubs=False).__module__ == "server.poses"
 
 
+@pytest.mark.usefixtures("dev_environment")
 def test_runner_import_rejects_a_bad_selection(monkeypatch: pytest.MonkeyPatch) -> None:
     """The refusals land at startup: importing the runner is the first thing a
     stage-running process does, so a bad value raises there, not on stage one."""
@@ -193,6 +284,7 @@ def _run_journey(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, selection: str
     if selection is None:
         monkeypatch.delenv(stage_selection.ENV_VAR, raising=False)
     else:
+        monkeypatch.setenv(stage_selection.ENVIRONMENT_VAR, "dev")
         monkeypatch.setenv(stage_selection.ENV_VAR, selection)
     services, uri, digest = _mini_arkit_services(tmp_path)
     with bind(services):
@@ -211,6 +303,18 @@ def _assert_same_terminal_state(run, capture) -> None:
 
 
 def test_real_validate_journey_marks_mixed_implementations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Record the markers the result stage actually receives in its work dir, so
+    # the test covers delivery through hydration and not only publication.
+    # functools.wraps keeps the stub's module and name, which the marker reads.
+    stub_result_run = stub_result.run
+    delivered: list[set[str]] = []
+
+    @functools.wraps(stub_result_run)
+    def result_run(ctx):
+        delivered.append({path.stem for path in (ctx.work_dir / "impl").glob("*.json")})
+        return stub_result_run(ctx)
+
+    monkeypatch.setattr(stub_result, "run", result_run)
     services, run, capture = _run_journey(tmp_path, monkeypatch, "validate")
     _assert_same_terminal_state(run, capture)
 
@@ -232,10 +336,9 @@ def test_real_validate_journey_marks_mixed_implementations(tmp_path: Path, monke
     assert _impl_body(services, run, "placement")["implementation"] == "real"
     assert _impl_body(services, run, "result")["implementation"] == "stand-in"
 
-    # The result stage's hydration carries the whole impl/ directory.
-    selected = select_stage_artifacts("result", run.artifacts)
-    for stage in STAGE_NAMES:
-        assert f"impl/{stage}.json" in selected
+    # The result stage received every upstream marker, and not its own: impl/result.json
+    # is published only after the result callable returns.
+    assert delivered == [set(STAGE_NAMES) - {"result"}]
 
 
 def test_unset_selection_records_today_implementations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
