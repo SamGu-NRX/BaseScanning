@@ -6,6 +6,7 @@ import gzip
 import hashlib
 import io
 import json
+import math
 import threading
 from concurrent.futures import Future
 
@@ -71,6 +72,30 @@ def inflate(body: bytes, encoding: str | None) -> bytes:
     if len(body) > _INFLATE_CAP:
         raise fail(413, "payload_too_large", "/", "body exceeds 48 MiB")
     return body
+
+
+def _non_finite_pointer(payload: object) -> str | None:
+    """JSON pointer to a NaN or infinite number in the parsed packet, or None.
+
+    json.loads reads NaN, Infinity and -Infinity, and turns an overflowing literal
+    such as 1e999 into inf. None of them is JSON (RFC 8259), and the packet models
+    take any float, so without this check they reach storage and the pipeline.
+    The background manifest check catches them only in poses, intrinsics,
+    timestamps and taps, and only after the 202 and the whole upload.
+    """
+    stack: list[tuple[object, str]] = [(payload, "")]
+    while stack:
+        value, pointer = stack.pop()
+        if isinstance(value, float):
+            if not math.isfinite(value):
+                return pointer or "/"
+        elif isinstance(value, dict):
+            stack.extend(
+                (item, f"{pointer}/{str(key).replace('~', '~0').replace('/', '~1')}") for key, item in value.items()
+            )
+        elif isinstance(value, list):
+            stack.extend((item, f"{pointer}/{index}") for index, item in enumerate(value))
+    return None
 
 
 def _schema_errors(exc: ValidationError) -> list[dict]:
@@ -212,6 +237,9 @@ def accept_packet(
         raise fail(422, "schema", "/", "packet is not json") from exc
     if not isinstance(payload, dict):
         raise fail(422, "schema", "/", "packet must be an object")
+    non_finite = _non_finite_pointer(payload)
+    if non_finite is not None:
+        raise fail(422, "schema", non_finite, "number is not finite")
     try:
         packet = Packet.model_validate(payload)
     except ValidationError as exc:
@@ -250,7 +278,23 @@ def accept_packet(
         log_event("finalize.rejected", codes=extra["last_422"], capture_id=record.capture_id)
         raise _multi(errors)
     key = packet_key(record.capture_id, amendment_id)
-    deps.storage.put_bytes(key, raw, "application/json")
+    # The capture lock is per process and the API runs on up to
+    # CAPTURE_API_MAX_CONTAINERS containers, so `record` and the amendment row can
+    # predate another container's acceptance. The first digest to claim wins; a
+    # different packet gets the same 409 it would get once packet_sha256 is visible.
+    # The same packet proceeds, because its writes are identical.
+    claim_key = f"accepted_packet:{record.capture_id}:{amendment_id or '-'}"
+    claimed_now = deps.state.put_if_absent(claim_key, {"packet_sha256": digest})
+    if not claimed_now and (deps.state.get_kv(claim_key) or {}).get("packet_sha256") != digest:
+        what = "packet" if amendment_id is None else "amendment packet"
+        raise fail(409, "packet_sha_conflict", "/", f"a different {what} was already accepted")
+    try:
+        deps.storage.put_bytes(key, raw, "application/json")
+    except Exception:
+        # Nothing was accepted, so a corrected packet must not meet a 409 on retry.
+        if claimed_now:
+            deps.state.delete_kv(claim_key)
+        raise
     run_id = _run_id(record.capture_id, raw)
     paths = [
         entry.path if amendment_id is None else f"amendments/{amendment_id}/{entry.path}" for entry in packet.files
