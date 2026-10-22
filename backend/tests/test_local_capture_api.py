@@ -383,6 +383,40 @@ def test_refuses_non_loopback_host(tmp_path: Path) -> None:
     assert not (tmp_path / "session.json").exists()
 
 
+def test_failed_bind_preserves_the_previous_session(tmp_path: Path) -> None:
+    """A second launch must not replace a live launch's credentials."""
+
+    previous = b'{"baseUrl":"http://127.0.0.1:8123/v1","appToken":"keep-me"}\n'
+    session_path = tmp_path / "session.json"
+    session_path.write_bytes(previous)
+    occupied = socket.socket()
+    occupied.bind(("127.0.0.1", 0))
+    port = occupied.getsockname()[1]
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(port),
+                "--session-dir",
+                str(tmp_path),
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    finally:
+        occupied.close()
+
+    assert result.returncode != 0
+    assert session_path.read_bytes() == previous
+    assert "could not bind" in result.stderr
+
+
 def _make_n_local_api(env: dict[str, str] | None = None) -> str:
     """Print the `make -n local-api` recipe from backend/ without executing it."""
     proc = subprocess.run(

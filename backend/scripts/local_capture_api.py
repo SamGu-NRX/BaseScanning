@@ -94,6 +94,22 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
+def _listen(host: str, port: int) -> socket.socket:
+    """Bind the listener before publishing credentials for this run."""
+
+    family = socket.AF_INET6 if ":" in host else socket.AF_INET
+    listener = socket.socket(family, socket.SOCK_STREAM)
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        listener.bind((host, port))
+        listener.listen(2048)
+        listener.set_inheritable(True)
+    except OSError:
+        listener.close()
+        raise
+    return listener
+
+
 def _public_url(host: str, port: int) -> str:
     host_part = f"[{host}]" if ":" in host else host
     return f"http://{host_part}:{port}"
@@ -239,7 +255,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    port = args.port if args.port > 0 else _free_port()
+    import uvicorn
+
+    try:
+        listener = _listen(args.host, args.port)
+    except OSError as exc:
+        print(f"could not bind local capture API on {args.host}:{args.port}: {exc}", file=sys.stderr)
+        return 1
+    port = int(listener.getsockname()[1])
     base = _public_url(args.host, port)
 
     # Fresh per-run credentials: a device bearer for the app and harness, an
@@ -285,8 +308,6 @@ def main(argv: list[str] | None = None) -> int:
     os.environ.pop("WEBHOOK_HMAC_SECRET", None)
     # HSS_LOCAL_OUTCOME and HSS_LOCAL_STAGE_DELAY_S pass through untouched.
 
-    import uvicorn
-
     config = uvicorn.Config(
         "server.api.app:create_app",
         factory=True,
@@ -295,7 +316,7 @@ def main(argv: list[str] | None = None) -> int:
         log_level="info",
     )
     _announce(base, session_path, args.health_timeout)
-    uvicorn.Server(config).run()
+    uvicorn.Server(config).run(sockets=[listener])
     return 0
 
 
