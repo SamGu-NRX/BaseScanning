@@ -23,6 +23,7 @@ from server.orchestrator.coordinator import (
     with_correction_lease,
 )
 from server.orchestrator.corrections import (
+    claim_available_corrections,
     newest_correction_run,
     pending_corrections,
     record_correction,
@@ -96,10 +97,10 @@ def start_run(
         artifacts={},
         spend_usd={"gpu": 0.0, "cpu": 0.0, "vlm_reads": 0.0, "vlm_objects": 0.0, "vlm_c3": 0.0},
     )
-    seed_run_corrections(services.state, run)
     # The run record lands with the claim, before any slow read, so a dead
     # caller cannot leave a claim that blocks the capture forever.
     services.state.put_run(run)  # type: ignore[attr-defined]
+    seed_run_corrections(services.state, run)
     put_json(
         services.state,
         f"run_control:{run_id}",
@@ -224,10 +225,9 @@ def on_confirmation(
     by: str,
 ) -> None:
     services = current()
-    newest = newest_correction_run(services.state, capture_id)
     # This insertion, not a reads write or a lease, is the acceptance boundary.
     # The capture sequence also survives answers arriving before a run exists.
-    sequence = record_correction(
+    record_correction(
         services.state,
         capture_id,
         {
@@ -237,10 +237,10 @@ def on_confirmation(
             # client timestamp without changing the accepted answer's identity.
             **confirmation.model_dump(mode="json", exclude={"clientAt"}),
         },
-        newest,
     )
-    accepted = services.state.get_kv(f"capture_correction:{capture_id}:{sequence}")
-    target = services.state.get_run(accepted["targetRunId"]) if accepted.get("targetRunId") else None
+    target = newest_correction_run(services.state, capture_id)
+    if target is not None:
+        claim_available_corrections(services.state, target)
     if target is not None and target.status == "done":
         try:
             _recompose_after_correction(capture_id, target)

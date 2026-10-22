@@ -386,7 +386,7 @@ def test_pending_correction_survives_a_failed_reset(tmp_path: Path, monkeypatch:
     services, _uri, _digest = build_services(tmp_path, "memory")
     run = _run(services, "run_reset_failure")
     services.state.put_run(run)
-    record_correction(services.state, run.capture_id, {"confirmationId": "a"}, run)
+    record_correction(services.state, run.capture_id, {"confirmationId": "a"})
 
     def fail_reset(*_args, **_kwargs):
         raise OSError("state write interrupted")

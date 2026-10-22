@@ -79,5 +79,5 @@ def test_replayed_answer_may_have_a_new_client_timestamp(tmp_path):
     first = request()
     accept(services, first, "retry")
     accept(services, first.model_copy(update={"clientAt": "2026-10-16T00:00:00.000Z"}), "retry")
-    assert services.state.get_kv(f"run_correction:{run.run_id}:1")["confirmationId"] == "retry"
-    assert services.state.get_kv(f"run_correction:{run.run_id}:2") is None
+    assert services.state.get_kv(f"capture_correction:{run.capture_id}:1")["confirmationId"] == "retry"
+    assert services.state.get_kv(f"capture_correction:{run.capture_id}:2") is None

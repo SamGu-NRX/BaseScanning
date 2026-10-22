@@ -30,10 +30,14 @@ def sweep(services: Services, *, retry_schedule: list[float] | None = None) -> i
     # A crash can happen after acceptance or publication but before the mutable
     # run status is reopened. Terminal runs therefore also need this check.
     from server.orchestrator.api import _recompose_after_correction
-    from server.orchestrator.corrections import pending_corrections
+    from server.orchestrator.corrections import claim_available_corrections, pending_corrections
     from server.orchestrator.publication import emit_latest_publication
     from server.orchestrator.services import bind
 
+    # Claim answers even when a healthy coordinator needs no respawn. A run
+    # that failed after claiming leaves an available next generation.
+    for run in services.state.list_runs(status={"pending", "running", "done"}):
+        claim_available_corrections(services.state, run)
     for run in services.state.list_runs(status={"done"}):
         emit_latest_publication(services.state, services.storage, run.run_id, services.settings)
         if pending_corrections(services.state, run):

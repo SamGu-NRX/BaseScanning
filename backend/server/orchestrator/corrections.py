@@ -5,9 +5,9 @@ reserved slot, mutable head pointer, or separately deletable pending marker.
 Readers stop at the first empty slot. Competing writers retry that same slot,
 so a crash cannot leave a hole hiding later records.
 
-Capture records freeze each answer's target before acknowledgment. Run sequences
-contain only answers for that run. Answers without a target are claimed by the
-next run at creation, never by a historical run checking its pending work.
+Acceptance records have no owner. Runs claim answers through immutable claim
+generations, and a failed owner allows a successor generation. Run sequences
+record the answers each composition incorporated without rewriting old results.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from server.contracts.jobs import RunRecord
+from server.orchestrator.correction_claims import claim_answer, claim_is_pending, latest_claim
 from server.reads.policy import confirm
 from server.reads.types import Reads
 
@@ -38,7 +39,7 @@ def _append_correction(state: Any, prefix: str, correction: dict) -> int:
                 return sequence
             continue
         if prior["confirmationId"] == correction["confirmationId"]:
-            # A retry must keep its original target even if a newer run exists.
+            # Ignore metadata written by earlier deployments when replaying an ID.
             if {k: v for k, v in prior.items() if k not in {"targetRunId", "legacy"}} != {
                 k: v for k, v in correction.items() if k not in {"targetRunId", "legacy"}
             }:
@@ -49,60 +50,73 @@ def _append_correction(state: Any, prefix: str, correction: dict) -> int:
 
 def newest_correction_run(state: Any, capture_id: str) -> RunRecord | None:
     runs = state.runs_for_capture(capture_id)
-    newest = max(runs, key=lambda item: (item.created_at, item.run_id)) if runs else None
-    # Do not fall back to an older delivered run when the newest one failed.
-    return newest if newest is not None and newest.status in {"running", "done"} else None
+    live = [run for run in runs if run.status in {"pending", "running", "done"}]
+    if not live:
+        return None
+    newest = max(live, key=lambda item: (item.created_at, item.run_id))
+    # A failed amendment must not send new answers back to delivered history.
+    if newest.status == "done" and any(
+        (run.created_at, run.run_id) > (newest.created_at, newest.run_id) for run in runs
+    ):
+        return None
+    return newest
 
 
-def reserve_correction_target(state: Any, capture_id: str, identifier: str, run: RunRecord | None) -> dict:
-    key = f"correction_target:{capture_id}:{identifier}"
-    state.put_if_absent(key, {"runId": run.run_id if run else None})
-    return state.get_kv(key)
+def record_correction(state: Any, capture_id: str, correction: dict) -> int:
+    """Acceptance journals the answer, never a possibly stale run selection."""
+    return _append_correction(state, f"capture_correction:{capture_id}", correction)
 
 
-def record_correction(state: Any, capture_id: str, correction: dict, run: RunRecord | None = None) -> int:
-    target = reserve_correction_target(state, capture_id, correction["confirmationId"], run)
-    sequence = _append_correction(
-        state, f"capture_correction:{capture_id}", {**correction, "targetRunId": target["runId"]}
-    )
-    accepted = state.get_kv(f"capture_correction:{capture_id}:{sequence}")
-    target = state.get_run(accepted["targetRunId"]) if accepted.get("targetRunId") else None
-    if run is not None and accepted.get("targetRunId") == run.run_id:
-        target = run
-    if target is not None:
-        correction_snapshot(state, target)
-    return sequence
+def _restore_previous_claims(state: Any, capture_id: str, rows: list[dict]) -> None:
+    # Preserve ownership already recorded by the fixed-target implementation.
+    # Failed owners remain eligible for the same generational takeover as new ones.
+    for row in rows:
+        identifier = row["confirmationId"]
+        previous = row.get("targetRunId")
+        if previous is None:
+            previous = (state.get_kv(f"pre_run_owner:{capture_id}:{identifier}") or {}).get("runId")
+        if previous is not None:
+            state.put_if_absent(f"claim:{capture_id}:{identifier}:1", {"runId": previous, "generation": 1})
+
+
+def claim_available_corrections(state: Any, run: RunRecord) -> None:
+    rows = _records(state, f"capture_correction:{run.capture_id}")
+    _restore_previous_claims(state, run.capture_id, rows)
+    newest = newest_correction_run(state, run.capture_id)
+    if newest is None or newest.run_id != run.run_id:
+        return
+    for row in rows:
+        if claim_is_pending(state, run.capture_id, row["confirmationId"]):
+            claim_answer(state, newest, row["confirmationId"])
 
 
 def seed_run_corrections(state: Any, run: RunRecord) -> None:
-    """Freeze pre-run answers before publishing a newly created run record."""
+    """Adopt available answers after the pending run record is durable."""
     import_legacy_corrections(state, run.capture_id)
-    rows = _records(state, f"capture_correction:{run.capture_id}")
-    state.put_if_absent(
-        f"run_correction_seed:{run.run_id}",
-        {"confirmationIds": [row["confirmationId"] for row in rows if not row.get("targetRunId")]},
-    )
-    _claim_pre_run_answers(state, run)
+    claim_available_corrections(state, run)
 
 
-def _claim_pre_run_answers(state: Any, run: RunRecord) -> None:
-    seed = state.get_kv(f"run_correction_seed:{run.run_id}") or {}
-    for identifier in seed.get("confirmationIds", []):
-        state.put_if_absent(f"pre_run_owner:{run.capture_id}:{identifier}", {"runId": run.run_id})
+def pending_answers(state: Any, capture_id: str) -> list[dict]:
+    rows = _records(state, f"capture_correction:{capture_id}")
+    _restore_previous_claims(state, capture_id, rows)
+    return [row for row in rows if claim_is_pending(state, capture_id, row["confirmationId"])]
 
 
 def correction_snapshot(state: Any, run: RunRecord) -> list[dict]:
-    # Finish an interrupted creation-time claim, but never adopt later answers.
-    _claim_pre_run_answers(state, run)
-    for row in _records(state, f"capture_correction:{run.capture_id}"):
-        target = row.get("targetRunId")
-        if target is None:
-            owner = state.get_kv(f"pre_run_owner:{run.capture_id}:{row['confirmationId']}") or {}
-            target = owner.get("runId")
-        if target == run.run_id:
+    claim_available_corrections(state, run)
+    rows = _records(state, f"capture_correction:{run.capture_id}")
+    order = {row["confirmationId"]: sequence for sequence, row in enumerate(rows, 1)}
+    for row in rows:
+        owner = latest_claim(state, run.capture_id, row["confirmationId"])
+        if owner is not None and owner["runId"] == run.run_id:
             answer = {key: value for key, value in row.items() if key not in {"targetRunId", "legacy"}}
             _append_correction(state, f"run_correction:{run.run_id}", answer)
-    return _records(state, f"run_correction:{run.run_id}")
+    # A failed owner's answer may be adopted after a newer answer was already
+    # composed. Coverage remains append-only, while replay follows acceptance order.
+    return [
+        {**row, "acceptedSequence": order[row["confirmationId"]]}
+        for row in _records(state, f"run_correction:{run.run_id}")
+    ]
 
 
 def import_legacy_corrections(state: Any, capture_id: str, run: RunRecord | None = None) -> None:
@@ -116,21 +130,9 @@ def import_legacy_corrections(state: Any, capture_id: str, run: RunRecord | None
             raise ValueError(f"legacy confirmation is missing required fields: {', '.join(missing)}")
         answer = {key: row[key] for key in required}
         answer["value"] = row.get("value")
-        target = state.get_kv(f"correction_target:{capture_id}:{row['confirmationId']}")
-        metadata = {"targetRunId": target["runId"]} if target is not None else {"targetRunId": None, "legacy": True}
-        _append_correction(state, f"capture_correction:{capture_id}", {**answer, **metadata})
-    if run is None or run.status not in {"pending", "running"}:
-        return
-    runs = state.runs_for_capture(capture_id)
-    newest = max(runs, key=lambda item: (item.created_at, item.run_id)) if runs else None
-    if newest is None or newest.run_id != run.run_id:
-        return
-    # An old worker may write its slot after creation but before the reads stage.
-    # Adopt that legacy answer into this active run, never a delivered predecessor.
-    # The immutable marker also recovers an import interrupted before this claim.
-    for row in _records(state, f"capture_correction:{capture_id}"):
-        if row.get("legacy") and not row.get("targetRunId"):
-            state.put_if_absent(f"pre_run_owner:{capture_id}:{row['confirmationId']}", {"runId": run.run_id})
+        record_correction(state, capture_id, answer)
+    if run is not None:
+        claim_available_corrections(state, run)
 
 
 def fold_reads(base: Reads, corrections: list[dict]) -> Reads:
@@ -141,7 +143,8 @@ def fold_reads(base: Reads, corrections: list[dict]) -> Reads:
     a legacy reads artifact that already contains that answer.
     """
     reads = base.model_copy(deep=True)
-    for row in corrections:
+    ordered = sorted(enumerate(corrections), key=lambda item: item[1].get("acceptedSequence", item[0]))
+    for _, row in ordered:
         field = row["fieldId"]
         if reads.confirm is not None:
             reads.confirm.locks.pop(field, None)
@@ -231,6 +234,9 @@ def publish_version(state: Any, run_id: str, publication: dict) -> dict:
 
 
 def pending_corrections(state: Any, run: RunRecord) -> bool:
+    fresh = state.get_run(run.run_id)
+    if fresh is not None and fresh.status == "failed":
+        return False
     corrections = correction_snapshot(state, run)
     published = latest_publication(state, run.run_id)
     covered = published["correctionIds"] if published else []

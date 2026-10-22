@@ -79,7 +79,7 @@ def test_interrupted_legacy_import_is_recovered_without_duplicate(tmp_path, monk
     claimed = []
 
     def crash(key, row):
-        if key.startswith("pre_run_owner:"):
+        if key.startswith("claim:"):
             claimed.append(key)
             raise OSError("crashed before legacy assignment")
         return original(key, row)
@@ -104,6 +104,7 @@ def test_import_does_not_retarget_a_modern_confirmation(tmp_path):
     run_stage(prepare_result(services, run, "result"), stubs=True)
     assert latest_publication(services.state, run.run_id)["correctionIds"] == ["modern-answer"]
     accepted = services.state.get_kv("capture_correction:cap_test:1")
-    assert accepted["targetRunId"] == run.run_id
+    assert "targetRunId" not in accepted
+    assert services.state.get_kv("claim:cap_test:modern-answer:1")["runId"] == run.run_id
     assert not accepted.get("legacy")
     assert services.state.get_kv("capture_correction:cap_test:2") is None

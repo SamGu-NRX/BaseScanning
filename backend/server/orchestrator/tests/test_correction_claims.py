@@ -6,8 +6,11 @@ from threading import Barrier
 import pytest
 
 from server.orchestrator.correction_claims import claim_answer, claim_is_pending, latest_claim
+from server.orchestrator.corrections import correction_snapshot, fold_reads, pending_answers, record_correction
 from server.orchestrator.tests.conftest import build_services
+from server.orchestrator.tests.test_correction_versions import correction
 from server.orchestrator.tests.test_greptile_followup import _run
+from server.reads.types import ConfirmBlock, MeterRead, Reads
 
 
 @pytest.mark.parametrize("backend", ["memory", "modal_dict"])
@@ -57,3 +60,30 @@ def test_delivered_owner_cannot_be_taken_over(tmp_path):
     owner = claim_answer(services.state, first, "answer")
     assert claim_answer(services.state, second, "answer") == owner
     assert services.state.get_kv("claim:cap_test:answer:2") is None
+
+
+def test_late_takeover_does_not_replace_a_more_recent_field_answer(tmp_path):
+    services, _, _ = build_services(tmp_path, "memory")
+    state = services.state
+    first = _run(services, "run_a", created_at="2026-10-01T00:00:00Z")
+    state.put_run(first)
+    record_correction(state, "cap_test", correction("old", value="11111"))
+    assert [row["confirmationId"] for row in pending_answers(state, "cap_test")] == ["old"]
+    correction_snapshot(state, first)
+    second = _run(services, "run_b", created_at="2026-10-02T00:00:00Z")
+    state.put_run(second)
+    record_correction(state, "cap_test", correction("new", value="22222"))
+    assert [row["confirmationId"] for row in correction_snapshot(state, second)] == ["new"]
+    first.status = "failed"
+    state.put_run(first)
+    assert [row["confirmationId"] for row in pending_answers(state, "cap_test")] == ["old"]
+    adopted = correction_snapshot(state, second)
+    assert [row["confirmationId"] for row in adopted] == ["new", "old"]
+    base = Reads(
+        capture_id="cap_test",
+        status="complete",
+        meter=MeterRead(status="auto_fill", value="00000"),
+        confirm=ConfirmBlock(candidates=["00000"]),
+    )
+    assert fold_reads(base, adopted).meter.value == "22222"
+    assert pending_answers(state, "cap_test") == []

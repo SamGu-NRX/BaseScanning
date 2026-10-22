@@ -87,6 +87,7 @@ def test_equal_coverage_can_publish_changed_artifacts_without_overwriting(state)
 def test_crash_between_capture_and_run_record_is_recoverable(tmp_path, state, monkeypatch):
     services, _, _ = build_services(tmp_path, "memory")
     run = _run(services, "run_test")
+    state.put_run(run)
     original = state.put_if_absent
 
     def crash(key, value):
@@ -95,10 +96,11 @@ def test_crash_between_capture_and_run_record_is_recoverable(tmp_path, state, mo
         return original(key, value)
 
     monkeypatch.setattr(state, "put_if_absent", crash)
+    record_correction(state, run.capture_id, correction("a"))
     with pytest.raises(OSError, match="process stopped"):
-        record_correction(state, run.capture_id, correction("a"), run)
+        correction_snapshot(state, run)
     monkeypatch.setattr(state, "put_if_absent", original)
     assert pending_corrections(state, run)
-    assert correction_snapshot(state, run) == [correction("a")]
+    assert correction_snapshot(state, run) == [{**correction("a"), "acceptedSequence": 1}]
     publish_version(state, run.run_id, {"correctionIds": ["a"], "artifacts": {}})
     assert not pending_corrections(state, run)
