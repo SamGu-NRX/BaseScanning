@@ -7,7 +7,7 @@ scan. `HSS_ORCH_REAL_STAGES` adds the middle setting: it names the stages whose
 exercise one real stage at a time against stand-in upstreams.
 
 ```sh
-export HSS_ORCH_STAGE_STUBS=1 HSS_ORCH_REAL_STAGES=validate
+export SMP_ENVIRONMENT=dev HSS_ORCH_STAGE_STUBS=1 HSS_ORCH_REAL_STAGES=validate
 # or every stage whose real path needs no GPU, weights or paid call:
 export HSS_ORCH_REAL_STAGES=cpu
 ```
@@ -16,18 +16,28 @@ The value is a comma-separated list of stage names, or the alias `cpu`.
 Whitespace and a trailing comma are tolerated; stages run real on top of
 whatever their upstreams produced, which under stubs are stand-in artifacts.
 
-## The `cpu` alias, and why `objects` is excluded
+## The `cpu` alias, and why `objects` and `dense` are excluded
 
 `cpu` selects every stage whose real path is deterministic CPU work with no
 GPU, no model weights and no paid call:
 
-`validate`, `poses`, `reads`, `scale`, `dense`, `coverage`, `scene`,
-`objects_3d`, `placement`, `criteria`, `result`
+`validate`, `poses`, `reads`, `scale`, `coverage`, `scene`, `objects_3d`,
+`placement`, `criteria`, `result`
 
-`objects` is the one stage the alias must not pull in: its real path loads the
-OWLv2 and SigLIP weights (`server/objects/run.py`), which a CPU dev box does
-not carry. Listing `objects` explicitly is refused unless
-`HSS_OBJECTS_DEVICE=cpu` is also set to run those weights locally.
+Two stages stay out:
+
+- `objects` loads the OWLv2 and SigLIP weights (`server/objects/run.py`), which
+  a CPU dev box does not carry. Listing `objects` explicitly is refused unless
+  `HSS_OBJECTS_DEVICE=cpu` is also set to run those weights locally.
+- `dense` falls back to π³/MoGe/DA3 weights on a CUDA device whenever the
+  packet has no LiDAR and no points were injected (`_acquire_cloud` in
+  `server/dense/run.py`), and fails with `input_missing:weights` without
+  `HSS_DENSE_WEIGHTS`. List it by name (`cpu,dense`) when the packet or the
+  machine can serve it.
+
+`reads` and `criteria` stay in the alias because their real paths make no
+vision call while `VISION_EXTERNAL_CALLS` is off, which is the default. The
+alias is refused when that variable is on.
 
 ## Refusals
 
@@ -36,9 +46,14 @@ when the orchestrator runner first loads, and refused with a message that names
 the variable and the bad value when:
 
 - a listed stage name is unknown;
-- `HSS_ORCH_MODAL_REMOTE=1` — a remote run already runs every stage for real;
-- `SMP_ENVIRONMENT` is anything other than `dev`;
-- `objects` is listed without `HSS_OBJECTS_DEVICE=cpu`.
+- `HSS_ORCH_MODAL_REMOTE` is true in any spelling `load_orch` accepts (`1`,
+  `true`, `yes`, `on`, any case): a remote run already runs every stage for
+  real;
+- `SMP_ENVIRONMENT` is anything other than exactly `dev`, including unset or
+  blank. `Settings` reads those values as `prod`, so the selection does too;
+- `objects` is listed without `HSS_OBJECTS_DEVICE=cpu`;
+- the `cpu` alias is used while `VISION_EXTERNAL_CALLS` is true (`on`, `1`,
+  `true`, `yes`).
 
 A stage selected this way can still fail at run time: a real stage fed by
 stand-in artifacts can meet inputs it was not built for (the stub poses stage
