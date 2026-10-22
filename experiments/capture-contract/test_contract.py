@@ -106,6 +106,26 @@ class CameraContractTests(unittest.TestCase):
             session["keyframes"][1]["intrinsics"][0]=invalid
             with self.assertRaises(ValueError):validate_session(session)
 
+    def test_portrait_and_square_keyframes_are_rejected(self):
+        # Replay intrinsics are in the unrotated landscape JPEG's pixels.
+        for size, shape in [((800, 1000), "portrait"), ((800, 800), "square")]:
+            session = deepcopy(self.session)
+            frame = session["keyframes"][0]
+            frame["w"], frame["h"] = size
+            expected = f"{frame['id']}: {shape}.*landscape"
+            with self.assertRaisesRegex(ValueError, expected):
+                validate_session(session)
+
+    def test_non_integer_sizes_are_rejected_before_orientation(self):
+        for field in ("w", "h"):
+            expected = f"\\.{field}: expected a positive integer"
+            for invalid in [1000.0, 799.5, "800", None, True, 0, -1]:
+                with self.subTest(field=field, value=invalid):
+                    session = deepcopy(self.session)
+                    session["keyframes"][0][field] = invalid
+                    with self.assertRaisesRegex(ValueError, expected):
+                        validate_session(session)
+
     def test_duplicate_json_keys_are_rejected(self):
         with self.assertRaisesRegex(ValueError,"duplicate JSON"):
             json.loads('{"format": 1, "format": 2}',object_pairs_hook=no_duplicates)
