@@ -120,7 +120,7 @@ def check_format(folder: Path, session: dict) -> tuple[list[str], dict]:
         if missing:
             errors.append(f"{name}: missing {', '.join(missing)}")
             continue
-        # ReplayKeyframe.intrinsics is defined in the unrotated landscape JPEG's pixels
+        # ReplayFrame.intrinsics is defined in the unrotated landscape JPEG's pixels
         # (ios/HouseScanKit/Sources/HouseScanKit/Replay/ReplaySession.swift).
         if kf["w"] < kf["h"]:
             errors.append(f"{name}: portrait keyframe; replay requires a landscape sensor image")
