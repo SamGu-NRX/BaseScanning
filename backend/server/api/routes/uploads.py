@@ -153,8 +153,12 @@ def register(app: FastAPI, settings) -> None:
             # publishing the capture tombstone. If it wins this race, refuse the
             # completed temp instead of recreating bytes under the deleted capture.
             capture_id = _capture_id_for_upload(str(payload["key"]))
-            async with deps.locks.finish_async(capture_id):
-                if deps.state.get_kv(f"tomb:{capture_id}"):
+            fence = getattr(deps.storage, "capture_fence", None)
+            if fence is None:
+                deps.storage.discard_tmp(tmp)
+                raise fail(503, "storage_unavailable", "/", "storage has no shared capture fence")
+            with fence(capture_id):
+                if deps.storage.is_capture_deleted(capture_id) or deps.state.get_kv(f"tomb:{capture_id}"):
                     deps.storage.discard_tmp(tmp)
                     raise fail(410, "capture_deleted", "/", "capture was deleted")
                 deps.storage.commit_tmp(payload["key"], tmp, content_type, digest, size)
