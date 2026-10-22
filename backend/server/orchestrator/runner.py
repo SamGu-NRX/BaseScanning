@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib
+import json
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -57,7 +59,37 @@ def run_stage(
         result = fn(ctx)
     if not isinstance(result, StageResult):
         raise RuntimeError(f"{ctx.stage} returned {type(result).__name__}")
+    snapshot_path = ctx.inputs.get("correction_snapshot")
+    if ctx.stage == "criteria" and snapshot_path:
+        result.artifacts["verdicts/correction-inputs.json"] = snapshot_path
     stored = _publish(ctx, result)
+    if ctx.stage == "result" and snapshot_path:
+        from server.orchestrator.corrections import publish_version
+        from server.orchestrator.publication import emit_latest_publication
+
+        if "result/result.json" not in stored:
+            raise ValueError("artifact_missing: result/result.json was not published")
+        snapshot = json.loads(Path(snapshot_path).read_text())
+        event_path = ctx.work_dir / "result/publication.json"
+        if not event_path.is_file():
+            raise RuntimeError("versioned result did not supply its final event")
+        intent = json.loads(event_path.read_text())
+        events = intent.get("events", [])
+        if len(events) != 1 or events[0][0] not in {"verdict_ready", "retake_request"}:
+            raise ValueError("result_no_event: result must supply exactly one final event")
+        # Bytes precede the atomic publication. A crash leaves only unreferenced
+        # objects, never a published version pointing at partially written data.
+        publication = publish_version(
+            ctx.state,
+            ctx.run_id,
+            {
+                "correctionIds": snapshot["correctionIds"],
+                "artifacts": {**json.loads(ctx.inputs.get("criteria_artifacts", "{}")), **stored},
+                **intent,
+            },
+        )
+        stored = {key: value for key, value in publication["artifacts"].items() if key.startswith("result/")}
+        emit_latest_publication(ctx.state, ctx.storage, ctx.run_id, ctx.settings)
     result.artifacts = stored
     return result
 
@@ -65,6 +97,10 @@ def run_stage(
 def _publish(ctx: StageContext, result: StageResult) -> dict[str, str]:
     stored: dict[str, str] = {}
     prefix = f"captures/{ctx.capture_id}/runs/{ctx.run_id}"
+    if ctx.stage in {"criteria", "result"} and ctx.inputs.get("correction_snapshot"):
+        # Ownership checks are separate RPCs, not fencing. Every composer gets
+        # new object keys; no stale worker can overwrite a published version.
+        prefix = f"{prefix}/compositions/{uuid.uuid4().hex}"
     root = ctx.work_dir.resolve()
     for key, rel in result.artifacts.items():
         if _safe_rel(key) is None:

@@ -89,9 +89,11 @@ def resolve_hooks(settings: Settings, state=None, storage=None):
     return OrchestratorHooks(settings, state, storage)
 
 
-def safe_hook(name: str, fn, *args, **kwargs):
+def safe_hook(name: str, fn, *args, strict: bool = False, **kwargs):
     try:
         return fn(*args, **kwargs)
     except Exception as exc:
         log_event("hook.error", hook=name, error_code=type(exc).__name__, level="error")
+        if strict:
+            raise
         return None

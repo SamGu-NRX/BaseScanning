@@ -142,12 +142,15 @@ def _request_again(capture_id: str) -> None:
             slot.again = True
 
 
-def _clear_slot(capture_id: str) -> None:
+def _clear_slot(capture_id: str) -> bool:
     with _slot_guard:
         slot = _slots.get(capture_id)
         if slot is not None:
+            again = slot.again
             slot.inflight = False
             slot.again = False
+            return again
+    return False
 
 
 def accept_packet(
@@ -497,7 +500,7 @@ def _spawn(deps: Deps, capture_id: str) -> None:
 
 def _guard(deps: Deps, capture_id: str, future: Future[None]) -> None:
     try:
-        _finish_loop(deps, capture_id)
+        retry = _finish_loop(deps, capture_id)
     except Exception as exc:
         # The 202 has already returned and the capture reads as processing, so a
         # failure stored only on this Future would strand the client: no failure
@@ -535,13 +538,17 @@ def _guard(deps: Deps, capture_id: str, future: Future[None]) -> None:
                 level="error",
             )
         finally:
-            _clear_slot(capture_id)
+            retry = _clear_slot(capture_id)
             future.set_exception(exc)
+        if retry:
+            _kick(deps, capture_id)
         return
     future.set_result(None)
+    if retry:
+        _kick(deps, capture_id)
 
 
-def _finish_loop(deps: Deps, capture_id: str) -> None:
+def _finish_loop(deps: Deps, capture_id: str) -> bool:
     while True:
         outcome = _work_once(deps, capture_id)
         with _slot_guard:
@@ -551,7 +558,8 @@ def _finish_loop(deps: Deps, capture_id: str) -> None:
             if again and outcome == "incomplete":
                 continue
             slot.inflight = False
-            return
+            slot.again = False
+            return again
 
 
 def _still_missing(deps: Deps, record: CaptureRecord, extra: dict) -> list[str]:

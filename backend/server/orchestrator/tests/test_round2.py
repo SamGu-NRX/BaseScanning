@@ -301,25 +301,13 @@ def test_no_meter_model_finishes_as_no_meter_anchor(tmp_path, monkeypatch) -> No
 
 
 def _views_result(ctx: StageContext, *, both: bool) -> StageResult:
-    ctx.state.set_status(ctx.capture_id, "needs_views")
-    ctx.state.append_event(
-        ctx.capture_id,
-        "verdict_ready" if both else "retake_request",
-        {"runId": ctx.run_id, "viewsNeeded": ["ground"], "memberActions": []}
-        if not both
-        else {"runId": ctx.run_id, "kind": "needs_more_photos"},
-        run_id=ctx.run_id,
-        stage="result",
-    )
+    events = [["retake_request", {"runId": ctx.run_id, "viewsNeeded": ["ground"], "memberActions": []}]]
     if both:
-        ctx.state.append_event(
-            ctx.capture_id,
-            "retake_request",
-            {"runId": ctx.run_id, "viewsNeeded": ["ground"], "memberActions": []},
-            run_id=ctx.run_id,
-            stage="result",
-        )
+        events.insert(0, ["verdict_ready", {"runId": ctx.run_id, "kind": "needs_more_photos"}])
     body = {"status": "needs_views", "outcome": {"kind": "needs_more_photos"}}
+    intent = {"captureId": ctx.capture_id, "events": events, "status": "needs_views", "deliverWebhook": False}
+    (ctx.work_dir / "result").mkdir(parents=True, exist_ok=True)
+    (ctx.work_dir / "result/publication.json").write_bytes(json_bytes(intent))
     return write_files(ctx, {"result/result.json": json_bytes(body)})
 
 
@@ -359,9 +347,10 @@ def test_no_meter_branch_rejects_two_final_events(tmp_path, monkeypatch) -> None
         start_run("cap_test", digest, uri)
     events = services.state.events_after("cap_test", 0, limit=500)
     finals = [event.type for event in events if event.type in _FINALS]
-    assert finals == ["verdict_ready", "retake_request", "failed"]
+    # Reject the invalid intent before either final event can be emitted.
+    assert finals == ["failed"]
     failed = next(event for event in events if event.type == "failed")
-    assert failed.data["code"] == "result_no_event"
+    assert failed.data["code"] == "stage_exhausted:result:result_no_event"
     assert services.state.get_capture("cap_test").status == "manual_review"
 
 

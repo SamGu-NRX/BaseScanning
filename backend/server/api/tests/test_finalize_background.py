@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from concurrent.futures import Future
+
 import pytest
 
 from server.api.deps import drain_finalize, extras
@@ -205,3 +207,34 @@ def test_failure_publication_error_releases_the_worker_slot(auto_client, monkeyp
     assert deps.state.get_capture(capture_id).status == "manual_review"
     run = deps.state.get_run(body["runId"])
     assert run is not None and run.status == "done"
+
+
+def test_failure_publication_error_preserves_a_queued_retry(auto_client, monkeypatch):
+    """A retry that arrived during a failed worker must be kicked after cleanup."""
+
+    import server.api.finalize as finalize_module
+
+    deps = auto_client.app_state
+    capture_id = "cap-queued-retry"
+    slot = finalize_module._slot_locked(capture_id)
+    slot.inflight = True
+    slot.again = True
+    future = Future()
+    kicked: list[str] = []
+
+    def failed_work(*_args, **_kwargs):
+        raise RuntimeError("work failed")
+
+    def failed_publication(*_args, **_kwargs):
+        raise RuntimeError("publication failed")
+
+    monkeypatch.setattr(finalize_module, "_finish_loop", failed_work)
+    monkeypatch.setattr(finalize_module, "_on_background_failure", failed_publication)
+    monkeypatch.setattr(finalize_module, "_kick", lambda _deps, cid: kicked.append(cid))
+
+    finalize_module._guard(deps, capture_id, future)
+
+    assert kicked == [capture_id]
+    assert slot.inflight is False
+    with pytest.raises(RuntimeError, match="work failed"):
+        future.result()

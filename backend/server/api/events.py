@@ -53,8 +53,16 @@ async def poll_events(deps: Deps, record: CaptureRecord, after: int, wait_s: flo
             waiter.clear()
         rows = deps.state.events_after(record.capture_id, after, limit=100)
         fresh = deps.state.get_capture(record.capture_id) or record
-        events = [Event(seq=row.seq, type=row.type, at=row.at, data=row.data) for row in rows]
-        nxt = events[-1].seq if events else after
+        from server.orchestrator.publication import public_final_event
+
+        events = []
+        for row in rows:
+            shown = public_final_event(deps.state, row)
+            if shown is not None:
+                event_type, data = shown
+                events.append(Event(seq=row.seq, type=event_type, at=row.at, data=data))
+        # Suppressed stale/duplicate events still advance the existing cursor.
+        nxt = rows[-1].seq if rows else after
         return EventsResponse(status=fresh.status, next=nxt, events=events)
     finally:
         deps.polls[record.capture_id] = deps.polls.get(record.capture_id, 1) - 1

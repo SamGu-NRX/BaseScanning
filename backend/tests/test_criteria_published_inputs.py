@@ -180,7 +180,8 @@ def _hydrated_context(services: Services, capture_id: str, run_id: str, packet: 
     rec = StageRecord(run_id=run_id, stage="criteria", status="running", attempt=1, heartbeat=services.clock.iso())
     services.state.upsert_stage(rec)
     ctx = services.stage_context(run, rec, "call-burst9")
-    assert set(ctx.inputs) == {"packet_dir", "run_control"}  # inputs ride the work dir, not ctx.inputs
+    assert set(ctx.inputs) == {"packet_dir", "run_control", "correction_snapshot"}
+    assert Path(ctx.inputs["correction_snapshot"]).is_file()
     return ctx
 
 

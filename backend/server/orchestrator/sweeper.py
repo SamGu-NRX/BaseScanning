@@ -27,6 +27,23 @@ def coordinator_is_dead(run, raw: dict, *, now, stale_s: float) -> bool:
 
 def sweep(services: Services, *, retry_schedule: list[float] | None = None) -> int:
     touched = 0
+    # A crash can happen after acceptance or publication but before the mutable
+    # run status is reopened. Terminal runs therefore also need this check.
+    from server.orchestrator.api import _recompose_after_correction
+    from server.orchestrator.corrections import claim_available_corrections, pending_corrections
+    from server.orchestrator.publication import emit_latest_publication
+    from server.orchestrator.services import bind
+
+    # Claim answers even when a healthy coordinator needs no respawn. A run
+    # that failed after claiming leaves an available next generation.
+    for run in services.state.list_runs(status={"pending", "running", "done"}):
+        claim_available_corrections(services.state, run)
+    for run in services.state.list_runs(status={"done"}):
+        emit_latest_publication(services.state, services.storage, run.run_id, services.settings)
+        if pending_corrections(services.state, run):
+            with bind(services):
+                _recompose_after_correction(run.capture_id, run)
+            touched += 1
     runs = services.state.list_runs(status={"pending", "running"})  # type: ignore[attr-defined]
     for run in runs:
         raw = dict(get_json(services.state, f"run_control:{run.run_id}") or {})

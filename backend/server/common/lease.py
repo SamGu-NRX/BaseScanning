@@ -1,43 +1,109 @@
-"""A short Dict lease so two containers can update one key without dropping a write."""
+"""A renewable Dict lease with advisory ownership checks.
+
+The checks and writes are separate RPCs, not atomic fencing. An expired owner
+can delete its successor's token. Correction safety therefore comes from
+immutable records and result versions, not exclusive ownership of this lease.
+"""
 
 from __future__ import annotations
 
+import threading
 import time
 import uuid
 from collections.abc import Callable
 
 
+class LeaseLost(RuntimeError):
+    """The caller tried to write after another owner took the lease."""
+
+
+class LeaseGuard:
+    """Detects ownership already lost, but cannot fence a subsequent write."""
+
+    def __init__(self, state: object, key: str, token: dict, heartbeat_key: str) -> None:
+        self._state = state
+        self._key = key
+        self._token = token
+        self._heartbeat_key = heartbeat_key
+
+    def assert_held(self) -> None:
+        current = self._state.get_kv(self._key)  # type: ignore[attr-defined]
+        if not isinstance(current, dict) or current.get("id") != self._token["id"]:
+            raise LeaseLost(f"lease {self._key!r} is no longer held")
+
+    def renew(self) -> None:
+        self.assert_held()
+        # Heartbeats are owner-specific. They never overwrite the lease record,
+        # so a late heartbeat cannot extend or replace a successor's lease.
+        self._state.put_kv(self._heartbeat_key, {"at": time.time()})  # type: ignore[attr-defined]
+
+
 def with_lease(
     state: object,
     name: str,
-    fn: Callable[[], None],
+    fn: Callable[..., None],
     *,
     wait_s: float = 3.0,
     lease_s: float = 10.0,
     strict: bool = False,
+    pass_guard: bool = False,
 ) -> None:
-    """Run ``fn`` while holding ``lease:{name}``. An abandoned lease can be taken after ``lease_s``.
+    """Run ``fn`` while holding a renewable lease.
 
-    With ``strict=True`` the caller refuses to run ``fn`` without ownership: a
-    lease that stays busy past ``wait_s`` raises :class:`LeaseBusy` instead of
-    executing the protected section unlocked.
+    ``pass_guard`` gives callers a :class:`LeaseGuard` to detect lost ownership.
+    Owner-specific heartbeat keys prevent a late heartbeat from replacing the
+    successor's token, but checking ownership does not fence a later write.
     """
 
     key = f"lease:{name}"
     token = {"id": uuid.uuid4().hex, "at": time.time()}
+    heartbeat_key = f"lease_heartbeat:{name}:{token['id']}"
     deadline = time.monotonic() + wait_s
     while True:
         if state.put_if_absent(key, token):  # type: ignore[attr-defined]
+            guard = LeaseGuard(state, key, token, heartbeat_key)
+            stop = threading.Event()
+            lost = threading.Event()
+
+            def heartbeat(*, _stop=stop, _guard=guard, _lost=lost) -> None:
+                interval = max(0.01, min(lease_s / 3.0, 1.0))
+                while not _stop.wait(interval):
+                    try:
+                        _guard.renew()
+                    except LeaseLost:
+                        _lost.set()
+                        return
+
+            # The initial owner timestamp is valid until the first heartbeat.
+            state.put_kv(heartbeat_key, {"at": token["at"]})  # type: ignore[attr-defined]
+            thread = threading.Thread(target=heartbeat, daemon=True)
+            thread.start()
             try:
-                return fn()
+                if pass_guard:
+                    fn(guard)
+                else:
+                    fn()
+                guard.assert_held()
+                if lost.is_set():
+                    raise LeaseLost(f"lease {name!r} was lost while the callback ran")
             finally:
+                stop.set()
+                thread.join(timeout=max(0.1, min(lease_s / 3.0, 1.0)))
                 current = state.get_kv(key)  # type: ignore[attr-defined]
                 if isinstance(current, dict) and current.get("id") == token["id"]:
                     state.delete_kv(key)  # type: ignore[attr-defined]
+                state.delete_kv(heartbeat_key)  # type: ignore[attr-defined]
+            return
         current = state.get_kv(key)  # type: ignore[attr-defined]
-        if isinstance(current, dict) and time.time() - float(current.get("at") or 0) > lease_s:
-            state.delete_kv(key)  # type: ignore[attr-defined]
-            continue
+        if isinstance(current, dict):
+            owner_id = current.get("id")
+            heartbeat = state.get_kv(f"lease_heartbeat:{name}:{owner_id}")  # type: ignore[attr-defined]
+            at = heartbeat.get("at") if isinstance(heartbeat, dict) else current.get("at")
+            if time.time() - float(at or 0) > lease_s:
+                # This delete is not conditional on the token read above.
+                # Callers must tolerate overlapping owners, including on release.
+                state.delete_kv(key)  # type: ignore[attr-defined]
+                continue
         if time.monotonic() >= deadline:
             if strict:
                 raise LeaseBusy(f"lease {name!r} stayed busy for {wait_s:g}s")
@@ -46,8 +112,4 @@ def with_lease(
 
 
 class LeaseBusy(RuntimeError):
-    """A strict lease could not be acquired within its wait budget.
-
-    Callers turn this into a retryable failure: the protected section never ran,
-    so retrying the operation later is safe.
-    """
+    """A strict lease could not be acquired within its wait budget."""

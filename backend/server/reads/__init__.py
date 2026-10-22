@@ -25,14 +25,16 @@ def run(ctx: StageContext) -> StageResult:
     )
     packet = _packet(ctx)
     reads = build_reads(ctx.capture_id, ctx.storage, cfg, packet)
-    # Accepted confirmations that arrived before reads existed apply here, once,
-    # onto the record this stage creates.
-    try:
+    # Orchestrated reads are the base, not a mutable confirmation accumulator.
+    # Criteria folds the immutable correction sequence onto its private copy.
+    if ctx.inputs.get("immutable_corrections"):
+        from server.orchestrator.corrections import import_legacy_corrections
+
+        import_legacy_corrections(ctx.state, ctx.capture_id, ctx.state.get_run(ctx.run_id))
+    else:
         from server.reads.pending import apply_pending
 
         reads = apply_pending(ctx.state, ctx.capture_id, reads)
-    except ImportError:
-        pass
     rel = write_reads(
         ctx.capture_id,
         ctx.run_id,

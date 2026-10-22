@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from server.common.lease import LeaseBusy, LeaseGuard, LeaseLost, with_lease
 from server.common.logging import log_event
 from server.contracts.api import StageData
 from server.contracts.jobs import (
@@ -22,6 +23,7 @@ from server.contracts.jobs import (
 from server.eval.sceneio import validate as validate_document
 from server.orchestrator.artifacts import overlay_stage_artifacts
 from server.orchestrator.clock import parse_iso
+from server.orchestrator.corrections import latest_publication, pending_corrections
 from server.orchestrator.events import emit_failed, emit_stage
 from server.orchestrator.executor import CoordinatorDied, InlineExecutor
 from server.orchestrator.graph import STAGE_NAMES, STAGES, gpu_for_attempt, ready_stages
@@ -44,8 +46,28 @@ from server.orchestrator.stateio import get_json, put_json
 _FINAL = {"verdict_ready", "retake_request", "failed"}
 
 
-def pending_correction_key(run_id: str) -> str:
-    return f"run_pending_correction:{run_id}"
+def correction_lease_name(run_id: str) -> str:
+    """Shared state lease for the correction publish/complete decision."""
+
+    return f"correction:{run_id}"
+
+
+def with_correction_lease(services: Services, run_id: str, fn) -> None:
+    # The backend cannot compare-and-delete a lease token. Losing ownership can
+    # cause duplicate work, but immutable corrections/publications remain safe.
+    try:
+        with_lease(
+            services.state,
+            correction_lease_name(run_id),
+            fn,
+            strict=True,
+            wait_s=0.0,
+            lease_s=30.0,
+            pass_guard=True,
+        )
+    except (LeaseBusy, LeaseLost):
+        # No three-second request delay: the durable sequence is the retry queue.
+        log_event("confirmation.lease_deferred", run_id=run_id)
 
 
 def reset_criteria_and_result(services: Services, run: RunRecord) -> None:
@@ -54,7 +76,7 @@ def reset_criteria_and_result(services: Services, run: RunRecord) -> None:
     The shared tail of both correction paths (a finished run recomposed by
     ``on_confirmation`` and a live run that recorded a pending correction): the
     two stages return to pending, the run re-enters the normal lifecycle, and
-    the re-executed stages overwrite the same artifact keys. The run's deadline
+    the re-executed stages publish new immutable artifact keys. The run's deadline
     measured its earlier pass, so the re-run gets the same HARD_STOP_MIN budget
     ``start_run`` gives a new run, counted from now.
     """
@@ -62,6 +84,8 @@ def reset_criteria_and_result(services: Services, run: RunRecord) -> None:
     now = services.clock.iso()
     for stage in ("criteria", "result"):
         rec = state.get_stage(run.run_id, stage)
+        if rec is not None and rec.status in {"pending", "running"}:
+            continue
         state.upsert_stage(
             StageRecord(
                 run_id=run.run_id,
@@ -579,41 +603,51 @@ class RunCoordinator:
         control.merge_done = True
         self._save_control(run.run_id, control)
 
-    def _consume_pending_correction(self, run: RunRecord) -> bool:
-        """A correction accepted while criteria or result was mid-flight may sit
-        already-consumed inside their hydrated inputs. Before the run closes as
-        done, send the two stages back through once so the served result carries
-        every accepted answer. Consumed first, so a repeated finish or a replayed
-        hook call cannot reset twice; the second pass's extra final event is
-        already covered by the ``final_event_seq`` the first close recorded.
-        """
-        key = pending_correction_key(run.run_id)
-        marker = get_json(self.s.state, key)
-        if not marker:
+    def _consume_pending_correction(self, run: RunRecord, guard: LeaseGuard | None = None) -> bool:
+        """An answer stays pending until a published version covers it."""
+        if not pending_corrections(self.s.state, run):
             return False
-        self.s.state.delete_blob(key)
+        self._remember_existing_final_event(run)
         reset_criteria_and_result(self.s, run)
         log_event("confirmation.recompose_live", capture_id=run.capture_id, run_id=run.run_id)
         return True
 
     def _maybe_finish(self, run: RunRecord) -> None:
-        stages = self._rows(run.run_id)
-        if any(rec.status == "running" for rec in stages):
-            return
+        def decide_completion(guard: LeaseGuard) -> None:
+            fresh = self._run(run.run_id)
+            stages = self._rows(run.run_id, refresh=True)
+            if any(rec.status == "running" for rec in stages):
+                return
+            control = self._control(run.run_id)
+            status = self._status_map(run.run_id)
+            pending_ready = ready_stages(status)
+            if "criteria" in pending_ready and not control.merge_done:
+                pending_ready = [name for name in pending_ready if name != "criteria"]
+            if pending_ready:
+                return
+            result = self.s.state.get_stage(run.run_id, "result")
+            if result is None or result.status != "done":
+                return
+            if self._consume_pending_correction(fresh, guard):
+                return
+            self._write_run_files(fresh)
+            self._apply_success(fresh)
+            # Completion may race an acceptance after the first snapshot.
+            self._consume_pending_correction(self._run(run.run_id))
+
+        with_correction_lease(self.s, run.run_id, decide_completion)
+
+    def _remember_existing_final_event(self, run: RunRecord) -> None:
+        """Account for a first-pass terminal event before resetting its stages."""
+
         control = self._control(run.run_id)
-        status = self._status_map(run.run_id)
-        pending_ready = ready_stages(status)
-        if "criteria" in pending_ready and not control.merge_done:
-            pending_ready = [name for name in pending_ready if name != "criteria"]
-        if pending_ready:
+        if control.final_event_seq is not None:
             return
-        result = self.s.state.get_stage(run.run_id, "result")
-        if result is None or result.status != "done":
-            return
-        if self._consume_pending_correction(run):
-            return
-        self._write_run_files(run)
-        self._apply_success(run)
+        events = self.s.state.events_after(run.capture_id, 0, limit=500)
+        finals = [event for event in events if event.type in _FINAL and event.run_id == run.run_id]
+        if finals:
+            control.final_event_seq = min(finals, key=lambda event: event.seq).seq
+            self._save_control(run.run_id, control)
 
     def _apply_success(self, run: RunRecord) -> None:
         composed = self._composed_outcome(run)
@@ -713,6 +747,11 @@ class RunCoordinator:
                 self._save_control(run.run_id, control)
 
     def _verify_final_event(self, run: RunRecord) -> None:
+        if latest_publication(self.s.state, run.run_id) is not None:
+            from server.orchestrator.publication import emit_latest_publication
+
+            emit_latest_publication(self.s.state, self.s.storage, run.run_id, self.s.settings)
+            return
         events = self.s.state.events_after(run.capture_id, 0, limit=500)
         finals = [event for event in events if event.type in _FINAL and event.run_id == run.run_id]
         control = self._control(run.run_id)

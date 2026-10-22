@@ -324,9 +324,24 @@ def run(ctx: StageContext) -> StageResult:
         )
     except ResultError:
         raise
-    seqs = emit_events(composed, ctx.state)
-    ctx.state.set_status(ctx.capture_id, composed.response.status)
-    _deliver(composed, capture, config)
+    seqs = []
+    if ctx.inputs.get("correction_snapshot"):
+        # The runner uploads immutable artifacts and publishes their version
+        # before it emits this intent. A final event must not precede its bytes.
+        (out_dir / "publication.json").write_text(
+            json.dumps(
+                {
+                    "captureId": ctx.capture_id,
+                    "events": composed.events,
+                    "status": composed.response.status,
+                    "deliverWebhook": True,
+                }
+            )
+        )
+    else:
+        seqs = emit_events(composed, ctx.state)
+        ctx.state.set_status(ctx.capture_id, composed.response.status)
+        _deliver(composed, capture, config)
     artifacts = {
         "result/result.json": str(out_dir / "result.json"),
         "result/result.internal.json": str(out_dir / "result.internal.json"),

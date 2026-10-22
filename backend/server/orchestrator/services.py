@@ -7,6 +7,7 @@ import contextvars
 import hashlib
 import json
 import tempfile
+import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import timedelta
@@ -45,6 +46,10 @@ class Services:
     def stage_context(self, run: RunRecord, rec: StageRecord, call_id: str) -> StageContext:
         run = overlay_stage_artifacts(self.state, run)
         work = self.work_root / run.run_id / rec.stage / f"attempt-{rec.attempt}"
+        if rec.stage in {"criteria", "result"}:
+            # An expired lease can leave two composers at the same attempt.
+            # Neither may hydrate or overwrite the other's local inputs.
+            work = work / uuid.uuid4().hex
         work.mkdir(parents=True, exist_ok=True)
         packet_dir = work / "packet"
         packet_dir.mkdir(exist_ok=True)
@@ -64,6 +69,16 @@ class Services:
         hydrate_artifacts(self.storage, work, select_stage_artifacts(rec.stage, run.artifacts))
         spent = sum(float(run.spend_usd.get(key, 0.0)) for key in ("vlm_reads", "vlm_objects", "vlm_c3"))
         inputs = {"packet_dir": str(packet_dir), "run_control": str(work / "run_control.json")}
+        if rec.stage == "reads":
+            inputs["immutable_corrections"] = "1"
+        if rec.stage in {"criteria", "result"}:
+            from server.orchestrator.corrections import prepare_inputs
+
+            inputs["correction_snapshot"] = str(prepare_inputs(self.state, run, rec.stage, work))
+            if rec.stage == "result":
+                inputs["criteria_artifacts"] = json.dumps(
+                    {key: value for key, value in run.artifacts.items() if key.startswith("verdicts/")}
+                )
         (work / "run_control.json").write_text(
             json.dumps({"run": run.model_dump(mode="json"), "stage": rec.stage, "call_id": call_id})
         )
