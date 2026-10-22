@@ -81,6 +81,21 @@ def register(app: FastAPI) -> None:
             slot = f"confirm:{capture_id}:{body.fieldId}"
             existing = deps.state.get_kv(slot)
             if existing and existing.get("fingerprint") == digest:
+                if existing.get("hook_applied", True):
+                    return JSONResponse(_public(existing), status_code=200)
+                # The confirmation row is durable, but its correction hook was
+                # interrupted. Replay the hook before acknowledging the retry.
+                safe_hook(
+                    "on_confirmation",
+                    deps.hooks.on_confirmation,
+                    capture_id,
+                    body,
+                    existing["confirmationId"],
+                    by=existing["by"],
+                    strict=True,
+                )
+                existing["hook_applied"] = True
+                deps.state.put_kv(slot, existing)
                 return JSONResponse(_public(existing), status_code=200)
             if existing and existing.get("fingerprint") != digest and by == "device":
                 raise fail(409, "confirmation_conflict", "/", "this field already has a different answer")
@@ -103,13 +118,24 @@ def register(app: FastAPI) -> None:
                 "value": body.value,
                 "receivedAt": isoformat(deps.now()),
                 "seq": stored_event.seq,
+                "hook_applied": False,
             }
             deps.state.put_kv(slot, row)
             listing = deps.state.get_kv(f"confirmix:{capture_id}") or {"fields": []}
             if body.fieldId not in listing["fields"]:
                 listing["fields"].append(body.fieldId)
             deps.state.put_kv(f"confirmix:{capture_id}", listing)
-            safe_hook("on_confirmation", deps.hooks.on_confirmation, capture_id, body, confirmation_id, by=by)
+            safe_hook(
+                "on_confirmation",
+                deps.hooks.on_confirmation,
+                capture_id,
+                body,
+                confirmation_id,
+                by=by,
+                strict=True,
+            )
+            row["hook_applied"] = True
+            deps.state.put_kv(slot, row)
             log_event(
                 "confirmation.received",
                 field_id=body.fieldId,

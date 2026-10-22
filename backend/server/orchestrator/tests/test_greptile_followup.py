@@ -9,12 +9,14 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import time
 from datetime import timedelta
 from pathlib import Path
 
 import pytest
 
 from server.contracts.api import ConfirmationRequest
+from server.common.lease import LeaseBusy
 from server.contracts.jobs import FileRecord, RunRecord, StageRecord
 from server.orchestrator.api import on_confirmation
 from server.orchestrator.artifacts import overlay_stage_artifacts
@@ -26,7 +28,7 @@ from server.orchestrator.stubs._common import scene_document
 from server.orchestrator.tests.conftest import build_services
 from server.packet.integrity import check_files
 from server.packet.report import Bag
-from server.reads.types import ConfirmBlock, MeterRead, Reads
+from server.reads.types import ConfirmBlock, MeterRead, PanelBundle, PanelRead, Reads
 
 
 def _run(services, run_id: str, **overrides: object) -> RunRecord:
@@ -490,3 +492,85 @@ def test_completion_and_confirmation_have_one_owner(tmp_path: Path, monkeypatch:
     assert not errors, errors
     assert recompose_called.is_set()
     assert services.state.get_blob(pending_correction_key(run.run_id)) is None
+
+
+def test_confirmation_busy_leaves_a_durable_marker(tmp_path: Path) -> None:
+    """LeaseBusy cannot acknowledge a correction without recovery state."""
+    services, _uri, _digest = build_services(tmp_path, "memory")
+    reads_key = "captures/cap_test/runs/run_busy/reads/reads.json"
+    reads = Reads(
+        capture_id="cap_test",
+        status="complete",
+        meter=MeterRead(status="auto_fill", value="00000", core="00000", confidence=0.5),
+        confirm=ConfirmBlock(candidates=["00000"]),
+    )
+    services.storage.put_bytes(reads_key, reads.model_dump_json().encode(), "application/json")
+    run = _run(services, "run_busy", artifacts={"reads/reads.json": reads_key})
+    services.state.put_run(run)
+    services.state.put_if_absent("lease:correction:run_busy", {"id": "other", "at": services.clock.now().timestamp()})
+    request = ConfirmationRequest(
+        fieldId="meter_number",
+        kind="corrected",
+        value="12345",
+        imageId="s1",
+        clientAt="2026-10-15T00:00:00.000Z",
+    )
+    with pytest.raises(LeaseBusy):
+        with bind(services):
+            on_confirmation("cap_test", request, "cfm_busy", by="device")
+    assert services.state.get_blob(pending_correction_key(run.run_id, "cfm_busy")) is not None
+    stored = Reads.model_validate(json.loads(services.storage.get_bytes(reads_key)))
+    assert stored.meter.value == "00000"
+
+
+def test_concurrent_corrections_merge_different_fields(tmp_path: Path) -> None:
+    """The correction lease serializes read-modify-write across fields."""
+    import threading
+
+    services, _uri, _digest = build_services(tmp_path, "memory")
+    reads_key = "captures/cap_test/runs/run_fields/reads/reads.json"
+    reads = Reads(
+        capture_id="cap_test",
+        status="complete",
+        meter=MeterRead(status="auto_fill", value="00000", core="00000", confidence=0.5),
+        panel=PanelBundle(merged=PanelRead(brand="old", main_breaker_amps=100)),
+        confirm=ConfirmBlock(candidates=["00000"]),
+    )
+    services.storage.put_bytes(reads_key, reads.model_dump_json().encode(), "application/json")
+    services.state.put_run(_run(services, "run_fields", artifacts={"reads/reads.json": reads_key}))
+    requests = [
+        ConfirmationRequest(
+            fieldId="meter_number",
+            kind="corrected",
+            value="12345",
+            imageId="s1",
+            clientAt="2026-10-15T00:00:00.000Z",
+        ),
+        ConfirmationRequest(
+            fieldId="panel_brand",
+            kind="corrected",
+            value="new",
+            imageId="s1",
+            clientAt="2026-10-15T00:00:00.000Z",
+        ),
+    ]
+    barrier = threading.Barrier(2)
+    errors: list[BaseException] = []
+
+    def submit(index: int) -> None:
+        try:
+            barrier.wait()
+            with bind(services):
+                on_confirmation("cap_test", requests[index], f"cfm_field_{index}", by="device")
+        except BaseException as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=submit, args=(index,)) for index in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert errors == []
+    stored = Reads.model_validate(json.loads(services.storage.get_bytes(reads_key)))
+    assert stored.meter.value == "12345"
+    assert stored.panel.merged.brand == "new"

@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from server.common.lease import with_lease
+from server.common.lease import LeaseGuard, with_lease
 from server.common.logging import log_event
 from server.contracts.api import StageData
 from server.contracts.jobs import (
@@ -45,8 +45,14 @@ from server.orchestrator.stateio import get_json, put_json
 _FINAL = {"verdict_ready", "retake_request", "failed"}
 
 
-def pending_correction_key(run_id: str) -> str:
-    return f"run_pending_correction:{run_id}"
+def pending_correction_key(run_id: str, confirmation_id: str | None = None) -> str:
+    suffix = f":{confirmation_id}" if confirmation_id else ""
+    return f"run_pending_correction:{run_id}{suffix}"
+
+
+def pending_correction_keys(state: object, run_id: str) -> list[str]:
+    prefix = pending_correction_key(run_id)
+    return [key for key in state.list_blobs(prefix) if key == prefix or key.startswith(f"{prefix}:")]  # type: ignore[attr-defined]
 
 
 def correction_lease_name(run_id: str) -> str:
@@ -57,8 +63,17 @@ def correction_lease_name(run_id: str) -> str:
 
 def with_correction_lease(services: Services, run_id: str, fn) -> None:
     # The marker is durable, so a caller that cannot acquire the lease must not
-    # run the decision unlocked. The next coordinator tick can recover it.
-    with_lease(services.state, correction_lease_name(run_id), fn, strict=True, wait_s=3.0, lease_s=30.0)
+    # run the decision unlocked. The next coordinator tick can recover it. The
+    # guard fences the terminal writes if a worker outlives its lease.
+    with_lease(
+        services.state,
+        correction_lease_name(run_id),
+        fn,
+        strict=True,
+        wait_s=3.0,
+        lease_s=30.0,
+        pass_guard=True,
+    )
 
 
 def reset_criteria_and_result(services: Services, run: RunRecord) -> None:
@@ -594,28 +609,36 @@ class RunCoordinator:
         control.merge_done = True
         self._save_control(run.run_id, control)
 
-    def _consume_pending_correction(self, run: RunRecord) -> bool:
-        """A correction accepted while criteria or result was mid-flight may sit
-        already-consumed inside their hydrated inputs. Before the run closes as
-        done, send the two stages back through once so the served result carries
-        every accepted answer. Consumed first, so a repeated finish or a replayed
-        hook call cannot reset twice; the second pass's extra final event is
-        already covered by the ``final_event_seq`` the first close recorded.
+    def _consume_pending_correction(self, run: RunRecord, guard: LeaseGuard | None = None) -> bool:
+        """Reset criteria/result once for every durable correction marker.
+
+        Markers are created before the reads write, so a crash between those
+        writes still leaves a recomposition to recover the accepted answer.
         """
-        key = pending_correction_key(run.run_id)
-        marker = get_json(self.s.state, key)
-        if not marker:
+        keys = pending_correction_keys(self.s.state, run.run_id)
+        if not keys:
             return False
+        # A marker is created before the reads write. Until its owner flips
+        # readsApplied, completion must stop rather than publish a stale result.
+        for key in keys:
+            marker = get_json(self.s.state, key) or {}
+            if marker.get("readsApplied") is False:
+                return True
+        if guard is not None:
+            guard.assert_held()
         self._remember_existing_final_event(run)
         reset_criteria_and_result(self.s, run)
-        # Do this only after every reset write succeeded. If a worker dies or a
-        # state write fails, the marker remains for the next coordinator tick.
-        self.s.state.delete_blob(key)
+        if guard is not None:
+            guard.assert_held()
+        # Delete only after every reset write succeeded. A crash leaves every
+        # marker for the next coordinator tick.
+        for key in keys:
+            self.s.state.delete_blob(key)
         log_event("confirmation.recompose_live", capture_id=run.capture_id, run_id=run.run_id)
         return True
 
     def _maybe_finish(self, run: RunRecord) -> None:
-        def decide_completion() -> None:
+        def decide_completion(guard: LeaseGuard) -> None:
             fresh = self._run(run.run_id)
             stages = self._rows(run.run_id, refresh=True)
             if any(rec.status == "running" for rec in stages):
@@ -630,11 +653,13 @@ class RunCoordinator:
             result = self.s.state.get_stage(run.run_id, "result")
             if result is None or result.status != "done":
                 return
-            if self._consume_pending_correction(fresh):
+            if self._consume_pending_correction(fresh, guard):
                 return
             # Keep the completion decision under the same lease as the
             # confirmation publisher through the terminal event and status.
+            guard.assert_held()
             self._write_run_files(fresh)
+            guard.assert_held()
             self._apply_success(fresh)
 
         with_correction_lease(self.s, run.run_id, decide_completion)
