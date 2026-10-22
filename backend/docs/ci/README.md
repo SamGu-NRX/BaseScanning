@@ -25,7 +25,8 @@ Two jobs:
   schemas`, `make validate`. Green on alpha as it stands; this is the job a
   merge signal would require.
 - **`backend-hygiene-known-red`** — `make hygiene` on its own, with
-  `continue-on-error: true`. The step is known red on alpha (see "Known
+  `continue-on-error: true` on that step only (on the job, it would also turn
+  a failed checkout or install green). The step is known red on alpha (see "Known
   failures"), so it lives outside the required signal while staying visible;
   the job name says what a failed annotation means.
 
@@ -55,7 +56,7 @@ The script mirrors the workflow job for job: the gating steps of
 and `astral-sh/setup-uv` steps are environment provisioning with no local
 equivalent. Run it from a checkout with uv installed.
 
-The hygiene step runs through a soft wrapper that mirrors the job's
+The hygiene step runs through a soft wrapper that mirrors the step's
 `continue-on-error: true`: the failure prints and the run still exits 0 when
 only that step failed, exactly like the workflow. A gating-step failure fails
 the run as it fails the job. Step timing uses a portable `now_ms` timer:
@@ -81,12 +82,12 @@ run — the session's first sync had downloaded the ~2 GB set once, cold):
 | Tests | `make test` with the deselections | ok — **1429 passed, 19 skipped, 4 deselected**, 8 warnings (1425 alpha + the 4 new regression tests) | 550.8s (pytest 548.72s) |
 | Schemas | `make schemas` | ok | 0.3s |
 | Committed fixtures | `make validate` | ok — scenes=5 verdicts=16 labels=61 packets=36 | 2.6s |
-| Repo hygiene | `make hygiene` | **FAILED — named known failure, non-blocking** (mirrors the job's `continue-on-error`) | 0.4s |
+| Repo hygiene | `make hygiene` | **FAILED — named known failure, non-blocking** (mirrors the step's `continue-on-error`) | 0.4s |
 
 Start `11:01:58`, end `11:11:13` UTC. Overall script exit: **0** with the
 closing line `gating steps green; the known-red hygiene step failed
 non-blocking, as the mirrored job does on alpha` — the only failure is the
-known-red hygiene step, which the mirrored job wraps in `continue-on-error`;
+known-red hygiene step, which the mirrored workflow marks `continue-on-error`;
 every gating step was green. The prior canonical run at the pre-restructure
 head `528661c7` (hygiene as a required step, `--keep-going`, overall exit 1,
 test step 527.3s / pytest 525.91s) is preserved in this file's history; its
@@ -168,7 +169,8 @@ the required signal; deleting the relevant block returns everything to CI.
    `server/orchestrator/tests/data/packets/synthetic-meter.tar: deny-list
    (synthetic-meter.tar)` — the hygiene script denies every tracked `.tar`,
    and alpha tracks that file. The step runs in the separate
-   `backend-hygiene-known-red` job with `continue-on-error: true`; it turns
+   `backend-hygiene-known-red` job, with `continue-on-error: true` on the
+   hygiene step only; it turns
    solid green when alpha stops tracking the file or the deny-list changes —
    both outside this proposal — and the flag can then be deleted.
 
@@ -196,7 +198,6 @@ the run graph and annotations, and the pull-request check stays green:
 +
 +      backend-hygiene-known-red:
 +        name: Repo hygiene (known red on alpha)
-+        continue-on-error: true
 +        runs-on: ubuntu-24.04
 +        timeout-minutes: 15
 +        defaults:
@@ -216,6 +217,7 @@ the run graph and annotations, and the pull-request check stays green:
 +          - name: Install dependencies (locked)
 +            run: uv sync --frozen
 +          - name: Repo hygiene (make hygiene)
++            continue-on-error: true
 +            run: make hygiene
 ```
 

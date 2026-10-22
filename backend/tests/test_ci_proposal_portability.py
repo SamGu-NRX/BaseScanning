@@ -57,14 +57,27 @@ def _jobs_running_hygiene(jobs):
 
 
 def test_hygiene_step_cannot_fail_a_required_job():
-    """The known-red hygiene step runs only under continue-on-error: true."""
+    """Only the known-red hygiene step may fail without failing its job.
+
+    continue-on-error sits on the step, not the job: a job-level flag would also
+    turn checkout, setup-uv and dependency-install failures green, so the job
+    could report success without ever running the hygiene check (Codex on PR #288).
+    """
     jobs = _workflow_jobs()
     hygiene_jobs = _jobs_running_hygiene(jobs)
     assert hygiene_jobs, "the workflow must keep running make hygiene somewhere"
     for job_id in hygiene_jobs:
-        assert jobs[job_id].get("continue-on-error") is True, (
-            f"job {job_id} runs make hygiene without continue-on-error: true"
+        job = jobs[job_id]
+        assert "continue-on-error" not in job, (
+            f"job {job_id} sets continue-on-error, which also hides provisioning failures"
         )
+        for step in job.get("steps") or []:
+            runs_hygiene = "make hygiene" in (step.get("run") or "")
+            allowed = step.get("continue-on-error") is True
+            assert allowed == runs_hygiene, (
+                f"job {job_id}: only the make hygiene step may set continue-on-error: true"
+                f" (step {step.get('name') or step.get('uses')!r})"
+            )
     assert "backend-checks" in jobs, "the required backend-checks job must exist"
     assert "backend-checks" not in hygiene_jobs, (
         "backend-checks must not gate on make hygiene: the step is known red on alpha"

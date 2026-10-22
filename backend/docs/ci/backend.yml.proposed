@@ -118,7 +118,7 @@ jobs:
   # and alpha tracks
   # server/orchestrator/tests/data/packets/synthetic-meter.tar. Fixing that
   # means un-tracking the file or changing the deny-list — both outside this
-  # proposal. continue-on-error keeps the pull-request check green while the
+  # proposal. Step-level continue-on-error keeps the pull-request check green while the
   # step's failure stays visible in the run graph and its annotations. The
   # job goes solid green when alpha stops tracking that file or the
   # deny-list changes, and the flag can then be deleted.
@@ -126,7 +126,6 @@ jobs:
   # the step out of the workflow until it can pass) with the exact diff.
   backend-hygiene-known-red:
     name: Repo hygiene (known red on alpha)
-    continue-on-error: true
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
@@ -150,5 +149,9 @@ jobs:
       - name: Install dependencies (locked)
         run: uv sync --frozen
 
+      # continue-on-error is on this step only. On the job it would also turn a
+      # failed checkout, setup-uv or dependency install green, so the job could
+      # pass without ever running the hygiene check (Codex on PR #288).
       - name: Repo hygiene (make hygiene)
+        continue-on-error: true
         run: make hygiene
