@@ -290,65 +290,86 @@ def accept_packet(
         raise fail(409, "packet_sha_conflict", "/", f"a different {what} was already accepted")
     try:
         deps.storage.put_bytes(key, raw, "application/json")
-    except Exception:
-        # Nothing was accepted, so a corrected packet must not meet a 409 on retry.
-        if claimed_now:
-            deps.state.delete_kv(claim_key)
-        raise
-    run_id = _run_id(record.capture_id, raw)
-    paths = [
-        entry.path if amendment_id is None else f"amendments/{amendment_id}/{entry.path}" for entry in packet.files
-    ]
-    missing = []
-    for path, entry in zip(paths, packet.files, strict=True):
-        rec = deps.state.get_file(record.capture_id, path)
-        if rec is None or rec.state != "committed":
-            missing.append(entry.path)
-    extra = extras(deps, record.capture_id)
-    extra["accepted"] = {
-        "packet_sha256": digest,
-        "run_id": run_id,
-        "at": isoformat(deps.now()),
-        "listed": len(packet.files),
-    }
-    extra["paths"] = paths
-    extra["digests"] = {
-        path: {"sha256": entry.sha256, "bytes": entry.bytes} for path, entry in zip(paths, packet.files, strict=True)
-    }
-    if amendment_id is not None:
-        extra["amendment_id"] = amendment_id
-        # Completion belongs to the accepted packet, not the whole capture. A
-        # child must validate and promote its own files before starting its run.
-        for flag in ("run_started", "manifest_ok", "promoted_at"):
-            extra.pop(flag, None)
-    extra["missing"] = missing
-    extra.pop("last_422", None)
-    if amendment_id is None:
-        record.packet_sha256 = digest
-        record.run_id = run_id
-    else:
-        extra["parent_run_id"] = parent_run_id
-        amend = deps.state.get_kv(f"amend:{record.capture_id}:{amendment_id}") or {}
-        amend["packet_sha256"] = digest
-        amend["run_id"] = run_id
-        deps.state.put_kv(f"amend:{record.capture_id}:{amendment_id}", amend)
-    save_extras(deps, record.capture_id, extra)
-    log_event(
-        "finalize.accepted", listed=len(packet.files), missing=len(missing), run_id=run_id, capture_id=record.capture_id
-    )
-    if missing:
-        record.status = "awaiting_files"
-        deps.state.put_capture(record)
-        return schedule_finish(
-            deps,
-            record,
-            digest,
-            key,
-            run_id,
-            parent_run_id=parent_run_id,
-            promote=False,
+        run_id = _run_id(record.capture_id, raw)
+        paths = [
+            entry.path if amendment_id is None else f"amendments/{amendment_id}/{entry.path}" for entry in packet.files
+        ]
+        missing = []
+        for path, entry in zip(paths, packet.files, strict=True):
+            rec = deps.state.get_file(record.capture_id, path)
+            if rec is None or rec.state != "committed":
+                missing.append(entry.path)
+        extra = extras(deps, record.capture_id)
+        extra["accepted"] = {
+            "packet_sha256": digest,
+            "run_id": run_id,
+            "at": isoformat(deps.now()),
+            "listed": len(packet.files),
+        }
+        extra["paths"] = paths
+        extra["digests"] = {
+            path: {"sha256": entry.sha256, "bytes": entry.bytes}
+            for path, entry in zip(paths, packet.files, strict=True)
+        }
+        if amendment_id is not None:
+            extra["amendment_id"] = amendment_id
+            # Completion belongs to the accepted packet, not the whole capture. A
+            # child must validate and promote its own files before starting its run.
+            for flag in ("run_started", "manifest_ok", "promoted_at"):
+                extra.pop(flag, None)
+        extra["missing"] = missing
+        extra.pop("last_422", None)
+        if amendment_id is None:
+            record.packet_sha256 = digest
+            record.run_id = run_id
+        else:
+            extra["parent_run_id"] = parent_run_id
+            amend = deps.state.get_kv(f"amend:{record.capture_id}:{amendment_id}") or {}
+            amend["packet_sha256"] = digest
+            amend["run_id"] = run_id
+            deps.state.put_kv(f"amend:{record.capture_id}:{amendment_id}", amend)
+        save_extras(deps, record.capture_id, extra)
+        log_event(
+            "finalize.accepted",
+            listed=len(packet.files),
+            missing=len(missing),
+            run_id=run_id,
+            capture_id=record.capture_id,
         )
-    return schedule_finish(deps, record, digest, key, run_id, parent_run_id=parent_run_id, promote=True)
+        if missing:
+            record.status = "awaiting_files"
+            deps.state.put_capture(record)
+            result = schedule_finish(
+                deps,
+                record,
+                digest,
+                key,
+                run_id,
+                parent_run_id=parent_run_id,
+                promote=False,
+            )
+        else:
+            result = schedule_finish(deps, record, digest, key, run_id, parent_run_id=parent_run_id, promote=True)
+        return result
+    except Exception:
+        if claimed_now:
+            # Persisting packet_sha256 on the capture (or amendment) is the commit
+            # point. Before it, a failed acceptance must allow a corrected packet.
+            # After it, keep the claim even if scheduling fails: identical retries
+            # resume the accepted packet, and stale containers must still conflict.
+            persisted = (
+                deps.state.get_capture(record.capture_id)
+                if amendment_id is None
+                else deps.state.get_kv(f"amend:{record.capture_id}:{amendment_id}")
+            )
+            persisted_digest = (
+                getattr(persisted, "packet_sha256", None)
+                if amendment_id is None
+                else (persisted or {}).get("packet_sha256")
+            )
+            if persisted_digest != digest:
+                deps.state.delete_kv(claim_key)
+        raise
 
 
 def _amendment_manifest(deps: Deps, record: CaptureRecord, packet: Packet, amendment_id: str) -> list[dict]:

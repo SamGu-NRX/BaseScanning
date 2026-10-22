@@ -139,3 +139,61 @@ def test_a_failed_packet_write_releases_the_claim(client, monkeypatch):
     corrected = accept_packet(deps, record.model_copy(deep=True), json.dumps(packet).encode())
     drain_finalize(deps)
     assert corrected["status"] == "processing"
+
+
+@pytest.mark.parametrize("failure", ["save_extras", "put_capture", "schedule_finish"])
+def test_finalize_failure_releases_claim_for_a_different_packet(client, monkeypatch, failure):
+    import server.api.finalize as finalize_module
+
+    packet_id = f"packet-{failure}"
+    capture_id, packet = _ready(client, packet_id)
+    deps = client.app_state
+    raw = json.dumps(packet).encode()
+
+    def offline(*_args, **_kwargs):
+        raise RuntimeError(failure)
+
+    with monkeypatch.context() as patch:
+        target = deps.state if failure == "put_capture" else finalize_module
+        patch.setattr(target, failure, offline)
+        with pytest.raises(RuntimeError, match=failure):
+            accept_packet(deps, deps.state.get_capture(capture_id), raw)
+
+    # The packet bytes made it to storage, but acceptance was not persisted.
+    assert deps.storage.get_bytes(f"captures/{capture_id}/packet.json") == raw
+    assert deps.state.get_capture(capture_id).packet_sha256 is None
+    packet["createdAt"] = "2026-09-27T00:00:00.000Z"
+    corrected_raw = json.dumps(packet).encode()
+    corrected = accept_packet(deps, deps.state.get_capture(capture_id), corrected_raw)
+    drain_finalize(deps)
+    assert corrected["status"] == "processing"
+    assert deps.state.get_capture(capture_id).packet_sha256 == sha256_hex(corrected_raw)
+
+
+def test_failure_after_capture_persistence_keeps_claim_and_identical_replay(client, monkeypatch):
+    import server.api.finalize as finalize_module
+
+    capture_id, packet = _ready(client, "packet-persisted-failure")
+    deps = client.app_state
+    stale_record = deps.state.get_capture(capture_id)
+    raw = json.dumps(packet).encode()
+
+    def offline(*_args, **_kwargs):
+        raise RuntimeError("event offline")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(finalize_module, "_emit_validate", offline)
+        with pytest.raises(RuntimeError, match="event offline"):
+            accept_packet(deps, stale_record.model_copy(deep=True), raw)
+
+    assert deps.state.get_capture(capture_id).packet_sha256 == sha256_hex(raw)
+    assert deps.state.get_kv(f"accepted_packet:{capture_id}:-") == {"packet_sha256": sha256_hex(raw)}
+    packet["createdAt"] = "2026-09-27T00:00:00.000Z"
+    with pytest.raises(ApiFailure) as refused:
+        accept_packet(deps, stale_record, json.dumps(packet).encode())
+    assert refused.value.status == 409
+    assert refused.value.errors[0]["code"] == "packet_sha_conflict"
+    replay = accept_packet(deps, deps.state.get_capture(capture_id), raw)
+    drain_finalize(deps)
+    assert replay["status"] == "processing"
+    assert replay["runId"] == deps.state.get_capture(capture_id).run_id
