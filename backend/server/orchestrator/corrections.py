@@ -39,8 +39,8 @@ def _append_correction(state: Any, prefix: str, correction: dict) -> int:
             continue
         if prior["confirmationId"] == correction["confirmationId"]:
             # A retry must keep its original target even if a newer run exists.
-            if {k: v for k, v in prior.items() if k != "targetRunId"} != {
-                k: v for k, v in correction.items() if k != "targetRunId"
+            if {k: v for k, v in prior.items() if k not in {"targetRunId", "legacy"}} != {
+                k: v for k, v in correction.items() if k not in {"targetRunId", "legacy"}
             }:
                 raise ValueError("confirmation ID was reused with different correction data")
             return sequence
@@ -69,6 +69,7 @@ def record_correction(state: Any, capture_id: str, correction: dict, run: RunRec
 
 def seed_run_corrections(state: Any, run: RunRecord) -> None:
     """Freeze pre-run answers before publishing a newly created run record."""
+    import_legacy_corrections(state, run.capture_id)
     rows = _records(state, f"capture_correction:{run.capture_id}")
     state.put_if_absent(
         f"run_correction_seed:{run.run_id}",
@@ -92,9 +93,35 @@ def correction_snapshot(state: Any, run: RunRecord) -> list[dict]:
             owner = state.get_kv(f"pre_run_owner:{run.capture_id}:{row['confirmationId']}") or {}
             target = owner.get("runId")
         if target == run.run_id:
-            answer = {key: value for key, value in row.items() if key != "targetRunId"}
+            answer = {key: value for key, value in row.items() if key not in {"targetRunId", "legacy"}}
             _append_correction(state, f"run_correction:{run.run_id}", answer)
     return _records(state, f"run_correction:{run.run_id}")
+
+
+def import_legacy_corrections(state: Any, capture_id: str, run: RunRecord | None = None) -> None:
+    """Preserve answers acknowledged by old API workers before reads existed."""
+    from server.reads.pending import pending_slots
+
+    for row in sorted(pending_slots(state, capture_id), key=lambda row: row.get("seq", 0)):
+        required = ("confirmationId", "fieldId", "imageId", "kind", "by")
+        missing = [key for key in required if key not in row]
+        if missing:
+            raise ValueError(f"legacy confirmation is missing required fields: {', '.join(missing)}")
+        answer = {key: row[key] for key in required}
+        answer["value"] = row.get("value")
+        _append_correction(state, f"capture_correction:{capture_id}", {**answer, "targetRunId": None, "legacy": True})
+    if run is None or run.status not in {"pending", "running"}:
+        return
+    runs = state.runs_for_capture(capture_id)
+    newest = max(runs, key=lambda item: (item.created_at, item.run_id)) if runs else None
+    if newest is None or newest.run_id != run.run_id:
+        return
+    # An old worker may write its slot after creation but before the reads stage.
+    # Adopt that legacy answer into this active run, never a delivered predecessor.
+    # The immutable marker also recovers an import interrupted before this claim.
+    for row in _records(state, f"capture_correction:{capture_id}"):
+        if row.get("legacy") and not row.get("targetRunId"):
+            state.put_if_absent(f"pre_run_owner:{capture_id}:{row['confirmationId']}", {"runId": run.run_id})
 
 
 def fold_reads(base: Reads, corrections: list[dict]) -> Reads:
@@ -128,6 +155,7 @@ def prepare_inputs(state: Any, run: RunRecord, stage: str, work: Path) -> Path:
     if stage == "result" and hydrated.is_file():
         path.write_bytes(hydrated.read_bytes())
     if stage == "criteria":
+        import_legacy_corrections(state, run.capture_id, run)
         rows = correction_snapshot(state, run)
         raw = json.loads(reads_path.read_text()) if reads_path.is_file() else None
         if rows:

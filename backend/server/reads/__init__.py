@@ -27,7 +27,11 @@ def run(ctx: StageContext) -> StageResult:
     reads = build_reads(ctx.capture_id, ctx.storage, cfg, packet)
     # Orchestrated reads are the base, not a mutable confirmation accumulator.
     # Criteria folds the immutable correction sequence onto its private copy.
-    if not ctx.inputs.get("immutable_corrections"):
+    if ctx.inputs.get("immutable_corrections"):
+        from server.orchestrator.corrections import import_legacy_corrections
+
+        import_legacy_corrections(ctx.state, ctx.capture_id, ctx.state.get_run(ctx.run_id))
+    else:
         from server.reads.pending import apply_pending
 
         reads = apply_pending(ctx.state, ctx.capture_id, reads)

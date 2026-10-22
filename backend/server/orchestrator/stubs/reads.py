@@ -42,7 +42,11 @@ def run(ctx: StageContext) -> StageResult:
             )
             from server.reads.pending import apply_pending
 
-            if not ctx.inputs.get("immutable_corrections"):
+            if ctx.inputs.get("immutable_corrections"):
+                from server.orchestrator.corrections import import_legacy_corrections
+
+                import_legacy_corrections(ctx.state, ctx.capture_id, ctx.state.get_run(ctx.run_id))
+            else:
                 reads = apply_pending(ctx.state, ctx.capture_id, reads)
             body = reads.model_dump(mode="json")
     except ImportError:
