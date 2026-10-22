@@ -339,6 +339,23 @@ def test_meter_wall_rect_geometry_places_the_meter_at_its_span_centre_mid_height
     assert parsed.point_at(0.0)[0] == pytest.approx(0.0, abs=1e-6)
 
 
+def test_ground_sensitivity_without_depth_is_discarded() -> None:
+    """Sensitivity bands are validated for span but never emitted to the wire."""
+    document = base_scene()
+    document["coverage"]["sensitivity"] = [
+        {
+            "surface": "ground",
+            "max_incidence_deg": 75,
+            "bands": [{"band": "ground", "s_m": [-2.0, 4.0]}],
+        }
+    ]
+
+    converted = convert_scene(document)
+
+    assert "observed" in converted["coverage"]
+    assert all(band["band"] != "ground" for band in converted["coverage"]["observed"])
+
+
 def test_sensitivity_only_coverage_converts_to_ends_only() -> None:
     """A sensitivity band is a what-if variant, not a device observation: a scene
     whose coverage carries only sensitivity bands must convert to ends only, with

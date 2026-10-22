@@ -11,7 +11,7 @@ import yaml
 
 from server.eval.adapters.criteria import CriteriaConfig, evaluate_scene
 from server.eval.coverage import MissingOccluderError
-from server.eval.suite import _engine_config, _matches_reference, _reference, run_suite
+from server.eval.suite import _criteria_rows, _engine_config, _matches_reference, _reference, run_suite
 from server.eval.tests.flat_wall import write as write_flat_wall
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -200,9 +200,7 @@ def test_committed_fixtures_suite(tmp_path: Path):
     # Checking per recon row keeps a partial restore (one cloud present, one
     # absent) a pass instead of a broken test.
     assert not other, json.dumps(other, indent=1, default=str)
-    expected_missing = sum(
-        1 for d in recon_dirs if (d / "scene.json").is_file() and not (d / "points.ply").is_file()
-    )
+    expected_missing = sum(1 for d in recon_dirs if (d / "scene.json").is_file() and not (d / "points.ply").is_file())
     if expected_missing == 0:
         assert not produce_hint, json.dumps(produce_hint, indent=1, default=str)
     else:
@@ -368,6 +366,36 @@ def test_a_broken_labels_file_fails_its_row_and_the_run_still_reports(tmp_path: 
     assert "scoring failed" in verdict["note"]
     assert report["summary"]["fail"] >= 1
     assert (tmp_path / "out" / "SUMMARY.md").is_file()
+
+
+def test_malformed_produced_criteria_report_is_a_fail_row(tmp_path: Path):
+    """A parsed JSON scalar or list must fail its row instead of crashing the suite."""
+    inputs = tmp_path / "inputs"
+    work = tmp_path / "work"
+    report_path = work / "flat-wall" / "criteria" / "criteria_report.json"
+    report_path.parent.mkdir(parents=True)
+    report_path.write_text("null\n")
+
+    rows = _criteria_rows(["flat-wall"], inputs, work)
+
+    assert rows[0]["status"] == "FAIL"
+    assert "must be an object" in rows[0]["note"]
+
+
+def test_malformed_committed_criteria_report_is_a_fail_row(tmp_path: Path):
+    inputs = tmp_path / "inputs"
+    work = tmp_path / "work"
+    report_path = work / "flat-wall" / "criteria" / "criteria_report.json"
+    report_path.parent.mkdir(parents=True)
+    report_path.write_text(json.dumps({"profiles": ["C"], "decidability": {"C": {"share": 1.0}}}))
+    committed = inputs / "criteria" / "flat-wall" / "gt-laser"
+    committed.mkdir(parents=True)
+    (committed / "criteria_report.json").write_text("[]\n")
+
+    rows = _criteria_rows(["flat-wall"], inputs, work)
+
+    assert rows[0]["status"] == "FAIL"
+    assert "must be an object" in rows[0]["note"]
 
 
 def test_a_broken_committed_criteria_report_fails_its_row(tmp_path: Path):
