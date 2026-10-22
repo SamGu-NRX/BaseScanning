@@ -1,0 +1,43 @@
+{
+  "artifacts": {
+    "checks.jsonl": "defbe3958731b3187c7dd5063d162217af79298a74d1f04800862719e99249db",
+    "run-manifest.json": "4a48cf7e41a7bfb921dd11e5fa35eea81d7eb39b5fdee836c9ff6209edf2e803"
+  },
+  "blocked": [],
+  "counts_by_transport": {
+    "FAKE_HUNTER": {
+      "PASS": 12
+    },
+    "GPU_STUB": {
+      "NOT_RUN": 3
+    },
+    "REAL_API": {
+      "NOT_RUN": 1,
+      "PASS": 13
+    }
+  },
+  "failed": [],
+  "finished_utc": "2026-10-16T11:22:52.291Z",
+  "lead_questions": [
+    "Amendment semantics: does the published contract allow amending a registered capture, and with which route and headers?",
+    "--api-token-env opts into HUNTER_API_TOKEN for scoped API routes; token-protected proxy fault coverage remains BLOCKED.",
+    "Clock and expiry authority: whose clock governs capture expiry on the local backend?",
+    "Homeowner text: confirm that receipts may carry outcome kinds and counts but never messages, prompts or reasons."
+  ],
+  "mode": {
+    "backend_verified": false,
+    "declared_backend": "REAL_API",
+    "gpu_arms": "NOT_RUN",
+    "real_mirror_cpu": "NOT_ESTABLISHED"
+  },
+  "not_run": [
+    "control.restart-recovery",
+    "gpu-stub.objects",
+    "gpu-stub.vlm",
+    "gpu-stub.dense"
+  ],
+  "run_id": "58f45a2ef87cc5f9",
+  "schema": "hunter-local-ingest/summary/2",
+  "total": 29,
+  "verdict": "PASS"
+}

@@ -334,7 +334,8 @@ def test_a_server_minted_traversal_id_never_carries_the_credential(fake, plan):
 
 
 def test_a_two_file_batch_limit_is_honoured_everywhere(fake, plan):
-    assert len(plan.files) == 5
+    # 5 synthetic artifacts + 3 keyframe images = 8 files in the fixture.
+    assert len(plan.files) == 8
     with fake(FakeConfig(max_batch=2)) as api:
         rows, _ = _run(api, plan)
         controls = _controls(api, plan)
@@ -349,7 +350,8 @@ def test_a_two_file_batch_limit_is_honoured_everywhere(fake, plan):
         assert observed["tampered_committed"] is False
     # the fake answers 413 to any register or commit over two files, so the
     # all-PASS rows above mean every request respected the limit
-    assert len(rows["lifecycle.register"]["observed"]["batches"]) == 3
+    # 8 files in two-file batches = 4 batches.
+    assert len(rows["lifecycle.register"]["observed"]["batches"]) == 4
     # each control on a capture of its own; the baseline bytes are untouched
     assert len(set(by_packet.values())) == len(by_packet)
     for f in plan.files:
@@ -588,4 +590,5 @@ def test_expected_tamper_still_passes_across_batches(fake, plan):
         controls = _controls(api, plan)
     for check_id in ("control.corrupt-upload", "control.truncated-upload"):
         assert controls[check_id]["status"] == "PASS"
-        assert len(controls[check_id]["observed"]["batches"]) == 3
+        # 8 files in two-file batches = 4 batches.
+        assert len(controls[check_id]["observed"]["batches"]) == 4

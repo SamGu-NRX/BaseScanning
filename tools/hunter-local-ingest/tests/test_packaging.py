@@ -489,9 +489,10 @@ def test_installed_rerun_of_a_committed_capture_passes(venv, outside):
     assert rows["lifecycle.upload"]["observed"]["uploads"] == []
     assert rows["trace.expected-lifecycle-v3"]["status"] == "PASS"
     assert rows["control.corrupt-upload"]["status"] == "PASS"
-    # first run: 5 baseline + 5 per tamper control; the rerun re-uploads only
-    # its fresh control captures, never the committed baseline
-    assert len(puts) == 5 + 10 + 10
+    # every uploaded round is now 8 files: the first run uploads the baseline
+    # plus its two tamper controls (8 x 3); the rerun's baseline capture is
+    # already committed, so only its two fresh controls upload (8 x 2)
+    assert len(puts) == 8 * 5
 
 
 def test_installed_runner_reads_the_token_only_from_the_named_env(venv, outside):

@@ -50,7 +50,7 @@ from .export import (
 )
 from .modes import Status, Transport
 from .observations import Observation
-from .plan import DERIVED_SUFFIXES, PACKET_ID_RE, PATH_RE, derived_id
+from .plan import DERIVED_SUFFIXES, FAMILIES, derived_id
 from .sanitize import screen_artifact
 from .scenarios.oracles import oracle_for
 
@@ -112,14 +112,26 @@ def fresh_run_dir(root: Path, label: str) -> tuple[Path, str]:
 
 def context_for(paths: frozenset[str], packet_id: str, nonce: str = "") -> ExportContext:
     """The export context of a plan: its paths and its derived packet ids."""
-    if not PACKET_ID_RE.fullmatch(packet_id) or not all(PATH_RE.fullmatch(p) for p in paths):
+    if not any(
+        family["packet_id_re"].fullmatch(packet_id)
+        and all(family["path_re"].fullmatch(p) for p in paths)
+        for family in FAMILIES.values()
+    ):
         raise ExportError(MANIFEST, "/fixture", "undeclared-identity")
+    family_name = next(
+        family_name
+        for family_name, family in FAMILIES.items()
+        if family["packet_id_re"].fullmatch(packet_id)
+        and all(family["path_re"].fullmatch(p) for p in paths)
+    )
     ids = {packet_id}
     for suffix in DERIVED_SUFFIXES:
         ids.add(derived_id(packet_id, suffix))
         if nonce:
             ids.add(derived_id(packet_id, suffix, nonce))
-    return ExportContext(paths=frozenset(paths), packet_ids=frozenset(ids))
+    return ExportContext(
+        paths=frozenset(paths), packet_ids=frozenset(ids), generator_name=family_name
+    )
 
 
 def _write_exclusive(path: Path, text: str) -> None:

@@ -1,0 +1,160 @@
+{
+  "backend": {
+    "declared_mode": "REAL_API",
+    "declared_ref": "46bed47e",
+    "verified": false
+  },
+  "client": {
+    "declared_ref": null,
+    "git": {
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dirty": false,
+      "head": "46bed47e3438b11439b7a2e004d10ae35a561647",
+      "untracked": 0
+    },
+    "interface": "2.0.0",
+    "package_version": "0.2.0",
+    "source_sha256": "1187b70d311a949318aa37d1935204dd4297f327ddd98e4debc88abc90ddbfe7"
+  },
+  "command": [
+    "--endpoint",
+    "127.0.0.1:8000",
+    "--plan-file",
+    "<path>",
+    "--backend-mode",
+    "REAL_API",
+    "--backend-ref",
+    "46bed47e",
+    "--out",
+    "<path>",
+    "--label",
+    "realapi-miniarkit",
+    "--api-token-env",
+    "--restart-argv-json",
+    "<argv>"
+  ],
+  "created_utc": "2026-10-16T11:33:52.327Z",
+  "endpoint": "127.0.0.1:8000",
+  "fixture": {
+    "create_sha256": "e05e5b952a17707ec3d614f5f89729af41d22dc6c9464e049901edfae84c5efe",
+    "files": [
+      {
+        "bytes": 4240,
+        "contentType": "application/octet-stream",
+        "path": "keyframes/k00001.features.bin",
+        "role": "features",
+        "sha256": "7710dcbc1ad6d99132a3cdf2c45f49cbae908eff3398c8edd779955e37962bf8"
+      },
+      {
+        "bytes": 714,
+        "contentType": "image/jpeg",
+        "path": "keyframes/k00001.jpg",
+        "role": "keyframe",
+        "sha256": "753a386b150b92e235357144459d2109ed480bed805fbb0ac4ca989c42bc6d79"
+      },
+      {
+        "bytes": 3740,
+        "contentType": "application/octet-stream",
+        "path": "keyframes/k00002.features.bin",
+        "role": "features",
+        "sha256": "ee6e18a01b94f594c8f17cc92e6f3e3bcef5347190b02a6a67fce8b10dc1f8b9"
+      },
+      {
+        "bytes": 713,
+        "contentType": "image/jpeg",
+        "path": "keyframes/k00002.jpg",
+        "role": "keyframe",
+        "sha256": "80beae7b3ea40a8951f3001ea9e87a5bb342e9d4a402037bda815f953c3a3c8e"
+      },
+      {
+        "bytes": 714,
+        "contentType": "image/jpeg",
+        "path": "keyframes/k00003.jpg",
+        "role": "keyframe",
+        "sha256": "a53e442431e7041303f024d5432e133dac2e3dc5726cbed37653b3d656a8b143"
+      },
+      {
+        "bytes": 714,
+        "contentType": "image/jpeg",
+        "path": "keyframes/k00004.jpg",
+        "role": "keyframe",
+        "sha256": "98a40bb14e16042551263230a3474a2fa2ea688f2262ca2b84b6becc7dc67f65"
+      },
+      {
+        "bytes": 73,
+        "contentType": "application/gzip",
+        "path": "streams/arkit_poses.csv.gz",
+        "role": "stream",
+        "sha256": "8b95dff9754f3567bd2b8d03906aa24c97c7d97d0e881970a8ddb0dd55d3dc3e"
+      },
+      {
+        "bytes": 76,
+        "contentType": "application/gzip",
+        "path": "streams/heading.csv.gz",
+        "role": "stream",
+        "sha256": "4a9c16d18e22eeeb85c024b6fa0db32b9a22dd89c48e10bb14c989f183696a58"
+      },
+      {
+        "bytes": 44,
+        "contentType": "application/gzip",
+        "path": "streams/imu_raw.csv.gz",
+        "role": "stream",
+        "sha256": "564ece90c04a9c78f7690ccae56c032dd4f1fb904e64b847697f66125bfd4b60"
+      },
+      {
+        "bytes": 107,
+        "contentType": "application/gzip",
+        "path": "streams/location.csv.gz",
+        "role": "stream",
+        "sha256": "fc12d4b107cc3e7f7a903375c90310bcb2565fd3b50785b6bf3696282f83cc30"
+      },
+      {
+        "bytes": 95,
+        "contentType": "application/gzip",
+        "path": "streams/motion.csv.gz",
+        "role": "stream",
+        "sha256": "d21ce4423410a0b1c5178c268dbbe615090e1dd9521affd4c31a34f830b4ec54"
+      }
+    ],
+    "format_version": 2,
+    "generator": "gen_miniarkit_packet",
+    "packet_id": "mini-arkit",
+    "packet_sha256": "9f59f921eddbdaed8bcda904db5c14dce364950c02d5d2902668ca756391fd0e",
+    "plan_file_sha256": "61af8c94dc58cc08ffc0922a191285e019772b7e02ca1e1b783eaa9c3cb507aa",
+    "plan_sha256": "d7af5c2ebda638a9815463fdf3c71e7b9db9dfb84ddba22eaab9dc7da0e251a6",
+    "seed": null
+  },
+  "label": "realapi-miniarkit",
+  "origin_note": "Derived from published client behavior in HouseScanKit upload and result sources at alpha 263827ef. No private source, schema, spec, log or credential material appears in this package or its receipts.",
+  "restart": {
+    "argv": [
+      "<value>",
+      "<value>",
+      "-k",
+      "-t",
+      "<value>",
+      "<value>"
+    ],
+    "configured": true,
+    "timeout_s": 120.0
+  },
+  "run_id": "d433c04240ec810d",
+  "runtime": {
+    "cpus": 8,
+    "implementation": "CPython",
+    "machine": "x86_64",
+    "python": "3.13.14",
+    "release": "6.1.158+",
+    "system": "Linux"
+  },
+  "sanitization": "Every value here passed the typed export schema before it was written: published enum words, package constants, digests, bounded numbers, and the plan's own synthetic paths and packet ids. A pattern screen then ran over the written files.",
+  "schema": "hunter-local-ingest/run-manifest/2",
+  "settings": {
+    "events_wait_s": 20,
+    "max_retries": 2,
+    "poll_interval_s": 2.0,
+    "result_budget_s": 1500.0,
+    "retry_backoff_s": 1.0,
+    "with_faults": false
+  }
+}
