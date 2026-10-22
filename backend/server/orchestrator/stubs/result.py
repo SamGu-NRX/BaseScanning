@@ -79,12 +79,21 @@ def run(ctx: StageContext) -> StageResult:
     verdict = json.loads(verdict_bytes)
     decision = verdict["site"]["decision"]
     kind = "manual_review" if outcome == "manual_review" else outcome
-    ctx.state.append_event(
-        ctx.capture_id,
-        "verdict_ready",
-        {"runId": ctx.run_id, "kind": kind},
-        run_id=ctx.run_id,
-    )
+    views = _views_needed() if outcome == "needs_more_photos" else []
+    if outcome == "needs_more_photos":
+        ctx.state.append_event(
+            ctx.capture_id,
+            "retake_request",
+            {"runId": ctx.run_id, "viewsNeeded": [view.id for view in views], "memberActions": []},
+            run_id=ctx.run_id,
+        )
+    else:
+        ctx.state.append_event(
+            ctx.capture_id,
+            "verdict_ready",
+            {"runId": ctx.run_id, "kind": kind},
+            run_id=ctx.run_id,
+        )
     if outcome == "manual_review":
         # The default run: today's bytes, unchanged.
         response = ResultResponse(
@@ -102,7 +111,6 @@ def run(ctx: StageContext) -> StageResult:
             meter=_stub_meter(ctx),
         )
     else:
-        views = _views_needed() if outcome == "needs_more_photos" else []
         epoch = _packet_epoch(ctx)
         response = ResultResponse(
             runId=ctx.run_id,
@@ -147,7 +155,7 @@ def _placement(profile: str, epoch: str | None) -> RecommendedPlacement:
     """
     width, height, depth = FOOTPRINT.get(profile, FOOTPRINT["C"])
     size = [width, height, depth]
-    center = [0.6937, height / 2, depth / 2 + _STANDOFF_M]
+    center = [0.3 + width / 2, height / 2, depth / 2 + _STANDOFF_M]
     box_arkit = None
     if epoch is not None:
         built = ar.box_to_arkit(np.eye(4), center, size, 0.0)
@@ -232,7 +240,7 @@ def _review_page(outcome: str) -> bytes:
     stages = ", ".join(STAGE_DEPS)
     return (
         "<html><body><h1>Local stage-stub run</h1>"
-        f"<p>Every stage here is a stand-in: stage stubs ran instead of real processing ({stages}).</p>"
+        f"<p>Stage stubs ran instead of real processing for {stages}; placement still ran the real CPU solver.</p>"
         f"<p>Scripted outcome: <strong>{outcome}</strong> (HSS_LOCAL_OUTCOME). "
         "This is a local test, not a check of a wall.</p>"
         "</body></html>"
