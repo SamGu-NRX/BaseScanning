@@ -98,6 +98,17 @@ class Settings(BaseSettings):
     HSS_AUTH_AUDIENCE: str = "capture-api"
     HSS_API_MIN_CONTAINERS: int = Field(default=1)
 
+    @field_validator("HSS_INGEST_EVENTS_POLL_MS")
+    @classmethod
+    def poll_interval_must_be_positive(cls, value: int) -> int:
+        """A zero or negative slice spins the events long-poll on the store."""
+        if value <= 0:
+            raise ValueError(
+                "HSS_INGEST_EVENTS_POLL_MS must be a positive number of milliseconds; "
+                "the events long-poll waits one slice between store reads"
+            )
+        return value
+
     @model_validator(mode="after")
     def dev_deploy_auth_defaults_to_none(self) -> Settings:
         """Dev deploy is auth-off unless HSS_AUTH_MODE is configured (SD-86)."""
