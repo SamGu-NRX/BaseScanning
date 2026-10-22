@@ -544,6 +544,49 @@ def test_cli_reports_errors_with_exit_2(tmp_path: Path, capsys):
     assert not (tmp_path / "o").exists()
 
 
+@pytest.mark.parametrize("unreadable", ["unsupported_compression", "encrypted"])
+def test_cli_reports_unreadable_zip_member_with_exit_2(tmp_path: Path, capsys, unreadable):
+    path = tmp_path / "session.zip"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("session.json", b"{}")
+    raw = bytearray(path.read_bytes())
+    central = raw.index(b"PK\x01\x02")
+    if unreadable == "unsupported_compression":
+        # ZIP method 99 is unsupported by zipfile. Both headers must agree.
+        raw[8:10] = raw[central + 10 : central + 12] = (99).to_bytes(2, "little")
+    else:
+        # The encryption flag requires a password before zipfile can read the member.
+        raw[6:8] = raw[central + 8 : central + 10] = (1).to_bytes(2, "little")
+    path.write_bytes(raw)
+    truth = listed_truth(tmp_path, path)
+    out = tmp_path / "out.json"
+    out.write_text("previous result\n")
+
+    assert (
+        main(
+            [
+                "import-measure-lab",
+                str(path),
+                "--map",
+                str(MAP),
+                "--rules",
+                str(RULES),
+                "--truth",
+                str(truth),
+                "--out",
+                str(out),
+            ]
+        )
+        == 2
+    )
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert f"score import-measure-lab: {path}!session.json: cannot read ZIP member" in captured.err
+    assert "Traceback" not in captured.err
+    assert out.read_text() == "previous result\n"
+
+
 # The committed session must hold only what Measure Lab's exporter at 43fda59 can write
 # (measuredValues and measurementWarnings in MeasureGeometry, addMeasurement in LabSession).
 POINT_TO_POINT = measure_lab.POINT_TO_POINT_KEYS

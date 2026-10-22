@@ -224,8 +224,11 @@ def load_session(path: Path, truth: Truth) -> Session:
     try:
         with zipfile.ZipFile(path) as archive:
             member = _session_member(archive, path)
-            with archive.open(member) as handle:
-                raw = handle.read(MAX_SESSION_JSON_BYTES + 1)
+            try:
+                with archive.open(member) as handle:
+                    raw = handle.read(MAX_SESSION_JSON_BYTES + 1)
+            except (NotImplementedError, RuntimeError) as error:
+                raise InputError(f"{path}!{member}: cannot read ZIP member ({error})") from None
     except zipfile.BadZipFile:
         raise InputError(f"{path}: not a zip file") from None
     where = f"{path}!{member}"
