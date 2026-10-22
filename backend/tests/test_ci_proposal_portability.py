@@ -71,6 +71,17 @@ def test_hygiene_step_cannot_fail_a_required_job():
     )
 
 
+def test_path_filters_cover_shared_server_inputs():
+    """Backend checks must run when the shared server solver or schemas change."""
+
+    workflow = yaml.safe_load(PROPOSAL.read_text())
+    triggers = workflow.get("on") or workflow.get(True)
+    assert isinstance(triggers, dict)
+    for event in ("push", "pull_request"):
+        paths = triggers[event]["paths"]
+        assert "server/**" in paths, f"{event} must cover shared server inputs"
+
+
 def test_script_never_calls_date_with_percent_n():
     """GNU %N renders as a literal N on macOS/BSD and aborts the arithmetic."""
     code_lines = [line for line in CI_LOCAL.read_text().splitlines() if not line.lstrip().startswith("#")]
