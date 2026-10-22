@@ -16,7 +16,12 @@ from server.contracts.jobs import (
 )
 from server.contracts.packet import Tier
 from server.orchestrator.clock import parse_iso
-from server.orchestrator.coordinator import RunCoordinator, pending_correction_key, reset_criteria_and_result
+from server.orchestrator.coordinator import (
+    RunCoordinator,
+    pending_correction_key,
+    reset_criteria_and_result,
+    with_correction_lease,
+)
 from server.orchestrator.early.capture_check import final_check, flush_pending
 from server.orchestrator.early.dispatch import dispatch
 from server.orchestrator.early.index import early_keys
@@ -180,28 +185,48 @@ def _recompose_after_correction(capture_id: str, run: RunRecord) -> None:
     services = current()
     if run.status != "done":
         return
-    present = {rec.stage for rec in services.state.stages(run.run_id)}  # type: ignore[attr-defined]
-    missing = [name for name in STAGE_NAMES if name not in present]
-    if missing:
-        now = services.clock.iso()
+    prepared = [False]
+
+    def prepare() -> None:
+        nonlocal run
+        stored = services.state.get_run(run.run_id)  # type: ignore[attr-defined]
+        if stored is None or stored.status != "done":
+            return
+        run = stored
+        present = {rec.stage for rec in services.state.stages(run.run_id)}  # type: ignore[attr-defined]
+        missing = [name for name in STAGE_NAMES if name not in present]
         preserved = 0
-        for name in missing:
-            if name in ("criteria", "result"):
-                continue
-            services.state.create_stage_if_absent(  # type: ignore[attr-defined]
-                StageRecord(run_id=run.run_id, stage=name, status="done", attempt=1, heartbeat=now, finished_at=now)
+        if missing:
+            now = services.clock.iso()
+            for name in missing:
+                if name in ("criteria", "result"):
+                    continue
+                services.state.create_stage_if_absent(  # type: ignore[attr-defined]
+                    StageRecord(
+                        run_id=run.run_id,
+                        stage=name,
+                        status="done",
+                        attempt=1,
+                        heartbeat=now,
+                        finished_at=now,
+                    )
+                )
+                preserved += 1
+            log_event(
+                "confirmation.recompose_legacy",
+                capture_id=capture_id,
+                run_id=run.run_id,
+                preserved_stages=preserved,
             )
-            preserved += 1
-        log_event(
-            "confirmation.recompose_legacy",
-            capture_id=capture_id,
-            run_id=run.run_id,
-            preserved_stages=preserved,
-        )
-    # A stale live-window marker predates this recomposition: the reset below
-    # already re-runs both stages with every accepted answer.
-    services.state.delete_blob(pending_correction_key(run.run_id))  # type: ignore[attr-defined]
-    reset_criteria_and_result(services, run)
+        reset_criteria_and_result(services, run)
+        # The marker is cleared only after the reset is durable. A failed reset
+        # therefore remains recoverable by the coordinator.
+        services.state.delete_blob(pending_correction_key(run.run_id))  # type: ignore[attr-defined]
+        prepared[0] = True
+
+    with_correction_lease(services, run.run_id, prepare)
+    if not prepared[0]:
+        return
     try:
         RunCoordinator(services).drive(run.run_id)
     except CoordinatorDied:
@@ -251,11 +276,29 @@ def on_confirmation(
     if runs:
         newest = max(runs, key=lambda item: item.created_at)
         if newest.status in {"pending", "running"}:
-            # A live run has already consumed the hydrated inputs of its running
-            # stages — verdict_ready can be decided while result is still
-            # uploading — so the corrected reads would never re-enter that pass.
-            # Record it; the coordinator consumes the marker before closing done.
-            _record_pending_correction(services, newest, capture_id)
+            # The coordinator's terminal decision uses this same lease. If it
+            # wins first, this re-read observes done and the completed-run path
+            # resets the stages instead of leaving a marker behind.
+            recompose = [False]
+
+            def publish_or_defer() -> None:
+                fresh = services.state.get_run(newest.run_id)  # type: ignore[attr-defined]
+                if fresh is None:
+                    return
+                if fresh.status in {"pending", "running"}:
+                    _record_pending_correction(services, fresh, capture_id)
+                elif fresh.status == "done":
+                    recompose[0] = True
+
+            with_correction_lease(
+                services,
+                newest.run_id,
+                publish_or_defer,
+            )
+            if recompose[0]:
+                fresh = services.state.get_run(newest.run_id)  # type: ignore[attr-defined]
+                if fresh is not None:
+                    _recompose_after_correction(capture_id, fresh)
         else:
             _recompose_after_correction(capture_id, newest)
 
@@ -272,13 +315,6 @@ def _record_pending_correction(services: object, run: RunRecord, capture_id: str
     the reads stage itself and needs no marker. Overwriting an existing marker
     is the idempotent shape: one reset replays every accepted answer.
     """
-    live = False
-    for stage in ("criteria", "result"):
-        rec = services.state.get_stage(run.run_id, stage)  # type: ignore[attr-defined]
-        if rec is not None and rec.status == "running":
-            live = True
-    if not live:
-        return
     put_json(
         services.state,  # type: ignore[attr-defined]
         pending_correction_key(run.run_id),

@@ -19,7 +19,7 @@ from server.contracts.jobs import FileRecord, RunRecord, StageRecord
 from server.orchestrator.api import on_confirmation
 from server.orchestrator.artifacts import overlay_stage_artifacts
 from server.orchestrator.clock import Clock
-from server.orchestrator.coordinator import RunCoordinator
+from server.orchestrator.coordinator import RunCoordinator, pending_correction_key
 from server.orchestrator.events import emit_failed
 from server.orchestrator.services import bind
 from server.orchestrator.stubs._common import scene_document
@@ -363,6 +363,9 @@ def test_correction_during_live_result_stage_recomposes_once(tmp_path: Path, mon
             if event.type == "stage" and event.data.get("stage") == stage and event.data.get("status") == "running"
         ]
         assert len(started) == 2, [(e.type, e.data) for e in started]
+    finals = [event for event in events if event.type in {"verdict_ready", "retake_request", "failed"}]
+    assert [event.type for event in finals] == ["verdict_ready", "verdict_ready"]
+    assert not any(event.data.get("code") == "result_no_event" for event in events if event.type == "failed")
     # The pending marker is consumed, not left for a later finish to re-reset.
     assert get_json(services.state, pending_correction_key(run.run_id)) is None
     # The served result carries the corrected value, not the pre-correction meter.
@@ -370,3 +373,120 @@ def test_correction_during_live_result_stage_recomposes_once(tmp_path: Path, mon
     served = json.loads(services.storage.get_bytes(served_run.artifacts["result/result.json"]))
     assert served["meter"]["value"] == "12345"
     assert services.state.get_capture("cap_test").status == "manual_review"
+
+
+def test_pending_correction_survives_a_failed_reset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A reset failure must leave the durable marker for the next tick."""
+
+    import server.orchestrator.coordinator as coordinator_module
+
+    services, _uri, _digest = build_services(tmp_path, "memory")
+    run = _run(services, "run_reset_failure")
+    services.state.put_run(run)
+    key = pending_correction_key(run.run_id)
+    services.state.put_blob(key, b'{"captureId":"cap_test"}')
+
+    def fail_reset(*_args, **_kwargs):
+        raise OSError("state write interrupted")
+
+    monkeypatch.setattr(coordinator_module, "reset_criteria_and_result", fail_reset)
+    with pytest.raises(OSError, match="state write interrupted"):
+        with bind(services):
+            RunCoordinator(services)._consume_pending_correction(run)
+    assert services.state.get_blob(key) is not None
+
+
+def test_completion_and_confirmation_have_one_owner(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A confirmation racing completion is converted into a recompose, never a stale marker."""
+
+    import threading
+
+    import server.orchestrator.api as api_module
+
+    services, _uri, _digest = build_services(tmp_path, "memory")
+    reads_key = "captures/cap_test/runs/run_race/reads/reads.json"
+    reads = Reads(
+        capture_id="cap_test",
+        status="complete",
+        meter=MeterRead(status="auto_fill", value="00000", core="00000", confidence=0.5),
+        confirm=ConfirmBlock(candidates=["00000"]),
+    )
+    services.storage.put_bytes(reads_key, reads.model_dump_json().encode(), "application/json")
+    run = _run(
+        services,
+        "run_race",
+        artifacts={"reads/reads.json": reads_key},
+    )
+    services.state.put_run(run)
+    from server.orchestrator.graph import STAGE_NAMES
+
+    for stage in STAGE_NAMES:
+        services.state.upsert_stage(
+            StageRecord(run_id=run.run_id, stage=stage, status="done", attempt=1, heartbeat=services.clock.iso())
+        )
+    services.state.put_blob(
+        f"run_control:{run.run_id}",
+        b'{"merge_done":true,"coordinator_heartbeat_at":null,"coordinator_respawns":0}',
+    )
+
+    completion_entered = threading.Event()
+    confirmation_waiting = threading.Event()
+    recompose_called = threading.Event()
+
+    def write_files(_self, _run):
+        completion_entered.set()
+        assert confirmation_waiting.wait(5)
+
+    def apply_success(_self, current):
+        current.status = "done"
+        services.state.put_run(current)
+
+    monkeypatch.setattr(RunCoordinator, "_write_run_files", write_files)
+    monkeypatch.setattr(RunCoordinator, "_apply_success", apply_success)
+
+    real_api_lease = api_module.with_correction_lease
+
+    def confirmation_lease(service, run_id, fn):
+        confirmation_waiting.set()
+        return real_api_lease(service, run_id, fn)
+
+    monkeypatch.setattr(api_module, "with_correction_lease", confirmation_lease)
+    monkeypatch.setattr(api_module, "_recompose_after_correction", lambda *_args: recompose_called.set())
+
+    errors: list[BaseException] = []
+
+    def finish() -> None:
+        try:
+            with bind(services):
+                RunCoordinator(services)._maybe_finish(run)
+        except BaseException as exc:
+            errors.append(exc)
+
+    finish_thread = threading.Thread(target=finish)
+    finish_thread.start()
+    assert completion_entered.wait(5)
+
+    request = ConfirmationRequest(
+        fieldId="meter_number",
+        kind="corrected",
+        value="12345",
+        imageId="s1",
+        clientAt="2026-10-15T00:00:00.000Z",
+    )
+
+    def confirm() -> None:
+        try:
+            with bind(services):
+                on_confirmation("cap_test", request, "cfm_race", by="device")
+        except BaseException as exc:
+            errors.append(exc)
+
+    confirm_thread = threading.Thread(target=confirm)
+    confirm_thread.start()
+    assert confirmation_waiting.wait(5)
+    finish_thread.join(5)
+    confirm_thread.join(5)
+    assert not finish_thread.is_alive() and not confirm_thread.is_alive()
+    assert not errors, errors
+    assert recompose_called.is_set()
+    assert services.state.get_blob(pending_correction_key(run.run_id)) is None

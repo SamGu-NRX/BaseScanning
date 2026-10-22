@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from server.common.lease import with_lease
 from server.common.logging import log_event
 from server.contracts.api import StageData
 from server.contracts.jobs import (
@@ -48,6 +49,18 @@ def pending_correction_key(run_id: str) -> str:
     return f"run_pending_correction:{run_id}"
 
 
+def correction_lease_name(run_id: str) -> str:
+    """Shared state lease for the correction publish/complete decision."""
+
+    return f"correction:{run_id}"
+
+
+def with_correction_lease(services: Services, run_id: str, fn) -> None:
+    # The marker is durable, so a caller that cannot acquire the lease must not
+    # run the decision unlocked. The next coordinator tick can recover it.
+    with_lease(services.state, correction_lease_name(run_id), fn, strict=True, wait_s=3.0, lease_s=30.0)
+
+
 def reset_criteria_and_result(services: Services, run: RunRecord) -> None:
     """Send criteria and result back through the coordinator with the run alive.
 
@@ -62,6 +75,8 @@ def reset_criteria_and_result(services: Services, run: RunRecord) -> None:
     now = services.clock.iso()
     for stage in ("criteria", "result"):
         rec = state.get_stage(run.run_id, stage)
+        if rec is not None and rec.status in {"pending", "running"}:
+            continue
         state.upsert_stage(
             StageRecord(
                 run_id=run.run_id,
@@ -591,29 +606,50 @@ class RunCoordinator:
         marker = get_json(self.s.state, key)
         if not marker:
             return False
-        self.s.state.delete_blob(key)
+        self._remember_existing_final_event(run)
         reset_criteria_and_result(self.s, run)
+        # Do this only after every reset write succeeded. If a worker dies or a
+        # state write fails, the marker remains for the next coordinator tick.
+        self.s.state.delete_blob(key)
         log_event("confirmation.recompose_live", capture_id=run.capture_id, run_id=run.run_id)
         return True
 
     def _maybe_finish(self, run: RunRecord) -> None:
-        stages = self._rows(run.run_id)
-        if any(rec.status == "running" for rec in stages):
-            return
+        def decide_completion() -> None:
+            fresh = self._run(run.run_id)
+            stages = self._rows(run.run_id, refresh=True)
+            if any(rec.status == "running" for rec in stages):
+                return
+            control = self._control(run.run_id)
+            status = self._status_map(run.run_id)
+            pending_ready = ready_stages(status)
+            if "criteria" in pending_ready and not control.merge_done:
+                pending_ready = [name for name in pending_ready if name != "criteria"]
+            if pending_ready:
+                return
+            result = self.s.state.get_stage(run.run_id, "result")
+            if result is None or result.status != "done":
+                return
+            if self._consume_pending_correction(fresh):
+                return
+            # Keep the completion decision under the same lease as the
+            # confirmation publisher through the terminal event and status.
+            self._write_run_files(fresh)
+            self._apply_success(fresh)
+
+        with_correction_lease(self.s, run.run_id, decide_completion)
+
+    def _remember_existing_final_event(self, run: RunRecord) -> None:
+        """Account for a first-pass terminal event before resetting its stages."""
+
         control = self._control(run.run_id)
-        status = self._status_map(run.run_id)
-        pending_ready = ready_stages(status)
-        if "criteria" in pending_ready and not control.merge_done:
-            pending_ready = [name for name in pending_ready if name != "criteria"]
-        if pending_ready:
+        if control.final_event_seq is not None:
             return
-        result = self.s.state.get_stage(run.run_id, "result")
-        if result is None or result.status != "done":
-            return
-        if self._consume_pending_correction(run):
-            return
-        self._write_run_files(run)
-        self._apply_success(run)
+        events = self.s.state.events_after(run.capture_id, 0, limit=500)
+        finals = [event for event in events if event.type in _FINAL and event.run_id == run.run_id]
+        if finals:
+            control.final_event_seq = min(finals, key=lambda event: event.seq).seq
+            self._save_control(run.run_id, control)
 
     def _apply_success(self, run: RunRecord) -> None:
         composed = self._composed_outcome(run)
