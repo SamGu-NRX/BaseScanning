@@ -518,8 +518,7 @@ class ModalDictState(MemoryState):
         fallback, where the check-then-set is only in-process."""
 
         key = f"stage:{rec.run_id}:{rec.stage}"
-        with _STAGE_CLAIM_LOCK:
-            self.put_if_absent(key, rec.model_dump(mode="json"))
+        self.put_if_absent(key, rec.model_dump(mode="json"))
         stored = self._model(key, StageRecord)
         return stored if stored is not None else rec.model_copy(deep=True)
 
@@ -581,10 +580,13 @@ class ModalDictState(MemoryState):
                 pass
             else:
                 return bool(inserted)
-        if self._kv.get(key) is not None:
-            return False
-        self._kv[key] = payload
-        return True
+        # All fallback insertions need the shared process lock, not only stage
+        # creation: immutable correction/version sequences also claim slots.
+        with _STAGE_CLAIM_LOCK:
+            if self._kv.get(key) is not None:
+                return False
+            self._kv[key] = payload
+            return True
 
     def put_blob(self, key: str, value: bytes) -> None:
         self._kv[f"blob:{key}"] = value

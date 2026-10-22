@@ -72,6 +72,9 @@ def run_stage(
         if not event_path.is_file():
             raise RuntimeError("versioned result did not supply its final event")
         intent = json.loads(event_path.read_text())
+        events = intent.get("events", [])
+        if len(events) != 1 or events[0][0] not in {"verdict_ready", "retake_request"}:
+            raise ValueError("result_no_event: result must supply exactly one final event")
         # Bytes precede the atomic publication. A crash leaves only unreferenced
         # objects, never a published version pointing at partially written data.
         publication = publish_version(

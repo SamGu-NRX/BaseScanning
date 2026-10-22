@@ -166,8 +166,10 @@ def test_merged_scene_reaches_later_stages(tmp_path, monkeypatch, backend: str) 
     stored = _object_ids(services.storage.get_bytes(run.artifacts["scene/scene.json"]))
     assert stored == ["meter", "synthetic-door"]
     for stage in ("criteria", "result"):
-        path = services.work_root / run.run_id / stage / "attempt-1" / "scene" / "scene.json"
-        assert _object_ids(path.read_bytes()) == stored
+        attempt = services.work_root / run.run_id / stage / "attempt-1"
+        paths = list(attempt.glob("*/scene/scene.json"))
+        assert len(paths) == 1
+        assert _object_ids(paths[0].read_bytes()) == stored
 
 
 def test_inline_stages_read_the_packet_once(tmp_path) -> None:

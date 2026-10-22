@@ -51,7 +51,8 @@ def test_packet_dir_and_prior_artifacts_are_on_disk(tmp_path: Path) -> None:
     services.storage.put_bytes("captures/cap_test/keyframes/k0.jpg", b"jpeg", "image/jpeg")
     with bind(services):
         run = start_run("cap_test", packet_sha256(raw), uri)
-    work = services.work_root / run.run_id / "result" / "attempt-1"
+    attempt = services.work_root / run.run_id / "result" / "attempt-1"
+    (work,) = list(attempt.iterdir())
     packet_dir = work / "packet"
     assert (packet_dir / "packet.json").read_bytes() == raw
     # Result reads scene and verdicts, not the capture frames or the pose model.
