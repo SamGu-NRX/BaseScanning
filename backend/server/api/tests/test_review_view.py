@@ -279,6 +279,23 @@ def test_device_token_cannot_reach_review_files(client: TestClient):
     assert body.status_code == 403
 
 
+def test_uploaded_html_is_downloaded_instead_of_rendered(client: TestClient):
+    """A stored review artifact is untrusted content, even for reviewers."""
+
+    capture_id = _create(client, "packet-review-0008-html")
+    _seed(client, capture_id, b"<script>window.pwned = true</script>")
+
+    response = client.get(
+        f"/v1/captures/{capture_id}/review/files/result/review.html",
+        headers=REVIEWER_HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/octet-stream")
+    assert response.headers["content-disposition"] == 'attachment; filename="review.html"'
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
 def _photo_link(body: str) -> str:
     found = re.search(r'src="(/v1/captures/[^"]+/review/files/stills/kf_01\.jpg\?rtok=[^"]+)"', body)
     assert found, "the served photo has no signed review token"
