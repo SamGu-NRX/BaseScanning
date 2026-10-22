@@ -21,10 +21,12 @@ from server.orchestrator.tests.conftest import build_services
 from server.orchestrator.tests.test_greptile_followup import _run
 
 
-@pytest.fixture(params=["memory", "modal"])
+@pytest.fixture(params=["memory", "modal", "modal-local"])
 def state(request):
     if request.param == "memory":
         return MemoryState()
+    if request.param == "modal-local":
+        return ModalDictState({})
     return ModalDictState(_FakeModalDict())
 
 
@@ -70,6 +72,16 @@ def test_old_composer_cannot_append_after_newer_coverage(state):
     assert latest_publication(state, "run_test") == newest
     assert state.get_kv("result_version:run_test:1") == newest
     assert state.get_kv("result_version:run_test:2") is None
+
+
+def test_equal_coverage_can_publish_changed_artifacts_without_overwriting(state):
+    first = publish_version(state, "run_test", {"correctionIds": [], "artifacts": {"result": "eligible"}})
+    changed = {"correctionIds": [], "artifacts": {"result": "views"}}
+    second = publish_version(state, "run_test", changed)
+    assert second["version"] == 2
+    assert state.get_kv("result_version:run_test:1") == first
+    assert publish_version(state, "run_test", changed) == second
+    assert state.get_kv("result_version:run_test:3") is None
 
 
 def test_crash_between_capture_and_run_record_is_recoverable(tmp_path, state, monkeypatch):

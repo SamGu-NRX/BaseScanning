@@ -155,12 +155,11 @@ def test_replacing_the_case_scene_fails_the_mode(tmp_path, monkeypatch):
 
 
 def test_dropping_the_published_result_fails_the_mode(tmp_path, monkeypatch):
-    """A real result stage that does not publish result/result.json is caught by
-    the required-published-asset check."""
+    """Reject a missing result before committing an immutable publication."""
     monkeypatch.setattr(runner, "_DROP_RESULT_ARTIFACT", True)
     receipt = runner.run_real_downstream(tmp_path / "run", case_ids=["flatwall-clear"])
     assert receipt["ok"] is False
-    assert any("result/result.json" in blocker for blocker in receipt["blockers"])
+    assert any("artifact_missing" in blocker for blocker in receipt["blockers"]), receipt["blockers"]
 
 
 def test_the_selection_override_and_boundaries_are_restored(tmp_path):

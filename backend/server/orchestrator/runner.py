@@ -67,6 +67,8 @@ def run_stage(
         from server.orchestrator.corrections import publish_version
         from server.orchestrator.publication import emit_latest_publication
 
+        if "result/result.json" not in stored:
+            raise ValueError("artifact_missing: result/result.json was not published")
         snapshot = json.loads(Path(snapshot_path).read_text())
         event_path = ctx.work_dir / "result/publication.json"
         if not event_path.is_file():

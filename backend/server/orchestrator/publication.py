@@ -15,8 +15,18 @@ def emit_latest_publication(state: Any, storage: Any, run_id: str, settings: Any
     capture_id = publication["captureId"]
     after = 0
     while page := state.events_after(capture_id, after):
-        if any(event.run_id == run_id and event.data.get("_resultVersion") == publication["version"] for event in page):
-            return
+        for event in page:
+            version = event.data.get("_resultVersion")
+            if event.run_id == run_id and version is not None:
+                prior = state.get_kv(f"result_version:{run_id}:{version}")
+                # Preserve the existing retry contract: unchanged correction
+                # coverage does not emit another final. A new answer always does.
+                if (
+                    prior is not None
+                    and prior["correctionIds"] == publication["correctionIds"]
+                    and public_final_event(state, event) is not None
+                ):
+                    return
         after = page[-1].seq
     # No lease can fence append_event. A duplicate emitter is harmless, and the
     # event reader filters superseded versions without changing the device data.

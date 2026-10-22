@@ -85,8 +85,11 @@ def fold_reads(base: Reads, corrections: list[dict]) -> Reads:
 
 def prepare_inputs(state: Any, run: RunRecord, stage: str, work: Path) -> Path:
     """Criteria and result must consume the same immutable reads snapshot."""
-    path = work / "verdicts/correction-inputs.json"
+    path = work / "correction-inputs.json"
     reads_path = work / "reads/reads.json"
+    hydrated = work / "verdicts/correction-inputs.json"
+    if stage == "result" and hydrated.is_file():
+        path.write_bytes(hydrated.read_bytes())
     if stage == "criteria":
         rows = correction_snapshot(state, run)
         raw = json.loads(reads_path.read_text()) if reads_path.is_file() else None
@@ -141,9 +144,15 @@ def publish_version(state: Any, run_id: str, publication: dict) -> dict:
                 return candidate
             continue
         previous = prior["correctionIds"]
-        if ids[: len(previous)] != previous or len(ids) <= len(previous):
+        if ids[: len(previous)] != previous:
             # Another writer may have appended beyond the slot just inspected.
             return latest_publication(state, run_id) or prior
+        if all(
+            prior.get(key) == value for key, value in publication.items() if key not in {"version", "afterEventSeq"}
+        ):
+            return latest_publication(state, run_id) or prior
+        # Equal coverage is a superset too. Upstream verdicts can change without
+        # a new correction; their recomposition must still publish a new result.
         sequence += 1
 
 
