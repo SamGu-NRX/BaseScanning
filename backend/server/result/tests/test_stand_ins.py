@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 from typing import get_args
 
+import pytest
+
 from server.contracts.jobs import CaptureRecord, RunRecord, StageName
 from server.result.compose import ResultError, compose_result
 from server.result.config import ResultConfig
@@ -114,6 +116,67 @@ def test_a_marker_without_the_schema_is_refused_by_name(tmp_path: Path):
         assert "poses.json" in str(exc)
     else:
         raise AssertionError("a marker without the pinned schema must stop the composition")
+
+
+def _assert_refused(tmp_path: Path, impl_dir: Path, filename: str) -> None:
+    with pytest.raises(ResultError) as caught:
+        _compose(tmp_path / "out", impl_dir)
+    assert caught.value.code == "impl_invalid"
+    assert filename in str(caught.value)
+
+
+def test_a_marker_naming_another_stage_cannot_hide_a_stand_in(tmp_path: Path):
+    # objects.json claims reads ran as a stand-in; reads.json then says real.
+    # Before the check, the later file silently won and the stand-in vanished.
+    impl_dir = _write_impl_dir(tmp_path, {"reads": "real"})
+    (impl_dir / "objects.json").write_text(json.dumps(_marker("reads", "stand-in")))
+    _assert_refused(tmp_path, impl_dir, "objects.json")
+
+
+@pytest.mark.parametrize("stage", ["objcts", None, 7, "result-extra"])
+def test_a_marker_with_an_unknown_or_missing_stage_is_refused(tmp_path: Path, stage):
+    impl_dir = tmp_path / "impl"
+    impl_dir.mkdir()
+    body = {"schema": IMPL_SCHEMA, "implementation": "stand-in", "callable": "server.orchestrator.stubs.x.run"}
+    if stage is not None:
+        body["stage"] = stage
+    name = f"{stage}.json" if isinstance(stage, str) else "objects.json"
+    (impl_dir / name).write_text(json.dumps(body))
+    _assert_refused(tmp_path, impl_dir, name)
+
+
+@pytest.mark.parametrize("implementation", [[], {}, ["stand-in"], 1, None])
+def test_a_non_string_implementation_is_refused_by_name(tmp_path: Path, implementation):
+    impl_dir = tmp_path / "impl"
+    impl_dir.mkdir()
+    body = {**_marker("poses", "real"), "implementation": implementation}
+    (impl_dir / "poses.json").write_text(json.dumps(body))
+    _assert_refused(tmp_path, impl_dir, "poses.json")
+
+
+def test_a_recomposition_reads_its_own_earlier_marker_as_this_run(tmp_path: Path):
+    # A late correction re-runs the result stage with impl/result.json from the
+    # first pass already in its inputs. The record describes the callable that is
+    # composing now, whatever the earlier marker said.
+    implementations = {stage: "real" for stage in _non_result_stages()}
+    implementations["result"] = "stand-in"
+    impl_dir = _write_impl_dir(tmp_path, implementations)
+    internal = _compose(tmp_path / "out", impl_dir).internal
+    assert internal["stageImplementations"]["result"] == "real"
+    assert internal["standIns"] == []
+
+
+def test_the_stub_result_shares_the_record_and_names_itself(tmp_path: Path):
+    from server.result.compose import stage_implementations, stand_in_notice
+
+    implementations = {stage: "stand-in" for stage in _non_result_stages()}
+    implementations["placement"] = "real"
+    impl_dir = _write_impl_dir(tmp_path, implementations)
+    record, stand_ins = stage_implementations(impl_dir, result_implementation="stand-in")
+    assert record == {**implementations, "result": "stand-in"}
+    assert stand_ins == sorted(stage for stage in get_args(StageName) if stage != "placement")
+    assert stand_in_notice(stand_ins).startswith("Stand-in steps: coverage, criteria, dense,")
+    assert stand_in_notice([]) is None
 
 
 def test_result_json_is_byte_identical_with_and_without_impl_files(tmp_path: Path):

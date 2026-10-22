@@ -10,8 +10,8 @@
   <h1>Capture {{ capture_id }}</h1>
   <p>Run {{ run_id }} · device profile {{ profile }}</p>
   <p>True decision: {{ true_decision }}</p>
-  {% if stand_ins %}
-  <p>Stand-in steps: {{ stand_ins | join(", ") }}. Their output is not from this scan.</p>
+  {% if stand_in_notice %}
+  <p>{{ stand_in_notice }}</p>
   {% endif %}
   <p>Failure code: {{ failure_code or "none" }} · degraded: {{ degraded | join(", ") or "none" }}</p>
   {% if scale %}
