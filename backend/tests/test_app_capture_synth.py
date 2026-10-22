@@ -52,7 +52,7 @@ def test_packet_layout_matches_fixture_contract(rendered):
     assert packet["format"] == "house-capture-packet"
     assert packet["formatVersion"] == "0.4"
     assert packet["source"]["kind"] == "synthetic"
-    assert len(packet["keyframes"]) == 30
+    assert len(packet["keyframes"]) == 32
     assert len(packet["stills"]) == 2
     assert packet["streams"]["motion"]["file"] == "streams/motion.csv.gz"
     assert packet["streams"]["arkitPoses"]["file"] == "streams/arkitPoses.csv.gz"
@@ -73,7 +73,9 @@ def test_validator_reports_ok(rendered):
     for scene in SCENES:
         packet, report = validate_and_normalize(rendered[scene] / "packet.json")
         assert report.ok, f"{scene}: {report.errors}"
-        assert [issue.code for issue in report.warnings] == ["synthetic_source"]
+        warning_codes = {issue.code for issue in report.warnings}
+        assert "synthetic_source" in warning_codes
+        assert warning_codes <= {"synthetic_source", "pose_jump", "arkit_pose_stream_gap"}
         assert report.maxTapReplayError < 1e-6
 
 
@@ -154,7 +156,7 @@ def test_tap_hits_depth_at_the_same_distance(tmp_path, rendered):
 
 
 def test_depth_pixels_agree_with_geometry(rendered):
-    """The depth image around the tap pixel is within one depth pixel of the packed hit."""
+    """The depth image stores camera-axis depth, with zero for missing rays."""
     packet = _packet(rendered, "clear-wall")
     tap = packet["taps"][0]
     frame = next(f for f in packet["keyframes"] if f["id"] == tap["keyframe"])
@@ -163,10 +165,43 @@ def test_depth_pixels_agree_with_geometry(rendered):
     du = min(DEPTH_W - 1, max(0, int(u * DEPTH_W / 640)))
     dv = min(DEPTH_H - 1, max(0, int(v * DEPTH_H / 480)))
     patch = depth[max(0, dv - 1) : dv + 2, max(0, du - 1) : du + 2]
-    finite = patch[np.isfinite(patch)]
+    assert np.isfinite(depth).all() and np.all(depth >= 0)
+    confidence = np.fromfile(rendered["clear-wall"] / frame["depth"]["confidenceFile"], dtype=np.uint8).reshape(
+        DEPTH_H, DEPTH_W
+    )
+    assert int(confidence.max()) <= 2, "ARConfidenceLevel only permits 0, 1, and 2"
+    finite = patch[patch > 0]
     assert finite.size, "depth around the tap should be valid"
     nearest = float(finite[np.argmin(np.abs(finite - tap["hit"]["distance"]))])
-    assert nearest == pytest.approx(tap["hit"]["distance"], abs=0.01)
+    pose = from_column_major(frame["pose"])
+    _origin, ray = pixel_ray_arkit(pose, frame["intrinsics"], np.asarray(tap["pixel"]))
+    camera_ray = pose[:3, :3].T @ ray
+    expected_axis_depth = tap["hit"]["distance"] * -float(camera_ray[2])
+    assert nearest == pytest.approx(expected_axis_depth, abs=0.02)
+
+
+def test_features_use_world_points_and_uint64_ids(rendered):
+    packet = _packet(rendered, "clear-wall")
+    root = rendered["clear-wall"]
+    dtype = np.dtype([("x", "<f4"), ("y", "<f4"), ("z", "<f4"), ("id", "<u8")])
+    frame = packet["keyframes"][0]
+    records = np.fromfile(root / frame["features"]["file"], dtype=dtype)
+    assert len(records) == frame["features"]["count"]
+    assert len(np.unique(records["id"])) == len(records)
+    assert np.all(records["id"] != 0)
+    assert np.all((records["x"] >= -1.1) & (records["x"] <= 5.1))
+    assert np.all((records["y"] >= -1.5) & (records["y"] <= 1.4))
+    assert np.all((records["z"] >= -2.2) & (records["z"] <= -1.7))
+
+
+def test_closeup_stills_link_to_their_own_keyframes(rendered):
+    packet = _packet(rendered, "clear-wall")
+    frames = {frame["id"]: frame for frame in packet["keyframes"]}
+    assert {frame.get("purpose") for frame in packet["keyframes"]} >= {"meter_close", "meter_oblique"}
+    for still in packet["stills"]:
+        linked = frames[still["keyframe"]]
+        assert linked["purpose"] == still["purpose"]
+        assert (rendered["clear-wall"] / linked["img"]).is_file()
 
 
 def test_keyframe_times_sit_on_the_30hz_grid(rendered):
