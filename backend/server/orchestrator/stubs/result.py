@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 from pathlib import Path
 from typing import Literal
@@ -9,11 +10,17 @@ from typing import Literal
 from server.contracts.jobs import Profile, StageContext, StageResult
 from server.contracts.result import MeterBlock, Outcome, ResultResponse
 from server.orchestrator.stubs._common import json_bytes, sha256, write_files
+from server.result.compose import stage_impl_dir, stage_implementations, stand_in_notice
 
 _PROFILES: frozenset[str] = frozenset({"A", "B", "C", "S"})
 
 
 def run(ctx: StageContext) -> StageResult:
+    # The stand-in record comes from the real composer's reader, so a stub run
+    # validates its markers and names its stand-ins (this stage among them) the
+    # same way a real composition does. Read first: a bad marker fails the stage
+    # before verdict_ready goes out.
+    implementations, stand_ins = stage_implementations(stage_impl_dir(ctx), result_implementation="stand-in")
     run_rec = ctx.state.get_run(ctx.run_id)
     key = run_rec.artifacts["verdicts/verdict.C.json"]
     verdict_bytes = ctx.storage.get_bytes(key)
@@ -43,13 +50,20 @@ def run(ctx: StageContext) -> StageResult:
     )
     body = response.model_dump(mode="json")
     ResultResponse.model_validate(body)
-    internal = {"verdict_c_sha256": digest, "decision": decision}
+    internal = {
+        "verdict_c_sha256": digest,
+        "decision": decision,
+        "stageImplementations": implementations,
+        "standIns": stand_ins,
+    }
+    notice = stand_in_notice(stand_ins)
+    page = "<html><body><p>stub review</p>" + (f"<p>{html.escape(notice)}</p>" if notice else "") + "</body></html>"
     return write_files(
         ctx,
         {
             "result/result.json": json_bytes(body),
             "result/result.internal.json": json_bytes(internal),
-            "result/review.html": b"<html><body>stub review</body></html>",
+            "result/review.html": page.encode(),
             "result/preview.ply": b"ply\nformat ascii 1.0\nelement vertex 0\nend_header\n",
         },
     )

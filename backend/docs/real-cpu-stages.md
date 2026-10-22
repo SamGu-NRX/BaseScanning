@@ -81,5 +81,10 @@ at `captures/{capture_id}/runs/{run_id}/impl/<stage>.json` — with exactly:
   artifacts, this one included.
 
 The result stage's declared inputs include `impl/`, so the composer receives
-every marker of its run. The contract is shared with
+every marker of its run. The real composer and the stub result stage both read
+them through `stage_implementations` in `server/result/compose.py` and write
+`stageImplementations` and `standIns` into `result.internal.json`. A marker
+whose `stage` is not a pipeline stage or differs from its filename, or whose
+`implementation` is not `real` or `stand-in`, fails the result stage with
+`impl_invalid`. The contract is shared with
 `burst14-bs-result-names-stand-ins`; change it in both places or not at all.
