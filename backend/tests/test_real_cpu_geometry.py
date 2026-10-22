@@ -2,12 +2,13 @@
 
 Runs the four stage entries (dense, coverage, scene, objects_3d) over
 ``ios-kit/fixtures/mini-arkit-lidar`` on CPU, each stage in a child process
-pinned to two cores with two BLAS/OpenMP threads. Per stage, wall time and
-peak RSS are asserted against fixed budgets and every artifact is matched
-against ``server/orchestrator/graph.py``. The scene must contain an observed
-wall and a ground plane, and the wall plane's fit residual against the dense
-LiDAR cloud is measured and reported. A single injected 2D ``main_panel``
-detection with two views must lift onto that wall through ``run_3d``.
+with two BLAS/OpenMP threads, pinned to two cores where the OS supports CPU
+affinity (Linux; macOS runs unpinned). Per stage, wall time and peak RSS are
+asserted against fixed budgets and every artifact is matched against
+``server/orchestrator/graph.py``. The scene must contain an observed wall and
+a ground plane, and the dense LiDAR cloud, moved into the scene frame, must lie
+on that wall's plane. A single injected 2D ``main_panel`` detection with two
+views must lift onto that wall through ``run_3d`` in the same budgeted child.
 
 The poses and scale inputs mirror what ``server/poses/run.py`` and
 ``server/scale/run.py`` write. On this packet (six keyframes, too few to
@@ -38,13 +39,35 @@ PACKET_DIR = REPO / "ios-kit" / "fixtures" / "mini-arkit-lidar"
 STAGES = ("dense", "coverage", "scene", "objects_3d")
 BOX_HALF_PX = 120.0
 
+# Every dense run of this fixture on WSL (Linux) wrote 109,252 points. The floor
+# sits near half of that, so a large loss fails while small method drift passes.
+MIN_DENSE_POINTS = 50_000
+
+# Wall fit statistics, all in the scene frame. A wall's support is every dense
+# point over its baseline span, between WALL_FLOOR_CLEAR_M and its height, and
+# within WALL_SUPPORT_SLAB_M of its plane. The slab only keeps other walls out
+# (this fixture has one about 8 m behind the meter wall); it is far wider than
+# the inlier band, so a misfit shows up in the median and the inlier share.
+WALL_INLIER_M = 0.15
+WALL_SUPPORT_SLAB_M = 1.0
+WALL_FLOOR_CLEAR_M = 0.1
+# Measured on WSL over 20 runs of the 0da4677d journey: inlier share 0.66-0.78
+# (median 0.045-0.095 m) on the 15 runs where the meter wall landed on the LiDAR
+# surface, 0.12-0.21 (median 0.40-0.49 m) on the 5 where it did not. Support p95 is
+# 0.36-0.58 m even on good fits, because the meter equipment stands off the wall,
+# so p95 is reported, not asserted.
+MIN_WALL_INLIER_SHARE = 0.5
+
 LIFT_CLASS = "main_panel"  # WALL_MOUNTED detector class; SCENE_CLASS maps it to "panel"
 
 # Stage entry environment. Thread caps hold the two-core budget honest;
 # LIBGL/EGL keep Open3D usable on a headless runner. HSS_COVERAGE_METER_FRAMES
-# must stay unset.
+# must stay unset. The LiDAR method is pinned because the child inherits the
+# parent environment, and HSS_DENSE_LIDAR_METHOD=points would skip Open3D TSDF
+# while still reporting lidar_fused.
 _CHILD_ENV = {
     "HSS_DENSE_GEOMETRY": "lidar",
+    "HSS_DENSE_LIDAR_METHOD": "tsdf",
     "SMP_ENVIRONMENT": "dev",
     "HSS_COVERAGE_ANCHOR_FROM_TAP": "reference_point",
     "OMP_NUM_THREADS": "2",
@@ -192,19 +215,38 @@ def _run_stage(stage: str) -> dict:
     return {
         "stage": stage,
         "wall_s": round(wall_s, 2),
-        "maxrss_kb": int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss),
+        "maxrss_kb": _peak_rss_kb(),
         "artifacts": result.artifacts,
         "warnings": list(result.warnings),
     }
+
+
+def _peak_rss_kb() -> int:
+    """Peak RSS of this process in KiB. ``ru_maxrss`` is KiB on Linux but bytes on macOS."""
+    peak = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    return peak // 1024 if sys.platform == "darwin" else peak
+
+
+def _pin_two_cpus() -> list[int] | None:
+    """Pin this process to its first two allowed CPUs and return them.
+
+    macOS has no ``sched_getaffinity``/``sched_setaffinity``. There the child runs
+    unpinned, under the thread caps in ``_CHILD_ENV`` only, and this returns None so
+    the stage result records that no pinning happened.
+    """
+    if not (hasattr(os, "sched_getaffinity") and hasattr(os, "sched_setaffinity")):
+        return None
+    allowed = sorted(os.sched_getaffinity(0))[:2]
+    os.sched_setaffinity(0, set(allowed))
+    return allowed
 
 
 if __name__ == "__main__":  # child entry: python tests/test_real_cpu_geometry.py <stage>
     stage = sys.argv[1]
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # bare python children lack pytest's pythonpath
     os.environ.update(_CHILD_ENV)
-    allowed = sorted(os.sched_getaffinity(0))
-    os.sched_setaffinity(0, set(allowed[:2]))
-    print(json.dumps(_run_stage(stage)))
+    pinned = _pin_two_cpus()
+    print(json.dumps({**_run_stage(stage), "cpus_pinned": pinned}))
     sys.exit(0)
 
 
@@ -242,6 +284,9 @@ def _assert_budget(result: dict) -> None:
     assert result["maxrss_kb"] <= MAX_STAGE_RSS_KB, (
         f"{result['stage']} peak RSS {result['maxrss_kb'] / 1048576:.2f} GiB"
     )
+    if hasattr(os, "sched_setaffinity"):
+        pinned = result["cpus_pinned"]
+        assert pinned and len(pinned) <= 2, f"{result['stage']} pinned to {pinned}"
 
 
 def _assert_artifacts_match_graph(stage: str, work: Path, artifacts: dict) -> None:
@@ -281,7 +326,11 @@ def test_dense_stage_runs_real_lidar(journey):
     assert (work / "scale" / "scale.json").is_file()
     report = json.loads((work / "dense" / "dense_report.json").read_text())
     assert report["geometry_role"] == "coverage_only", report["geometry_role"]
-    assert report["counts"]["points"] > 0
+    import numpy as np
+
+    cloud = np.load(work / "dense" / "cloud.npz")["points"]
+    assert len(cloud) == report["counts"]["points"], (len(cloud), report["counts"])
+    assert len(cloud) > MIN_DENSE_POINTS, len(cloud)
     _assert_budget(dense)
 
 
@@ -302,15 +351,12 @@ def test_scene_stage_wall_ground_and_residual(journey):
     observed = [w for w in doc["walls"] if w.get("evidence") == "observed"]
     assert observed, doc["walls"]
     assert doc["ground"]["surface"]["kind"] == "plane", doc["ground"]
-    import numpy as np
-
-    cloud = np.load(work / "dense" / "cloud.npz")["points"]
-    residual = _wall_plane_residual(cloud, observed[0])
+    residual = _wall_plane_residual(_scene_cloud(work), observed[0])
     summary()["wall_residual"] = residual
     summary()["wall"] = _wall_summary(observed[0])
     assert residual["points_near"] > 100, residual
-    assert residual["median_m"] < 0.15, residual
-    assert residual["p95_m"] < 0.35, residual
+    assert residual["median_m"] < WALL_INLIER_M, residual
+    assert residual["inlier_share"] >= MIN_WALL_INLIER_SHARE, residual
     _assert_budget(scene)
 
 
@@ -339,7 +385,6 @@ def test_stage_budget_summary(journey):
 def test_run_3d_lifts_single_detection_onto_wall(journey, tmp_path):
     from server.eval.frame import project_arkit
     from server.objects.lift import cast_pixel, pose_matrix
-    from server.objects.run import run_3d
 
     work, _ = journey
     doc = _scene_doc(work)
@@ -390,17 +435,12 @@ def test_run_3d_lifts_single_detection_onto_wall(journey, tmp_path):
         return [a[0] + (b[0] - a[0]) * s / length, wall["height_m"] / 2, a[1] + (b[1] - a[1]) * s / length]
 
     def box_for(point: list[float]) -> list[float]:
+        # lift_wall_cast casts the box centre, so the box must not be clipped:
+        # clipping would move the centre off the pixel _casts_wall checked.
         u, v, z = project_arkit(pose_matrix(cam["pose"]), cam["intrinsics"], point)
         u, v = float(u), float(v)
-        assert z > 0 and 0 <= u < cam["w"] and 0 <= v < cam["h"], (frame, u, v, z)
-        box = [
-            max(u - BOX_HALF_PX, 0.0),
-            max(v - BOX_HALF_PX, 0.0),
-            min(u + BOX_HALF_PX, cam["w"] - 1.0),
-            min(v + BOX_HALF_PX, cam["h"] - 1.0),
-        ]
-        assert box[0] < box[2] and box[1] < box[3], (frame, box)
-        return box
+        assert z > 0 and _box_fits(cam, u, v), (frame, u, v, z)
+        return [u - BOX_HALF_PX, v - BOX_HALF_PX, u + BOX_HALF_PX, v + BOX_HALF_PX]
 
     s_mid = tap_s
     half_span = 0.18  # two wall points 0.36 m apart: inside the 0.5 m agree radius
@@ -430,7 +470,9 @@ def test_run_3d_lifts_single_detection_onto_wall(journey, tmp_path):
     )
     (lift_work / "objects" / "objects.json").write_text(json.dumps({"ground_type": [], "objects": [row]}))
 
-    run_3d(_ctx("objects_3d", lift_work))
+    lift = _spawn("objects_3d", lift_work)
+    _assert_artifacts_match_graph("objects_3d", lift_work, lift["artifacts"])
+    _assert_budget(lift)
 
     out = json.loads((lift_work / "objects" / "objects_3d.json").read_text())
     panels = [o for o in out["objects"] if o["class"] == "panel"]
@@ -449,14 +491,22 @@ def test_run_3d_lifts_single_detection_onto_wall(journey, tmp_path):
         "tap_s": tap_s,
         "evidence": panel["evidence"],
         "plus_minus_m": panel["plus_minus_m"],
+        "wall_s": lift["wall_s"],
+        "maxrss_kb": lift["maxrss_kb"],
     }
     requests = json.loads((lift_work / "objects" / "view_requests.json").read_text())
     assert isinstance(requests, list)
 
 
+def _box_fits(cam: dict, u: float, v: float) -> bool:
+    """True when a BOX_HALF_PX box centred on (u, v) lies inside the image unclipped."""
+    return BOX_HALF_PX <= u <= cam["w"] - 1.0 - BOX_HALF_PX and BOX_HALF_PX <= v <= cam["h"] - 1.0 - BOX_HALF_PX
+
+
 def _casts_wall(cam: dict, wall: dict, walls: list, frac: float = 0.5) -> bool:
-    """True when the in-plane point and its +/-0.18 m neighbours project in view
-    AND cast onto this wall (other fitted walls can occlude part of it)."""
+    """True when the in-plane point and its +/-0.18 m neighbours project far enough
+    inside the image for an unclipped box AND cast onto this wall (other fitted
+    walls can occlude part of it)."""
     from server.eval.frame import project_arkit
     from server.objects.lift import cast_pixel, pose_matrix
 
@@ -468,7 +518,7 @@ def _casts_wall(cam: dict, wall: dict, walls: list, frac: float = 0.5) -> bool:
         s = length * frac + ds
         point = [a[0] + (b[0] - a[0]) * s / length, wall["height_m"] / 2, a[1] + (b[1] - a[1]) * s / length]
         u, v, z = project_arkit(pose, cam["intrinsics"], point)
-        if not (z > 0 and 0 <= float(u) < cam["w"] and 0 <= float(v) < cam["h"]):
+        if not (z > 0 and _box_fits(cam, float(u), float(v))):
             return False
         hit = cast_pixel(pose[:3, 3], pose, cam["intrinsics"], float(u), float(v), walls)
         if hit is None or hit[0]["id"] != wall["id"]:
@@ -507,25 +557,66 @@ def _wall_summary(wall: dict) -> dict:
     }
 
 
-def _wall_plane_residual(points, wall: dict) -> dict:
+def _scene_cloud(work: Path):
+    """The dense cloud in the scene frame, where scene.json's walls live.
+
+    ``dense/cloud.npz`` holds points in frame W. Coverage moves them into the
+    meter-anchored scene frame with ``coverage/state.npz["t"]`` (written by
+    server/coverage/run.py, applied with ``frame.apply`` in server/scene/build.py),
+    and the scene stage keeps that frame.
+    """
     import numpy as np
 
-    baseline = np.asarray(wall["baseline_m"], float)
-    a, b = baseline[0], baseline[1]
+    from server.eval.frame import apply
+
+    cloud = np.load(work / "dense" / "cloud.npz")["points"]
+    transform = np.load(work / "coverage" / "state.npz")["t"]
+    return apply(np.asarray(transform, float), cloud)
+
+
+def _quantile(values, q: float) -> float | None:
+    import numpy as np
+
+    return round(float(np.percentile(values, q)), 4) if len(values) else None
+
+
+def _wall_plane_residual(points, wall: dict) -> dict:
+    """Distances from scene-frame points to a wall's plane, over the wall's support.
+
+    Top-level statistics cover every support point (see WALL_SUPPORT_SLAB_M).
+    ``near`` repeats them for points within WALL_INLIER_M only: that describes
+    plane noise, but on its own it cannot show a misfit, because every point a
+    misfit pushes away is dropped from it.
+    """
+    import numpy as np
+
+    a, b = np.asarray(wall["baseline_m"], float)
     direction = b - a
     length = float(np.hypot(direction[0], direction[1]))
+    along = direction / length
     normal = np.array([-direction[1], direction[0]]) / length
-    xz = np.asarray(points, float)[:, [0, 2]]
-    signed = (xz - a) @ normal
-    band = np.abs(signed) < 0.15
-    if int(band.sum()) < 100:
-        return {"points_near": int(band.sum()), "median_m": None, "p95_m": None, "share": round(float(band.mean()), 4)}
-    dist = np.abs(signed[band])
+    pts = np.asarray(points, float)
+    xz = pts[:, [0, 2]]
+    s = (xz - a) @ along
+    dist = np.abs((xz - a) @ normal)
+    y = pts[:, 1]
+    support = (
+        (s >= 0.0)
+        & (s <= length)
+        & (y >= WALL_FLOOR_CLEAR_M)
+        & (y <= float(wall["height_m"]))
+        & (dist < WALL_SUPPORT_SLAB_M)
+    )
+    d = dist[support]
+    near = d[d < WALL_INLIER_M]
     return {
-        "points_near": int(band.sum()),
-        "median_m": round(float(np.median(dist)), 4),
-        "p95_m": round(float(np.percentile(dist, 95)), 4),
-        "share": round(float(band.mean()), 4),
+        "points_support": len(d),
+        "points_near": len(near),
+        "inlier_share": round(len(near) / len(d), 4) if len(d) else 0.0,
+        "median_m": _quantile(d, 50),
+        "p95_m": _quantile(d, 95),
+        "max_m": round(float(d.max()), 4) if len(d) else None,
+        "near": {"median_m": _quantile(near, 50), "p95_m": _quantile(near, 95)},
     }
 
 
@@ -533,5 +624,115 @@ _SUMMARY: dict = {}
 
 
 def summary() -> dict:
-    """Module-level scratch the reporting test reads; never asserted on directly."""
+    """Measurements the journey tests collect; ``_emit_summary`` prints them after the module."""
     return _SUMMARY
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _emit_summary(request):
+    yield
+    if not _SUMMARY:
+        return
+    line = "real CPU geometry summary: " + json.dumps(_SUMMARY, sort_keys=True)
+    reporter = request.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is not None:
+        reporter.write_line(line)
+
+
+# --- helper checks with known answers (no journey) ---
+
+# Baseline along +x at z = 0, so a point's z is its signed distance to the plane.
+_TEST_WALL = {"id": "w1", "baseline_m": [[0.0, 0.0], [4.0, 0.0]], "height_m": 2.5}
+
+
+def _wall_points(offsets):
+    """One point per offset, spread over the test wall's span and height, offset along its normal."""
+    import numpy as np
+
+    offsets = np.asarray(offsets, float)
+    n = len(offsets)
+    return np.stack([np.linspace(0.2, 3.8, n), np.linspace(0.3, 2.2, n), offsets], axis=1)
+
+
+def test_wall_residual_keeps_outliers_in_p95():
+    residual = _wall_plane_residual(_wall_points([0.01, -0.01] * 450 + [0.6] * 100), _TEST_WALL)
+    assert residual["p95_m"] == pytest.approx(0.6, abs=1e-3), residual
+    assert residual["max_m"] == pytest.approx(0.6, abs=1e-3), residual
+    assert residual["points_support"] == 1000, residual
+    assert residual["points_near"] == 900, residual
+    assert residual["inlier_share"] == pytest.approx(0.9), residual
+    assert residual["near"]["p95_m"] == pytest.approx(0.01, abs=1e-3), residual
+
+
+def test_wall_residual_shows_partial_misfit():
+    # 300 points on the plane would pass a band-only check (>100 near, tiny median);
+    # the other 700 sit 0.4 m off and must dominate the statistics.
+    residual = _wall_plane_residual(_wall_points([0.01, -0.01] * 150 + [0.4, -0.4] * 350), _TEST_WALL)
+    assert residual["median_m"] == pytest.approx(0.4, abs=1e-3), residual
+    assert residual["inlier_share"] == pytest.approx(0.3), residual
+    assert residual["median_m"] >= WALL_INLIER_M or residual["inlier_share"] < MIN_WALL_INLIER_SHARE
+
+
+def test_wall_residual_support_excludes_other_surfaces():
+    import numpy as np
+
+    wall = _wall_points([0.01, -0.01] * 500)
+    far_wall = _wall_points([8.0] * 200)  # another wall behind this one
+    ground = _wall_points([0.5] * 200)
+    ground[:, 1] = 0.0
+    past_end = _wall_points([0.3] * 200)
+    past_end[:, 0] += 5.0
+    above = _wall_points([0.3] * 200)
+    above[:, 1] += 3.0
+    residual = _wall_plane_residual(np.vstack([wall, far_wall, ground, past_end, above]), _TEST_WALL)
+    assert residual["points_support"] == 1000, residual
+    assert residual["inlier_share"] == 1.0, residual
+
+
+def test_scene_cloud_applies_coverage_transform(tmp_path):
+    import numpy as np
+
+    from server.eval.frame import apply
+
+    angle = np.deg2rad(35.0)
+    transform = np.eye(4)
+    transform[:3, :3] = [[np.cos(angle), 0, np.sin(angle)], [0, 1, 0], [-np.sin(angle), 0, np.cos(angle)]]
+    transform[:3, 3] = [2.0, 0.4, -3.0]
+    scene_points = _wall_points([0.01, -0.01] * 500)
+    cloud_w = apply(np.linalg.inv(transform), scene_points)
+    (tmp_path / "dense").mkdir()
+    (tmp_path / "coverage").mkdir()
+    np.savez_compressed(tmp_path / "dense" / "cloud.npz", points=cloud_w.astype(np.float32))
+    np.savez_compressed(tmp_path / "coverage" / "state.npz", t=transform)
+
+    # In frame W the points miss the wall, so only the transform can make this pass.
+    assert _wall_plane_residual(cloud_w, _TEST_WALL)["points_near"] == 0
+    residual = _wall_plane_residual(_scene_cloud(tmp_path), _TEST_WALL)
+    assert residual["points_near"] == 1000, residual
+    assert residual["points_support"] == 1000, residual
+    assert residual["median_m"] == pytest.approx(0.01, abs=1e-3), residual
+
+
+def test_pin_two_cpus_skips_without_affinity(monkeypatch):
+    monkeypatch.delattr(os, "sched_getaffinity", raising=False)
+    monkeypatch.delattr(os, "sched_setaffinity", raising=False)
+    assert _pin_two_cpus() is None
+
+
+def test_pin_two_cpus_pins_first_two_allowed(monkeypatch):
+    calls = []
+    monkeypatch.setattr(os, "sched_getaffinity", lambda _pid: {7, 1, 3}, raising=False)
+    monkeypatch.setattr(os, "sched_setaffinity", lambda pid, cpus: calls.append((pid, cpus)), raising=False)
+    assert _pin_two_cpus() == [1, 3]
+    assert calls == [(0, {1, 3})]
+
+
+@pytest.mark.parametrize(
+    ("platform", "raw", "expected_kb"), [("darwin", 2 * 1024**3, 2 * 1024**2), ("linux", 2 * 1024**2, 2 * 1024**2)]
+)
+def test_peak_rss_kb_units(monkeypatch, platform, raw, expected_kb):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setattr(resource, "getrusage", lambda _who: SimpleNamespace(ru_maxrss=raw))
+    assert _peak_rss_kb() == expected_kb
