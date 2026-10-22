@@ -187,6 +187,16 @@ import Testing
         #expect(Self.run(before + tilt + after).allSatisfy { $0 == nil })
     }
 
+    /// Codex on #317: after a gap with no measured sharpness, the next frame was judged against
+    /// sharpness from before the gap, older than `blurReferenceWindow`. A scene that is simply
+    /// softer than the one before the gap then read as blur and was coached.
+    @Test func staleSharpnessAfterAGapIsNotTheBlurReference() {
+        let before = Self.times(for: 1).map { Frame(time: $0, skip: .redundant, sharpness: 100) }
+        let gap = Self.times(from: 1, for: 4).map { Frame(time: $0, skip: .redundant, sharpness: nil) }
+        let softer = Self.times(from: 5, for: 3).map { Frame(time: $0, skip: .redundant, sharpness: 40) }
+        #expect(!Self.run(before + gap + softer).contains(.blurry))
+    }
+
     /// A shown problem clears half a second after its last frame.
     @Test func motionClearsAfterItsLastFrame() {
         let fast = Self.times(for: 1).map { Frame(time: $0, skip: .movingFast) }

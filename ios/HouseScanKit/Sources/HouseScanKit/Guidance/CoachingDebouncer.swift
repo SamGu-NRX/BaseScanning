@@ -194,6 +194,14 @@ public struct CoachingDebouncer: Sendable {
 
     private mutating func updateMotion(time: Double, skip: CaptureDecision.SkipReason?, sharpness value: Double?) {
         var evidence = Self.evidence(skip)
+        // Drop samples older than the window before taking the median. Frames without a
+        // measurement append nothing, so after a gap the buffer would otherwise hold sharpness
+        // from before the gap, and a scene that is merely softer would read as blur.
+        if let firstKept = sharpness.firstIndex(where: { $0.time > time - config.blurReferenceWindow }) {
+            sharpness.removeFirst(firstKept)
+        } else {
+            sharpness.removeAll()
+        }
         // The sharpness from before any blur: fixed while a spell lasts, else the recent median.
         let reference = blurReference ?? Self.median(sharpness.map(\.value), atLeast: config.minDarkSamples)
         if skip != .trackingNotReady, let value, let reference, value < reference * config.blurRatio {
@@ -211,9 +219,6 @@ public struct CoachingDebouncer: Sendable {
         blurReference = spells[.blurry] == nil ? nil : reference
         if let value {
             sharpness.append((time: time, value: value))
-            if let firstKept = sharpness.firstIndex(where: { $0.time > time - config.blurReferenceWindow }), firstKept > 0 {
-                sharpness.removeFirst(firstKept)
-            }
         }
     }
 
