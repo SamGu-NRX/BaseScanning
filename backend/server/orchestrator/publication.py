@@ -46,8 +46,14 @@ def public_final_event(state: Any, event: Any) -> tuple[str, dict] | None:
     if version is None:
         return event.type, event.data
     latest = latest_publication(state, event.run_id)
-    if latest is None or latest["version"] != version:
+    if latest is None:
         return None
+    # Keep finals that were already in history before a recomposition. Only
+    # suppress an old emitter that appended beyond a successor's watermark.
+    for number in range(version + 1, latest["version"] + 1):
+        successor = state.get_kv(f"result_version:{event.run_id}:{number}")
+        if successor is not None and event.seq > successor["afterEventSeq"]:
+            return None
     after = 0
     while page := state.events_after(event.capture_id, after):
         if any(

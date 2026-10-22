@@ -129,7 +129,14 @@ def publish_version(state: Any, run_id: str, publication: dict) -> dict:
         key = f"result_version:{run_id}:{sequence}"
         prior = state.get_kv(key)
         if prior is None:
-            candidate = {**publication, "version": sequence}
+            # Preserve historical final events, but identify an older emitter
+            # whose append arrives after this publication. This watermark is
+            # internal metadata, not an extra field in the device event.
+            event_floor = 0
+            if publication.get("captureId"):
+                while page := state.events_after(publication["captureId"], event_floor):
+                    event_floor = page[-1].seq
+            candidate = {**publication, "version": sequence, "afterEventSeq": event_floor}
             if state.put_if_absent(key, candidate):
                 return candidate
             continue

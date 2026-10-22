@@ -228,7 +228,9 @@ def on_confirmation(
         {
             "confirmationId": confirmation_id,
             "by": by,
-            **confirmation.model_dump(mode="json"),
+            # The API fingerprint excludes clientAt. A retry may have a fresh
+            # client timestamp without changing the accepted answer's identity.
+            **confirmation.model_dump(mode="json", exclude={"clientAt"}),
         },
         newest,
     )
