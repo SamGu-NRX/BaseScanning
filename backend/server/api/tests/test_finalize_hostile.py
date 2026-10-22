@@ -117,3 +117,25 @@ def test_a_second_container_with_the_same_packet_still_replays(client):
     assert first["status"] == second["status"] == "processing"
     assert first["runId"] == second["runId"]
     assert deps.state.get_capture(capture_id).packet_sha256 == sha256_hex(raw)
+
+
+def test_a_failed_packet_write_releases_the_claim(client, monkeypatch):
+    """Guard for the claim, not failing-first: alpha has no claim to release."""
+    packet_id = "packet-write-fails"
+    capture_id, packet = _ready(client, packet_id)
+    deps = client.app_state
+    record = deps.state.get_capture(capture_id)
+    real_put = deps.storage.put_bytes
+
+    def offline(*_args, **_kwargs):
+        raise RuntimeError("storage offline")
+
+    monkeypatch.setattr(deps.storage, "put_bytes", offline)
+    with pytest.raises(RuntimeError):
+        accept_packet(deps, record.model_copy(deep=True), json.dumps(packet).encode())
+    monkeypatch.setattr(deps.storage, "put_bytes", real_put)
+
+    packet["createdAt"] = "2026-09-27T00:00:00.000Z"
+    corrected = accept_packet(deps, record.model_copy(deep=True), json.dumps(packet).encode())
+    drain_finalize(deps)
+    assert corrected["status"] == "processing"
