@@ -132,7 +132,17 @@ def validate_session(session):
         raise ValueError("session.id must be explicit")
     frames = {}
     for frame in session.get("keyframes", []):
-        validate_frame(frame)
+        width, height, _, _ = validate_frame(frame)
+        # Replay intrinsics are in the unrotated landscape JPEG's pixels
+        # (ios/HouseScanKit/Sources/HouseScanKit/Replay/ReplaySession.swift), so a portrait
+        # or square size means the image or its intrinsics were rotated. This lives here,
+        # not in validate_frame, because ray_for_pixel also accepts cropped frames.
+        if width <= height:
+            shape = "portrait" if width < height else "square"
+            raise ValueError(
+                f"keyframe {frame['id']}: {shape} keyframe {width}x{height}; "
+                "replay requires a landscape sensor image (w > h)"
+            )
         if frame["id"] in frames:
             raise ValueError(f"duplicate keyframe id: {frame['id']}")
         frames[frame["id"]] = frame

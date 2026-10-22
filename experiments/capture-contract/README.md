@@ -46,7 +46,7 @@ The rigid-rotation tolerance 1e-4 and ray arithmetic tolerance 1e-6 detect seria
 
 The output preserves limited tracking; it never silently upgrades it to normal. Even normal tracking does not establish metric accuracy. Original source images, field measurements, calibration and tracking-epoch validation remain necessary.
 
-Duplicate frame IDs, missing tap references, incompatible versions/units, nonfinite numeric inputs, reflections and scaled rotations are rejected. The CLI rejects duplicate JSON keys and emits no new output on validation failure. It does not access the referenced image paths or execute anything from the manifest.
+Keyframe `w` and `h` must be integers of at least 1, and `w` must exceed `h`: replay intrinsics are defined in the pixels of the unrotated landscape JPEG, so a portrait or square size means a rotated image or rotated intrinsics. Duplicate frame IDs, missing tap references, incompatible versions/units, nonfinite numeric inputs, reflections and scaled rotations are rejected. The CLI rejects duplicate JSON keys and emits no new output on validation failure. It does not access the referenced image paths or execute anything from the manifest.
 
 ## Result
 
