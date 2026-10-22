@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from scoring import measure_lab
-from scoring.inputs import InputError, load_study, refuse_output_over_inputs
+from scoring.inputs import InputError, load_study, refuse_output_aliases, refuse_output_over_inputs
 from scoring.metrics import score_run
 from scoring.report import csv_paths, markdown, write_csvs
 
@@ -37,6 +37,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        refuse_output_aliases(csv_paths(args.out))
         # Before loading or printing anything, so a colliding --out never touches an input.
         refuse_output_over_inputs(
             csv_paths(args.out),

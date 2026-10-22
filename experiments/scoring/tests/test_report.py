@@ -192,3 +192,47 @@ class TestScorerNeverOverwritesAnInput:
         out = tmp_path / "out"
         assert self.run(paths, out) == 0
         assert sorted(path.name for path in out.iterdir()) == sorted(CSV_NAMES)
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        ("measurements.csv", "checks.csv"),
+        ("measurements.csv", "runs.csv"),
+        ("checks.csv", "runs.csv"),
+    ],
+)
+@pytest.mark.parametrize("link_kind", ["symlink", "dangling_symlink", "hardlink"])
+def test_cli_refuses_aliased_csv_destinations(tmp_path: Path, capsys, first, second, link_kind):
+    out = tmp_path / "out"
+    out.mkdir()
+    target = out / first
+    if link_kind != "dangling_symlink":
+        target.write_text("previous report\n")
+    if link_kind == "hardlink":
+        os.link(target, out / second)
+    else:
+        (out / second).symlink_to(first)
+    before = {path.name: path.read_bytes() for path in out.iterdir() if path.exists()}
+
+    assert (
+        main(
+            [
+                "--rules",
+                str(RULES),
+                "--truth",
+                str(TRUTH),
+                "--results",
+                str(RESULTS[0]),
+                "--out",
+                str(out),
+            ]
+        )
+        == 2
+    )
+
+    captured = capsys.readouterr()
+    assert "CSV output paths refer to the same file" in captured.err
+    assert first in captured.err and second in captured.err
+    assert captured.out == ""
+    assert {path.name: path.read_bytes() for path in out.iterdir() if path.exists()} == before

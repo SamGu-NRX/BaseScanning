@@ -244,17 +244,31 @@ class Fields:
             )
 
 
+def _same_file(first: Path, second: Path) -> bool:
+    return first.resolve() == second.resolve() or (
+        first.exists() and second.exists() and os.path.samefile(first, second)
+    )
+
+
+def refuse_output_aliases(outputs: Iterable[Path]) -> None:
+    """Keep generated reports from overwriting one another through links."""
+    outputs = list(outputs)
+    for index, path in enumerate(outputs):
+        for other in outputs[:index]:
+            if _same_file(path, other):
+                raise InputError(
+                    f"CSV output paths refer to the same file: {other} and {path}; "
+                    "choose separate output files"
+                )
+
+
 def refuse_output_over_inputs(outputs: Iterable[Path], inputs: Iterable[tuple[str, Path]]) -> None:
     """Stop before any write when an output file is one of the inputs, whether by the same path,
     another spelling of it, a symlink or a hard link."""
     inputs = list(inputs)
     for out_path in outputs:
-        out_resolved = out_path.resolve()
         for role, path in inputs:
-            same = out_resolved == path.resolve()
-            if not same and out_path.exists() and path.exists():
-                same = os.path.samefile(out_path, path)
-            if same:
+            if _same_file(out_path, path):
                 raise InputError(
                     f"--out {out_path} is the {role} {path}; writing there would overwrite an "
                     "input. Choose another output path"
