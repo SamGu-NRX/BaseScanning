@@ -523,6 +523,45 @@ def test_confirmation_busy_leaves_a_durable_marker(tmp_path: Path) -> None:
     assert stored.meter.value == "00000"
 
 
+def test_crash_after_reads_write_keeps_marker_for_recovery(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A failed marker acknowledgement leaves the durable recomposition marker."""
+    import server.orchestrator.api as api_module
+
+    services, _uri, _digest = build_services(tmp_path, "memory")
+    reads_key = "captures/cap_test/runs/run_crash/reads/reads.json"
+    reads = Reads(
+        capture_id="cap_test",
+        status="complete",
+        meter=MeterRead(status="auto_fill", value="00000", core="00000", confidence=0.5),
+        confirm=ConfirmBlock(candidates=["00000"]),
+    )
+    services.storage.put_bytes(reads_key, reads.model_dump_json().encode(), "application/json")
+    run = _run(services, "run_crash", artifacts={"reads/reads.json": reads_key})
+    services.state.put_run(run)
+    real_put_json = api_module.put_json
+
+    def fail_marker(state, key, value):
+        if key.endswith(":cfm_crash") and value.get("readsApplied") is True:
+            raise OSError("crash after reads write")
+        return real_put_json(state, key, value)
+
+    monkeypatch.setattr(api_module, "put_json", fail_marker)
+    request = ConfirmationRequest(
+        fieldId="meter_number",
+        kind="corrected",
+        value="12345",
+        imageId="s1",
+        clientAt="2026-10-15T00:00:00.000Z",
+    )
+    with pytest.raises(OSError, match="crash after reads write"):
+        with bind(services):
+            on_confirmation("cap_test", request, "cfm_crash", by="device")
+    stored = Reads.model_validate(json.loads(services.storage.get_bytes(reads_key)))
+    assert stored.meter.value == "12345"
+    marker = json.loads(services.state.get_blob(pending_correction_key(run.run_id, "cfm_crash")))
+    assert marker["readsApplied"] is False
+
+
 def test_concurrent_corrections_merge_different_fields(tmp_path: Path) -> None:
     """The correction lease serializes read-modify-write across fields."""
     import threading

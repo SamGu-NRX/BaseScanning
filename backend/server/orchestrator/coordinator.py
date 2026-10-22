@@ -622,8 +622,8 @@ class RunCoordinator:
         # readsApplied, completion must stop rather than publish a stale result.
         for key in keys:
             marker = get_json(self.s.state, key) or {}
-            if marker.get("readsApplied") is False:
-                return True
+            if marker.get("readsApplied") is False and marker.get("confirmationId"):
+                self._apply_pending_correction(run, key, marker, guard)
         if guard is not None:
             guard.assert_held()
         self._remember_existing_final_event(run)
@@ -636,6 +636,40 @@ class RunCoordinator:
             self.s.state.delete_blob(key)
         log_event("confirmation.recompose_live", capture_id=run.capture_id, run_id=run.run_id)
         return True
+
+    def _apply_pending_correction(
+        self,
+        run: RunRecord,
+        key: str,
+        marker: dict,
+        guard: LeaseGuard | None,
+    ) -> None:
+        """Finish a marker interrupted between the reads write and its ack."""
+        if guard is not None:
+            guard.assert_held()
+        from server.reads.policy import confirm
+        from server.reads.types import Reads
+
+        fresh = self._overlay_artifacts(self._run(run.run_id))
+        reads_key = fresh.artifacts.get("reads/reads.json")
+        if not reads_key:
+            raise RuntimeError("confirmation recovery has no reads artifact")
+        reads = Reads.model_validate(json.loads(self.s.storage.get_bytes(reads_key)))
+        updated = confirm(
+            reads,
+            still_id=str(marker.get("imageId") or ""),
+            choice=marker.get("value") if marker.get("kind") == "confirmed" else None,
+            typed=marker.get("value") if marker.get("kind") == "corrected" else None,
+            by=str(marker.get("by") or "device"),
+            field_id=str(marker.get("fieldId") or "meter_number"),
+        )
+        if guard is not None:
+            guard.assert_held()
+        self.s.storage.put_bytes(reads_key, updated.model_dump_json().encode(), "application/json")
+        marker["readsApplied"] = True
+        if guard is not None:
+            guard.assert_held()
+        put_json(self.s.state, key, marker)
 
     def _maybe_finish(self, run: RunRecord) -> None:
         def decide_completion(guard: LeaseGuard) -> None:
