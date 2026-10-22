@@ -84,7 +84,7 @@ from scripts.replay_capture import (  # noqa: E402
     TERMINAL_EVENTS,
     TERMINAL_STATUSES,
     check_fixture,
-    load_receipt,
+    receipt_problem,
 )
 from server.api.app import create_app  # noqa: E402
 from server.common.config import Settings  # noqa: E402
@@ -291,7 +291,10 @@ def run_primary_leg(
 
     try:
         client = DeviceClient(server_url)
-        receipt = load_receipt(receipt_path)
+        receipt = json.loads(receipt_path.read_text())
+        problem = receipt_problem(receipt)
+        if problem:
+            raise ValueError(f"{receipt_path}: {problem}")
         packet_dir = _resolve_packet_dir(receipt, packet_dir)
         fixture = check_fixture(packet_dir, receipt, errors)
         record("fixture", packetDir=str(packet_dir), files=len((fixture or {}).get("packet", {}).get("files", [])))
@@ -441,7 +444,10 @@ def run_resume_leg(receipt_path: Path, workdir: Path, server_url: str, *, packet
             raise RuntimeError(f"no client journal at {journal_path}: the primary leg never ran")
         journal = json.loads(journal_path.read_text())
         client = DeviceClient(server_url)
-        receipt = load_receipt(receipt_path)
+        receipt = json.loads(receipt_path.read_text())
+        problem = receipt_problem(receipt)
+        if problem:
+            raise ValueError(f"{receipt_path}: {problem}")
         packet_dir = _resolve_packet_dir(receipt, packet_dir)
         fixture = check_fixture(packet_dir, receipt, errors)
         record("fixture", packetDir=str(packet_dir), files=len((fixture or {}).get("packet", {}).get("files", [])))
@@ -736,10 +742,14 @@ def run_cold_restart(
         "ok": False,
     }
     errors = report["errorCodes"]
-    receipt = load_receipt(receipt_path)
+    receipt = json.loads(receipt_path.read_text())
+    problem = receipt_problem(receipt)
+    if problem == "not_a_capture_flow_e2e_receipt":
+        errors.append(problem)
+        return _finish(report, errors, f"{receipt_path}: {problem}")
 
-    # Fail before anything is sent: a pre-replay-field receipt is a caller
-    # mistake, and the report must name the field instead of guessing.
+    # Keep the cold-restart report's per-field diagnostics when the shared
+    # validator rejects a receipt without its replay block.
     missing = missing_replay_fields(receipt)
     if missing:
         report["missingReceiptFields"] = missing
