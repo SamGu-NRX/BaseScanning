@@ -2,7 +2,7 @@
 
 The code review of the experiments work on [PR #239](https://github.com/SamGu-NRX/BaseScanning/pull/239) left 15 unresolved findings (1 marked P1). Every one was already fixed on `alpha` by an earlier merged commit before the follow-up review pass; this record ties each finding to the fix commit and the regression test that covers it, verified by reading the current source at `alpha` head `969d4e93` on 2026-10-17 and by running the suites.
 
-Suites at that head: meter-closeup 401 passed, evals 259, evals models 46, scoring 372, capture-contract 19, live-dots fixtures 20 — 1,117 passed, 0 failed, ruff check and ruff format clean. The suite projects pin `tool.uv.required-version >=0.11.15, <0.12`, so the runs used uv 0.11.33. No mypy or pyright target exists for these directories; ruff is the static gate the repository runs here.
+Suites at that head: meter-closeup 401 passed, evals 259, evals models 46, scoring 372, capture-contract 19, live-dots fixtures 20 — 1,117 passed, 0 failed, ruff check and ruff format clean. The `experiments/evals` project pins `tool.uv.required-version >=0.11.15, <0.12`; the `experiments/evals/models` project has no uv version pin. The evals run used uv 0.11.33. No mypy or pyright target exists for these directories; ruff is the static gate the repository runs here.
 
 | Finding | Disposition | Fixed in | Covered by |
 | --- | --- | --- | --- |
