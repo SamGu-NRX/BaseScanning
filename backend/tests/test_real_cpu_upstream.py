@@ -30,9 +30,15 @@ from __future__ import annotations
 
 import json
 import os
+import resource
+import subprocess
+import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
+
+import pytest
 
 os.environ.setdefault("OMP_NUM_THREADS", "2")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "2")
@@ -54,6 +60,7 @@ MINI_ARKIT_PACKET = ROOT / "data" / "fixtures" / "packets" / "mini-arkit"
 
 WALL_BUDGET_S = 600.0
 RSS_BUDGET_MB = 8 * 1024
+THREAD_ENV = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "HSS_POSES_THREADS")
 
 STAGE_ENTRY = {
     "validate": validate_run,
@@ -69,7 +76,7 @@ class _Settings:
     VISION_EXTERNAL_CALLS = False
 
 
-def _vm_hwm_mb() -> float:
+def _peak_rss_mb() -> float:
     """Process peak RSS so far. Monotonic, so a stage's entry is the high-water mark through it."""
     for line in Path("/proc/self/status").read_text().splitlines():
         if line.startswith("VmHWM"):
@@ -167,7 +174,7 @@ def _run_chain(
         stored = _publish(_ctx(stage, work_dir, packet_dir, storage, capture_id, run_id, branch, tier), result)
         report[stage] = {
             "wall_s": round(wall_s, 2),
-            "vm_hwm_mb": round(_vm_hwm_mb(), 1),
+            "vm_hwm_mb": round(_peak_rss_mb(), 1),
             "artifacts": sorted(stored),
             "metrics": {k: round(float(v), 4) for k, v in result.metrics.items()},
             "warnings": list(result.warnings),
@@ -258,3 +265,58 @@ def test_mini_arkit_refuses_metric_scale_loudly(tmp_path) -> None:
     assert scale["reason"] == "scale_unresolved"
     assert scale["reason_detail"] == "meter_model_unread"
     assert scale["confidence"] == "weak"
+
+
+def _fake_getrusage(ru_maxrss: int):
+    def getrusage(who: int) -> SimpleNamespace:
+        assert who == resource.RUSAGE_SELF
+        return SimpleNamespace(ru_maxrss=ru_maxrss)
+
+    return getrusage
+
+
+def test_peak_rss_mb_reads_bytes_on_darwin(monkeypatch) -> None:
+    """macOS has no /proc and reports ru_maxrss in bytes."""
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(resource, "getrusage", _fake_getrusage(2 * 1024 * 1024))
+    assert _peak_rss_mb() == 2.0
+
+
+def test_peak_rss_mb_reads_kib_on_linux(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(resource, "getrusage", _fake_getrusage(2 * 1024 * 1024))
+    assert _peak_rss_mb() == 2048.0
+
+
+def _child_env(request: pytest.FixtureRequest, threads: str | None) -> dict[str, str]:
+    """The environment for a child Python: pytest's `pythonpath` entries, and the
+    thread variables set to `threads`, or removed when it is None."""
+    env = {k: v for k, v in os.environ.items() if k not in THREAD_ENV}
+    if threads is not None:
+        env.update(dict.fromkeys(THREAD_ENV, threads))
+    paths = [str(p) for p in request.config.getini("pythonpath")]
+    if os.environ.get("PYTHONPATH"):
+        paths.append(os.environ["PYTHONPATH"])
+    env["PYTHONPATH"] = os.pathsep.join(paths)
+    return env
+
+
+def test_importing_this_module_leaves_thread_env_alone(request) -> None:
+    """Thread limits belong to the chain's own process. Collecting this module must
+    not set them for every test that runs after it."""
+    script = (
+        "import importlib.util, os, sys\n"
+        "spec = importlib.util.spec_from_file_location('realcpu_import_probe', sys.argv[1])\n"
+        "spec.loader.exec_module(importlib.util.module_from_spec(spec))\n"
+        f"print(sorted(k for k in {THREAD_ENV!r} if k in os.environ))\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", script, __file__],
+        cwd=ROOT,
+        env=_child_env(request, threads=None),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr[-4000:]
+    assert proc.stdout.strip().splitlines()[-1] == "[]"
