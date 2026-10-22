@@ -9,10 +9,11 @@ registers its own artifact before raising.
 from __future__ import annotations
 
 from server.contracts.jobs import StageContext, StageResult
-from server.orchestrator.stubs._common import json_bytes, scripted_outcome, write_files
+from server.orchestrator.stubs._common import json_bytes, scripted_outcome, sleep_local_delay, write_files
 
 
 def run(ctx: StageContext) -> StageResult:
+    sleep_local_delay()
     if scripted_outcome() == "failed":
         _script_failed(ctx)
     return write_files(
@@ -22,6 +23,7 @@ def run(ctx: StageContext) -> StageResult:
             "packet/normalized.json": json_bytes({"format": "house-capture-packet", "stub": True}),
             "packet/capture_check.json": json_bytes({"complete": False, "missing": ["meter_close", "meter_oblique"]}),
         },
+        sleep=False,
     )
 
 

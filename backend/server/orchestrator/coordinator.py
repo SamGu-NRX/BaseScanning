@@ -895,7 +895,11 @@ def _vlm_spent(run: RunRecord) -> float:
 def _read_json(services: Services, run: RunRecord, artifact: str) -> dict[str, Any] | None:
     if services.orch.modal_remote:
         sync_volume("reload")
-    key = run.artifacts.get(artifact)
+    # A failing worker can publish its artifact and update the durable run record
+    # immediately before raising. Refresh here so failure decisions see it.
+    current = services.state.get_run(run.run_id) or run
+    current = overlay_stage_artifacts(services.state, current)
+    key = current.artifacts.get(artifact)
     if not key or not services.storage.exists(key):
         return None
     return json.loads(services.storage.get_bytes(key))

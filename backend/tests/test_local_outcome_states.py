@@ -261,11 +261,16 @@ def test_hss_local_outcome_walks_the_app_to_each_state(
 
     review = deps.storage.get_bytes(run.artifacts["result/review.html"])
     assert b"stand-in" in review
+    assert b"placement still ran the real CPU solver" in review
     assert payload["status"] == status
     assert payload["outcome"]["kind"] == kind
     final = _last_terminal(_flat(client, capture_id))
-    assert final["type"] == "verdict_ready"
-    assert final["data"]["kind"] == kind
+    if outcome == "needs_more_photos":
+        assert final["type"] == "retake_request"
+        assert final["data"]["viewsNeeded"] == [payload["viewsNeeded"][0]["id"]]
+    else:
+        assert final["type"] == "verdict_ready"
+        assert final["data"]["kind"] == kind
     if outcome == "manual_review":
         # The scripted default keeps today's plain stub wording.
         assert payload["outcome"]["message"] == "Review required before a placement is shown."
@@ -289,6 +294,7 @@ def test_hss_local_outcome_walks_the_app_to_each_state(
         assert payload["outcome"]["arkitEpoch"] == "e1"
         assert placement["boxArkitWorld"] is not None
         assert placement["boxArkitWorld"]["size"] == [0.7874, 1.0033, 0.5588]
+        assert placement["boxSceneM"]["centerM"][0] == 0.3 + placement["footprintM"]["w"] / 2
     if outcome == "needs_more_photos":
         view = payload["viewsNeeded"][0]
         assert view["kind"] == "band"
