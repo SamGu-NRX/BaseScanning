@@ -42,6 +42,7 @@ import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
@@ -139,11 +140,61 @@ def _write_session(path: Path, session: dict) -> None:
     os.chmod(path, 0o600)
 
 
+def _pid_alive(pid: object) -> bool:
+    # bool is an int, and 0 or a negative pid addresses a process group, for
+    # which os.kill(pid, 0) succeeds whether or not the server still runs.
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except PermissionError:
+        return True  # alive, owned by another user
+    except (ProcessLookupError, OverflowError):
+        return False
+    return True
+
+
+def _live_session(session_path: Path) -> dict | None:
+    """The session at `session_path` if the server that wrote it still serves.
+
+    Live means its pid is alive and its loopback port accepts a connection.
+    Either alone misleads: a crashed server's pid can be reused, and its port
+    can be taken by another process. A missing or unreadable file is not live;
+    no client could use its credentials either.
+    """
+    try:
+        session = json.loads(session_path.read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(session, dict) or not _pid_alive(session.get("pid")):
+        return None
+    try:
+        url = urllib.parse.urlsplit(str(session.get("baseUrl", "")))
+        host, port = url.hostname, url.port
+    except ValueError:
+        return None
+    if host not in LOOPBACK_HOSTS or port is None:
+        return None
+    try:
+        with socket.create_connection((host, port), timeout=1):
+            return session
+    except OSError:
+        return None
+
+
+# The readiness probe must reach the listener itself. urlopen honors
+# http_proxy, and without a loopback entry in no_proxy it asks the proxy
+# instead: a proxy that answers reports a server ready that is not serving, and
+# one that cannot reach loopback makes the launcher stop a healthy server
+# (Greptile P1 on #281).
+_DIRECT = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
 def _wait_health(base: str, timeout_s: float) -> bool:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         try:
-            with urllib.request.urlopen(f"{base}/v1/healthz", timeout=2) as response:
+            with _DIRECT.open(f"{base}/v1/healthz", timeout=2) as response:
                 if response.status == 200:
                     return True
         except (urllib.error.URLError, TimeoutError, OSError):
@@ -255,6 +306,20 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    session_dir = args.session_dir
+    volume_root = session_dir / "volume"
+    session_path = session_dir / "session.json"
+    # A second launch on a free port would bind and replace a running server's
+    # credentials, so the failed-bind guard below never fires; refuse instead.
+    live = _live_session(session_path)
+    if live is not None:
+        print(
+            f"refusing to start: {session_path} belongs to a live local capture API "
+            f"(pid {live['pid']}, {live['baseUrl']}). Stop it first, or pass another --session-dir.",
+            file=sys.stderr,
+        )
+        return 1
+
     import uvicorn
 
     try:
@@ -273,9 +338,6 @@ def main(argv: list[str] | None = None) -> int:
     hmac_secret = secrets.token_hex(32)
     git_sha = _git_sha()
 
-    session_dir = args.session_dir
-    volume_root = session_dir / "volume"
-    session_path = session_dir / "session.json"
     session = {
         "baseUrl": f"{base}/v1",
         "appToken": app_token,
