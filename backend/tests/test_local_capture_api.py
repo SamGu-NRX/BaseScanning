@@ -79,6 +79,15 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
+def _refusing_port() -> socket.socket:
+    """A loopback port that refuses connections: bound, never listening. It
+    stays reserved while the socket is open, so no server this test starts
+    can land on it."""
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    return sock
+
+
 def _loopback_client(**kwargs) -> httpx.Client:
     """An httpx client that ignores http_proxy and friends: every request in
     this file targets the launcher on 127.0.0.1, and a proxy from the
@@ -494,13 +503,14 @@ def test_live_session_needs_a_live_pid_and_an_answering_port(tmp_path: Path) -> 
     listener.bind(("127.0.0.1", 0))
     listener.listen(1)
     open_port = listener.getsockname()[1]
+    refusing = _refusing_port()
     exited = subprocess.Popen([sys.executable, "-c", "pass"])
     exited.wait()
     try:
         cases = [
             (os.getpid(), f"127.0.0.1:{open_port}", True),
             # A crashed server whose pid was reused: nothing listens.
-            (os.getpid(), f"127.0.0.1:{_free_port()}", False),
+            (os.getpid(), f"127.0.0.1:{refusing.getsockname()[1]}", False),
             # The pid is gone; whatever owns the port now is not this session.
             (exited.pid, f"127.0.0.1:{open_port}", False),
             # os.kill(0, 0) would signal this process group and succeed.
@@ -515,6 +525,7 @@ def test_live_session_needs_a_live_pid_and_an_answering_port(tmp_path: Path) -> 
             assert (launcher._live_session(path) is not None) is live, (pid, hostport)
     finally:
         listener.close()
+        refusing.close()
 
 
 class _AnswerEverything(http.server.BaseHTTPRequestHandler):
@@ -542,6 +553,7 @@ def test_readiness_needs_the_listener_not_a_shell_proxy(monkeypatch) -> None:
     proxy = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _AnswerEverything)
     proxy.hits = []
     threading.Thread(target=proxy.serve_forever, daemon=True).start()
+    nothing_listening = _refusing_port()
     try:
         for key in ("http_proxy", "HTTP_PROXY"):
             monkeypatch.setenv(key, f"http://127.0.0.1:{proxy.server_address[1]}")
@@ -550,16 +562,18 @@ def test_readiness_needs_the_listener_not_a_shell_proxy(monkeypatch) -> None:
         # urlopen builds its opener, proxy settings included, on first use and
         # caches it; clear the cache so the probe sees the env set above.
         monkeypatch.setattr(urllib.request, "_opener", None)
-        nothing_listening = f"http://127.0.0.1:{_free_port()}"
-        assert launcher._wait_health(nothing_listening, 1.0) is False
+        base = f"http://127.0.0.1:{nothing_listening.getsockname()[1]}"
+        assert launcher._wait_health(base, 1.0) is False
         assert proxy.hits == []
     finally:
         proxy.shutdown()
         proxy.server_close()
+        nothing_listening.close()
 
 
 def test_launcher_reports_ready_under_an_unreachable_proxy(tmp_path: Path) -> None:
-    dead_proxy = f"http://127.0.0.1:{_free_port()}"
+    dead = _refusing_port()
+    dead_proxy = f"http://127.0.0.1:{dead.getsockname()[1]}"
     log_path = tmp_path / "proxied.log"
     proc = _start_server(
         tmp_path / "session",
@@ -575,6 +589,7 @@ def test_launcher_reports_ready_under_an_unreachable_proxy(tmp_path: Path) -> No
             time.sleep(0.25)
     finally:
         _stop(proc)
+        dead.close()
 
 
 def _make_n(target: str, env: dict[str, str] | None = None, cwd: Path = ROOT) -> str:
