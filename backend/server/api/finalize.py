@@ -9,6 +9,7 @@ import json
 import math
 import threading
 from concurrent.futures import Future
+from datetime import UTC, datetime, timedelta
 
 from pydantic import ValidationError
 
@@ -28,6 +29,13 @@ from server.contracts.validation import ValidationIssue
 
 _INFLATE_CAP = 48 * 1024 * 1024
 _GZIP_CAP = 8 * 1024 * 1024
+# There is no evidence behind this value; it is a bounded recovery window for a
+# process that claimed a packet and then disappeared. Claims are never deleted,
+# so a later generation preserves the audit trail and cannot erase an in-flight
+# owner's decision.
+_ACCEPTED_CLAIM_STALE_AFTER = timedelta(minutes=5)
+
+
 _TIER_MARKERS = (
     "ARKit",
     "photo_only",
@@ -142,6 +150,56 @@ def render_finalize(status: str, missing: list[str], run_id: str) -> dict:
 
 def _multi(errors: list[dict]):
     return ApiFailure(422, errors)
+
+
+def _claim_prefix(capture_id: str, amendment_id: str | None) -> str:
+    if amendment_id is None:
+        return f"accepted_packet:{capture_id}"
+    return f"accepted_packet:{capture_id}:amendment:{amendment_id}"
+
+
+def _claim_generation_key(capture_id: str, amendment_id: str | None, generation: int) -> str:
+    return f"{_claim_prefix(capture_id, amendment_id)}:{generation}"
+
+
+def _claim_is_stale(deps: Deps, claim: dict) -> bool:
+    claimed_at = claim.get("claimed_at")
+    if not isinstance(claimed_at, str):
+        return False
+    try:
+        when = datetime.fromisoformat(claimed_at.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=UTC)
+    return deps.now() - when > _ACCEPTED_CLAIM_STALE_AFTER
+
+
+def _claim_packet(deps: Deps, capture_id: str, amendment_id: str | None, digest: str) -> int:
+    # Walk immutable, contiguous generations rather than updating a current-key
+    # pointer: a crash between insertion and pointer publication would strand it.
+    generation = 0
+    while True:
+        key = _claim_generation_key(capture_id, amendment_id, generation)
+        claim = deps.state.get_kv(key)
+        if claim is None:
+            candidate = {
+                "packet_sha256": digest,
+                "owner": deps.new_id("finalize-"),
+                "claimed_at": isoformat(deps.now()),
+            }
+            if deps.state.put_if_absent(key, candidate):
+                return generation
+            continue
+        if deps.state.get_kv(_claim_generation_key(capture_id, amendment_id, generation + 1)) is not None:
+            generation += 1
+            continue
+        if claim.get("packet_sha256") == digest:
+            return generation
+        if deps.state.get_kv(f"{key}:committed") or not _claim_is_stale(deps, claim):
+            what = "packet" if amendment_id is None else "amendment packet"
+            raise fail(409, "packet_sha_conflict", "/", f"a different {what} was already accepted")
+        generation += 1
 
 
 class _FinishSlot:
@@ -278,98 +336,77 @@ def accept_packet(
         log_event("finalize.rejected", codes=extra["last_422"], capture_id=record.capture_id)
         raise _multi(errors)
     key = packet_key(record.capture_id, amendment_id)
-    # The capture lock is per process and the API runs on up to
-    # CAPTURE_API_MAX_CONTAINERS containers, so `record` and the amendment row can
-    # predate another container's acceptance. The first digest to claim wins; a
-    # different packet gets the same 409 it would get once packet_sha256 is visible.
-    # The same packet proceeds, because its writes are identical.
-    claim_key = f"accepted_packet:{record.capture_id}:{amendment_id or '-'}"
-    claimed_now = deps.state.put_if_absent(claim_key, {"packet_sha256": digest})
-    if not claimed_now and (deps.state.get_kv(claim_key) or {}).get("packet_sha256") != digest:
-        what = "packet" if amendment_id is None else "amendment packet"
-        raise fail(409, "packet_sha_conflict", "/", f"a different {what} was already accepted")
-    try:
-        deps.storage.put_bytes(key, raw, "application/json")
-        run_id = _run_id(record.capture_id, raw)
-        paths = [
-            entry.path if amendment_id is None else f"amendments/{amendment_id}/{entry.path}" for entry in packet.files
-        ]
-        missing = []
-        for path, entry in zip(paths, packet.files, strict=True):
-            rec = deps.state.get_file(record.capture_id, path)
-            if rec is None or rec.state != "committed":
-                missing.append(entry.path)
-        extra = extras(deps, record.capture_id)
-        extra["accepted"] = {
-            "packet_sha256": digest,
-            "run_id": run_id,
-            "at": isoformat(deps.now()),
-            "listed": len(packet.files),
-        }
-        extra["paths"] = paths
-        extra["digests"] = {
-            path: {"sha256": entry.sha256, "bytes": entry.bytes}
-            for path, entry in zip(paths, packet.files, strict=True)
-        }
-        if amendment_id is not None:
-            extra["amendment_id"] = amendment_id
-            # Completion belongs to the accepted packet, not the whole capture. A
-            # child must validate and promote its own files before starting its run.
-            for flag in ("run_started", "manifest_ok", "promoted_at"):
-                extra.pop(flag, None)
-        extra["missing"] = missing
-        extra.pop("last_422", None)
-        if amendment_id is None:
-            record.packet_sha256 = digest
-            record.run_id = run_id
-        else:
-            extra["parent_run_id"] = parent_run_id
-            amend = deps.state.get_kv(f"amend:{record.capture_id}:{amendment_id}") or {}
-            amend["packet_sha256"] = digest
-            amend["run_id"] = run_id
-            deps.state.put_kv(f"amend:{record.capture_id}:{amendment_id}", amend)
-        save_extras(deps, record.capture_id, extra)
-        log_event(
-            "finalize.accepted",
-            listed=len(packet.files),
-            missing=len(missing),
-            run_id=run_id,
-            capture_id=record.capture_id,
+    # Claims are append-only because StateStore cannot compare-and-delete. A
+    # generation records its owner and age; only an uncommitted stale generation
+    # can be superseded, while identical requests remain safe to replay.
+    generation = _claim_packet(deps, record.capture_id, amendment_id, digest)
+    claim_key = _claim_generation_key(record.capture_id, amendment_id, generation)
+    committed_key = f"{claim_key}:committed"
+    deps.storage.put_bytes(key, raw, "application/json")
+    run_id = _run_id(record.capture_id, raw)
+    paths = [
+        entry.path if amendment_id is None else f"amendments/{amendment_id}/{entry.path}" for entry in packet.files
+    ]
+    missing = []
+    for path, entry in zip(paths, packet.files, strict=True):
+        rec = deps.state.get_file(record.capture_id, path)
+        if rec is None or rec.state != "committed":
+            missing.append(entry.path)
+    extra = extras(deps, record.capture_id)
+    extra["accepted"] = {
+        "packet_sha256": digest,
+        "run_id": run_id,
+        "at": isoformat(deps.now()),
+        "listed": len(packet.files),
+    }
+    extra["paths"] = paths
+    extra["digests"] = {
+        path: {"sha256": entry.sha256, "bytes": entry.bytes} for path, entry in zip(paths, packet.files, strict=True)
+    }
+    if amendment_id is not None:
+        extra["amendment_id"] = amendment_id
+        # Completion belongs to the accepted packet, not the whole capture. A
+        # child must validate and promote its own files before starting its run.
+        for flag in ("run_started", "manifest_ok", "promoted_at"):
+            extra.pop(flag, None)
+    extra["missing"] = missing
+    extra.pop("last_422", None)
+    if amendment_id is None:
+        record.packet_sha256 = digest
+        record.run_id = run_id
+    else:
+        extra["parent_run_id"] = parent_run_id
+        amend = deps.state.get_kv(f"amend:{record.capture_id}:{amendment_id}") or {}
+        amend["packet_sha256"] = digest
+        amend["run_id"] = run_id
+        deps.state.put_kv(f"amend:{record.capture_id}:{amendment_id}", amend)
+    save_extras(deps, record.capture_id, extra)
+    log_event(
+        "finalize.accepted",
+        listed=len(packet.files),
+        missing=len(missing),
+        run_id=run_id,
+        capture_id=record.capture_id,
+    )
+    if missing:
+        record.status = "awaiting_files"
+    deps.state.put_capture(record)
+    # Both the capture and any amendment row are durable before commitment.
+    # Scheduling may fail afterward; an identical request resumes that packet.
+    deps.state.put_if_absent(committed_key, {"committed_at": isoformat(deps.now())})
+    if missing:
+        result = schedule_finish(
+            deps,
+            record,
+            digest,
+            key,
+            run_id,
+            parent_run_id=parent_run_id,
+            promote=False,
         )
-        if missing:
-            record.status = "awaiting_files"
-            deps.state.put_capture(record)
-            result = schedule_finish(
-                deps,
-                record,
-                digest,
-                key,
-                run_id,
-                parent_run_id=parent_run_id,
-                promote=False,
-            )
-        else:
-            result = schedule_finish(deps, record, digest, key, run_id, parent_run_id=parent_run_id, promote=True)
-        return result
-    except Exception:
-        if claimed_now:
-            # Persisting packet_sha256 on the capture (or amendment) is the commit
-            # point. Before it, a failed acceptance must allow a corrected packet.
-            # After it, keep the claim even if scheduling fails: identical retries
-            # resume the accepted packet, and stale containers must still conflict.
-            persisted = (
-                deps.state.get_capture(record.capture_id)
-                if amendment_id is None
-                else deps.state.get_kv(f"amend:{record.capture_id}:{amendment_id}")
-            )
-            persisted_digest = (
-                getattr(persisted, "packet_sha256", None)
-                if amendment_id is None
-                else (persisted or {}).get("packet_sha256")
-            )
-            if persisted_digest != digest:
-                deps.state.delete_kv(claim_key)
-        raise
+    else:
+        result = schedule_finish(deps, record, digest, key, run_id, parent_run_id=parent_run_id, promote=True)
+    return result
 
 
 def _amendment_manifest(deps: Deps, record: CaptureRecord, packet: Packet, amendment_id: str) -> list[dict]:

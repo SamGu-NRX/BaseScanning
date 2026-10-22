@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import json
+from asyncio import CancelledError
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
+from threading import Event, current_thread
 
 import pytest
 
@@ -119,8 +123,8 @@ def test_a_second_container_with_the_same_packet_still_replays(client):
     assert deps.state.get_capture(capture_id).packet_sha256 == sha256_hex(raw)
 
 
-def test_a_failed_packet_write_releases_the_claim(client, monkeypatch):
-    """Guard for the claim, not failing-first: alpha has no claim to release."""
+def test_a_failed_packet_write_keeps_claim_until_stale(client, monkeypatch):
+    """A failed owner remains visible while an identical retry can recover it."""
     packet_id = "packet-write-fails"
     capture_id, packet = _ready(client, packet_id)
     deps = client.app_state
@@ -135,14 +139,22 @@ def test_a_failed_packet_write_releases_the_claim(client, monkeypatch):
         accept_packet(deps, record.model_copy(deep=True), json.dumps(packet).encode())
     monkeypatch.setattr(deps.storage, "put_bytes", real_put)
 
+    raw = json.dumps(packet).encode()
+    claim = deps.state.get_kv(f"accepted_packet:{capture_id}:0")
+    assert claim and claim["packet_sha256"] == sha256_hex(raw)
     packet["createdAt"] = "2026-09-27T00:00:00.000Z"
+    with pytest.raises(ApiFailure) as refused:
+        accept_packet(deps, record.model_copy(deep=True), json.dumps(packet).encode())
+    assert refused.value.status == 409
+    now = deps.now()
+    deps.clock = lambda: now + timedelta(minutes=5, seconds=1)
     corrected = accept_packet(deps, record.model_copy(deep=True), json.dumps(packet).encode())
     drain_finalize(deps)
     assert corrected["status"] == "processing"
 
 
-@pytest.mark.parametrize("failure", ["save_extras", "put_capture", "schedule_finish"])
-def test_finalize_failure_releases_claim_for_a_different_packet(client, monkeypatch, failure):
+@pytest.mark.parametrize("failure", ["save_extras", "put_capture"])
+def test_finalize_failure_keeps_claim_for_a_different_packet_until_stale(client, monkeypatch, failure):
     import server.api.finalize as finalize_module
 
     packet_id = f"packet-{failure}"
@@ -164,6 +176,11 @@ def test_finalize_failure_releases_claim_for_a_different_packet(client, monkeypa
     assert deps.state.get_capture(capture_id).packet_sha256 is None
     packet["createdAt"] = "2026-09-27T00:00:00.000Z"
     corrected_raw = json.dumps(packet).encode()
+    with pytest.raises(ApiFailure) as refused:
+        accept_packet(deps, deps.state.get_capture(capture_id), corrected_raw)
+    assert refused.value.status == 409
+    now = deps.now()
+    deps.clock = lambda: now + timedelta(minutes=5, seconds=1)
     corrected = accept_packet(deps, deps.state.get_capture(capture_id), corrected_raw)
     drain_finalize(deps)
     assert corrected["status"] == "processing"
@@ -187,7 +204,7 @@ def test_failure_after_capture_persistence_keeps_claim_and_identical_replay(clie
             accept_packet(deps, stale_record.model_copy(deep=True), raw)
 
     assert deps.state.get_capture(capture_id).packet_sha256 == sha256_hex(raw)
-    assert deps.state.get_kv(f"accepted_packet:{capture_id}:-") == {"packet_sha256": sha256_hex(raw)}
+    assert deps.state.get_kv(f"accepted_packet:{capture_id}:0")["packet_sha256"] == sha256_hex(raw)
     packet["createdAt"] = "2026-09-27T00:00:00.000Z"
     with pytest.raises(ApiFailure) as refused:
         accept_packet(deps, stale_record, json.dumps(packet).encode())
@@ -197,3 +214,131 @@ def test_failure_after_capture_persistence_keeps_claim_and_identical_replay(clie
     drain_finalize(deps)
     assert replay["status"] == "processing"
     assert replay["runId"] == deps.state.get_capture(capture_id).run_id
+
+
+@pytest.mark.parametrize("interruption", [CancelledError, SystemExit], ids=["cancelled", "crash"])
+def test_interrupted_claim_can_be_superseded_only_after_staleness_bound(client, monkeypatch, interruption):
+    capture_id, packet = _ready(client, "packet-interrupted")
+    deps = client.app_state
+    stale_record = deps.state.get_capture(capture_id)
+    raw = json.dumps(packet).encode()
+    now = datetime(2026, 10, 22, 19, 0, tzinfo=UTC)
+    deps.clock = lambda: now
+
+    def interrupted(*_args, **_kwargs):
+        raise interruption()
+
+    with monkeypatch.context() as patch:
+        patch.setattr(deps.storage, "put_bytes", interrupted)
+        with pytest.raises(interruption):
+            accept_packet(deps, stale_record.model_copy(deep=True), raw)
+
+    first_key = f"accepted_packet:{capture_id}:0"
+    claim = deps.state.get_kv(first_key)
+    assert claim["packet_sha256"] == sha256_hex(raw)
+    assert claim["owner"]
+    assert claim["claimed_at"] == "2026-10-22T19:00:00.000Z"
+    assert deps.state.get_kv(f"{first_key}:committed") is None
+    packet["createdAt"] = "2026-09-27T00:00:00.000Z"
+    replacement = json.dumps(packet).encode()
+    for elapsed in (timedelta(0), timedelta(minutes=5)):
+        deps.clock = lambda elapsed=elapsed: now + elapsed
+        with pytest.raises(ApiFailure) as refused:
+            accept_packet(deps, stale_record.model_copy(deep=True), replacement)
+        assert refused.value.status == 409
+        assert deps.state.get_kv(f"accepted_packet:{capture_id}:1") is None
+
+    deps.clock = lambda: now + timedelta(minutes=5, microseconds=1)
+    accepted = accept_packet(deps, stale_record.model_copy(deep=True), replacement)
+    drain_finalize(deps)
+    assert accepted["status"] == "processing"
+    assert deps.state.get_kv(first_key) == claim
+    assert deps.state.get_kv(f"accepted_packet:{capture_id}:1")["packet_sha256"] == sha256_hex(replacement)
+    assert deps.state.get_kv(f"accepted_packet:{capture_id}:1:committed")
+
+
+def test_identical_retry_completes_failed_claim_without_deleting_it(client, monkeypatch):
+    capture_id, packet = _ready(client, "packet-identical-retry")
+    deps = client.app_state
+    stale_record = deps.state.get_capture(capture_id)
+    raw = json.dumps(packet).encode()
+
+    def offline(*_args, **_kwargs):
+        raise RuntimeError("storage offline")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(deps.storage, "put_bytes", offline)
+        with pytest.raises(RuntimeError, match="storage offline"):
+            accept_packet(deps, stale_record.model_copy(deep=True), raw)
+
+    claim_key = f"accepted_packet:{capture_id}:0"
+    claim = deps.state.get_kv(claim_key)
+    assert claim is not None
+    accepted = accept_packet(deps, stale_record.model_copy(deep=True), raw)
+    drain_finalize(deps)
+    assert accepted["status"] == "processing"
+    assert deps.state.get_kv(claim_key) == claim
+    assert deps.state.get_kv(f"{claim_key}:committed")
+    assert deps.state.get_kv(f"accepted_packet:{capture_id}:1") is None
+
+
+def test_failed_owner_cannot_release_identical_inflight_writers_claim(client, monkeypatch):
+    capture_id, packet = _ready(client, "packet-inflight-identical")
+    deps = client.app_state
+    stale_record = deps.state.get_capture(capture_id)
+    raw = json.dumps(packet).encode()
+    packet["createdAt"] = "2026-09-27T00:00:00.000Z"
+    different = json.dumps(packet).encode()
+    owner_writing, retry_writing = Event(), Event()
+    fail_owner, finish_retry = Event(), Event()
+    real_put = deps.storage.put_bytes
+
+    def gated_put(*args, **kwargs):
+        if current_thread().name.startswith("claim-owner"):
+            owner_writing.set()
+            assert fail_owner.wait(5), "owner was never released"
+            raise RuntimeError("owner write failed")
+        if current_thread().name.startswith("claim-retry"):
+            retry_writing.set()
+            assert finish_retry.wait(5), "retry was never released"
+        return real_put(*args, **kwargs)
+
+    monkeypatch.setattr(deps.storage, "put_bytes", gated_put)
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="claim-owner") as owner_pool:
+        with ThreadPoolExecutor(max_workers=1, thread_name_prefix="claim-retry") as retry_pool:
+            try:
+                owner = owner_pool.submit(accept_packet, deps, stale_record.model_copy(deep=True), raw)
+                assert owner_writing.wait(5), "owner did not reach storage"
+                retry = retry_pool.submit(accept_packet, deps, stale_record.model_copy(deep=True), raw)
+                assert retry_writing.wait(5), "identical retry did not reach storage"
+                fail_owner.set()
+                with pytest.raises(RuntimeError, match="owner write failed"):
+                    owner.result(timeout=5)
+                # B is still writing after A failed. A must not open a hole for C.
+                with pytest.raises(ApiFailure) as refused:
+                    accept_packet(deps, stale_record.model_copy(deep=True), different)
+                assert refused.value.status == 409
+            finally:
+                fail_owner.set()
+                finish_retry.set()
+            assert retry.result(timeout=5)["status"] == "processing"
+    drain_finalize(deps)
+    assert deps.storage.get_bytes(f"captures/{capture_id}/packet.json") == raw
+    assert deps.state.get_capture(capture_id).packet_sha256 == sha256_hex(raw)
+
+
+def test_committed_generation_never_expires_even_for_stale_capture_view(client):
+    capture_id, packet = _ready(client, "packet-committed-generation")
+    deps = client.app_state
+    stale_record = deps.state.get_capture(capture_id)
+    raw = json.dumps(packet).encode()
+    accept_packet(deps, stale_record.model_copy(deep=True), raw)
+    drain_finalize(deps)
+    now = deps.now()
+    deps.clock = lambda: now + timedelta(days=30)
+    packet["createdAt"] = "2026-09-27T00:00:00.000Z"
+    with pytest.raises(ApiFailure) as refused:
+        accept_packet(deps, stale_record, json.dumps(packet).encode())
+    assert refused.value.status == 409
+    assert deps.state.get_kv(f"accepted_packet:{capture_id}:0:committed")
+    assert deps.state.get_kv(f"accepted_packet:{capture_id}:1") is None
