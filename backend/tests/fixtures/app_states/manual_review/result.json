@@ -21,9 +21,9 @@
     "recommendedPlacement": null,
     "viewsNeeded": []
   },
-  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjE3NDc2Niwia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTUyWTVaNzlGQUJHTUQ2NDFSMVg4V1o3L3J1bnMvcnVuX2RmN2Q3MmIwN2Y2NTlkYjQvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.152598eb13f0de3bac80d59b7ad3557db176315007aea22d88390c37aeea5f40",
-  "reviewUrl": "/v1/captures/cap_01M52Y5Z79FABGMD641R1X8WZ7/review",
-  "runId": "run_df7d72b07f659db4",
+  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjY5NTY1NCwia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTVKRVk2S0U5MTZXQldQSEY2WEI0MTNaL3J1bnMvcnVuXzAzMDI4ODI2OTkwZTI5ZjkvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.18e88faf86601681d82a665e75b979f30a266678919ab49fe7433915441573cc",
+  "reviewUrl": "/v1/captures/cap_01M5JEY6KE916WBWPHF6XB413Z/review",
+  "runId": "run_03028826990e29f9",
   "scale": null,
   "site": null,
   "status": "manual_review",

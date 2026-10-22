@@ -69,9 +69,9 @@
     },
     "viewsNeeded": []
   },
-  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjE3NDc2Nywia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTUyWTVaVjFHUVkxQTFTRE01OE5YNzJYL3J1bnMvcnVuX2JhNjA5ZmViM2FiNTUxODUvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.1022d38e5ec26e01cc412a8b3d4e67575691efc32aae73bf0b8c6c78efc08251",
-  "reviewUrl": "/v1/captures/cap_01M52Y5ZV1GQY1A1SDM58NX72X/review",
-  "runId": "run_ba609feb3ab55185",
+  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjY5NTY1NSwia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTVKRVk3Qk40NEU4UTk3MUZSNlNDUERaL3J1bnMvcnVuX2RjNzlmNmZhMTdhNzcxYjUvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.8fc3fafe7e47479cec2ea350eb2c80f13af91884fda855e277a5a7f0ca4876fc",
+  "reviewUrl": "/v1/captures/cap_01M5JEY7BN44E8Q971FR6SCPDZ/review",
+  "runId": "run_dc79f6fa17a771b5",
   "scale": null,
   "site": null,
   "status": "complete",
