@@ -454,10 +454,16 @@ extension ScanEngine: ScanActions {
             feature.span = span
             feature.bottom = max(0, heights.min() ?? 0)
             feature.top = heights.max()
-        case .gasMeter, .acUnit:
+        case .gasMeter:
             // One tap marks the object's middle; 0.3 m is a nominal width, not a measurement.
             let s = ss.first ?? 0
             feature.span = (s - 0.15)...(s + 0.15)
+        case .acUnit:
+            let s = ss.first ?? 0
+            let half = ACUnitGeometry.assumedSide / 2
+            feature.span = (s - half)...(s + half)
+            // Recompute after anchor refinement too, so the model retains the measured offset.
+            feature.out = taps.first?.out
         case .driveway, .fence:
             feature.span = span
             // The nearer tap, as the export uses: the narrow end must not be overstated.

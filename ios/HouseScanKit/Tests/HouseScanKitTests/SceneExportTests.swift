@@ -139,8 +139,7 @@ import simd
         #expect(objects[3]["bottom_ft"] == nil && objects[3]["top_ft"] == nil)
     }
 
-    /// #72 option (b): a one-tap AC unit is sent as an assumed 3 ft x 3 ft square centred on the
-    /// tap along the wall, running from the wall line 3 ft out, not the gas meter's 1 ft square.
+    /// D1 option B preserves the measured center in both plan axes.
     @Test func acUnitGetsItsAssumedThreeFootSquare() throws {
         #expect(abs(SceneExport.acAssumedSide / 0.3048 - 3) < 1e-4)
         let (_, v) = try Self.exported()
@@ -151,11 +150,12 @@ import simd
         let footprint = (ac["footprint"]?.array ?? []).compactMap(\.numbers)
         try #require(footprint.count == 4)
         // Back-left to back-right: 3 ft along (0.8, -0.6). Back-left to front-left: 3 ft out along
-        // (0.6, 0.8), from the wall line although the tap was 0.5 m out.
+        // (0.6, 0.8), centered on the tap 0.5 m out.
         expectClose([footprint[1][0] - footprint[0][0], footprint[1][1] - footprint[0][1]], [2.4, -1.8])
         expectClose([footprint[3][0] - footprint[0][0], footprint[3][1] - footprint[0][1]], [1.8, 2.4])
-        // Back-left corner on the wall line at s = 3.0 - 0.4572 m: (1, -2) + (0.8, -0.6) * 2.5428 m.
-        expectClose(footprint[0], [(1 + 0.8 * 2.5428) / 0.3048, (-2 - 0.6 * 2.5428) / 0.3048])
+        // Back edge is 0.5 - 0.4572 m out; it is no longer reset to the wall line.
+        expectClose(footprint[0], [(1 + 0.8 * 2.5428 + 0.6 * 0.0428) / 0.3048,
+                                   (-2 - 0.6 * 2.5428 + 0.8 * 0.0428) / 0.3048])
     }
 
     @Test(arguments: [ScenePointObjectKind.ac, .gasMeter])
@@ -173,7 +173,9 @@ import simd
         let polygon = try #require(value["objects"]?[0]?["footprint"]?.array).compactMap(\.numbers)
         try #require(polygon.count == 4)
         let scale = SceneUnits.feetPerMeter
-        let expected = [SIMD2(s - half, 0), SIMD2(s + half, 0), SIMD2(s + half, depth), SIMD2(s - half, depth)]
+        let back: Float = kind == .ac ? -half : 0
+        let front = back + depth
+        let expected = [SIMD2(s - half, back), SIMD2(s + half, back), SIMD2(s + half, front), SIMD2(s - half, front)]
         for (actual, point) in zip(polygon, expected) {
             expectClose(actual, [Double(point.x) * scale, Double(point.y) * scale])
         }
