@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from server.common.lease import LeaseGuard, with_lease
+from server.common.lease import LeaseBusy, LeaseGuard, LeaseLost, with_lease
 from server.common.logging import log_event
 from server.contracts.api import StageData
 from server.contracts.jobs import (
@@ -23,6 +23,7 @@ from server.contracts.jobs import (
 from server.eval.sceneio import validate as validate_document
 from server.orchestrator.artifacts import overlay_stage_artifacts
 from server.orchestrator.clock import parse_iso
+from server.orchestrator.corrections import latest_publication, pending_corrections
 from server.orchestrator.events import emit_failed, emit_stage
 from server.orchestrator.executor import CoordinatorDied, InlineExecutor
 from server.orchestrator.graph import STAGE_NAMES, STAGES, gpu_for_attempt, ready_stages
@@ -45,16 +46,6 @@ from server.orchestrator.stateio import get_json, put_json
 _FINAL = {"verdict_ready", "retake_request", "failed"}
 
 
-def pending_correction_key(run_id: str, confirmation_id: str | None = None) -> str:
-    suffix = f":{confirmation_id}" if confirmation_id else ""
-    return f"run_pending_correction:{run_id}{suffix}"
-
-
-def pending_correction_keys(state: object, run_id: str) -> list[str]:
-    prefix = pending_correction_key(run_id)
-    return [key for key in state.list_blobs(prefix) if key == prefix or key.startswith(f"{prefix}:")]  # type: ignore[attr-defined]
-
-
 def correction_lease_name(run_id: str) -> str:
     """Shared state lease for the correction publish/complete decision."""
 
@@ -62,18 +53,21 @@ def correction_lease_name(run_id: str) -> str:
 
 
 def with_correction_lease(services: Services, run_id: str, fn) -> None:
-    # The marker is durable, so a caller that cannot acquire the lease must not
-    # run the decision unlocked. The next coordinator tick can recover it. The
-    # guard fences the terminal writes if a worker outlives its lease.
-    with_lease(
-        services.state,
-        correction_lease_name(run_id),
-        fn,
-        strict=True,
-        wait_s=3.0,
-        lease_s=30.0,
-        pass_guard=True,
-    )
+    # The backend cannot compare-and-delete a lease token. Losing ownership can
+    # cause duplicate work, but immutable corrections/publications remain safe.
+    try:
+        with_lease(
+            services.state,
+            correction_lease_name(run_id),
+            fn,
+            strict=True,
+            wait_s=0.0,
+            lease_s=30.0,
+            pass_guard=True,
+        )
+    except (LeaseBusy, LeaseLost):
+        # No three-second request delay: the durable sequence is the retry queue.
+        log_event("confirmation.lease_deferred", run_id=run_id)
 
 
 def reset_criteria_and_result(services: Services, run: RunRecord) -> None:
@@ -82,7 +76,7 @@ def reset_criteria_and_result(services: Services, run: RunRecord) -> None:
     The shared tail of both correction paths (a finished run recomposed by
     ``on_confirmation`` and a live run that recorded a pending correction): the
     two stages return to pending, the run re-enters the normal lifecycle, and
-    the re-executed stages overwrite the same artifact keys. The run's deadline
+    the re-executed stages publish new immutable artifact keys. The run's deadline
     measured its earlier pass, so the re-run gets the same HARD_STOP_MIN budget
     ``start_run`` gives a new run, counted from now.
     """
@@ -610,66 +604,13 @@ class RunCoordinator:
         self._save_control(run.run_id, control)
 
     def _consume_pending_correction(self, run: RunRecord, guard: LeaseGuard | None = None) -> bool:
-        """Reset criteria/result once for every durable correction marker.
-
-        Markers are created before the reads write, so a crash between those
-        writes still leaves a recomposition to recover the accepted answer.
-        """
-        keys = pending_correction_keys(self.s.state, run.run_id)
-        if not keys:
+        """An answer stays pending until a published version covers it."""
+        if not pending_corrections(self.s.state, run):
             return False
-        # A marker is created before the reads write. Until its owner flips
-        # readsApplied, completion must stop rather than publish a stale result.
-        for key in keys:
-            marker = get_json(self.s.state, key) or {}
-            if marker.get("readsApplied") is False and marker.get("confirmationId"):
-                self._apply_pending_correction(run, key, marker, guard)
-        if guard is not None:
-            guard.assert_held()
         self._remember_existing_final_event(run)
         reset_criteria_and_result(self.s, run)
-        if guard is not None:
-            guard.assert_held()
-        # Delete only after every reset write succeeded. A crash leaves every
-        # marker for the next coordinator tick.
-        for key in keys:
-            self.s.state.delete_blob(key)
         log_event("confirmation.recompose_live", capture_id=run.capture_id, run_id=run.run_id)
         return True
-
-    def _apply_pending_correction(
-        self,
-        run: RunRecord,
-        key: str,
-        marker: dict,
-        guard: LeaseGuard | None,
-    ) -> None:
-        """Finish a marker interrupted between the reads write and its ack."""
-        if guard is not None:
-            guard.assert_held()
-        from server.reads.policy import confirm
-        from server.reads.types import Reads
-
-        fresh = self._overlay_artifacts(self._run(run.run_id))
-        reads_key = fresh.artifacts.get("reads/reads.json")
-        if not reads_key:
-            raise RuntimeError("confirmation recovery has no reads artifact")
-        reads = Reads.model_validate(json.loads(self.s.storage.get_bytes(reads_key)))
-        updated = confirm(
-            reads,
-            still_id=str(marker.get("imageId") or ""),
-            choice=marker.get("value") if marker.get("kind") == "confirmed" else None,
-            typed=marker.get("value") if marker.get("kind") == "corrected" else None,
-            by=str(marker.get("by") or "device"),
-            field_id=str(marker.get("fieldId") or "meter_number"),
-        )
-        if guard is not None:
-            guard.assert_held()
-        self.s.storage.put_bytes(reads_key, updated.model_dump_json().encode(), "application/json")
-        marker["readsApplied"] = True
-        if guard is not None:
-            guard.assert_held()
-        put_json(self.s.state, key, marker)
 
     def _maybe_finish(self, run: RunRecord) -> None:
         def decide_completion(guard: LeaseGuard) -> None:
@@ -689,12 +630,10 @@ class RunCoordinator:
                 return
             if self._consume_pending_correction(fresh, guard):
                 return
-            # Keep the completion decision under the same lease as the
-            # confirmation publisher through the terminal event and status.
-            guard.assert_held()
             self._write_run_files(fresh)
-            guard.assert_held()
             self._apply_success(fresh)
+            # Completion may race an acceptance after the first snapshot.
+            self._consume_pending_correction(self._run(run.run_id))
 
         with_correction_lease(self.s, run.run_id, decide_completion)
 
@@ -808,6 +747,11 @@ class RunCoordinator:
                 self._save_control(run.run_id, control)
 
     def _verify_final_event(self, run: RunRecord) -> None:
+        if latest_publication(self.s.state, run.run_id) is not None:
+            from server.orchestrator.publication import emit_latest_publication
+
+            emit_latest_publication(self.s.state, self.s.storage, run.run_id, self.s.settings)
+            return
         events = self.s.state.events_after(run.capture_id, 0, limit=500)
         finals = [event for event in events if event.type in _FINAL and event.run_id == run.run_id]
         control = self._control(run.run_id)

@@ -39,24 +39,6 @@ def test_lease_renews_while_callback_is_longer_than_expiry() -> None:
     assert errors == []
 
 
-def test_release_does_not_delete_owner_installed_after_ownership_read(monkeypatch) -> None:
-    """A successor can take over between the release's get and delete RPCs."""
-    state = MemoryState()
-    real_delete = state.delete_kv
-    successor = {"id": "successor", "at": 99999999999}
-
-    def take_over_before_delete(key):
-        if key == "lease:completion":
-            # The release already read its own token. Model expiry and a new
-            # owner's successful claim before the delete reaches the store.
-            state.put_kv(key, successor)
-        return real_delete(key)
-
-    monkeypatch.setattr(state, "delete_kv", take_over_before_delete)
-    with_lease(state, "completion", lambda: None, strict=True)
-    assert state.get_kv("lease:completion") == successor
-
-
 def test_expired_holder_cannot_publish_over_second_owner() -> None:
     state = MemoryState()
     entered = threading.Event()

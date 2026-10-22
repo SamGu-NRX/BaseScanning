@@ -58,6 +58,7 @@ CONTRACT_ARTIFACTS = frozenset(
         "verdicts/verdict.C.json",
         "verdicts/verdict.S.json",
         "verdicts/criteria_report.json",
+        "verdicts/correction-inputs.json",
         "verdicts/placement.C.json",
         "result/result.json",
         "result/result.internal.json",
@@ -87,6 +88,11 @@ def overlay_stage_artifacts(state: object, run: RunRecord) -> RunRecord:
         extra = get_json(state, f"stage_artifacts:{run.run_id}:{name}")
         if isinstance(extra, dict):
             artifacts.update({str(key): str(value) for key, value in extra.items()})
+    from server.orchestrator.corrections import latest_publication
+
+    published = latest_publication(state, run.run_id)
+    if published is not None:
+        artifacts.update({key: value for key, value in published["artifacts"].items() if key.startswith("result/")})
     return run.model_copy(update={"artifacts": artifacts})
 
 

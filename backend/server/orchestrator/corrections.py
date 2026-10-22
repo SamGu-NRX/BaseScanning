@@ -12,6 +12,8 @@ composing. A crash during the copy is recovered by the next snapshot read.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 from server.contracts.jobs import RunRecord
@@ -79,6 +81,34 @@ def fold_reads(base: Reads, corrections: list[dict]) -> Reads:
             field_id=field,
         )
     return reads
+
+
+def prepare_inputs(state: Any, run: RunRecord, stage: str, work: Path) -> Path:
+    """Criteria and result must consume the same immutable reads snapshot."""
+    path = work / "verdicts/correction-inputs.json"
+    reads_path = work / "reads/reads.json"
+    if stage == "criteria":
+        rows = correction_snapshot(state, run)
+        raw = json.loads(reads_path.read_text()) if reads_path.is_file() else None
+        if rows:
+            if raw is None:
+                raise RuntimeError("correction composition has no base reads artifact")
+            raw = fold_reads(Reads.model_validate(raw), rows).model_dump(mode="json")
+        snapshot = {"correctionIds": [row["confirmationId"] for row in rows], "reads": raw}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(snapshot))
+    elif path.is_file():
+        snapshot = json.loads(path.read_text())
+    else:
+        # Legacy criteria did not record a snapshot. Publish coverage zero, then
+        # the coordinator sees uncovered answers and rebuilds both stages.
+        snapshot = {"correctionIds": [], "reads": None}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(snapshot))
+    if snapshot["reads"] is not None:
+        reads_path.parent.mkdir(parents=True, exist_ok=True)
+        reads_path.write_text(json.dumps(snapshot["reads"]))
+    return path
 
 
 def latest_publication(state: Any, run_id: str) -> dict | None:

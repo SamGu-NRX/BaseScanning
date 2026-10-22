@@ -7,7 +7,7 @@ import shutil
 import time
 from pathlib import Path
 
-from server.common.lease import LeaseGuard
+from server.common.lease import LeaseBusy, LeaseGuard, LeaseLost
 from server.common.logging import log_event
 from server.contracts.api import ConfirmationRequest, StageData
 from server.contracts.jobs import (
@@ -19,10 +19,10 @@ from server.contracts.packet import Tier
 from server.orchestrator.clock import parse_iso
 from server.orchestrator.coordinator import (
     RunCoordinator,
-    pending_correction_key,
     reset_criteria_and_result,
     with_correction_lease,
 )
+from server.orchestrator.corrections import pending_corrections, record_correction
 from server.orchestrator.early.capture_check import final_check, flush_pending
 from server.orchestrator.early.dispatch import dispatch
 from server.orchestrator.early.index import early_keys
@@ -155,32 +155,10 @@ def dispatch_early(capture_id: str, files: list[CommittedFile]) -> None:
 
 
 def _recompose_after_correction(capture_id: str, run: RunRecord) -> None:
-    """Re-run criteria and result on the finished run so the served result reflects a late correction.
+    """Reopen the finished run without deleting correction evidence.
 
-    A confirmation accepted after reads reached the result cannot retroactively
-    enter the composed payload. ``start_run`` cannot stage a fresh run here — it
-    derives the run id from the packet digest, so the same packet joins the
-    existing run instead of creating one. Instead the finished run's criteria and
-    result stages go back to pending, the run re-enters the normal coordinator
-    lifecycle, and the re-executed stages overwrite the same artifact keys: the
-    recomposed payload is what ``GET /result`` serves next. The acceptance event
-    and the recomposition's ``verdict_ready`` land on ``GET /events``. A replayed
-    confirmation still short-circuits upstream, so one correction recomposes once.
-
-    A finished run without a record for every stage predates per-stage records.
-    Its upstream stages really finished — the run is done — so the rebuild
-    preserves that work instead of skipping it: every stage history never wrote
-    gets a terminal done record (idempotent, the same recovery shape the
-    coordinator's missing-record materialization uses), and only the criteria and
-    result records reset. No succeeded stage reopens, so the re-run reads stage
-    that would overwrite the just-persisted correction never executes. If the
-    stored upstream artifacts cannot support the rebuild — no scene bytes for the
-    coordinator-owned merge, say — the coordinator closes the run with its normal
-    artifact_invalid failure instead of leaving the stale result served as
-    success.
-
-    A live run is left alone — its result stage has not consumed the corrected
-    reads yet, so it recomposes by simply running.
+    Legacy runs materialize upstream stage rows so only criteria/result rerun.
+    The lease avoids duplicate work; immutable publication establishes safety.
     """
 
     services = current()
@@ -190,9 +168,8 @@ def _recompose_after_correction(capture_id: str, run: RunRecord) -> None:
 
     def prepare(guard: LeaseGuard) -> None:
         nonlocal run
-        guard.assert_held()
         stored = services.state.get_run(run.run_id)  # type: ignore[attr-defined]
-        if stored is None or stored.status != "done":
+        if stored is None or stored.status != "done" or not pending_corrections(services.state, stored):
             return
         run = stored
         present = {rec.stage for rec in services.state.stages(run.run_id)}  # type: ignore[attr-defined]
@@ -221,11 +198,6 @@ def _recompose_after_correction(capture_id: str, run: RunRecord) -> None:
                 preserved_stages=preserved,
             )
         reset_criteria_and_result(services, run)
-        # The marker is cleared only after the reset is durable. A failed reset
-        # therefore remains recoverable by the coordinator.
-        guard.assert_held()
-        for marker in services.state.list_blobs(pending_correction_key(run.run_id)):  # type: ignore[attr-defined]
-            services.state.delete_blob(marker)  # type: ignore[attr-defined]
         prepared[0] = True
 
     with_correction_lease(services, run.run_id, prepare)
@@ -246,97 +218,27 @@ def on_confirmation(
     by: str,
 ) -> None:
     services = current()
-    put_json(
-        services.state,  # type: ignore[attr-defined]
-        f"confirmation:{capture_id}:{confirmation_id}",
-        {"by": by, **confirmation.model_dump(mode="json")},
+    runs = services.state.runs_for_capture(capture_id)
+    newest = max(runs, key=lambda item: item.created_at) if runs else None
+    # This insertion, not a reads write or a lease, is the acceptance boundary.
+    # The capture sequence also survives answers arriving before a run exists.
+    record_correction(
+        services.state,
+        capture_id,
+        {
+            "confirmationId": confirmation_id,
+            "by": by,
+            **confirmation.model_dump(mode="json"),
+        },
+        newest,
     )
-    try:
-        from server.reads.policy import confirm
-        from server.reads.types import Reads
-    except ImportError:
-        return
-    runs = services.state.runs_for_capture(capture_id)  # type: ignore[attr-defined]
-    if not runs:
-        return
-    newest = max(runs, key=lambda item: item.created_at)
-    key = _latest_reads_key(services, capture_id)
-    if key is None:
-        return
-    # The marker is durable before the reads read-modify-write. A crash at
-    # either boundary leaves work for recomposition, and each confirmation gets
-    # its own marker so concurrent fields cannot overwrite each other.
-    _record_pending_correction(services, newest, capture_id, confirmation, confirmation_id, by)
-    recompose = [False]
-
-    def apply_correction(guard: LeaseGuard) -> None:
-        guard.assert_held()
+    if newest is not None and newest.status == "done":
         try:
-            reads = Reads.model_validate(json.loads(services.storage.get_bytes(key)))  # type: ignore[attr-defined]
-        except (OSError, ValueError) as exc:
-            raise RuntimeError("confirmation could not load the reads artifact") from exc
-        updated = confirm(
-            reads,
-            still_id=confirmation.imageId,
-            choice=confirmation.value if confirmation.kind == "confirmed" else None,
-            typed=confirmation.value if confirmation.kind == "corrected" else None,
-            by=by,  # type: ignore[arg-type]
-            field_id=confirmation.fieldId,
-        )
-        guard.assert_held()
-        services.storage.put_bytes(key, updated.model_dump_json().encode(), "application/json")  # type: ignore[attr-defined]
-        guard.assert_held()
-        marker_key = pending_correction_key(newest.run_id, confirmation_id)
-        marker = get_json(services.state, marker_key) or {}  # type: ignore[attr-defined]
-        marker["readsApplied"] = True
-        put_json(services.state, marker_key, marker)  # type: ignore[attr-defined]
-        guard.assert_held()
-        fresh = services.state.get_run(newest.run_id)  # type: ignore[attr-defined]
-        if fresh is not None and fresh.status == "done":
-            recompose[0] = True
-
-    with_correction_lease(services, newest.run_id, apply_correction)
-    if recompose[0]:
-        fresh = services.state.get_run(newest.run_id)  # type: ignore[attr-defined]
-        if fresh is not None:
-            _recompose_after_correction(capture_id, fresh)
-
-
-def _record_pending_correction(
-    services: object,
-    run: RunRecord,
-    capture_id: str,
-    confirmation: ConfirmationRequest | None = None,
-    confirmation_id: str | None = None,
-    by: str | None = None,
-) -> None:
-    """Persist one correction before changing the shared reads artifact.
-
-    The per-confirmation marker survives a crash between the marker and reads
-    writes, while the shared correction lease serializes field merges.
-    """
-    marker = {"captureId": capture_id, "recordedAt": services.clock.iso(), "readsApplied": False}  # type: ignore[attr-defined]
-    if confirmation is not None:
-        marker.update({"confirmationId": confirmation_id, "by": by, **confirmation.model_dump(mode="json")})
-    put_json(
-        services.state,  # type: ignore[attr-defined]
-        pending_correction_key(run.run_id, confirmation_id),
-        marker,
-    )
-    log_event("confirmation.pending_correction", capture_id=capture_id, run_id=run.run_id)
-
-
-def _latest_reads_key(services: object, capture_id: str) -> str | None:
-    """The reads artifact of the capture's newest run, or None before reads exist."""
-
-    runs = services.state.runs_for_capture(capture_id)  # type: ignore[attr-defined]
-    if not runs:
-        return None
-    run = max(runs, key=lambda item: item.created_at)
-    from server.orchestrator.artifacts import overlay_stage_artifacts
-
-    key = overlay_stage_artifacts(services.state, run).artifacts.get("reads/reads.json")  # type: ignore[attr-defined]
-    return key or None
+            _recompose_after_correction(capture_id, newest)
+        except (LeaseBusy, LeaseLost):
+            # The answer is durable and uncovered. The sweeper retries even if
+            # completion races this status read or the lease owner disappears.
+            log_event("confirmation.recompose_deferred", capture_id=capture_id, run_id=newest.run_id)
 
 
 def cancel_capture(capture_id: str) -> None:

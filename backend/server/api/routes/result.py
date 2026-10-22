@@ -12,6 +12,7 @@ from server.api.deps import get_deps, load_owned, require_principal
 from server.api.errors import fail
 from server.common.logging import log_event
 from server.contracts.result import ResultResponse
+from server.orchestrator.corrections import latest_publication
 from server.orchestrator.stateio import get_json
 
 
@@ -40,6 +41,9 @@ def _artifacts(deps, run) -> dict:
 
     if run is None:
         return {}
+    published = latest_publication(deps.state, run.run_id)
+    if published is not None:
+        return dict(published["artifacts"])
     fresh = deps.state.get_run(run.run_id) or run
     artifacts = dict(fresh.artifacts or {})
     extra = get_json(deps.state, f"stage_artifacts:{fresh.run_id}:result") or {}
@@ -79,7 +83,8 @@ def register(app: FastAPI) -> None:
         except Exception as exc:
             log_event("storage.error", op="get", capture_id=capture_id, level="error")
             raise fail(503, "storage_unavailable", "/", "could not read the result", **{"Retry-After": "5"}) from exc
-        payload["status"] = record.status
+        if latest_publication(deps.state, run.run_id) is None:
+            payload["status"] = record.status
         payload["runId"] = run.run_id
         profile = deps.settings.RULES_PROFILE_DEFAULT
         verdict_key = artifacts.get(f"verdicts/verdict.{profile}.json")

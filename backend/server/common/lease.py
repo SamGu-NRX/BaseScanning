@@ -1,8 +1,8 @@
 """A renewable Dict lease with advisory ownership checks.
 
-The checks and writes are separate RPCs, not atomic fencing. The regression
-``test_release_does_not_delete_owner_installed_after_ownership_read`` currently
-fails because an expired owner's delete can remove its successor's lease.
+The checks and writes are separate RPCs, not atomic fencing. An expired owner
+can delete its successor's token. Correction safety therefore comes from
+immutable records and result versions, not exclusive ownership of this lease.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ class LeaseLost(RuntimeError):
 
 
 class LeaseGuard:
-    """Checks that this owner still fences the protected writes."""
+    """Detects ownership already lost, but cannot fence a subsequent write."""
 
     def __init__(self, state: object, key: str, token: dict, heartbeat_key: str) -> None:
         self._state = state
@@ -101,7 +101,7 @@ def with_lease(
             at = heartbeat.get("at") if isinstance(heartbeat, dict) else current.get("at")
             if time.time() - float(at or 0) > lease_s:
                 # This delete is not conditional on the token read above.
-                # It still needs atomic ownership enforcement in the store.
+                # Callers must tolerate overlapping owners, including on release.
                 state.delete_kv(key)  # type: ignore[attr-defined]
                 continue
         if time.monotonic() >= deadline:

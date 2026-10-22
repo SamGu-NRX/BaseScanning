@@ -16,17 +16,32 @@ _PROFILES: frozenset[str] = frozenset({"A", "B", "C", "S"})
 def run(ctx: StageContext) -> StageResult:
     run_rec = ctx.state.get_run(ctx.run_id)
     key = run_rec.artifacts["verdicts/verdict.C.json"]
-    verdict_bytes = ctx.storage.get_bytes(key)
+    hydrated = Path(ctx.work_dir) / "verdicts/verdict.C.json"
+    verdict_bytes = hydrated.read_bytes() if hydrated.is_file() else ctx.storage.get_bytes(key)
     digest = sha256(verdict_bytes)
     verdict = json.loads(verdict_bytes)
     decision = verdict["site"]["decision"]
     kind = "manual_review" if decision == "manual_review" else decision
-    ctx.state.append_event(
-        ctx.capture_id,
-        "verdict_ready",
-        {"runId": ctx.run_id, "kind": kind},
-        run_id=ctx.run_id,
-    )
+    if not ctx.inputs.get("correction_snapshot"):
+        ctx.state.append_event(
+            ctx.capture_id,
+            "verdict_ready",
+            {"runId": ctx.run_id, "kind": kind},
+            run_id=ctx.run_id,
+        )
+    else:
+        out = Path(ctx.work_dir) / "result"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "publication.json").write_text(
+            json.dumps(
+                {
+                    "captureId": ctx.capture_id,
+                    "events": [["verdict_ready", {"runId": ctx.run_id, "kind": kind}]],
+                    "status": "manual_review",
+                    "deliverWebhook": False,
+                }
+            )
+        )
     response = ResultResponse(
         runId=ctx.run_id,
         status="manual_review",

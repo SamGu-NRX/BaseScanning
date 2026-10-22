@@ -28,7 +28,7 @@ def run(ctx: StageContext) -> StageResult:
         from server.reads.types import ConfirmBlock, MeterRead, Reads
 
         rows = pending_slots(ctx.state, ctx.capture_id)
-        if rows:
+        if rows or ctx.inputs.get("immutable_corrections"):
             reads = Reads(
                 capture_id=ctx.capture_id,
                 status="complete",
@@ -42,7 +42,9 @@ def run(ctx: StageContext) -> StageResult:
             )
             from server.reads.pending import apply_pending
 
-            body = Reads.model_validate(apply_pending(ctx.state, ctx.capture_id, reads)).model_dump(mode="json")
+            if not ctx.inputs.get("immutable_corrections"):
+                reads = apply_pending(ctx.state, ctx.capture_id, reads)
+            body = reads.model_dump(mode="json")
     except ImportError:
         pass
     return write_files(ctx, {"reads/reads.json": json_bytes(body)})
