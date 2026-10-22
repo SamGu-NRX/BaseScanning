@@ -527,3 +527,40 @@ def test_delete_waits_for_capture_lock(client):
 
     response = asyncio.run(scenario())
     assert response.status_code == 204, response.text
+
+
+def test_delete_cannot_be_undone_by_an_inflight_upload(client):
+    """A PUT that started before DELETE must not recreate deleted bytes."""
+
+    capture_id = _create(client, "packet-delete-upload-race")
+    data = b"bytes that must disappear"
+    registered = client.post(
+        f"/v1/captures/{capture_id}/files",
+        json={"files": [_file("stills/race.jpg", data, meta={"still": "race"})]},
+    )
+    assert registered.status_code == 200, registered.text
+    target = registered.json()["files"][0]["upload"]
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def body():
+        yield data[:1]
+        started.set()
+        await release.wait()
+        yield data[1:]
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=client.app)
+        headers = {"Authorization": f"Bearer {TOKEN}"}
+        async with httpx.AsyncClient(transport=transport, base_url="http://test", headers=headers) as http:
+            put = asyncio.create_task(http.put(urlparse(target["url"]).path, content=body(), headers=target["headers"]))
+            await asyncio.wait_for(started.wait(), timeout=1)
+            deleted = await http.delete(f"/v1/captures/{capture_id}")
+            release.set()
+            uploaded = await put
+            return deleted, uploaded
+
+    deleted, uploaded = asyncio.run(scenario())
+    assert deleted.status_code == 204, deleted.text
+    assert uploaded.status_code == 410, uploaded.text
+    assert not client.app_state.storage.exists(f"uploads/{capture_id}/stills/race.jpg")

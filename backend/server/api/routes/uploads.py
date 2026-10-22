@@ -67,6 +67,15 @@ def _registered_bound(deps, key: str) -> int:
     return int(record.bytes)
 
 
+def _capture_id_for_upload(key: str) -> str:
+    """Return the capture owning an upload object after token validation."""
+
+    capture_id, separator, _path = key[len("uploads/") :].partition("/")
+    if not separator or not capture_id:
+        raise fail(403, "token_invalid", "/", "upload token key is not an upload")
+    return capture_id
+
+
 def register(app: FastAPI, settings) -> None:
     if not routes_enabled(settings):
         log_event(
@@ -140,7 +149,15 @@ def register(app: FastAPI, settings) -> None:
             if digest != payload.get("md5") or size != bound:
                 deps.storage.discard_tmp(tmp)
                 return Response(content=b"BadDigest", status_code=400, media_type="text/plain")
-            deps.storage.commit_tmp(payload["key"], tmp, content_type, digest, size)
+            # DELETE holds the same finish lock while removing object storage and
+            # publishing the capture tombstone. If it wins this race, refuse the
+            # completed temp instead of recreating bytes under the deleted capture.
+            capture_id = _capture_id_for_upload(str(payload["key"]))
+            async with deps.locks.finish_async(capture_id):
+                if deps.state.get_kv(f"tomb:{capture_id}"):
+                    deps.storage.discard_tmp(tmp)
+                    raise fail(410, "capture_deleted", "/", "capture was deleted")
+                deps.storage.commit_tmp(payload["key"], tmp, content_type, digest, size)
             return Response(status_code=200)
         except _TooLarge:
             if tmp is not None:
