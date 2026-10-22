@@ -104,6 +104,21 @@ struct ReplaySessionTests {
         }
     }
 
+    @Test(arguments: [(3, 4, "portrait keyframe; replay requires a landscape sensor image"),
+                      (4, 4, "square keyframe; replay requires a landscape sensor image"),
+                      (0, 3, "width and height must be integers of at least 1"),
+                      (-1, 3, "width and height must be integers of at least 1"),
+                      (4, 0, "width and height must be integers of at least 1"),
+                      (4, -1, "width and height must be integers of at least 1")])
+    func rejectsInvalidImageSize(width: Int, height: Int, reason: String) {
+        let frames = Self.oneFrame
+            .replacingOccurrences(of: "\"w\": 4", with: "\"w\": \(width)")
+            .replacingOccurrences(of: "\"h\": 3", with: "\"h\": \(height)")
+        #expect(throws: ReplayError.badImageSize(frameID: "k1", reason: reason)) {
+            try ReplaySession.decode(sessionJSON: Self.session(keyframes: frames))
+        }
+    }
+
     @Test func namesMissingField() {
         let frames = Self.oneFrame.replacingOccurrences(of: "\"img\": \"a.jpg\", ", with: "")
         #expect(throws: ReplayError.missingField("keyframes[0].img")) {
