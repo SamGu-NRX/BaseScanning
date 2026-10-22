@@ -1,4 +1,9 @@
-"""A renewable, fenced Dict lease for one shared state transition."""
+"""A renewable Dict lease with advisory ownership checks.
+
+The checks and writes are separate RPCs, not atomic fencing. The regression
+``test_release_does_not_delete_owner_installed_after_ownership_read`` currently
+fails because an expired owner's delete can remove its successor's lease.
+"""
 
 from __future__ import annotations
 
@@ -43,12 +48,11 @@ def with_lease(
     strict: bool = False,
     pass_guard: bool = False,
 ) -> None:
-    """Run ``fn`` while holding a renewable, owner-fenced lease.
+    """Run ``fn`` while holding a renewable lease.
 
-    ``pass_guard`` gives newer callers a :class:`LeaseGuard`; those callers must
-    check it immediately before each externally visible write. The owner record
-    stays immutable while heartbeats live under an owner-specific key, so an
-    expired worker cannot renew or release a successor's lease.
+    ``pass_guard`` gives callers a :class:`LeaseGuard` to detect lost ownership.
+    Owner-specific heartbeat keys prevent a late heartbeat from replacing the
+    successor's token, but checking ownership does not fence a later write.
     """
 
     key = f"lease:{name}"
@@ -96,8 +100,8 @@ def with_lease(
             heartbeat = state.get_kv(f"lease_heartbeat:{name}:{owner_id}")  # type: ignore[attr-defined]
             at = heartbeat.get("at") if isinstance(heartbeat, dict) else current.get("at")
             if time.time() - float(at or 0) > lease_s:
-                # Only the expired record is removed; a successor's record is
-                # protected by its different owner id and release check.
+                # This delete is not conditional on the token read above.
+                # It still needs atomic ownership enforcement in the store.
                 state.delete_kv(key)  # type: ignore[attr-defined]
                 continue
         if time.monotonic() >= deadline:
