@@ -101,6 +101,11 @@ class FailureInjector:
         raise SimulatedTimeout(step)
 
 
+def load_receipt(path: Path) -> dict:
+    """Read a saved capture-flow receipt from disk."""
+    return json.loads(path.read_text())
+
+
 def receipt_problem(receipt: object) -> str | None:
     """A named reason the saved receipt cannot be replayed, or None.
 
