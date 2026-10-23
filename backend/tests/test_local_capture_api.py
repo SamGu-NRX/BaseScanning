@@ -492,6 +492,125 @@ def test_second_launch_refuses_a_live_session(tmp_path: Path) -> None:
         _stop(first)
 
 
+def test_reused_pid_and_unrelated_listener_allow_startup(tmp_path: Path) -> None:
+    launcher = _launcher_module()
+    listener = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _AnswerEverything)
+    listener.hits = []
+    thread = threading.Thread(target=listener.serve_forever, daemon=True)
+    thread.start()
+    proc = None
+    try:
+        path = tmp_path / "session.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "baseUrl": f"http://127.0.0.1:{listener.server_port}/v1",
+                    "reviewerToken": "session-only-token",
+                    "pid": os.getpid(),
+                }
+            )
+        )
+        assert launcher._live_session(path) is None
+        proc = _start_server(tmp_path, tmp_path / "new.log")
+        session = json.loads(path.read_text())
+        assert session["pid"] == proc.pid
+        assert launcher._live_session(path) == session
+    finally:
+        _stop(proc)
+        listener.shutdown()
+        listener.server_close()
+        thread.join(timeout=5)
+
+
+def test_live_session_requires_the_running_servers_identity(tmp_path: Path) -> None:
+    launcher = _launcher_module()
+    session_dir = tmp_path / "real"
+    proc = _start_server(session_dir, tmp_path / "real.log")
+    try:
+        session = json.loads((session_dir / "session.json").read_text())
+        copied_path = tmp_path / "session.json"
+        copied_path.write_text(json.dumps(session))
+        assert launcher._live_session(copied_path) == session
+        session["reviewerToken"] = "not-the-running-servers-token"
+        copied_path.write_text(json.dumps(session))
+        assert launcher._live_session(copied_path) is None
+    finally:
+        _stop(proc)
+
+
+def test_concurrent_launches_allow_exactly_one(tmp_path: Path) -> None:
+    # Pause the first launch immediately after its liveness check. Without the
+    # lifetime lock, the second launch can also pass the same check before
+    # either publishes a session. With the lock, it exits before the check.
+    wrapper = """
+import importlib.util
+import os
+from pathlib import Path
+import sys
+import time
+spec = importlib.util.spec_from_file_location("launcher", sys.argv[1])
+launcher = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(launcher)
+original = launcher._live_session
+root = Path(sys.argv[2])
+def paused(path):
+    result = original(path)
+    (root / f"checked-{os.getpid()}").touch()
+    deadline = time.monotonic() + 20
+    while not (root / "release").exists():
+        if time.monotonic() >= deadline:
+            raise RuntimeError("test did not release launch barrier")
+        time.sleep(0.01)
+    return result
+launcher._live_session = paused
+raise SystemExit(launcher.main(["--port", "0", "--session-dir", str(root), "--health-timeout", "20"]))
+"""
+    processes = []
+    logs = []
+    try:
+        for index in range(2):
+            log_path = tmp_path / f"launch-{index}.log"
+            logs.append(log_path)
+            with log_path.open("w") as log:
+                proc = subprocess.Popen(
+                    [sys.executable, "-c", wrapper, str(SCRIPT), str(tmp_path)],
+                    cwd=ROOT,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                )
+            processes.append(proc)
+            deadline = time.monotonic() + 20
+            while not (tmp_path / f"checked-{proc.pid}").exists() and proc.poll() is None:
+                assert time.monotonic() < deadline, log_path.read_text()
+                time.sleep(0.01)
+        (tmp_path / "release").touch()
+        deadline = time.monotonic() + 30
+        session_path = tmp_path / "session.json"
+        launcher = _launcher_module()
+        while True:
+            live = launcher._live_session(session_path)
+            if live is not None:
+                break
+            assert time.monotonic() < deadline, [path.read_text() for path in logs]
+            time.sleep(0.05)
+        winners = [proc for proc in processes if proc.poll() is None]
+        assert len(winners) == 1, [path.read_text() for path in logs]
+        assert live["pid"] == winners[0].pid
+        loser = next(proc for proc in processes if proc is not winners[0])
+        assert loser.wait(timeout=5) == 1
+        loser_log = logs[processes.index(loser)].read_text()
+        assert "refusing to start" in loser_log
+        # A dead launch must not leave an exclusive lock behind.
+        _stop(winners[0])
+        restarted = _start_server(tmp_path, tmp_path / "restart.log")
+        processes.append(restarted)
+    finally:
+        (tmp_path / "release").touch()
+        for proc in processes:
+            _stop(proc)
+
+
 def test_live_session_needs_a_live_pid_and_an_answering_port(tmp_path: Path) -> None:
     launcher = _launcher_module()
     path = tmp_path / "session.json"
@@ -508,7 +627,7 @@ def test_live_session_needs_a_live_pid_and_an_answering_port(tmp_path: Path) -> 
     exited.wait()
     try:
         cases = [
-            (os.getpid(), f"127.0.0.1:{open_port}", True),
+            (os.getpid(), f"127.0.0.1:{open_port}", False),
             # A crashed server whose pid was reused: nothing listens.
             (os.getpid(), f"127.0.0.1:{refusing.getsockname()[1]}", False),
             # The pid is gone; whatever owns the port now is not this session.
