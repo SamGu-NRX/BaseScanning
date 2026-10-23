@@ -12,11 +12,12 @@ import Testing
         var skip: CaptureDecision.SkipReason?
         var luma: Double? = 128
         var aiming = false
+        var sharpness: Double? = nil
     }
 
     /// What the debouncer says for each frame.
     static func run(_ frames: [Frame], on debouncer: inout CoachingDebouncer) -> [Problem?] {
-        frames.map { debouncer.update(time: $0.time, skip: $0.skip, meanLuma: $0.luma, aiming: $0.aiming) }
+        frames.map { debouncer.update(time: $0.time, skip: $0.skip, meanLuma: $0.luma, sharpness: $0.sharpness, aiming: $0.aiming) }
     }
 
     static func run(_ frames: [Frame]) -> [Problem?] {
@@ -145,6 +146,81 @@ import Testing
         #expect(Self.run(blur + after).allSatisfy { $0 == nil })
         let long = Self.times(for: 2.5).map { Frame(time: $0, skip: .blurry) }
         #expect(Self.run(long).last! == .blurry)
+    }
+
+    /// The real gate feeding the debouncer, frame by frame: 3 s of sharp frames, 4 s at under a
+    /// third of that sharpness (shaky hands, a long exposure), then sharp again. The gate calls
+    /// only the first second of the blur blurry, because its 15-frame median catches up; the
+    /// coaching still says blur from 2 s in until the photos are sharp again.
+    @Test func sustainedBlurThroughTheGateIsCoached() {
+        var gate = AutoCapture()
+        var debouncer = CoachingDebouncer()
+        var skips: [CaptureDecision.SkipReason?] = []
+        var said: [Problem?] = []
+        for t in Self.times(for: 8) {
+            let sharpness: Double = (3..<7).contains(t) ? 30 : 100
+            let frame = AutoCaptureTests.frame(t, quality: AutoCaptureTests.good(sharpness: sharpness))
+            let decision = gate.evaluate(frame, newlySeenCells: 0)
+            var skip: CaptureDecision.SkipReason?
+            switch decision {
+            case .keep: gate.didKeep(frame)
+            case .skip(let reason): skip = reason
+            }
+            skips.append(skip)
+            said.append(debouncer.update(time: t, skip: skip, meanLuma: 128, sharpness: sharpness, aiming: true))
+        }
+        // The gate adapts: by 4.5 s it no longer calls the blurry frames blurry.
+        #expect(skips[30] == .blurry)
+        #expect(skips[45...69].allSatisfy { $0 != .blurry })
+        // The coaching says nothing for the first 2 s of blur, then blur until it's sharp again.
+        #expect(said[..<50].allSatisfy { $0 == nil })
+        #expect(said[50..<70].allSatisfy { $0 == .blurry })
+        #expect(said.last! == nil)
+    }
+
+    /// A tilt that makes the view much less sharp for under 2 s says nothing, also when judged by
+    /// sharpness against the frames before it.
+    @Test func shortSharpnessDropSaysNothing() {
+        let before = Self.times(for: 2).map { Frame(time: $0, skip: .redundant, sharpness: 100) }
+        let tilt = Self.times(from: 2, for: 1.8).map { Frame(time: $0, skip: .redundant, sharpness: 30) }
+        let after = Self.times(from: 3.8, for: 2).map { Frame(time: $0, skip: .redundant, sharpness: 100) }
+        #expect(Self.run(before + tilt + after).allSatisfy { $0 == nil })
+    }
+
+    /// Codex on #317: after a gap with no measured sharpness, the next frame was judged against
+    /// sharpness from before the gap, older than `blurReferenceWindow`. A scene that is simply
+    /// softer than the one before the gap then read as blur and was coached.
+    @Test func staleSharpnessAfterAGapIsNotTheBlurReference() {
+        let before = Self.times(for: 1).map { Frame(time: $0, skip: .redundant, sharpness: 100) }
+        let gap = Self.times(from: 1, for: 4).map { Frame(time: $0, skip: .redundant, sharpness: nil) }
+        let softer = Self.times(from: 5, for: 3).map { Frame(time: $0, skip: .redundant, sharpness: 40) }
+        #expect(!Self.run(before + gap + softer).contains(.blurry))
+    }
+
+    /// A second blur after a short sharp gap must not use the first spell's blurry samples.
+    @Test func eachBlurSpellUsesSharpnessBeforeThatSpell() {
+        var debouncer = CoachingDebouncer()
+        let sharp = Self.times(for: 2).map { Frame(time: $0, skip: .redundant, sharpness: 100) }
+        let firstBlur = Self.times(from: 2, for: 3).map { Frame(time: $0, skip: .redundant, sharpness: 30) }
+        let sharpGap = Self.times(from: 5, for: 0.6).map { Frame(time: $0, skip: .redundant, sharpness: 100) }
+        let secondBlur = Self.times(from: 5.6, for: 3).map { Frame(time: $0, skip: .redundant, sharpness: 30) }
+
+        #expect(Self.run(sharp, on: &debouncer).allSatisfy { $0 == nil })
+        #expect(Self.run(firstBlur, on: &debouncer).last! == .blurry)
+        #expect(Self.run(sharpGap, on: &debouncer).last! == nil)
+        let again = Self.run(secondBlur, on: &debouncer)
+        #expect(again.prefix(20).allSatisfy { $0 == nil })
+        #expect(again.last! == .blurry)
+    }
+
+    /// A dark frame's sharpness is not judged until exposure passes again.
+    @Test func tooDarkFramesDoNotCreateBlur() {
+        let sharp = Self.times(for: 2).map { Frame(time: $0, skip: .redundant, sharpness: 100) }
+        let dark = Self.times(from: 2, for: 4).map { Frame(time: $0, skip: .tooDark, luma: 25, sharpness: 30) }
+        let light = Self.times(from: 6, for: 4).map { Frame(time: $0, skip: .redundant, luma: 90, sharpness: 100) }
+        let said = Self.run(sharp + dark + light)
+        #expect(!said.contains(.blurry))
+        #expect(said.last! == nil)
     }
 
     /// A shown problem clears half a second after its last frame.
