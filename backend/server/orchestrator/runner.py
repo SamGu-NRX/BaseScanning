@@ -3,16 +3,28 @@
 from __future__ import annotations
 
 import importlib
+import json
 from pathlib import Path
 from typing import Any
 
 from server.contracts.jobs import StageContext, StageName, StageResult
+from server.orchestrator import stage_selection
 from server.orchestrator.artifacts import _safe_rel, existing_object, local_artifact
 from server.orchestrator.clock import Clock
 from server.orchestrator.graph import STAGES
 from server.orchestrator.heartbeat import Heartbeat, StageSuperseded
 
 RETRYABLE_TYPES = (RuntimeError, OSError, TimeoutError)
+
+# Pinned contract, shared with burst14-bs-result-names-stand-ins. Copy verbatim:
+# every stage's run publishes one marker at impl/<stage>.json recording which
+# implementation ran. "stand-in" means a module under server.orchestrator.stubs ran.
+IMPL_SCHEMA = "hss-stage-impl/v1"
+
+# Fail fast on a bad HSS_ORCH_REAL_STAGES: every process that can run a stage
+# imports this module, so import time is that process's startup. Unset or valid,
+# this is one cached dict lookup; invalid, the refusals below raise here.
+stage_selection.real_stages()
 
 
 def is_retryable(exc: BaseException) -> bool:
@@ -35,7 +47,11 @@ def stage_callable(stage: StageName, *, stubs: bool) -> Any:
     # A stubs_exempt stage is deterministic CPU work (no GPU, network or credentials);
     # it runs its real implementation even on the stub path. That is the point: the
     # local stub journey exercises the real placement solver.
-    if stubs and not spec.stubs_exempt:
+    # HSS_ORCH_REAL_STAGES (server/orchestrator/stage_selection.py) then names
+    # individual stages that also run real under stubs; everything else keeps
+    # today's behaviour exactly. The signature stays keyword-only in `stubs` so the
+    # capture-placement runner's per-run selection override (#292) keeps working.
+    if stubs and not spec.stubs_exempt and not stage_selection.is_real(stage):
         module = importlib.import_module(f"server.orchestrator.stubs.{stage}")
         return module.run
     module = importlib.import_module(f"server.{spec.module}")
@@ -58,8 +74,34 @@ def run_stage(
     if not isinstance(result, StageResult):
         raise RuntimeError(f"{ctx.stage} returned {type(result).__name__}")
     stored = _publish(ctx, result)
+    _publish_impl_marker(ctx, stored, fn)
     result.artifacts = stored
     return result
+
+
+def _publish_impl_marker(ctx: StageContext, stored: dict[str, str], fn: Any) -> None:
+    """Publish impl/<stage>.json: which implementation ran, under the pinned contract.
+
+    The record describes the callable that actually executed — read off `fn`
+    itself, not re-derived from the selection — so a per-run override (the
+    capture-placement runner's selection, #292) is recorded as what it ran.
+    Published only on success, like every other artifact of the stage.
+    """
+
+    module_name = getattr(fn, "__module__", "") or "unknown"
+    function_name = getattr(fn, "__qualname__", "") or getattr(fn, "__name__", "") or "run"
+    if "<" in function_name:  # a local wrapper; name the closest honest dotted path
+        function_name = getattr(fn, "__name__", "run")
+    key = f"impl/{ctx.stage}.json"
+    storage_key = f"captures/{ctx.capture_id}/runs/{ctx.run_id}/{key}"
+    body = {
+        "schema": IMPL_SCHEMA,
+        "stage": ctx.stage,
+        "implementation": "stand-in" if module_name.startswith("server.orchestrator.stubs.") else "real",
+        "callable": f"{module_name}.{function_name}",
+    }
+    ctx.storage.put_bytes(storage_key, (json.dumps(body, indent=2) + "\n").encode(), "application/json")
+    stored[key] = storage_key
 
 
 def _publish(ctx: StageContext, result: StageResult) -> dict[str, str]:
