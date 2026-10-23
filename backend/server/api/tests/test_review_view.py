@@ -929,8 +929,8 @@ def test_page_resources_are_rate_limited_including_the_module(client: TestClient
     """The page bucket is a real limit, and the vendored module spends it too.
 
     The module route charged nothing, so a signed import link could be fetched
-    without bound. With HSS_INGEST_MAX_FILES=3 the page bucket holds six
-    requests; the seventh is refused, and the reviewer's ``get`` reads are not.
+    without bound. With HSS_INGEST_MAX_FILES=3 the page bucket holds thirteen
+    requests; the fourteenth is refused, and the reviewer's ``get`` reads are not.
     """
 
     capture_id = _create(client, "packet-review-0020")
@@ -941,6 +941,34 @@ def test_page_resources_are_rate_limited_including_the_module(client: TestClient
     module = re.search(r'import \* as THREE from "(/v1/review-static/three\.module\.js\?rtok=[^"]+)"', served.text)
     assert module, "the served import carries no signed review token"
     bare = TestClient(client.app)
-    statuses = [bare.get(module.group(1)).status_code for _ in range(7)]
-    assert statuses == [200] * 6 + [429]
+    statuses = [bare.get(module.group(1)).status_code for _ in range(14)]
+    assert statuses == [200] * 13 + [429]
     assert client.get(f"/v1/captures/{capture_id}/result", headers=REVIEWER_HEADERS).status_code == 200
+
+
+def test_one_photo_page_loads_all_resources_with_one_file_limit(client: TestClient):
+    """The minimum ingest limit must still allow a whole review page."""
+
+    capture_id = _create(client, "packet-review-capacity")
+    client.app_state.settings.HSS_INGEST_MAX_FILES = 1
+    _seed(
+        client,
+        capture_id,
+        _render_review_html(capture_id, signed_photo=None, signed_link=None),
+        scene={"keyframes": [{"id": "kf_1", "image": "stills/kf_01.jpg"}]},
+        still=b"\xff\xd8fakejpeg",
+        preview=b"preview",
+    )
+    names = [f"verdicts/verdict.{profile}.json" for profile in ("A", "B", "C", "S")]
+    names += ["verdicts/criteria_report.json", "result/result.json", "result/result.internal.json"]
+    for name in names:
+        client.app_state.storage.put_bytes(f"captures/{capture_id}/runs/{RUN_ID}/{name}", b"{}", "application/json")
+    _freeze_limiter(client)
+    served = client.get(f"/v1/captures/{capture_id}/review", headers=REVIEWER_HEADERS)
+    assert served.status_code == 200
+    urls = _page_subresources(served.text, capture_id)
+    assert len(urls) == 11  # one photo, module, preview fetch, and eight raw-file links
+    bare = TestClient(client.app)
+    for url in urls:
+        response = bare.get(url)
+        assert response.status_code == 200, (url, response.status_code, response.text[:200])
