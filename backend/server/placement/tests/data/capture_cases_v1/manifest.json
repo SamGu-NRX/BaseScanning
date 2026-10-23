@@ -188,7 +188,7 @@
       "kind": "negative_source",
       "source": {
         "path": "multiwall-source-unsupported.source.json",
-        "sha256": "3e13bace8381dd56bdaaa6e5e874cca488c8ea08617eb09c8bf4e19b8c75de05"
+        "sha256": "a4c52e79da950e0d22e3853cb9218f7e9252765a1b66739c8039f972a771d652"
       },
       "wire": null,
       "expected_error": {
