@@ -36,12 +36,15 @@ extension ScanEngine {
         let features: [SceneFeature] = try state.features.map { feature in
             let points = feature.points.map { $0 - drop }
             switch feature.kind {
-            case .door, .window:
+            case .door, .window, .battery, .elecBox:
                 let heights = [feature.bottom ?? 0, feature.top ?? 0]
                 let bottom = max(0, heights.min() ?? 0)
                 let top = max(bottom, heights.max() ?? 0)
                 if bottom != feature.bottom || top != feature.top {
                     RuntimeLog.engine.info("export: \(feature.kind.rawValue, privacy: .public) heights \(feature.bottom ?? .nan)...\(feature.top ?? .nan) clamped to \(bottom)...\(top)")
+                }
+                if let box = feature.kind.sceneBox {
+                    return .box(kind: box, span: feature.span, bottom: bottom, top: top)
                 }
                 return .opening(kind: feature.kind == .door ? .door : .window, span: feature.span, bottom: bottom, top: top,
                                 operable: feature.kind == .window ? feature.opens : nil)

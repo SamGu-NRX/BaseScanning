@@ -1380,6 +1380,12 @@ final class DemoEngine: ScanActions {
         case .acUnit:
             return MarkedFeature(id: UUID(), kind: kind, span: DemoScene.acSpan, bottom: 0, top: 0.8, out: 0.25,
                                  points: [wall.world(s: 3.75, height: 0.8, out: 0.6)], opens: nil)
+        case .battery:
+            return MarkedFeature(id: UUID(), kind: kind, span: -1.1 ... -0.35, bottom: 0, top: 1.0, out: nil,
+                                 points: [wall.world(s: -1.1, height: 0), wall.world(s: -0.35, height: 1.0)], opens: nil)
+        case .elecBox:
+            return MarkedFeature(id: UUID(), kind: kind, span: 1.5...1.8, bottom: 1.1, top: 1.5, out: nil,
+                                 points: [wall.world(s: 1.5, height: 1.1), wall.world(s: 1.8, height: 1.5)], opens: nil)
         case .driveway:
             return MarkedFeature(id: UUID(), kind: kind, span: -1.0...1.0, bottom: nil, top: nil, out: 2.4,
                                  points: [wall.world(s: -1.0, height: 0, out: 2.4), wall.world(s: 1.0, height: 0, out: 2.4)], opens: nil)

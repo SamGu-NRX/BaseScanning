@@ -60,7 +60,8 @@ struct WallMarksOverlay: View {
         let caption = ScanCopy.name(feature.kind)
         let up = SIMD3<Float>(0, 1, 0)
         switch feature.kind {
-        case .door, .window:
+        // A battery or box is outlined where it meets the wall, the only part of it measured.
+        case .door, .window, .battery, .elecBox:
             guard let bottom = feature.bottom, let top = feature.top else { return }
             let corners = [
                 wall.world(s: feature.span.lowerBound, height: top, out: 0.01),

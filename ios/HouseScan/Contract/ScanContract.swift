@@ -461,19 +461,39 @@ enum FeatureKind: String, Equatable, Sendable, CaseIterable, Identifiable {
     case door
     case window
     case acUnit = "ac"
+    /// A battery already on the wall, which a new one keeps its clearance from (scene.json `battery`).
+    case battery
+    /// Any other box on the wall: a disconnect, sub-panel, EV charger or solar box (scene.json `elec_box`).
+    case elecBox = "elec_box"
     case driveway = "drive"
     case fence
 
     var id: String { rawValue }
 
-    /// How many taps a mark takes: two diagonal corners for a door or window, two points along
-    /// the near edge of a driveway or the foot of a fence, one point for a gas meter or AC unit.
-    /// scene.json (server/schemas/scene.schema.json) stores a driveway as a ground polygon and a
-    /// fence as a facing gap over a span, so both need a line, not a point.
+    /// How many taps a mark takes: two diagonal corners for a door, window, battery or box, two
+    /// points along the near edge of a driveway or the foot of a fence, one point for a gas meter
+    /// or AC unit. scene.json (server/schemas/scene.schema.json) stores a driveway as a ground
+    /// polygon and a fence as a facing gap over a span, so both need a line, not a point.
     var tapCount: Int {
         switch self {
-        case .door, .window, .driveway, .fence: 2
+        case .door, .window, .battery, .elecBox, .driveway, .fence: 2
         case .gasMeter, .acUnit: 1
+        }
+    }
+
+    /// A battery or box, tapped where it meets the wall: a tap lands on the wall's plane, so the
+    /// phone measures its span and heights there but not how far it stands out, and the export
+    /// sends no depth (`SceneFeature.box`).
+    var depthUnmeasured: Bool {
+        self == .battery || self == .elecBox
+    }
+
+    /// The scene.json box kind of a battery or box; nil for every other kind.
+    var sceneBox: SceneBoxKind? {
+        switch self {
+        case .battery: .battery
+        case .elecBox: .elecBox
+        default: nil
         }
     }
 }

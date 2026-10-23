@@ -369,6 +369,14 @@ struct ResultScene3D: View {
             let back = feature.out ?? 0.3
             root.addChild(box(width: 0.8, height: 0.8, depth: 0.8,
                               center: SIMD3(centerX, 0.4, back + 0.4), material: matte(SceneColor.meter)))
+        case .battery, .elecBox:
+            let bottom = feature.bottom ?? 0
+            let height = max((feature.top ?? bottom + 1) - bottom, 0.05)
+            // Drawn depths only, like the gas meter's and AC unit's boxes here: nobody measured how
+            // far it stands out, and scene.json sends none (`SceneFeature.box`).
+            let depth: Float = feature.kind == .battery ? 0.56 : 0.15
+            root.addChild(box(width: width, height: height, depth: depth,
+                              center: SIMD3(centerX, bottom + height / 2, depth / 2), material: matte(SceneColor.meter)))
         case .driveway:
             root.addChild(plane(width: width, depth: Self.groundDepth,
                                 center: SIMD3(centerX, 0.003, Self.groundDepth / 2), material: matte(SceneColor.driveway)))

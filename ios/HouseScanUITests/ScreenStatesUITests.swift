@@ -48,6 +48,7 @@ final class ScreenStatesUITests: XCTestCase {
         ("wallWalk-fullLegend", ["-uiDemoPhase", "wallWalk", "-uiDemoEndPreview", "-uiDemoHidden"], "wallWalk"),
         ("markFeatures", ["-uiDemoPhase", "markFeatures"], "markFeatures"),
         ("markFeatures-marking", ["-uiDemoPhase", "markFeatures", "-uiDemoMarking", "door"], "markFeatures"),
+        ("markFeatures-markingBox", ["-uiDemoPhase", "markFeatures", "-uiDemoMarking", "elec_box"], "markFeatures"),
         ("markFeatures-lostPlace", ["-uiDemoPhase", "markFeatures", "-uiDemoCoaching", "relocalizing"], "markFeatures"),
         ("markFeatures-groundQuestion", ["-uiDemoGroundQuestion"], "markFeatures"),
         ("markFeatures-groundAnswered", ["-uiDemoGroundAnswer", "mulch"], "markFeatures"),
@@ -102,6 +103,8 @@ final class ScreenStatesUITests: XCTestCase {
         // #55: an answered permission is not asked again, so the phone only may ask.
         "onboarding-permissions": [("onboarding.permissions", "Your phone may ask to use the camera")],
         "wallWalk-hidden": [("wallTape", "2 sections hidden behind something")],
+        // Issue #27: a box is marked where it meets the wall.
+        "markFeatures-markingBox": [("instruction", "A disconnect, sub-panel, EV charger or solar box")],
         "wallWalk-fullLegend": [("wallTape", "2 sections hidden behind something")],
         "wallWalk-seeBehind": [("instruction", "Something is in front of the wall here")],
         // At AX5 looking past it leads, and the situation folds under Details.
@@ -526,6 +529,35 @@ final class ScreenStatesUITests: XCTestCase {
         XCTAssertEqual(app.buttons.matching(identifier: "action.deleteFeature").count, rowsBefore + 1)
     }
 
+    /// Issue #27 (ported from #52): a battery already on the wall and any other box (disconnect,
+    /// sub-panel, EV charger) are marked from the review by two corners where they meet the wall,
+    /// and each row says how far it sticks out isn't measured.
+    @MainActor
+    func testReviewMarksAnExistingBatteryAndABox() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoPhase", "markFeatures"]
+        app.launch()
+        XCTAssertTrue(element(app, "screen.markFeatures").waitForExistence(timeout: 15))
+        let rowsBefore = app.buttons.matching(identifier: "action.deleteFeature").count
+        for (kind, prompt) in [("battery", "Tap the battery's bottom-left corner at the wall"), ("elec_box", "Tap the box's bottom-left corner at the wall")] {
+            tap(app, "feature.\(kind)")
+            let first = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS %@", prompt)).firstMatch
+            XCTAssertTrue(first.waitForExistence(timeout: 5), "marking \(kind) must ask for \(prompt)")
+            tap(app, "action.markPoint", timeout: 5)
+            let second = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier == 'instruction' AND label CONTAINS 'top-right corner at the wall'")).firstMatch
+            XCTAssertTrue(second.waitForExistence(timeout: 5), "a \(kind) takes a second corner")
+            tap(app, "action.markPoint", timeout: 5)
+            XCTAssertTrue(element(app, "action.confirmFeatures").waitForExistence(timeout: 5), "the review must come back after the mark")
+        }
+        XCTAssertEqual(app.buttons.matching(identifier: "action.deleteFeature").count, rowsBefore + 2)
+        let note = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'review.feature' AND label CONTAINS %@", "How far it sticks out isn't measured"))
+        XCTAssertEqual(note.count, 2, "each box row says its depth isn't measured")
+    }
+
     /// AX5 puts the review chips below the window. The helper must let the real tap scroll
     /// before XCTest computes a hit point, then Cancel must return to the unchanged review.
     @MainActor
@@ -571,7 +603,7 @@ final class ScreenStatesUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(element(app, "screen.markFeatures").waitForExistence(timeout: 15))
         XCTAssertTrue(element(app, "review.lostPlace").exists, "the review must say the phone lost its place")
-        for kind in ["gas_meter", "door", "window", "ac", "drive", "fence"] {
+        for kind in ["gas_meter", "door", "window", "ac", "battery", "elec_box", "drive", "fence"] {
             XCTAssertFalse(element(app, "feature.\(kind)").exists, "feature.\(kind) must not be offered while the phone is lost")
         }
         XCTAssertTrue(element(app, "action.confirmFeatures").isHittable, "Looks complete must stay available")
