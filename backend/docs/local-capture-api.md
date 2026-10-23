@@ -106,6 +106,12 @@ against an unknown working directory; and `gitSha` is the full head SHA so a cap
 identifies the code that served it. Tokens appear nowhere else — not in stdout, not in the uvicorn
 access log (which keeps upload URLs as `/v1/uploads/{token}` route shapes anyway).
 
+One session file belongs to one live server. A second `make local-api` against the same session
+directory exits with an error while the first is still running (its `pid` is alive and its `baseUrl`
+port accepts connections), so clients reading the file keep working credentials, even when the
+second launch asks for a different `PORT`. Stop the first server, or pass the launcher a different
+`--session-dir`. A file left behind by a server that has exited is replaced.
+
 ## What is a stand-in
 
 `HSS_ORCH_STAGE_STUBS=1` runs every one of the twelve orchestrator stages as its committed stub

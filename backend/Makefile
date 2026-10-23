@@ -89,7 +89,8 @@ e2e-dev:
 # Burst11: the one-command local capture API. Serves loopback only (127.0.0.1);
 # the iOS simulator shares the Mac's loopback, a physical phone does not.
 # Writes backend/runs/local-api/session.json (mode 0600, gitignored) with the
-# base URL, app and reviewer tokens, pid and git sha. Stop with Ctrl-C.
+# base URL, app and reviewer tokens, pid and git sha. Stop with Ctrl-C. A second
+# launch refuses to start while that file's server still runs.
 # The documented default (docs/local-capture-api.md) is port 8000; override
 # with PORT=8123 make local-api. The empty-value guard catches an exported
 # PORT= so the launcher never sees a bare --port.

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import http.server
 import importlib.util
 import json
 import os
@@ -29,7 +30,9 @@ import socket
 import stat
 import subprocess
 import sys
+import threading
 import time
+import urllib.request
 from pathlib import Path
 
 import httpx
@@ -76,6 +79,22 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
+def _refusing_port() -> socket.socket:
+    """A loopback port that refuses connections: bound, never listening. It
+    stays reserved while the socket is open, so no server this test starts
+    can land on it."""
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    return sock
+
+
+def _loopback_client(**kwargs) -> httpx.Client:
+    """An httpx client that ignores http_proxy and friends: every request in
+    this file targets the launcher on 127.0.0.1, and a proxy from the
+    developer's shell must not stand between the test and that socket."""
+    return httpx.Client(trust_env=False, **kwargs)
+
+
 class LocalServer:
     """The launcher as a subprocess, plus the session it promised on disk."""
 
@@ -92,7 +111,7 @@ class LocalServer:
 
     def client(self, token: str | None) -> httpx.Client:
         headers = {"Authorization": f"Bearer {token}"} if token else {}
-        return httpx.Client(base_url=f"{self.base}/v1", headers=headers, timeout=30)
+        return _loopback_client(base_url=f"{self.base}/v1", headers=headers, timeout=30)
 
     def log(self) -> str:
         return self.log_path.read_text()
@@ -127,13 +146,14 @@ def _start_server(
         text=True,
     )
     log.close()
-    # The launcher writes session.json before binding, so wait for healthz.
+    # session.json appears once the port is bound, before uvicorn serves, so
+    # wait for healthz.
     deadline = time.monotonic() + 90
     while time.monotonic() < deadline:
         if proc.poll() is not None:
             pytest.fail(f"local capture API exited early with {proc.returncode}:\n{log_path.read_text()}")
         try:
-            with httpx.Client(timeout=2) as probe:
+            with _loopback_client(timeout=2) as probe:
                 if probe.get(f"http://127.0.0.1:{port}/v1/healthz").status_code == 200:
                     return proc
         except httpx.HTTPError:
@@ -210,7 +230,7 @@ def _drive_to_terminal(client: httpx.Client, workdir: Path, packet_id: str) -> t
     assert registered.status_code == 200, registered.text
     assert len(registered.json()["files"]) == len(files)
 
-    with httpx.Client(timeout=60) as uploads:
+    with _loopback_client(timeout=60) as uploads:
         for body, target in zip(files, registered.json()["files"], strict=True):
             put = uploads.put(
                 target["upload"]["url"],
@@ -339,7 +359,7 @@ def test_malformed_finalize_is_refused_4xx(server: LocalServer, tmp_path: Path) 
 
 
 def test_missing_and_wrong_bearer_get_401(server: LocalServer) -> None:
-    with httpx.Client(base_url=f"{server.base}/v1", timeout=30) as anon:
+    with _loopback_client(base_url=f"{server.base}/v1", timeout=30) as anon:
         missing = anon.get("/captures/whatever/events")
         assert missing.status_code == 401, missing.text
         errors = missing.json()["errors"]
@@ -417,23 +437,297 @@ def test_failed_bind_preserves_the_previous_session(tmp_path: Path) -> None:
     assert "could not bind" in result.stderr
 
 
-def _make_n_local_api(env: dict[str, str] | None = None) -> str:
-    """Print the `make -n local-api` recipe from backend/ without executing it."""
+def _stop(proc: subprocess.Popen | None) -> None:
+    if proc is None or proc.poll() is not None:
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout=15)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+
+
+def test_second_launch_refuses_a_live_session(tmp_path: Path) -> None:
+    """A second launch on a different port binds fine, so the failed-bind guard
+    never fires; it must still leave the live server's session.json alone."""
+
+    session_dir = tmp_path / "session"
+    first = _start_server(session_dir, tmp_path / "first.log")
+    second = None
+    try:
+        before = (session_dir / "session.json").read_bytes()
+        live = json.loads(before)
+        second = subprocess.Popen(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(_free_port()),
+                "--session-dir",
+                str(session_dir),
+            ],
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            _, stderr = second.communicate(timeout=30)
+        except subprocess.TimeoutExpired:
+            second.kill()
+            second.communicate()
+            pytest.fail("the second launch kept running beside a live session")
+        assert second.returncode != 0
+        assert "live local capture API" in stderr, stderr
+        assert (session_dir / "session.json").read_bytes() == before
+        # The credentials on disk still open the running server.
+        headers = {"Authorization": f"Bearer {live['appToken']}"}
+        with _loopback_client(base_url=live["baseUrl"], headers=headers, timeout=10) as client:
+            assert client.get("/captures/whatever/events").status_code != 401
+    finally:
+        _stop(second)
+        _stop(first)
+
+
+def test_same_session_directory_allows_one_launch(tmp_path: Path, monkeypatch) -> None:
+    """Two launches racing before either writes credentials cannot both win."""
+    import types
+
+    launcher = _launcher_module()
+    session_dir = tmp_path / "session"
+    session_path = session_dir / "session.json"
+    first_checked = threading.Event()
+    release_first = threading.Event()
+    live_calls = 0
+    live_lock = threading.Lock()
+    written: list[dict] = []
+
+    def live_session(path: Path) -> dict | None:
+        nonlocal live_calls
+        with live_lock:
+            live_calls += 1
+            call = live_calls
+        if call == 1:
+            first_checked.set()
+            release_first.wait(timeout=2)
+        if path.exists():
+            return json.loads(path.read_text())
+        return None
+
+    # Keep the real writer, while recording the credentials each contender tries
+    # to publish. The wrapper uses the original function captured before patching.
+    real_write_session = launcher._write_session
+
+    def recording_write_session(path: Path, session: dict) -> None:
+        written.append(session.copy())
+        real_write_session(path, session)
+
+    class FakeServer:
+        def __init__(self, config):
+            self.config = config
+
+        def run(self, sockets):
+            sockets[0].close()
+
+    monkeypatch.setattr(launcher, "_live_session", live_session)
+    monkeypatch.setattr(launcher, "_write_session", recording_write_session)
+    monkeypatch.setattr(launcher, "_announce", lambda *args: None)
+    monkeypatch.setitem(
+        sys.modules,
+        "uvicorn",
+        types.SimpleNamespace(Config=lambda *args, **kwargs: object(), Server=FakeServer),
+    )
+
+    def launch() -> int:
+        return launcher.main(["--host", "127.0.0.1", "--port", "0", "--session-dir", str(session_dir)])
+
+    results: list[int] = []
+    threads = [threading.Thread(target=lambda: results.append(launch())) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    assert first_checked.wait(timeout=2)
+    release_first.set()
+    for thread in threads:
+        thread.join(timeout=5)
+    assert not any(thread.is_alive() for thread in threads)
+    assert results.count(0) == 1
+    assert results.count(1) == 1
+    assert len(written) == 1
+    assert json.loads(session_path.read_text()) == written[0]
+
+
+def test_dead_process_session_lock_is_released(tmp_path: Path) -> None:
+    launcher = _launcher_module()
+    session_dir = tmp_path / "session"
+    acquired_path = session_dir / "acquired"
+    holder = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import fcntl, os, sys, time; "
+                "os.makedirs(sys.argv[1], exist_ok=True); "
+                "fd=os.open(os.path.join(sys.argv[1], '.session.lock'), os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600); "
+                "fcntl.flock(fd, fcntl.LOCK_EX); open(os.path.join(sys.argv[1], 'acquired'), 'w').close(); time.sleep(30)"
+            ),
+            str(session_dir),
+        ]
+    )
+    try:
+        deadline = time.monotonic() + 5
+        while not acquired_path.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert acquired_path.exists()
+    finally:
+        holder.kill()
+        holder.wait(timeout=5)
+
+    fd = launcher._open_session_lock(session_dir, session_dir / "session.json")
+    launcher._close_session_lock(fd)
+
+
+def test_live_session_needs_a_live_pid_and_an_answering_port(tmp_path: Path) -> None:
+    launcher = _launcher_module()
+    path = tmp_path / "session.json"
+    assert launcher._live_session(path) is None  # no file
+    path.write_text("{not json")
+    assert launcher._live_session(path) is None  # unreadable: no client can use it either
+
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    open_port = listener.getsockname()[1]
+    refusing = _refusing_port()
+    exited = subprocess.Popen([sys.executable, "-c", "pass"])
+    exited.wait()
+    try:
+        cases = [
+            (os.getpid(), f"127.0.0.1:{open_port}", True),
+            # A crashed server whose pid was reused: nothing listens.
+            (os.getpid(), f"127.0.0.1:{refusing.getsockname()[1]}", False),
+            # The pid is gone; whatever owns the port now is not this session.
+            (exited.pid, f"127.0.0.1:{open_port}", False),
+            # os.kill(0, 0) would signal this process group and succeed.
+            (0, f"127.0.0.1:{open_port}", False),
+            (True, f"127.0.0.1:{open_port}", False),
+            (str(os.getpid()), f"127.0.0.1:{open_port}", False),
+            # The launcher only ever writes loopback; never probe anything else.
+            (os.getpid(), f"192.0.2.1:{open_port}", False),
+        ]
+        for pid, hostport, live in cases:
+            path.write_text(json.dumps({"baseUrl": f"http://{hostport}/v1", "pid": pid}))
+            assert (launcher._live_session(path) is not None) is live, (pid, hostport)
+    finally:
+        listener.close()
+        refusing.close()
+
+
+class _AnswerEverything(http.server.BaseHTTPRequestHandler):
+    """A stand-in proxy that answers 200 to any request and records it."""
+
+    def do_GET(self) -> None:
+        self.server.hits.append(self.path)
+        body = b"ok"
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args) -> None:
+        pass
+
+
+def test_readiness_needs_the_listener_not_a_shell_proxy(monkeypatch) -> None:
+    """Greptile P1 on #281: urlopen honors http_proxy, so the readiness probe
+    asked the proxy instead of the listener. A proxy that answers reported a
+    server ready when nothing was listening; one that cannot reach loopback
+    made the launcher kill a healthy server."""
+
+    launcher = _launcher_module()
+    proxy = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _AnswerEverything)
+    proxy.hits = []
+    threading.Thread(target=proxy.serve_forever, daemon=True).start()
+    nothing_listening = _refusing_port()
+    try:
+        for key in ("http_proxy", "HTTP_PROXY"):
+            monkeypatch.setenv(key, f"http://127.0.0.1:{proxy.server_address[1]}")
+        for key in ("no_proxy", "NO_PROXY"):
+            monkeypatch.delenv(key, raising=False)
+        # urlopen builds its opener, proxy settings included, on first use and
+        # caches it; clear the cache so the probe sees the env set above.
+        monkeypatch.setattr(urllib.request, "_opener", None)
+        base = f"http://127.0.0.1:{nothing_listening.getsockname()[1]}"
+        assert launcher._wait_health(base, 1.0) is False
+        assert proxy.hits == []
+    finally:
+        proxy.shutdown()
+        proxy.server_close()
+        nothing_listening.close()
+
+
+def test_launcher_reports_ready_under_an_unreachable_proxy(tmp_path: Path) -> None:
+    dead = _refusing_port()
+    dead_proxy = f"http://127.0.0.1:{dead.getsockname()[1]}"
+    log_path = tmp_path / "proxied.log"
+    proc = _start_server(
+        tmp_path / "session",
+        log_path,
+        extra_args=["--health-timeout", "20"],
+        extra_env={"http_proxy": dead_proxy, "HTTP_PROXY": dead_proxy, "no_proxy": "", "NO_PROXY": ""},
+    )
+    try:
+        deadline = time.monotonic() + 30
+        while "local capture API ready" not in log_path.read_text():
+            assert proc.poll() is None, log_path.read_text()
+            assert time.monotonic() < deadline, log_path.read_text()
+            time.sleep(0.25)
+    finally:
+        _stop(proc)
+        dead.close()
+
+
+def _make_n(target: str, env: dict[str, str] | None = None, cwd: Path = ROOT) -> str:
+    """Print backend/Makefile's recipe for `target` without executing it.
+
+    Make resolves target files against `cwd`, so a test that plants stray
+    files passes its own temp directory; `-I ROOT` keeps the Makefile's
+    relative `include infra/deploy.mk` working from there. The shell's PORT is
+    a supported override (`PORT=8123 make local-api`), and a command-line
+    `PORT=` reaches a child make through MAKEFLAGS, so both are dropped and a
+    test that wants a port passes it in `env`.
+    """
+    inherited = {key: value for key, value in os.environ.items() if key not in {"PORT", "MAKEFLAGS"}}
     proc = subprocess.run(
-        ["make", "-n", "local-api"],
-        cwd=ROOT,
+        ["make", "-f", str(ROOT / "Makefile"), "-I", str(ROOT), "-n", target],
+        cwd=cwd,
         capture_output=True,
         text=True,
         timeout=30,
-        env={**os.environ, **(env or {})},
+        env={**inherited, **(env or {})},
     )
     assert proc.returncode == 0, proc.stderr
     return proc.stdout
 
 
+def _make_n_local_api(env: dict[str, str] | None = None) -> str:
+    return _make_n("local-api", env)
+
+
 def test_make_local_api_without_port_passes_the_documented_default() -> None:
     # The documented flow (docs/local-capture-api.md) is bare `make local-api`
     # on port 8000; the recipe must not hand the launcher a bare --port.
+    assert "--port 8000" in _make_n_local_api()
+
+
+@pytest.mark.parametrize(("name", "value"), [("PORT", "8123"), ("MAKEFLAGS", "-- PORT=8123")])
+def test_default_port_check_ignores_the_runners_port(monkeypatch, name: str, value: str) -> None:
+    # Greptile P2 on #281: `PORT=8123 make local-api-smoke` (or
+    # `make local-api-smoke PORT=8123`, which arrives as MAKEFLAGS) is a
+    # supported setting, and the default-port assertion must not fail under it.
+    monkeypatch.setenv(name, value)
     assert "--port 8000" in _make_n_local_api()
 
 
@@ -452,7 +746,9 @@ def test_launcher_refuses_an_empty_port_loudly(tmp_path: Path) -> None:
     log_path = tmp_path / "empty-port.log"
     with log_path.open("w") as log:
         proc = subprocess.run(
-            [sys.executable, str(SCRIPT), "--host", "127.0.0.1", "--port="],
+            # --session-dir keeps a regression here from writing the real
+            # backend/runs/local-api/session.json a running server owns.
+            [sys.executable, str(SCRIPT), "--host", "127.0.0.1", "--port=", "--session-dir", str(tmp_path)],
             cwd=ROOT,
             stdout=log,
             stderr=subprocess.STDOUT,
@@ -469,27 +765,17 @@ def test_launcher_refuses_an_empty_port_loudly(tmp_path: Path) -> None:
 def test_make_local_api_targets_survive_a_stray_file(tmp_path: Path) -> None:
     # The Codex P2 on this PR: local-api / local-api-smoke must be .PHONY, or a
     # stray file (or directory) of the same name makes `make local-api` report
-    # "up to date" and never start the server.
-    strays = [ROOT / "local-api", ROOT / "local-api-smoke"]
-    try:
-        for stray in strays:
-            stray.write_text("")
-        recipe = _make_n_local_api()
-        assert "up to date" not in recipe, recipe
-        assert "local_capture_api.py" in recipe, recipe
-        smoke = subprocess.run(
-            ["make", "-n", "local-api-smoke"],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        assert smoke.returncode == 0, smoke.stderr
-        assert "up to date" not in smoke.stdout, smoke.stdout
-        assert "test_local_capture_api.py" in smoke.stdout, smoke.stdout
-    finally:
-        for stray in strays:
-            stray.unlink(missing_ok=True)
+    # "up to date" and never start the server. The strays go in tmp_path, never
+    # backend/: planting them there truncated and then deleted any real
+    # backend/local-api or backend/local-api-smoke (Greptile P1 on #281).
+    for name in ("local-api", "local-api-smoke"):
+        (tmp_path / name).write_text("")
+    recipe = _make_n("local-api", cwd=tmp_path)
+    assert "up to date" not in recipe, recipe
+    assert "local_capture_api.py" in recipe, recipe
+    smoke = _make_n("local-api-smoke", cwd=tmp_path)
+    assert "up to date" not in smoke, smoke
+    assert "test_local_capture_api.py" in smoke, smoke
 
 
 def _launcher_module():
@@ -576,7 +862,7 @@ def test_launcher_overrides_a_poisoned_shell_and_stays_healthy(tmp_path: Path) -
         },
     )
     try:
-        with httpx.Client(timeout=10) as probe:
+        with _loopback_client(timeout=10) as probe:
             body = probe.get(f"http://127.0.0.1:{_port_from_session(session_dir)}/v1/healthz").json()
         assert body["status"] == "ok", body
         assert body["state"] == "memory", body

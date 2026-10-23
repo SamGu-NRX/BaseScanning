@@ -33,6 +33,7 @@ changes them.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import secrets
@@ -42,6 +43,7 @@ import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
@@ -139,11 +141,103 @@ def _write_session(path: Path, session: dict) -> None:
     os.chmod(path, 0o600)
 
 
+class _SessionDirectoryLocked(Exception):
+    """Another launcher owns the session directory lock."""
+
+    def __init__(self, session: dict | None):
+        self.session = session
+
+
+def _open_session_lock(session_dir: Path, session_path: Path) -> int:
+    """Own the session directory until the server exits.
+
+    A blocked launch waits briefly for the owner to publish its session. That
+    turns the startup race into the same clear live-session refusal as a later
+    launch, while a dead owner is handled by the kernel releasing its flock.
+    """
+    session_dir.mkdir(parents=True, exist_ok=True)
+    lock_path = session_dir / ".session.lock"
+    flags = os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW
+    fd = os.open(lock_path, flags, 0o600)
+    try:
+        deadline = time.monotonic() + 5.0
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                os.chmod(lock_path, 0o600)
+                return fd
+            except BlockingIOError:
+                live = _live_session(session_path)
+                if live is not None:
+                    raise _SessionDirectoryLocked(live) from None
+                if time.monotonic() >= deadline:
+                    raise _SessionDirectoryLocked(None) from None
+                time.sleep(0.05)
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _close_session_lock(fd: int) -> None:
+    fcntl.flock(fd, fcntl.LOCK_UN)
+    os.close(fd)
+
+
+def _pid_alive(pid: object) -> bool:
+    # bool is an int, and 0 or a negative pid addresses a process group, for
+    # which os.kill(pid, 0) succeeds whether or not the server still runs.
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except PermissionError:
+        return True  # alive, owned by another user
+    except (ProcessLookupError, OverflowError):
+        return False
+    return True
+
+
+def _live_session(session_path: Path) -> dict | None:
+    """The session at `session_path` if the server that wrote it still serves.
+
+    Live means its pid is alive and its loopback port accepts a connection.
+    Either alone misleads: a crashed server's pid can be reused, and its port
+    can be taken by another process. A missing or unreadable file is not live;
+    no client could use its credentials either.
+    """
+    try:
+        session = json.loads(session_path.read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(session, dict) or not _pid_alive(session.get("pid")):
+        return None
+    try:
+        url = urllib.parse.urlsplit(str(session.get("baseUrl", "")))
+        host, port = url.hostname, url.port
+    except ValueError:
+        return None
+    if host not in LOOPBACK_HOSTS or port is None:
+        return None
+    try:
+        with socket.create_connection((host, port), timeout=1):
+            return session
+    except OSError:
+        return None
+
+
+# The readiness probe must reach the listener itself. urlopen honors
+# http_proxy, and without a loopback entry in no_proxy it asks the proxy
+# instead: a proxy that answers reports a server ready that is not serving, and
+# one that cannot reach loopback makes the launcher stop a healthy server
+# (Greptile P1 on #281).
+_DIRECT = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
 def _wait_health(base: str, timeout_s: float) -> bool:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         try:
-            with urllib.request.urlopen(f"{base}/v1/healthz", timeout=2) as response:
+            with _DIRECT.open(f"{base}/v1/healthz", timeout=2) as response:
                 if response.status == 200:
                     return True
         except (urllib.error.URLError, TimeoutError, OSError):
@@ -255,69 +349,99 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    import uvicorn
-
-    try:
-        listener = _listen(args.host, args.port)
-    except OSError as exc:
-        print(f"could not bind local capture API on {args.host}:{args.port}: {exc}", file=sys.stderr)
-        return 1
-    port = int(listener.getsockname()[1])
-    base = _public_url(args.host, port)
-
-    # Fresh per-run credentials: a device bearer for the app and harness, an
-    # explicit reviewer bearer for the review page (server/api/auth.py reads
-    # `reviewer:<label>:<token>`; tokens must be at least 32 chars).
-    app_token = secrets.token_urlsafe(32)
-    reviewer_token = secrets.token_urlsafe(32)
-    hmac_secret = secrets.token_hex(32)
-    git_sha = _git_sha()
-
     session_dir = args.session_dir
     volume_root = session_dir / "volume"
     session_path = session_dir / "session.json"
-    session = {
-        "baseUrl": f"{base}/v1",
-        "appToken": app_token,
-        "reviewerToken": reviewer_token,
-        "pid": os.getpid(),
-        "gitSha": git_sha,
-        "stageStubs": True,
-        "startedAt": datetime.now(UTC).isoformat(),
-    }
-    _write_session(session_path, session)
+    try:
+        lock_fd = _open_session_lock(session_dir, session_path)
+    except _SessionDirectoryLocked as exc:
+        if exc.session is None:
+            print(
+                f"refusing to start: {session_dir} is locked by another local capture API launch",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"refusing to start: {session_path} belongs to a live local capture API "
+                f"(pid {exc.session['pid']}, {exc.session['baseUrl']}). Stop it first, or pass another --session-dir.",
+                file=sys.stderr,
+            )
+        return 1
 
-    os.environ.update(
-        _local_env_overrides(
-            app_token=app_token,
-            reviewer_token=reviewer_token,
-            hmac_secret=hmac_secret,
-            git_sha=git_sha,
-            base=base,
-            volume_root=volume_root,
+    try:
+        # A second launch on a free port would bind and replace a running server's
+        # credentials, so the failed-bind guard below never fires; refuse instead.
+        live = _live_session(session_path)
+        if live is not None:
+            print(
+                f"refusing to start: {session_path} belongs to a live local capture API "
+                f"(pid {live['pid']}, {live['baseUrl']}). Stop it first, or pass another --session-dir.",
+                file=sys.stderr,
+            )
+            return 1
+
+        import uvicorn
+
+        try:
+            listener = _listen(args.host, args.port)
+        except OSError as exc:
+            print(f"could not bind local capture API on {args.host}:{args.port}: {exc}", file=sys.stderr)
+            return 1
+        port = int(listener.getsockname()[1])
+        base = _public_url(args.host, port)
+
+        # Fresh per-run credentials: a device bearer for the app and harness, an
+        # explicit reviewer bearer for the review page (server/api/auth.py reads
+        # `reviewer:<label>:<token>`; tokens must be at least 32 chars).
+        app_token = secrets.token_urlsafe(32)
+        reviewer_token = secrets.token_urlsafe(32)
+        hmac_secret = secrets.token_hex(32)
+        git_sha = _git_sha()
+
+        session = {
+            "baseUrl": f"{base}/v1",
+            "appToken": app_token,
+            "reviewerToken": reviewer_token,
+            "pid": os.getpid(),
+            "gitSha": git_sha,
+            "stageStubs": True,
+            "startedAt": datetime.now(UTC).isoformat(),
+        }
+        _write_session(session_path, session)
+
+        os.environ.update(
+            _local_env_overrides(
+                app_token=app_token,
+                reviewer_token=reviewer_token,
+                hmac_secret=hmac_secret,
+                git_sha=git_sha,
+                base=base,
+                volume_root=volume_root,
+            )
         )
-    )
-    refused = _refused_parent_keys()
-    for key in refused:
-        os.environ.pop(key, None)
-    if refused:
-        reasons = "; ".join(f"{key} ({REFUSED_PARENT_KEYS[key]})" for key in refused)
-        print(f"refusing inherited shell env: {reasons}", file=sys.stderr, flush=True)
-    # Webhooks stay off: no outbound target, no signing key.
-    os.environ.pop("BASE_WEBHOOK_URL", None)
-    os.environ.pop("WEBHOOK_HMAC_SECRET", None)
-    # HSS_LOCAL_OUTCOME and HSS_LOCAL_STAGE_DELAY_S pass through untouched.
+        refused = _refused_parent_keys()
+        for key in refused:
+            os.environ.pop(key, None)
+        if refused:
+            reasons = "; ".join(f"{key} ({REFUSED_PARENT_KEYS[key]})" for key in refused)
+            print(f"refusing inherited shell env: {reasons}", file=sys.stderr, flush=True)
+        # Webhooks stay off: no outbound target, no signing key.
+        os.environ.pop("BASE_WEBHOOK_URL", None)
+        os.environ.pop("WEBHOOK_HMAC_SECRET", None)
+        # HSS_LOCAL_OUTCOME and HSS_LOCAL_STAGE_DELAY_S pass through untouched.
 
-    config = uvicorn.Config(
-        "server.api.app:create_app",
-        factory=True,
-        host=args.host,
-        port=port,
-        log_level="info",
-    )
-    _announce(base, session_path, args.health_timeout)
-    uvicorn.Server(config).run(sockets=[listener])
-    return 0
+        config = uvicorn.Config(
+            "server.api.app:create_app",
+            factory=True,
+            host=args.host,
+            port=port,
+            log_level="info",
+        )
+        _announce(base, session_path, args.health_timeout)
+        uvicorn.Server(config).run(sockets=[listener])
+        return 0
+    finally:
+        _close_session_lock(lock_fd)
 
 
 if __name__ == "__main__":
