@@ -197,6 +197,16 @@ import Testing
         #expect(!Self.run(before + gap + softer).contains(.blurry))
     }
 
+    /// A dark frame's sharpness is not judged until exposure passes again.
+    @Test func tooDarkFramesDoNotCreateBlur() {
+        let sharp = Self.times(for: 2).map { Frame(time: $0, skip: .redundant, sharpness: 100) }
+        let dark = Self.times(from: 2, for: 4).map { Frame(time: $0, skip: .tooDark, luma: 25, sharpness: 30) }
+        let light = Self.times(from: 6, for: 4).map { Frame(time: $0, skip: .redundant, luma: 90, sharpness: 100) }
+        let said = Self.run(sharp + dark + light)
+        #expect(!said.contains(.blurry))
+        #expect(said.last! == nil)
+    }
+
     /// A shown problem clears half a second after its last frame.
     @Test func motionClearsAfterItsLastFrame() {
         let fast = Self.times(for: 1).map { Frame(time: $0, skip: .movingFast) }

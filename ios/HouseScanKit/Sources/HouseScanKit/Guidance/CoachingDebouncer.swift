@@ -204,7 +204,11 @@ public struct CoachingDebouncer: Sendable {
         }
         // The sharpness from before any blur: fixed while a spell lasts, else the recent median.
         let reference = blurReference ?? Self.median(sharpness.map(\.value), atLeast: config.minDarkSamples)
-        if skip != .trackingNotReady, let value, let reference, value < reference * config.blurRatio {
+        // The gate only reaches sharpness after tracking, motion, and exposure pass. Do not
+        // infer blur from a sharpness value on a frame it rejected earlier, and do not let that
+        // value change the reference for later valid frames.
+        let sharpnessWasReached = evidence[.blurry] != nil
+        if sharpnessWasReached, let value, let reference, value < reference * config.blurRatio {
             evidence[.blurry] = true
         }
         for (problem, seen) in evidence {
@@ -217,7 +221,7 @@ public struct CoachingDebouncer: Sendable {
         }
         spells = spells.filter { time - $0.value.lastSeen < config.clearAfter }
         blurReference = spells[.blurry] == nil ? nil : reference
-        if let value {
+        if sharpnessWasReached, let value {
             sharpness.append((time: time, value: value))
         }
     }
