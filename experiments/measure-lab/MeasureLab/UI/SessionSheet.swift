@@ -53,8 +53,7 @@ struct SessionSheet: View {
                             Text("\(wall.id) · \(wall.contacts.joined(separator: " → "))").font(.headline)
                             Text(Format.length(wall.length)).monospacedDigit()
                             ForEach(wall.validations, id: \.point) { check in
-                                Text("\(check.point): \(Format.inches(check.residual)) off · \(check.passes ? "passes" : "fails")")
-                                    .foregroundStyle(check.passes ? Color.secondary : Theme.warning)
+                                ValidationRow(check: check, contact: session.manifest.points.first { $0.id == check.point })
                             }
                         }
                         .font(.subheadline)
@@ -117,5 +116,43 @@ private struct MeasurementRow: View {
 
     private var title: String {
         MeasuredQuantity(rawValue: measurement.compared)?.title.lowercased() ?? measurement.compared
+    }
+}
+
+/// One saved check on a wall. A contact within tolerance confirms the wall only when it has no
+/// warning of its own (`WallCheck.outcome`), so the row names the warnings instead of "passes".
+private struct ValidationRow: View {
+    let check: WallRecord.Validation
+    /// The check contact's point record, nil if the session has no such point.
+    let contact: PointRecord?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("\(check.point): \(Format.inches(check.residual)) off · \(verdict)")
+                .monospacedDigit()
+                .foregroundStyle(outcome == .confirmed ? Color.secondary : Theme.warning)
+            if outcome == .unconfirmed {
+                Text(reasons)
+                    .font(.caption)
+                    .foregroundStyle(Theme.warning)
+            }
+        }
+    }
+
+    private var outcome: WallCheck.Outcome {
+        WallCheck.outcome(passes: check.passes, contactWarnings: contact?.flags)
+    }
+
+    private var verdict: String {
+        switch outcome {
+        case .confirmed: "confirms"
+        case .unconfirmed: "within tolerance, not confirmed"
+        case .failed: "fails"
+        }
+    }
+
+    private var reasons: String {
+        guard let contact else { return "No record of this check point" }
+        return contact.flags.map(\.message).joined(separator: "; ")
     }
 }

@@ -4,7 +4,8 @@ import ARKit
 ///
 /// ARKit calls these on the session's `delegateQueue`, a private serial queue set by
 /// `CaptureController`, so JPEG encoding for motion keyframes stays off the main thread. Each
-/// callback copies what it needs into Sendable values on that queue, then hops to the main actor.
+/// callback copies what it needs into Sendable values, then enqueues on the main queue in callback
+/// order. Independent Tasks can reorder a limited/normal cycle and incorrectly permit taps.
 /// ARKit's own objects never leave the delegate queue.
 final class SessionDelegate: NSObject, ARSessionDelegate {
     private let session: LabSession
@@ -17,34 +18,36 @@ final class SessionDelegate: NSObject, ARSessionDelegate {
 
     func session(_ arSession: ARSession, didUpdate frame: ARFrame) {
         guard let delivery = recorder.offerMotionFrame(frame) else { return }
-        Task { @MainActor [session] in session.keyframeDelivered(delivery) }
+        DispatchQueue.main.async { [session] in session.keyframeDelivered(delivery) }
     }
 
     func session(_ arSession: ARSession, cameraDidChangeTrackingState camera: ARCamera) {
         let state = TrackingState(camera.trackingState)
         let time = ProcessInfo.processInfo.systemUptime
         recorder.trackingChanged(isNormal: state == .normal, at: time)
-        Task { @MainActor [session] in session.trackingChanged(to: state, at: time) }
+        DispatchQueue.main.async { [session] in session.trackingChanged(to: state, at: time) }
     }
 
     func session(_ arSession: ARSession, didAdd anchors: [ARAnchor]) {
         let planes = anchors.compactMap(DetectedPlane.init)
         guard !planes.isEmpty else { return }
-        Task { @MainActor [session] in session.planesAdded(planes) }
+        DispatchQueue.main.async { [session] in session.planesAdded(planes) }
     }
 
     func session(_ arSession: ARSession, didRemove anchors: [ARAnchor]) {
         let planes = anchors.compactMap(DetectedPlane.init)
         guard !planes.isEmpty else { return }
-        Task { @MainActor [session] in session.planesRemoved(planes) }
+        DispatchQueue.main.async { [session] in session.planesRemoved(planes) }
     }
 
     func sessionWasInterrupted(_ arSession: ARSession) {
-        Task { @MainActor [session] in session.interruptionChanged(isInterrupted: true) }
+        let time = ProcessInfo.processInfo.systemUptime
+        DispatchQueue.main.async { [session] in session.interruptionChanged(isInterrupted: true, at: time) }
     }
 
     func sessionInterruptionEnded(_ arSession: ARSession) {
-        Task { @MainActor [session] in session.interruptionChanged(isInterrupted: false) }
+        let time = ProcessInfo.processInfo.systemUptime
+        DispatchQueue.main.async { [session] in session.interruptionChanged(isInterrupted: false, at: time) }
     }
 
     func session(_ arSession: ARSession, didFailWithError error: any Error) {
@@ -54,7 +57,7 @@ final class SessionDelegate: NSObject, ARSessionDelegate {
         } else {
             failure = .other(error.localizedDescription)
         }
-        Task { @MainActor [session] in session.sessionFailed(failure) }
+        DispatchQueue.main.async { [session] in session.sessionFailed(failure) }
     }
 }
 
