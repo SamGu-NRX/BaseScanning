@@ -7,7 +7,8 @@ retake check values and whether they would ask for a retake. Candidates and the 
 come from the blind heuristic ranking; --number only scores the read and the number's rank.
 The summary counts a retake asked for a photo that read (a wasted retake) and a photo
 accepted that did not read (a re-request later). The meter number is taken from the command
-line and is never written to disk.
+line and is never written to disk. Separate top-three counters report whether the true
+number was offered, with denominators for all photos, retakes and accepted photos.
 """
 
 import argparse
@@ -74,10 +75,12 @@ def main() -> None:
 
     print(
         "| Photo | Read | Rank | Top candidate is the number | Top line px | Sharpness | "
-        "Retake because |"
+        "Retake because | True number among three taps |"
     )
-    print("|---|---|---|---|---|---|---|")
+    print("|---|---|---|---|---|---|---|---|")
     wasted = missed = 0
+    offered = offered_wasted = offered_missed = 0
+    retakes = accepted = 0
     # Working copies live in a private temporary folder, never in the photo folder, so no
     # file of the user's is overwritten, deleted or scored twice.
     with tempfile.TemporaryDirectory() as scratch, Reader() as reader:
@@ -97,15 +100,27 @@ def main() -> None:
             why = retake.reasons(g, box)
             wasted += read and bool(why)
             missed += not read and not why
+            in_top_three = target_core in order[:3]
+            offered += in_top_three
+            offered_wasted += in_top_three and bool(why)
+            offered_missed += not in_top_three and not why
+            retakes += bool(why)
+            accepted += not why
             height_px = f"{retake.line_height_px(box, g.shape[0]):.0f}" if box else "–"
             print(
                 f"| {photo.name} | {'yes' if read else 'no'} | {rank or '–'} | "
                 f"{'yes' if rank == 1 else 'no'} | {height_px} | "
-                f"{retake.whole_photo_sharpness(g):.1f} | {', '.join(why) or '–'} |"
+                f"{retake.whole_photo_sharpness(g):.1f} | {', '.join(why) or '–'} | "
+                f"{'yes' if in_top_three else 'no'} |"
             )
     print(
         f"\n{len(photos)} photos; {wasted} retakes asked for photos that read; "
         f"{missed} photos accepted that did not read."
+    )
+    print(
+        f"Top-three taps: {offered}/{len(photos)} photos offered the true number; "
+        f"{offered_wasted}/{retakes} retakes asked when the true number was offered; "
+        f"{offered_missed}/{accepted} accepted photos did not offer the true number."
     )
 
 

@@ -173,3 +173,70 @@ def test_read_target_preserves_letters_outside_a_recognised_label_prefix(serial)
     from meter_eval.match import read_target
 
     assert read_target(serial) == serial.casefold()
+
+
+@pytest.mark.parametrize(
+    "ocr_read,target_position,retake,offered",
+    [
+        (False, 2, False, True),
+        (False, 2, True, True),
+        (True, 4, False, False),
+        (True, 4, True, False),
+    ],
+)
+def test_field_summary_keeps_ocr_and_offered_tap_outcomes_separate(
+    tmp_path, monkeypatch, capsys, ocr_read, target_position, retake, offered
+):
+    import sys
+
+    from meter_eval import fieldtest
+
+    target = "1234567"
+    numbers = ["7654321", "7654322", "7654323", "7654324"]
+    numbers[target_position - 1] = target
+    result = {
+        "lines": [
+            {"text": number, "box": [0.1, 0.05 + i * 0.22, 0.4, 0.2 - i * 0.02]}
+            for i, number in enumerate(numbers)
+        ],
+        "barcodes": [],
+    }
+
+    class Reader:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            pass
+
+        def read(self, path, barcodes):
+            return result
+
+    # The shared matcher currently makes offered imply read. A stand-in diagnostic
+    # exercises the requested disagreement without changing historical OCR semantics.
+    if not ocr_read:
+        monkeypatch.setattr(fieldtest, "reads_number", lambda lines, number: False)
+    Image.new("RGB", (128, 128), "white").save(tmp_path / "photo.jpg")
+    monkeypatch.setattr(fieldtest, "Reader", Reader)
+    monkeypatch.setattr(
+        fieldtest.retake, "reasons", lambda gray, box: ["out of focus"] if retake else []
+    )
+    monkeypatch.setattr(sys, "argv", ["fieldtest", str(tmp_path), "--number", target])
+    fieldtest.main()
+    output = capsys.readouterr().out
+    assert (
+        f"1 photos; {int(ocr_read and retake)} retakes asked for photos that read; "
+        f"{int(not ocr_read and not retake)} photos accepted that did not read."
+    ) in output
+    assert f"Top-three taps: {int(offered)}/1 photos offered the true number" in output
+    assert (
+        f"{int(offered and retake)}/{int(retake)} retakes asked when the true number was offered"
+        in output
+    )
+    assert (
+        f"{int(not offered and not retake)}/{int(not retake)} accepted photos did not offer the true number"
+        in output
+    )
+    row = next(line for line in output.splitlines() if line.startswith("| photo.jpg |"))
+    assert row.endswith(f"| {'yes' if offered else 'no'} |")
+    assert "True number among three taps" in output

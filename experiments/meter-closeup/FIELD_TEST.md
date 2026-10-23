@@ -12,6 +12,8 @@ The thresholds in [PORTING.md](PORTING.md) come from processed Commons JPEGs, no
 
 The command prints each photo's read result, the candidate's rank and the check values. It then counts retakes asked for photos that read, and photos accepted that did not. Ranking and the top candidate used for retake checks depend only on blind heuristic features. The supplied number scores the read and its position in that order; it never changes the selected candidate. The number is never written to disk.
 
+The photo table also reports whether the true number appears among the three offered taps. The historical OCR retake counts are unchanged. A separate top-three summary reports offered-number photos over all photos, retakes with the number offered over all retakes, and accepted photos without the number offered over all accepted photos. A zero denominator means there were no photos in that group, not a measured success rate.
+
 | Threshold | Photos to take | The threshold holds if |
 |---|---|---|
 | Out of focus | three with focus locked on a distant background, one from 5 cm, three sharp | blurred photos score 6.68 or less and fail to read, and sharp photos score far above |
