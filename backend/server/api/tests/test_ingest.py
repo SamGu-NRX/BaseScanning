@@ -162,6 +162,26 @@ def test_keyframe_image_rejected(client):
     assert response.json()["errors"][0]["pointer"] == "/files/0/role"
 
 
+def test_file_registration_rejects_non_finite_meta(client):
+    capture_id = _create(client, "packet-meta-nonfinite")
+    body = _file("stills/s1.jpg", b"abc", meta={"still": "s1"})
+    body["meta"]["still"]["timestamp"] = float("nan")
+
+    response = client.post(
+        f"/v1/captures/{capture_id}/files",
+        content=json.dumps({"files": [body]}).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json()["errors"][0] == {
+        "code": "schema",
+        "pointer": "/files/0/meta/still/timestamp",
+        "message": "number is not finite",
+    }
+    assert client.app_state.state.files(capture_id) == []
+
+
 def test_tamper_then_reregister(client):
     capture_id = _create(client, "packet-tamper")
     data = b"jpeg-bytes"
