@@ -325,7 +325,7 @@ def _baseline_length(wall) -> float:
     )
     length = math.hypot(x1 - x0, z1 - z0)
     if length <= 0.0:
-        _invalid("the baseline repeats its first point", "/walls/0/baseline")
+        _invalid("the baseline repeats its first point", "/walls/0/baseline_m")
     return length
 
 
