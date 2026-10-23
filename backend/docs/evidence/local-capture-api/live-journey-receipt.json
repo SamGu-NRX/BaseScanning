@@ -1,0 +1,12 @@
+{
+  "what": "live journey against make local-api (recorded to local-api.cast)",
+  "driver": "tests/test_local_capture_api.py helpers over real TCP via httpx; no TestClient",
+  "baseUrl": "http://127.0.0.1:8000/v1",
+  "captureId": "cap_01M51TS13336P96H5B6KFPH9WW",
+  "runId": "run_4c05e7d782dfc5f5",
+  "outcomeKind": "manual_review",
+  "outcomeMessage": "Review required before a placement is shown.",
+  "gitSha": "993c362751879bd03f3a8b90dd74c04b0836b78b",
+  "tokens": "redacted \u2014 per-run local secrets, never committed",
+  "recordedAt": "2026-10-16T07:49:27+00:00"
+}
