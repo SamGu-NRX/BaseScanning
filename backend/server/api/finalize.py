@@ -9,6 +9,7 @@ import json
 import math
 import threading
 from concurrent.futures import Future
+from datetime import datetime
 
 from pydantic import ValidationError
 
@@ -19,7 +20,7 @@ from server.api.finalize_checks import manifest_errors
 from server.api.ids import require_contract_id
 from server.api.keys import packet_key
 from server.api.promotion import promote
-from server.common.deploy_switch import finalize_eta_s
+from server.common.deploy_switch import finalize_eta_s, web_function_timeout_s
 from server.common.logging import log_event
 from server.contracts.api import AmendmentRequest, FinalizeResponse, StageData
 from server.contracts.jobs import CaptureRecord, run_id_for_capture
@@ -96,6 +97,30 @@ def _non_finite_pointer(payload: object) -> str | None:
         elif isinstance(value, list):
             stack.extend((item, f"{pointer}/{index}") for index, item in enumerate(value))
     return None
+
+
+def _new_claim(deps: Deps, digest: str) -> dict:
+    return {"packet_sha256": digest, "claimed_at": isoformat(deps.now()), "token": deps.new_id("clm_")}
+
+
+def _claim_abandoned(deps: Deps, held: dict, key: str, digest: str) -> bool:
+    """True when the claimant cannot still be running and never wrote the packet.
+
+    The bound is the API web function's own timeout (modal_entry.py passes
+    web_function_timeout_s() to Modal), so a claim older than that belongs to a
+    request Modal has already ended. A claim with no readable time counts as old.
+    """
+    try:
+        stored = deps.storage.get_bytes(key)
+    except Exception:
+        stored = None
+    if stored is not None and _sha(stored) == digest:
+        return False
+    try:
+        claimed_at = datetime.fromisoformat(str(held["claimed_at"]).replace("Z", "+00:00"))
+    except (KeyError, ValueError):
+        return True
+    return (deps.now() - claimed_at).total_seconds() > web_function_timeout_s()
 
 
 def _schema_errors(exc: ValidationError) -> list[dict]:
@@ -292,16 +317,25 @@ def accept_packet(
         if rec is None or rec.state != "committed":
             missing.append(entry.path)
     claim_key = f"accepted_packet:{record.capture_id}:{amendment_id or '-'}"
-    claimed_now = deps.state.put_if_absent(claim_key, {"packet_sha256": digest})
-    if not claimed_now:
-        if (deps.state.get_kv(claim_key) or {}).get("packet_sha256") != digest:
+    claim = _new_claim(deps, digest)
+    if not deps.state.put_if_absent(claim_key, claim):
+        held = deps.state.get_kv(claim_key) or {}
+        if held.get("packet_sha256") != digest:
             what = "packet" if amendment_id is None else "amendment packet"
             raise fail(409, "packet_sha_conflict", "/", f"a different {what} was already accepted")
         # The same packet, already claimed. Only the claimant writes packet.json and
         # schedules the finish: the volume backend's write truncates before it writes,
         # so a second write can hand the claimant's worker an empty file. Run ids are
         # derived from the bytes, so this reply matches the claimant's.
-        return render_finalize("awaiting_files" if missing else "processing", missing, run_id)
+        if not _claim_abandoned(deps, held, key, digest):
+            return render_finalize("awaiting_files" if missing else "processing", missing, run_id)
+        # The claimant died before writing. put_if_absent on a key named after the
+        # abandoned claim's token is the compare-and-swap: of any number of retries
+        # that read the same abandoned claim, exactly one inserts it and takes over.
+        if not deps.state.put_if_absent(f"{claim_key}:takeover:{held.get('token')}", {"by": claim["token"]}):
+            return render_finalize("awaiting_files" if missing else "processing", missing, run_id)
+        deps.state.put_kv(claim_key, claim)
+        log_event("finalize.claim_taken_over", capture_id=record.capture_id, run_id=run_id)
     try:
         deps.storage.put_bytes(key, raw, "application/json")
     except Exception:

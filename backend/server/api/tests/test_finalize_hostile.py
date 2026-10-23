@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import json
+import threading
+from datetime import timedelta
 
 import pytest
 
-from server.api.deps import drain_finalize
+from server.api.deps import drain_finalize, isoformat
 from server.api.errors import ApiFailure
 from server.api.finalize import accept_packet
 from server.api.tests.conftest import photo_packet, sha256_hex
 from server.api.tests.test_ingest import _create, _put_commit
+from server.common.deploy_switch import web_function_timeout_s
 
 BLOB = b"jpeg"
 
@@ -149,6 +152,105 @@ def test_a_same_packet_retry_on_another_container_writes_nothing(client, monkeyp
     assert jobs == 1
     assert second == first
     assert deps.storage.get_bytes(key) == raw
+    assert deps.state.get_capture(capture_id).status == "processing"
+
+
+def _plant_claim(deps, capture_id: str, raw: bytes, age_s: float) -> None:
+    """A claim whose request died before it wrote packet.json or scheduled anything."""
+    claimed_at = deps.now() - timedelta(seconds=age_s)
+    deps.state.put_kv(
+        f"accepted_packet:{capture_id}:-",
+        {"packet_sha256": sha256_hex(raw), "claimed_at": isoformat(claimed_at), "token": "clm_dead"},
+    )
+
+
+def _count_writes_and_jobs(deps, monkeypatch, capture_id: str):
+    key = f"captures/{capture_id}/packet.json"
+    writes: list[str] = []
+    real_put = deps.storage.put_bytes
+
+    def counting_put(write_key, data, content_type):
+        writes.append(write_key)
+        return real_put(write_key, data, content_type)
+
+    monkeypatch.setattr(deps.storage, "put_bytes", counting_put)
+    jobs_before = len(deps.finalize_jobs)
+    return lambda: (writes.count(key), len(deps.finalize_jobs) - jobs_before)
+
+
+STALE_S = web_function_timeout_s() + 60
+
+
+def test_a_retry_takes_over_an_abandoned_claim(client, monkeypatch):
+    """Astra review at 3864c436: a claimant that died between put_if_absent and the
+    packet write left every same-digest retry answering processing with nothing
+    scheduled, so the capture stayed uploading forever."""
+    packet_id = "packet-abandoned-claim"
+    capture_id, packet = _ready(client, packet_id)
+    deps = client.app_state
+    raw = json.dumps(packet).encode()
+    _plant_claim(deps, capture_id, raw, age_s=STALE_S)
+    counts = _count_writes_and_jobs(deps, monkeypatch, capture_id)
+
+    response = accept_packet(deps, deps.state.get_capture(capture_id), raw)
+    writes, jobs = counts()
+    drain_finalize(deps)
+
+    assert (writes, jobs) == (1, 1)
+    assert response["status"] == "processing"
+    assert deps.storage.get_bytes(f"captures/{capture_id}/packet.json") == raw
+    assert deps.state.get_capture(capture_id).status == "processing"
+
+
+def test_a_retry_leaves_a_fresh_claim_alone(client, monkeypatch):
+    """Guard, not failing-first: 3864c436 never schedules on a retry, so it passes
+    there too. It fails if the bound is dropped (checked by setting it to -1)."""
+    packet_id = "packet-fresh-claim"
+    capture_id, packet = _ready(client, packet_id)
+    deps = client.app_state
+    raw = json.dumps(packet).encode()
+    _plant_claim(deps, capture_id, raw, age_s=5)
+    counts = _count_writes_and_jobs(deps, monkeypatch, capture_id)
+
+    response = accept_packet(deps, deps.state.get_capture(capture_id), raw)
+
+    assert counts() == (0, 0)
+    assert response["status"] == "processing"
+
+
+def test_concurrent_takeovers_schedule_once(client, monkeypatch):
+    packet_id = "packet-two-takeovers"
+    capture_id, packet = _ready(client, packet_id)
+    deps = client.app_state
+    raw = json.dumps(packet).encode()
+    _plant_claim(deps, capture_id, raw, age_s=STALE_S)
+    counts = _count_writes_and_jobs(deps, monkeypatch, capture_id)
+    # Both retries must have read the abandoned claim before either tries to take it.
+    both_read = threading.Barrier(2, timeout=10)
+    real_insert = deps.state.put_if_absent
+
+    def insert_after_both_read(key, value):
+        if ":takeover:" in key:
+            both_read.wait()
+        return real_insert(key, value)
+
+    monkeypatch.setattr(deps.state, "put_if_absent", insert_after_both_read)
+    record = deps.state.get_capture(capture_id)
+    replies: list[dict] = []
+    threads = [
+        threading.Thread(target=lambda: replies.append(accept_packet(deps, record.model_copy(deep=True), raw)))
+        for _ in range(2)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+    writes, jobs = counts()
+    drain_finalize(deps)
+
+    assert len(replies) == 2
+    assert (writes, jobs) == (1, 1)
+    assert {reply["runId"] for reply in replies} == {replies[0]["runId"]}
     assert deps.state.get_capture(capture_id).status == "processing"
 
 
