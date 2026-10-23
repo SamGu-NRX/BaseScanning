@@ -92,6 +92,7 @@ OBJECT_NAMES = {
     "vent": "Vent",
     "downspout": "Downspout",
     "pool": "Pool",
+    "battery": "Battery",
 }
 
 

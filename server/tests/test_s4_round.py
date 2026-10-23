@@ -6,6 +6,7 @@ import pytest
 from helpers import at_start, observed_band, parsed, shared_fixture
 from hypothesis import given, settings
 from hypothesis import strategies as st
+from shapely.geometry import Point
 
 import solver
 from rules import LoadedRules, public_rules_dict, rules_from_dict
@@ -112,6 +113,47 @@ def test_a_captured_request_never_comes_back(raw: dict) -> None:
         result = answer(raw)
         assert repeated_requests(raw, result) == [], result["missing_evidence"]
         raw = captured(raw, result)
+
+
+def request_past_a_limit_end() -> dict:
+    """One wall from s = -0.5 to 12, a limit at the left end and an unexplored right end whose
+    disc (radius reach, about 12.8 ft) reaches past the left end."""
+    raw = shared_fixture()
+    raw["walls"][0]["baseline"] = [[-0.5, 0], [12.0, 0]]
+    raw["overheads"][0]["span_ft"] = raw["facing"][0]["span_ft"] = [-0.5, 12.0]
+    raw["coverage"]["ends"] = {"left": {"kind": "limit"}, "right": {"kind": "unexplored"}}
+    for band in ("wall", "ground", "overhead", "facing"):
+        observed_band(raw, band, [(-0.5, 12.0)], 1.0)
+    return raw
+
+
+def test_a_request_past_a_limit_end_is_settled_by_capturing_it() -> None:
+    # Before: the first answer asked for ground from s = -4.01, past the left limit end; after
+    # that capture [-0.833, -0.5] 2.85 ft out (pool_clearance) was asked for on every round.
+    # That ground is in the right end's disc, where ground seen past the limit end didn't count.
+    raw = request_past_a_limit_end()
+    for _ in range(3):
+        result = answer(raw)
+        assert repeated_requests(raw, result) == [], result["missing_evidence"]
+        raw = captured(raw, result)
+
+
+def test_ground_seen_past_a_limit_end_counts_in_an_unexplored_ends_disc() -> None:
+    # Inside the right end's disc, past the left limit end: seen once a view there reaches it.
+    raw = request_past_a_limit_end()
+    probe = Point(-0.7, 1.5)
+    assert parsed(raw, PUBLIC).unobserved_ground().contains(probe)
+    raw["coverage"]["observed"].append({"band": "ground", "span_ft": [-1.0, -0.5], "out_ft": 2.0})
+    assert not parsed(raw, PUBLIC).unobserved_ground().contains(probe)
+
+
+def test_ground_seen_past_an_unexplored_end_still_counts_for_nothing() -> None:
+    # Past the unexplored right end the extended line is a guess, so a view along it shows
+    # nothing about where the walls went.
+    raw = request_past_a_limit_end()
+    probe = Point(13.0, 1.5)
+    raw["coverage"]["observed"].append({"band": "ground", "span_ft": [12.0, 15.0], "out_ft": 5.0})
+    assert parsed(raw, PUBLIC).unobserved_ground().contains(probe)
 
 
 # --- 2. ground past a limit end is not clear until it is seen ------------------------------------

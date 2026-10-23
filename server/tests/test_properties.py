@@ -124,7 +124,14 @@ def scene(
     wall_err: float = 0.0,
     drive: float | None = None,
 ) -> dict[str, Any]:
-    ground = pads_ground([pad], LO, HI)
+    # Deck past each end too, where a view past a limit end sees both sides: seen ground with
+    # no recorded surface may be a driveway (drive_clearance), so a fully observed scene records
+    # it.
+    ground = [
+        *pads_ground([pad], LO, HI),
+        {"type": "deck", "polygon": rect(LO - 40, LO, -40, 40)},
+        {"type": "deck", "polygon": rect(HI, HI + 40, -40, 40)},
+    ]
     if drive is not None:
         ground.append({"type": "drive", "polygon": rect(drive, drive + 4, 0, 30)})
     return {
