@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import math
 import posixpath
 import re
 
@@ -70,6 +71,23 @@ def _meta_ok(role: str, meta) -> bool:
     if role in _META:
         return isinstance(dumped, dict) and set(dumped) == {_META[role]}
     return False
+
+
+def _non_finite_pointer(value: object, pointer: str = "") -> str | None:
+    if isinstance(value, float):
+        return pointer if not math.isfinite(value) else None
+    if isinstance(value, dict):
+        for key, item in value.items():
+            escaped = str(key).replace("~", "~0").replace("/", "~1")
+            found = _non_finite_pointer(item, f"{pointer}/{escaped}")
+            if found is not None:
+                return found
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            found = _non_finite_pointer(item, f"{pointer}/{index}")
+            if found is not None:
+                return found
+    return None
 
 
 def _sign(deps, capture_id: str, rec: FileRecord) -> UploadTarget:
@@ -146,6 +164,16 @@ def register(app: FastAPI) -> None:
                             "message": "meta does not match the role",
                         }
                     )
+                if item.meta is not None:
+                    meta_pointer = _non_finite_pointer(item.meta.model_dump(mode="python"), "/meta")
+                    if meta_pointer is not None:
+                        errors.append(
+                            {
+                                "code": "schema",
+                                "pointer": f"/files/{index}{meta_pointer}",
+                                "message": "number is not finite",
+                            }
+                        )
                 if item.bytes > deps.settings.HSS_INGEST_MAX_FILE_BYTES:
                     errors.append(
                         {

@@ -6,8 +6,10 @@ import gzip
 import hashlib
 import io
 import json
+import math
 import threading
 from concurrent.futures import Future
+from datetime import datetime
 
 from pydantic import ValidationError
 
@@ -18,7 +20,7 @@ from server.api.finalize_checks import manifest_errors
 from server.api.ids import require_contract_id
 from server.api.keys import packet_key
 from server.api.promotion import promote
-from server.common.deploy_switch import finalize_eta_s
+from server.common.deploy_switch import finalize_eta_s, web_function_timeout_s
 from server.common.logging import log_event
 from server.contracts.api import AmendmentRequest, FinalizeResponse, StageData
 from server.contracts.jobs import CaptureRecord, run_id_for_capture
@@ -71,6 +73,54 @@ def inflate(body: bytes, encoding: str | None) -> bytes:
     if len(body) > _INFLATE_CAP:
         raise fail(413, "payload_too_large", "/", "body exceeds 48 MiB")
     return body
+
+
+def _non_finite_pointer(payload: object) -> str | None:
+    """JSON pointer to a NaN or infinite number in the parsed packet, or None.
+
+    json.loads reads NaN, Infinity and -Infinity, and turns an overflowing literal
+    such as 1e999 into inf. None of them is JSON (RFC 8259), and the packet models
+    take any float, so without this check they reach storage and the pipeline.
+    The background manifest check catches them only in poses, intrinsics,
+    timestamps and taps, and only after the 202 and the whole upload.
+    """
+    stack: list[tuple[object, str]] = [(payload, "")]
+    while stack:
+        value, pointer = stack.pop()
+        if isinstance(value, float):
+            if not math.isfinite(value):
+                return pointer or "/"
+        elif isinstance(value, dict):
+            stack.extend(
+                (item, f"{pointer}/{str(key).replace('~', '~0').replace('/', '~1')}") for key, item in value.items()
+            )
+        elif isinstance(value, list):
+            stack.extend((item, f"{pointer}/{index}") for index, item in enumerate(value))
+    return None
+
+
+def _new_claim(deps: Deps, digest: str) -> dict:
+    return {"packet_sha256": digest, "claimed_at": isoformat(deps.now()), "token": deps.new_id("clm_")}
+
+
+def _claim_abandoned(deps: Deps, held: dict, key: str, digest: str) -> bool:
+    """True when the claimant cannot still be running and never wrote the packet.
+
+    The bound is the API web function's own timeout (modal_entry.py passes
+    web_function_timeout_s() to Modal), so a claim older than that belongs to a
+    request Modal has already ended. A claim with no readable time counts as old.
+    """
+    try:
+        stored = deps.storage.get_bytes(key)
+    except Exception:
+        stored = None
+    if stored is not None and _sha(stored) == digest:
+        return False
+    try:
+        claimed_at = datetime.fromisoformat(str(held["claimed_at"]).replace("Z", "+00:00"))
+    except (KeyError, ValueError):
+        return True
+    return (deps.now() - claimed_at).total_seconds() > web_function_timeout_s()
 
 
 def _schema_errors(exc: ValidationError) -> list[dict]:
@@ -212,6 +262,9 @@ def accept_packet(
         raise fail(422, "schema", "/", "packet is not json") from exc
     if not isinstance(payload, dict):
         raise fail(422, "schema", "/", "packet must be an object")
+    non_finite = _non_finite_pointer(payload)
+    if non_finite is not None:
+        raise fail(422, "schema", non_finite, "number is not finite")
     try:
         packet = Packet.model_validate(payload)
     except ValidationError as exc:
@@ -250,7 +303,10 @@ def accept_packet(
         log_event("finalize.rejected", codes=extra["last_422"], capture_id=record.capture_id)
         raise _multi(errors)
     key = packet_key(record.capture_id, amendment_id)
-    deps.storage.put_bytes(key, raw, "application/json")
+    # The capture lock is per process and the API runs on up to
+    # CAPTURE_API_MAX_CONTAINERS containers, so `record` and the amendment row can
+    # predate another container's acceptance. The first digest to claim wins; a
+    # different packet gets the same 409 it would get once packet_sha256 is visible.
     run_id = _run_id(record.capture_id, raw)
     paths = [
         entry.path if amendment_id is None else f"amendments/{amendment_id}/{entry.path}" for entry in packet.files
@@ -260,6 +316,32 @@ def accept_packet(
         rec = deps.state.get_file(record.capture_id, path)
         if rec is None or rec.state != "committed":
             missing.append(entry.path)
+    claim_key = f"accepted_packet:{record.capture_id}:{amendment_id or '-'}"
+    claim = _new_claim(deps, digest)
+    if not deps.state.put_if_absent(claim_key, claim):
+        held = deps.state.get_kv(claim_key) or {}
+        if held.get("packet_sha256") != digest:
+            what = "packet" if amendment_id is None else "amendment packet"
+            raise fail(409, "packet_sha_conflict", "/", f"a different {what} was already accepted")
+        # The same packet, already claimed. Only the claimant writes packet.json and
+        # schedules the finish: the volume backend's write truncates before it writes,
+        # so a second write can hand the claimant's worker an empty file. Run ids are
+        # derived from the bytes, so this reply matches the claimant's.
+        if not _claim_abandoned(deps, held, key, digest):
+            return render_finalize("awaiting_files" if missing else "processing", missing, run_id)
+        # The claimant died before writing. put_if_absent on a key named after the
+        # abandoned claim's token is the compare-and-swap: of any number of retries
+        # that read the same abandoned claim, exactly one inserts it and takes over.
+        if not deps.state.put_if_absent(f"{claim_key}:takeover:{held.get('token')}", {"by": claim["token"]}):
+            return render_finalize("awaiting_files" if missing else "processing", missing, run_id)
+        deps.state.put_kv(claim_key, claim)
+        log_event("finalize.claim_taken_over", capture_id=record.capture_id, run_id=run_id)
+    try:
+        deps.storage.put_bytes(key, raw, "application/json")
+    except Exception:
+        # Nothing was accepted, so a corrected packet must not meet a 409 on retry.
+        deps.state.delete_kv(claim_key)
+        raise
     extra = extras(deps, record.capture_id)
     extra["accepted"] = {
         "packet_sha256": digest,

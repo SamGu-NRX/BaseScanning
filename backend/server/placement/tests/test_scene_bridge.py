@@ -615,6 +615,10 @@ def test_invalid_refusals_carry_code_and_pointer() -> None:
     s_range["walls"][0]["s_range_m"] = [-2.0, 5.0]  # geometry says [-3.0, 2.0]
     cases.append((s_range, "/walls/0/s_range_m"))
 
+    repeated_baseline = copy.deepcopy(document)
+    repeated_baseline["walls"][0]["baseline_m"] = [[1.0, 1.0], [1.0, 1.0]]
+    cases.append((repeated_baseline, "/walls/0/baseline_m"))
+
     end_s = copy.deepcopy(document)
     end_s["chain"]["ends"]["right"]["s_m"] = 2.5
     cases.append((end_s, "/chain/ends/right/s_m"))
