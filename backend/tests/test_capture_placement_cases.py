@@ -427,7 +427,7 @@ def _expected_a() -> dict:
             "route_length": {"outcome": "pass", "unsure_cause": None},
         },
         "missing_evidence": [
-            {"kind": "band", "band": "ground", "span_ft": [-0.614621, 22.321313], "out_ft": 12.009634},
+            {"kind": "band", "band": "ground", "span_ft": [-0.680316, 22.387009], "out_ft": 12.07043},
             {"kind": "past_end", "side": "left", "span_ft": [-9.84252, -9.84252]},
         ],
         "ends": {"left": "unexplored", "right": "limit"},
@@ -452,7 +452,7 @@ def _expected_b() -> dict:
             "route_length": {"outcome": "pass", "unsure_cause": None},
         },
         "missing_evidence": [
-            {"kind": "band", "band": "ground", "span_ft": [-23.666497, -0.664867], "out_ft": 12.042482},
+            {"kind": "band", "band": "ground", "span_ft": [-23.765041, -0.566324], "out_ft": 12.136125},
             {"kind": "past_end", "side": "right", "span_ft": [9.84252, 9.84252]},
         ],
         "ends": {"left": "limit", "right": "unexplored"},
