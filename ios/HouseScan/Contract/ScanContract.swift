@@ -554,8 +554,8 @@ enum EndMarkRefusal: Error, Equatable, Sendable {
     case otherSide(WallSide)
     /// Tracking isn't normal, as for a feature mark (`MarkRefusal.trackingNotReady`).
     case trackingNotReady
-    /// During a past_end request: an end there would leave less wall than the walk's minimum
-    /// (`CoverageMap.endWouldLeaveTooLittle`, `WallFrame.minWallLength`), which the app can't use.
+    /// During a past_end request: an end there would leave coincident or reversed ends
+    /// (`CoverageMap.endWouldLeaveTooLittle`), which describe no wall.
     /// Decided in `aimedEnd`, so the preview and the button agree.
     case tooLittleWall
 }
@@ -912,12 +912,12 @@ final class ScanViewState {
     /// that last ended a side: the walk asks "End the scan here?" instead of ending this side too
     /// (#82). Answered by `answerEndScan`.
     var endScanQuestion = false
-    /// Set with `endScanQuestion` when ending the open sides now would leave ends closer than a
-    /// battery is wide (`WalkRefusals.endsTooClose`): "Done with this wall" would refuse them and
+    /// Set with `endScanQuestion` when ending the open sides now would leave coincident or
+    /// reversed ends (`WalkRefusals.endsTooClose`): "Done with this wall" would refuse them and
     /// the walk would go on, so the question offers "Start over" instead of "Yes, end here".
     var endScanTooShort = false
-    /// True after "Done with this wall" was refused because the ends were closer together than
-    /// `WallFrame.minWallLength`; the ends were cleared. False again once an end is marked.
+    /// True after "Done with this wall" was refused because the ends were coincident or
+    /// reversed; the ends were cleared. False again once an end is marked.
     var wallTooShort = false
     /// Set after the tilt-up view: is anything overhead there (roof edge, porch, stairs)? The
     /// camera can't tell open sky from an eave, so the homeowner answers.
@@ -1024,8 +1024,8 @@ protocol ScanActions: AnyObject {
     func deleteFeature(_ id: UUID)
     /// The window question on the review; nil is "Not sure".
     func setWindowOpens(_ id: UUID, opens: Bool?)
-    /// Leave the walk for the feature review (allowed once both ends are marked). Ends closer
-    /// together than `WallFrame.minWallLength` are cleared instead, and `wallTooShort` is set.
+    /// Leave the walk for feature review once both ends are marked. Coincident or reversed
+    /// ends are cleared instead, and `wallTooShort` is set.
     func finishWalk()
     /// The answer to `ScanViewState.endScanQuestion`. "Yes, end here" (`end`) ends every side
     /// without an end where "Can't get there" would (`ScanViewState.endPreview`, unexplored) and

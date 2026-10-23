@@ -50,11 +50,11 @@ import Testing
         #expect(!refusals.neitherSideWalked(leftEnd: -4.0, rightEnd: 0.525))
     }
 
-    /// "Yes, end here" can't finish a wall shorter than a battery's width, so the question
-    /// offers "Start over" then instead of looping back to the walk.
+    /// Only coincident/reversed or missing ends prevent finishing; a 0.5 m wall is valid.
     @Test func endsTooCloseToFinish() {
-        #expect(WalkRefusals.endsTooClose(left: -0.2, right: 0.3))
+        #expect(!WalkRefusals.endsTooClose(left: -0.2, right: 0.3))
         #expect(WalkRefusals.endsTooClose(left: 0, right: 0))
+        #expect(WalkRefusals.endsTooClose(left: 0.2, right: -0.2))
         #expect(WalkRefusals.endsTooClose(left: nil, right: 2))
         #expect(!WalkRefusals.endsTooClose(left: -0.4, right: 0.4))
         #expect(!WalkRefusals.endsTooClose(left: -3, right: 0))

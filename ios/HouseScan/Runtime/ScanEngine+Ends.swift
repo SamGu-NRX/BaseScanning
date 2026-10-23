@@ -131,11 +131,8 @@ extension ScanEngine {
     /// `circleEnd` for the ray through `pixel` of the sensor image. A tap at a point (the
     /// autopilot's) during a past_end request goes through the same check as the circle.
     ///
-    /// During a past_end request only, an end that would leave less wall than the walk's minimum
-    /// (`WallFrame.minWallLength`, `CoverageMap.endWouldLeaveTooLittle`) is refused here, so the
-    /// button, its refusal and the tape's preview agree. The walk applies that minimum when it
-    /// finishes ("Done with this wall") and keeps doing so; a request settles without that step.
-    /// Whether 0.79 m is the right minimum is an open product question, not settled here.
+    /// During a past_end request, coincident or reversed ends are refused here so the button,
+    /// its refusal and the preview agree. Positive narrow walls may finish or settle a request.
     func aimedEnd(asked: WallSide, pixel: SIMD2<Float>, frame: SourceFrame, map: CoverageMap) -> Result<WallPoint, EndMarkRefusal> {
         let hit = map.wall.intersectWall(frame.camera.ray(throughPixel: pixel))
         switch EndAim.verdict(
