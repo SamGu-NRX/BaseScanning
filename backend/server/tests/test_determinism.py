@@ -1,6 +1,8 @@
 import numpy as np
 
-from server.dense.run import _canonicalize_point_rows
+from server.common.tracks import read_tracks
+from server.dense.params import DenseParams
+from server.dense.run import run_dense
 from server.eval.extract import sequential_lines
 
 
@@ -18,22 +20,32 @@ def _line_geometry(segments):
     )
 
 
-def test_dense_point_order_keeps_observations_with_their_points():
+def test_dense_stage_keeps_observations_with_their_points(tmp_path):
     points = np.array([[2.0, 0.0, 1.0], [1.0, 0.0, 3.0], [1.0, 0.0, 2.0]])
-    src = np.array([1, 0, 1])
     tracks = [np.array([20]), np.array([10]), np.array([30])]
     permutation = np.array([2, 0, 1])
+    cameras = [{"pose": np.eye(4).tolist(), "w": 4, "h": 4, "intrinsics": [1, 1, 0, 0]}]
+    poses_dir = tmp_path / "poses"
+    poses_dir.mkdir()
+    (poses_dir / "cameras.json").write_text("[]")
 
-    canonical_points, canonical_src, canonical_tracks = _canonicalize_point_rows(points, src, tracks)
-    shuffled_tracks = [tracks[i] for i in permutation]
-    shuffled_points, shuffled_src, shuffled_tracks = _canonicalize_point_rows(
-        points[permutation], src[permutation], shuffled_tracks
+    run_dense(
+        {},
+        poses_dir,
+        {"scale_factor": 1.0, "origin_m": [0, 0, 0]},
+        tmp_path / "dense",
+        params=DenseParams(),
+        models={
+            "cameras": cameras,
+            "points_w": points[permutation],
+            "point_src": np.ones(len(points), int),
+            "point_tracks": [tracks[i] for i in permutation],
+        },
     )
-
-    assert np.array_equal(canonical_points, shuffled_points)
-    assert np.array_equal(canonical_src, shuffled_src)
-    assert [row.tolist() for row in canonical_tracks] == [row.tolist() for row in shuffled_tracks]
-    assert {tuple(point): int(track[0]) for point, track in zip(canonical_points, canonical_tracks, strict=True)} == {
+    written_points = np.load(tmp_path / "dense" / "cloud.npz")["points"]
+    written_tracks, _ = read_tracks(tmp_path / "dense" / "tracks.npz")
+    assert written_tracks is not None
+    assert {tuple(point): int(track[0]) for point, track in zip(written_points, written_tracks, strict=True)} == {
         (2.0, 0.0, 1.0): 20,
         (1.0, 0.0, 3.0): 10,
         (1.0, 0.0, 2.0): 30,
