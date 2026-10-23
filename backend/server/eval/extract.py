@@ -48,6 +48,8 @@ class Segment:
 def ransac_plane_up(X, up, rng, thr=0.05, iters=800, max_tilt_deg=12.0):
     best_k, best = -1, None
     cmin = np.cos(np.radians(max_tilt_deg))
+    canonical = np.lexsort((X[:, 2], X[:, 1], X[:, 0]))
+    X = np.asarray(X)[canonical]
     Xs = X[rng.integers(0, len(X), min(len(X), 60000))]
     for _ in range(iters):
         s = Xs[rng.integers(0, len(Xs), 3)]
@@ -71,8 +73,11 @@ def ransac_plane_up(X, up, rng, thr=0.05, iters=800, max_tilt_deg=12.0):
 
 
 def sequential_lines(Q, rng, thr=0.08, min_pts=120, min_len=1.5, gap=1.0, max_lines=14, iters=500):
-    """Plan points -> wall segments."""
+    """Plan points -> wall segments with a canonical sampling order."""
     segs: list[Segment] = []
+    Q = np.asarray(Q, float)
+    order = np.lexsort((Q[:, 1], Q[:, 0]))
+    Q = Q[order]
     pool = np.arange(len(Q))
     for _ in range(max_lines):
         if len(pool) < min_pts:
@@ -97,8 +102,8 @@ def sequential_lines(Q, rng, thr=0.08, min_pts=120, min_len=1.5, gap=1.0, max_li
         nrm = np.array([-d[1], d[0]])
         inl = np.abs((P - c) @ nrm) < thr
         t = (P[inl] - c) @ d
-        order = np.argsort(t)
-        ts, ids = t[order], pool[inl][order]
+        order_t = np.argsort(t)
+        ts, ids = t[order_t], order[pool[inl][order_t]]
         cuts = np.flatnonzero(np.diff(ts) > gap) + 1
         for part_t, part_i in zip(np.split(ts, cuts), np.split(ids, cuts)):
             if len(part_t) < min_pts * 0.5:
@@ -371,8 +376,7 @@ def extract_scene(
         return best
 
     hits = [
-        cast(cams[ci], u, v, along_slack=p.meter_along_slack_m, require_high=True, near=M0)
-        for ci, u, v in meter_clicks
+        cast(cams[ci], u, v, along_slack=p.meter_along_slack_m, require_high=True, near=M0) for ci, u, v in meter_clicks
     ]
     hits = [x for x in hits if x is not None]
     if not hits and M0 is not None:
