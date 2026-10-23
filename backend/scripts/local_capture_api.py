@@ -33,6 +33,8 @@ changes them.
 from __future__ import annotations
 
 import argparse
+import fcntl
+import hashlib
 import json
 import os
 import secrets
@@ -157,10 +159,9 @@ def _pid_alive(pid: object) -> bool:
 def _live_session(session_path: Path) -> dict | None:
     """The session at `session_path` if the server that wrote it still serves.
 
-    Live means its pid is alive and its loopback port accepts a connection.
-    Either alone misleads: a crashed server's pid can be reused, and its port
-    can be taken by another process. A missing or unreadable file is not live;
-    no client could use its credentials either.
+    A live pid and an accepting port can both belong to unrelated processes
+    after a crash. The local-only identity endpoint must also return the hash
+    of this session's reviewer token. The probe never sends that token.
     """
     try:
         session = json.loads(session_path.read_text())
@@ -175,11 +176,18 @@ def _live_session(session_path: Path) -> dict | None:
         return None
     if host not in LOOPBACK_HOSTS or port is None:
         return None
-    try:
-        with socket.create_connection((host, port), timeout=1):
-            return session
-    except OSError:
+    reviewer_token = session.get("reviewerToken")
+    if not isinstance(reviewer_token, str) or not reviewer_token:
         return None
+    identity = hashlib.sha256(reviewer_token.encode()).hexdigest()
+    try:
+        with _DIRECT.open(f"{_public_url(host, port)}/v1/local-session", timeout=1) as response:
+            proof = json.loads(response.read(256))
+            if response.status == 200 and isinstance(proof, dict) and proof.get("identity") == identity:
+                return session
+    except (OSError, ValueError):
+        pass
+    return None
 
 
 # The readiness probe must reach the listener itself. urlopen honors
@@ -307,8 +315,52 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     session_dir = args.session_dir
-    volume_root = session_dir / "volume"
     session_path = session_dir / "session.json"
+    # Keep this lock file in place: unlinking it could let another launcher lock
+    # a different inode while this server still owns the original one. The OS
+    # releases flock on exit, including a crash, so no stale-lock recovery is needed.
+    session_dir.mkdir(parents=True, exist_ok=True)
+    fd = os.open(session_dir / "session.lock", os.O_RDWR | os.O_CREAT, 0o600)
+    with os.fdopen(fd, "a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print(
+                f"refusing to start: {session_path} is locked by a starting or live local capture API. "
+                "Stop it first, or pass another --session-dir.",
+                file=sys.stderr,
+            )
+            return 1
+        return _serve(args, session_path)
+
+
+def _local_app(reviewer_token: str):
+    """Add identity proof only to the loopback launcher's app, not deployed APIs."""
+    from fastapi.responses import JSONResponse
+
+    from server.api.app import create_app
+
+    identity = hashlib.sha256(reviewer_token.encode()).hexdigest()
+
+    class _Identity:
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, scope, receive, send):
+            if scope["type"] == "http" and scope["method"] == "GET" and scope["path"] == "/v1/local-session":
+                await JSONResponse({"identity": identity})(scope, receive, send)
+            else:
+                await self.app(scope, receive, send)
+
+    app = create_app()
+    # Wrap the API's bearer gate: the probe reads a hash, never a credential,
+    # and must not send the session's token to an unverified listener.
+    app.add_middleware(_Identity)
+    return app
+
+
+def _serve(args: argparse.Namespace, session_path: Path) -> int:
+    volume_root = session_path.parent / "volume"
     # A second launch on a free port would bind and replace a running server's
     # credentials, so the failed-bind guard below never fires; refuse instead.
     live = _live_session(session_path)
@@ -371,14 +423,16 @@ def main(argv: list[str] | None = None) -> int:
     # HSS_LOCAL_OUTCOME and HSS_LOCAL_STAGE_DELAY_S pass through untouched.
 
     config = uvicorn.Config(
-        "server.api.app:create_app",
-        factory=True,
+        _local_app(reviewer_token),
         host=args.host,
         port=port,
         log_level="info",
     )
-    _announce(base, session_path, args.health_timeout)
-    uvicorn.Server(config).run(sockets=[listener])
+    try:
+        _announce(base, session_path, args.health_timeout)
+        uvicorn.Server(config).run(sockets=[listener])
+    finally:
+        listener.close()
     return 0
 
 
