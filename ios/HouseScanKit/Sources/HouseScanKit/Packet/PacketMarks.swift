@@ -3,7 +3,8 @@ import simd
 
 /// Something the homeowner marked, in the meter frame (packet/README.md, "Marks, guidance and the
 /// scene"). The factories fix each kind's point count: one for the meter, a wall end, a gas meter
-/// or an AC unit; two for an opening (bottom-left, top-right), a drive edge or a fence.
+/// or an AC unit; two for an opening or a box on the wall (bottom-left, top-right), a drive edge
+/// or a fence.
 public struct PacketMark: Codable, Sendable, Equatable {
     public enum Kind: String, Codable, Sendable, CaseIterable {
         case meter
@@ -13,13 +14,17 @@ public struct PacketMark: Codable, Sendable, Equatable {
         case door
         case window
         case garageDoor = "garage_door"
+        /// A battery already on the wall, named as scene.json's object type (`SceneBoxKind`).
+        case battery
+        /// A disconnect, sub-panel, EV charger or solar box, named as scene.json's object type.
+        case elecBox = "elec_box"
         case driveEdge = "drive_edge"
         case fence
 
         public var pointCount: Int {
             switch self {
             case .meter, .wallEnd, .gasMeter, .ac: 1
-            case .door, .window, .garageDoor, .driveEdge, .fence: 2
+            case .door, .window, .garageDoor, .battery, .elecBox, .driveEdge, .fence: 2
             }
         }
     }
@@ -111,6 +116,20 @@ public struct PacketMark: Codable, Sendable, Equatable {
         return PacketMark(id: id, kind: opening.kind, points: corners, t: t, photoIDs: photoIDs, operable: operable)
     }
 
+    /// A battery or other box on the wall: the bottom-left and top-right corners where it meets the
+    /// wall face, left being the lower s, as an opening's are. How far it stands out is not
+    /// measured, and the mark claims none.
+    public static func box(
+        _ box: SceneBoxKind, id: String, span: ClosedRange<Float>, bottom: Float, top: Float,
+        wall: SceneWall, frame: MeterFrame, t: Double? = nil, photoIDs: [String]? = nil
+    ) -> PacketMark {
+        let corners = [
+            frame.point(on: wall, s: span.lowerBound, height: bottom, out: 0),
+            frame.point(on: wall, s: span.upperBound, height: top, out: 0),
+        ]
+        return PacketMark(id: id, kind: box == .battery ? .battery : .elecBox, points: corners, t: t, photoIDs: photoIDs)
+    }
+
     /// A gas meter or AC unit tapped once; `point` is already in the meter frame.
     public static func pointObject(
         _ kind: ScenePointObjectKind, id: String, point: SIMD3<Float>, t: Double? = nil, photoIDs: [String]? = nil
@@ -129,7 +148,7 @@ public struct PacketMark: Codable, Sendable, Equatable {
 
     /// The mark for one of scene.json's features, from the same inputs `SceneExport` reads.
     /// Point objects, fences and drive edges keep their taps (world points moved into the meter
-    /// frame); openings get corners from their span and heights.
+    /// frame); openings and boxes get corners from their span and heights.
     public static func from(
         _ feature: SceneFeature, id: String, wall: SceneWall, frame: MeterFrame, t: Double? = nil, photoIDs: [String]? = nil
     ) throws(PacketError) -> PacketMark {
@@ -138,6 +157,8 @@ public struct PacketMark: Codable, Sendable, Equatable {
             return opening(
                 kind == .door ? .door : .window, id: id, span: span, bottom: bottom, top: top, operable: operable,
                 wall: wall, frame: frame, t: t, photoIDs: photoIDs)
+        case let .box(kind, span, bottom, top):
+            return box(kind, id: id, span: span, bottom: bottom, top: top, wall: wall, frame: frame, t: t, photoIDs: photoIDs)
         case let .pointObject(kind, tap, _, _):
             return pointObject(kind, id: id, point: frame.point(tap), t: t, photoIDs: photoIDs)
         case let .fence(foot):

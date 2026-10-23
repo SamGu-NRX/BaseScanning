@@ -324,6 +324,9 @@ enum ScanCopy {
         case .door: "Door"
         case .window: "Window"
         case .acUnit: "AC unit"
+        // "Existing", so the chip isn't read as placing the new battery.
+        case .battery: "Existing battery"
+        case .elecBox: "Box on the wall"
         case .driveway: "Driveway"
         case .fence: "Fence"
         }
@@ -344,6 +347,8 @@ enum ScanCopy {
         case .door: "door.left.hand.closed"
         case .window: "window.vertical.closed"
         case .acUnit: "fan.fill"
+        case .battery: "minus.plus.batteryblock.fill"
+        case .elecBox: "bolt.square.fill"
         case .driveway: "car.fill"
         case .fence: "square.split.2x1"
         }
@@ -360,6 +365,10 @@ enum ScanCopy {
         let side = Distance.spoken(SceneExport.acAssumedSide)
         return "Assumed about \(side) by \(side)"
     }()
+
+    /// Under a battery or box on the review: its corners are tapped where it meets the wall, so
+    /// the scene sends no depth for it (`FeatureKind.depthUnmeasured`), and the homeowner is told.
+    static let depthNotMeasured = "How far it sticks out isn't measured"
 
     /// The window question's way out: sent as unknown, like no answer.
     static let windowNotSure = "Not sure"
@@ -387,6 +396,15 @@ enum ScanCopy {
             return Instruction(title: "Tap the \(item)'s bottom-left corner", detail: "Put the circle on it and tap Mark, or tap it on screen.")
         case (.door, _), (.window, _):
             return Instruction(title: "Now tap its top-right corner", detail: nil)
+        // A battery or box is tapped where it meets the wall: a tap lands on the wall's plane
+        // (`markFeaturePoint`), so a front corner, standing out from the wall, would land
+        // somewhere else along it (review of #52).
+        case (.battery, 0):
+            return Instruction(title: "Tap the battery's bottom-left corner at the wall", detail: "Use the back corner, where it meets the wall, not the front one.")
+        case (.elecBox, 0):
+            return Instruction(title: "Tap the box's bottom-left corner at the wall", detail: "A disconnect, sub-panel, EV charger or solar box. Use the back corner, where it meets the wall.")
+        case (.battery, _), (.elecBox, _):
+            return Instruction(title: "Now tap its top-right corner at the wall", detail: "The back corner again.")
         case (.driveway, 0):
             return Instruction(title: "Tap one end of the driveway's edge", detail: "Use the edge closest to the wall.")
         case (.driveway, _):

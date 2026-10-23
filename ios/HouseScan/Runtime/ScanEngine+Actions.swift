@@ -449,7 +449,7 @@ extension ScanEngine: ScanActions {
         let ss = taps.map(\.s)
         let span = (ss.min() ?? 0)...(ss.max() ?? 0)
         switch feature.kind {
-        case .door, .window:
+        case .door, .window, .battery, .elecBox:
             let heights = taps.map(\.height)
             feature.span = span
             feature.bottom = max(0, heights.min() ?? 0)
