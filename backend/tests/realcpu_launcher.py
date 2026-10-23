@@ -28,10 +28,15 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import signal
 import sys
+import time
 import traceback
 
 CPUS = 2
+CHILD_TIMEOUT_S = 900.0
+_TERMINATE_GRACE_S = 1.0
+_POLL_INTERVAL_S = 0.02
 
 
 def _pin() -> None:
@@ -57,14 +62,44 @@ def _run(module_path: str, function: str, args: list[str]) -> int:
     return 0
 
 
+def _wait_for_child(pid: int, stage: str, timeout_s: float) -> int:
+    deadline = time.monotonic() + timeout_s
+    while True:
+        waited_pid, status = os.waitpid(pid, os.WNOHANG)
+        if waited_pid == pid:
+            return os.waitstatus_to_exitcode(status)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(_POLL_INTERVAL_S, remaining))
+
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        os.waitpid(pid, 0)
+        raise TimeoutError(f"{stage} exceeded launcher timeout of {timeout_s:g}s") from None
+    terminate_deadline = time.monotonic() + _TERMINATE_GRACE_S
+    while True:
+        waited_pid, status = os.waitpid(pid, os.WNOHANG)
+        if waited_pid == pid:
+            raise TimeoutError(f"{stage} exceeded launcher timeout of {timeout_s:g}s")
+        remaining = terminate_deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(_POLL_INTERVAL_S, remaining))
+
+    os.kill(pid, signal.SIGKILL)
+    _, status = os.waitpid(pid, 0)
+    raise TimeoutError(f"{stage} exceeded launcher timeout of {timeout_s:g}s")
+
+
 def main(argv: list[str]) -> int:
     module_path, function, *args = argv
     _pin()
     pid = os.fork()
     if pid == 0:
         os._exit(_run(module_path, function, args))
-    _, status = os.waitpid(pid, 0)
-    return os.waitstatus_to_exitcode(status)
+    return _wait_for_child(pid, function, CHILD_TIMEOUT_S)
 
 
 if __name__ == "__main__":

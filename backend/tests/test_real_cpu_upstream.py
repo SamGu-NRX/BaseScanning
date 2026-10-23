@@ -60,6 +60,9 @@ MINI_ARKIT_PACKET = ROOT / "data" / "fixtures" / "packets" / "mini-arkit"
 
 WALL_BUDGET_S = 600.0
 RSS_BUDGET_MB = 8 * 1024
+# Chosen well above the expected chain runtime; this is a policy limit, not a measurement.
+SUBPROCESS_TIMEOUT_S = 900
+IMPORT_SUBPROCESS_TIMEOUT_S = 30
 THREAD_ENV = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "HSS_POSES_THREADS")
 
 STAGE_ENTRY = {
@@ -232,6 +235,7 @@ def _in_fresh_process(request: pytest.FixtureRequest, out_json: Path, function: 
         capture_output=True,
         text=True,
         check=False,
+        timeout=SUBPROCESS_TIMEOUT_S,
     )
     assert proc.returncode == 0, (
         f"{function} failed in its own process (exit {proc.returncode}):\n{proc.stderr[-6000:]}"
@@ -429,6 +433,7 @@ def test_importing_this_module_leaves_thread_env_alone(request) -> None:
         capture_output=True,
         text=True,
         check=False,
+        timeout=IMPORT_SUBPROCESS_TIMEOUT_S,
     )
     assert proc.returncode == 0, proc.stderr[-4000:]
     assert proc.stdout.strip().splitlines()[-1] == "[]"
