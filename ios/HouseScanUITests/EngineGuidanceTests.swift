@@ -12,6 +12,7 @@ final class EngineGuidanceTests: XCTestCase {
         app.terminate()
     }
 
+    @MainActor func testAnUnmeasuredWallDoesNotAutomaticallyAskForMoreViews() { check("unmeasuredFollowUps") }
     @MainActor func testAnOldFrameCannotUndoAnInterruption() { check("staleBeforeEnd") }
     @MainActor func testAnOldFrameCannotEndRecoveryAfterTheInterruptionEnds() { check("staleAfterEnd") }
     @MainActor func testAnInterruptionPausesWithoutAnotherGuidanceUpdate() { check("interruptionRecord") }
