@@ -1,6 +1,6 @@
 import numpy as np
 
-from server.dense.run import _canonical_point_order
+from server.dense.run import _canonicalize_point_rows
 from server.eval.extract import sequential_lines
 
 
@@ -18,17 +18,26 @@ def _line_geometry(segments):
     )
 
 
-def test_dense_point_order_is_canonical():
+def test_dense_point_order_keeps_observations_with_their_points():
     points = np.array([[2.0, 0.0, 1.0], [1.0, 0.0, 3.0], [1.0, 0.0, 2.0]])
     src = np.array([1, 0, 1])
-    tracks = [np.array([2]), np.array([1]), np.array([0])]
+    tracks = [np.array([20]), np.array([10]), np.array([30])]
     permutation = np.array([2, 0, 1])
 
-    first_order = _canonical_point_order(points, src, tracks)
-    second_order = _canonical_point_order(points[permutation], src[permutation], [tracks[i] for i in permutation])
+    canonical_points, canonical_src, canonical_tracks = _canonicalize_point_rows(points, src, tracks)
+    shuffled_tracks = [tracks[i] for i in permutation]
+    shuffled_points, shuffled_src, shuffled_tracks = _canonicalize_point_rows(
+        points[permutation], src[permutation], shuffled_tracks
+    )
 
-    assert np.array_equal(points[first_order], points[permutation][second_order])
-    assert np.array_equal(src[first_order], src[permutation][second_order])
+    assert np.array_equal(canonical_points, shuffled_points)
+    assert np.array_equal(canonical_src, shuffled_src)
+    assert [row.tolist() for row in canonical_tracks] == [row.tolist() for row in shuffled_tracks]
+    assert {tuple(point): int(track[0]) for point, track in zip(canonical_points, canonical_tracks, strict=True)} == {
+        (2.0, 0.0, 1.0): 20,
+        (1.0, 0.0, 3.0): 10,
+        (1.0, 0.0, 2.0): 30,
+    }
 
 
 def test_sequential_lines_is_independent_of_point_order():

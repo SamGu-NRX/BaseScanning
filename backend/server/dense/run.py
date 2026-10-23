@@ -60,9 +60,12 @@ def _stage_result(artifacts: dict[str, str], metrics: dict, warnings: list[str])
     return StageResult(artifacts=artifacts, metrics=numbers, warnings=list(warnings))
 
 
-def _canonical_point_order(points: np.ndarray, src: np.ndarray, tracks: list[np.ndarray]) -> np.ndarray:
-    """Return one stable order for point rows before fit and artifact writing."""
-    return np.lexsort((points[:, 2], points[:, 1], points[:, 0], -src))
+def _canonicalize_point_rows(
+    points: np.ndarray, src: np.ndarray, tracks: list[np.ndarray]
+) -> tuple[np.ndarray, np.ndarray, list[np.ndarray]]:
+    """Sort point rows once and keep source and observation rows aligned."""
+    order = np.lexsort((points[:, 2], points[:, 1], points[:, 0], -src))
+    return points[order], src[order], [tracks[int(index)] for index in order]
 
 
 def _work_artifacts(work: Path, paths: list[Path]) -> dict[str, str]:
@@ -127,12 +130,10 @@ def run_dense(
             learned = _attach_learned_depth(models, cameras, params, report)
     points = np.asarray(points, float)
     src = np.asarray(src if src is not None else np.ones(len(points), int), int)
-    if len(points):
-        order = np.lexsort((points[:, 2], points[:, 1], points[:, 0]))
-        points = points[order]
-        src = src[order]
     if dense_tracks is None:
         dense_tracks = _injected_tracks(len(points), models)
+    if len(points):
+        points, src, dense_tracks = _canonicalize_point_rows(points, src, dense_tracks)
     sparse = _sparse_points(poses_dir)
     sparse_tracks, sparse_ids = _sparse_tracks(poses_dir, len(sparse), report)
     if len(sparse):
