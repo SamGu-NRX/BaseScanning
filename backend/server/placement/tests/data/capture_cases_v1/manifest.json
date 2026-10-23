@@ -53,10 +53,10 @@
             "kind": "band",
             "band": "ground",
             "span_ft": [
-              -3.603324,
+              -3.603325,
               8.4951
             ],
-            "out_ft": 12.431757
+            "out_ft": 12.431758
           },
           {
             "kind": "past_end",
@@ -70,80 +70,18 @@
         "sweep_failing_runs": [
           {
             "start_ft": [
-              -1.5,
-              -1.227362
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              -1.204724,
-              -0.932087
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              -0.909449,
-              0.644308
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              0.659449,
-              1.840551
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              1.857776,
-              2.160433
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              2.206693,
-              3.125328
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              3.141732,
+              3.141733,
               5.42979
             ],
             "failing": [
-              "gas_clearance"
+              "gas_clearance",
+              "wall_equipment_above"
             ]
           },
           {
             "start_ft": [
               5.446194,
-              6.364829
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              6.367831,
-              6.392224
+              6.36483
             ],
             "failing": [
               "gas_clearance"
@@ -205,9 +143,9 @@
             "band": "ground",
             "span_ft": [
               -10.0,
-              3.603324
+              3.603325
             ],
-            "out_ft": 12.431757
+            "out_ft": 12.431758
           },
           {
             "kind": "past_end",
@@ -221,7 +159,7 @@
         "sweep_failing_runs": [
           {
             "start_ft": [
-              -8.975558,
+              -8.975557,
               -4.441109
             ],
             "failing": [
@@ -230,20 +168,11 @@
           },
           {
             "start_ft": [
-              -4.423885,
-              -3.242782
+              -0.590552,
+              0.326115
             ],
             "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              -3.227641,
-              -0.607776
-            ],
-            "failing": [
-              "gas_clearance"
+              "meter_working_space"
             ]
           }
         ],

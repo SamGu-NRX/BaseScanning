@@ -66,24 +66,6 @@
         "sweep_failing_runs": [
           {
             "start_ft": [
-              -0.895115,
-              0.204023
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              0.206178,
-              2.674604
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
               2.694445,
               5.270833
             ],
@@ -159,53 +141,8 @@
         "sweep_failing_runs": [
           {
             "start_ft": [
-              -13.0625,
-              -12.054597
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              -12.027299,
-              -11.78869
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              -9.167385,
-              -8.979167
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
               -8.958333,
               -5.277779
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              -5.201389,
-              -4.979167
-            ],
-            "failing": [
-              "gas_clearance"
-            ]
-          },
-          {
-            "start_ft": [
-              -4.958333,
-              -3.455357
             ],
             "failing": [
               "gas_clearance"
