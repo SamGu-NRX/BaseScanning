@@ -252,9 +252,13 @@ def _charge_page_resource(deps, holder: str, signed_capture: str | None) -> None
     gallery over 120 photos exhausted it while images loaded, and the rest of
     the page and the reviewer's ordinary result reads got 429. The page shows
     one photo per keyframe, and keyframes are capture files, so one page load
-    needs at most HSS_INGEST_MAX_FILES photo requests plus a few raw-file,
-    module and preview links. Twice HSS_INGEST_MAX_FILES holds a full page with
-    room for a reload or a second tab; no traffic measurement backs the factor.
+    needs at most HSS_INGEST_MAX_FILES photo requests. Reserve a floor for
+    ten fixed requests: the module, preview fetch, four verdict JSONs, criteria
+    report, two result JSONs, and preview download. Without this floor, a file
+    limit of one refuses the third resource on an otherwise valid page.
+
+    The retained 2x photo factor has no traffic evidence behind it. This limiter
+    counts per process: N containers allow N times the budget, not a shared cap.
 
     A signed request's bucket is keyed by reviewer and the capture its token
     names, so pages for different captures opened together do not share one.
@@ -263,7 +267,9 @@ def _charge_page_resource(deps, holder: str, signed_capture: str | None) -> None
     on it would hand out a fresh bucket per made-up id.
     """
 
-    capacity = 2 * int(deps.settings.HSS_INGEST_MAX_FILES)
+    max_photos = int(deps.settings.HSS_INGEST_MAX_FILES)
+    fixed_requests = 1 + 1 + 4 + 1 + 2 + 1
+    capacity = max(2 * max_photos, max_photos + fixed_requests)
     key = holder if signed_capture is None else f"{holder}/{signed_capture}"
     deps.charge(key, "review-page", capacity)
 
