@@ -492,6 +492,103 @@ def test_second_launch_refuses_a_live_session(tmp_path: Path) -> None:
         _stop(first)
 
 
+def test_same_session_directory_allows_one_launch(tmp_path: Path, monkeypatch) -> None:
+    """Two launches racing before either writes credentials cannot both win."""
+    import types
+
+    launcher = _launcher_module()
+    session_dir = tmp_path / "session"
+    session_path = session_dir / "session.json"
+    first_checked = threading.Event()
+    release_first = threading.Event()
+    live_calls = 0
+    live_lock = threading.Lock()
+    written: list[dict] = []
+
+    def live_session(path: Path) -> dict | None:
+        nonlocal live_calls
+        with live_lock:
+            live_calls += 1
+            call = live_calls
+        if call == 1:
+            first_checked.set()
+            release_first.wait(timeout=2)
+        if path.exists():
+            return json.loads(path.read_text())
+        return None
+
+    # Keep the real writer, while recording the credentials each contender tries
+    # to publish. The wrapper uses the original function captured before patching.
+    real_write_session = launcher._write_session
+
+    def recording_write_session(path: Path, session: dict) -> None:
+        written.append(session.copy())
+        real_write_session(path, session)
+
+    class FakeServer:
+        def __init__(self, config):
+            self.config = config
+
+        def run(self, sockets):
+            sockets[0].close()
+
+    monkeypatch.setattr(launcher, "_live_session", live_session)
+    monkeypatch.setattr(launcher, "_write_session", recording_write_session)
+    monkeypatch.setattr(launcher, "_announce", lambda *args: None)
+    monkeypatch.setitem(
+        sys.modules,
+        "uvicorn",
+        types.SimpleNamespace(Config=lambda *args, **kwargs: object(), Server=FakeServer),
+    )
+
+    def launch() -> int:
+        return launcher.main(["--host", "127.0.0.1", "--port", "0", "--session-dir", str(session_dir)])
+
+    results: list[int] = []
+    threads = [threading.Thread(target=lambda: results.append(launch())) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    assert first_checked.wait(timeout=2)
+    release_first.set()
+    for thread in threads:
+        thread.join(timeout=5)
+    assert not any(thread.is_alive() for thread in threads)
+    assert results.count(0) == 1
+    assert results.count(1) == 1
+    assert len(written) == 1
+    assert json.loads(session_path.read_text()) == written[0]
+
+
+def test_dead_process_session_lock_is_released(tmp_path: Path) -> None:
+    launcher = _launcher_module()
+    session_dir = tmp_path / "session"
+    acquired_path = session_dir / "acquired"
+    holder = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import fcntl, os, sys, time; "
+                "os.makedirs(sys.argv[1], exist_ok=True); "
+                "fd=os.open(os.path.join(sys.argv[1], '.session.lock'), os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600); "
+                "fcntl.flock(fd, fcntl.LOCK_EX); open(os.path.join(sys.argv[1], 'acquired'), 'w').close(); time.sleep(30)"
+            ),
+            str(session_dir),
+        ]
+    )
+    try:
+        deadline = time.monotonic() + 5
+        while not acquired_path.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert acquired_path.exists()
+    finally:
+        holder.kill()
+        holder.wait(timeout=5)
+
+    fd = launcher._open_session_lock(session_dir, session_dir / "session.json")
+    launcher._close_session_lock(fd)
+
+
 def test_live_session_needs_a_live_pid_and_an_answering_port(tmp_path: Path) -> None:
     launcher = _launcher_module()
     path = tmp_path / "session.json"
