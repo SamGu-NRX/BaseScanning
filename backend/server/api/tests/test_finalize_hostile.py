@@ -119,6 +119,39 @@ def test_a_second_container_with_the_same_packet_still_replays(client):
     assert deps.state.get_capture(capture_id).packet_sha256 == sha256_hex(raw)
 
 
+def test_a_same_packet_retry_on_another_container_writes_nothing(client, monkeypatch):
+    """Review of #327 at 3c24e69a: the retry rewrote packet.json while the first
+    finalize worker read it. The volume backend truncates before writing, so the
+    worker could read an empty file and fail with JSONDecodeError. Counting writes
+    makes the race deterministic: only the claimant may write or schedule."""
+    packet_id = "packet-retry-no-write"
+    capture_id, packet = _ready(client, packet_id)
+    deps = client.app_state
+    first_view = deps.state.get_capture(capture_id)
+    second_view = first_view.model_copy(deep=True)
+    raw = json.dumps(packet).encode()
+    key = f"captures/{capture_id}/packet.json"
+    writes: list[str] = []
+    real_put = deps.storage.put_bytes
+
+    def counting_put(write_key, data, content_type):
+        writes.append(write_key)
+        return real_put(write_key, data, content_type)
+
+    monkeypatch.setattr(deps.storage, "put_bytes", counting_put)
+    jobs_before = len(deps.finalize_jobs)
+    first = accept_packet(deps, first_view, raw)
+    second = accept_packet(deps, second_view, raw)
+    jobs = len(deps.finalize_jobs) - jobs_before
+    drain_finalize(deps)
+
+    assert writes.count(key) == 1
+    assert jobs == 1
+    assert second == first
+    assert deps.storage.get_bytes(key) == raw
+    assert deps.state.get_capture(capture_id).status == "processing"
+
+
 def test_a_failed_packet_write_releases_the_claim(client, monkeypatch):
     """Guard for the claim, not failing-first: alpha has no claim to release."""
     packet_id = "packet-write-fails"

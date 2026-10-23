@@ -282,19 +282,6 @@ def accept_packet(
     # CAPTURE_API_MAX_CONTAINERS containers, so `record` and the amendment row can
     # predate another container's acceptance. The first digest to claim wins; a
     # different packet gets the same 409 it would get once packet_sha256 is visible.
-    # The same packet proceeds, because its writes are identical.
-    claim_key = f"accepted_packet:{record.capture_id}:{amendment_id or '-'}"
-    claimed_now = deps.state.put_if_absent(claim_key, {"packet_sha256": digest})
-    if not claimed_now and (deps.state.get_kv(claim_key) or {}).get("packet_sha256") != digest:
-        what = "packet" if amendment_id is None else "amendment packet"
-        raise fail(409, "packet_sha_conflict", "/", f"a different {what} was already accepted")
-    try:
-        deps.storage.put_bytes(key, raw, "application/json")
-    except Exception:
-        # Nothing was accepted, so a corrected packet must not meet a 409 on retry.
-        if claimed_now:
-            deps.state.delete_kv(claim_key)
-        raise
     run_id = _run_id(record.capture_id, raw)
     paths = [
         entry.path if amendment_id is None else f"amendments/{amendment_id}/{entry.path}" for entry in packet.files
@@ -304,6 +291,23 @@ def accept_packet(
         rec = deps.state.get_file(record.capture_id, path)
         if rec is None or rec.state != "committed":
             missing.append(entry.path)
+    claim_key = f"accepted_packet:{record.capture_id}:{amendment_id or '-'}"
+    claimed_now = deps.state.put_if_absent(claim_key, {"packet_sha256": digest})
+    if not claimed_now:
+        if (deps.state.get_kv(claim_key) or {}).get("packet_sha256") != digest:
+            what = "packet" if amendment_id is None else "amendment packet"
+            raise fail(409, "packet_sha_conflict", "/", f"a different {what} was already accepted")
+        # The same packet, already claimed. Only the claimant writes packet.json and
+        # schedules the finish: the volume backend's write truncates before it writes,
+        # so a second write can hand the claimant's worker an empty file. Run ids are
+        # derived from the bytes, so this reply matches the claimant's.
+        return render_finalize("awaiting_files" if missing else "processing", missing, run_id)
+    try:
+        deps.storage.put_bytes(key, raw, "application/json")
+    except Exception:
+        # Nothing was accepted, so a corrected packet must not meet a 409 on retry.
+        deps.state.delete_kv(claim_key)
+        raise
     extra = extras(deps, record.capture_id)
     extra["accepted"] = {
         "packet_sha256": digest,
