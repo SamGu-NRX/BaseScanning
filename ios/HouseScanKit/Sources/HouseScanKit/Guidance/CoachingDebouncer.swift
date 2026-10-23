@@ -104,7 +104,7 @@ public struct CoachingDebouncer: Sendable {
     private var spells: [GateProblem: Spell] = [:]
     /// Measured frames of the last `persistentDarkAfter` seconds: time and whether it was dark.
     private var luma: [(time: Double, dark: Bool)] = []
-    /// Measured frames of the last `blurReferenceWindow` seconds: time and sharpness.
+    /// Non-blurry measured frames of the last `blurReferenceWindow` seconds: time and sharpness.
     private var sharpness: [(time: Double, value: Double)] = []
     /// The median sharpness from before the current blur spell (`Config.blurReferenceWindow`),
     /// nil while there is no spell.
@@ -221,7 +221,9 @@ public struct CoachingDebouncer: Sendable {
         }
         spells = spells.filter { time - $0.value.lastSeen < config.clearAfter }
         blurReference = spells[.blurry] == nil ? nil : reference
-        if sharpnessWasReached, let value {
+        // Blurry frames must not lower the next spell's reference after a short sharp gap.
+        // Keep recovery frames, including those while the previous coaching is clearing.
+        if evidence[.blurry] == false, let value {
             sharpness.append((time: time, value: value))
         }
     }

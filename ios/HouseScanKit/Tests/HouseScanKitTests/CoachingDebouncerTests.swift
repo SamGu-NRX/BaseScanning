@@ -197,6 +197,22 @@ import Testing
         #expect(!Self.run(before + gap + softer).contains(.blurry))
     }
 
+    /// A second blur after a short sharp gap must not use the first spell's blurry samples.
+    @Test func eachBlurSpellUsesSharpnessBeforeThatSpell() {
+        var debouncer = CoachingDebouncer()
+        let sharp = Self.times(for: 2).map { Frame(time: $0, skip: .redundant, sharpness: 100) }
+        let firstBlur = Self.times(from: 2, for: 3).map { Frame(time: $0, skip: .redundant, sharpness: 30) }
+        let sharpGap = Self.times(from: 5, for: 0.6).map { Frame(time: $0, skip: .redundant, sharpness: 100) }
+        let secondBlur = Self.times(from: 5.6, for: 3).map { Frame(time: $0, skip: .redundant, sharpness: 30) }
+
+        #expect(Self.run(sharp, on: &debouncer).allSatisfy { $0 == nil })
+        #expect(Self.run(firstBlur, on: &debouncer).last! == .blurry)
+        #expect(Self.run(sharpGap, on: &debouncer).last! == nil)
+        let again = Self.run(secondBlur, on: &debouncer)
+        #expect(again.prefix(20).allSatisfy { $0 == nil })
+        #expect(again.last! == .blurry)
+    }
+
     /// A dark frame's sharpness is not judged until exposure passes again.
     @Test func tooDarkFramesDoNotCreateBlur() {
         let sharp = Self.times(for: 2).map { Frame(time: $0, skip: .redundant, sharpness: 100) }
