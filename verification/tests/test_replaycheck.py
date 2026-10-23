@@ -57,6 +57,18 @@ def test_yaw_fit_recovers_known_transform():
     assert np.allclose(t, [4.0, -1.0, 2.0], atol=1e-9)
 
 
+def write_jpeg_with_exif(path, w: int, h: int, orientation: int, byte_order: str = "MM") -> None:
+    # SOI, an APP1 Exif segment whose IFD0 holds only the Orientation tag, then SOF0.
+    e = ">" if byte_order == "MM" else "<"
+    entry = struct.pack(e + "HHIH", 0x0112, 3, 1, orientation) + b"\x00\x00"
+    tiff = byte_order.encode() + struct.pack(e + "HI", 42, 8) + struct.pack(e + "H", 1) + entry
+    tiff += struct.pack(e + "I", 0)
+    payload = b"Exif\x00\x00" + tiff
+    app1 = b"\xff\xe1" + struct.pack(">H", len(payload) + 2) + payload
+    sof = b"\xff\xc0" + struct.pack(">HBHHB", 11, 8, h, w, 1) + b"\x01\x11\x00"
+    path.write_bytes(b"\xff\xd8" + app1 + sof + b"\xff\xd9")
+
+
 def test_jpeg_size(tmp_path):
     write_jpeg_header(tmp_path / "a.jpg", 1280, 720)
     assert jpeg_size(tmp_path / "a.jpg") == (1280, 720)
@@ -94,6 +106,74 @@ def test_valid_session_has_no_format_errors(tmp_path):
     errors, summary = check_format(tmp_path, s)
     assert errors == []
     assert summary["keyframes"] == 5
+
+
+def test_cli_rejects_portrait_keyframe_with_matching_dimensions_and_intrinsics(tmp_path, capsys):
+    session = session_with(tmp_path, [[0, 0, 0]])
+    keyframe = session["keyframes"][0]
+    keyframe.update(w=480, h=640, intrinsics=[500, 500, 240, 320])
+    write_jpeg_header(tmp_path / keyframe["img"], 480, 640)
+    (tmp_path / "session.json").write_text(json.dumps(session))
+
+    assert replaycheck.main([str(tmp_path), "--json"]) == 1
+
+    report = json.loads(capsys.readouterr().out)
+    assert any("k1: portrait keyframe" in error for error in report["format_errors"])
+
+
+@pytest.mark.parametrize("field", ["w", "h"])
+@pytest.mark.parametrize("bad", [None, "640", 640.0, True, 0, -480])
+def test_cli_reports_bad_image_dimensions_as_format_errors(tmp_path, capsys, field, bad):
+    session = session_with(tmp_path, [[0, 0, 0]])
+    session["keyframes"][0][field] = bad
+    (tmp_path / "session.json").write_text(json.dumps(session))
+
+    assert replaycheck.main([str(tmp_path), "--json"]) == 1
+
+    report = json.loads(capsys.readouterr().out)
+    expected = f"k1: w and h must be integers of at least 1, got {field}={bad!r}"
+    assert expected in report["format_errors"]
+
+
+def test_cli_rejects_square_keyframe(tmp_path, capsys):
+    session = session_with(tmp_path, [[0, 0, 0]])
+    keyframe = session["keyframes"][0]
+    keyframe.update(w=480, h=480, intrinsics=[500, 500, 240, 240])
+    write_jpeg_header(tmp_path / keyframe["img"], 480, 480)
+    (tmp_path / "session.json").write_text(json.dumps(session))
+
+    assert replaycheck.main([str(tmp_path), "--json"]) == 1
+
+    report = json.loads(capsys.readouterr().out)
+    assert any("k1: square keyframe" in error for error in report["format_errors"])
+
+
+@pytest.mark.parametrize("byte_order", ["MM", "II"])
+@pytest.mark.parametrize("orientation", [3, 6, 8])
+def test_rotated_exif_orientation_is_a_format_error(tmp_path, orientation, byte_order):
+    s = session_with(tmp_path, [[0, 0, 0]])
+    write_jpeg_with_exif(tmp_path / "keyframes" / "k1.jpg", 640, 480, orientation, byte_order)
+    errors, _ = check_format(tmp_path, s)
+    expected = f"k1: EXIF orientation {orientation}; replay requires an unrotated sensor image"
+    assert expected in errors
+
+
+def test_upright_exif_orientation_is_accepted(tmp_path):
+    s = session_with(tmp_path, [[0, 0, 0]])
+    write_jpeg_with_exif(tmp_path / "keyframes" / "k1.jpg", 640, 480, 1)
+    errors, _ = check_format(tmp_path, s)
+    assert errors == []
+
+
+def test_truncated_exif_is_a_format_error_not_a_crash(tmp_path):
+    s = session_with(tmp_path, [[0, 0, 0]])
+    path = tmp_path / "keyframes" / "k1.jpg"
+    payload = b"Exif\x00\x00MM\x00\x2a\x00\x00\x00\x08\x00\x05"  # claims 5 entries, has none
+    app1 = b"\xff\xe1" + struct.pack(">H", len(payload) + 2) + payload
+    sof = b"\xff\xc0" + struct.pack(">HBHHB", 11, 8, 480, 640, 1) + b"\x01\x11\x00"
+    path.write_bytes(b"\xff\xd8" + app1 + sof + b"\xff\xd9")
+    errors, _ = check_format(tmp_path, s)
+    assert "k1: malformed EXIF segment" in errors
 
 
 def test_format_errors_are_specific(tmp_path):

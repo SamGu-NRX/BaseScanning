@@ -5,8 +5,8 @@
 Two parts:
 
 1. Format: the fields the app and server read are present, every listed JPEG exists with the
-   stated size, poses are rigid transforms, timestamps increase, and each `motion` keyframe
-   respects the spacing gate the session declares.
+   stated size in landscape sensor orientation, poses are rigid transforms, timestamps increase,
+   and each `motion` keyframe respects the spacing gate the session declares.
 2. Pose accuracy, when `ground_truth.json` sits beside `session.json`. The two worlds share
    gravity but not heading or origin, so the ground truth is aligned with a rotation about
    the vertical axis plus a translation. Reported two ways:
@@ -93,6 +93,41 @@ def jpeg_size(path: Path) -> tuple[int, int]:
     raise ValueError("no start-of-frame marker")
 
 
+def jpeg_exif_orientation(path: Path) -> int | None:
+    """The EXIF Orientation tag from a JPEG's APP1 segment, or None when there is none.
+
+    A landscape start-of-frame size doesn't prove the pixels are unrotated: a viewer
+    applies the EXIF orientation, and replay intrinsics assume it was never set.
+    """
+    data = path.read_bytes()
+    i = 2
+    while i + 4 <= len(data) and data[i] == 0xFF:
+        marker = data[i + 1]
+        if marker == 0xDA:  # start of scan: no metadata after this
+            return None
+        length = struct.unpack(">H", data[i + 2 : i + 4])[0]
+        segment = data[i + 4 : i + 2 + length]
+        if marker == 0xE1 and segment[:6] == b"Exif\x00\x00":
+            return _tiff_orientation(segment[6:])
+        i += 2 + length
+    return None
+
+
+def _tiff_orientation(tiff: bytes) -> int | None:
+    try:
+        order = {b"MM": ">", b"II": "<"}[tiff[:2]]
+        (ifd,) = struct.unpack(order + "I", tiff[4:8])
+        (count,) = struct.unpack(order + "H", tiff[ifd : ifd + 2])
+        for n in range(count):
+            start = ifd + 2 + 12 * n
+            tag, kind = struct.unpack(order + "HH", tiff[start : start + 4])
+            if tag == 0x0112 and kind == 3:  # Orientation, SHORT
+                return struct.unpack(order + "H", tiff[start + 8 : start + 10])[0]
+    except (KeyError, struct.error) as exc:
+        raise ValueError("malformed EXIF segment") from exc
+    return None
+
+
 def check_format(folder: Path, session: dict) -> tuple[list[str], dict]:
     errors: list[str] = []
     if session.get("format") != "measure-lab-session" or session.get("formatVersion") != 2:
@@ -120,6 +155,25 @@ def check_format(folder: Path, session: dict) -> tuple[list[str], dict]:
         if missing:
             errors.append(f"{name}: missing {', '.join(missing)}")
             continue
+        # Every later check compares or does arithmetic with w and h, so a null, string,
+        # float or bool here would crash the CLI instead of being reported.
+        bad_size = next(
+            (f for f in ("w", "h") if type(kf[f]) is not int or kf[f] < 1),
+            None,
+        )
+        if bad_size is not None:
+            errors.append(
+                f"{name}: w and h must be integers of at least 1, got {bad_size}={kf[bad_size]!r}"
+            )
+            continue
+        # ReplayFrame.intrinsics is defined in the unrotated landscape JPEG's pixels
+        # (ios/HouseScanKit/Sources/HouseScanKit/Replay/ReplaySession.swift).
+        if kf["w"] < kf["h"]:
+            errors.append(f"{name}: portrait keyframe; replay requires a landscape sensor image")
+        elif kf["w"] == kf["h"]:
+            errors.append(
+                f"{name}: square keyframe; replay requires a landscape sensor image (w > h)"
+            )
         tracking_counts[kf["tracking"]] = tracking_counts.get(kf["tracking"], 0) + 1
         image = folder / kf["img"]
         if not image.exists():
@@ -129,6 +183,12 @@ def check_format(folder: Path, session: dict) -> tuple[list[str], dict]:
                 size = jpeg_size(image)
                 if size != (kf["w"], kf["h"]):
                     errors.append(f"{name}: JPEG is {size}, session says {(kf['w'], kf['h'])}")
+                orientation = jpeg_exif_orientation(image)
+                if orientation not in (None, 1):
+                    errors.append(
+                        f"{name}: EXIF orientation {orientation}; "
+                        "replay requires an unrotated sensor image"
+                    )
             except ValueError as exc:
                 errors.append(f"{name}: {exc}")
         intrinsics, pose = numbers(kf["intrinsics"], 4), numbers(kf["pose"], 16)
