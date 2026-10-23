@@ -522,12 +522,14 @@
             "door",
             "window",
             "garage_door",
+            "battery",
+            "elec_box",
             "drive_edge",
             "fence"
           ]
         },
         "points": {
-          "description": "Meter frame, meters. One point for the meter, a wall end, a gas meter or an AC unit; two for an opening (bottom-left, top-right corners), a drive edge or a fence.",
+          "description": "Meter frame, meters. One point for the meter, a wall end, a gas meter or an AC unit; two for an opening (bottom-left, top-right corners), a battery or box on the wall (bottom-left, top-right corners where it meets the wall), a drive edge or a fence.",
           "type": "array",
           "minItems": 1,
           "items": {

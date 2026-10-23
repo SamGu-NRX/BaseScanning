@@ -7,14 +7,16 @@ import simd
 import Testing
 
 /// The capture packet's manifest schema, version 1.1: t3/packet at d5439cf
-/// (packet/manifest.schema.json, sha256 44c9c9be…), plus one additive change made here, the
-/// optional `attrs.inferred` on a wall end and `t`'s description (B-12, packet/README.md).
+/// (packet/manifest.schema.json, sha256 44c9c9be…), plus two additive changes made here: the
+/// optional `attrs.inferred` on a wall end and `t`'s description (B-12, packet/README.md), and
+/// the mark kinds `battery` and `elec_box`, named as scene.json's object types, with the points
+/// description saying they take two corners (issue #27).
 /// `vendoredManifestSchemaIsTheRecordedRevision` fails if the copy changes without this record.
 /// There is no live copy to compare with: t3/packet retired 1.1 at 6a12700 in favour of the server
 /// team's packet 0.4, which the writer moves to next.
 enum PacketSchema {
     static let name = "manifest.schema.json"
-    static let sha256 = "54d2a0d104162801a35599c5300acff09b2c2061aa8e88291f2621c04398bc27"
+    static let sha256 = "c8dcecb8440f36be5650d4c94e1e6888ae55f2ff652e6c9dbeee7ceb615219f4"
 
     static func validator() throws -> JSONSchemaValidator { try JSONSchemaValidator(schema: SceneSchemas.data(name)) }
 }
@@ -556,6 +558,82 @@ struct SyntheticPacket {
     }
 }
 
+/// A battery already on the wall and any other box on it (issue #27, ported from #52): marked by
+/// the two corners where each meets the wall, sent as scene.json objects of the server's types
+/// with no footprint, and as packet marks of the same names.
+@Suite struct BoxMarkTests {
+    typealias Value = JSONSchemaValidator.Value
+
+    /// The names are the server's: scene.json's object types (the vendored copy of
+    /// server/schemas/scene.schema.json, held to the server's by `vendoredCopiesMatchServer`),
+    /// which server/solver.py reads as `battery` for `battery_clearance` and server/rules.yaml
+    /// lists `elec_box` under `wall_equipment`. The packet marks use the same names.
+    @Test func boxKindsAreTheServersObjectTypes() throws {
+        #expect(SceneBoxKind.allCases.map(\.rawValue) == ["battery", "elec_box"])
+        let scene = try Value.parse(SceneSchemas.data("scene.schema.json"))
+        let objectTypes = try #require(scene["properties"]?["objects"]?["items"]?["properties"]?["type"]?["enum"]?.array)
+        let manifest = try Value.parse(SceneSchemas.data(PacketSchema.name))
+        let markKinds = try #require(manifest["$defs"]?["mark"]?["properties"]?["kind"]?["enum"]?.array)
+        for kind in SceneBoxKind.allCases {
+            #expect(objectTypes.contains(.string(kind.rawValue)), "scene.json has no object type \(kind.rawValue)")
+            #expect(markKinds.contains(.string(kind.rawValue)), "the manifest has no mark kind \(kind.rawValue)")
+            #expect(PacketMark.Kind(rawValue: kind.rawValue)?.pointCount == 2)
+        }
+    }
+
+    /// Mark, packet, decode: both boxes go into a written packet as marks and in its scene.json,
+    /// and come back with their kinds, their corners where they meet the wall, and no footprint:
+    /// how far a box stands out is not measured and none is sent (review of #52).
+    @Test func aBoxRoundTripsThroughThePacket() throws {
+        let synthetic = try SyntheticPacket()
+        let wall = synthetic.wall
+        let features: [SceneFeature] = [
+            .box(kind: .battery, span: 1.5...2.3, bottom: 0, top: 1.0),
+            .box(kind: .elecBox, span: -0.8 ... -0.5, bottom: 1.2, top: 1.6),
+        ]
+        let sceneData = try SceneExport.jsonData(SceneInput(
+            wall: wall, baselineS: -3...5, features: features,
+            coverage: SceneCoverage(leftEndMarked: true, rightEndMarked: true, wall: [], ground: [])))
+        #expect(try SceneSchemas.scene().validate(sceneData) == [])
+
+        let folder = temporaryFolder("packet-box")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        var writer = try PacketWriter(folder: folder, session: synthetic.session)
+        try writer.addPhoto(PacketPhoto(
+            id: "p00001", jpeg: try photoJPEG(), width: 96, height: 72, t: 100.25, pose: synthetic.frame.pose(synthetic.worldCamera(15)),
+            intrinsics: SIMD4(80, 80, 48, 36), tracking: .normal, sharpness: 1))
+        try writer.setMarks(features.enumerated().map { index, feature in
+            try PacketMark.from(feature, id: "box\(index)", wall: wall, frame: synthetic.frame, t: 100.5)
+        })
+        try writer.setScene(sceneData)
+        let written = try writer.finish()
+
+        let manifestData = try Data(contentsOf: written.appendingPathComponent("manifest.json"))
+        #expect(try PacketSchema.validator().validate(manifestData) == [])
+        let manifest = try JSONDecoder().decode(PacketManifest.self, from: manifestData)
+        let marks = try #require(manifest.marks)
+        #expect(marks.map(\.kind) == [.battery, .elecBox])
+        // Meter frame: x along the wall, y height less the meter's 1.5 m, z out, which is 0.
+        let corners: [[SIMD3<Float>]] = [[SIMD3(1.5, -1.5, 0), SIMD3(2.3, -0.5, 0)], [SIMD3(-0.8, -0.3, 0), SIMD3(-0.5, 0.1, 0)]]
+        for (mark, expected) in zip(marks, corners) {
+            #expect(mark.points.count == 2 && zip(mark.points, expected).allSatisfy { simd_distance($0, $1) < 1e-5 }, "\(mark.kind): \(mark.points)")
+        }
+
+        let scenePath = try #require(manifest.scene?.path)
+        let objects = try #require(try Value.parse(Data(contentsOf: written.appendingPathComponent(scenePath)))["objects"]?.array)
+        #expect(objects.map { $0["type"]?.string } == ["battery", "elec_box"])
+        for (object, feature) in zip(objects, features) {
+            guard case let .box(_, span, bottom, top) = feature else { continue }
+            #expect(object["footprint"] == nil, "a box's depth was never measured, and none is sent")
+            #expect(object["source"] == .string("tap") && object["attrs"] == nil)
+            let spanFeet = try #require(object["span_ft"]?.numbers)
+            let heightsFeet = [object["bottom_ft"]?.number, object["top_ft"]?.number].compactMap(\.self)
+            let expected = [span.lowerBound, span.upperBound, bottom, top].map { Double($0) / 0.3048 }
+            #expect(zip(spanFeet + heightsFeet, expected).allSatisfy { abs($0 - $1) < 2e-4 } && heightsFeet.count == 2)
+        }
+    }
+}
+
 /// A 96 x 72 JPEG in its own temporary folder, which the caller need not remove: the writer
 /// copies it, and the system clears the temporary directory.
 private func photoJPEG() throws -> URL {
@@ -758,7 +836,7 @@ private func photoJPEG() throws -> URL {
         let counts = Dictionary(uniqueKeysWithValues: PacketMark.Kind.allCases.map { ($0.rawValue, $0.pointCount) })
         #expect(counts == [
             "meter": 1, "wall_end": 1, "gas_meter": 1, "ac": 1,
-            "door": 2, "window": 2, "garage_door": 2, "drive_edge": 2, "fence": 2,
+            "door": 2, "window": 2, "garage_door": 2, "battery": 2, "elec_box": 2, "drive_edge": 2, "fence": 2,
         ])
     }
 
@@ -803,7 +881,7 @@ private func photoJPEG() throws -> URL {
 @Suite struct PacketSchemaTests {
     @Test func vendoredManifestSchemaIsTheRecordedRevision() throws {
         let digest = SHA256.hash(data: try SceneSchemas.data(PacketSchema.name)).map { String(format: "%02x", $0) }.joined()
-        #expect(digest == PacketSchema.sha256, "Schemas/\(PacketSchema.name) is not t3/packet d5439cf plus attrs.inferred")
+        #expect(digest == PacketSchema.sha256, "Schemas/\(PacketSchema.name) is not t3/packet d5439cf plus attrs.inferred and the box mark kinds")
     }
 
     /// The schema is not a rubber stamp: a manifest missing required fields or breaking a pattern

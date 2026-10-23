@@ -116,10 +116,23 @@ public enum ScenePointObjectKind: String, Sendable, Equatable {
     case ac
 }
 
+/// A box already against the wall, with the server's object types (server/schemas/scene.schema.json
+/// `objects[].type`): `battery` is a battery already installed, which the server holds a new one
+/// `clearances.battery_ft` from (server/solver.py `battery_clearance`); `elec_box` is a disconnect,
+/// sub-panel, EV charger or solar box, which the rules treat as wall equipment
+/// (server/rules.yaml `wall_equipment.types`).
+public enum SceneBoxKind: String, Sendable, Equatable, CaseIterable {
+    case battery
+    case elecBox = "elec_box"
+}
+
 public enum SceneFeature: Sendable {
     /// A door or window on the wall. `span` is in s meters; `bottom` and `top` are meters above the
     /// ground. `operable` nil means the homeowner was not asked, and it is then left out.
     case opening(kind: SceneOpeningKind, span: ClosedRange<Float>, bottom: Float, top: Float, operable: Bool?)
+    /// A box against the wall, with `span`, `bottom` and `top` where it meets the wall, as an
+    /// opening's are. How far it stands out is not measured, so it goes out with no footprint.
+    case box(kind: SceneBoxKind, span: ClosedRange<Float>, bottom: Float, top: Float)
     /// Something tapped once that stands off the wall (gas meter, AC unit). `tap` is a world point.
     case pointObject(kind: ScenePointObjectKind, tap: SIMD3<Float>, bottom: Float?, top: Float?)
     /// Two world points at the foot of a fence or hedge facing the wall.
@@ -439,6 +452,18 @@ public enum SceneExport {
                     type: kind.rawValue, wall_id: wallIDAt((span.lowerBound + span.upperBound) / 2), span_ft: spanFeet(span),
                     bottom_ft: feet(bottom), top_ft: feet(top),
                     attrs: operable.map { SceneDocument.Attrs(operable: $0) }, source: "tap", footprint: nil,
+                    plus_minus_ft: objectError))
+            case let .box(kind, span, bottom, top):
+                // No footprint: the taps are wall-plane hits, which say where the box meets the
+                // wall but not how far it stands out, and no depth is assumed for somebody else's
+                // unit (review of #52). Without one the server measures to the box's stretch of
+                // wall line (scene.schema.json `footprint`), which can understate a deep box near
+                // a corner.
+                try requireNonNegative(bottom, "\(name).bottom")
+                guard top >= bottom else { throw SceneExportError.topBelowBottom(field: name, bottom: bottom, top: top) }
+                objects.append(.init(
+                    type: kind.rawValue, wall_id: wallIDAt((span.lowerBound + span.upperBound) / 2), span_ft: spanFeet(span),
+                    bottom_ft: feet(bottom), top_ft: feet(top), attrs: nil, source: "tap", footprint: nil,
                     plus_minus_ft: objectError))
             case let .pointObject(kind, tap, bottom, top):
                 if let bottom { try requireNonNegative(bottom, "\(name).bottom") }
