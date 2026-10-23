@@ -210,7 +210,7 @@
       let stride = 0;
       for (const line of lines.slice(vertexIndex + 1)) {
         if (!line.startsWith("property ")) break;
-        const [, , type, name] = line.split(/\s+/);
+        const [, type, name] = line.split(/\s+/);
         if (!(type in sizes)) throw new Error("unsupported property type " + type);
         props.push({ name, type, offset: stride });
         stride += sizes[type];
