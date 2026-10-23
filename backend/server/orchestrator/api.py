@@ -16,7 +16,7 @@ from server.contracts.jobs import (
 )
 from server.contracts.packet import Tier
 from server.orchestrator.clock import parse_iso
-from server.orchestrator.coordinator import RunCoordinator
+from server.orchestrator.coordinator import RunCoordinator, pending_correction_key, reset_criteria_and_result
 from server.orchestrator.early.capture_check import final_check, flush_pending
 from server.orchestrator.early.dispatch import dispatch
 from server.orchestrator.early.index import early_keys
@@ -198,27 +198,10 @@ def _recompose_after_correction(capture_id: str, run: RunRecord) -> None:
             run_id=run.run_id,
             preserved_stages=preserved,
         )
-    now = services.clock.iso()
-    for stage in ("criteria", "result"):
-        rec = services.state.get_stage(run.run_id, stage)  # type: ignore[attr-defined]
-        services.state.upsert_stage(  # type: ignore[attr-defined]
-            StageRecord(
-                run_id=run.run_id,
-                stage=stage,
-                status="pending",
-                attempt=(rec.attempt if rec is not None else 0) + 1,
-                heartbeat=now,
-            )
-        )
-    run.status = "running"
-    # The run's deadline measured its first pass, so a correction accepted after
-    # it would hard-stop on the next tick. The re-run gets the same HARD_STOP_MIN
-    # budget start_run gives a new run, counted from the correction.
-    run.deadline_at = deadline_from(services.clock, services.settings.HARD_STOP_MIN)
-    services.state.put_run(run)  # type: ignore[attr-defined]
-    raw = dict(get_json(services.state, f"run_control:{run.run_id}") or {})  # type: ignore[attr-defined]
-    raw["merge_done"] = False
-    put_json(services.state, f"run_control:{run.run_id}", raw)  # type: ignore[attr-defined]
+    # A stale live-window marker predates this recomposition: the reset below
+    # already re-runs both stages with every accepted answer.
+    services.state.delete_blob(pending_correction_key(run.run_id))  # type: ignore[attr-defined]
+    reset_criteria_and_result(services, run)
     try:
         RunCoordinator(services).drive(run.run_id)
     except CoordinatorDied:
@@ -267,7 +250,41 @@ def on_confirmation(
     runs = services.state.runs_for_capture(capture_id)  # type: ignore[attr-defined]
     if runs:
         newest = max(runs, key=lambda item: item.created_at)
-        _recompose_after_correction(capture_id, newest)
+        if newest.status in {"pending", "running"}:
+            # A live run has already consumed the hydrated inputs of its running
+            # stages — verdict_ready can be decided while result is still
+            # uploading — so the corrected reads would never re-enter that pass.
+            # Record it; the coordinator consumes the marker before closing done.
+            _record_pending_correction(services, newest, capture_id)
+        else:
+            _recompose_after_correction(capture_id, newest)
+
+
+def _record_pending_correction(services: object, run: RunRecord, capture_id: str) -> None:
+    """Remember that a correction landed while the run was still composing.
+
+    A live criteria or result stage hydrates its inputs before it executes, so
+    the corrected reads may never re-enter the composed payload — the run would
+    finish done with the pre-correction answer, and a replayed confirmation
+    short-circuits upstream without ever recomposing. The coordinator consumes
+    this marker before it marks the run done and re-runs the two stages once;
+    an earlier-arriving correction (the reads stage still open) is applied by
+    the reads stage itself and needs no marker. Overwriting an existing marker
+    is the idempotent shape: one reset replays every accepted answer.
+    """
+    live = False
+    for stage in ("criteria", "result"):
+        rec = services.state.get_stage(run.run_id, stage)  # type: ignore[attr-defined]
+        if rec is not None and rec.status == "running":
+            live = True
+    if not live:
+        return
+    put_json(
+        services.state,  # type: ignore[attr-defined]
+        pending_correction_key(run.run_id),
+        {"captureId": capture_id, "recordedAt": services.clock.iso()},  # type: ignore[attr-defined]
+    )
+    log_event("confirmation.pending_correction", capture_id=capture_id, run_id=run.run_id)
 
 
 def _latest_reads_key(services: object, capture_id: str) -> str | None:

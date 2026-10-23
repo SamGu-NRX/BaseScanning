@@ -26,52 +26,12 @@ from urllib.parse import urlparse
 
 import pytest
 
-from server.api.app import create_app
-from server.api.tests.conftest import TOKEN, ApiClient
-from server.common.config import Settings
+from server.api.tests.conftest import ApiClient
 
 FIXTURE = Path(__file__).resolve().parents[3] / "data" / "fixtures" / "packets" / "mini-arkit"
 PACKET_RAW = (FIXTURE / "packet.json").read_bytes()
 PACKET = json.loads(PACKET_RAW)
 PACKET_ID = PACKET["packetId"]
-
-# The documented dev handoff (SD-73): hooks on, stage stubs on, no external calls.
-AUTO_ENV = {
-    "STATE_BACKEND": "memory",
-    "STORAGE_BACKEND": "volume",
-    "HSS_ORCH_STAGE_STUBS": "1",
-    "VISION_EXTERNAL_CALLS": "off",
-    "SMP_ENVIRONMENT": "dev",
-}
-
-
-@pytest.fixture
-def auto_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ApiClient:
-    """An app whose hooks hand finalize off to the real orchestrator entry points."""
-    for key, value in AUTO_ENV.items():
-        monkeypatch.setenv(key, value)
-    # services.current() inside the hook builds from env: it needs the same
-    # volume root the API storage uses, or the bind fails and hooks no-op.
-    monkeypatch.setenv("VOLUME_ROOT", str(tmp_path / "vol"))
-    settings = Settings(
-        STORAGE_BACKEND="volume",
-        STATE_BACKEND="memory",
-        VOLUME_ROOT=str(tmp_path / "vol"),
-        CAPTURE_API_PUBLIC_URL="http://testserver",
-        CAPTURE_API_TOKENS=f"device:{TOKEN}",
-        UPLOAD_URL_HMAC_SECRET="h" * 32,
-        HSS_INGEST_HOOKS="auto",
-        HSS_AUTH_MODE="static",
-        GIT_SHA="0123456789abcdef",
-        VISION_EXTERNAL_CALLS="off",
-        SMP_ENVIRONMENT="dev",
-        SMP_SERVICE_NAME="capture-api",
-    )
-    app = create_app(settings=settings)
-    test = ApiClient(app)
-    test.headers["Authorization"] = f"Bearer {TOKEN}"
-    test.app_state = app.state.deps
-    return test
 
 
 def _content_type(role: str) -> str:
@@ -241,3 +201,63 @@ def test_orchestrator_stage_failure_is_recorded_not_a_500(
     payload = result.json()
     assert payload["status"] == "manual_review"
     assert payload["outcome"]["kind"] == "manual_review"
+
+
+def test_confirmation_replay_recomposes_once(auto_client: ApiClient) -> None:
+    """A corrected answer POSTed twice recomposes the result exactly once.
+
+    The route's fingerprint check short-circuits the replayed confirmation
+    before the hook runs, so the second POST returns the stored row without
+    touching the run: the result stage runs the original pass plus one
+    recomposition, never three times.
+    """
+    client = auto_client
+    created = client.post(
+        "/v1/captures",
+        json={
+            "packetId": PACKET_ID,
+            "formatVersion": "0.4",
+            "tier": PACKET["session"]["tier"],
+            "device": {"model": "iPhone", "systemVersion": "18", "appVersion": "1"},
+        },
+        headers={"Idempotency-Key": PACKET_ID},
+    )
+    assert created.status_code == 201, created.text
+    capture_id = created.json()["captureId"]
+
+    _upload_and_commit(client, capture_id)
+    body = _finalize(client, capture_id)
+    run_id = body["runId"]
+
+    deps = client.app_state
+    assert deps.state.get_stage(run_id, "result").status == "done"
+
+    answer = {
+        "fieldId": "meter_number",
+        "kind": "corrected",
+        "value": "12345",
+        "imageId": PACKET["stills"][0]["id"],
+        "clientAt": "2026-10-16T00:00:00.000Z",
+    }
+    first = client.post(f"/v1/captures/{capture_id}/confirmations", json=answer)
+    assert first.status_code == 201, first.text
+    replay = client.post(f"/v1/captures/{capture_id}/confirmations", json=answer)
+    assert replay.status_code == 200, replay.text
+
+    run = deps.state.get_run(run_id)
+    assert run.status == "done"
+    # The recomposed pass records attempt 1 again (the coordinator recomputes
+    # spawn attempts), so "recomposed exactly once" is read from the event log:
+    # the original pass plus one re-run of each stage — the fingerprint
+    # short-circuit keeps the replayed POST from triggering a third pass.
+    events = deps.state.events_after(capture_id, 0, limit=500)
+    for stage in ("criteria", "result"):
+        started = [
+            event
+            for event in events
+            if event.type == "stage" and event.data.get("stage") == stage and event.data.get("status") == "running"
+        ]
+        assert len(started) == 2, [(e.type, e.data) for e in started]
+    result = client.get(f"/v1/captures/{capture_id}/result")
+    assert result.status_code == 200, result.text
+    assert result.json()["meter"]["value"] == "12345"
