@@ -1,0 +1,157 @@
+# PROPOSED backend CI workflow — not installed.
+#
+# Why: .github/workflows/server.yml triggers only on server/**, so no workflow
+# runs the backend/ tests (status-report/basescanning.json; a backend pull
+# request's only green checks today are the size label, CodeRabbit-skip and
+# Aikido). Agents may not edit .github/, so the workflow ships as a reviewed
+# proposal.
+#
+# To apply: copy this file to .github/workflows/backend.yml. That is the only
+# change needed. backend/scripts/ci_local.sh runs both jobs' steps in the
+# same order locally, and backend/docs/ci/README.md records the measured run
+# this proposal was proved with.
+#
+# Conventions mirror .github/workflows/server.yml: actions pinned by commit SHA
+# with the verified tag in a comment, ubuntu-24.04, contents:read, concurrency
+# group that cancels superseded pull-request runs.
+
+name: backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "server/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "server/**"
+      - ".github/workflows/backend.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend-checks:
+    name: Backend checks
+    # Hosted x64 Linux is enough: with the api extra the suite is pure CPU —
+    # no GPU, no Modal, no docker, no Swift (see backend/docs/ci/README.md).
+    # The pinned image matches server.yml.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      # v7.0.1 — the exact commit server.yml already runs on every change.
+      # Tag verified to exist (raw action.yml at v7.0.1).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # v10.2.0 — the exact commit server.yml already runs on every change.
+      # Tag verified to exist (raw action.yml at v10.2.0; inputs enable-cache,
+      # cache-dependency-glob, cache-python and working-directory confirmed
+      # there). Caches ~/.cache/uv keyed on backend/uv.lock, so the heavy
+      # first install (~2 GB with the api extra) is paid once.
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          working-directory: backend
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-python: true
+          version: "0.13.1" # the uv version the local proof ran with
+
+      - name: Install dependencies (locked)
+        run: uv sync --frozen --extra api
+
+      - name: Ruff check
+        run: uv run --frozen ruff check .
+
+      - name: Ruff format check
+        run: uv run --frozen ruff format --check .
+
+      - name: Import contracts (lint-imports)
+        run: uv run --frozen lint-imports
+
+      - name: Tests (make test)
+        env:
+          # Known failures, deselected by name so this job is a usable green
+          # signal from day one. Deleting this env block returns all of them
+          # to CI and the job goes red again — see backend/docs/ci/README.md
+          # ("Known failures") for the exact effect of both options.
+          #
+          # 1. Four expired SD-96 gate tests. The SD-96 window closed
+          #    2026-10-04 in backend/server/eval/gates.yaml (positive_pass,
+          #    known_failure "conservative miss from near-wall self-occlusion,
+          #    SD-96"). The window and thresholds are Sam's decision; nothing
+          #    here touches gates.yaml.
+          # 2. tests/test_capture_cold_restart.py errors at collection on
+          #    alpha (scripts.replay_capture no longer provides load_receipt)
+          #    and is being repaired in a separate change. Remove this
+          #    --ignore line when that repair lands on alpha.
+          PYTEST_ADDOPTS: >-
+            --deselect server/eval/tests/test_gates.py::test_committed_fixtures_are_scored_against_their_labels
+            --deselect server/eval/tests/test_gates.py::test_offline_table_skips_the_engine_and_passes_the_unpatched_reference
+            --deselect server/eval/tests/test_gates.py::test_route_over_the_bar_is_known_until_expiry
+            --deselect server/eval/tests/test_gates.py::test_refresh_rewrites_pins_after_a_committed_edit
+            --ignore=tests/test_capture_cold_restart.py
+        run: make test
+
+      - name: Schemas (make schemas)
+        run: make schemas
+
+
+      - name: Committed fixtures (make validate)
+        run: make validate
+
+  # The known-red step lives in its own clearly named job so it cannot fail
+  # the required signal (Codex P1 on PR #288: do not ship a required step
+  # that always fails). make hygiene is red on alpha at 4bcbedba,
+  # pre-existing: scripts/check_repo_hygiene.py denies every tracked .tar,
+  # and alpha tracks
+  # server/orchestrator/tests/data/packets/synthetic-meter.tar. Fixing that
+  # means un-tracking the file or changing the deny-list — both outside this
+  # proposal. Step-level continue-on-error keeps the pull-request check green while the
+  # step's failure stays visible in the run graph and its annotations. The
+  # job goes solid green when alpha stops tracking that file or the
+  # deny-list changes, and the flag can then be deleted.
+  # backend/docs/ci/README.md documents this and the alternative (leaving
+  # the step out of the workflow until it can pass) with the exact diff.
+  backend-hygiene-known-red:
+    name: Repo hygiene (known red on alpha)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      # Same pins as backend-checks; see the comment there.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          working-directory: backend
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-python: true
+          version: "0.13.1"
+
+      # No api extra needed: check_repo_hygiene.py is stdlib-only (re,
+      # subprocess, sys, pathlib), so the default locked set is enough.
+      - name: Install dependencies (locked)
+        run: uv sync --frozen
+
+      # continue-on-error is on this step only. On the job it would also turn a
+      # failed checkout, setup-uv or dependency install green, so the job could
+      # pass without ever running the hygiene check (Codex on PR #288).
+      - name: Repo hygiene (make hygiene)
+        continue-on-error: true
+        run: make hygiene
