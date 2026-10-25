@@ -160,7 +160,18 @@ def test_confirmation_updates_the_reads_record(tmp_path: Path) -> None:
     # The recompose preserves the upstream work as terminal records at attempt 1
     # — the re-run reads stage that once threatened the answer never executes.
     rows = {rec.stage: rec for rec in services.state.stages("run_reads")}
-    for upstream in ("validate", "poses", "objects", "reads", "scale", "dense", "coverage", "scene", "objects_3d", "placement"):
+    for upstream in (
+        "validate",
+        "poses",
+        "objects",
+        "reads",
+        "scale",
+        "dense",
+        "coverage",
+        "scene",
+        "objects_3d",
+        "placement",
+    ):
         assert rows[upstream].status == "done", upstream
         assert rows[upstream].attempt == 1, upstream
     assert rows["criteria"].status == "done"
