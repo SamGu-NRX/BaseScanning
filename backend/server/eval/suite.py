@@ -138,7 +138,24 @@ def _pipeline_rows(sites, inputs: Path, repo: Path, work: Path, engine_cfg: Crit
         site_dir = inputs / "scenes" / site / "gt-laser"
         target = f"{site}/gt-laser"
         out_dir = work / site / "criteria"
-        staged = _stage(site_dir, site, repo, work)
+        try:
+            staged = _stage(site_dir, site, repo, work)
+        except Exception as exc:
+            traceback.print_exc()
+            rows.append(
+                _row(
+                    f"pipeline/{site}",
+                    "pipeline",
+                    target,
+                    "criteria_engine",
+                    None,
+                    f"verdicts for {', '.join(engine_cfg.profiles)}",
+                    "FAIL",
+                    str(site_dir),
+                    f"scene fixture missing: {_err(exc)}",
+                )
+            )
+            continue
         hint = "" if _has_visibility_inputs(staged) else " (laser PLY absent; run make gt)"
         try:
             produced = evaluate_scene(staged, out_dir, config=engine_cfg)
@@ -180,6 +197,25 @@ def _pipeline_rows(sites, inputs: Path, repo: Path, work: Path, engine_cfg: Crit
     return rows
 
 
+def _report_shape_error(report: object) -> str | None:
+    """Return a stable refusal for a parsed report with unusable containers."""
+    if not isinstance(report, dict):
+        return f"criteria report must be an object, got {type(report).__name__}"
+    profiles = report.get("profiles")
+    if profiles is not None and (
+        not isinstance(profiles, list) or not all(isinstance(profile, str) for profile in profiles)
+    ):
+        return "criteria report profiles must be a list of strings"
+    decidability = report.get("decidability")
+    if decidability is not None and not isinstance(decidability, dict):
+        return "criteria report decidability must be an object"
+    if isinstance(decidability, dict):
+        for profile, value in decidability.items():
+            if not isinstance(profile, str) or not isinstance(value, dict):
+                return "criteria report decidability entries must be objects keyed by profile"
+    return None
+
+
 def _report_diff(produced: dict, committed: dict) -> list[str]:
     diffs = []
     for field in REPORT_FIELDS:
@@ -208,7 +244,39 @@ def _criteria_rows(sites, inputs: Path, work: Path):
                 )
             )
             continue
-        produced = json.loads(report_path.read_text())
+        try:
+            produced = json.loads(report_path.read_text())
+        except ValueError as exc:
+            rows.append(
+                _row(
+                    f"criteria/{site}/report",
+                    "criteria",
+                    f"{site}/gt-laser",
+                    "criteria_report",
+                    None,
+                    "reproduces committed evidence",
+                    "FAIL",
+                    str(report_path),
+                    f"produced criteria report is unreadable: {_err(exc)}",
+                )
+            )
+            continue
+        shape_error = _report_shape_error(produced)
+        if shape_error:
+            rows.append(
+                _row(
+                    f"criteria/{site}/report",
+                    "criteria",
+                    f"{site}/gt-laser",
+                    "criteria_report",
+                    None,
+                    "reproduces committed evidence",
+                    "FAIL",
+                    str(report_path),
+                    shape_error,
+                )
+            )
+            continue
         shares = {
             p: (produced.get("decidability") or {}).get(p, {}).get("share") for p in produced.get("profiles") or []
         }
@@ -228,7 +296,39 @@ def _criteria_rows(sites, inputs: Path, work: Path):
                 )
             )
             continue
-        committed = json.loads(committed_path.read_text())
+        try:
+            committed = json.loads(committed_path.read_text())
+        except ValueError as exc:
+            rows.append(
+                _row(
+                    f"criteria/{site}/report",
+                    "criteria",
+                    f"{site}/gt-laser",
+                    "criteria_report",
+                    shares,
+                    "reproduces committed evidence",
+                    "FAIL",
+                    str(committed_path),
+                    f"committed criteria report is unreadable: {_err(exc)}",
+                )
+            )
+            continue
+        committed_shape_error = _report_shape_error(committed)
+        if committed_shape_error:
+            rows.append(
+                _row(
+                    f"criteria/{site}/report",
+                    "criteria",
+                    f"{site}/gt-laser",
+                    "criteria_report",
+                    shares,
+                    "reproduces committed evidence",
+                    "FAIL",
+                    str(committed_path),
+                    committed_shape_error,
+                )
+            )
+            continue
         diffs = _report_diff(produced, committed)
         rows.append(
             _row(
@@ -257,8 +357,12 @@ def _criteria_rows(sites, inputs: Path, work: Path):
             if not produced_path.is_file() or not ref_path.is_file():
                 diffs.append(f"{profile}: missing produced or reference verdict")
                 continue
-            got = load_json(produced_path).get("site", {}).get("decision")
-            want = load_json(ref_path).get("site", {}).get("decision")
+            try:
+                got = load_json(produced_path).get("site", {}).get("decision")
+                want = load_json(ref_path).get("site", {}).get("decision")
+            except Exception as exc:
+                diffs.append(f"{profile}: unreadable produced or reference verdict: {_err(exc)}")
+                continue
             decisions[profile] = got
             if got != want:
                 diffs.append(f"{profile}: produced {got!r} vs reference {want!r}")
@@ -321,7 +425,24 @@ def _verdict_rows(sites, inputs: Path, work: Path, limits: dict):
                     )
                 )
                 continue
-            results = score_files(verdict_path, [labels_path], out_dir=work / "verdict-scores" / site)
+            try:
+                results = score_files(verdict_path, [labels_path], out_dir=work / "verdict-scores" / site)
+            except Exception as exc:
+                traceback.print_exc()
+                rows.append(
+                    _row(
+                        f"verdict/{target}",
+                        "verdicts",
+                        target,
+                        "verdictscore",
+                        None,
+                        "scored against committed labels",
+                        "FAIL",
+                        str(labels_path),
+                        f"scoring failed: {_err(exc)}",
+                    )
+                )
+                continue
             if not results:
                 rows.append(
                     _row(
@@ -590,10 +711,15 @@ def run_suite(config_path: Path, inputs: Path, out: Path, repo: Path | None = No
     repo = repo or Path(__file__).resolve().parents[2]
     config_path, inputs, out = Path(config_path), Path(inputs), Path(out)
     cfg = yaml.safe_load(config_path.read_text()) or {}
-    sites = [
-        site for site in (cfg.get("sites") or {}) if (inputs / "scenes" / site / "gt-laser" / "scene.json").is_file()
-    ]
+    # Every configured site stays in the run: a site whose scene fixture is missing
+    # is a FAIL row, never a silent omission — an empty or wrong --inputs directory
+    # must not exit 0 having evaluated nothing.
+    sites = list(cfg.get("sites") or {})
+    # Each run reads only what it produced: verdicts and reports left in the work
+    # directory by an earlier run would otherwise stand in for this run's results.
     work = out / "work"
+    if work.exists():
+        shutil.rmtree(work)
     engine_cfg = _engine_config(cfg)
     rows: list[dict] = []
     rows.extend(_fixture_rows(sites, inputs))

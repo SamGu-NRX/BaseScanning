@@ -11,7 +11,7 @@
     "gravity_source": "ground_truth",
     "site": "burst8-multiwall-unsupported",
     "notes": [
-      "Authored for the burst8 supported-case packet: an L of two house walls, everything else inside the bridge's bounded scope (observed on-wall meter anchor, observed wall_rect hazard, level ground, band coverage). The chain has two walls, so the bridge must refuse it at /walls with placement_scene_unsupported."
+      "Authored for the burst8 supported-case packet: an L of two house walls — rear turns 90 degrees from side's right end — everything else inside the bridge's bounded scope (observed on-wall meter anchor, observed wall_rect hazard, level ground, band coverage). The chain has two walls, so the bridge must refuse it at /walls with placement_scene_unsupported."
     ]
   },
   "frame": {
@@ -45,12 +45,12 @@
       "role": "house",
       "baseline_m": [
         [
-          -0.4572,
+          1.524,
           0.0
         ],
         [
-          0.9144,
-          0.0
+          1.524,
+          -0.9144
         ]
       ],
       "height_m": 2.7432,
@@ -70,9 +70,24 @@
       },
       "right": {
         "kind": "limit",
-        "s_m": 1.524
+        "s_m": 2.4384
       }
-    }
+    },
+    "corners": [
+      {
+        "id": "corner-side-rear",
+        "left_wall": "side",
+        "right_wall": "rear",
+        "point_m": [
+          1.524,
+          0.0
+        ],
+        "s_m": 1.524,
+        "turn_deg": 90.0,
+        "plus_minus_m": 0.09,
+        "evidence": "observed"
+      }
+    ]
   },
   "ground": {
     "surface": {
