@@ -140,6 +140,8 @@ public enum ReplayError: Error, Equatable, CustomStringConvertible {
     case missingField(String)
     /// The pose is not 16 finite numbers.
     case badPose(frameID: String)
+    /// The keyframe image dimensions are not a positive landscape sensor image.
+    case badImageSize(frameID: String, reason: String)
     /// The intrinsics are not 4 finite numbers with positive focal lengths.
     case badIntrinsics(frameID: String)
     case noFrames
@@ -158,6 +160,8 @@ public enum ReplayError: Error, Equatable, CustomStringConvertible {
             "session.json is missing required field \(path)"
         case .badPose(let frameID):
             "keyframe \(frameID) has a pose that is not 16 finite numbers"
+        case .badImageSize(let frameID, let reason):
+            "keyframe \(frameID) image size: \(reason)"
         case .badIntrinsics(let frameID):
             "keyframe \(frameID) has intrinsics that are not [fx, fy, cx, cy] with positive focal lengths"
         case .noFrames:
@@ -256,6 +260,15 @@ private func fieldPath(_ keys: [any CodingKey]) -> String {
 }
 
 private func makeFrame(_ k: Manifest.Keyframe) throws -> ReplayFrame {
+    guard k.w >= 1, k.h >= 1 else {
+        throw ReplayError.badImageSize(frameID: k.id, reason: "width and height must be integers of at least 1")
+    }
+    guard k.w > k.h else {
+        let reason = k.w == k.h
+            ? "square keyframe; replay requires a landscape sensor image"
+            : "portrait keyframe; replay requires a landscape sensor image"
+        throw ReplayError.badImageSize(frameID: k.id, reason: reason)
+    }
     guard k.pose.count == 16, k.pose.allSatisfy(\.isFinite) else { throw ReplayError.badPose(frameID: k.id) }
     guard k.intrinsics.count == 4, k.intrinsics.allSatisfy(\.isFinite), k.intrinsics[0] > 0, k.intrinsics[1] > 0
     else { throw ReplayError.badIntrinsics(frameID: k.id) }

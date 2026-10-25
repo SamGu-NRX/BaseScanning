@@ -63,9 +63,9 @@ struct ReplaySessionTests {
 
     @Test func sortsEqualTimestampsById() throws {
         let frames = """
-        [{"id": "b", "img": "b.jpg", "w": 1, "h": 1, "intrinsics": [1,1,0,0],
+        [{"id": "b", "img": "b.jpg", "w": 2, "h": 1, "intrinsics": [1,1,0,0],
           "pose": [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1], "timestamp": 5, "tracking": "normal"},
-         {"id": "a", "img": "a.jpg", "w": 1, "h": 1, "intrinsics": [1,1,0,0],
+         {"id": "a", "img": "a.jpg", "w": 2, "h": 1, "intrinsics": [1,1,0,0],
           "pose": [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1], "timestamp": 5, "tracking": "normal"}]
         """
         let session = try ReplaySession.decode(sessionJSON: Self.session(keyframes: frames))
@@ -100,6 +100,21 @@ struct ReplaySessionTests {
     @Test func rejectsZeroFocalLength() {
         let frames = Self.oneFrame.replacingOccurrences(of: "[1, 1, 2, 1.5]", with: "[0, 1, 2, 1.5]")
         #expect(throws: ReplayError.badIntrinsics(frameID: "k1")) {
+            try ReplaySession.decode(sessionJSON: Self.session(keyframes: frames))
+        }
+    }
+
+    @Test(arguments: [(3, 4, "portrait keyframe; replay requires a landscape sensor image"),
+                      (4, 4, "square keyframe; replay requires a landscape sensor image"),
+                      (0, 3, "width and height must be integers of at least 1"),
+                      (-1, 3, "width and height must be integers of at least 1"),
+                      (4, 0, "width and height must be integers of at least 1"),
+                      (4, -1, "width and height must be integers of at least 1")])
+    func rejectsInvalidImageSize(width: Int, height: Int, reason: String) {
+        let frames = Self.oneFrame
+            .replacingOccurrences(of: "\"w\": 4", with: "\"w\": \(width)")
+            .replacingOccurrences(of: "\"h\": 3", with: "\"h\": \(height)")
+        #expect(throws: ReplayError.badImageSize(frameID: "k1", reason: reason)) {
             try ReplaySession.decode(sessionJSON: Self.session(keyframes: frames))
         }
     }
