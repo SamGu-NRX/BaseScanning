@@ -1,0 +1,31 @@
+{
+  "criteria": null,
+  "memberActions": [],
+  "meter": null,
+  "outcome": {
+    "arkitEpoch": null,
+    "cableRoutePolylineArkit": null,
+    "frameToArkit": null,
+    "kind": "manual_review",
+    "message": "packet_invalid",
+    "profile": "C",
+    "reasons": [],
+    "recommendedPlacement": null,
+    "viewsNeeded": []
+  },
+  "previewUrl": null,
+  "reviewUrl": "/v1/captures/cap_01M52Y60WNH0MW5V316QF4P7KN/review",
+  "runId": "run_223b03a5e1e6beb8",
+  "scale": null,
+  "site": {
+    "decision": "manual_review",
+    "profile": "C",
+    "reasons": [
+      "packet_invalid"
+    ]
+  },
+  "status": "failed",
+  "verdict": null,
+  "verdictUrl": null,
+  "viewsNeeded": []
+}

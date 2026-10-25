@@ -5,16 +5,23 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import time
 from pathlib import Path
 
 import numpy as np
 
 from server.contracts.jobs import StageContext, StageResult
+from server.orchestrator.config import load_orch
 
 _PLY = b"ply\nformat ascii 1.0\nelement vertex 1\nproperty float x\nproperty float y\nproperty float z\nend_header\n0 0 0\n"
 
 
 def write_files(ctx: StageContext, files: dict[str, bytes]) -> StageResult:
+    # The dev-only scripted delay: each stub sleeps so the app sees the stage
+    # move through processing. load_orch refuses a stray value at boot.
+    delay = load_orch().local_stage_delay_s
+    if delay > 0:
+        time.sleep(delay)
     artifacts: dict[str, str] = {}
     for key, data in files.items():
         path = ctx.work_dir / key
@@ -116,6 +123,42 @@ def verdict_document(profile: str, scene_id: str) -> dict:
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def scripted_outcome() -> str:
+    """The dev-only scripted terminal state, or the default manual_review."""
+    return load_orch().local_outcome
+
+
+_SCRIPTED_VIEW = {
+    "id": "stub-wall-band",
+    "kind": "band",
+    "criteria": ["stub"],
+    "why": "Local test stand-in: this retake request is scripted, not measured.",
+    "band": "wall",
+    "wall_id": "w1",
+}
+
+
+def scripted_verdict(profile: str, scene_id: str, outcome: str) -> dict:
+    """The stub verdict for a scripted local outcome (dev + stage stubs only).
+
+    Changes only the site decision and views_needed, so the outcome table's
+    rows 11-14 land the capture on the chosen state. manual_review keeps the
+    plain stub document byte-identical, and failed never reaches criteria
+    (the validate stub ends the run on row 1).
+    """
+    verdict = verdict_document(profile, scene_id)
+    if outcome == "eligible":
+        verdict["site"]["decision"] = "pass"
+        verdict["site"]["reasons"] = ["scripted:eligible"]
+    elif outcome == "not_eligible":
+        verdict["site"]["decision"] = "reject"
+        verdict["site"]["reasons"] = ["scripted:not_eligible"]
+    elif outcome == "needs_more_photos":
+        verdict["site"]["reasons"] = ["scripted:needs_more_photos"]
+        verdict["views_needed"] = [dict(_SCRIPTED_VIEW)]
+    return verdict
 
 
 def repo_root() -> Path:

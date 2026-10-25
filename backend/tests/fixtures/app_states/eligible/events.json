@@ -1,0 +1,386 @@
+{
+  "captureStatus": "complete",
+  "events": [
+    {
+      "at": "2026-10-16T18:04:26Z",
+      "data": {
+        "committed": 11,
+        "listed": null,
+        "paths": [
+          "keyframes/k00001.features.bin",
+          "keyframes/k00001.jpg",
+          "keyframes/k00002.features.bin",
+          "keyframes/k00002.jpg",
+          "keyframes/k00003.jpg",
+          "keyframes/k00004.jpg",
+          "streams/arkit_poses.csv.gz",
+          "streams/heading.csv.gz",
+          "streams/imu_raw.csv.gz",
+          "streams/location.csv.gz",
+          "streams/motion.csv.gz"
+        ]
+      },
+      "seq": 1,
+      "type": "files_committed"
+    },
+    {
+      "at": "2026-10-16T18:04:26Z",
+      "data": {
+        "code": "frames_blurry",
+        "frames": [
+          "keyframes/k00003.jpg"
+        ],
+        "message": "Several frames in a row look blurry."
+      },
+      "seq": 2,
+      "type": "hint"
+    },
+    {
+      "at": "2026-10-16T18:04:26Z",
+      "data": {
+        "complete": true,
+        "meterRead": "absent",
+        "missing": []
+      },
+      "seq": 3,
+      "type": "capture_check"
+    },
+    {
+      "at": "2026-10-16T18:04:26Z",
+      "data": {
+        "attempt": 1,
+        "durationS": null,
+        "errorCode": null,
+        "gpu": null,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "validate",
+        "status": "running"
+      },
+      "seq": 4,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:26Z",
+      "data": {
+        "attempt": 0,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "validate",
+        "status": "pending"
+      },
+      "seq": 5,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:26Z",
+      "data": {
+        "complete": false,
+        "meterRead": "absent",
+        "missing": [
+          "panel_close",
+          "panel_open",
+          "main_disconnect",
+          "meter_tap"
+        ]
+      },
+      "seq": 6,
+      "type": "capture_check"
+    },
+    {
+      "at": "2026-10-16T18:04:26Z",
+      "data": {
+        "attempt": 1,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "validate",
+        "status": "running"
+      },
+      "seq": 7,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.01,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "validate",
+        "status": "done"
+      },
+      "seq": 8,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "gpu": "L4",
+        "runId": "run_ba609feb3ab55185",
+        "stage": "poses",
+        "status": "running"
+      },
+      "seq": 9,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "gpu": "L4",
+        "runId": "run_ba609feb3ab55185",
+        "stage": "objects",
+        "status": "running"
+      },
+      "seq": 10,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "reads",
+        "status": "running"
+      },
+      "seq": 11,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.01,
+        "gpu": "L4",
+        "runId": "run_ba609feb3ab55185",
+        "stage": "objects",
+        "status": "done"
+      },
+      "seq": 12,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.01,
+        "gpu": "L4",
+        "runId": "run_ba609feb3ab55185",
+        "stage": "poses",
+        "status": "done"
+      },
+      "seq": 13,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.01,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "reads",
+        "status": "done"
+      },
+      "seq": 14,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "scale",
+        "status": "running"
+      },
+      "seq": 15,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.01,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "scale",
+        "status": "done"
+      },
+      "seq": 16,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "gpu": "L4",
+        "runId": "run_ba609feb3ab55185",
+        "stage": "dense",
+        "status": "running"
+      },
+      "seq": 17,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.01,
+        "gpu": "L4",
+        "runId": "run_ba609feb3ab55185",
+        "stage": "dense",
+        "status": "done"
+      },
+      "seq": 18,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "coverage",
+        "status": "running"
+      },
+      "seq": 19,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.01,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "coverage",
+        "status": "done"
+      },
+      "seq": 20,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "scene",
+        "status": "running"
+      },
+      "seq": 21,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.01,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "scene",
+        "status": "done"
+      },
+      "seq": 22,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "objects_3d",
+        "status": "running"
+      },
+      "seq": 23,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.01,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "objects_3d",
+        "status": "done"
+      },
+      "seq": 24,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "placement",
+        "status": "running"
+      },
+      "seq": 25,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "criteria",
+        "status": "running"
+      },
+      "seq": 26,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.01,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "criteria",
+        "status": "done"
+      },
+      "seq": 27,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.0,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "placement",
+        "status": "done"
+      },
+      "seq": 28,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "result",
+        "status": "running"
+      },
+      "seq": 29,
+      "type": "stage"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "kind": "eligible",
+        "runId": "run_ba609feb3ab55185"
+      },
+      "seq": 30,
+      "type": "verdict_ready"
+    },
+    {
+      "at": "2026-10-16T18:04:27Z",
+      "data": {
+        "attempt": 1,
+        "durationS": 0.01,
+        "runId": "run_ba609feb3ab55185",
+        "stage": "result",
+        "status": "done"
+      },
+      "seq": 31,
+      "type": "stage"
+    }
+  ],
+  "outcomeKind": "eligible",
+  "terminalEventKind": "verdict_ready",
+  "verdict": {
+    "decision": "pass",
+    "views": 0
+  }
+}

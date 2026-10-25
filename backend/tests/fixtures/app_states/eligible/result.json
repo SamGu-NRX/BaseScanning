@@ -1,0 +1,81 @@
+{
+  "criteria": null,
+  "memberActions": [],
+  "meter": {
+    "barcodeConfirmed": false,
+    "candidates": [],
+    "clean": false,
+    "evidence": null,
+    "readersAgree": false,
+    "status": "not_captured",
+    "value": null
+  },
+  "outcome": {
+    "arkitEpoch": "e1",
+    "cableRoutePolylineArkit": null,
+    "frameToArkit": null,
+    "kind": "eligible",
+    "message": "Local test stand-in: the proposed placement is scripted, not measured. This is a local test outcome, not a check of a wall.",
+    "profile": "C",
+    "reasons": [],
+    "recommendedPlacement": {
+      "boxArkitWorld": {
+        "pose": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.6937,
+          0.50165,
+          0.2994,
+          1.0
+        ],
+        "size": [
+          0.7874,
+          1.0033,
+          0.5588
+        ]
+      },
+      "boxSceneM": {
+        "centerM": [
+          0.6937,
+          0.50165,
+          0.2994
+        ],
+        "sizeM": [
+          0.7874,
+          1.0033,
+          0.5588
+        ],
+        "yawDeg": 0.0
+      },
+      "confidence": 0.5,
+      "footprintM": {
+        "d": 0.5588,
+        "h": 1.0033,
+        "w": 0.7874
+      },
+      "profile": "C",
+      "startSM": 0.3,
+      "wallId": "w1"
+    },
+    "viewsNeeded": []
+  },
+  "previewUrl": "http://testserver/v1/uploads/eyJjdCI6IiIsImV4cCI6MTc5MjE3NDc2Nywia2V5IjoiY2FwdHVyZXMvY2FwXzAxTTUyWTVaVjFHUVkxQTFTRE01OE5YNzJYL3J1bnMvcnVuX2JhNjA5ZmViM2FiNTUxODUvcmVzdWx0L3ByZXZpZXcucGx5IiwibWQ1IjoiIiwib3AiOiJnZXQifQ.1022d38e5ec26e01cc412a8b3d4e67575691efc32aae73bf0b8c6c78efc08251",
+  "reviewUrl": "/v1/captures/cap_01M52Y5ZV1GQY1A1SDM58NX72X/review",
+  "runId": "run_ba609feb3ab55185",
+  "scale": null,
+  "site": null,
+  "status": "complete",
+  "verdict": null,
+  "verdictUrl": null,
+  "viewsNeeded": []
+}
