@@ -202,6 +202,10 @@ struct ResultScene3D: View {
         // clearance zones are: drawn whole on its middle's piece it ran straight on past the
         // corner (#129). The end pieces reach on past the drawn wall, so no part is lost there.
         for feature in features {
+            if feature.kind == .acUnit {
+                addACUnit(feature, to: root)
+                continue
+            }
             guard feature.kind == .fence || feature.kind == .driveway else {
                 addFeature(feature, to: holder(atS: (feature.span.lowerBound + feature.span.upperBound) / 2))
                 continue
@@ -366,9 +370,7 @@ struct ResultScene3D: View {
             root.addChild(box(width: 0.3, height: 0.35, depth: 0.2,
                               center: SIMD3(centerX, bottom + 0.175, 0.1), material: matte(SceneColor.gas)))
         case .acUnit:
-            let back = feature.out ?? 0.3
-            root.addChild(box(width: 0.8, height: 0.8, depth: 0.8,
-                              center: SIMD3(centerX, 0.4, back + 0.4), material: matte(SceneColor.meter)))
+            break // Added in the model frame by addACUnit, preserving the tapped world position.
         case .driveway:
             root.addChild(plane(width: width, depth: Self.groundDepth,
                                 center: SIMD3(centerX, 0.003, Self.groundDepth / 2), material: matte(SceneColor.driveway)))
@@ -376,6 +378,18 @@ struct ResultScene3D: View {
             root.addChild(box(width: width, height: 1.2, depth: 0.04,
                               center: SIMD3(centerX, 0.6, feature.out ?? 2.0), material: matte(SceneColor.fence)))
         }
+    }
+
+    private func addACUnit(_ feature: MarkedFeature, to root: Entity) {
+        guard let tap = feature.points.first else { return }
+        let s = (feature.span.lowerBound + feature.span.upperBound) / 2
+        let ac = wall.acGeometry(tap: tap, atS: s)
+        let foot = SIMD3(wall.meter.x, wall.groundY, wall.meter.z)
+        let unit = box(width: ac.size.x, height: ac.size.y, depth: ac.size.z,
+                       center: modelDirection(ac.boxCenter - foot), material: matte(SceneColor.meter))
+        unit.orientation = simd_quatf(simd_float3x3(columns: (
+            modelDirection(ac.along), SIMD3(0, 1, 0), modelDirection(ac.outward))))
+        root.addChild(unit)
     }
 
     private func addBattery(_ spot: BatterySpot, to root: Entity) {

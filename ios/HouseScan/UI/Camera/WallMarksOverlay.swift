@@ -1,3 +1,4 @@
+import HouseScanKit
 import SwiftUI
 import simd
 
@@ -19,11 +20,9 @@ struct WallMarksOverlay: View {
     static let hologram = Color(red: 0xE6 / 255, green: 0xEC / 255, blue: 0xF4 / 255)
 
     /// Display sizes (width, height) for things marked with one tap, in meters: a bracket needs
-    /// a box, and one tap gives only the middle. Typical sizes, not measurements; the export uses
-    /// its own nominal width (`ScanEngine.project`).
+    /// a box, and one tap gives only the middle. Typical sizes, not measurements.
     static let meterBox = SIMD2<Float>(0.3, 0.4)
     static let gasMeterBox = SIMD2<Float>(0.3, 0.4)
-    static let acUnitBox = SIMD2<Float>(0.6, 0.6)
 
     var body: some View {
         Canvas { context, size in
@@ -69,16 +68,36 @@ struct WallMarksOverlay: View {
                 wall.world(s: feature.span.lowerBound, height: bottom, out: 0.01),
             ].compactMap(geometry.point)
             if corners.count == 4 { drawBracket(corners, color: Self.hologram, caption: caption, in: &context) }
-        case .gasMeter, .acUnit:
+        case .gasMeter:
             guard let point = feature.points.first else { return }
             let s = (feature.span.lowerBound + feature.span.upperBound) / 2
-            let size = feature.kind == .gasMeter ? Self.gasMeterBox : Self.acUnitBox
-            // An AC unit stands on the ground, and most taps on one land there (#163): its bracket
-            // stands on the ground under the tap rather than centred on it, half under the floor.
-            let center = feature.kind == .acUnit ? SIMD3(point.x, wall.groundY + size.y / 2, point.z) : point
-            if let corners = box(center: center, along: wall.along(atS: s), up: up, size: size, geometry) {
+            if let corners = box(center: point, along: wall.along(atS: s), up: up, size: Self.gasMeterBox, geometry) {
                 drawBracket(corners, color: Self.hologram, caption: caption, in: &context)
             }
+        case .acUnit:
+            guard let tap = feature.points.first else { return }
+            let s = (feature.span.lowerBound + feature.span.upperBound) / 2
+            let ac = wall.acGeometry(tap: tap, atS: s)
+            let bottom = ac.footprint.compactMap(geometry.point)
+            let top = ac.top.compactMap(geometry.point)
+            guard bottom.count == 4, top.count == 4 else { return }
+            var path = Path()
+            path.addLines(bottom)
+            path.closeSubpath()
+            path.addLines(top)
+            path.closeSubpath()
+            for i in 0..<4 {
+                path.move(to: bottom[i])
+                path.addLine(to: top[i])
+            }
+            context.stroke(path, with: .color(.black.opacity(0.28)), style: StrokeStyle(lineWidth: 4.5, lineJoin: .round))
+            context.stroke(path, with: .color(Self.hologram), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+            let label = CGPoint(x: top.map(\.x).reduce(0, +) / 4, y: (top.map(\.y).min() ?? 0) - 13)
+            var layer = context
+            layer.addFilter(.shadow(color: .black.opacity(0.45), radius: 6, y: 1))
+            layer.draw(Text(ScanCopy.acAssumedCaption)
+                .font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundStyle(.white),
+                       at: label, anchor: .center)
         case .driveway, .fence:
             let points = feature.points.compactMap(geometry.point)
             guard points.count >= 2 else { return }

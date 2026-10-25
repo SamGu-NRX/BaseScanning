@@ -323,11 +323,9 @@ public enum SceneExport {
     static let pointObjectHalfWidth: Float = 0.15
     /// How far a tapped gas meter is assumed to stand off the wall, same 0.3 m hypothesis.
     static let pointObjectDepth: Float = 0.3
-    /// Side of the square an AC unit is assumed to cover, in meters: about 3 ft along the wall and
-    /// 3 ft out from it, centred on the one tap (team decision on #72, option (b)). A typical
-    /// residential condenser, not a measured size: the tap gives no size, and the review says the
-    /// size is assumed. Replace it once the AC is marked by its two edges.
-    public static let acAssumedSide: Float = 0.9144
+    /// Assumed footprint size, shared with the AR and result renderers. The tap is its center
+    /// in both plan axes, including the measured distance from the wall (D1 option B).
+    public static let acAssumedSide = ACUnitGeometry.assumedSide
 
     /// Half the plan width and the depth of a tapped point object of `kind`.
     static func pointObjectSize(_ kind: ScenePointObjectKind) -> (halfWidth: Float, depth: Float) {
@@ -456,10 +454,18 @@ public enum SceneExport {
                 let (halfWidth, depth) = pointObjectSize(kind)
                 let left = s - halfWidth
                 let right = s + halfWidth
+                let footprint: [[Double]]
+                if kind == .ac {
+                    footprint = ACUnitGeometry(tap: tap, along: segment.along, outward: segment.outward,
+                                               groundY: wall.groundY).footprint.map(planFeet)
+                } else {
+                    footprint = [footprintPoint(left, 0), footprintPoint(right, 0),
+                                 footprintPoint(right, depth), footprintPoint(left, depth)]
+                }
                 objects.append(.init(
                     type: kind.rawValue, wall_id: wallIDAt(s), span_ft: spanFeet(left...right),
                     bottom_ft: bottom.map(feet), top_ft: top.map(feet), attrs: nil, source: "tap",
-                    footprint: [footprintPoint(left, 0), footprintPoint(right, 0), footprintPoint(right, depth), footprintPoint(left, depth)],
+                    footprint: footprint,
                     plus_minus_ft: objectError))
             case let .fence(foot):
                 guard foot.count == 2 else {

@@ -1378,8 +1378,9 @@ final class DemoEngine: ScanActions {
             return MarkedFeature(id: UUID(), kind: kind, span: -2.6 ... -1.8, bottom: 0, top: 2.03, out: nil,
                                  points: [wall.world(s: -2.6, height: 0), wall.world(s: -1.8, height: 2.03)], opens: nil)
         case .acUnit:
-            return MarkedFeature(id: UUID(), kind: kind, span: DemoScene.acSpan, bottom: 0, top: 0.8, out: 0.25,
-                                 points: [wall.world(s: 3.75, height: 0.8, out: 0.6)], opens: nil)
+            let half = ACUnitGeometry.assumedSide / 2
+            return MarkedFeature(id: UUID(), kind: kind, span: (3.75 - half)...(3.75 + half), bottom: 0, top: 0.8, out: 0.6,
+                                 points: [wall.world(s: 3.75, height: 0, out: 0.6)], opens: nil)
         case .driveway:
             return MarkedFeature(id: UUID(), kind: kind, span: -1.0...1.0, bottom: nil, top: nil, out: 2.4,
                                  points: [wall.world(s: -1.0, height: 0, out: 2.4), wall.world(s: 1.0, height: 0, out: 2.4)], opens: nil)
