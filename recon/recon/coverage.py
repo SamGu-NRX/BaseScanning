@@ -12,6 +12,11 @@ claimed nothing unseen (section 7b). Here a sample counts as seen by a frame onl
   backing, nor is a view into a pit ground; and
 - no occupied voxel of the fused reconstruction lies between the camera and the sample, short of
   that tolerance.
+Cells are half-foot steps clipped to the fitted wall extent, and every sample sits inside it: a
+surface beyond the fit's ends can never drive an observation, because the fitted wall line
+establishes nothing there (a longer baseline an older scan left behind does not either). On
+flat ground a clipped fit yields exactly the cells the old first-to-last grid did.
+
 A cell is observed when every sample row was seen from two camera positions at least 0.25 m
 apart, the app's bar for "covered". Wall samples sit on the wall's reconstructed face where that
 face is a flat, full-height surface in front of the fitted plane (a pilaster), and on the plane
@@ -31,7 +36,7 @@ import numpy as np
 from recon.capture import FEET, UP, Frame
 from recon.depth import Depth
 from recon.fusion import MAX_RANGE_M, Mesh, Volume
-from recon.geometry import WallFrame
+from recon.geometry import Ground, WallFrame
 
 CELL_M = 0.1524  # half a foot, the app's cell
 WALL_TOP_M = 1.9812  # 6.5 ft, the headroom the export's wall band claims
@@ -45,6 +50,24 @@ MAX_ANGLE = np.radians(65)  # the app's limit on how oblique a view may be
 IMAGE_MARGIN = 0.03
 BASELINE_M = 0.25
 HIDE_ABS_M, HIDE_REL = 0.10, 0.04
+
+
+def cell_grid(lo: float, hi: float) -> tuple[np.ndarray, np.ndarray]:
+    """Coverage cells as (starts, ends) in meters of s: half-foot steps clipped to the fitted
+    extent [lo, hi]. Interior edges stay on the absolute half-foot grid, so a fit that begins and
+    ends on the grid gets exactly the cells it always did; an unaligned end clips its boundary
+    cell instead of letting a sample, and so an observation, fall outside the fit."""
+    if hi <= lo:
+        return np.zeros(0), np.zeros(0)
+    inner = np.arange(np.ceil(lo / CELL_M - 1e-9) * CELL_M, hi, CELL_M)
+    edges = np.r_[lo, inner[(inner > lo + 1e-9) & (inner < hi - 1e-9)], hi]
+    return edges[:-1], edges[1:]
+
+
+def _cell_ends(cells: np.ndarray, ends: np.ndarray | None) -> np.ndarray:
+    """The right edge of every cell: `ends` when compute clipped the grid to the fit, else every
+    cell is a full CELL_M wide, the shape a CellCoverage built by hand carries."""
+    return cells + CELL_M if ends is None else np.asarray(ends)
 
 
 def tolerance(distance: np.ndarray) -> np.ndarray:
@@ -106,14 +129,18 @@ def two_positions(saw: np.ndarray, centres: np.ndarray) -> np.ndarray:
     return ((s @ far) * s).sum(axis=-1) > 0
 
 
-def face_offsets(wall: WallFrame, mesh: Mesh, cells: np.ndarray) -> np.ndarray:
+def face_offsets(
+    wall: WallFrame, mesh: Mesh, cells: np.ndarray, ends: np.ndarray | None = None
+) -> np.ndarray:
     """Per cell, how far a flat, full-height face stands in front of the fitted plane (0 if none).
     Flat: in at least 75% of the 10 cm height bins from 0.3 to 1.9 m, the front-most surface within
     0.6 m lies within 3 cm of their median. A bush or bin is neither, so it stays an occluder."""
+    ends = _cell_ends(cells, ends)
+    edges = np.r_[cells, ends[-1]] if len(cells) else cells
     loc = wall.local(mesh.vertices.astype(np.float64))
     s, h, out = loc[:, 0], loc[:, 1], loc[:, 2]
     keep = (out > -0.15) & (out < 0.6) & (h > 0.3) & (h < 1.9)
-    col = np.floor((s[keep] - cells[0]) / CELL_M).astype(np.int64)
+    col = np.searchsorted(edges, s[keep], side="right") - 1
     row = np.floor((h[keep] - 0.3) / 0.1).astype(np.int64)
     ok = (col >= 0) & (col < len(cells))
     front = np.full((len(cells), 16), -np.inf)
@@ -137,6 +164,7 @@ class CellCoverage:
     facing_clear: np.ndarray  # meters seen empty out from the wall's front
     overhead_clearance: np.ndarray  # meters up to the first thing overhead, NaN if none seen
     overhead_clear: np.ndarray  # meters seen empty above the footprint
+    ends: np.ndarray | None = None  # right edge of each cell, meters of s
 
 
 def wall_and_ground(
@@ -146,10 +174,14 @@ def wall_and_ground(
     vol: Volume,
     mesh: Mesh,
     cells: np.ndarray,
+    ends: np.ndarray | None = None,
+    ground: Ground | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ends = _cell_ends(cells, ends)
     centres = np.array([f.center for f in frames])
-    faces = face_offsets(wall, mesh, cells)
-    alongs = np.stack([cells + 0.25 * CELL_M, cells + 0.75 * CELL_M], axis=1)  # (C, 2)
+    faces = face_offsets(wall, mesh, cells, ends)
+    widths = ends - cells
+    alongs = np.stack([cells + 0.25 * widths, cells + 0.75 * widths], axis=1)  # (C, 2)
     heights = np.linspace(0.05, WALL_TOP_M, WALL_ROWS)
     S = np.broadcast_to(alongs[:, :, None], (len(cells), 2, WALL_ROWS))
     Hh = np.broadcast_to(heights[None, None, :], S.shape)
@@ -163,7 +195,16 @@ def wall_and_ground(
     outs = np.append(np.arange(0.05, GROUND_MAX_M - 1e-6, CELL_M), GROUND_MAX_M)
     S = np.broadcast_to(alongs[:, :, None], (len(cells), 2, len(outs)))
     Oo = np.maximum(np.broadcast_to(outs[None, None, :], S.shape), faces[:, None, None] + 0.05)
-    gpts = wall.world(S, np.zeros_like(S), Oo).reshape(-1, 3)
+    if ground is None:
+        h = np.zeros_like(S)
+    else:
+        # The fitted ground, not the horizontal plane through the meter's foot: at (s, out) the
+        # surface's height above the meter's ground is height_at there minus its height at the
+        # meter, so on a slope the samples follow the ground instead of hanging above or below
+        # it, where nothing was built and the depth test would read visible ground unobserved.
+        flat = wall.world(S, np.zeros_like(S), Oo)
+        h = ground.height_at(flat[..., 0], flat[..., 2]) - wall.ground_y
+    gpts = wall.world(S, h, Oo).reshape(-1, 3)
     gseen = two_positions(seen_by(gpts, UP, frames, depths, vol), centres).reshape(
         len(cells), 2, len(outs)
     )
@@ -202,7 +243,7 @@ def wall_front(wall: WallFrame, vol: Volume, across: np.ndarray) -> float:
     return front + vol.voxel
 
 
-def free_space(wall: WallFrame, vol: Volume, cells: np.ndarray):
+def free_space(wall: WallFrame, vol: Volume, cells: np.ndarray, ends: np.ndarray | None = None):
     """Per cell: (facing gap or NaN, facing clear, overhead clearance or NaN, overhead clear).
     The facing gap and clear distance are measured out from the wall's reconstructed front, not
     from the fitted plane: in front of a pilaster 0.3 m proud, something 1.3 m out of the plane
@@ -211,11 +252,12 @@ def free_space(wall: WallFrame, vol: Volume, cells: np.ndarray):
     clearance is a height above the ground over the footprint in front of that face."""
     step = vol.voxel
     n = len(cells)
+    widths = _cell_ends(cells, ends) - cells
     facing_gap, facing_clear = np.full(n, np.nan), np.zeros(n)
     over_gap, over_clear = np.full(n, np.nan), np.zeros(n)
     fh = np.arange(FACING_BAND_M[0], FACING_BAND_M[1] + 1e-9, step)
     for c in range(n):
-        across = cells[c] + CELL_M * np.array([0.25, 0.5, 0.75])
+        across = cells[c] + widths[c] * np.array([0.25, 0.5, 0.75])
         front = wall_front(wall, vol, across)
         hits = 0
         for out in np.arange(front + step, front + FACING_MAX_M, step):
@@ -244,13 +286,20 @@ def free_space(wall: WallFrame, vol: Volume, cells: np.ndarray):
 
 
 def compute(
-    wall: WallFrame, frames: list[Frame], depths: dict[str, Depth], vol: Volume, mesh: Mesh
+    wall: WallFrame,
+    frames: list[Frame],
+    depths: dict[str, Depth],
+    vol: Volume,
+    mesh: Mesh,
+    ground: Ground | None = None,
 ) -> CellCoverage:
-    lo, hi = wall.s_range
-    cells = np.arange(np.floor(lo / CELL_M) * CELL_M, hi - 1e-9, CELL_M)
-    wall_ok, ground_out, _ = wall_and_ground(wall, frames, depths, vol, mesh, cells)
-    fg, fc, og, oc = free_space(wall, vol, cells)
-    return CellCoverage(cells, wall_ok, ground_out, fg, fc, og, oc)
+    """`ground`, the fit the wall's ground height came from, lets the ground samples follow the
+    surface off the horizontal plane through the meter's foot; the cells stop at the fitted wall
+    extent, so no exported observation runs past what the fit established."""
+    cells, ends = cell_grid(*wall.s_range)
+    wall_ok, ground_out, _ = wall_and_ground(wall, frames, depths, vol, mesh, cells, ends, ground)
+    fg, fc, og, oc = free_space(wall, vol, cells, ends)
+    return CellCoverage(cells, wall_ok, ground_out, fg, fc, og, oc, ends)
 
 
 def _runs(mask: np.ndarray) -> list[tuple[int, int]]:
@@ -273,8 +322,10 @@ def observed(cov: CellCoverage, ground_levels_ft=(2.0, 4.0, 6.0, 8.0, 10.0)) -> 
     """The coverage as scene.json `coverage.observed` entries (feet, s from the meter).
 
     Ground is reported at a few depths so every clearance's request can be met by one entry;
-    `out_ft` is always a distance the samples cleared, rounded down."""
-    span = lambda a, b: [_ft(cov.cells[a]), _ft(cov.cells[b - 1] + CELL_M)]  # noqa: E731
+    `out_ft` is always a distance the samples cleared, rounded down. A span stops at the fitted
+    extent: its end cells may be partial ones, clipped to where the fit established the wall."""
+    ends = _cell_ends(cov.cells, cov.ends)
+    span = lambda a, b: [_ft(cov.cells[a]), _ft(ends[b - 1])]  # noqa: E731
     entries = [{"band": "wall", "span_ft": span(a, b)} for a, b in _runs(cov.wall)]
     for level in ground_levels_ft:
         for a, b in _runs(cov.ground_out >= level * FEET - 1e-9):
@@ -317,7 +368,7 @@ def measurements(
     def entry(a, b, key, values):
         return {
             "wall_id": wall_id,
-            "span_ft": [_ft(cov.cells[a]), _ft(cov.cells[b - 1] + CELL_M)],
+            "span_ft": [_ft(cov.cells[a]), _ft(_cell_ends(cov.cells, cov.ends)[b - 1])],
             key: _ft(float(values[a:b].min())),
             "plus_minus_ft": plus_minus_ft,
         }
