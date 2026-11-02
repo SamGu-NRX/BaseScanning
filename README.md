@@ -15,7 +15,7 @@ That's a pretty rough way to do it. Measuring distances within a photo is challe
 
 We want to change that: the assessment should be just one walk. The homeowner opens our app and scans the outside wall around their meter. The app keeps guiding them, and asks for another angle whenever it needs one, until it has seen everything the placement rules care about. Then it sends what it captured to our server. The server builds a 3D model of the wall, checks every rule against it and sends back an answer. If the battery fits, the app shows it standing on the real wall through the phone's camera. Augmented Reality (AR) lets the homeowner see the spot before anyone installs anything.
 
-Four of us built this for Base Power at a hackathon that started on September 25, 2026. [Who built this](#who-built-this) says who worked on what.
+Four of us built this for Base Power starting on September 25, 2026. [Who built this](#who-built-this) says who worked on what.
 
 ## Try it out
 
