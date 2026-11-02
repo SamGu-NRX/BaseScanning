@@ -16,6 +16,7 @@ final class ScreenStatesUITests: XCTestCase {
         // Keep the Practice-on accessibility check even when ordinary fixtures force it off.
         ("onboarding-practice", ["-practiceMeter", "YES"], "onboarding"),
         ("onboarding-moves", [], "onboarding"),
+        ("onboarding-permissions", [], "onboarding"),
         ("findMeter", ["-uiDemoPhase", "findMeter"], "findMeter"),
         ("meterCloseUp-cantGetClearShot", ["-uiDemoPhase", "meterCloseUp", "-uiDemoCloseUpFailed"], "meterCloseUp"),
         ("meterCloseUp-chooseNumber", ["-uiDemoPhase", "meterCloseUp", "-uiDemoMeterChoose"], "meterCloseUp"),
@@ -83,7 +84,7 @@ final class ScreenStatesUITests: XCTestCase {
 
     /// The screens with the most text, also checked at AX5.
     private static let largestTextStates: Set<String> = [
-        "onboarding", "onboarding-practice", "onboarding-moves", "wallWalk", "wallWalk-endQuestion", "wallWalk-endPreview", "wallWalk-endQuestionLeavesOut", "wallWalk-nextWallRefused", "wallWalk-overheadQuestion", "gapRequest-walkOut", "gapRequest-overheadQuestion", "meterCloseUp-cantGetClearShot", "meterCloseUp-chooseNumber",
+        "onboarding", "onboarding-practice", "onboarding-moves", "onboarding-permissions", "wallWalk", "wallWalk-endQuestion", "wallWalk-endPreview", "wallWalk-endQuestionLeavesOut", "wallWalk-nextWallRefused", "wallWalk-overheadQuestion", "gapRequest-walkOut", "gapRequest-overheadQuestion", "meterCloseUp-cantGetClearShot", "meterCloseUp-chooseNumber",
         "markFeatures", "gapRequest", "uploading-offline", "uploading-rejected", "result-review", "cameraDenied",
         "wallWalk-hidden", "wallWalk-seeBehind", "wallWalk-fullLegend", "gapRequest-followUp", "uploading-followUp",
         "markFeatures-groundQuestion", "markFeatures-groundAnswered", "markFeatures-lostPlace",
@@ -96,6 +97,8 @@ final class ScreenStatesUITests: XCTestCase {
     /// in any text on screen.
     private static let expectations: [String: [(identifier: String?, text: String)]] = [
         "onboarding-practice": [("action.developerOptions", "Practice meter is on.")],
+        // #55: an answered permission is not asked again, so the phone only may ask.
+        "onboarding-permissions": [("onboarding.permissions", "Your phone may ask to use the camera")],
         "wallWalk-hidden": [("wallTape", "2 sections hidden behind something")],
         "wallWalk-fullLegend": [("wallTape", "2 sections hidden behind something")],
         "wallWalk-seeBehind": [("instruction", "Something is in front of the wall here")],
@@ -149,6 +152,8 @@ final class ScreenStatesUITests: XCTestCase {
     private static let navigation: [String: (taps: [String], shows: String)] = [
         // #85: the page after the walk page previews the moves the walk asks for.
         "onboarding-moves": (["action.onboardingNext"], "onboarding.move.1"),
+        // The last page: at AX5 its permission note scrolls with the page instead of the footer.
+        "onboarding-permissions": (["action.onboardingSkip"], "onboarding.permissions"),
     ]
 
     /// Controls a state must offer, by identifier.
@@ -176,6 +181,77 @@ final class ScreenStatesUITests: XCTestCase {
                 try check("\(state.name)-AX5", arguments: state.arguments + Self.largestText, screen: state.screen)
             }
         }
+    }
+
+    /// The every-state audit starts on page one. Exercise the last page too: at AX5 its
+    /// permission note used to consume the footer while the camera label was truncated.
+    @MainActor
+    func testOnboardingFinishesAtLargestTextSize() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "YES", "-uiDemo", "-uiDemoFreeze"] + Self.largestText
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(element(app, "screen.onboarding").waitForExistence(timeout: 15))
+        attach(app, name: "onboarding-practice-AX5-polish")
+        tap(app, "action.onboardingSkip")
+        let allow = app.buttons["action.finishOnboarding"]
+        XCTAssertTrue(allow.waitForExistence(timeout: 5))
+        XCTAssertTrue(allow.isHittable)
+        XCTAssertTrue(app.windows.firstMatch.frame.contains(allow.frame))
+        let note = element(app, "onboarding.permissions")
+        for _ in 0..<8 where !note.isHittable { app.swipeUp() }
+        XCTAssertTrue(note.isHittable, "permission explanation cannot be reached by scrolling")
+        attach(app, name: "onboarding-permissions-AX5-polish")
+        allow.tap()
+        XCTAssertTrue(element(app, "screen.findMeter").waitForExistence(timeout: 5))
+    }
+
+    /// A failed upload says the app can't reopen the scan after it closes, and with the scan
+    /// packaged it points to Share scan. The note, Try again and Share scan are all reachable.
+    @MainActor
+    func testOfflineRecoveryActions() throws {
+        try checkOfflineRecovery(textSize: [], name: "offline-recovery-polish")
+    }
+
+    @MainActor
+    func testOfflineRecoveryActionsAtLargestTextSize() throws {
+        try checkOfflineRecovery(textSize: Self.largestText, name: "offline-recovery-AX5-polish")
+    }
+
+    @MainActor
+    private func checkOfflineRecovery(textSize: [String], name: String) throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-practiceMeter", "NO", "-uiDemo", "-uiDemoFreeze",
+                               "-uiDemoPhase", "uploading", "-uiDemoOffline"] + textSize
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(element(app, "screen.uploading").waitForExistence(timeout: 15))
+        let scroll = app.scrollViews.firstMatch
+        let note = element(app, "upload.recoveryLimit")
+        for _ in 0..<8 where !note.isHittable { scroll.swipeUp(velocity: .slow) }
+        XCTAssertTrue(note.isHittable)
+        // The demo scan is packaged, so the note names the export.
+        XCTAssertTrue(note.label.contains("use Share scan to save a copy"), note.label)
+        XCTAssertTrue(note.label.contains("can't reopen it after you close the app"), note.label)
+        let retry = app.buttons["action.retryUpload"]
+        for _ in 0..<8 where !retry.isHittable { scroll.swipeUp(velocity: .slow) }
+        XCTAssertTrue(retry.isHittable)
+        let share = app.buttons["action.shareScan"]
+        for _ in 0..<8 where !share.isHittable { scroll.swipeUp(velocity: .slow) }
+        XCTAssertTrue(share.isHittable)
+        attach(app, name: name)
+        share.tap()
+        XCTAssertTrue(app.otherElements["ActivityListView"].waitForExistence(timeout: 10))
+    }
+
+    @MainActor
+    private func attach(_ app: XCUIApplication, name: String) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = name
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
     /// The brand read on the close-up is only offered: "Not <brand>" removes it and leaves the
