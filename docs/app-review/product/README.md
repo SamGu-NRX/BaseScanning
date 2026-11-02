@@ -75,4 +75,4 @@ and Open questions and verification, ending with the commit it was verified agai
 | [screens/uploading.md](screens/uploading.md) | Sending the scan and waiting for the result, offline and failure | drafted; checked in the Simulator |
 | [screens/result.md](screens/result.md) | The result, its checks and the 3D and AR views | drafted; checked in the Simulator |
 | [verification.md](verification.md) | Checks against the running app and their results | current pass at `a39d0a5` |
-| [bug-triage.md](bug-triage.md) | Every suspected defect, deduplicated | 16 entries, 2 resolved |
+| [bug-triage.md](bug-triage.md) | Every suspected defect, deduplicated | 16 entries, 3 resolved (B-01, B-05, B-15) |

@@ -37,7 +37,7 @@ and for walking past both ends.
 
 | Stage | Trigger | What they see | Way forward | Kind |
 | --- | --- | --- | --- | --- |
-| Find meter | Camera denied, camera failure, unreadable replay (`Runtime/ScanEngine.swift:119, 489, 491` set the failure without changing screen) | "Find your electric meter" with no camera; taps do nothing | None; close the app | Stuck (B-03) |
+| Find meter | Camera denied, camera failure, unreadable replay (`Runtime/ScanEngine.swift:119, 489, 491` set the failure without changing screen) | Camera denied or failed: "Find your electric meter" with no camera, taps do nothing (from source). Unreadable replay: the app stays on onboarding, no message and no way on (seen with `-replay /nonexistent`, B-03) | None; close the app | Stuck (B-03) |
 | Find meter | Tap refused: tracking not normal, or no wall under the tap | "Step a little closer to the wall" for both causes | Tap again | Redo |
 | Find meter to gap request | Relocalizing for over 20 s (`Runtime/ScanEngine.swift:466-471`) | Back to "Find your electric meter"; wall, marks and photos gone, no explanation | Start the scan again | Redo |
 | Close-up | One problem held for 4 s is a failed try; a photo needs 0.6 s of good frames (`Kit/Capture/CloseUpGate.swift:13, 15`) | One instruction and a named fix, "Can't get a clear shot" from the second failed try | Skip; if frames alternate good and blurry, no try fails and the skip never appears | Redo, can stick (B-04) |
@@ -55,7 +55,7 @@ and for walking past both ends.
 The autopilot presses buttons directly. It skips the close-up after 4 s and answers every end "It
 turns a corner". It never taps "Add something", "Capture it now" or "Try again", and never
 triggers a camera denial or the 20 s reset. Those rows come from the source and were not seen
-running.
+running, apart from the unreadable replay, seen in a separate report (B-03).
 
 ## Three changes, ranked
 
