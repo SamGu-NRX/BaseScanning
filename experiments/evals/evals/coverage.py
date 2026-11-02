@@ -868,10 +868,13 @@ def main() -> None:
     check_kit()
     runs = [evaluate_scene(scene) for scene in RUNS]
     bad = [r["scene"] for r in runs if r["wall"] and r["replica_mismatches"]]
-    RESULTS.mkdir(exist_ok=True)
-    (RESULTS / "coverage.json").write_text(results_json(runs))
+    # Nothing is written until the mismatch check passes: a failed run must not overwrite the
+    # tracked JSON (map3d reads it) or leave a coverage.md beside it, and the module refuses
+    # to report at all rather than reporting causes it cannot stand behind.
     if bad:
         raise SystemExit(f"cause replica disagrees with the app on {bad}; causes would be wrong")
+    RESULTS.mkdir(exist_ok=True)
+    (RESULTS / "coverage.json").write_text(results_json(runs))
     md = markdown(runs)
     (RESULTS / "coverage.md").write_text(md)
     print(md)
