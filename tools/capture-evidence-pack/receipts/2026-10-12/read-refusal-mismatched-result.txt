@@ -1,0 +1,7 @@
+$ python3 tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/mismatched-result
+rejected pack sha256: 623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2
+rejected pack bytes: 1353
+reader arguments: tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/mismatched-result
+REFUSAL mismatched-result: 'result/result.json' does not satisfy its recorded identity: hash 4e23ec6ad8d33b789a6c740413dabda1e49694521dcd5d637f8ba44daf835911 vs recorded 0e17b8169d865e851aca98201f3968076b66fe36888d8a2e4db4f946835888d0, size 329 vs recorded 263
+verdict: REFUSED
+exit code: 2

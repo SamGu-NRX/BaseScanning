@@ -1,0 +1,8 @@
+case: a4-clip-click-fallback-absent (SIMULATED absence: Navigator.prototype.clipboard deleted; headless host itself always exposes clipboard)
+commit: 9482fdd0463abb34914f152aae7602665602ec5f (dirty)
+invocation: eval delete Navigator.prototype.clipboard; click #copy-command; eval feedback
+url: http://localhost:8931/
+viewport: 1440x900
+assertion: with clipboard absent the page uses execCommand fallback successfully
+result: PASS
+observed: absence_probe=["had=true gone=true"] feedback=["Copied."]

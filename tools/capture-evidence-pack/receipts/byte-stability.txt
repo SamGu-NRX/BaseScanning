@@ -1,0 +1,7 @@
+Byte-stability proof
+=====================
+Protocol: the exact pack command from README.md, run twice to the same out path, sha256 of tools/capture-evidence-pack/evidence/example.zip recorded after each run. The out path is part of reproduction.command, so regenerations reuse the same out path.
+
+run 1 sha256: 53857e0ae48b21d1b93088cec017f1be8aaa601a5371858566e51b62df73fde0
+run 2 sha256: 53857e0ae48b21d1b93088cec017f1be8aaa601a5371858566e51b62df73fde0
+result: identical bytes, byte-stable

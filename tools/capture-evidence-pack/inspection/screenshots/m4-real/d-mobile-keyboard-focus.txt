@@ -1,0 +1,8 @@
+case: d-keyboard-focus
+commit: 7088750fe77da9f2f742fd11c26b5f217d9bfc65 (dirty)
+invocation: viewport 390x844; open 8931; eval #copy-command.focus(); screenshot
+url: http://localhost:8931/
+viewport: 390x844
+assertion: #copy-command shows visible focus outline for keyboard users
+result: PASS
+observed: focus=["focused"]

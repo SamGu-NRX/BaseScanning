@@ -1,0 +1,31 @@
+$ python3 tools/capture-evidence-pack/pack.py --fixture tools/capture-evidence-pack/fixtures/missing-captured-at --out /private/tmp/opus228-scratch/refused-missing-captured-at.zip
+REFUSAL invalid-manifest: captured_at: required pack-spec field is missing
+REFUSAL invalid-manifest: captured_at: expected strict zero-padded %Y-%m-%dT%H:%M:%SZ UTC form, got None
+verdict: REFUSED (nothing written)
+exit code: 2
+output path absent after refusal
+$ python3 tools/capture-evidence-pack/pack.py --fixture tools/capture-evidence-pack/fixtures/invalid-captured-at --out /private/tmp/opus228-scratch/refused-invalid-captured-at.zip
+REFUSAL invalid-manifest: captured_at: not a real UTC date: '2026-02-30T00:00:00Z'
+verdict: REFUSED (nothing written)
+exit code: 2
+output path absent after refusal
+$ python3 tools/capture-evidence-pack/pack.py --fixture tools/capture-evidence-pack/fixtures/null-missing-fields --out /private/tmp/opus228-scratch/refused-null-missing-fields.zip
+REFUSAL invalid-manifest: missing_fields: expected a list (possibly empty), got None
+verdict: REFUSED (nothing written)
+exit code: 2
+output path absent after refusal
+$ python3 tools/capture-evidence-pack/pack.py --fixture tools/capture-evidence-pack/fixtures/missing-detail --out /private/tmp/opus228-scratch/refused-missing-detail.zip
+REFUSAL invalid-manifest: missing_fields[0].detail: expected a non-empty string explaining the gap
+verdict: REFUSED (nothing written)
+exit code: 2
+output path absent after refusal
+$ python3 tools/capture-evidence-pack/pack.py --fixture tools/capture-evidence-pack/fixtures/mismatched-result-id --out /private/tmp/opus228-scratch/refused-mismatched-result-id.zip
+REFUSAL mismatched-result: the result file embeds result_id 'result-synth-0002', the manifest claims 'result-synth-0001'
+verdict: REFUSED (nothing written)
+exit code: 2
+output path absent after refusal
+$ python3 tools/capture-evidence-pack/pack.py --fixture tools/capture-evidence-pack/fixtures/missing-source --out /private/tmp/opus228-scratch/refused-missing-source.zip
+REFUSAL missing-source: capture/frame_0002.json not found under tools/capture-evidence-pack/fixtures/missing-source
+verdict: REFUSED (nothing written)
+exit code: 2
+output path absent after refusal

@@ -1,0 +1,28 @@
+$ python3 tools/capture-evidence-pack/pack.py --fixture tools/capture-evidence-pack/fixtures/example --out tools/capture-evidence-pack/evidence/example.zip
+packer: wrote tools/capture-evidence-pack/evidence/example.zip
+pack sha256: 623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2
+manifest sha256: 9994f4b50f08355b72718da030c8affb4e99d4f20cb54dbaa41bec78d2c66c0c
+entries: 2 (manifest.json plus 1 packaged)
+capture: capture-synth-0001 (2 source refs, referenced not embedded)
+result: result-synth-0001
+result identity: embedded id 'result-synth-0001' matches result_id
+missing fields (explicit): 2
+geometry_correctness: assertion null (no claim made)
+reproduce: python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip
+verdict: PACKED
+exit code: 0
+sha256 after run 1: 623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2
+$ python3 tools/capture-evidence-pack/pack.py --fixture tools/capture-evidence-pack/fixtures/example --out tools/capture-evidence-pack/evidence/example.zip
+packer: wrote tools/capture-evidence-pack/evidence/example.zip
+pack sha256: 623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2
+manifest sha256: 9994f4b50f08355b72718da030c8affb4e99d4f20cb54dbaa41bec78d2c66c0c
+entries: 2 (manifest.json plus 1 packaged)
+capture: capture-synth-0001 (2 source refs, referenced not embedded)
+result: result-synth-0001
+result identity: embedded id 'result-synth-0001' matches result_id
+missing fields (explicit): 2
+geometry_correctness: assertion null (no claim made)
+reproduce: python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip
+verdict: PACKED
+exit code: 0
+sha256 after run 2: 623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2

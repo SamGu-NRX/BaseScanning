@@ -1,0 +1,282 @@
+{
+  "harness": "tools/capture-evidence-pack/inspection/capture-browser-evidence.mjs",
+  "started_at": "2026-10-12T10:13:21.852Z",
+  "browser": {
+    "engine": "chromium headless",
+    "version": "156.0.8078.4",
+    "playwright": "1.64.0"
+  },
+  "source": {
+    "tree_label": "before",
+    "files": {
+      "tools/capture-evidence-pack/inspection/index.html": "12b691920ac2bfe5470c31db5eb6cf378d8220f7a4f779532c54c9d620852fd0",
+      "tools/capture-evidence-pack/inspection/serve.py": "2ce9bb78e13ee2e568c154b6d8bac36e58e15db6a57b6d0b956514f5066265fc",
+      "tools/capture-evidence-pack/read.py": "121fb3d6e5a5989d0c12b59383d885fd133f6a26a91eaff7da74ec6a7d6f889e",
+      "tools/capture-evidence-pack/evidence/example.zip": "53857e0ae48b21d1b93088cec017f1be8aaa601a5371858566e51b62df73fde0",
+      "tools/capture-evidence-pack/inspection/vendor/axe.min.js": "b511cd9dec01c76f4b2ad1723b66b6db37d4c2eb4ed199076e1829d9ee7b75e3",
+      "capture-browser-evidence.mjs (this harness)": "f41dd584fa8188a012807bbf32d92c7f4c6caa43394f88e7a62a783d53b9018d"
+    },
+    "git_head": null,
+    "note": "not a git checkout; identity rests on the file hashes above"
+  },
+  "invocation": [
+    "node",
+    "capture-browser-evidence.mjs",
+    "--tree",
+    "before-clean",
+    "--out",
+    "final-before-clean",
+    "--label",
+    "before",
+    "--cases",
+    "desktop-verified,mobile-verified,sim-throw-exec-true"
+  ],
+  "receipts": [
+    {
+      "case": "desktop-verified",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64904"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "read_states": {
+          "data": null,
+          "refusals": null,
+          "verdict": null
+        },
+        "layout": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "document_scroll_width": 1440,
+          "document_client_width": 1440,
+          "horizontal_overflow": false,
+          "visible_sections": [
+            "limitations",
+            "identity",
+            "versions",
+            "sources",
+            "packaged",
+            "missing",
+            "reproduction",
+            "report",
+            "refusals"
+          ]
+        },
+        "verdict_text": null,
+        "timeline": [
+          {
+            "t": 6,
+            "state": "null|null"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "data read state",
+          "observed": null,
+          "expected": "verified",
+          "outcome": "FAIL"
+        },
+        {
+          "assertion": "refusal read state",
+          "observed": null,
+          "expected": "ok",
+          "outcome": "FAIL"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "desktop-verified.png",
+          "sha256": "c63a264e237a4d2ffc9d63281b60a9c1026035fc07edd044c660d3ca67337f0c",
+          "full_page": false
+        },
+        {
+          "path": "desktop-verified-full.png",
+          "sha256": "76bf7f404d2c38a8cd381c79f540c7fd905395e1272bfbcd3b19c803dee7038a",
+          "full_page": true
+        }
+      ]
+    },
+    {
+      "case": "mobile-verified",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64921"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "read_states": {
+          "data": null,
+          "refusals": null,
+          "verdict": null
+        },
+        "layout": {
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "document_scroll_width": 390,
+          "document_client_width": 390,
+          "horizontal_overflow": false,
+          "visible_sections": [
+            "limitations",
+            "identity",
+            "versions",
+            "sources",
+            "packaged",
+            "missing",
+            "reproduction",
+            "report",
+            "refusals"
+          ]
+        },
+        "timeline": [
+          {
+            "t": 6,
+            "state": "null|null"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "data read state",
+          "observed": null,
+          "expected": "verified",
+          "outcome": "FAIL"
+        },
+        {
+          "assertion": "no horizontal page overflow at 390px",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "mobile-verified.png",
+          "sha256": "ed4293711972c7500be906d550bfe2d88072f8abe3013f0b86466e97f22eb46e",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "sim-throw-exec-true",
+      "kind": "simulated",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64931"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": "writeText throws synchronously; execCommand returns true",
+      "actions": [
+        "goto /",
+        "mouse click #copy-command"
+      ],
+      "observed": {
+        "copy": {
+          "feedback": "",
+          "copy_path": null
+        },
+        "exec_calls": [],
+        "writes": null,
+        "timeline": [
+          {
+            "t": 5,
+            "state": "null|null"
+          }
+        ],
+        "console_errors": [
+          "pageerror: thrown synchronously by stub"
+        ]
+      },
+      "assertions": [
+        {
+          "assertion": "feedback text",
+          "observed": "",
+          "expected": "Copied.",
+          "outcome": "FAIL"
+        },
+        {
+          "assertion": "copy path",
+          "observed": null,
+          "expected": "exec-command",
+          "outcome": "FAIL"
+        },
+        {
+          "assertion": "execCommand calls",
+          "observed": 0,
+          "expected": 1,
+          "outcome": "FAIL"
+        },
+        {
+          "assertion": "execCommand called with copy",
+          "expected": "copy",
+          "outcome": "FAIL"
+        },
+        {
+          "assertion": "fallback textarea held the command",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "FAIL"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "sim-throw-exec-true.png",
+          "sha256": "cec9837725b74a317d26ad631113091f363301559f45788a93f85d99689646ca",
+          "full_page": false
+        }
+      ]
+    }
+  ]
+}

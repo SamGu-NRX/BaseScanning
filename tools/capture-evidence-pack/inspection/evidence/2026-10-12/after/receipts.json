@@ -1,0 +1,3016 @@
+{
+  "harness": "tools/capture-evidence-pack/inspection/capture-browser-evidence.mjs",
+  "started_at": "2026-10-12T10:12:49.275Z",
+  "browser": {
+    "engine": "chromium headless",
+    "version": "156.0.8078.4",
+    "playwright": "1.64.0"
+  },
+  "source": {
+    "tree_label": "after",
+    "files": {
+      "tools/capture-evidence-pack/inspection/index.html": "35768fce246885ce987215be3ed7b326c85f62292a56256bcba59b48747c4016",
+      "tools/capture-evidence-pack/inspection/serve.py": "4f4d34214a3e294c3db91a3bcfa1aa36c1339506124c72a71f1ab443d51fde47",
+      "tools/capture-evidence-pack/read.py": "7cd2adac168c9da8b8ce4833f14af97d32881d2ce255d4724e4724e41a29ee45",
+      "tools/capture-evidence-pack/evidence/example.zip": "623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2",
+      "tools/capture-evidence-pack/inspection/vendor/axe.min.js": "b511cd9dec01c76f4b2ad1723b66b6db37d4c2eb4ed199076e1829d9ee7b75e3",
+      "capture-browser-evidence.mjs (this harness)": "f41dd584fa8188a012807bbf32d92c7f4c6caa43394f88e7a62a783d53b9018d"
+    },
+    "git_head": "64e381b1e6a298cd4a2623c1389ecae82e00831d",
+    "git_dirty_paths": [],
+    "git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "invocation": [
+    "node",
+    "capture-browser-evidence.mjs",
+    "--tree",
+    ".",
+    "--out",
+    "final-after",
+    "--label",
+    "after",
+    "--bad-pack",
+    "tools/capture-evidence-pack/inspection/evidence/2026-10-12/inputs/bad-assertion.zip"
+  ],
+  "receipts": [
+    {
+      "case": "desktop-verified",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "63800"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "read_states": {
+          "data": "verified",
+          "refusals": "ok",
+          "verdict": "verified"
+        },
+        "layout": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "document_scroll_width": 1440,
+          "document_client_width": 1440,
+          "horizontal_overflow": false,
+          "visible_sections": [
+            "limitations",
+            "verdict",
+            "identity",
+            "versions",
+            "sources",
+            "packaged",
+            "missing",
+            "reproduction",
+            "report",
+            "refusals"
+          ]
+        },
+        "verdict_text": "Verified by read.py\n    read.py accepted this pack. The values below are the ones it checked.\n    \n      Pack tools/capture-evidence-pack/evidence/example.zip\n      Manifest follows SPEC.md, format 1.0.report.md matches its recorded SHA-256 and size.2 source refs matched their recorded SHA-256 and size under tools/capture-evidence-pack/fixtures/example.The result file matched its recorded SHA-256 and size, and its embedded result_id names this result.Not checked: whether any geometry is correct.",
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 27,
+            "state": "verified|pending"
+          },
+          {
+            "t": 27,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "data read state",
+          "observed": "verified",
+          "expected": "verified",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "refusal read state",
+          "observed": "ok",
+          "expected": "ok",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "desktop-verified.png",
+          "sha256": "f2f7c02d76b0d05a38b81e8f18728a77060c80e00cac74fabbd66721a7285f43",
+          "full_page": false
+        },
+        {
+          "path": "desktop-verified-full.png",
+          "sha256": "1e8c1b49322cfd0d83f50dba28b0c415211b5f5a9eda466c433ba665e4e80881",
+          "full_page": true
+        }
+      ]
+    },
+    {
+      "case": "mobile-verified",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "63821"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "read_states": {
+          "data": "verified",
+          "refusals": "ok",
+          "verdict": "verified"
+        },
+        "layout": {
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "document_scroll_width": 390,
+          "document_client_width": 390,
+          "horizontal_overflow": false,
+          "visible_sections": [
+            "limitations",
+            "verdict",
+            "identity",
+            "versions",
+            "sources",
+            "packaged",
+            "missing",
+            "reproduction",
+            "report",
+            "refusals"
+          ]
+        },
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 14,
+            "state": "verified|pending"
+          },
+          {
+            "t": 14,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "data read state",
+          "observed": "verified",
+          "expected": "verified",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "no horizontal page overflow at 390px",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "mobile-verified.png",
+          "sha256": "07aa68041b836186c094d2872051b3de64adf7f2ef47557a33870ad1515797de",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "desktop-refused-pack",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "63830",
+        "--pack",
+        "tools/capture-evidence-pack/inspection/evidence/2026-10-12/inputs/bad-assertion.zip"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "bad_pack_sha256": "e16a06630d4fd38fe5453be5d2996c52d93fe3795416cdf7d7e28ed234d92411",
+        "read_states": {
+          "data": "refused",
+          "refusals": "ok",
+          "verdict": "refused"
+        },
+        "identity_section_visible": false,
+        "identity_text": "Identity",
+        "refused_text": "read.py refused this pack\n    Nothing about this pack is shown as evidence, because the independent reader would not accept it.\n    \n      Refusalinvalid-manifest\n      Reasongeometry_correctness.assertion must be null; a non-null assertion claims geometry correctness, which this identity-only format forbids (SPEC.md, Identity is not correctness)\n      Packtools/capture-evidence-pack/inspection/evidence/2026-10-12/inputs/bad-assertion.zip\n      Rejected pack SHA-256e16a06630d4fd38fe5453be5d2996c52d93fe3795416cdf7d7e28ed234d92411\n      Reproducepython tools/capture-evidence-pack/read.py tools/capture-evidence-pack/inspection/evidence/2026-10-12/inputs/bad-assertion.zip",
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 14,
+            "state": "refused|pending"
+          },
+          {
+            "t": 14,
+            "state": "refused|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "identity section stays hidden for a refused pack",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "data read state",
+          "observed": "refused",
+          "expected": "refused",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "desktop-refused-pack.png",
+          "sha256": "cac40ff534f4d9f78b694b634ce60cc47ebf08175ea2c54831213c4021bfe83c",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "fault-data",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "63841",
+        "--fault",
+        "data"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "read_states": {
+          "data": "failed",
+          "refusals": "ok",
+          "verdict": "failed"
+        },
+        "error_detail": "The identity read failed (data.json responded 500). The refusal runs below are a separate read and still render when it succeeds.",
+        "refusals_text": "Refused: missing-sourceCommandpython tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/missing-sourceReason'capture/frame_0002.json' not found under tools/capture-evidence-pack/fixtures/missing-sourceRejected pack SHA-256623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2Refused: mismatched-resultCommandpython tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/mismatched-resultReason'result/result.json' does not satisfy its recorded identity: hash 4e23ec6ad8d33b789a6c740413dabda1e49694521dcd5d637f8ba44daf835911 vs recorded 0e17b8169d865e851aca98201f3968076b66fe36888d8a2e4db4f946835888d0, size 329 vs recorded 263Rejected pack SHA-256623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2",
+        "identity_section_visible": false,
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 13,
+            "state": "failed|pending"
+          },
+          {
+            "t": 17,
+            "state": "failed|ok"
+          }
+        ],
+        "console_errors": [
+          "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+          "Error: data.json responded 500\n    at http://127.0.0.1:63841/:507:33"
+        ]
+      },
+      "assertions": [
+        {
+          "assertion": "data read state",
+          "observed": "failed",
+          "expected": "failed",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "refusal read state",
+          "observed": "ok",
+          "expected": "ok",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "identity shown only when verified",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "fault-data.png",
+          "sha256": "00ced14e1ef4ac2307241a7fd37447882a2473f1116925e22e345be107994011",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "fault-refusals",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "63854",
+        "--fault",
+        "refusals"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "read_states": {
+          "data": "verified",
+          "refusals": "failed",
+          "verdict": "verified"
+        },
+        "error_detail": "",
+        "refusals_text": "The refusal read failed (refusals.json responded 500). The refusal runs could not be loaded from the local server; this is not a pack refusal.",
+        "identity_section_visible": true,
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 12,
+            "state": "pending|failed"
+          },
+          {
+            "t": 16,
+            "state": "verified|failed"
+          }
+        ],
+        "console_errors": [
+          "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+          "Error: refusals.json responded 500\n    at http://127.0.0.1:63854/:507:33"
+        ]
+      },
+      "assertions": [
+        {
+          "assertion": "data read state",
+          "observed": "verified",
+          "expected": "verified",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "refusal read state",
+          "observed": "failed",
+          "expected": "failed",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "identity shown only when verified",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "fault-refusals.png",
+          "sha256": "f2f7c02d76b0d05a38b81e8f18728a77060c80e00cac74fabbd66721a7285f43",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "fault-both",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "63870",
+        "--fault",
+        "both"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "read_states": {
+          "data": "failed",
+          "refusals": "failed",
+          "verdict": "failed"
+        },
+        "error_detail": "The identity read failed (data.json responded 500). The refusal runs below are a separate read and still render when it succeeds.",
+        "refusals_text": "The refusal read failed (refusals.json responded 500). The refusal runs could not be loaded from the local server; this is not a pack refusal.",
+        "identity_section_visible": false,
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 12,
+            "state": "failed|pending"
+          },
+          {
+            "t": 13,
+            "state": "failed|failed"
+          }
+        ],
+        "console_errors": [
+          "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+          "Error: data.json responded 500\n    at http://127.0.0.1:63870/:507:33",
+          "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+          "Error: refusals.json responded 500\n    at http://127.0.0.1:63870/:507:33"
+        ]
+      },
+      "assertions": [
+        {
+          "assertion": "data read state",
+          "observed": "failed",
+          "expected": "failed",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "refusal read state",
+          "observed": "failed",
+          "expected": "failed",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "identity shown only when verified",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "fault-both.png",
+          "sha256": "58428a633f3795b24073b2168b360575cafe1da1e99e4528b57d7a440b97fea0",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "fault-data-malformed",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "63881",
+        "--fault",
+        "data-malformed"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "read_states": {
+          "data": "failed",
+          "refusals": "ok",
+          "verdict": "failed"
+        },
+        "error_detail": "The identity read failed (data.json is not valid JSON). The refusal runs below are a separate read and still render when it succeeds.",
+        "refusals_text": "Refused: missing-sourceCommandpython tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/missing-sourceReason'capture/frame_0002.json' not found under tools/capture-evidence-pack/fixtures/missing-sourceRejected pack SHA-256623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2Refused: mismatched-resultCommandpython tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/mismatched-resultReason'result/result.json' does not satisfy its recorded identity: hash 4e23ec6ad8d33b789a6c740413dabda1e49694521dcd5d637f8ba44daf835911 vs recorded 0e17b8169d865e851aca98201f3968076b66fe36888d8a2e4db4f946835888d0, size 329 vs recorded 263Rejected pack SHA-256623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2",
+        "identity_section_visible": false,
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 16,
+            "state": "failed|pending"
+          },
+          {
+            "t": 16,
+            "state": "failed|ok"
+          }
+        ],
+        "console_errors": [
+          "Error: data.json is not valid JSON\n    at http://127.0.0.1:63881/:510:62"
+        ]
+      },
+      "assertions": [
+        {
+          "assertion": "data read state",
+          "observed": "failed",
+          "expected": "failed",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "refusal read state",
+          "observed": "ok",
+          "expected": "ok",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "identity shown only when verified",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "fault-data-malformed.png",
+          "sha256": "bbf3984c3a0bbe653631042b8c368c90d8910345a7f76ce4645ab35ffa67508c",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "fault-refusals-malformed",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "63892",
+        "--fault",
+        "refusals-malformed"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "read_states": {
+          "data": "verified",
+          "refusals": "failed",
+          "verdict": "verified"
+        },
+        "error_detail": "",
+        "refusals_text": "The refusal read failed (refusals.json is not valid JSON). The refusal runs could not be loaded from the local server; this is not a pack refusal.",
+        "identity_section_visible": true,
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 16,
+            "state": "pending|failed"
+          },
+          {
+            "t": 16,
+            "state": "verified|failed"
+          }
+        ],
+        "console_errors": [
+          "Error: refusals.json is not valid JSON\n    at http://127.0.0.1:63892/:510:62"
+        ]
+      },
+      "assertions": [
+        {
+          "assertion": "data read state",
+          "observed": "verified",
+          "expected": "verified",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "refusal read state",
+          "observed": "failed",
+          "expected": "failed",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "identity shown only when verified",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "fault-refusals-malformed.png",
+          "sha256": "f2f7c02d76b0d05a38b81e8f18728a77060c80e00cac74fabbd66721a7285f43",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "fault-data-incomplete",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "63908",
+        "--fault",
+        "data-incomplete"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "read_states": {
+          "data": "failed",
+          "refusals": "ok",
+          "verdict": "failed"
+        },
+        "error_detail": "The identity read failed (data.json has an unexpected shape: a packaged file record is incomplete). The refusal runs below are a separate read and still render when it succeeds.",
+        "refusals_text": "Refused: missing-sourceCommandpython tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/missing-sourceReason'capture/frame_0002.json' not found under tools/capture-evidence-pack/fixtures/missing-sourceRejected pack SHA-256623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2Refused: mismatched-resultCommandpython tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/mismatched-resultReason'result/result.json' does not satisfy its recorded identity: hash 4e23ec6ad8d33b789a6c740413dabda1e49694521dcd5d637f8ba44daf835911 vs recorded 0e17b8169d865e851aca98201f3968076b66fe36888d8a2e4db4f946835888d0, size 329 vs recorded 263Rejected pack SHA-256623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2",
+        "identity_section_visible": false,
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 16,
+            "state": "failed|pending"
+          },
+          {
+            "t": 16,
+            "state": "failed|ok"
+          }
+        ],
+        "console_errors": [
+          "Error: data.json has an unexpected shape: a packaged file record is incomplete\n    at http://127.0.0.1:63908/:526:26"
+        ]
+      },
+      "assertions": [
+        {
+          "assertion": "data read state",
+          "observed": "failed",
+          "expected": "failed",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "refusal read state",
+          "observed": "ok",
+          "expected": "ok",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "identity shown only when verified",
+          "observed": false,
+          "expected": false,
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "fault-data-incomplete.png",
+          "sha256": "75e83192d0549959dbe0bc22fd6a8ee1331b7467bc6727244498c437bbbc4a3a",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "fault-refusals-incomplete",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "63920",
+        "--fault",
+        "refusals-incomplete"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "read_states": {
+          "data": "verified",
+          "refusals": "failed",
+          "verdict": "verified"
+        },
+        "error_detail": "",
+        "refusals_text": "The refusal read failed (refusals.json has an unexpected shape). The refusal runs could not be loaded from the local server; this is not a pack refusal.",
+        "identity_section_visible": true,
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|pending"
+          },
+          {
+            "t": 16,
+            "state": "verified|failed"
+          }
+        ],
+        "console_errors": [
+          "Error: refusals.json has an unexpected shape\n    at renderRefusals (http://127.0.0.1:63920/:467:13)\n    at http://127.0.0.1:63920/:536:5"
+        ]
+      },
+      "assertions": [
+        {
+          "assertion": "data read state",
+          "observed": "verified",
+          "expected": "verified",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "refusal read state",
+          "observed": "failed",
+          "expected": "failed",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "identity shown only when verified",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "fault-refusals-incomplete.png",
+          "sha256": "f2f7c02d76b0d05a38b81e8f18728a77060c80e00cac74fabbd66721a7285f43",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "delay-data",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "63932",
+        "--delay-data",
+        "2"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "while_pending": {
+          "data": "pending",
+          "refusals": "ok",
+          "verdict": "pending"
+        },
+        "verdict_text_while_pending": "Running read.py on the pack and its referenced files…",
+        "refusals_text_while_pending": "Refused: missing-sourceCommandpython tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/missing-sourceReason'capture/frame_0002.json' not found under tools/capture-evidence-pack/fixtures/missing-sourceRejected pack SHA-256623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2Refused: mismatched-resultCommandpython tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip --capture-root tools/capture-evidence-pack/fixtures/mismatched-resultReason'result/result.json' does not satisfy its recorded identity: hash 4e23ec6ad8d33b789a6c740413dabda1e49694521dcd5d637f8ba44daf835911 vs recorded 0e17b8169d865e851aca98201f3968076b66fe36888d8a2e4db4f946835888d0, size 329 vs recorded 263Rejected pack SHA-256623d69e59235cdc81be0a42855c5a530be2deb04de8f9de92e82c200b85df9e2",
+        "settled": {
+          "data": "verified",
+          "refusals": "ok",
+          "verdict": "verified"
+        },
+        "first_settled_state": "pending|ok",
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 15,
+            "state": "pending|ok"
+          },
+          {
+            "t": 2017,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "data still pending after refusals settled",
+          "observed": "pending",
+          "expected": "pending",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "final data read state",
+          "observed": "verified",
+          "expected": "verified",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "final refusal read state",
+          "observed": "ok",
+          "expected": "ok",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "delay-data-pending.png",
+          "sha256": "eb23b373914d630f5b2f4f35c59c2ac44e824a10cc06d92c17eae170c03acd9c",
+          "full_page": false
+        },
+        {
+          "path": "delay-data-settled.png",
+          "sha256": "f2f7c02d76b0d05a38b81e8f18728a77060c80e00cac74fabbd66721a7285f43",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "delay-refusals",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64034",
+        "--delay-refusals",
+        "2"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "while_pending": {
+          "data": "verified",
+          "refusals": "pending",
+          "verdict": "verified"
+        },
+        "verdict_text_while_pending": "read.py accepted this pack. The values below are the ones it checked.",
+        "refusals_text_while_pending": "Running the reader against the mismatched capture roots…",
+        "settled": {
+          "data": "verified",
+          "refusals": "ok",
+          "verdict": "verified"
+        },
+        "first_settled_state": "verified|pending",
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 16,
+            "state": "verified|pending"
+          },
+          {
+            "t": 2015,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "refusals still pending after data settled",
+          "observed": "pending",
+          "expected": "pending",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "final data read state",
+          "observed": "verified",
+          "expected": "verified",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "final refusal read state",
+          "observed": "ok",
+          "expected": "ok",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "delay-refusals-pending.png",
+          "sha256": "f2f7c02d76b0d05a38b81e8f18728a77060c80e00cac74fabbd66721a7285f43",
+          "full_page": false
+        },
+        {
+          "path": "delay-refusals-settled.png",
+          "sha256": "f2f7c02d76b0d05a38b81e8f18728a77060c80e00cac74fabbd66721a7285f43",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "keyboard-desktop",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64072"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /",
+        "press Tab until #copy-command is focused (4 presses)"
+      ],
+      "observed": {
+        "tab_stops": [
+          {
+            "element": "a.skip-link",
+            "focus_visible": true,
+            "outline": "solid 3px rgb(27, 75, 255)",
+            "is_target": false
+          },
+          {
+            "element": "div",
+            "focus_visible": true,
+            "outline": "auto 1px rgb(0, 95, 204)",
+            "is_target": false
+          },
+          {
+            "element": "div",
+            "focus_visible": true,
+            "outline": "auto 1px rgb(0, 95, 204)",
+            "is_target": false
+          },
+          {
+            "element": "#copy-command",
+            "focus_visible": true,
+            "outline": "solid 3px rgb(27, 75, 255)",
+            "is_target": true
+          }
+        ],
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 19,
+            "state": "verified|pending"
+          },
+          {
+            "t": 19,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "copy button reachable with Tab",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy button shows :focus-visible",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy button outline",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "first Tab stop is the skip link",
+          "observed": "a.skip-link",
+          "expected": "a.skip-link",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "keyboard-desktop.png",
+          "sha256": "0d2d5d6e419735b335e7c4920afad90fe8d212176f08edd676e05b73a203b720",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "keyboard-mobile",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64083"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /",
+        "press Tab until #copy-command is focused (4 presses)"
+      ],
+      "observed": {
+        "tab_stops": [
+          {
+            "element": "a.skip-link",
+            "focus_visible": true,
+            "outline": "solid 3px rgb(27, 75, 255)",
+            "is_target": false
+          },
+          {
+            "element": "div",
+            "focus_visible": true,
+            "outline": "auto 1px rgb(0, 95, 204)",
+            "is_target": false
+          },
+          {
+            "element": "div",
+            "focus_visible": true,
+            "outline": "auto 1px rgb(0, 95, 204)",
+            "is_target": false
+          },
+          {
+            "element": "#copy-command",
+            "focus_visible": true,
+            "outline": "solid 3px rgb(27, 75, 255)",
+            "is_target": true
+          }
+        ],
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "copy button reachable with Tab",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy button shows :focus-visible",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy button outline",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "first Tab stop is the skip link",
+          "observed": "a.skip-link",
+          "expected": "a.skip-link",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "keyboard-mobile.png",
+          "sha256": "4320be82583e4bac8db5dba599643a9f98193def2f5f4dca989a3a0c50a50e16",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "native-copy-click",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64099"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": [
+          "clipboard-read",
+          "clipboard-write"
+        ]
+      },
+      "simulation": null,
+      "actions": [
+        "goto /",
+        "clipboard.writeText('sentinel-before-copy') to reset the clipboard",
+        "mouse click #copy-command"
+      ],
+      "observed": {
+        "command": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+        "dispatch": "completed",
+        "copy": {
+          "feedback": "Copied.",
+          "copy_path": "clipboard-api"
+        },
+        "readback": {
+          "ok": true,
+          "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+        },
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "feedback shown",
+          "observed": "Copied.",
+          "expected": "Copied.",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "clipboard readback equals the command",
+          "observed": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy path",
+          "observed": "clipboard-api",
+          "expected": "clipboard-api",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "native-copy-click.png",
+          "sha256": "ef2e357926ae38948c5ccc3decf6a464635041efdd128b56e01594b493bd8167",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "native-copy-enter",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64106"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": [
+          "clipboard-read",
+          "clipboard-write"
+        ]
+      },
+      "simulation": null,
+      "actions": [
+        "goto /",
+        "clipboard.writeText('sentinel-before-copy') to reset the clipboard",
+        "press Tab until #copy-command is focused (4 presses)",
+        "press Enter"
+      ],
+      "observed": {
+        "command": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+        "dispatch": "completed",
+        "copy": {
+          "feedback": "Copied.",
+          "copy_path": "clipboard-api"
+        },
+        "readback": {
+          "ok": true,
+          "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+        },
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "copy button reachable with Tab",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "feedback shown",
+          "observed": "Copied.",
+          "expected": "Copied.",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "clipboard readback equals the command",
+          "observed": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy path",
+          "observed": "clipboard-api",
+          "expected": "clipboard-api",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "native-copy-enter.png",
+          "sha256": "a590d872b14948d7c5ec0901504125ba81f61bedb068b21ecc86f372fd556068",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "native-copy-space",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64116"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": [
+          "clipboard-read",
+          "clipboard-write"
+        ]
+      },
+      "simulation": null,
+      "actions": [
+        "goto /",
+        "clipboard.writeText('sentinel-before-copy') to reset the clipboard",
+        "press Tab until #copy-command is focused (4 presses)",
+        "press  "
+      ],
+      "observed": {
+        "command": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+        "dispatch": "completed",
+        "copy": {
+          "feedback": "Copied.",
+          "copy_path": "clipboard-api"
+        },
+        "readback": {
+          "ok": true,
+          "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+        },
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "copy button reachable with Tab",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "feedback shown",
+          "observed": "Copied.",
+          "expected": "Copied.",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "clipboard readback equals the command",
+          "observed": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy path",
+          "observed": "clipboard-api",
+          "expected": "clipboard-api",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "native-copy-space.png",
+          "sha256": "a590d872b14948d7c5ec0901504125ba81f61bedb068b21ecc86f372fd556068",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "native-copy-no-permission",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64125"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /",
+        "mouse click #copy-command"
+      ],
+      "observed": {
+        "command": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+        "dispatch": "completed",
+        "copy": {
+          "feedback": "Copied.",
+          "copy_path": "exec-command"
+        },
+        "readback": {
+          "ok": false,
+          "error": "NotAllowedError: Failed to execute 'readText' on 'Clipboard': Read permission denied."
+        },
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 17,
+            "state": "verified|pending"
+          },
+          {
+            "t": 17,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "feedback shown",
+          "observed": "Copied.",
+          "expected": "Copied.",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "clipboard readback equals the command",
+          "observed": "NotAllowedError: Failed to execute 'readText' on 'Clipboard': Read permission denied.",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "BLOCKED",
+          "note": "readback was refused, so the clipboard contents are unverified"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "native-copy-no-permission.png",
+          "sha256": "ef2e357926ae38948c5ccc3decf6a464635041efdd128b56e01594b493bd8167",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "sim-reject-exec-true",
+      "kind": "simulated",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64131"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": "writeText rejects (Promise.reject NotAllowedError); execCommand returns true",
+      "actions": [
+        "goto /",
+        "mouse click #copy-command"
+      ],
+      "observed": {
+        "copy": {
+          "feedback": "Copied.",
+          "copy_path": "exec-command"
+        },
+        "exec_calls": [
+          {
+            "command": "copy",
+            "selected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          }
+        ],
+        "writes": null,
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 16,
+            "state": "verified|pending"
+          },
+          {
+            "t": 16,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "feedback text",
+          "observed": "Copied.",
+          "expected": "Copied.",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy path",
+          "observed": "exec-command",
+          "expected": "exec-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "execCommand calls",
+          "observed": 1,
+          "expected": 1,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "execCommand called with copy",
+          "observed": "copy",
+          "expected": "copy",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "fallback textarea held the command",
+          "observed": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "sim-reject-exec-true.png",
+          "sha256": "ef2e357926ae38948c5ccc3decf6a464635041efdd128b56e01594b493bd8167",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "sim-reject-exec-false",
+      "kind": "simulated",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64142"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": "writeText rejects; execCommand returns false",
+      "actions": [
+        "goto /",
+        "mouse click #copy-command"
+      ],
+      "observed": {
+        "copy": {
+          "feedback": "Copy failed; select the command text instead.",
+          "copy_path": "failed"
+        },
+        "exec_calls": [
+          {
+            "command": "copy",
+            "selected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          }
+        ],
+        "writes": null,
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "feedback text",
+          "observed": "Copy failed; select the command text instead.",
+          "expected": "Copy failed; select the command text instead.",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy path",
+          "observed": "failed",
+          "expected": "failed",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "execCommand calls",
+          "observed": 1,
+          "expected": 1,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "execCommand called with copy",
+          "observed": "copy",
+          "expected": "copy",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "fallback textarea held the command",
+          "observed": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "sim-reject-exec-false.png",
+          "sha256": "5d86605c9c42fc7efd503d916e2d24b06700d75d877324513bd36f593626f902",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "sim-throw-exec-true",
+      "kind": "simulated",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64149"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": "writeText throws synchronously; execCommand returns true",
+      "actions": [
+        "goto /",
+        "mouse click #copy-command"
+      ],
+      "observed": {
+        "copy": {
+          "feedback": "Copied.",
+          "copy_path": "exec-command"
+        },
+        "exec_calls": [
+          {
+            "command": "copy",
+            "selected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          }
+        ],
+        "writes": null,
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 18,
+            "state": "verified|pending"
+          },
+          {
+            "t": 18,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "feedback text",
+          "observed": "Copied.",
+          "expected": "Copied.",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy path",
+          "observed": "exec-command",
+          "expected": "exec-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "execCommand calls",
+          "observed": 1,
+          "expected": 1,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "execCommand called with copy",
+          "observed": "copy",
+          "expected": "copy",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "fallback textarea held the command",
+          "observed": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "sim-throw-exec-true.png",
+          "sha256": "ef2e357926ae38948c5ccc3decf6a464635041efdd128b56e01594b493bd8167",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "sim-absent-exec-true",
+      "kind": "simulated",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64156"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": "navigator.clipboard is undefined; execCommand returns true",
+      "actions": [
+        "goto /",
+        "mouse click #copy-command"
+      ],
+      "observed": {
+        "copy": {
+          "feedback": "Copied.",
+          "copy_path": "exec-command"
+        },
+        "exec_calls": [
+          {
+            "command": "copy",
+            "selected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+          }
+        ],
+        "writes": null,
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 18,
+            "state": "verified|pending"
+          },
+          {
+            "t": 19,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "feedback text",
+          "observed": "Copied.",
+          "expected": "Copied.",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy path",
+          "observed": "exec-command",
+          "expected": "exec-command",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "execCommand calls",
+          "observed": 1,
+          "expected": 1,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "execCommand called with copy",
+          "observed": "copy",
+          "expected": "copy",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "fallback textarea held the command",
+          "observed": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "sim-absent-exec-true.png",
+          "sha256": "ef2e357926ae38948c5ccc3decf6a464635041efdd128b56e01594b493bd8167",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "sim-reject-exec-throws",
+      "kind": "simulated",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64178"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": "writeText rejects; execCommand throws",
+      "actions": [
+        "goto /",
+        "mouse click #copy-command"
+      ],
+      "observed": {
+        "copy": {
+          "feedback": "Copy failed; select the command text instead.",
+          "copy_path": "failed"
+        },
+        "exec_calls": [
+          {
+            "command": "copy"
+          }
+        ],
+        "writes": null,
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 16,
+            "state": "verified|pending"
+          },
+          {
+            "t": 16,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "feedback text",
+          "observed": "Copy failed; select the command text instead.",
+          "expected": "Copy failed; select the command text instead.",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy path",
+          "observed": "failed",
+          "expected": "failed",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "execCommand calls",
+          "observed": 1,
+          "expected": 1,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "execCommand called with copy",
+          "observed": "copy",
+          "expected": "copy",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "sim-reject-exec-throws.png",
+          "sha256": "5d86605c9c42fc7efd503d916e2d24b06700d75d877324513bd36f593626f902",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "sim-resolve",
+      "kind": "simulated",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64211"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": "writeText resolves; execCommand must not be called",
+      "actions": [
+        "goto /",
+        "mouse click #copy-command"
+      ],
+      "observed": {
+        "copy": {
+          "feedback": "Copied.",
+          "copy_path": "clipboard-api"
+        },
+        "exec_calls": [],
+        "writes": [
+          "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+        ],
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 16,
+            "state": "verified|pending"
+          },
+          {
+            "t": 16,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "feedback text",
+          "observed": "Copied.",
+          "expected": "Copied.",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "copy path",
+          "observed": "clipboard-api",
+          "expected": "clipboard-api",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "execCommand calls",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "writeText received the command",
+          "observed": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "PASS"
+        }
+      ],
+      "screenshots": [
+        {
+          "path": "sim-resolve.png",
+          "sha256": "ef2e357926ae38948c5ccc3decf6a464635041efdd128b56e01594b493bd8167",
+          "full_page": false
+        }
+      ]
+    },
+    {
+      "case": "axe-desktop-verified",
+      "kind": "native",
+      "url_path": "/?axe=1",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64218"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /?axe=1"
+      ],
+      "observed": {
+        "axe": {
+          "axe_version": "4.10.2",
+          "run_after_read_states": {
+            "data": "verified",
+            "refusals": "ok"
+          },
+          "violations": [],
+          "incomplete": [],
+          "passes": [
+            "aria-allowed-attr",
+            "aria-allowed-role",
+            "aria-conditional-attr",
+            "aria-deprecated-role",
+            "aria-hidden-body",
+            "aria-prohibited-attr",
+            "aria-required-attr",
+            "aria-roles",
+            "aria-valid-attr-value",
+            "aria-valid-attr",
+            "avoid-inline-spacing",
+            "button-name",
+            "bypass",
+            "color-contrast",
+            "definition-list",
+            "dlitem",
+            "document-title",
+            "duplicate-id-aria",
+            "empty-heading",
+            "empty-table-header",
+            "heading-order",
+            "html-has-lang",
+            "html-lang-valid",
+            "landmark-banner-is-top-level",
+            "landmark-contentinfo-is-top-level",
+            "landmark-main-is-top-level",
+            "landmark-no-duplicate-banner",
+            "landmark-no-duplicate-contentinfo",
+            "landmark-no-duplicate-main",
+            "landmark-one-main",
+            "landmark-unique",
+            "link-name",
+            "list",
+            "listitem",
+            "meta-viewport-large",
+            "meta-viewport",
+            "nested-interactive",
+            "page-has-heading-one",
+            "region",
+            "scope-attr-valid",
+            "skip-link",
+            "tabindex",
+            "table-duplicate-name",
+            "td-headers-attr",
+            "th-has-data-cells"
+          ]
+        },
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 13,
+            "state": "verified|pending"
+          },
+          {
+            "t": 13,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "axe ran",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe ran after both reads settled",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe violations",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "every incomplete node has a manual contrast check at or above 4.5:1",
+          "observed": [],
+          "expected": [],
+          "outcome": "PASS"
+        }
+      ]
+    },
+    {
+      "case": "axe-mobile-verified",
+      "kind": "native",
+      "url_path": "/?axe=1",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64225"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /?axe=1"
+      ],
+      "observed": {
+        "axe": {
+          "axe_version": "4.10.2",
+          "run_after_read_states": {
+            "data": "verified",
+            "refusals": "ok"
+          },
+          "violations": [],
+          "incomplete": [
+            {
+              "id": "color-contrast",
+              "nodes": [
+                {
+                  "target": [
+                    "th:nth-child(4)"
+                  ],
+                  "data": {
+                    "contrastRatio": 0,
+                    "fontSize": "10.2pt (13.6px)",
+                    "fontWeight": "bold",
+                    "messageKey": "elmPartiallyObscured",
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element's background color could not be determined because it's partially obscured by another element",
+                  "manual_contrast": {
+                    "foreground": "rgb(82,97,90)",
+                    "background": "rgb(255,255,255)",
+                    "ratio": 6.53,
+                    "background_from": "section#sources"
+                  }
+                },
+                {
+                  "target": [
+                    "tr:nth-child(1) > td:nth-child(4)"
+                  ],
+                  "data": {
+                    "contrastRatio": 0,
+                    "fontSize": "11.3pt (15px)",
+                    "fontWeight": "normal",
+                    "messageKey": "elmPartiallyObscured",
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element's background color could not be determined because it's partially obscured by another element",
+                  "manual_contrast": {
+                    "foreground": "rgb(22,33,28)",
+                    "background": "rgb(255,255,255)",
+                    "ratio": 16.56,
+                    "background_from": "section#sources"
+                  }
+                },
+                {
+                  "target": [
+                    "tr:nth-child(2) > td:nth-child(4)"
+                  ],
+                  "data": {
+                    "contrastRatio": 0,
+                    "fontSize": "11.3pt (15px)",
+                    "fontWeight": "normal",
+                    "messageKey": "elmPartiallyObscured",
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element's background color could not be determined because it's partially obscured by another element",
+                  "manual_contrast": {
+                    "foreground": "rgb(22,33,28)",
+                    "background": "rgb(255,255,255)",
+                    "ratio": 16.56,
+                    "background_from": "section#sources"
+                  }
+                },
+                {
+                  "target": [
+                    "#report-text"
+                  ],
+                  "data": {
+                    "contrastRatio": 0,
+                    "fontSize": "9.6pt (12.8px)",
+                    "fontWeight": "normal",
+                    "messageKey": "elmPartiallyObscured",
+                    "expectedContrastRatio": "4.5:1"
+                  },
+                  "message": "Element's background color could not be determined because it's partially obscured by another element",
+                  "manual_contrast": {
+                    "foreground": "rgb(232,241,236)",
+                    "background": "rgb(14,21,18)",
+                    "ratio": 16.06,
+                    "background_from": "pre#report-text"
+                  }
+                }
+              ]
+            }
+          ],
+          "passes": [
+            "aria-allowed-attr",
+            "aria-allowed-role",
+            "aria-conditional-attr",
+            "aria-deprecated-role",
+            "aria-hidden-body",
+            "aria-prohibited-attr",
+            "aria-required-attr",
+            "aria-roles",
+            "aria-valid-attr-value",
+            "aria-valid-attr",
+            "avoid-inline-spacing",
+            "button-name",
+            "bypass",
+            "color-contrast",
+            "definition-list",
+            "dlitem",
+            "document-title",
+            "duplicate-id-aria",
+            "empty-heading",
+            "empty-table-header",
+            "heading-order",
+            "html-has-lang",
+            "html-lang-valid",
+            "landmark-banner-is-top-level",
+            "landmark-contentinfo-is-top-level",
+            "landmark-main-is-top-level",
+            "landmark-no-duplicate-banner",
+            "landmark-no-duplicate-contentinfo",
+            "landmark-no-duplicate-main",
+            "landmark-one-main",
+            "landmark-unique",
+            "link-name",
+            "list",
+            "listitem",
+            "meta-viewport-large",
+            "meta-viewport",
+            "nested-interactive",
+            "page-has-heading-one",
+            "region",
+            "scope-attr-valid",
+            "scrollable-region-focusable",
+            "skip-link",
+            "tabindex",
+            "table-duplicate-name",
+            "td-headers-attr",
+            "th-has-data-cells"
+          ]
+        },
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 12,
+            "state": "verified|pending"
+          },
+          {
+            "t": 12,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "axe ran",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe ran after both reads settled",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe violations",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "every incomplete node has a manual contrast check at or above 4.5:1",
+          "observed": [],
+          "expected": [],
+          "outcome": "PASS"
+        }
+      ]
+    },
+    {
+      "case": "axe-desktop-refused-pack",
+      "kind": "native",
+      "url_path": "/?axe=1",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64232",
+        "--pack",
+        "tools/capture-evidence-pack/inspection/evidence/2026-10-12/inputs/bad-assertion.zip"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /?axe=1"
+      ],
+      "observed": {
+        "axe": {
+          "axe_version": "4.10.2",
+          "run_after_read_states": {
+            "data": "refused",
+            "refusals": "ok"
+          },
+          "violations": [],
+          "incomplete": [],
+          "passes": [
+            "aria-allowed-attr",
+            "aria-allowed-role",
+            "aria-conditional-attr",
+            "aria-deprecated-role",
+            "aria-hidden-body",
+            "aria-prohibited-attr",
+            "aria-required-attr",
+            "aria-roles",
+            "aria-valid-attr-value",
+            "aria-valid-attr",
+            "bypass",
+            "color-contrast",
+            "definition-list",
+            "dlitem",
+            "document-title",
+            "duplicate-id-aria",
+            "empty-heading",
+            "heading-order",
+            "html-has-lang",
+            "html-lang-valid",
+            "landmark-banner-is-top-level",
+            "landmark-contentinfo-is-top-level",
+            "landmark-main-is-top-level",
+            "landmark-no-duplicate-banner",
+            "landmark-no-duplicate-contentinfo",
+            "landmark-no-duplicate-main",
+            "landmark-one-main",
+            "landmark-unique",
+            "link-name",
+            "list",
+            "listitem",
+            "meta-viewport-large",
+            "meta-viewport",
+            "page-has-heading-one",
+            "region",
+            "skip-link"
+          ]
+        },
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 12,
+            "state": "refused|pending"
+          },
+          {
+            "t": 13,
+            "state": "refused|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "axe ran",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe ran after both reads settled",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe violations",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "every incomplete node has a manual contrast check at or above 4.5:1",
+          "observed": [],
+          "expected": [],
+          "outcome": "PASS"
+        }
+      ]
+    },
+    {
+      "case": "axe-fault-data",
+      "kind": "native",
+      "url_path": "/?axe=1",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64239",
+        "--fault",
+        "data"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /?axe=1"
+      ],
+      "observed": {
+        "axe": {
+          "axe_version": "4.10.2",
+          "run_after_read_states": {
+            "data": "failed",
+            "refusals": "ok"
+          },
+          "violations": [],
+          "incomplete": [],
+          "passes": [
+            "aria-allowed-attr",
+            "aria-allowed-role",
+            "aria-conditional-attr",
+            "aria-deprecated-role",
+            "aria-hidden-body",
+            "aria-prohibited-attr",
+            "aria-required-attr",
+            "aria-roles",
+            "aria-valid-attr-value",
+            "aria-valid-attr",
+            "bypass",
+            "color-contrast",
+            "definition-list",
+            "dlitem",
+            "document-title",
+            "duplicate-id-aria",
+            "empty-heading",
+            "heading-order",
+            "html-has-lang",
+            "html-lang-valid",
+            "landmark-banner-is-top-level",
+            "landmark-contentinfo-is-top-level",
+            "landmark-main-is-top-level",
+            "landmark-no-duplicate-banner",
+            "landmark-no-duplicate-contentinfo",
+            "landmark-no-duplicate-main",
+            "landmark-one-main",
+            "landmark-unique",
+            "link-name",
+            "list",
+            "listitem",
+            "meta-viewport-large",
+            "meta-viewport",
+            "page-has-heading-one",
+            "region",
+            "skip-link"
+          ]
+        },
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 12,
+            "state": "failed|pending"
+          },
+          {
+            "t": 12,
+            "state": "failed|ok"
+          }
+        ],
+        "console_errors": [
+          "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+          "Error: data.json responded 500\n    at http://127.0.0.1:64239/?axe=1:507:33"
+        ]
+      },
+      "assertions": [
+        {
+          "assertion": "axe ran",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe ran after both reads settled",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe violations",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "every incomplete node has a manual contrast check at or above 4.5:1",
+          "observed": [],
+          "expected": [],
+          "outcome": "PASS"
+        }
+      ]
+    },
+    {
+      "case": "axe-fault-refusals",
+      "kind": "native",
+      "url_path": "/?axe=1",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64246",
+        "--fault",
+        "refusals"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /?axe=1"
+      ],
+      "observed": {
+        "axe": {
+          "axe_version": "4.10.2",
+          "run_after_read_states": {
+            "data": "verified",
+            "refusals": "failed"
+          },
+          "violations": [],
+          "incomplete": [],
+          "passes": [
+            "aria-allowed-attr",
+            "aria-allowed-role",
+            "aria-conditional-attr",
+            "aria-deprecated-role",
+            "aria-hidden-body",
+            "aria-prohibited-attr",
+            "aria-required-attr",
+            "aria-roles",
+            "aria-valid-attr-value",
+            "aria-valid-attr",
+            "avoid-inline-spacing",
+            "button-name",
+            "bypass",
+            "color-contrast",
+            "definition-list",
+            "dlitem",
+            "document-title",
+            "duplicate-id-aria",
+            "empty-heading",
+            "empty-table-header",
+            "heading-order",
+            "html-has-lang",
+            "html-lang-valid",
+            "landmark-banner-is-top-level",
+            "landmark-contentinfo-is-top-level",
+            "landmark-main-is-top-level",
+            "landmark-no-duplicate-banner",
+            "landmark-no-duplicate-contentinfo",
+            "landmark-no-duplicate-main",
+            "landmark-one-main",
+            "landmark-unique",
+            "link-name",
+            "list",
+            "listitem",
+            "meta-viewport-large",
+            "meta-viewport",
+            "nested-interactive",
+            "page-has-heading-one",
+            "region",
+            "scope-attr-valid",
+            "skip-link",
+            "tabindex",
+            "table-duplicate-name",
+            "td-headers-attr",
+            "th-has-data-cells"
+          ]
+        },
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 12,
+            "state": "pending|failed"
+          },
+          {
+            "t": 12,
+            "state": "verified|failed"
+          }
+        ],
+        "console_errors": [
+          "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+          "Error: refusals.json responded 500\n    at http://127.0.0.1:64246/?axe=1:507:33"
+        ]
+      },
+      "assertions": [
+        {
+          "assertion": "axe ran",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe ran after both reads settled",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe violations",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "every incomplete node has a manual contrast check at or above 4.5:1",
+          "observed": [],
+          "expected": [],
+          "outcome": "PASS"
+        }
+      ]
+    },
+    {
+      "case": "axe-data-malformed",
+      "kind": "native",
+      "url_path": "/?axe=1",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64253",
+        "--fault",
+        "data-malformed"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /?axe=1"
+      ],
+      "observed": {
+        "axe": {
+          "axe_version": "4.10.2",
+          "run_after_read_states": {
+            "data": "failed",
+            "refusals": "ok"
+          },
+          "violations": [],
+          "incomplete": [],
+          "passes": [
+            "aria-allowed-attr",
+            "aria-allowed-role",
+            "aria-conditional-attr",
+            "aria-deprecated-role",
+            "aria-hidden-body",
+            "aria-prohibited-attr",
+            "aria-required-attr",
+            "aria-roles",
+            "aria-valid-attr-value",
+            "aria-valid-attr",
+            "bypass",
+            "color-contrast",
+            "definition-list",
+            "dlitem",
+            "document-title",
+            "duplicate-id-aria",
+            "empty-heading",
+            "heading-order",
+            "html-has-lang",
+            "html-lang-valid",
+            "landmark-banner-is-top-level",
+            "landmark-contentinfo-is-top-level",
+            "landmark-main-is-top-level",
+            "landmark-no-duplicate-banner",
+            "landmark-no-duplicate-contentinfo",
+            "landmark-no-duplicate-main",
+            "landmark-one-main",
+            "landmark-unique",
+            "link-name",
+            "list",
+            "listitem",
+            "meta-viewport-large",
+            "meta-viewport",
+            "page-has-heading-one",
+            "region",
+            "skip-link"
+          ]
+        },
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 15,
+            "state": "failed|pending"
+          },
+          {
+            "t": 15,
+            "state": "failed|ok"
+          }
+        ],
+        "console_errors": [
+          "Error: data.json is not valid JSON\n    at http://127.0.0.1:64253/?axe=1:510:62"
+        ]
+      },
+      "assertions": [
+        {
+          "assertion": "axe ran",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe ran after both reads settled",
+          "observed": true,
+          "expected": true,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "axe violations",
+          "observed": 0,
+          "expected": 0,
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "every incomplete node has a manual contrast check at or above 4.5:1",
+          "observed": [],
+          "expected": [],
+          "outcome": "PASS"
+        }
+      ]
+    },
+    {
+      "case": "reduced-motion",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64270"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "context_options": {
+        "reducedMotion": "reduce",
+        "permissions": []
+      },
+      "simulation": null,
+      "actions": [
+        "goto /"
+      ],
+      "observed": {
+        "button_transition": "0s",
+        "timeline": [
+          {
+            "t": 5,
+            "state": "pending|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|pending"
+          },
+          {
+            "t": 15,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "button transition under prefers-reduced-motion: reduce",
+          "observed": "0s",
+          "expected": "0s",
+          "outcome": "PASS"
+        }
+      ]
+    },
+    {
+      "case": "recording-copy",
+      "kind": "native",
+      "url_path": "/",
+      "server_argv": [
+        "python3",
+        "tools/capture-evidence-pack/inspection/serve.py",
+        "--port",
+        "64276"
+      ],
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "context_options": {
+        "reducedMotion": null,
+        "permissions": [
+          "clipboard-read",
+          "clipboard-write"
+        ]
+      },
+      "simulation": null,
+      "actions": [
+        "goto /",
+        "scroll the reproduction section into view",
+        "press Tab until #copy-command is focused (4 presses)",
+        "press Enter"
+      ],
+      "observed": {
+        "copy": {
+          "feedback": "Copied.",
+          "copy_path": "clipboard-api"
+        },
+        "readback": {
+          "ok": true,
+          "text": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip"
+        },
+        "timeline": [
+          {
+            "t": 6,
+            "state": "pending|pending"
+          },
+          {
+            "t": 16,
+            "state": "verified|pending"
+          },
+          {
+            "t": 16,
+            "state": "verified|ok"
+          }
+        ],
+        "console_errors": []
+      },
+      "assertions": [
+        {
+          "assertion": "feedback shown",
+          "observed": "Copied.",
+          "expected": "Copied.",
+          "outcome": "PASS"
+        },
+        {
+          "assertion": "clipboard readback equals the command",
+          "observed": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "expected": "python tools/capture-evidence-pack/read.py tools/capture-evidence-pack/evidence/example.zip",
+          "outcome": "PASS"
+        }
+      ],
+      "video": {
+        "path": "recording-copy.webm",
+        "sha256": "f8851037f7e8cbf94e4f27f8a97dbfa4c668814976e586918827d64d76fa14e0",
+        "bytes": 576697
+      }
+    }
+  ]
+}

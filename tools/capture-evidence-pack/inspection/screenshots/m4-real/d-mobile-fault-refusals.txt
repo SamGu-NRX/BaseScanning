@@ -1,0 +1,8 @@
+case: d-mobile-fault-refusals
+commit: 7088750fe77da9f2f742fd11c26b5f217d9bfc65 (dirty)
+invocation: viewport 390x844; open http://localhost:8933/; sleep 2; screenshot; eval feedback
+url: http://localhost:8933/
+viewport: 390x844
+assertion: mobile layout renders the scenario correctly
+result: PASS
+observed: feedback=[""]

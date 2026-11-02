@@ -1,0 +1,6 @@
+✗ Auto-launch failed: Chrome not found. Checked:
+  - agent-browser cache: /home/user/.agent-browser/browsers
+  - System Chrome installations
+  - Puppeteer browser cache
+  - Playwright browser cache
+Run `agent-browser install` to download Chrome, or use --executable-path.
