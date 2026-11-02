@@ -1,0 +1,48 @@
+{
+  "arms": {
+    "tesseract": {
+      "kind": "ocr",
+      "note": "Tesseract CLI (apt tesseract-ocr, eng) reading the frozen synthetic plates on Linux; real OCR output on synthetic input"
+    },
+    "observed": {
+      "kind": "hand-authored",
+      "note": "Hand-authored reader-shaped observation sets: observations, not OCR evidence"
+    },
+    "meterocr": {
+      "kind": "ocr",
+      "note": "Apple Vision through meterocr needs macOS; this Linux sandbox cannot run it, and a mock is not OCR evidence, so no substitute arm ran"
+    }
+  },
+  "cases": [
+    {"id": "gen01", "arm": "tesseract", "image": "inputs/images/gen01.png", "present": true},
+    {"id": "gen02", "arm": "tesseract", "image": "inputs/images/gen02.png", "present": true},
+    {"id": "gen03", "arm": "tesseract", "image": "inputs/images/gen03.png", "present": true},
+    {"id": "gen04", "arm": "tesseract", "image": "inputs/images/gen04.png", "present": true},
+    {"id": "gen05", "arm": "tesseract", "image": "inputs/images/gen05.png", "present": true},
+    {"id": "gen06", "arm": "tesseract", "image": "inputs/images/gen06.png", "present": true},
+    {"id": "gen07", "arm": "tesseract", "image": "inputs/images/gen07.png", "present": true},
+    {"id": "gen08", "arm": "tesseract", "image": "inputs/images/gen08.png", "present": true},
+    {"id": "gen09", "arm": "tesseract", "image": "inputs/images/gen09.png", "present": true},
+    {"id": "gen10", "arm": "tesseract", "image": "inputs/images/gen10.png", "present": true},
+    {"id": "gen11", "arm": "tesseract", "image": "inputs/images/gen11.png", "present": true},
+    {"id": "gen12", "arm": "tesseract", "image": "inputs/images/gen12.png", "present": true},
+    {"id": "gen13", "arm": "tesseract", "image": "inputs/images/gen13.png", "present": true},
+    {"id": "gen14", "arm": "tesseract", "image": "inputs/images/gen14.png", "present": true},
+    {"id": "gen15", "arm": "tesseract", "image": "inputs/images/gen15.png", "present": true},
+    {"id": "gen16", "arm": "tesseract", "image": "inputs/images/gen16.png", "present": false},
+    {"id": "gen17", "arm": "tesseract", "image": "inputs/images/gen17.png", "present": false},
+    {"id": "gen18", "arm": "tesseract", "image": "inputs/images/gen18.png", "present": false},
+    {"id": "obs01", "arm": "observed", "observations": "inputs/observations/obs01.json", "present": true},
+    {"id": "obs02", "arm": "observed", "observations": "inputs/observations/obs02.json", "present": true},
+    {"id": "obs03", "arm": "observed", "observations": "inputs/observations/obs03.json", "present": true},
+    {"id": "obs04", "arm": "observed", "observations": "inputs/observations/obs04.json", "present": true},
+    {"id": "obs05", "arm": "observed", "observations": "inputs/observations/obs05.json", "present": true},
+    {"id": "obs06", "arm": "observed", "observations": "inputs/observations/obs06.json", "present": true},
+    {"id": "obs07", "arm": "observed", "observations": "inputs/observations/obs07.json", "present": true},
+    {"id": "obs08", "arm": "observed", "observations": "inputs/observations/obs08.json", "present": true},
+    {"id": "obs09", "arm": "observed", "observations": "inputs/observations/obs09.json", "present": true},
+    {"id": "obs10", "arm": "observed", "observations": "inputs/observations/obs10.json", "present": false},
+    {"id": "obs11", "arm": "observed", "observations": "inputs/observations/obs11.json", "present": false},
+    {"id": "obs12", "arm": "observed", "observations": "inputs/observations/obs12.json", "present": false}
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "arm": "tesseract",
+  "barcodes": [],
+  "case_id": "gen18",
+  "lines": [
+    {
+      "box": [
+        62,
+        128,
+        219,
+        41
+      ],
+      "text": "99000000"
+    }
+  ],
+  "reader": {
+    "name": "tesseract",
+    "psm": "6",
+    "version": "tesseract 5.5.0"
+  }
+}

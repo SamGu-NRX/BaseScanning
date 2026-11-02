@@ -1,0 +1,29 @@
+{
+  "arm": "observed",
+  "barcodes": [],
+  "case_id": "obs09",
+  "lines": [
+    {
+      "box": [
+        60,
+        120,
+        330,
+        46
+      ],
+      "text": "No. 482O1637"
+    },
+    {
+      "box": [
+        60,
+        220,
+        190,
+        22
+      ],
+      "text": "20(60)A 50Hz"
+    }
+  ],
+  "reader": {
+    "file": "inputs/observations/obs09.json",
+    "name": "hand-authored observation set"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "arm": "observed",
+  "barcodes": [],
+  "case_id": "obs11",
+  "lines": [],
+  "reader": {
+    "file": "inputs/observations/obs11.json",
+    "name": "hand-authored observation set"
+  }
+}

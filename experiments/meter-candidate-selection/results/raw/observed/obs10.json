@@ -1,0 +1,47 @@
+{
+  "arm": "observed",
+  "barcodes": [],
+  "case_id": "obs10",
+  "lines": [
+    {
+      "box": [
+        60,
+        220,
+        190,
+        22
+      ],
+      "text": "20(60)A 50Hz"
+    },
+    {
+      "box": [
+        60,
+        260,
+        96,
+        20
+      ],
+      "text": "CL 200"
+    },
+    {
+      "box": [
+        300,
+        260,
+        100,
+        20
+      ],
+      "text": "FORM 9S"
+    },
+    {
+      "box": [
+        60,
+        180,
+        90,
+        20
+      ],
+      "text": "0.3 KH"
+    }
+  ],
+  "reader": {
+    "file": "inputs/observations/obs10.json",
+    "name": "hand-authored observation set"
+  }
+}

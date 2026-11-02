@@ -1,0 +1,29 @@
+{
+  "arm": "observed",
+  "barcodes": [],
+  "case_id": "obs06",
+  "lines": [
+    {
+      "box": [
+        60,
+        170,
+        300,
+        28
+      ],
+      "text": "No. 24681357"
+    },
+    {
+      "box": [
+        60,
+        80,
+        360,
+        52
+      ],
+      "text": "No. 13572468"
+    }
+  ],
+  "reader": {
+    "file": "inputs/observations/obs06.json",
+    "name": "hand-authored observation set"
+  }
+}

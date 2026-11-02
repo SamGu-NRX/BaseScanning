@@ -1,0 +1,48 @@
+{
+  "arm": "tesseract",
+  "barcodes": [],
+  "case_id": "gen07",
+  "lines": [
+    {
+      "box": [
+        41,
+        22,
+        169,
+        13
+      ],
+      "text": "WATTHOUR METER"
+    },
+    {
+      "box": [
+        62,
+        154,
+        152,
+        15
+      ],
+      "text": "No. 39218407"
+    },
+    {
+      "box": [
+        61,
+        235,
+        200,
+        16
+      ],
+      "text": "20(60)A 50Hz CL 200"
+    },
+    {
+      "box": [
+        62,
+        266,
+        78,
+        13
+      ],
+      "text": "FORM 9S"
+    }
+  ],
+  "reader": {
+    "name": "tesseract",
+    "psm": "6",
+    "version": "tesseract 5.5.0"
+  }
+}
