@@ -1,0 +1,507 @@
+{
+  "study": "nonlidar-observability",
+  "question": "Without LiDAR, which wall facts do the exported observations support at all?",
+  "grid": {
+    "theta_deg": [
+      -4.0,
+      -2.0,
+      0.0,
+      2.0,
+      4.0
+    ],
+    "d_ft": [
+      18.0,
+      19.0,
+      20.0,
+      21.0,
+      22.0
+    ],
+    "s0_ft": [
+      -12.0,
+      -11.0,
+      -10.0,
+      -9.0,
+      -8.0
+    ],
+    "s1_ft": [
+      8.0,
+      9.0,
+      10.0,
+      11.0,
+      12.0,
+      14.0,
+      16.0
+    ],
+    "h_ft": [
+      8.0,
+      9.0,
+      10.0
+    ]
+  },
+  "model": {
+    "camera": "pinhole, one per keyframe, bound to keyframes[].pose/intrinsics/w/h",
+    "pose": "column-major 16, cam-to-world, translation feet (scene.schema.json)",
+    "image": [
+      1920,
+      1440
+    ],
+    "quantize_px": 3,
+    "equality": "worlds equivalent iff canonical observation hashes match"
+  },
+  "facts": [
+    "orientation_deg",
+    "distance_ft",
+    "left_end_ft",
+    "right_end_ft",
+    "height_ft"
+  ],
+  "true_world_nominal": {
+    "orientation_deg": 0.0,
+    "distance_ft": 20.0,
+    "left_end_ft": -10.0,
+    "right_end_ft": 10.0,
+    "height_ft": 9.0
+  },
+  "default_actions": [
+    "stereo_step",
+    "tilt_pair",
+    "end_approach",
+    "pan_pair",
+    "reobserve"
+  ],
+  "scenarios": [
+    {
+      "name": "one-view",
+      "capability": "one keyframe frames the whole wall: with metric poses, ground landmarks pin the face from this frame alone",
+      "true_world": {
+        "orientation_deg": 0.0,
+        "distance_ft": 20.0,
+        "left_end_ft": -10.0,
+        "right_end_ft": 10.0,
+        "height_ft": 9.0
+      },
+      "cameras": [
+        {
+          "id": "kf0",
+          "position_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            0.0,
+            4.5003,
+            -19.9911
+          ],
+          "fx": 1000.0,
+          "image": [
+            1920,
+            1440
+          ]
+        }
+      ],
+      "actions": [
+        "stereo_step",
+        "tilt_pair",
+        "end_approach",
+        "pan_pair",
+        "reobserve"
+      ]
+    },
+    {
+      "name": "two-view",
+      "capability": "two keyframes from distinct positions, both framing the whole wall",
+      "true_world": {
+        "orientation_deg": 0.0,
+        "distance_ft": 20.0,
+        "left_end_ft": -10.0,
+        "right_end_ft": 10.0,
+        "height_ft": 9.0
+      },
+      "cameras": [
+        {
+          "id": "kf0",
+          "position_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            0.0,
+            4.5003,
+            -19.9911
+          ],
+          "fx": 1000.0,
+          "image": [
+            1920,
+            1440
+          ]
+        },
+        {
+          "id": "kf1",
+          "position_ft": [
+            5.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            2.0684,
+            4.5114,
+            -19.6809
+          ],
+          "fx": 1000.0,
+          "image": [
+            1920,
+            1440
+          ]
+        }
+      ],
+      "actions": [
+        "stereo_step",
+        "tilt_pair",
+        "end_approach",
+        "pan_pair",
+        "reobserve"
+      ]
+    },
+    {
+      "name": "two-view-pan-only",
+      "capability": "two keyframes at the same position, panned: the first frame already supports every fact",
+      "true_world": {
+        "orientation_deg": 0.0,
+        "distance_ft": 20.0,
+        "left_end_ft": -10.0,
+        "right_end_ft": 10.0,
+        "height_ft": 9.0
+      },
+      "cameras": [
+        {
+          "id": "kf0",
+          "position_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            0.0,
+            4.5003,
+            -19.9911
+          ],
+          "fx": 1000.0,
+          "image": [
+            1920,
+            1440
+          ]
+        },
+        {
+          "id": "kf1",
+          "position_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            6.9426,
+            4.5661,
+            -18.1496
+          ],
+          "fx": 1000.0,
+          "image": [
+            1920,
+            1440
+          ]
+        }
+      ],
+      "actions": [
+        "stereo_step",
+        "tilt_pair",
+        "end_approach",
+        "pan_pair",
+        "reobserve"
+      ]
+    },
+    {
+      "name": "two-view-top-blind",
+      "capability": "two keyframes from distinct positions, pitched down: the wall top never enters the frame",
+      "true_world": {
+        "orientation_deg": 0.0,
+        "distance_ft": 20.0,
+        "left_end_ft": -10.0,
+        "right_end_ft": 10.0,
+        "height_ft": 9.0
+      },
+      "cameras": [
+        {
+          "id": "kf0",
+          "position_ft": [
+            0.0,
+            3.0,
+            -6.0
+          ],
+          "target_ft": [
+            0.0,
+            0.0666,
+            -19.6892
+          ],
+          "fx": 1200.0,
+          "image": [
+            1920,
+            1440
+          ]
+        },
+        {
+          "id": "kf1",
+          "position_ft": [
+            4.0,
+            3.0,
+            -6.0
+          ],
+          "target_ft": [
+            2.0632,
+            0.0948,
+            -19.5576
+          ],
+          "fx": 1200.0,
+          "image": [
+            1920,
+            1440
+          ]
+        }
+      ],
+      "actions": [
+        "stereo_step",
+        "tilt_pair",
+        "end_approach",
+        "pan_pair",
+        "reobserve"
+      ]
+    },
+    {
+      "name": "one-view-tops-only",
+      "capability": "one keyframe aimed above the wall: only the top corners are in frame, no ground landmark ever is",
+      "true_world": {
+        "orientation_deg": 0.0,
+        "distance_ft": 20.0,
+        "left_end_ft": -10.0,
+        "right_end_ft": 10.0,
+        "height_ft": 9.0
+      },
+      "cameras": [
+        {
+          "id": "kf0",
+          "position_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            0.0,
+            10.0138,
+            -19.0714
+          ],
+          "fx": 1000.0,
+          "image": [
+            1920,
+            1440
+          ]
+        }
+      ],
+      "actions": [
+        "stereo_step",
+        "tilt_pair",
+        "end_approach",
+        "pan_pair",
+        "reobserve"
+      ]
+    },
+    {
+      "name": "two-view-end-blind",
+      "capability": "two keyframes from distinct positions aimed left of the right end",
+      "true_world": {
+        "orientation_deg": 0.0,
+        "distance_ft": 20.0,
+        "left_end_ft": -10.0,
+        "right_end_ft": 16.0,
+        "height_ft": 9.0
+      },
+      "cameras": [
+        {
+          "id": "kf0",
+          "position_ft": [
+            -6.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            -2.1562,
+            4.5195,
+            -19.4534
+          ],
+          "fx": 1400.0,
+          "image": [
+            1920,
+            1440
+          ]
+        },
+        {
+          "id": "kf1",
+          "position_ft": [
+            0.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            -1.9787,
+            4.5053,
+            -19.8506
+          ],
+          "fx": 1400.0,
+          "image": [
+            1920,
+            1440
+          ]
+        }
+      ],
+      "actions": [
+        "stereo_step",
+        "tilt_pair",
+        "end_approach",
+        "pan_pair",
+        "reobserve"
+      ]
+    }
+  ],
+  "actions": {
+    "end_approach": {
+      "description": "walk right and frame the right end low, from two new positions",
+      "cameras": [
+        {
+          "id": "action_end_1",
+          "position_ft": [
+            2.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            8.8931,
+            3.2767,
+            -18.063
+          ],
+          "fx": 1400.0,
+          "image": [
+            1920,
+            1440
+          ]
+        },
+        {
+          "id": "action_end_2",
+          "position_ft": [
+            8.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            12.6667,
+            3.1333,
+            -19.0667
+          ],
+          "fx": 1400.0,
+          "image": [
+            1920,
+            1440
+          ]
+        }
+      ]
+    },
+    "stereo_step": {
+      "description": "step to two new positions 14 ft out and frame the wall: adds parallax across the whole face",
+      "cameras": [
+        {
+          "id": "action_step_1",
+          "position_ft": [
+            -6.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            -0.4881,
+            4.5407,
+            -18.8611
+          ],
+          "fx": 1000.0,
+          "image": [
+            1920,
+            1440
+          ]
+        },
+        {
+          "id": "action_step_2",
+          "position_ft": [
+            8.0,
+            5.0,
+            -6.0
+          ],
+          "target_ft": [
+            2.4881,
+            4.5407,
+            -18.8611
+          ],
+          "fx": 1000.0,
+          "image": [
+            1920,
+            1440
+          ]
+        }
+      ]
+    },
+    "tilt_pair": {
+      "description": "pitch up from two distinct positions, tight frame on the wall top",
+      "cameras": [
+        {
+          "id": "action_tilt_1",
+          "position_ft": [
+            0.0,
+            4.0,
+            -6.0
+          ],
+          "target_ft": [
+            0.0,
+            7.8461,
+            -19.4613
+          ],
+          "fx": 1300.0,
+          "image": [
+            1920,
+            1440
+          ]
+        },
+        {
+          "id": "action_tilt_2",
+          "position_ft": [
+            5.0,
+            4.0,
+            -7.0
+          ],
+          "target_ft": [
+            2.9633,
+            8.0734,
+            -20.2386
+          ],
+          "fx": 1300.0,
+          "image": [
+            1920,
+            1440
+          ]
+        }
+      ]
+    },
+    "pan_pair": {
+      "description": "yaw every existing keyframe in place: no new parallax, but the frames move and may reveal new landmarks",
+      "cameras": "yawed copies of each base keyframe in place (+0.35 rad about world vertical)"
+    },
+    "reobserve": {
+      "description": "re-observe every existing keyframe from the same pose: no new information by construction (the zero-information control)",
+      "cameras": "duplicates of each base keyframe, same pose and intrinsics"
+    }
+  }
+}
