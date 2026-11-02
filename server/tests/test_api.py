@@ -104,6 +104,7 @@ def test_health_reports_the_loaded_policy(client: TestClient) -> None:
         "id": policy.id,
         "version": policy.version,
         "auto_approve": policy.auto_approve and policy.id is not None,
+        "allow_reject": policy.allow_reject,
         "sources": list(api.LOADED.sources),
         "rules_sha256": api.LOADED.sha256,
         "notice": policy.notice,

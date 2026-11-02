@@ -1,0 +1,223 @@
+{
+ "meter": {
+  "pos": [
+   0.0,
+   5.0,
+   0.0
+  ],
+  "wall_id": "w1",
+  "plus_minus_ft": 0
+ },
+ "walls": [
+  {
+   "id": "w1",
+   "baseline": [
+    [
+     -40,
+     0
+    ],
+    [
+     40,
+     0
+    ]
+   ],
+   "height_ft": 9,
+   "plus_minus_ft": 0
+  }
+ ],
+ "objects": [
+  {
+   "type": "gas_meter",
+   "wall_id": "w1",
+   "span_ft": [
+    2.0,
+    3.0
+   ],
+   "bottom_ft": 0,
+   "top_ft": 0.8,
+   "source": "tap",
+   "plus_minus_ft": 0,
+   "footprint": [
+    [
+     2.0,
+     0
+    ],
+    [
+     3.0,
+     0
+    ],
+    [
+     3.0,
+     1
+    ],
+    [
+     2.0,
+     1
+    ]
+   ]
+  }
+ ],
+ "ground": [
+  {
+   "type": "lawn",
+   "polygon": [
+    [
+     6,
+     0
+    ],
+    [
+     9,
+     0
+    ],
+    [
+     9,
+     30
+    ],
+    [
+     6,
+     30
+    ]
+   ],
+   "plus_minus_ft": 0
+  },
+  {
+   "type": "deck",
+   "polygon": [
+    [
+     -40,
+     0
+    ],
+    [
+     6,
+     0
+    ],
+    [
+     6,
+     30
+    ],
+    [
+     -40,
+     30
+    ]
+   ],
+   "plus_minus_ft": 0
+  },
+  {
+   "type": "deck",
+   "polygon": [
+    [
+     9,
+     0
+    ],
+    [
+     40,
+     0
+    ],
+    [
+     40,
+     30
+    ],
+    [
+     9,
+     30
+    ]
+   ],
+   "plus_minus_ft": 0
+  }
+ ],
+ "overheads": [
+  {
+   "wall_id": "w1",
+   "span_ft": [
+    -40,
+    40
+   ],
+   "clearance_ft": 9,
+   "plus_minus_ft": 0
+  }
+ ],
+ "facing": [
+  {
+   "wall_id": "w1",
+   "span_ft": [
+    -40,
+    40
+   ],
+   "depth_ft": 9,
+   "plus_minus_ft": 0
+  }
+ ],
+ "coverage": {
+  "ends": {
+   "left": {
+    "kind": "limit"
+   },
+   "right": {
+    "kind": "limit"
+   }
+  },
+  "observed": [
+   {
+    "band": "wall",
+    "span_ft": [
+     -40,
+     40
+    ]
+   },
+   {
+    "band": "ground",
+    "span_ft": [
+     -40,
+     40
+    ],
+    "out_ft": 30
+   },
+   {
+    "band": "overhead",
+    "span_ft": [
+     -40,
+     40
+    ]
+   },
+   {
+    "band": "facing",
+    "span_ft": [
+     -40,
+     40
+    ]
+   }
+  ]
+ },
+ "keyframes": [
+  {
+   "id": "k1",
+   "pose": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    12.0,
+    4.5,
+    2.0,
+    1
+   ],
+   "intrinsics": [
+    1450.0,
+    1450.0,
+    960.0,
+    720.0
+   ],
+   "w": 1920,
+   "h": 1440,
+   "img": "k1.jpg"
+  }
+ ]
+}
