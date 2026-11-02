@@ -1,0 +1,151 @@
+{
+ "study": "relative-error",
+ "frozen_on_branch": "obv/products-relative-error-20261009-r1",
+ "server_refs": {
+  "main": "c813182a808c957ccc981fa56490c6c29d3c1560",
+  "origin/t3/server": "1d1e7e1b55237ae82f5af10125ca33818f15cfce"
+ },
+ "parameters": {
+  "seed": 20261009,
+  "n_draws_per_cell": 20000,
+  "n_calibration_draws": 200000,
+  "ell_ft": [
+   2.0,
+   5.0,
+   10.0,
+   20.0,
+   null
+  ],
+  "walked_ft": [
+   10.0,
+   20.0,
+   30.0
+  ],
+  "separations_ft": [
+   1.0,
+   2.0,
+   2.7,
+   2.9,
+   3.0,
+   3.3,
+   4.0,
+   6.0
+  ],
+  "rule_ft": 3.0,
+  "sensitivity": {
+   "w1_ft": 20.0,
+   "w2_ft": 23.0,
+   "gaps_ft": [
+    2.9,
+    3.3
+   ],
+   "levels": {
+    "drift_per_ft": [
+     0.12,
+     0.16,
+     0.2
+    ],
+    "tap_base_ft": [
+     0.15,
+     0.3,
+     0.6
+    ],
+    "scale_sd_x": [
+     0.5,
+     1.0,
+     2.0
+    ],
+    "residual_k_x": [
+     0.5,
+     1.0,
+     1.5
+    ]
+   }
+  }
+ },
+ "phone_classes": {
+  "modern": {
+   "name": "modern",
+   "note": "MARViN iPhone 14 Pro Max, trusted bar+church walks; walk scale SD 1.47%",
+   "scale_mu": 0.0,
+   "scale_sd": 0.0147,
+   "pos_p90_in": {
+    "10.0": 8.6,
+    "20.0": 13.4,
+    "30.0": 18.5
+   },
+   "fit_distances_ft": [
+    10.0,
+    20.0,
+    30.0
+   ],
+   "source": "experiments/evals/results/modern_arkit.json"
+  },
+  "phone_2018": {
+   "name": "phone_2018",
+   "note": "ADVIO iPhone 6s; per-walk scale in [-17%, -5%]; GPS-rescaled truth",
+   "scale_mu": -0.11,
+   "scale_sd": 0.0346,
+   "pos_p90_in": {
+    "3.0": 18.63,
+    "10.0": 55.7,
+    "20.0": 94.61,
+    "30.0": 132.58
+   },
+   "fit_distances_ft": [
+    10.0,
+    20.0,
+    30.0
+   ],
+   "source": "experiments/evals/results/advio_drift.json"
+  }
+ },
+ "sources": {
+  "advio_drift": {
+   "path": "experiments/evals/results/advio_drift.json",
+   "sha256": "ca06bf856186d907c8d5feaa28148e487e0020d41bf6da50adfd36b5b533e791",
+   "bytes": 11080
+  },
+  "modern_arkit": {
+   "path": "experiments/evals/results/modern_arkit.json",
+   "sha256": "9eec87acdca6123ebcd1706d1127ba0091290d314be19518a5f20ae1c137e54d",
+   "bytes": 7918
+  },
+  "drift_anatomy": {
+   "path": "experiments/drift-anatomy/results/drift_anatomy.json",
+   "sha256": "e86be1b4cb5d195ec9a3d2fbe865a7c76b98daa30c362b607a4c1126969ffc76",
+   "bytes": 41665
+  },
+  "budget_md": {
+   "path": "experiments/sensor-budget/results/budget.md",
+   "sha256": "28b863d7c25414cbaa50057b58dae95fd0402d3d9534ac63e1062eafff1bcaf7",
+   "bytes": 6158
+  },
+  "budget_json": {
+   "path": "experiments/sensor-budget/results/budget.json",
+   "sha256": "e6c83062e3b500279e4980c6b88790462fb5542ad1760d89b1d9ad3e34ab2f0b",
+   "bytes": 12279
+  },
+  "rules_yaml": {
+   "path": "server/rules.yaml",
+   "sha256": "539daff61e13765462eda11fcd2b74033fb318dec436c609f20f61dd7c522e89",
+   "bytes": 6935
+  },
+  "evals_readme": {
+   "path": "experiments/evals/README.md",
+   "sha256": "04e1a62a0b02cff2ed8931f2c5049060afe9f496930123169a02316979ce9294",
+   "bytes": 1264
+  },
+  "modern_arkit_md": {
+   "path": "experiments/evals/results/modern_arkit.md",
+   "sha256": "f3898c86e65b4799ef983a2f090d8fb49e6f41a4a34f11c260205b76ab129a46",
+   "bytes": 11718
+  }
+ },
+ "notes": {
+  "marvin_reference": "The MARViN (modern_arkit) reference is a COLMAP metric reconstruction, not tape- or laser-verified truth; a reference that may be self-scaled is not independent truth, and its scale spreads inherit that doubt.",
+  "correlation": "An assumed correlation is not measured calibration: the residual correlation length is swept as an assumption, and no committed data measures a two-tap difference error.",
+  "citations": "Rules-value citation review is reused from PR #217 (obv/basescanning-024); historical measured values are retained in the audit, not restated here.",
+  "rule_unchanged": "The default rule (server/rules.yaml) is left unchanged by this study."
+ }
+}
