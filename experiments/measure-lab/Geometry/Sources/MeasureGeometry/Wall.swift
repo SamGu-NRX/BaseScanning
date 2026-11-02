@@ -78,9 +78,11 @@ public struct Wall: Sendable, Equatable {
         point.y - groundHeight(atAlong: along(point))
     }
 
-    /// Whether an along-wall position lies between the two contacts.
+    /// Whether an along-wall position lies between the two contacts. A nanometre of slack at
+    /// each end absorbs floating-point rounding: `along(end)` is computed as run·run / |run| and
+    /// can land an ulp past `length`, which would flag the second contact itself.
     public func containsAlong(_ s: Double) -> Bool {
-        (0...length).contains(s)
+        (-1e-9...length + 1e-9).contains(s)
     }
 
     /// Checks a third ground contact against the plane. The residual is its distance from the

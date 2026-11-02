@@ -69,11 +69,12 @@ final class CaptureController {
         let closing = session.recorder.stop()
         frozen = nil
         let destination = session.startNewSession(sceneDepth: sceneDepth, closingReserved: closing?.reserved ?? 0)
-        session.arSessionRestarted()
-        clearMarkers()
-        // Install the gate behind callbacks already queued from the old map. The cutoff uses the
-        // frame clock, not the timestamp of the last frame delivered before this reset.
+        // One cutoff for the recorder's frames and the session's tracking and interruption
+        // reports, so callbacks already queued from the old map can't count in the new one. It
+        // uses the frame clock, not the timestamp of the last frame delivered before this reset.
         let resetUptime = ProcessInfo.processInfo.systemUptime
+        session.arSessionRestarted(at: resetUptime)
+        clearMarkers()
         if var destination {
             destination.resetGate = FrameResetGate(resetUptime: resetUptime)
             let gatedDestination = destination

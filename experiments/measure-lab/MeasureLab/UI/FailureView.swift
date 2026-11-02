@@ -10,7 +10,7 @@ struct FailureView: View {
             ContentUnavailableView {
                 Label("Camera access is off", systemImage: "camera")
             } description: {
-                Text("Measure Lab needs the camera to measure. Turn on Camera for Measure Lab in Settings.")
+                Text("Turn on Camera for Measure Lab in Settings. Then close and reopen Measure Lab to start a new camera session.")
             } actions: {
                 Button("Open Settings") {
                     if let url = URL(string: UIApplication.openSettingsURLString) {

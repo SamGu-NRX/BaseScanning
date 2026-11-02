@@ -133,8 +133,8 @@ struct MeasureSheet: View {
     }
 
     private var selectedWarnings: [MeasurementWarning] {
-        guard let target, let quantity = selectedQuantity, let value = values[quantity] else { return [] }
-        return session.warnings(from: fromID, to: target, referenceWall: referenceWall, compared: quantity, value: value)
+        guard let target, let quantity = selectedQuantity else { return [] }
+        return session.warnings(from: fromID, to: target, referenceWall: referenceWall, compared: quantity)
     }
 
     private var tapeIsEmpty: Bool {

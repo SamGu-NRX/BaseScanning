@@ -196,6 +196,7 @@ struct WallRecord: Codable, Sendable, Identifiable {
     let cameraPosition: SIMD3<Double>
     var validations: [Validation]
     /// "wallContactWarning", "wallNotValidated", "wallValidationFailed"; updated after each check.
+    /// A passing check whose point has its own flags leaves "wallNotValidated" in place.
     var warnings: [MeasurementWarning]
 }
 
@@ -223,10 +224,11 @@ struct MeasurementRecord: Codable, Sendable, Identifiable {
     let errorMeters: Double?
     let errorInches: Double?
     /// Every warning inherited from the points and walls this value depends on, plus
-    /// "belowGround" for a negative height.
-    let warnings: [MeasurementWarning]
+    /// "outsideWallContacts" for a wall read beyond its contacts and "belowGround" for a negative
+    /// height. A later wall check can add warnings; none is ever removed.
+    var warnings: [MeasurementWarning]
     /// True only with no warnings. Scoring counts any other measurement as an abstention.
-    let accepted: Bool
+    var accepted: Bool
 }
 
 struct RefusalRecord: Codable, Sendable {
